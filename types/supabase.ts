@@ -2059,6 +2059,79 @@ export type Database = {
           },
         ]
       }
+      curso_professor_responsavel: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          curso_id: string
+          escola_id: string
+          professor_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          curso_id: string
+          escola_id: string
+          professor_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          curso_id?: string
+          escola_id?: string
+          professor_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_professor_responsavel_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_professor_responsavel_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_professor_responsavel_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_professor_responsavel_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_professor_responsavel_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_professor_responsavel_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_professores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos: {
         Row: {
           codigo: string
@@ -2367,6 +2440,13 @@ export type Database = {
             foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
+            referencedRelation: "vw_pagamentos_pendentes"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -2640,6 +2720,7 @@ export type Database = {
           id: string
           papel: string
           role: string | null
+          tenant_type: string
           user_id: string
         }
         Insert: {
@@ -2648,6 +2729,7 @@ export type Database = {
           id?: string
           papel?: string
           role?: string | null
+          tenant_type?: string
           user_id: string
         }
         Update: {
@@ -2656,6 +2738,7 @@ export type Database = {
           id?: string
           papel?: string
           role?: string | null
+          tenant_type?: string
           user_id?: string
         }
         Relationships: [
@@ -2689,6 +2772,7 @@ export type Database = {
           plano_atual: Database["public"]["Enums"]["app_plan_tier"]
           slug: string
           status: string | null
+          tenant_type: string
           updated_at: string | null
           use_mv_dashboards: boolean
         }
@@ -2705,6 +2789,7 @@ export type Database = {
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
           slug: string
           status?: string | null
+          tenant_type?: string
           updated_at?: string | null
           use_mv_dashboards?: boolean
         }
@@ -2721,6 +2806,7 @@ export type Database = {
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
           slug?: string
           status?: string | null
+          tenant_type?: string
           updated_at?: string | null
           use_mv_dashboards?: boolean
         }
@@ -3300,6 +3386,13 @@ export type Database = {
             foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
+            referencedRelation: "vw_pagamentos_pendentes"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -3471,6 +3564,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_pagamentos_pendentes"
+            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
@@ -3658,6 +3758,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_pagamentos_pendentes"
+            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
@@ -7743,6 +7850,13 @@ export type Database = {
             foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
             columns: ["pagamento_id"]
             isOneToOne: false
+            referencedRelation: "vw_pagamentos_pendentes"
+            referencedColumns: ["pagamento_id"]
+          },
+          {
+            foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
+            columns: ["pagamento_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_pagamentos"
             referencedColumns: ["id"]
           },
@@ -8292,6 +8406,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_pagamentos_pendentes"
+            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "pagamentos_mensalidade_id_fkey"
@@ -11945,6 +12066,60 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_pagamentos_pendentes: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          comprovante_url: string | null
+          created_at: string | null
+          escola_id: string | null
+          mensagem_aluno: string | null
+          mensalidade_id: string | null
+          metodo: string | null
+          pagamento_id: string | null
+          reference: string | null
+          turma_codigo: string | null
+          valor_enviado: number | null
+          valor_esperado: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_pagamentos_status: {
         Row: {
           escola_id: string | null
@@ -12709,6 +12884,16 @@ export type Database = {
         }
         Returns: string
       }
+      aluno_submeter_comprovativo_pagamento: {
+        Args: {
+          p_evidence_url: string
+          p_mensagem?: string
+          p_mensalidade_id: string
+          p_meta?: Json
+          p_valor_informado?: number
+        }
+        Returns: Json
+      }
       aprovar_fecho_caixa: { Args: { p_fecho_caixa_id: string }; Returns: Json }
       aprovar_turmas:
         | {
@@ -12722,6 +12907,23 @@ export type Database = {
       assert_course_class_range: {
         Args: { p_class_num: number; p_curriculum_key: string }
         Returns: undefined
+      }
+      assign_professor_turma_disciplina_atomic: {
+        Args: {
+          p_curso_matriz_id: string
+          p_escola_id: string
+          p_horarios?: Json
+          p_planejamento?: Json
+          p_professor_id: string
+          p_turma_id: string
+        }
+        Returns: {
+          carga_atual: number
+          carga_maxima: number
+          disciplina_id: string
+          mode: string
+          professor_profile_id: string
+        }[]
       }
       audit_redact_jsonb: {
         Args: { p_entity: string; p_payload: Json }
@@ -12774,6 +12976,15 @@ export type Database = {
       canonicalize_matricula_status_text: {
         Args: { input: string }
         Returns: string
+      }
+      check_professor_operational_consistency: {
+        Args: { p_escola_id: string; p_limit?: number }
+        Returns: {
+          check_key: string
+          sample: Json
+          severity: string
+          total: number
+        }[]
       }
       check_super_admin_role: { Args: never; Returns: boolean }
       claim_outbox_events: {
@@ -12926,6 +13137,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_or_update_professor_academico: {
+        Args: {
+          p_disciplina_ids?: string[]
+          p_escola_id: string
+          p_profile: Json
+          p_teacher: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       current_escola_id: { Args: never; Returns: string }
       current_tenant_empresa_id: { Args: never; Returns: string }
       current_tenant_escola_id: { Args: never; Returns: string }
@@ -12943,6 +13164,19 @@ export type Database = {
           p_escola_id: string
         }
         Returns: number
+      }
+      curriculo_install_orchestrated: {
+        Args: {
+          p_advanced_config?: Json
+          p_ano_letivo_id: string
+          p_auto_publish?: boolean
+          p_custom_data?: Json
+          p_escola_id: string
+          p_generate_turmas?: boolean
+          p_idempotency_key?: string
+          p_preset_key: string
+        }
+        Returns: Json
       }
       curriculo_publish:
         | {
@@ -13614,6 +13848,13 @@ export type Database = {
       get_config_impact: {
         Args: { p_ano_letivo: number; p_changes?: Json; p_escola_id: string }
         Returns: Json
+      }
+      get_curso_professor_responsavel_map: {
+        Args: { p_curso_ids: string[]; p_escola_id: string }
+        Returns: {
+          curso_id: string
+          professor_id: string
+        }[]
       }
       get_escola_sigla: { Args: { p_escola_id: string }; Returns: string }
       get_estado_academico: {
@@ -14309,6 +14550,20 @@ export type Database = {
           telefone_responsavel: string
         }[]
       }
+      set_curso_professor_responsavel: {
+        Args: {
+          p_actor_id?: string
+          p_curso_id: string
+          p_escola_id: string
+          p_professor_id: string
+        }
+        Returns: {
+          curso_id: string
+          professor_id: string
+          professor_profile_id: string
+          updated_at: string
+        }[]
+      }
       setup_active_ano_letivo: {
         Args: { p_ano_data: Json; p_escola_id: string }
         Returns: Json
@@ -14439,6 +14694,14 @@ export type Database = {
       user_has_role_in_school: {
         Args: { p_escola_id: string; p_roles: string[] }
         Returns: boolean
+      }
+      validar_pagamento: {
+        Args: {
+          p_aprovado: boolean
+          p_mensagem_secretaria?: string
+          p_pagamento_id: string
+        }
+        Returns: Json
       }
       validate_curriculum_presets: {
         Args: { p_escola_id?: string }

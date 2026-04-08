@@ -1,9 +1,17 @@
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { FeatureKey } from "@/config/plans";
 import { HttpError } from "@/lib/errors";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { getFeatureDeniedMessage, isFeatureAllowed } from "@/lib/plan/featureMatrix";
+import type { ProductContext } from "@/lib/permissions";
+import {
+  detectProductContextFromHostname,
+  inferTenantTypeFromRole,
+  resolveTenantContext,
+  type TenantType,
+} from "@moxi/tenant-sdk";
+import { headers } from "next/headers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type DBWithFeature = Database & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
@@ -20,9 +28,19 @@ type RequireFeatureResult = {
   escolaId: string;
   plano: string;
   userId: string;
+  tenantType: TenantType;
+  productContext: ProductContext;
 };
 
-export async function requireFeature(feature: FeatureKey): Promise<RequireFeatureResult> {
+type RequireFeatureOptions = {
+  productContext?: ProductContext;
+  requestedEscolaId?: string | null;
+};
+
+export async function requireFeature(
+  feature: FeatureKey,
+  options?: RequireFeatureOptions
+): Promise<RequireFeatureResult> {
   const supabase = await supabaseServerTyped<DBWithFeature>();
 
   const { data, error: authError } = await supabase.auth.getUser();
@@ -37,15 +55,25 @@ export async function requireFeature(feature: FeatureKey): Promise<RequireFeatur
     (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
     null;
 
-  const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, undefined, metadataEscolaId);
-  if (!escolaId) {
+  const requestHeaders = await headers();
+  const productFromHost = detectProductContextFromHostname(requestHeaders.get("host"));
+  const productContext = options?.productContext ?? (productFromHost === "formacao" ? "formacao" : "k12");
+
+  const tenantContext = await resolveTenantContext({
+    client: supabase as unknown as SupabaseClient<Database>,
+    userId: user.id,
+    productContext,
+    requestedTenantId: options?.requestedEscolaId ?? metadataEscolaId,
+  });
+
+  if (!tenantContext?.tenant_id) {
     throw new HttpError(403, "NO_SCHOOL", "Usuário sem escola associada.");
   }
 
   const { data: escola, error: schoolError } = await supabase
     .from("escolas")
     .select("plano_atual")
-    .eq("id", escolaId)
+    .eq("id", tenantContext.tenant_id)
     .maybeSingle();
 
   if (schoolError) {
@@ -53,14 +81,20 @@ export async function requireFeature(feature: FeatureKey): Promise<RequireFeatur
   }
 
   const plano = String(escola?.plano_atual ?? "essencial").toLowerCase();
+  const tenantType =
+    tenantContext.tenant_type ??
+    inferTenantTypeFromRole(tenantContext.user_role) ??
+    "k12";
 
-  if (!isFeatureAllowed(plano, feature)) {
+  if (!isFeatureAllowed(plano, feature, { productContext, tenantType })) {
     throw new HttpError(403, "PLAN_FEATURE_REQUIRED", getFeatureDeniedMessage(plano, feature));
   }
 
   return {
-    escolaId,
+    escolaId: tenantContext.tenant_id,
     plano,
     userId: user.id,
+    tenantType,
+    productContext,
   };
 }

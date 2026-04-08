@@ -85,6 +85,8 @@ export type GlobalRole =
   | 'global_admin'
   | 'guest'
 
+export type ProductContext = 'k12' | 'formacao'
+
 export function normalizePapel(papel: Papel | string | null | undefined): Papel | null {
   if (!papel || typeof papel !== 'string') return null
 
@@ -351,4 +353,39 @@ export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): 
     default:
       return 'guest'
   }
+}
+
+const K12_ROLE_SET = new Set<string>([
+  'admin',
+  'staff_admin',
+  'admin_escola',
+  'secretaria',
+  'secretaria_financeiro',
+  'admin_financeiro',
+  'financeiro',
+  'professor',
+  'aluno',
+  'encarregado',
+  'super_admin',
+  'global_admin',
+])
+
+const FORMACAO_ROLE_SET = new Set<string>([
+  'formacao_admin',
+  'formacao_secretaria',
+  'formacao_financeiro',
+  'formador',
+  'formando',
+  'super_admin',
+  'global_admin',
+])
+
+export function isRoleAllowedForProduct(
+  role: GlobalRole | string | null | undefined,
+  product: ProductContext
+): boolean {
+  const normalized = String(role ?? '').trim().toLowerCase()
+  if (!normalized) return false
+  if (product === 'k12') return K12_ROLE_SET.has(normalized)
+  return FORMACAO_ROLE_SET.has(normalized)
 }

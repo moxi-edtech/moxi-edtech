@@ -247,7 +247,7 @@ export default function EscolaAdminDashboardContent({
       titulo: "Tabelas de preço pendentes",
       descricao: "Defina preços para liberar cobranças automáticas.",
       count: missingPricingCount,
-      link: `/escola/${escolaParam}/admin/configuracoes/financeiro`,
+      link: `/escola/${escolaParam}/admin/configuracoes/mensalidades`,
       link_label: "Configurar preços",
     });
   }

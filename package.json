@@ -9,8 +9,11 @@
   ],
   "scripts": {
     "dev": "pnpm -C apps/web dev",
+    "dev:formacao": "pnpm -C apps/formacao dev",
     "build": "pnpm -C apps/web build",
+    "build:formacao": "pnpm -C apps/formacao build",
     "start": "pnpm -C apps/web start",
+    "start:formacao": "pnpm -C apps/formacao start",
     "lint": "pnpm -C apps/web lint",
     "deploy:web": "bash scripts/deploy-web.sh",
     "deploy:landing": "bash scripts/deploy-landing.sh",

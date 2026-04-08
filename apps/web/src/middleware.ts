@@ -4,12 +4,18 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { isEscolaUuid } from '@/lib/tenant/escolaSlug';
 import { resolveEscolaParam } from '@/lib/tenant/resolveEscolaParam';
+import {
+  detectProductContextFromHostname,
+  normalizeTenantType,
+  type ProductContext,
+  type TenantType,
+} from '@moxi/tenant-sdk';
+import { isRoleAllowedForProduct } from '@/lib/permissions';
 
-type ModeloEnsino = 'k12' | 'formacao';
 type AuthContext = {
   role: string | null;
   escolaId: string | null;
-  modeloEnsino: ModeloEnsino | null;
+  tenantType: TenantType | null;
 };
 
 // Simulação de Rate Limiting simples em memória (Edge Runtime)
@@ -187,13 +193,10 @@ const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   },
 ];
 
-function normalizeModeloEnsino(value: unknown): ModeloEnsino | null {
-  if (typeof value !== 'string') return null;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === 'k12') return 'k12';
-  if (normalized === 'formacao') return 'formacao';
-  return null;
-}
+const PRODUCT_HOSTNAMES: Record<Exclude<ProductContext, 'unknown' | 'landing'>, string> = {
+  k12: 'app.klasse.ao',
+  formacao: 'formacao.klasse.ao',
+};
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const segments = token.split('.');
@@ -241,13 +244,18 @@ function extractJwtAuthContext(request: NextRequest): AuthContext | null {
 
   const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
   const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
-  const modeloEnsino = normalizeModeloEnsino(appMetadata.modelo_ensino ?? userMetadata.modelo_ensino);
+  const tenantType = normalizeTenantType(
+    appMetadata.tenant_type ??
+      userMetadata.tenant_type ??
+      appMetadata.modelo_ensino ??
+      userMetadata.modelo_ensino
+  );
 
-  return { role, escolaId, modeloEnsino };
+  return { role, escolaId, tenantType };
 }
 
 function getLandingPathByContext(ctx: AuthContext): string {
-  if (ctx.modeloEnsino === 'formacao') {
+  if (ctx.tenantType === 'formacao') {
     if (ctx.role === 'formador') return '/agenda';
     if (ctx.role === 'formando') return '/dashboard';
     if (ctx.role === 'formacao_financeiro') return '/financeiro/dashboard';
@@ -313,13 +321,33 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
   const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
   const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
   const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
-  const modeloEnsino = normalizeModeloEnsino(appMetadata.modelo_ensino ?? userMetadata.modelo_ensino);
+  const tenantType = normalizeTenantType(
+    appMetadata.tenant_type ??
+      userMetadata.tenant_type ??
+      appMetadata.modelo_ensino ??
+      userMetadata.modelo_ensino
+  );
 
   return {
     role,
     escolaId,
-    modeloEnsino,
+    tenantType,
   };
+}
+
+function redirectToProductHost(
+  request: NextRequest,
+  target: Exclude<ProductContext, 'unknown' | 'landing'>,
+  pathname: string
+) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.hostname = PRODUCT_HOSTNAMES[target];
+  redirectUrl.pathname = pathname;
+  if (redirectUrl.protocol === 'http:' && redirectUrl.hostname.endsWith('klasse.ao')) {
+    redirectUrl.protocol = 'https:';
+    redirectUrl.port = '';
+  }
+  return NextResponse.redirect(redirectUrl);
 }
 
 function createForbiddenResponse(baseResponse: NextResponse, isApi: boolean) {
@@ -380,6 +408,7 @@ async function resolveEscolaSlugMapping(
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const productContext = detectProductContextFromHostname(request.headers.get('host'));
   const apiPath = isApiPath(pathname);
   const origin = request.headers.get('origin');
   const allowedOrigin = resolveAllowedOrigin(request, origin);
@@ -505,17 +534,56 @@ export async function middleware(request: NextRequest) {
     return finalizeResponse(request, NextResponse.redirect(loginUrl), allowedOrigin);
   }
 
-  const modeloEnsino = authContext.modeloEnsino ?? 'k12';
-  if (modeloEnsino === 'formacao' && pathRequiresK12Model(pathname)) {
+  if (
+    productContext === 'formacao' &&
+    pathRequiresK12Model(pathname)
+  ) {
+    if (apiPath) {
+      return finalizeResponse(request, createForbiddenResponse(response, true), allowedOrigin);
+    }
+    return finalizeResponse(
+      request,
+      redirectToProductHost(request, 'k12', getLandingPathByContext(authContext)),
+      allowedOrigin
+    );
+  }
+
+  if (
+    productContext === 'k12' &&
+    pathRequiresFormacaoModel(pathname)
+  ) {
+    if (apiPath) {
+      return finalizeResponse(request, createForbiddenResponse(response, true), allowedOrigin);
+    }
+    return finalizeResponse(
+      request,
+      redirectToProductHost(request, 'formacao', getLandingPathByContext(authContext)),
+      allowedOrigin
+    );
+  }
+
+  const tenantType = authContext.tenantType ?? 'k12';
+  if (tenantType === 'formacao' && pathRequiresK12Model(pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = getLandingPathByContext(authContext);
     return finalizeResponse(request, NextResponse.redirect(redirectUrl), allowedOrigin);
   }
 
-  if (modeloEnsino === 'k12' && pathRequiresFormacaoModel(pathname)) {
+  if (tenantType === 'k12' && pathRequiresFormacaoModel(pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = getLandingPathByContext(authContext);
     return finalizeResponse(request, NextResponse.redirect(redirectUrl), allowedOrigin);
+  }
+
+  if (
+    productContext !== 'unknown' &&
+    productContext !== 'landing' &&
+    authContext.role &&
+    !isRoleAllowedForProduct(authContext.role, productContext)
+  ) {
+    const deniedUrl = request.nextUrl.clone();
+    deniedUrl.pathname = getLandingPathByContext(authContext);
+    return finalizeResponse(request, NextResponse.redirect(deniedUrl), allowedOrigin);
   }
 
   if (!portalRule.roles.includes(String(authContext.role))) {

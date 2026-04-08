@@ -1,6 +1,7 @@
 // apps/web/src/lib/authz.ts
 import { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { isRoleAllowedForProduct, type ProductContext } from "@/lib/permissions";
 
 export type Role =
   | "secretaria"
@@ -21,6 +22,7 @@ interface RequireRoleInSchoolParams {
   supabase: SupabaseClient;
   escolaId: string;
   roles: Role[];
+  productContext?: ProductContext;
 }
 
 /**
@@ -32,6 +34,7 @@ export async function requireRoleInSchool({
   supabase,
   escolaId,
   roles,
+  productContext,
 }: RequireRoleInSchoolParams): Promise<{ user: any; error?: NextResponse }> {
   const { data, error: authError } = await supabase.auth.getUser();
   const user = data?.user ?? null;
@@ -84,6 +87,16 @@ export async function requireRoleInSchool({
 
   // Se quiser manter super_admin como papel em escola_users, suporta aqui também:
   if (papel === "super_admin") return { user };
+
+  if (productContext && !isRoleAllowedForProduct(papel, productContext)) {
+    return {
+      user: null,
+      error: NextResponse.json(
+        { error: "Forbidden", reason: "product_context_mismatch", papel, productContext },
+        { status: 403 }
+      ),
+    };
+  }
 
   if (!roles.includes(papel as Role)) {
     return {
