@@ -16,6 +16,12 @@ type TeamMember = {
   papel: PapelEquipe;
 };
 
+function normalizeOptionalEmail(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
+}
+
 type CentroFormData = {
   centro: {
     nome: string;
@@ -180,7 +186,7 @@ export default function NovoCentroFormacaoPage() {
           municipio: form.centro.municipio || null,
           provincia: form.centro.provincia || null,
           telefone: form.centro.telefone || null,
-          email: form.centro.email || null,
+          email: normalizeOptionalEmail(form.centro.email),
           website: form.centro.website || null,
         },
         fiscal: {
