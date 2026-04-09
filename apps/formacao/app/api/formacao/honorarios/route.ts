@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   let query = s
     .from("formacao_honorarios_lancamentos")
     .select("id, referencia, cohort_id, formador_user_id, horas_ministradas, valor_hora, bonus, desconto, valor_liquido, competencia, status")
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 
   const referencia = String(body?.referencia ?? "").trim() || buildRef(auth.escolaId || "HON");
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_honorarios_lancamentos")
     .insert({
@@ -116,7 +117,7 @@ export async function PATCH(request: Request) {
   if (body?.bonus !== undefined) patch.bonus = Number(body.bonus);
   if (body?.desconto !== undefined) patch.desconto = Number(body.desconto);
 
-  let query = (auth.supabase as any)
+  let query = (auth.supabase as FormacaoSupabaseClient)
     .from("formacao_honorarios_lancamentos")
     .update(patch)
     .eq("escola_id", auth.escolaId)
@@ -141,7 +142,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  let query = (auth.supabase as any)
+  let query = (auth.supabase as FormacaoSupabaseClient)
     .from("formacao_honorarios_lancamentos")
     .delete()
     .eq("escola_id", auth.escolaId)

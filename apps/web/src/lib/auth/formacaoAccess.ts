@@ -1,5 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { supabaseServer } from '@/lib/supabaseServer'
 
 export type FormacaoContext = {
   role: string | null
@@ -8,32 +7,36 @@ export type FormacaoContext = {
 }
 
 export async function getFormacaoContext(): Promise<FormacaoContext | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return null
-
-  const cookieStore = await cookies()
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll() {
-        // read-only on server components
-      },
-    },
-  })
+  const supabase = await supabaseServer()
 
   const { data } = await supabase.auth.getUser()
   const user = data?.user
   if (!user) return null
 
   const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>
-  const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>
+
+  const { data: profileRows } = await supabase
+    .from("profiles")
+    .select("role,current_escola_id,created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+  const profile = profileRows?.[0] ?? null
+
+  const { data: membershipRows } = await supabase
+    .from("escola_users")
+    .select("escola_id,papel,tenant_type,created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+  const selectedMembership =
+    membershipRows?.find((row) => row.escola_id === profile?.current_escola_id) ??
+    membershipRows?.find((row) => row.tenant_type === "formacao") ??
+    membershipRows?.[0] ??
+    null
 
   return {
-    role: (appMetadata.role ?? userMetadata.role ?? null) as string | null,
-    modeloEnsino: (appMetadata.modelo_ensino ?? userMetadata.modelo_ensino ?? null) as string | null,
-    escolaId: (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null,
+    role: (selectedMembership?.papel ?? profile?.role ?? appMetadata.role ?? null) as string | null,
+    modeloEnsino: (selectedMembership?.tenant_type ?? appMetadata.modelo_ensino ?? null) as string | null,
+    escolaId: (selectedMembership?.escola_id ?? profile?.current_escola_id ?? appMetadata.escola_id ?? null) as string | null,
   }
 }

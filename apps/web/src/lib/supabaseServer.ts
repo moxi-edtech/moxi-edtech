@@ -22,6 +22,30 @@ function getSupabaseEnv() {
   return { url, anonKey };
 }
 
+function resolveCookieOptions() {
+  const configuredDomain =
+    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
+    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : "");
+
+  const sameSiteRaw = (
+    process.env.KLASSE_COOKIE_SAMESITE ??
+    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
+    "lax"
+  )
+    .trim()
+    .toLowerCase();
+  const sameSite: "lax" | "strict" | "none" =
+    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
+
+  return {
+    ...(configuredDomain ? { domain: configuredDomain } : {}),
+    path: "/",
+    sameSite,
+    secure: process.env.NODE_ENV === "production",
+  };
+}
+
 /**
  * Server-side Supabase client for Server Components / layouts / loaders.
  * Reads cookies (session), does NOT write them (Next 15 only allows that
@@ -35,6 +59,7 @@ export async function supabaseServer() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
+    cookieOptions: resolveCookieOptions(),
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -51,6 +76,7 @@ export async function supabaseServerTyped<TDatabase = Database>() {
   const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
+    cookieOptions: resolveCookieOptions(),
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -64,6 +90,7 @@ export async function supabaseRouteClient<TDatabase = Database>() {
   const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
+    cookieOptions: resolveCookieOptions(),
     cookies: buildMutableCookieAdapter(cookieStore),
   });
 }

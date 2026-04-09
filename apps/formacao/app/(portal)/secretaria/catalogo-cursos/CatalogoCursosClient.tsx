@@ -37,20 +37,20 @@ export default function CatalogoCursosClient() {
   }, []);
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="grid gap-4">
       <header>
-        <p style={{ margin: 0, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.7 }}>
+        <p className="m-0 text-xs uppercase tracking-wider text-zinc-500">
           Secretaria Centro
         </p>
-        <h1 style={{ margin: "6px 0 0" }}>Catálogo de Cursos</h1>
+        <h1 className="mt-1.5 text-3xl font-bold text-zinc-900">Catálogo de Cursos</h1>
       </header>
 
-      {error ? <p style={{ margin: 0, color: "#b91c1c" }}>{error}</p> : null}
-      {loading ? <p style={{ margin: 0 }}>Carregando...</p> : null}
+      {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
+      {loading ? <p className="m-0 text-sm text-zinc-700">Carregando...</p> : null}
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-          <thead style={{ background: "#f8fafc" }}>
+      <section className="overflow-hidden rounded-xl border border-zinc-200">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-zinc-50">
             <tr>
               <Th>Código</Th>
               <Th>Curso</Th>
@@ -82,9 +82,13 @@ export default function CatalogoCursosClient() {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th style={{ textAlign: "left", padding: "10px 12px", borderBottom: "1px solid var(--line)" }}>{children}</th>;
+  return <th className="border-b border-zinc-200 px-3 py-2.5 text-left font-medium text-zinc-700">{children}</th>;
 }
 
 function Td({ children, colSpan }: { children: React.ReactNode; colSpan?: number }) {
-  return <td colSpan={colSpan} style={{ padding: "10px 12px", borderBottom: "1px solid var(--line)" }}>{children}</td>;
+  return (
+    <td colSpan={colSpan} className="border-b border-zinc-200 px-3 py-2.5 text-zinc-800">
+      {children}
+    </td>
+  );
 }

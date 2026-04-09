@@ -42,35 +42,31 @@ export default function FormacaoOnboardingPage() {
   const activeStep = STEPS[currentStep - 1];
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="grid gap-4">
       <header>
-        <p style={{ margin: 0, fontSize: 12, letterSpacing: 1.1, textTransform: "uppercase", opacity: 0.65 }}>
+        <p className="m-0 text-xs uppercase tracking-wider text-zinc-500">
           Onboarding Formação
         </p>
-        <h1 style={{ margin: "6px 0" }}>Setup Inicial do Centro</h1>
-        <p style={{ margin: 0, opacity: 0.78 }}>
+        <h1 className="my-1.5 text-3xl font-bold text-zinc-900">Setup Inicial do Centro</h1>
+        <p className="m-0 text-zinc-600">
           Fluxo exclusivo de Formação, separado do onboarding K12.
         </p>
       </header>
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13 }}>
+      <section className="rounded-xl border border-zinc-200 p-3">
+        <div className="mb-2 flex items-center justify-between text-sm text-zinc-700">
           <span>Progresso</span>
           <strong>{progress.completed}/{progress.total} ({progress.percent}%)</strong>
         </div>
-        <div style={{ height: 10, background: "#e2e8f0", borderRadius: 999 }}>
+        <div className="h-2.5 rounded-full bg-zinc-200">
           <div
-            style={{
-              width: `${progress.percent}%`,
-              height: "100%",
-              borderRadius: 999,
-              background: "linear-gradient(90deg,#16a34a,#0ea5e9)",
-            }}
+            className="h-full rounded-full bg-gradient-to-r from-green-600 to-sky-500"
+            style={{ width: `${progress.percent}%` }}
           />
         </div>
       </section>
 
-      <section style={{ display: "grid", gap: 8 }}>
+      <section className="grid gap-2">
         {STEPS.map((step, index) => {
           const active = currentStep === index + 1;
           return (
@@ -78,41 +74,36 @@ export default function FormacaoOnboardingPage() {
               key={step.key}
               type="button"
               onClick={() => setCurrentStep(index + 1)}
-              style={{
-                textAlign: "left",
-                border: "1px solid var(--line)",
-                borderRadius: 10,
-                padding: "10px 12px",
-                background: active ? "#ecfeff" : "#fff",
-                cursor: "pointer",
-              }}
+              className={`cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                active ? "border-sky-200 bg-sky-50" : "border-zinc-200 bg-white hover:bg-zinc-50"
+              }`}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <div className="flex items-center justify-between gap-2">
                 <strong>{index + 1}. {step.title}</strong>
-                <span style={{ fontSize: 12, opacity: 0.8 }}>{done[step.key] ? "Concluído" : "Pendente"}</span>
+                <span className="text-xs text-zinc-500">{done[step.key] ? "Concluído" : "Pendente"}</span>
               </div>
-              <p style={{ margin: "6px 0 0", fontSize: 13, opacity: 0.75 }}>{step.hint}</p>
+              <p className="mb-0 mt-1.5 text-sm text-zinc-600">{step.hint}</p>
             </button>
           );
         })}
       </section>
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14 }}>
-        <h2 style={{ marginTop: 0 }}>{activeStep.title}</h2>
-        <p style={{ marginTop: 0, opacity: 0.78 }}>{activeStep.hint}</p>
+      <section className="rounded-xl border border-zinc-200 p-3.5">
+        <h2 className="mt-0 text-xl font-semibold text-zinc-900">{activeStep.title}</h2>
+        <p className="mt-0 text-zinc-600">{activeStep.hint}</p>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <div className="mt-3 flex gap-2">
           <button
             type="button"
             onClick={() => setDone((prev) => ({ ...prev, [activeStep.key]: !prev[activeStep.key] }))}
-            style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "8px 12px", background: "#fff" }}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
           >
             {done[activeStep.key] ? "Marcar pendente" : "Marcar concluído"}
           </button>
           <button
             type="button"
             onClick={() => setCurrentStep((prev) => Math.min(STEPS.length, prev + 1))}
-            style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "8px 12px", background: "#fff" }}
+            className="rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
           >
             Próximo passo
           </button>

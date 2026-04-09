@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveFormacaoSessionContext } from "@/lib/session-context";
 
 export type FormacaoRole =
   | "formacao_admin"
@@ -16,27 +16,16 @@ export type FormacaoAuthContext = {
 };
 
 export async function getFormacaoAuthContext(): Promise<FormacaoAuthContext | null> {
-  const supabase = await supabaseServer();
-  const { data } = await supabase.auth.getUser();
-  const user = data?.user;
-  if (!user) return null;
+  const session = await resolveFormacaoSessionContext();
+  if (!session) return null;
 
-  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-
-  const roleRaw = String(appMetadata.role ?? userMetadata.role ?? "").trim().toLowerCase();
-  const tenantRaw = String(
-    appMetadata.tenant_type ??
-      userMetadata.tenant_type ??
-      appMetadata.modelo_ensino ??
-      userMetadata.modelo_ensino ??
-      ""
-  )
+  const roleRaw = String(session.role ?? "").trim().toLowerCase();
+  const tenantRaw = String(session.tenantType ?? "")
     .trim()
     .toLowerCase();
 
   return {
-    userId: user.id,
+    userId: session.userId,
     role: isFormacaoRole(roleRaw) ? roleRaw : null,
     tenantType: tenantRaw === "k12" || tenantRaw === "formacao" ? tenantRaw : null,
   };

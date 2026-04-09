@@ -107,38 +107,38 @@ export default function FaturacaoB2CClient({ role, userId }: Props) {
   };
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <h1 style={{ margin: 0 }}>Faturação B2C</h1>
+    <div className="grid gap-4">
+      <h1 className="m-0 text-3xl font-bold text-zinc-900">Faturação B2C</h1>
 
-      <form onSubmit={createItem} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+      <form onSubmit={createItem} className="grid gap-2 rounded-xl border border-zinc-200 p-3">
         <strong>Nova cobrança B2C</strong>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {role === "formando" ? null : (
-            <input value={form.formando_user_id} onChange={(e) => setForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" required />
+            <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.formando_user_id} onChange={(e) => setForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" required />
           )}
-          <input value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} placeholder="Descrição" required />
-          <input value={form.quantidade} onChange={(e) => setForm((p) => ({ ...p, quantidade: e.target.value }))} type="number" min={1} step="0.01" placeholder="Quantidade" required />
-          <input value={form.preco_unitario} onChange={(e) => setForm((p) => ({ ...p, preco_unitario: e.target.value }))} type="number" min={0} step="0.01" placeholder="Preço unitário" required />
-          <input value={form.desconto} onChange={(e) => setForm((p) => ({ ...p, desconto: e.target.value }))} type="number" min={0} step="0.01" placeholder="Desconto" />
-          <input value={form.vencimento_em} onChange={(e) => setForm((p) => ({ ...p, vencimento_em: e.target.value }))} type="date" required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} placeholder="Descrição" required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.quantidade} onChange={(e) => setForm((p) => ({ ...p, quantidade: e.target.value }))} type="number" min={1} step="0.01" placeholder="Quantidade" required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.preco_unitario} onChange={(e) => setForm((p) => ({ ...p, preco_unitario: e.target.value }))} type="number" min={0} step="0.01" placeholder="Preço unitário" required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.desconto} onChange={(e) => setForm((p) => ({ ...p, desconto: e.target.value }))} type="number" min={0} step="0.01" placeholder="Desconto" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.vencimento_em} onChange={(e) => setForm((p) => ({ ...p, vencimento_em: e.target.value }))} type="date" required />
         </div>
-        <button type="submit">Emitir cobrança</button>
+        <button type="submit" className="w-fit rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Emitir cobrança</button>
       </form>
 
-      {error ? <p style={{ margin: 0, color: "#b91c1c" }}>{error}</p> : null}
-      {loading ? <p style={{ margin: 0 }}>Carregando...</p> : null}
+      {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
+      {loading ? <p className="m-0 text-sm text-zinc-700">Carregando...</p> : null}
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
+      <section className="rounded-xl border border-zinc-200 p-3">
         <strong>Cobranças B2C</strong>
-        <ul style={{ marginBottom: 0 }}>
+        <ul className="mb-0">
           {items.map((item) => (
-            <li key={item.id} style={{ marginTop: 8 }}>
+            <li key={item.id} className="mt-2">
               {item.descricao} · {item.valor_total} · {item.status_pagamento}
-              <div style={{ display: "inline-flex", gap: 6, marginLeft: 8, flexWrap: "wrap" }}>
+              <div className="ml-2 inline-flex flex-wrap gap-1.5">
                 {(["pendente", "parcial", "pago", "cancelado"] as const).map((status) => (
-                  <button key={status} type="button" onClick={() => updateStatus(item.id, status)} disabled={item.status_pagamento === status}>{status}</button>
+                  <button className="rounded-md border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50" key={status} type="button" onClick={() => updateStatus(item.id, status)} disabled={item.status_pagamento === status}>{status}</button>
                 ))}
-                <button type="button" onClick={() => removeItem(item.id)}>Apagar</button>
+                <button className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50" type="button" onClick={() => removeItem(item.id)}>Apagar</button>
               </div>
             </li>
           ))}

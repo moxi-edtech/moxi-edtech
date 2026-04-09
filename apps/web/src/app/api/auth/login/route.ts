@@ -5,6 +5,7 @@ import type { Database } from "~types/supabase";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
 import { extractLoginCredentials, mapAuthError } from "@/lib/auth/loginHardening";
+import { logAuthEvent } from "@/lib/auth/logAuthEvent";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -89,6 +90,11 @@ export async function POST(req: NextRequest) {
     const { rawIdentifier, password } = extractLoginCredentials(body);
 
     if (!rawIdentifier || !password) {
+      logAuthEvent({
+        action: "deny",
+        route: "/api/auth/login",
+        details: { reason: "missing_credentials" },
+      });
       return new NextResponse(
         JSON.stringify({ ok: false, error: "Email/usuário e senha são obrigatórios." }),
         { status: 400, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
@@ -103,6 +109,11 @@ export async function POST(req: NextRequest) {
     console.log('[login] translatedEmail:', translatedEmail);
 
     if (!isEmail && !translatedEmail) {
+      logAuthEvent({
+        action: "deny",
+        route: "/api/auth/login",
+        details: { reason: "identifier_not_resolved" },
+      });
       // Não foi possível mapear numero_processo_login/telefone → email
       return new NextResponse(
         JSON.stringify({ ok: false, error: "Credenciais inválidas." }),
@@ -174,6 +185,11 @@ export async function POST(req: NextRequest) {
 
       if (error || !data?.user) {
         console.error("[login] signIn error:", { status: mapped.status, message: mapped.message, raw: String(error?.message || error) });
+        logAuthEvent({
+          action: "deny",
+          route: "/api/auth/login",
+          details: { reason: "invalid_credentials", status: mapped.status },
+        });
         return new NextResponse(
           JSON.stringify({ ok: false, error: mapped.message }),
           { status: mapped.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
@@ -204,6 +220,13 @@ export async function POST(req: NextRequest) {
     }
 
     cookieCarrier.headers.set("cache-control", "no-store");
+    logAuthEvent({
+      action: "login",
+      route: "/api/auth/login",
+      user_id: data.user.id,
+      tenant_id: escola_id,
+      tenant_type: null,
+    });
 
     return NextResponse.json(
       {
@@ -230,6 +253,11 @@ export async function POST(req: NextRequest) {
     }
     const message = err instanceof Error ? err.message : String(err);
     console.error("[login] 500 error:", err);
+    logAuthEvent({
+      action: "deny",
+      route: "/api/auth/login",
+      details: { reason: "internal_error" },
+    });
     return new NextResponse(
       JSON.stringify({ ok: false, error: message || "Erro interno no servidor." }),
       { status: 500, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }

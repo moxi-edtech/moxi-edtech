@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_faturas_lote")
     .select("id, referencia, cliente_b2b_id, cohort_id, emissao_em, vencimento_em, total_bruto, total_desconto, total_liquido, status")
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
   );
   const totalDesconto = itens.reduce((sum, item) => sum + Number(item.desconto || 0), 0);
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const referencia = String(body?.referencia ?? "").trim() || buildReference("B2B", auth.escolaId || "FAT");
 
   const { data: fatura, error: faturaErr } = await s
@@ -127,7 +128,7 @@ export async function PATCH(request: Request) {
   }
   if (typeof body?.vencimento_em === "string") patch.vencimento_em = body.vencimento_em.trim();
 
-  const { data, error } = await (auth.supabase as any)
+  const { data, error } = await (auth.supabase as FormacaoSupabaseClient)
     .from("formacao_faturas_lote")
     .update(patch)
     .eq("escola_id", auth.escolaId)
@@ -146,7 +147,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  const { error } = await (auth.supabase as any)
+  const { error } = await (auth.supabase as FormacaoSupabaseClient)
     .from("formacao_faturas_lote")
     .delete()
     .eq("escola_id", auth.escolaId)

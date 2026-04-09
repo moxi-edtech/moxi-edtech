@@ -51,9 +51,7 @@ export async function requireFeature(
   }
 
   const metadataEscolaId =
-    (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
-    (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
-    null;
+    (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
 
   const requestHeaders = await headers();
   const productFromHost = detectProductContextFromHostname(requestHeaders.get("host"));

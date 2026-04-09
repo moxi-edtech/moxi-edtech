@@ -4,6 +4,8 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { isEscolaUuid } from '@/lib/tenant/escolaSlug';
 import { resolveEscolaParam } from '@/lib/tenant/resolveEscolaParam';
+import { logAuthEvent } from '@/lib/auth/logAuthEvent';
+import type { Database } from '~types/supabase';
 import {
   detectProductContextFromHostname,
   normalizeTenantType,
@@ -199,61 +201,17 @@ const PRODUCT_HOSTNAMES: Record<Exclude<ProductContext, 'unknown' | 'landing'>, 
   formacao: 'formacao.klasse.ao',
 };
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const segments = token.split('.');
-  if (segments.length < 2) return null;
-  try {
-    const base64 = segments[1].replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
-    const json = atob(padded);
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+type EscolaMembershipRow = Pick<
+  Database['public']['Tables']['escola_users']['Row'],
+  'escola_id' | 'papel' | 'tenant_type' | 'created_at'
+> & {
+  escola: Pick<Database['public']['Tables']['escolas']['Row'], 'tenant_type'>[] | null;
+};
 
-function extractAccessTokenFromCookies(request: NextRequest): string | null {
-  const authCookie = request.cookies
-    .getAll()
-    .find((cookie) => cookie.name.includes('auth-token') && cookie.name.startsWith('sb-'));
-  if (!authCookie?.value) return null;
-
-  try {
-    const decoded = decodeURIComponent(authCookie.value);
-    const parsed = JSON.parse(decoded) as unknown;
-    if (Array.isArray(parsed) && typeof parsed[0] === 'string') return parsed[0];
-  } catch {
-    // ignore cookie parse issues and fallback below
-  }
-
-  return authCookie.value;
-}
-
-function extractJwtAuthContext(request: NextRequest): AuthContext | null {
-  const bearer = request.headers.get('authorization');
-  const accessToken = bearer?.startsWith('Bearer ')
-    ? bearer.slice('Bearer '.length).trim()
-    : extractAccessTokenFromCookies(request);
-
-  if (!accessToken) return null;
-  const payload = decodeJwtPayload(accessToken);
-  if (!payload) return null;
-
-  const appMetadata = (payload.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (payload.user_metadata ?? {}) as Record<string, unknown>;
-
-  const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
-  const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
-  const userId = (payload.sub ?? null) as string | null;
-  const tenantType = normalizeTenantType(
-    appMetadata.tenant_type ??
-      userMetadata.tenant_type ??
-      appMetadata.modelo_ensino ??
-      userMetadata.modelo_ensino
-  );
-
-  return { userId, role, escolaId, tenantType };
+function resolveMembershipTenantType(row: EscolaMembershipRow | null): string | null {
+  if (!row) return null;
+  const escolaTenant = Array.isArray(row.escola) ? row.escola[0]?.tenant_type : null;
+  return row.tenant_type ?? escolaTenant ?? null;
 }
 
 function getLandingPathByContext(ctx: AuthContext): string {
@@ -274,6 +232,7 @@ function getLandingPathByContext(ctx: AuthContext): string {
 
 function pathRequiresK12Model(pathname: string): boolean {
   return (
+    pathname.startsWith('/admin') ||
     pathname.startsWith('/professor') ||
     pathname.startsWith('/aluno') ||
     pathname.startsWith('/secretaria') ||
@@ -295,56 +254,51 @@ function pathRequiresFormacaoModel(pathname: string): boolean {
 }
 
 async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext | null> {
-  const jwtContext = extractJwtAuthContext(request);
-  if (jwtContext?.role) {
-    return jwtContext;
-  }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
-  });
+  const supabase = createSupabaseClient(request, response);
+  if (!supabase) return null;
 
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   if (!user) return null;
 
+  const { data: profileRows } = await supabase
+    .from('profiles')
+    .select('role,current_escola_id,created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const profile = profileRows?.[0] ?? null;
+  const currentEscolaId = profile?.current_escola_id ?? null;
+
+  const { data: membershipRows } = await supabase
+    .from('escola_users')
+    .select('escola_id,papel,tenant_type,created_at,escola:escolas(tenant_type)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const memberships = (membershipRows ?? []) as EscolaMembershipRow[];
+  const selectedMembership =
+    memberships.find((row) => row.escola_id === currentEscolaId) ??
+    memberships[0] ??
+    null;
+
   const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
-  let escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
-
-  // Fallback para utilizadores legados sem escola_id no JWT metadata.
-  if (!escolaId && user.id) {
-    const { data: escolaUser } = await supabase
-      .from('escola_users')
-      .select('escola_id')
-      .eq('user_id', user.id)
-      .not('escola_id', 'is', null)
-      .limit(1)
-      .maybeSingle();
-
-    escolaId = (escolaUser?.escola_id as string | null) ?? null;
-  }
+  const role = (
+    selectedMembership?.papel ??
+    profile?.role ??
+    appMetadata.role ??
+    null
+  ) as string | null;
+  const escolaId = selectedMembership?.escola_id ?? currentEscolaId ?? null;
   const tenantType = normalizeTenantType(
-    appMetadata.tenant_type ??
-      userMetadata.tenant_type ??
-      appMetadata.modelo_ensino ??
-      userMetadata.modelo_ensino
+    resolveMembershipTenantType(selectedMembership) ??
+      appMetadata.tenant_type ??
+      appMetadata.modelo_ensino
   );
 
   return {
-    userId: user.id ?? null,
+    userId: user.id,
     role,
     escolaId,
     tenantType,
@@ -357,11 +311,41 @@ function redirectToProductHost(
   pathname: string
 ) {
   const redirectUrl = request.nextUrl.clone();
-  redirectUrl.hostname = PRODUCT_HOSTNAMES[target];
+  const isLocalRequestHost =
+    redirectUrl.hostname === 'localhost' ||
+    redirectUrl.hostname === '127.0.0.1' ||
+    redirectUrl.hostname.endsWith('.localhost');
+
+  if (isLocalRequestHost) {
+    const localOriginRaw = target === 'formacao'
+      ? process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://localhost:3001'
+      : process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://localhost:3000';
+
+    try {
+      const localOrigin = new URL(localOriginRaw);
+      redirectUrl.protocol = localOrigin.protocol;
+      redirectUrl.hostname = localOrigin.hostname;
+      redirectUrl.port = localOrigin.port;
+    } catch {
+      redirectUrl.hostname = PRODUCT_HOSTNAMES[target];
+    }
+  } else {
+    redirectUrl.hostname = PRODUCT_HOSTNAMES[target];
+  }
+
   redirectUrl.pathname = pathname;
   if (redirectUrl.protocol === 'http:' && redirectUrl.hostname.endsWith('klasse.ao')) {
     redirectUrl.protocol = 'https:';
     redirectUrl.port = '';
+  }
+  const sameDestination =
+    redirectUrl.protocol === request.nextUrl.protocol &&
+    redirectUrl.hostname === request.nextUrl.hostname &&
+    redirectUrl.port === request.nextUrl.port &&
+    redirectUrl.pathname === request.nextUrl.pathname &&
+    redirectUrl.search === request.nextUrl.search;
+  if (sameDestination) {
+    return NextResponse.next();
   }
   return NextResponse.redirect(redirectUrl);
 }
@@ -379,7 +363,27 @@ function createSupabaseClient(request: NextRequest, response: NextResponse) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
 
+  const cookieDomain =
+    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
+    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    (process.env.NODE_ENV === 'production' ? '.klasse.ao' : '');
+  const sameSiteRaw = (
+    process.env.KLASSE_COOKIE_SAMESITE ??
+    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
+    'lax'
+  )
+    .trim()
+    .toLowerCase();
+  const sameSite: 'lax' | 'strict' | 'none' =
+    sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
+
   return createServerClient(url, key, {
+    cookieOptions: {
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+      path: '/',
+      sameSite,
+      secure: process.env.NODE_ENV === 'production',
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -515,24 +519,7 @@ export async function middleware(request: NextRequest) {
         }
 
         if (tenant.role !== 'global_admin') {
-          let hasTenantAccess = Boolean(tenant.escolaId && tenant.escolaId === resolved.id);
-
-          // Utilizadores multi-escola ou legados podem não ter o tenant activo no JWT.
-          if (!hasTenantAccess && tenant.userId) {
-            const supabase = createSupabaseClient(request, response);
-            if (supabase) {
-              const { data: membership } = await supabase
-                .from('escola_users')
-                .select('escola_id')
-                .eq('user_id', tenant.userId)
-                .eq('escola_id', resolved.id)
-                .limit(1)
-                .maybeSingle();
-              hasTenantAccess = Boolean(membership?.escola_id);
-            }
-          }
-
-          if (!hasTenantAccess) {
+          if (!tenant.escolaId || tenant.escolaId !== resolved.id) {
             return finalizeResponse(request, createForbiddenResponse(response, isApi), allowedOrigin);
           }
         }
@@ -562,6 +549,14 @@ export async function middleware(request: NextRequest) {
 
   const authContext = await resolveAuthContext(request, response);
   if (!authContext?.role) {
+    logAuthEvent({
+      action: 'resolve_context_failed',
+      route: pathname,
+      user_id: authContext?.userId ?? null,
+      tenant_id: authContext?.escolaId ?? null,
+      tenant_type: authContext?.tenantType ?? null,
+      details: { reason: 'role_not_resolved' },
+    });
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     return finalizeResponse(request, NextResponse.redirect(loginUrl), allowedOrigin);
@@ -572,8 +567,24 @@ export async function middleware(request: NextRequest) {
     pathRequiresK12Model(pathname)
   ) {
     if (apiPath) {
+      logAuthEvent({
+        action: 'deny',
+        route: pathname,
+        user_id: authContext.userId,
+        tenant_id: authContext.escolaId,
+        tenant_type: authContext.tenantType,
+        details: { reason: 'k12_path_on_formacao_host' },
+      });
       return finalizeResponse(request, createForbiddenResponse(response, true), allowedOrigin);
     }
+    logAuthEvent({
+      action: 'redirect',
+      route: pathname,
+      user_id: authContext.userId,
+      tenant_id: authContext.escolaId,
+      tenant_type: authContext.tenantType,
+      details: { target_product: 'k12' },
+    });
     return finalizeResponse(
       request,
       redirectToProductHost(request, 'k12', getLandingPathByContext(authContext)),
@@ -586,8 +597,24 @@ export async function middleware(request: NextRequest) {
     pathRequiresFormacaoModel(pathname)
   ) {
     if (apiPath) {
+      logAuthEvent({
+        action: 'deny',
+        route: pathname,
+        user_id: authContext.userId,
+        tenant_id: authContext.escolaId,
+        tenant_type: authContext.tenantType,
+        details: { reason: 'formacao_path_on_k12_host' },
+      });
       return finalizeResponse(request, createForbiddenResponse(response, true), allowedOrigin);
     }
+    logAuthEvent({
+      action: 'redirect',
+      route: pathname,
+      user_id: authContext.userId,
+      tenant_id: authContext.escolaId,
+      tenant_type: authContext.tenantType,
+      details: { target_product: 'formacao' },
+    });
     return finalizeResponse(
       request,
       redirectToProductHost(request, 'formacao', getLandingPathByContext(authContext)),
@@ -597,15 +624,35 @@ export async function middleware(request: NextRequest) {
 
   const tenantType = authContext.tenantType ?? 'k12';
   if (tenantType === 'formacao' && pathRequiresK12Model(pathname)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = getLandingPathByContext(authContext);
-    return finalizeResponse(request, NextResponse.redirect(redirectUrl), allowedOrigin);
+    logAuthEvent({
+      action: 'redirect',
+      route: pathname,
+      user_id: authContext.userId,
+      tenant_id: authContext.escolaId,
+      tenant_type: authContext.tenantType,
+      details: { reason: 'tenant_type_formacao_on_k12_path', target_product: 'formacao' },
+    });
+    return finalizeResponse(
+      request,
+      redirectToProductHost(request, 'formacao', getLandingPathByContext(authContext)),
+      allowedOrigin
+    );
   }
 
   if (tenantType === 'k12' && pathRequiresFormacaoModel(pathname)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = getLandingPathByContext(authContext);
-    return finalizeResponse(request, NextResponse.redirect(redirectUrl), allowedOrigin);
+    logAuthEvent({
+      action: 'redirect',
+      route: pathname,
+      user_id: authContext.userId,
+      tenant_id: authContext.escolaId,
+      tenant_type: authContext.tenantType,
+      details: { reason: 'tenant_type_k12_on_formacao_path', target_product: 'k12' },
+    });
+    return finalizeResponse(
+      request,
+      redirectToProductHost(request, 'k12', getLandingPathByContext(authContext)),
+      allowedOrigin
+    );
   }
 
   if (
@@ -614,12 +661,28 @@ export async function middleware(request: NextRequest) {
     authContext.role &&
     !isRoleAllowedForProduct(authContext.role, productContext)
   ) {
+    logAuthEvent({
+      action: 'deny',
+      route: pathname,
+      user_id: authContext.userId,
+      tenant_id: authContext.escolaId,
+      tenant_type: authContext.tenantType,
+      details: { reason: 'product_context_role_mismatch', productContext },
+    });
     const deniedUrl = request.nextUrl.clone();
     deniedUrl.pathname = getLandingPathByContext(authContext);
     return finalizeResponse(request, NextResponse.redirect(deniedUrl), allowedOrigin);
   }
 
   if (!portalRule.roles.includes(String(authContext.role))) {
+    logAuthEvent({
+      action: 'deny',
+      route: pathname,
+      user_id: authContext.userId,
+      tenant_id: authContext.escolaId,
+      tenant_type: authContext.tenantType,
+      details: { reason: 'portal_rule_role_mismatch', role: authContext.role },
+    });
     const deniedUrl = request.nextUrl.clone();
     deniedUrl.pathname = getLandingPathByContext(authContext);
     return finalizeResponse(request, NextResponse.redirect(deniedUrl), allowedOrigin);

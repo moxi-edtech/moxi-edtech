@@ -1,4 +1,6 @@
 import { supabaseServer } from "@/lib/supabaseServer";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import { resolveFormacaoSessionContext } from "@/lib/session-context";
 
 export type FormacaoPlan = "basic" | "pro" | "enterprise";
 
@@ -56,11 +58,8 @@ export function getFormacaoPlanLimits(plan: string | null | undefined) {
 
 export async function getFormacaoPlanContext() {
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-
-  const appMetadata = (auth?.user?.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (auth?.user?.user_metadata ?? {}) as Record<string, unknown>;
-  const escolaId = String(appMetadata.escola_id ?? userMetadata.escola_id ?? "").trim();
+  const session = await resolveFormacaoSessionContext();
+  const escolaId = String(session?.tenantId ?? "").trim();
 
   if (!escolaId) {
     return {
@@ -70,7 +69,7 @@ export async function getFormacaoPlanContext() {
     };
   }
 
-  const { data } = await (supabase as any)
+  const { data } = await (supabase as FormacaoSupabaseClient)
     .from("centros_formacao")
     .select("plano")
     .eq("escola_id", escolaId)

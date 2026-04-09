@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
 
 interface PaymentRow {
   valor_pago: number | null;
@@ -101,22 +100,24 @@ function normalizePagamentos(pagamentos: PaymentRow | PaymentRow[] | null | unde
 
 export async function GET(_req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
   try {
-    const supabase = await supabaseServerTyped<any>();
-    const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes?.user;
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    }
+    const guard = await requireApiTenantGuard({
+      productContext: "k12",
+      requireTenantType: "k12",
+      allowedRoles: [
+        "financeiro",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+        "super_admin",
+        "global_admin",
+      ],
+    });
+    if (!guard.ok) return guard.response;
 
-    const metadataEscolaId =
-      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      null;
-
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, undefined, metadataEscolaId);
-    if (!userEscolaId) {
-      return NextResponse.json({ ok: false, error: "Usuário sem escola associada" }, { status: 403 });
-    }
+    const supabase = guard.supabase;
+    const userEscolaId = guard.tenantId;
 
     await requireFeature("doc_qr_code");
 
@@ -170,7 +171,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       `
       )
       .eq("id", alunoId)
-      .eq("escola_id", userEscolaId) // Add this condition to filter by escola_id
+      .eq("escola_id", userEscolaId)
       .order("created_at", { ascending: false })
       .limit(1);
 

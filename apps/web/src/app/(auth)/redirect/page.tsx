@@ -76,12 +76,9 @@ export default function RedirectPage() {
           const role: string = profile?.role ?? "guest";
           const escola_id: string | null = profile?.escola_id ?? null;
           const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-          const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
           const tenantType = String(
             appMetadata.tenant_type ??
-              userMetadata.tenant_type ??
               appMetadata.modelo_ensino ??
-              userMetadata.modelo_ensino ??
               ""
           )
             .trim()

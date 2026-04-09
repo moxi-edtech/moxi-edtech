@@ -17,9 +17,9 @@ export default async function FaturacaoB2BPage() {
   const allowed = isFormacaoFeatureAllowed(planCtx.plan, "faturacao_b2b");
   if (!allowed) {
     return (
-      <div style={{ display: "grid", gap: 14 }}>
-        <h1 style={{ margin: 0 }}>Faturação B2B</h1>
-        <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
+      <div className="grid gap-3.5">
+        <h1 className="m-0 text-3xl font-bold text-zinc-900">Faturação B2B</h1>
+        <section className="rounded-xl border border-zinc-200 p-3">
           {getFeatureDeniedMessage(planCtx.plan, "faturacao_b2b")}
         </section>
       </div>

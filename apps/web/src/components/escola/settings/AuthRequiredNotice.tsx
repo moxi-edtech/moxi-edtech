@@ -34,7 +34,7 @@ export default function AuthRequiredNotice({
             <p className="text-sm text-slate-600">{description}</p>
             <div className="pt-1 flex flex-wrap gap-2">
               <Link
-                href={`/login?next=${encodeURIComponent(nextPath)}`}
+                href={`/login?redirect=${encodeURIComponent(nextPath)}`}
                 className="inline-flex items-center gap-2 rounded-md bg-klasse-gold-600 px-3 py-2 text-sm font-semibold text-white hover:bg-klasse-gold-700"
               >
                 <LogIn className="h-4 w-4" />

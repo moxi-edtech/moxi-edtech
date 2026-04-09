@@ -71,46 +71,34 @@ export default async function PortalLayout({
   const availableNav = NAV_ITEMS.filter((item) => item.roles.includes((auth.role ?? "") as never));
 
   return (
-    <main style={{ minHeight: "100vh", padding: 24, display: "grid", gridTemplateColumns: "240px 1fr", gap: 20 }}>
-      <aside
-        style={{
-          border: "1px solid var(--line)",
-          borderRadius: 16,
-          background: "var(--card)",
-          padding: 14,
-          alignSelf: "start",
-          position: "sticky",
-          top: 16,
-        }}
-      >
-        <p style={{ margin: "0 0 8px", fontSize: 12, opacity: 0.65, textTransform: "uppercase", letterSpacing: 1 }}>
+    <main className="grid min-h-screen gap-5 p-6 md:grid-cols-[240px_1fr]">
+      <aside className="self-start rounded-2xl border border-zinc-200 bg-white p-3.5 md:sticky md:top-4">
+        <p className="mb-2 text-xs uppercase tracking-widest text-zinc-500">
           Portal Formação
         </p>
-        <p style={{ margin: "0 0 12px", fontSize: 13 }}>
+        <p className="mb-3 text-sm text-zinc-700">
           Papel: <strong>{auth.role ?? "sem papel"}</strong>
         </p>
-        <nav style={{ display: "grid", gap: 6 }}>
+        <nav className="grid gap-1.5">
           {availableNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "9px 10px", fontSize: 14 }}
+              className="rounded-lg border border-zinc-200 px-2.5 py-2 text-sm text-zinc-800 transition-colors hover:bg-zinc-50"
             >
               {item.label}
             </Link>
           ))}
           <Link
             href="/dashboard"
-            style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "9px 10px", fontSize: 14 }}
+            className="rounded-lg border border-zinc-200 px-2.5 py-2 text-sm text-zinc-800 transition-colors hover:bg-zinc-50"
           >
             Dashboard Geral
           </Link>
         </nav>
       </aside>
 
-      <section
-        style={{ border: "1px solid var(--line)", borderRadius: 16, background: "var(--card)", padding: 20, minHeight: 420 }}
-      >
+      <section className="min-h-[420px] rounded-2xl border border-zinc-200 bg-white p-5">
         {children}
       </section>
     </main>

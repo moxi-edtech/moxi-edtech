@@ -19,9 +19,9 @@ export default async function FinanceiroDashboardPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <h1 style={{ margin: 0 }}>Financeiro Centro</h1>
-      <p style={{ margin: 0, opacity: 0.75 }}>
+    <div className="grid gap-3">
+      <h1 className="m-0 text-3xl font-bold text-zinc-900">Financeiro Centro</h1>
+      <p className="m-0 text-zinc-600">
         Módulo financeiro dedicado de Formação em construção. Esta área já está protegida por papel.
       </p>
     </div>

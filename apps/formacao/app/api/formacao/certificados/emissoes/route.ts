@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function GET() {
   ]);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   let query = s
     .from("formacao_certificados_emitidos")
     .select("id, numero_documento, emitido_em, formando_user_id, cohort_id, template_id")
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
 
   const numero = String(body?.numero_documento ?? "").trim() || buildDocNumber(auth.escolaId || "CF");
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_certificados_emitidos")
     .insert({
@@ -92,7 +93,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { error } = await s
     .from("formacao_certificados_emitidos")
     .delete()
