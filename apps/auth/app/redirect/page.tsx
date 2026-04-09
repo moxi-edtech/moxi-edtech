@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { resolveSessionContext } from "@/lib/session-context";
+import { resolveSessionContext, resolveSessionContexts } from "@/lib/session-context";
 import { logAuthEvent } from "@/lib/auth-log";
 
-type SearchParams = Promise<{ redirect?: string }>;
+type SearchParams = Promise<{ redirect?: string; tenant_id?: string }>;
 type ProductContext = "k12" | "formacao";
 
 function resolveProductBases(host: string) {
@@ -58,6 +58,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     .toLowerCase();
 
   const params = await searchParams;
+  const requestedTenantId = String(params.tenant_id ?? "").trim();
   const hintedProduct = (() => {
     const hinted = String(params.redirect ?? "").toLowerCase();
     if (hinted.includes("formacao.klasse.ao") || hinted.includes("localhost:3001")) return "formacao";
@@ -65,7 +66,32 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     return null;
   })() as ProductContext | null;
 
-  const session = await resolveSessionContext(hintedProduct);
+  const contextList = await resolveSessionContexts();
+  if (!contextList) {
+    const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
+    logAuthEvent({
+      action: "resolve_context_failed",
+      route: "/redirect",
+      details: { reason: "no_session" },
+    });
+    redirect(`/login${loginSuffix}`);
+  }
+
+  if (!requestedTenantId && contextList.contexts.length > 1) {
+    const selectUrl = `/select-context${params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : ""}`;
+    logAuthEvent({
+      action: "redirect",
+      route: "/redirect",
+      user_id: contextList.user_id,
+      details: { reason: "multi_tenant_requires_selection", contexts: contextList.contexts.length },
+    });
+    redirect(selectUrl);
+  }
+
+  const session = await resolveSessionContext({
+    requestedTenantId: requestedTenantId || null,
+    preferredProduct: hintedProduct,
+  });
 
   if (!session) {
     const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
@@ -75,6 +101,16 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       details: { reason: "no_session_context" },
     });
     redirect(`/login${loginSuffix}`);
+  }
+
+  if (!session.tenant_id || !session.tenant_type) {
+    logAuthEvent({
+      action: "resolve_context_failed",
+      route: "/redirect",
+      user_id: session.user_id,
+      details: { reason: "tenant_id_or_tenant_type_missing" },
+    });
+    throw new Error("AUTH_CONTEXT_INVALID: tenant_id and tenant_type are required for redirect");
   }
 
   const product: ProductContext = session.product_context ?? "k12";

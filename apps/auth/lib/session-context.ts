@@ -1,35 +1,22 @@
 import "server-only";
 
-import type { Database } from "~types/supabase";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 type TenantType = "k12" | "formacao";
 type ProductContext = TenantType;
 
-type EscolaUserRow = Database["public"]["Tables"]["escola_users"]["Row"];
-type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
-
-type MembershipRow = Pick<EscolaUserRow, "escola_id" | "papel" | "tenant_type" | "created_at"> & {
-  escola:
-    | Pick<Database["public"]["Tables"]["escolas"]["Row"], "slug" | "tenant_type">
-    | Pick<Database["public"]["Tables"]["escolas"]["Row"], "slug" | "tenant_type">[]
-    | null;
-};
-
-function normalizeEscolaRelation(
-  escola: MembershipRow["escola"]
-): Pick<Database["public"]["Tables"]["escolas"]["Row"], "slug" | "tenant_type"> | null {
-  if (!escola) return null;
-  return Array.isArray(escola) ? escola[0] ?? null : escola;
-}
-
 export type SessionContext = {
   user_id: string;
-  tenant_id: string | null;
+  tenant_id: string;
   tenant_slug: string | null;
-  tenant_type: TenantType | null;
-  user_role: string | null;
-  product_context: ProductContext | null;
+  tenant_type: TenantType;
+  user_role: string;
+  product_context: ProductContext;
+};
+
+export type SessionContextList = {
+  user_id: string;
+  contexts: SessionContext[];
 };
 
 function normalizeTenantType(value: unknown): TenantType | null {
@@ -40,49 +27,7 @@ function normalizeTenantType(value: unknown): TenantType | null {
   return null;
 }
 
-function isFormacaoRole(value: unknown): boolean {
-  const role = String(value ?? "")
-    .trim()
-    .toLowerCase();
-  return (
-    role === "formacao_admin" ||
-    role === "formacao_secretaria" ||
-    role === "formacao_financeiro" ||
-    role === "formador" ||
-    role === "formando"
-  );
-}
-
-function productFromRoleAndTenant(role: string | null, tenantType: TenantType | null): ProductContext | null {
-  if (tenantType) return tenantType;
-  if (isFormacaoRole(role)) return "formacao";
-  if (role === "super_admin" || role === "global_admin") return "k12";
-  return null;
-}
-
-function chooseMembership(
-  memberships: MembershipRow[],
-  currentEscolaId: string | null,
-  preferredProduct: ProductContext | null
-): MembershipRow | null {
-  if (memberships.length === 0) return null;
-
-  if (preferredProduct) {
-    const preferred = memberships.find(
-      (row) => normalizeTenantType(row.tenant_type ?? normalizeEscolaRelation(row.escola)?.tenant_type) === preferredProduct
-    );
-    if (preferred) return preferred;
-  }
-
-  if (currentEscolaId) {
-    const current = memberships.find((row) => row.escola_id === currentEscolaId);
-    if (current) return current;
-  }
-
-  return memberships[0] ?? null;
-}
-
-export async function resolveSessionContext(preferredProduct: ProductContext | null = null): Promise<SessionContext | null> {
+export async function resolveSessionContexts(): Promise<SessionContextList | null> {
   const supabase = await supabaseServer();
   const { data: authData } = await supabase.auth.getUser();
   const user = authData?.user;
@@ -90,46 +35,73 @@ export async function resolveSessionContext(preferredProduct: ProductContext | n
 
   const { data: membershipsRaw } = await supabase
     .from("escola_users")
-    .select("escola_id,papel,tenant_type,created_at,escola:escolas(slug,tenant_type)")
+    .select("escola_id,papel,tenant_type,created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const memberships = (membershipsRaw ?? []) as MembershipRow[];
+  if (!membershipsRaw || membershipsRaw.length === 0) {
+    return { user_id: user.id, contexts: [] };
+  }
 
-  const { data: profilesRaw } = await supabase
-    .from("profiles")
-    .select("role,current_escola_id,created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1);
+  const escolaIds = Array.from(new Set(membershipsRaw.map((row) => String(row.escola_id))));
+  const { data: escolasRaw } = await supabase
+    .from("escolas")
+    .select("id,slug,tenant_type")
+    .in("id", escolaIds);
 
-  const profile = ((profilesRaw ?? [])[0] ?? null) as Pick<ProfileRow, "role" | "current_escola_id"> | null;
-
-  const selectedMembership = chooseMembership(
-    memberships,
-    profile?.current_escola_id ?? null,
-    preferredProduct
+  const escolaById = new Map(
+    (escolasRaw ?? []).map((escola) => [String(escola.id), { slug: escola.slug, tenant_type: escola.tenant_type }])
   );
 
-  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const metadataRole = String(appMetadata.role ?? "").trim().toLowerCase() || null;
+  const contexts: SessionContext[] = [];
+  const seen = new Set<string>();
 
-  const membershipRole = selectedMembership?.papel?.trim().toLowerCase() ?? null;
-  const profileRole = String(profile?.role ?? "").trim().toLowerCase() || null;
-  const role = membershipRole ?? profileRole ?? metadataRole;
+  for (const membership of membershipsRaw) {
+    const tenantId = String(membership.escola_id ?? "").trim();
+    const role = String(membership.papel ?? "")
+      .trim()
+      .toLowerCase();
+    const escola = escolaById.get(tenantId);
+    const tenantType = normalizeTenantType(membership.tenant_type ?? escola?.tenant_type ?? null);
 
-  const tenantType =
-    normalizeTenantType(selectedMembership?.tenant_type) ??
-    normalizeTenantType(normalizeEscolaRelation(selectedMembership?.escola ?? null)?.tenant_type);
+    if (!tenantId || !tenantType || !role) continue;
+    if (seen.has(tenantId)) continue;
 
-  const productContext = productFromRoleAndTenant(role, tenantType);
+    contexts.push({
+      user_id: user.id,
+      tenant_id: tenantId,
+      tenant_slug: escola?.slug ?? null,
+      tenant_type: tenantType,
+      user_role: role,
+      product_context: tenantType,
+    });
+    seen.add(tenantId);
+  }
 
   return {
     user_id: user.id,
-    tenant_id: selectedMembership?.escola_id ?? null,
-    tenant_slug: normalizeEscolaRelation(selectedMembership?.escola ?? null)?.slug ?? null,
-    tenant_type: tenantType,
-    user_role: role,
-    product_context: productContext,
+    contexts,
   };
 }
+
+export async function resolveSessionContext(params?: {
+  requestedTenantId?: string | null;
+  preferredProduct?: ProductContext | null;
+}): Promise<SessionContext | null> {
+  const list = await resolveSessionContexts();
+  if (!list || list.contexts.length === 0) return null;
+
+  const requestedTenantId = String(params?.requestedTenantId ?? "").trim();
+  if (requestedTenantId) {
+    return list.contexts.find((ctx) => ctx.tenant_id === requestedTenantId) ?? null;
+  }
+
+  const preferredProduct = params?.preferredProduct ?? null;
+  if (preferredProduct) {
+    const preferred = list.contexts.find((ctx) => ctx.tenant_type === preferredProduct);
+    if (preferred) return preferred;
+  }
+
+  return list.contexts[0] ?? null;
+}
+

@@ -56,6 +56,7 @@ async function resolveIdentifierToEmail(req: NextRequest, identifier: string): P
 // ---------- Handler principal ----------
 
 export async function POST(req: NextRequest) {
+  throw new Error("DEPRECATED_AUTH_FLOW");
   try {
     const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = getSupabaseEnv();
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

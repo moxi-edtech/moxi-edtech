@@ -5,6 +5,12 @@ import { createServerClient } from '@supabase/ssr';
 import { isEscolaUuid } from '@/lib/tenant/escolaSlug';
 import { resolveEscolaParam } from '@/lib/tenant/resolveEscolaParam';
 import { logAuthEvent } from '@/lib/auth/logAuthEvent';
+import {
+  buildProductRedirectUrl,
+  createMiddlewareSupabaseClient,
+  resolveDbAuthContext,
+  type DbAuthContext,
+} from '@moxi/auth-middleware';
 import type { Database } from '~types/supabase';
 import {
   detectProductContextFromHostname,
@@ -14,11 +20,8 @@ import {
 } from '@moxi/tenant-sdk';
 import { isRoleAllowedForProduct } from '@/lib/permissions';
 
-type AuthContext = {
-  userId: string | null;
-  role: string | null;
+type AuthContext = Pick<DbAuthContext, 'userId' | 'role' | 'tenantId' | 'tenantType'> & {
   escolaId: string | null;
-  tenantType: TenantType | null;
 };
 
 // Simulação de Rate Limiting simples em memória (Edge Runtime)
@@ -201,19 +204,6 @@ const PRODUCT_HOSTNAMES: Record<Exclude<ProductContext, 'unknown' | 'landing'>, 
   formacao: 'formacao.klasse.ao',
 };
 
-type EscolaMembershipRow = Pick<
-  Database['public']['Tables']['escola_users']['Row'],
-  'escola_id' | 'papel' | 'tenant_type' | 'created_at'
-> & {
-  escola: Pick<Database['public']['Tables']['escolas']['Row'], 'tenant_type'>[] | null;
-};
-
-function resolveMembershipTenantType(row: EscolaMembershipRow | null): string | null {
-  if (!row) return null;
-  const escolaTenant = Array.isArray(row.escola) ? row.escola[0]?.tenant_type : null;
-  return row.tenant_type ?? escolaTenant ?? null;
-}
-
 function getLandingPathByContext(ctx: AuthContext): string {
   if (ctx.tenantType === 'formacao') {
     if (ctx.role === 'formador') return '/agenda';
@@ -257,51 +247,17 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
   const supabase = createSupabaseClient(request, response);
   if (!supabase) return null;
 
-  const { data: userRes } = await supabase.auth.getUser();
-  const user = userRes?.user;
-  if (!user) return null;
-
-  const { data: profileRows } = await supabase
-    .from('profiles')
-    .select('role,current_escola_id,created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  const profile = profileRows?.[0] ?? null;
-  const currentEscolaId = profile?.current_escola_id ?? null;
-
-  const { data: membershipRows } = await supabase
-    .from('escola_users')
-    .select('escola_id,papel,tenant_type,created_at,escola:escolas(tenant_type)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  const memberships = (membershipRows ?? []) as EscolaMembershipRow[];
-  const selectedMembership =
-    memberships.find((row) => row.escola_id === currentEscolaId) ??
-    memberships[0] ??
-    null;
-
-  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const role = (
-    selectedMembership?.papel ??
-    profile?.role ??
-    appMetadata.role ??
-    null
-  ) as string | null;
-  const escolaId = selectedMembership?.escola_id ?? currentEscolaId ?? null;
-  const tenantType = normalizeTenantType(
-    resolveMembershipTenantType(selectedMembership) ??
-      appMetadata.tenant_type ??
-      appMetadata.modelo_ensino
-  );
+  const resolved = await resolveDbAuthContext({
+    supabase,
+    preferredTenantType: null,
+  });
+  if (!resolved.hasSession) return null;
 
   return {
-    userId: user.id,
-    role,
-    escolaId,
-    tenantType,
+    userId: resolved.userId,
+    role: resolved.role,
+    escolaId: resolved.tenantId,
+    tenantType: resolved.tenantType as TenantType | null,
   };
 }
 
@@ -310,34 +266,13 @@ function redirectToProductHost(
   target: Exclude<ProductContext, 'unknown' | 'landing'>,
   pathname: string
 ) {
-  const redirectUrl = request.nextUrl.clone();
-  const isLocalRequestHost =
-    redirectUrl.hostname === 'localhost' ||
-    redirectUrl.hostname === '127.0.0.1' ||
-    redirectUrl.hostname.endsWith('.localhost');
-
-  if (isLocalRequestHost) {
-    const localOriginRaw = target === 'formacao'
-      ? process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://localhost:3001'
-      : process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://localhost:3000';
-
-    try {
-      const localOrigin = new URL(localOriginRaw);
-      redirectUrl.protocol = localOrigin.protocol;
-      redirectUrl.hostname = localOrigin.hostname;
-      redirectUrl.port = localOrigin.port;
-    } catch {
-      redirectUrl.hostname = PRODUCT_HOSTNAMES[target];
-    }
-  } else {
-    redirectUrl.hostname = PRODUCT_HOSTNAMES[target];
-  }
-
-  redirectUrl.pathname = pathname;
-  if (redirectUrl.protocol === 'http:' && redirectUrl.hostname.endsWith('klasse.ao')) {
-    redirectUrl.protocol = 'https:';
-    redirectUrl.port = '';
-  }
+  const redirectUrl = buildProductRedirectUrl({
+    requestUrl: request.nextUrl,
+    targetProduct: target,
+    pathname,
+    localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://localhost:3000',
+    localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://localhost:3001',
+  });
   const sameDestination =
     redirectUrl.protocol === request.nextUrl.protocol &&
     redirectUrl.hostname === request.nextUrl.hostname &&
@@ -359,39 +294,14 @@ function createForbiddenResponse(baseResponse: NextResponse, isApi: boolean) {
 }
 
 function createSupabaseClient(request: NextRequest, response: NextResponse) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-
-  const cookieDomain =
-    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
-    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
-    (process.env.NODE_ENV === 'production' ? '.klasse.ao' : '');
-  const sameSiteRaw = (
-    process.env.KLASSE_COOKIE_SAMESITE ??
-    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
-    'lax'
-  )
-    .trim()
-    .toLowerCase();
-  const sameSite: 'lax' | 'strict' | 'none' =
-    sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
-
-  return createServerClient(url, key, {
-    cookieOptions: {
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
-      path: '/',
-      sameSite,
-      secure: process.env.NODE_ENV === 'production',
-    },
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
+  return createMiddlewareSupabaseClient({
+    request,
+    response,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    cookieDomain: process.env.KLASSE_COOKIE_DOMAIN?.trim() || process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim(),
+    cookieSameSite: process.env.KLASSE_COOKIE_SAMESITE ?? process.env.KLASSE_AUTH_COOKIE_SAMESITE ?? 'lax',
+    nodeEnv: process.env.NODE_ENV,
   });
 }
 
