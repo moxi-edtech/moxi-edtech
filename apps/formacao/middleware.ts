@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { detectProductContextFromHostname, normalizeTenantType } from "@moxi/tenant-sdk";
-import type { Database } from "~types/supabase";
 import { logAuthEvent } from "@/lib/auth-log";
+import {
+  buildProductRedirectUrl,
+  createMiddlewareSupabaseClient,
+  resolveDbAuthContext,
+  type DbAuthContext,
+} from "@moxi/auth-middleware";
 
 type TenantType = "k12" | "formacao";
 
@@ -14,19 +18,6 @@ type AuthContext = {
   tenantType: TenantType | null;
   hasSession: boolean;
 };
-
-type EscolaMembershipRow = Pick<
-  Database["public"]["Tables"]["escola_users"]["Row"],
-  "escola_id" | "papel" | "tenant_type" | "created_at"
-> & {
-  escola: Pick<Database["public"]["Tables"]["escolas"]["Row"], "tenant_type">[] | null;
-};
-
-function resolveMembershipTenantType(row: EscolaMembershipRow | null): string | null {
-  if (!row) return null;
-  const escolaTenant = Array.isArray(row.escola) ? row.escola[0]?.tenant_type : null;
-  return row.tenant_type ?? escolaTenant ?? null;
-}
 
 const UNIVERSAL_LOGIN_URL = process.env.KLASSE_AUTH_URL ?? "https://auth.klasse.ao/login";
 
@@ -81,87 +72,31 @@ const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
 ];
 
 function createSupabaseClient(request: NextRequest, response: NextResponse) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-
-  const cookieDomain =
-    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
-    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
-    (process.env.NODE_ENV === "production" ? ".klasse.ao" : "");
-  const sameSiteRaw = (
-    process.env.KLASSE_COOKIE_SAMESITE ??
-    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
-    "lax"
-  )
-    .trim()
-    .toLowerCase();
-  const sameSite: "lax" | "strict" | "none" =
-    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
-
-  return createServerClient(url, key, {
-    cookieOptions: {
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
-      path: "/",
-      sameSite,
-      secure: process.env.NODE_ENV === "production",
-    },
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
+  return createMiddlewareSupabaseClient({
+    request,
+    response,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    cookieDomain: process.env.KLASSE_COOKIE_DOMAIN?.trim() || process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim(),
+    cookieSameSite: process.env.KLASSE_COOKIE_SAMESITE ?? process.env.KLASSE_AUTH_COOKIE_SAMESITE ?? "lax",
+    nodeEnv: process.env.NODE_ENV,
   });
 }
 
 async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext> {
   const supabase = createSupabaseClient(request, response);
   if (!supabase) return { userId: null, tenantId: null, role: null, tenantType: null, hasSession: false };
-
-  const { data: userRes } = await supabase.auth.getUser();
-  const user = userRes?.user;
-  if (!user) return { userId: null, tenantId: null, role: null, tenantType: null, hasSession: false };
-
-  const { data: profileRows } = await supabase
-    .from("profiles")
-    .select("role,current_escola_id,created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1);
-  const profile = profileRows?.[0] ?? null;
-
-  const { data: membershipRows } = await supabase
-    .from("escola_users")
-    .select("escola_id,papel,tenant_type,created_at,escola:escolas(tenant_type)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const memberships = (membershipRows ?? []) as EscolaMembershipRow[];
-  const selectedMembership =
-    memberships.find((row) => row.escola_id === (profile?.current_escola_id ?? null)) ??
-    memberships.find((row) => normalizeTenantType(resolveMembershipTenantType(row)) === "formacao") ??
-    memberships[0] ??
-    null;
-
-  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const role = String(selectedMembership?.papel ?? profile?.role ?? appMetadata.role ?? "")
-    .trim()
-    .toLowerCase();
-  const tenantType = normalizeTenantType(
-    resolveMembershipTenantType(selectedMembership) ??
-      appMetadata.tenant_type ??
-      appMetadata.modelo_ensino
-  );
+  const resolved = await resolveDbAuthContext({
+    supabase,
+    preferredTenantType: "formacao",
+  });
 
   return {
-    userId: user.id,
-    tenantId: selectedMembership?.escola_id ?? profile?.current_escola_id ?? null,
-    role: role || null,
-    tenantType,
-    hasSession: true,
+    userId: resolved.userId,
+    tenantId: resolved.tenantId,
+    role: resolved.role,
+    tenantType: resolved.tenantType as TenantType | null,
+    hasSession: resolved.hasSession,
   };
 }
 
@@ -222,10 +157,13 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
   if (productContext === "k12") {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.hostname = "formacao.klasse.ao";
-    redirectUrl.protocol = "https:";
-    redirectUrl.port = "";
+    const redirectUrl = buildProductRedirectUrl({
+      requestUrl: request.nextUrl,
+      targetProduct: "formacao",
+      pathname,
+      localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? "http://localhost:3000",
+      localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? "http://localhost:3001",
+    });
     logAuthEvent({
       action: "redirect",
       route: pathname,
@@ -245,10 +183,13 @@ export async function middleware(request: NextRequest) {
       return redirectWithCookies(response, redirectToLogin(request, productContext));
     }
     if (auth.tenantType === "k12") {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.hostname = "app.klasse.ao";
-      redirectUrl.protocol = "https:";
-      redirectUrl.port = "";
+      const redirectUrl = buildProductRedirectUrl({
+        requestUrl: request.nextUrl,
+        targetProduct: "k12",
+        pathname: request.nextUrl.pathname,
+        localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? "http://localhost:3000",
+        localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? "http://localhost:3001",
+      });
       logAuthEvent({
         action: "redirect",
         route: pathname,
@@ -293,10 +234,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     if (auth.tenantType === "k12") {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.hostname = "app.klasse.ao";
-      redirectUrl.protocol = "https:";
-      redirectUrl.port = "";
+      const redirectUrl = buildProductRedirectUrl({
+        requestUrl: request.nextUrl,
+        targetProduct: "k12",
+        pathname: request.nextUrl.pathname,
+        localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? "http://localhost:3000",
+        localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? "http://localhost:3001",
+      });
       logAuthEvent({
         action: "redirect",
         route: pathname,
@@ -336,10 +280,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (auth.tenantType === "k12") {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.hostname = "app.klasse.ao";
-    redirectUrl.protocol = "https:";
-    redirectUrl.port = "";
+    const redirectUrl = buildProductRedirectUrl({
+      requestUrl: request.nextUrl,
+      targetProduct: "k12",
+      pathname: request.nextUrl.pathname,
+      localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? "http://localhost:3000",
+      localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? "http://localhost:3001",
+    });
     logAuthEvent({
       action: "redirect",
       route: pathname,

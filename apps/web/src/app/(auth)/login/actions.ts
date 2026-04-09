@@ -29,6 +29,7 @@ async function resolveIdentifierToEmail(identifier: string) {
 }
 
 export async function loginAction(_: unknown, formData: FormData) {
+  throw new Error("DEPRECATED_AUTH_FLOW");
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
