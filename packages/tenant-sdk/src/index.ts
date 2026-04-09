@@ -76,8 +76,11 @@ export async function getTenantConfig(
   }
 
   const client = options.client ?? createServiceRoleClient();
-  const { data, error } = await scopeToTenant(client, "escola_configuracoes", escolaId)
+  const schoolConfigClient = client as unknown as SupabaseClient<Record<string, never>>;
+  const { data, error } = await schoolConfigClient
+    .from("escola_configuracoes")
     .select("*")
+    .eq("escola_id", escolaId)
     .returns<TenantConfigRow[]>()
     .maybeSingle();
 
