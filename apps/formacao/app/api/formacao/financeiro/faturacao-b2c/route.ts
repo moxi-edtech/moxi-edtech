@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ function buildReference(prefix: string, escolaId: string) {
   return `${prefix}-${escolaId.slice(0, 5).toUpperCase()}-${stamp}`;
 }
 
-async function ensureConsumidorFinal(s: any, escolaId: string) {
+async function ensureConsumidorFinal(s: FormacaoSupabaseClient, escolaId: string) {
   const { data: existing } = await s
     .from("formacao_clientes_b2b")
     .select("id")
@@ -45,7 +46,7 @@ export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   let query = s
     .from("formacao_faturas_lote_itens")
     .select("id, fatura_lote_id, formando_user_id, descricao, quantidade, preco_unitario, desconto, valor_total, status_pagamento")
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   try {
     const clienteId = await ensureConsumidorFinal(s, auth.escolaId as string);
     const referencia = String(body?.referencia ?? "").trim() || buildReference("B2C", auth.escolaId || "FAT");
@@ -162,7 +163,7 @@ export async function PATCH(request: Request) {
     patch.status_pagamento = body.status_pagamento;
   }
 
-  let query = (auth.supabase as any)
+  let query = (auth.supabase as FormacaoSupabaseClient)
     .from("formacao_faturas_lote_itens")
     .update(patch)
     .eq("escola_id", auth.escolaId)
@@ -187,7 +188,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  let query = (auth.supabase as any)
+  let query = (auth.supabase as FormacaoSupabaseClient)
     .from("formacao_faturas_lote_itens")
     .delete()
     .eq("escola_id", auth.escolaId)

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_cohorts")
     .select(
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_cohorts")
     .insert({
@@ -113,7 +114,7 @@ export async function PATCH(request: Request) {
     patch.status = body.status;
   }
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_cohorts")
     .update(patch)
@@ -133,7 +134,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { error } = await s
     .from("formacao_cohorts")
     .delete()

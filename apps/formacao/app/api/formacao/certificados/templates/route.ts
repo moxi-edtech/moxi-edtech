@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_certificado_templates")
     .select("id, nome, diretora_nome, cargo_assinatura, base_legal, regime_default, ativo, updated_at")
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "nome é obrigatório" }, { status: 400 });
   }
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_certificado_templates")
     .insert({
@@ -89,7 +90,7 @@ export async function PATCH(request: Request) {
   if (body?.regime_default !== undefined) patch.regime_default = body.regime_default ? String(body.regime_default).trim() : null;
   if (typeof body?.ativo === "boolean") patch.ativo = body.ativo;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_certificado_templates")
     .update(patch)
@@ -109,7 +110,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { error } = await s
     .from("formacao_certificado_templates")
     .delete()

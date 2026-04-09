@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveFormacaoSessionContext } from "@/lib/session-context";
 
 export async function requireFormacaoRoles(roles: string[]) {
   const supabase = await supabaseServer();
-  const { data } = await supabase.auth.getUser();
-  const user = data?.user;
+  const session = await resolveFormacaoSessionContext();
 
-  if (!user) {
+  if (!session?.userId) {
     return {
       ok: false as const,
       response: NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }),
@@ -17,27 +17,20 @@ export async function requireFormacaoRoles(roles: string[]) {
     };
   }
 
-  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-
-  const role = String(appMetadata.role ?? userMetadata.role ?? "").trim().toLowerCase();
-  const tenantType = String(
-    appMetadata.tenant_type ??
-      userMetadata.tenant_type ??
-      appMetadata.modelo_ensino ??
-      userMetadata.modelo_ensino ??
-      ""
-  )
+  const role = String(session.role ?? "")
     .trim()
     .toLowerCase();
-  const escolaId = String(appMetadata.escola_id ?? userMetadata.escola_id ?? "").trim();
+  const tenantType = String(session.tenantType ?? "")
+    .trim()
+    .toLowerCase();
+  const escolaId = String(session.tenantId ?? "").trim();
 
   if (!escolaId) {
     return {
       ok: false as const,
       response: NextResponse.json({ ok: false, error: "Escola não resolvida" }, { status: 400 }),
       supabase,
-      userId: user.id,
+      userId: session.userId,
       escolaId: null,
       role,
     };
@@ -48,7 +41,7 @@ export async function requireFormacaoRoles(roles: string[]) {
       ok: false as const,
       response: NextResponse.json({ ok: false, error: "Tenant incompatível para Formação" }, { status: 403 }),
       supabase,
-      userId: user.id,
+      userId: session.userId,
       escolaId,
       role,
     };
@@ -59,7 +52,7 @@ export async function requireFormacaoRoles(roles: string[]) {
       ok: false as const,
       response: NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }),
       supabase,
-      userId: user.id,
+      userId: session.userId,
       escolaId,
       role,
     };
@@ -69,7 +62,7 @@ export async function requireFormacaoRoles(roles: string[]) {
     ok: true as const,
     response: null,
     supabase,
-    userId: user.id,
+    userId: session.userId,
     escolaId,
     role,
   };

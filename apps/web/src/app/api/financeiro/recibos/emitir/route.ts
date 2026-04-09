@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { HttpError } from "@/lib/errors";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import {
@@ -10,6 +8,7 @@ import {
   resolveEmpresaFiscalAtiva,
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Database, Json } from "~types/supabase";
+import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -47,29 +46,26 @@ export async function POST(req: NextRequest) {
 
     const { mensalidadeId } = payload.data;
 
-    const supabase = await supabaseServerTyped<Database>();
+    const guard = await requireApiTenantGuard({
+      productContext: "k12",
+      requireTenantType: "k12",
+      allowedRoles: [
+        "financeiro",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+        "super_admin",
+        "global_admin",
+      ],
+    });
+    if (!guard.ok) return guard.response;
+
+    const supabase = guard.supabase;
     const supabaseAny = supabase as any;
-    const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes?.user;
-    if (!user) {
-      return NextResponse.json(
-        { ok: false, error: "Não autenticado" },
-        { status: 401 }
-      );
-    }
-
-    const metadataEscolaId =
-      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      null;
-
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id, undefined, metadataEscolaId);
-    if (!escolaId) {
-      return NextResponse.json(
-        { ok: false, error: "Usuário sem escola associada", code: "NO_SCHOOL" },
-        { status: 403 }
-      );
-    }
+    const user = guard.user;
+    const escolaId = guard.tenantId;
 
     const { data: existingIdempotency } = await supabaseAny
       .from("idempotency_keys")

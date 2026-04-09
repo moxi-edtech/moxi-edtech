@@ -1,14 +1,34 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 import { detectProductContextFromHostname, normalizeTenantType } from "@moxi/tenant-sdk";
+import type { Database } from "~types/supabase";
+import { logAuthEvent } from "@/lib/auth-log";
 
 type TenantType = "k12" | "formacao";
 
 type AuthContext = {
+  userId: string | null;
+  tenantId: string | null;
   role: string | null;
   tenantType: TenantType | null;
   hasSession: boolean;
 };
+
+type EscolaMembershipRow = Pick<
+  Database["public"]["Tables"]["escola_users"]["Row"],
+  "escola_id" | "papel" | "tenant_type" | "created_at"
+> & {
+  escola: Pick<Database["public"]["Tables"]["escolas"]["Row"], "tenant_type">[] | null;
+};
+
+function resolveMembershipTenantType(row: EscolaMembershipRow | null): string | null {
+  if (!row) return null;
+  const escolaTenant = Array.isArray(row.escola) ? row.escola[0]?.tenant_type : null;
+  return row.tenant_type ?? escolaTenant ?? null;
+}
+
+const UNIVERSAL_LOGIN_URL = process.env.KLASSE_AUTH_URL ?? "https://auth.klasse.ao/login";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -60,63 +80,86 @@ const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
   },
 ];
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const segments = token.split(".");
-  if (segments.length < 2) return null;
+function createSupabaseClient(request: NextRequest, response: NextResponse) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
 
-  try {
-    const base64 = segments[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    const decoded = atob(padded);
-    return JSON.parse(decoded) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+  const cookieDomain =
+    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
+    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : "");
+  const sameSiteRaw = (
+    process.env.KLASSE_COOKIE_SAMESITE ??
+    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
+    "lax"
+  )
+    .trim()
+    .toLowerCase();
+  const sameSite: "lax" | "strict" | "none" =
+    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
+
+  return createServerClient(url, key, {
+    cookieOptions: {
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+      path: "/",
+      sameSite,
+      secure: process.env.NODE_ENV === "production",
+    },
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      },
+    },
+  });
 }
 
-function extractTokenFromCookies(request: NextRequest): string | null {
-  const authCookie = request.cookies
-    .getAll()
-    .find((cookie) => cookie.name.includes("auth-token") && cookie.name.startsWith("sb-"));
+async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext> {
+  const supabase = createSupabaseClient(request, response);
+  if (!supabase) return { userId: null, tenantId: null, role: null, tenantType: null, hasSession: false };
 
-  if (!authCookie?.value) return null;
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  if (!user) return { userId: null, tenantId: null, role: null, tenantType: null, hasSession: false };
 
-  try {
-    const decoded = decodeURIComponent(authCookie.value);
-    const parsed = JSON.parse(decoded) as unknown;
-    if (Array.isArray(parsed) && typeof parsed[0] === "string") return parsed[0];
-  } catch {
-    return authCookie.value;
-  }
+  const { data: profileRows } = await supabase
+    .from("profiles")
+    .select("role,current_escola_id,created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const profile = profileRows?.[0] ?? null;
 
-  return authCookie.value;
-}
+  const { data: membershipRows } = await supabase
+    .from("escola_users")
+    .select("escola_id,papel,tenant_type,created_at,escola:escolas(tenant_type)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
-function extractAuthContext(request: NextRequest): AuthContext {
-  const token = extractTokenFromCookies(request);
-  if (!token) {
-    return { role: null, tenantType: null, hasSession: false };
-  }
+  const memberships = (membershipRows ?? []) as EscolaMembershipRow[];
+  const selectedMembership =
+    memberships.find((row) => row.escola_id === (profile?.current_escola_id ?? null)) ??
+    memberships.find((row) => normalizeTenantType(resolveMembershipTenantType(row)) === "formacao") ??
+    memberships[0] ??
+    null;
 
-  const payload = decodeJwtPayload(token);
-  if (!payload) {
-    return { role: null, tenantType: null, hasSession: true };
-  }
-
-  const appMetadata = (payload.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (payload.user_metadata ?? {}) as Record<string, unknown>;
-
-  const role = String(appMetadata.role ?? userMetadata.role ?? "").trim().toLowerCase() || null;
-
+  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
+  const role = String(selectedMembership?.papel ?? profile?.role ?? appMetadata.role ?? "")
+    .trim()
+    .toLowerCase();
   const tenantType = normalizeTenantType(
-    appMetadata.tenant_type ??
-      userMetadata.tenant_type ??
-      appMetadata.modelo_ensino ??
-      userMetadata.modelo_ensino
+    resolveMembershipTenantType(selectedMembership) ??
+      appMetadata.tenant_type ??
+      appMetadata.modelo_ensino
   );
 
   return {
-    role,
+    userId: user.id,
+    tenantId: selectedMembership?.escola_id ?? profile?.current_escola_id ?? null,
+    role: role || null,
     tenantType,
     hasSession: true,
   };
@@ -145,26 +188,151 @@ function getDefaultPathByRole(role: string | null): string {
   }
 }
 
-export function middleware(request: NextRequest) {
+function redirectToLogin(request: NextRequest, productContext: ReturnType<typeof detectProductContextFromHostname>) {
+  if (productContext === "formacao") {
+    const loginUrl = new URL(UNIVERSAL_LOGIN_URL);
+    loginUrl.searchParams.set("redirect", request.nextUrl.href);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Local/dev fallback: stay in this app's /login to avoid cross-app redirect loops.
+  const localLogin = request.nextUrl.clone();
+  localLogin.pathname = "/login";
+  localLogin.searchParams.set("redirect", request.nextUrl.href);
+  if (request.nextUrl.pathname === "/login") {
+    return NextResponse.next();
+  }
+  return NextResponse.redirect(localLogin);
+}
+
+function applyResponseCookies(source: NextResponse, target: NextResponse) {
+  source.cookies.getAll().forEach(({ name, value, ...options }) => {
+    target.cookies.set(name, value, options);
+  });
+}
+
+function redirectWithCookies(source: NextResponse, target: NextResponse) {
+  applyResponseCookies(source, target);
+  return target;
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const productContext = detectProductContextFromHostname(request.headers.get("host"));
+  const response = NextResponse.next();
 
   if (productContext === "k12") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.hostname = "formacao.klasse.ao";
     redirectUrl.protocol = "https:";
     redirectUrl.port = "";
-    return NextResponse.redirect(redirectUrl);
+    logAuthEvent({
+      action: "redirect",
+      route: pathname,
+      details: { reason: "k12_host_accessing_formacao_app", target_product: "formacao" },
+    });
+    return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
   }
 
-  if (!isProtectedPath(pathname)) return NextResponse.next();
+  if (pathname === "/") {
+    const auth = await resolveAuthContext(request, response);
+    if (!auth.hasSession) {
+      logAuthEvent({
+        action: "resolve_context_failed",
+        route: pathname,
+        details: { reason: "no_session" },
+      });
+      return redirectWithCookies(response, redirectToLogin(request, productContext));
+    }
+    if (auth.tenantType === "k12") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.hostname = "app.klasse.ao";
+      redirectUrl.protocol = "https:";
+      redirectUrl.port = "";
+      logAuthEvent({
+        action: "redirect",
+        route: pathname,
+        user_id: auth.userId,
+        tenant_id: auth.tenantId,
+        tenant_type: auth.tenantType,
+        details: { reason: "tenant_type_mismatch", target_product: "k12" },
+      });
+      return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
+    }
 
-  const auth = extractAuthContext(request);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = getDefaultPathByRole(auth.role);
+    redirectUrl.search = "";
+    logAuthEvent({
+      action: "redirect",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: { reason: "root_to_default_dashboard" },
+    });
+    return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
+  }
+
+  if (pathname === "/login") {
+    // In local/dev we keep /login always reachable to prevent stale-cookie redirect loops.
+    if (productContext !== "formacao") {
+      return NextResponse.next();
+    }
+
+    const auth = await resolveAuthContext(request, response);
+    if (!auth.hasSession) {
+      if (productContext === "formacao") {
+        logAuthEvent({
+          action: "resolve_context_failed",
+          route: pathname,
+          details: { reason: "login_without_session" },
+        });
+        return redirectWithCookies(response, redirectToLogin(request, productContext));
+      }
+      return NextResponse.next();
+    }
+    if (auth.tenantType === "k12") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.hostname = "app.klasse.ao";
+      redirectUrl.protocol = "https:";
+      redirectUrl.port = "";
+      logAuthEvent({
+        action: "redirect",
+        route: pathname,
+        user_id: auth.userId,
+        tenant_id: auth.tenantId,
+        tenant_type: auth.tenantType,
+        details: { reason: "login_tenant_mismatch", target_product: "k12" },
+      });
+      return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
+    }
+
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = getDefaultPathByRole(auth.role);
+    redirectUrl.search = "";
+    logAuthEvent({
+      action: "redirect",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: { reason: "login_to_default_dashboard" },
+    });
+    return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
+  }
+
+  if (!isProtectedPath(pathname)) return response;
+
+  const auth = await resolveAuthContext(request, response);
 
   if (!auth.hasSession) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+    logAuthEvent({
+      action: "resolve_context_failed",
+      route: pathname,
+      details: { reason: "protected_path_without_session" },
+    });
+    return redirectWithCookies(response, redirectToLogin(request, productContext));
   }
 
   if (auth.tenantType === "k12") {
@@ -172,15 +340,31 @@ export function middleware(request: NextRequest) {
     redirectUrl.hostname = "app.klasse.ao";
     redirectUrl.protocol = "https:";
     redirectUrl.port = "";
-    return NextResponse.redirect(redirectUrl);
+    logAuthEvent({
+      action: "redirect",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: { reason: "protected_path_tenant_mismatch", target_product: "k12" },
+    });
+    return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
   }
 
   for (const rule of ROLE_RULES) {
-    if (pathname.startsWith(rule.prefix) && !rule.roles.includes(String(auth.role))) {
+    if (pathname.startsWith(rule.prefix) && auth.role && !rule.roles.includes(String(auth.role))) {
+      logAuthEvent({
+        action: "deny",
+        route: pathname,
+        user_id: auth.userId,
+        tenant_id: auth.tenantId,
+        tenant_type: auth.tenantType,
+        details: { reason: "role_mismatch", required_prefix: rule.prefix, role: auth.role },
+      });
       const deniedUrl = request.nextUrl.clone();
       deniedUrl.pathname = "/forbidden";
       deniedUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(deniedUrl);
+      return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
     }
   }
 
@@ -189,15 +373,17 @@ export function middleware(request: NextRequest) {
     if (target !== "/dashboard") {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = target;
-      return NextResponse.redirect(redirectUrl);
+      return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
     }
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
   matcher: [
+    "/",
+    "/login",
     "/dashboard/:path*",
     "/formacao/:path*",
     "/agenda/:path*",

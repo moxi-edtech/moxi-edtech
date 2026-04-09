@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET() {
 
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const escolaId = auth.escolaId;
 
   const { data, error } = await s

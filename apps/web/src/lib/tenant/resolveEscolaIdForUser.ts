@@ -17,12 +17,8 @@ export async function resolveEscolaIdForUser(
   client: Client,
   userId: string,
   requestedEscolaId?: string | null,
-  metadataEscolaId?: string | null
+  _metadataEscolaId?: string | null
 ): Promise<string | null> {
-  if (metadataEscolaId && !requestedEscolaId) {
-    return String(metadataEscolaId);
-  }
-
   const cacheKey = getCacheKey(userId, requestedEscolaId ?? null);
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
@@ -35,9 +31,6 @@ export async function resolveEscolaIdForUser(
       : (await resolveEscolaParam(client, requestedEscolaId)).escolaId;
     if (!normalizedRequestedId) return null;
 
-    if (metadataEscolaId && String(metadataEscolaId) === String(normalizedRequestedId)) {
-      return String(normalizedRequestedId);
-    }
     try {
       const { data: allowed, error } = await client.rpc("has_access_to_escola_fast", {
         p_escola_id: normalizedRequestedId,

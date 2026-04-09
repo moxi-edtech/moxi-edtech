@@ -16,11 +16,36 @@ function getSupabaseEnv() {
   return { url, anonKey };
 }
 
+function resolveCookieOptions() {
+  const configuredDomain =
+    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
+    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : "");
+
+  const sameSiteRaw = (
+    process.env.KLASSE_COOKIE_SAMESITE ??
+    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
+    "lax"
+  )
+    .trim()
+    .toLowerCase();
+  const sameSite: "lax" | "strict" | "none" =
+    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
+
+  return {
+    ...(configuredDomain ? { domain: configuredDomain } : {}),
+    path: "/",
+    sameSite,
+    secure: process.env.NODE_ENV === "production",
+  };
+}
+
 export async function supabaseServer() {
   const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
+    cookieOptions: resolveCookieOptions(),
     cookies: {
       getAll() {
         return cookieStore.getAll().map(({ name, value }) => ({ name, value }));

@@ -43,6 +43,8 @@
     "agents:apply": "tsx agents/scripts/apply-agent.ts --plan agents/outputs/PLAN_PATCHES.json --gate agents/outputs/PERF_GATE.json --repo . --mode safe",
     "scan": "bash scripts/scan-report.sh",
     "validate:presets": "bash scripts/validate-presets-global.sh"
+    ,
+    "security:no-user-metadata-auth": "bash scripts/check-no-user-metadata-auth.sh"
   },
   "pnpm": {
     "overrides": {

@@ -1,11 +1,10 @@
 // @kf2 allow-scan
 // apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2"; // Keep this import if applyKf2ListInvariants is used elsewhere or in a fallback scenario not shown
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"; // Keep this import if resolveEscolaIdForUser is used elsewhere or in a fallback scenario not shown
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
+import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
 
 // --- TYPE INTERFACES (Keep existing interfaces or adjust as needed) ---
 interface PaymentRow {
@@ -111,21 +110,28 @@ export async function GET(
 ) {
   try {
     const { alunoId } = await params;
-    const supabase = await supabaseServer(); // Using supabaseServer directly as per debug endpoint and user's suggestion
+    const guard = await requireApiTenantGuard({
+      productContext: "k12",
+      requireTenantType: "k12",
+      allowedRoles: [
+        "financeiro",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+        "super_admin",
+        "global_admin",
+      ],
+    });
+    if (!guard.ok) return guard.response;
+
+    const supabase = guard.supabase as any;
+    const user = guard.user;
+    const escolaId = guard.tenantId;
     
     console.log(`[EXTRATO-REMOTO] Buscando aluno: ${alunoId}`);
     
-    // 1. Autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      console.error('[EXTRATO-REMOTO] Erro de autenticação:', authError);
-      return NextResponse.json({ 
-        ok: false, 
-        error: "Não autenticado" 
-      }, { status: 401 });
-    }
-
     try {
       await requireFeature("doc_qr_code");
     } catch (err) {
@@ -137,18 +143,7 @@ export async function GET(
     
     console.log(`[EXTRATO-REMOTO] Usuário: ${user.email} (${user.id})`);
     
-    // 2. Obter escola_id (usando mesma lógica da busca)
-    const escolaId = user.user_metadata?.escola_id || user.app_metadata?.escola_id;
-    
-    if (!escolaId) {
-      console.error('[EXTRATO-REMOTO] Usuário sem escola_id nos metadados');
-      return NextResponse.json({ 
-        ok: false, 
-        error: "Usuário não associado a nenhuma escola" 
-      }, { status: 400 });
-    }
-    
-    console.log(`[EXTRATO-REMOTO] Escola ID: ${escolaId}`);
+    console.log(`[EXTRATO-REMOTO] Escola ID resolvida: ${escolaId}`);
     
     // 3. USAR A RPC COM ASSINATURA CORRETA
     const { data: alunosRPC, error: rpcError } = await supabase.rpc(

@@ -1,0 +1,25 @@
+{
+  "name": "auth",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next dev",
+    "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
+    "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.81.0",
+    "next": "15.5.7",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "typescript": "5.9.3"
+  }
+}

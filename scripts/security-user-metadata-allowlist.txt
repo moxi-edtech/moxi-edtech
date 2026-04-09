@@ -1,0 +1,3 @@
+# Allowlist de exceções para scripts/check-no-user-metadata-auth.sh
+# Formato: substring literal (path/trecho) que será ignorada.
+# Mantenha esta lista vazia por padrão.

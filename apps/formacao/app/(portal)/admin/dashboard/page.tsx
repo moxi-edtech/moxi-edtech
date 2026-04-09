@@ -12,24 +12,24 @@ export default async function AdminCentroDashboardPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="grid gap-4">
       <header>
-        <p style={{ margin: 0, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.7 }}>
+        <p className="m-0 text-xs uppercase tracking-wider text-zinc-500">
           Admin Centro
         </p>
-        <h1 style={{ margin: "6px 0 0" }}>Dashboard de Gestão</h1>
+        <h1 className="mt-1.5 text-3xl font-bold text-zinc-900">Dashboard de Gestão</h1>
       </header>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12 }}>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card title="Onboarding" value="Pendente" subtitle="Finalizar checklist do centro" />
         <Card title="Cursos" value="0" subtitle="Criar catálogo inicial" />
         <Card title="Cohorts" value="0" subtitle="Abrir primeira edição" />
         <Card title="Equipa" value="2+" subtitle="Admin + Secretaria mínimos" />
       </section>
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14 }}>
-        <h2 style={{ marginTop: 0 }}>Próximas ações</h2>
-        <ol style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+      <section className="rounded-xl border border-zinc-200 p-3.5">
+        <h2 className="mt-0 text-lg font-semibold text-zinc-900">Próximas ações</h2>
+        <ol className="m-0 list-decimal space-y-2 pl-5 leading-relaxed text-zinc-700">
           <li>Configurar dados fiscais do centro (NIPC, regime IVA, MAPTESS).</li>
           <li>Criar catálogo de cursos e abrir cohorts ativos.</li>
           <li>Convidar formadores e validar acessos por papel.</li>
@@ -41,10 +41,10 @@ export default async function AdminCentroDashboardPage() {
 
 function Card({ title, value, subtitle }: { title: string; value: string; subtitle: string }) {
   return (
-    <article style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, background: "#fff" }}>
-      <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>{title}</p>
-      <p style={{ margin: "8px 0 6px", fontSize: 26, fontWeight: 700 }}>{value}</p>
-      <p style={{ margin: 0, fontSize: 13, opacity: 0.75 }}>{subtitle}</p>
+    <article className="rounded-xl border border-zinc-200 bg-white p-3">
+      <p className="m-0 text-xs text-zinc-500">{title}</p>
+      <p className="my-2 text-3xl font-bold text-zinc-900">{value}</p>
+      <p className="m-0 text-sm text-zinc-600">{subtitle}</p>
     </article>
   );
 }

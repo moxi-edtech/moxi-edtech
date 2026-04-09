@@ -22,7 +22,6 @@ type CreateEscolaPayload = {
 type AuthUserData = {
   user?: {
     app_metadata?: { role?: string | null } | null
-    user_metadata?: { role?: string | null } | null
   } | null
 } | null
 
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
     try {
       const { data: u } = await supabase.auth.getUser()
       const authData = u as AuthUserData
-      const role = authData?.user?.app_metadata?.role || authData?.user?.user_metadata?.role || null
+      const role = authData?.user?.app_metadata?.role || null
       if (role !== 'super_admin') {
         return NextResponse.json({ ok: false, error: 'Somente Super Admin pode criar escolas.' }, { status: 403 })
       }

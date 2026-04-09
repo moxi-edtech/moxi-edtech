@@ -152,50 +152,50 @@ export default function CertificadosPage() {
   };
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <h1 style={{ margin: 0 }}>Certificados</h1>
+    <div className="grid gap-4">
+      <h1 className="m-0 text-3xl font-bold text-zinc-900">Certificados</h1>
 
-      <form onSubmit={createTemplate} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+      <form onSubmit={createTemplate} className="grid gap-2 rounded-xl border border-zinc-200 p-3">
         <strong>Novo template</strong>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
-          <input value={templateForm.nome} onChange={(e) => setTemplateForm((p) => ({ ...p, nome: e.target.value }))} placeholder="Nome do template" />
-          <input value={templateForm.diretora_nome} onChange={(e) => setTemplateForm((p) => ({ ...p, diretora_nome: e.target.value }))} placeholder="Nome da diretora" />
-          <input value={templateForm.cargo_assinatura} onChange={(e) => setTemplateForm((p) => ({ ...p, cargo_assinatura: e.target.value }))} placeholder="Cargo assinatura" />
-          <input value={templateForm.regime_default} onChange={(e) => setTemplateForm((p) => ({ ...p, regime_default: e.target.value }))} placeholder="Regime default" />
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={templateForm.nome} onChange={(e) => setTemplateForm((p) => ({ ...p, nome: e.target.value }))} placeholder="Nome do template" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={templateForm.diretora_nome} onChange={(e) => setTemplateForm((p) => ({ ...p, diretora_nome: e.target.value }))} placeholder="Nome da diretora" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={templateForm.cargo_assinatura} onChange={(e) => setTemplateForm((p) => ({ ...p, cargo_assinatura: e.target.value }))} placeholder="Cargo assinatura" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={templateForm.regime_default} onChange={(e) => setTemplateForm((p) => ({ ...p, regime_default: e.target.value }))} placeholder="Regime default" />
         </div>
-        <textarea value={templateForm.base_legal} onChange={(e) => setTemplateForm((p) => ({ ...p, base_legal: e.target.value }))} placeholder="Base legal" rows={2} />
-        <button type="submit">Criar template</button>
+        <textarea className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={templateForm.base_legal} onChange={(e) => setTemplateForm((p) => ({ ...p, base_legal: e.target.value }))} placeholder="Base legal" rows={2} />
+        <button type="submit" className="w-fit rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Criar template</button>
       </form>
 
-      <form onSubmit={emitir} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+      <form onSubmit={emitir} className="grid gap-2 rounded-xl border border-zinc-200 p-3">
         <strong>Emitir certificado</strong>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
-          <select value={emissaoForm.template_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, template_id: e.target.value }))}>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <select className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.template_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, template_id: e.target.value }))}>
             <option value="">Template</option>
             {templates.map((t) => (
               <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
-          <input value={emissaoForm.formando_user_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" />
-          <input value={emissaoForm.cohort_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="Cohort id (opcional)" />
-          <input value={emissaoForm.numero_documento} onChange={(e) => setEmissaoForm((p) => ({ ...p, numero_documento: e.target.value }))} placeholder="Número (opcional)" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.formando_user_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.cohort_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="Cohort id (opcional)" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.numero_documento} onChange={(e) => setEmissaoForm((p) => ({ ...p, numero_documento: e.target.value }))} placeholder="Número (opcional)" />
         </div>
-        <button type="submit">Emitir</button>
+        <button type="submit" className="w-fit rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Emitir</button>
       </form>
 
-      {error ? <p style={{ margin: 0, color: "#b91c1c" }}>{error}</p> : null}
+      {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
+      <section className="rounded-xl border border-zinc-200 p-3">
         <strong>Templates</strong>
-        <ul style={{ marginBottom: 0 }}>
+        <ul className="mb-0">
           {templates.map((t) => (
             <li key={t.id}>
               {t.nome} {t.ativo ? "(ativo)" : "(inativo)"}
-              <span style={{ marginLeft: 8, display: "inline-flex", gap: 6 }}>
-                <button type="button" onClick={() => toggleTemplate(t.id, t.ativo)}>
+              <span className="ml-2 inline-flex gap-1.5">
+                <button className="rounded-md border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50" type="button" onClick={() => toggleTemplate(t.id, t.ativo)}>
                   {t.ativo ? "Inativar" : "Ativar"}
                 </button>
-                <button type="button" onClick={() => removeTemplate(t.id)}>
+                <button className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50" type="button" onClick={() => removeTemplate(t.id)}>
                   Apagar
                 </button>
               </span>
@@ -205,14 +205,14 @@ export default function CertificadosPage() {
         </ul>
       </section>
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
+      <section className="rounded-xl border border-zinc-200 p-3">
         <strong>Certificados emitidos</strong>
-        <ul style={{ marginBottom: 0 }}>
+        <ul className="mb-0">
           {emissoes.map((e) => (
             <li key={e.id}>
               {e.numero_documento} · {e.formando_user_id} · {e.emitido_em}
-              <span style={{ marginLeft: 8 }}>
-                <button type="button" onClick={() => removeEmissao(e.id)}>
+              <span className="ml-2">
+                <button className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50" type="button" onClick={() => removeEmissao(e.id)}>
                   Apagar
                 </button>
               </span>

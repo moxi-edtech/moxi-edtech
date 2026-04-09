@@ -43,15 +43,15 @@ export default function SummaryClient({ endpoint, emptyLabel }: Props) {
     };
   }, [endpoint]);
 
-  if (loading) return <p style={{ margin: 0 }}>Carregando resumo...</p>;
-  if (error) return <p style={{ margin: 0, color: "#b91c1c" }}>{error}</p>;
-  if (!summary || Object.keys(summary).length === 0) return <p style={{ margin: 0 }}>{emptyLabel}</p>;
+  if (loading) return <p className="m-0 text-sm text-zinc-700">Carregando resumo...</p>;
+  if (error) return <p className="m-0 text-sm text-red-700">{error}</p>;
+  if (!summary || Object.keys(summary).length === 0) return <p className="m-0 text-sm text-zinc-700">{emptyLabel}</p>;
 
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div className="grid gap-2">
       {Object.entries(summary).map(([key, value]) => (
-        <div key={key} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-          <span>{key}</span>
+        <div key={key} className="flex justify-between text-sm">
+          <span className="text-zinc-700">{key}</span>
           <strong>{Number(value).toLocaleString("pt-PT")}</strong>
         </div>
       ))}

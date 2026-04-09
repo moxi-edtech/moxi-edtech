@@ -37,8 +37,6 @@ export async function resolveTenantContextForRequest(): Promise<UnifiedTenantCon
     client: supabase as unknown as SupabaseClient<Database>,
     userId: user.id,
     requestedTenantId:
-      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      null,
+      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null,
   });
 }

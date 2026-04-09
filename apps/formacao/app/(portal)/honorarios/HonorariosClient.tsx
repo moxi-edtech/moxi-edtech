@@ -115,31 +115,31 @@ export default function HonorariosClient({ role, userId }: Props) {
   };
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <h1 style={{ margin: 0 }}>Honorários</h1>
+    <div className="grid gap-3.5">
+      <h1 className="m-0 text-3xl font-bold text-zinc-900">Honorários</h1>
 
-      <form onSubmit={createItem} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+      <form onSubmit={createItem} className="grid gap-2 rounded-xl border border-zinc-200 p-3">
         <strong>Novo lançamento</strong>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
-          <input value={form.cohort_id} onChange={(e) => setForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="Cohort ID" required />
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.cohort_id} onChange={(e) => setForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="Cohort ID" required />
           {role === "formador" ? null : (
-            <input value={form.formador_user_id} onChange={(e) => setForm((p) => ({ ...p, formador_user_id: e.target.value }))} placeholder="Formador user_id" required />
+            <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.formador_user_id} onChange={(e) => setForm((p) => ({ ...p, formador_user_id: e.target.value }))} placeholder="Formador user_id" required />
           )}
-          <input value={form.horas_ministradas} onChange={(e) => setForm((p) => ({ ...p, horas_ministradas: e.target.value }))} placeholder="Horas" type="number" min={1} required />
-          <input value={form.valor_hora} onChange={(e) => setForm((p) => ({ ...p, valor_hora: e.target.value }))} placeholder="Valor/hora" type="number" min={0} step="0.01" required />
-          <input value={form.bonus} onChange={(e) => setForm((p) => ({ ...p, bonus: e.target.value }))} placeholder="Bônus" type="number" min={0} step="0.01" />
-          <input value={form.desconto} onChange={(e) => setForm((p) => ({ ...p, desconto: e.target.value }))} placeholder="Desconto" type="number" min={0} step="0.01" />
-          <input value={form.competencia} onChange={(e) => setForm((p) => ({ ...p, competencia: e.target.value }))} type="date" required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.horas_ministradas} onChange={(e) => setForm((p) => ({ ...p, horas_ministradas: e.target.value }))} placeholder="Horas" type="number" min={1} required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.valor_hora} onChange={(e) => setForm((p) => ({ ...p, valor_hora: e.target.value }))} placeholder="Valor/hora" type="number" min={0} step="0.01" required />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.bonus} onChange={(e) => setForm((p) => ({ ...p, bonus: e.target.value }))} placeholder="Bônus" type="number" min={0} step="0.01" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.desconto} onChange={(e) => setForm((p) => ({ ...p, desconto: e.target.value }))} placeholder="Desconto" type="number" min={0} step="0.01" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={form.competencia} onChange={(e) => setForm((p) => ({ ...p, competencia: e.target.value }))} type="date" required />
         </div>
-        <button type="submit">Lançar honorário</button>
+        <button type="submit" className="w-fit rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Lançar honorário</button>
       </form>
 
-      {error ? <p style={{ margin: 0, color: "#b91c1c" }}>{error}</p> : null}
-      {loading ? <p style={{ margin: 0 }}>Carregando...</p> : null}
+      {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
+      {loading ? <p className="m-0 text-sm text-zinc-700">Carregando...</p> : null}
 
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
+      <section className="overflow-hidden rounded-xl border border-zinc-200">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-zinc-50">
             <tr>
               <Th>Ref</Th><Th>Cohort</Th><Th>Formador</Th><Th>Competência</Th><Th>Valor Líquido</Th><Th>Status</Th><Th>Ações</Th>
             </tr>
@@ -154,13 +154,13 @@ export default function HonorariosClient({ role, userId }: Props) {
                 <Td>{item.valor_liquido}</Td>
                 <Td>{item.status}</Td>
                 <Td>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <div className="flex flex-wrap gap-1.5">
                     {(["aberto", "aprovado", "pago", "cancelado"] as const).map((status) => (
-                      <button key={status} type="button" onClick={() => changeStatus(item.id, status)} disabled={item.status === status}>
+                      <button className="rounded-md border border-zinc-200 px-2 py-1 text-xs hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50" key={status} type="button" onClick={() => changeStatus(item.id, status)} disabled={item.status === status}>
                         {status}
                       </button>
                     ))}
-                    <button type="button" onClick={() => removeItem(item.id)}>Apagar</button>
+                    <button className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50" type="button" onClick={() => removeItem(item.id)}>Apagar</button>
                   </div>
                 </Td>
               </tr>
@@ -176,9 +176,9 @@ export default function HonorariosClient({ role, userId }: Props) {
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid var(--line)" }}>{children}</th>;
+  return <th className="border-b border-zinc-200 px-2.5 py-2 text-left font-medium text-zinc-700">{children}</th>;
 }
 
 function Td({ children, colSpan }: { children: React.ReactNode; colSpan?: number }) {
-  return <td colSpan={colSpan} style={{ padding: "8px 10px", borderBottom: "1px solid var(--line)" }}>{children}</td>;
+  return <td colSpan={colSpan} className="border-b border-zinc-200 px-2.5 py-2 text-zinc-800">{children}</td>;
 }

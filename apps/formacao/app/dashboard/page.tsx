@@ -1,28 +1,23 @@
 import { redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { getDefaultFormacaoPath } from "@/lib/auth-context";
+import { getDefaultFormacaoPath, getFormacaoAuthContext } from "@/lib/auth-context";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const supabase = await supabaseServer();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) {
+  const auth = await getFormacaoAuthContext();
+  if (!auth?.userId) {
     redirect("/login");
   }
 
-  const appMetadata = (data.user.app_metadata ?? {}) as Record<string, unknown>;
-  const userMetadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
-  const role = String(appMetadata.role ?? userMetadata.role ?? "").trim().toLowerCase();
-  const defaultPath = getDefaultFormacaoPath(role);
+  const defaultPath = getDefaultFormacaoPath(auth.role);
   if (defaultPath !== "/dashboard") {
     redirect(defaultPath);
   }
 
   return (
-    <main style={{ minHeight: "100vh", padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>Dashboard Formação</h1>
-      <p style={{ opacity: 0.8 }}>
+    <main className="min-h-screen p-6">
+      <h1 className="mt-0 text-3xl font-bold text-zinc-900">Dashboard Formação</h1>
+      <p className="text-zinc-600">
         Área inicial do produto Formação. Próxima etapa: migrar módulos operacionais para este app.
       </p>
     </main>

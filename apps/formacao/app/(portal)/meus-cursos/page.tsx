@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getFormacaoAuthContext } from "@/lib/auth-context";
+import MeusCursosClient from "./MeusCursosClient";
 
 export const dynamic = "force-dynamic";
 
@@ -11,16 +12,5 @@ export default async function MeusCursosPage() {
     redirect("/forbidden");
   }
 
-  return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <h1 style={{ margin: 0 }}>Meus Cursos</h1>
-      <p style={{ margin: 0, opacity: 0.78 }}>
-        Portal do formando para acompanhar progresso e turmas ativas.
-      </p>
-
-      <section style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
-        <p style={{ margin: 0, fontSize: 14 }}>Nenhum curso ativo encontrado.</p>
-      </section>
-    </div>
-  );
+  return <MeusCursosClient />;
 }

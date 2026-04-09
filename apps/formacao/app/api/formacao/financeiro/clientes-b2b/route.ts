@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_clientes_b2b")
     .select("id, nome_fantasia, razao_social, nif, email_financeiro, telefone, status")
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "nome_fantasia é obrigatório" }, { status: 400 });
   }
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_clientes_b2b")
     .insert({
@@ -87,7 +88,7 @@ export async function PATCH(request: Request) {
   if (body?.telefone !== undefined) patch.telefone = body.telefone ? String(body.telefone).trim() : null;
   if (body?.status && ["ativo", "inativo"].includes(body.status)) patch.status = body.status;
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_clientes_b2b")
     .update(patch)
@@ -107,7 +108,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
-  const s = auth.supabase as any;
+  const s = auth.supabase as FormacaoSupabaseClient;
   const { error } = await s
     .from("formacao_clientes_b2b")
     .delete()
