@@ -33,6 +33,12 @@
       ],
       "@moxi/tenant-sdk/*": [
         "../../packages/tenant-sdk/src/*"
+      ],
+      "@moxi/auth-middleware": [
+        "../../packages/auth-middleware/src/index.ts"
+      ],
+      "@moxi/auth-middleware/*": [
+        "../../packages/auth-middleware/src/*"
       ]
     },
     "allowJs": true,

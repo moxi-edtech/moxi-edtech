@@ -256,6 +256,7 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
   return {
     userId: resolved.userId,
     role: resolved.role,
+    tenantId: resolved.tenantId,
     escolaId: resolved.tenantId,
     tenantType: resolved.tenantType as TenantType | null,
   };

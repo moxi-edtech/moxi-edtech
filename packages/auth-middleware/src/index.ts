@@ -145,7 +145,7 @@ export async function resolveDbAuthContext(params: {
     .select("escola_id,papel,tenant_type,created_at,escola:escolas(tenant_type)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
-  const memberships = (membershipRows ?? []) as EscolaMembershipRow[];
+  const memberships = (membershipRows ?? []) as unknown as EscolaMembershipRow[];
 
   const selectedMembership =
     memberships.find((row) => row.escola_id === currentEscolaId) ??
@@ -203,4 +203,3 @@ export function buildProductRedirectUrl(params: {
 
   return redirectUrl;
 }
-
