@@ -7,6 +7,19 @@ import { createClient } from "@/lib/supabaseClient";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 
+function getFormacaoBaseUrl() {
+  if (typeof window === "undefined") return "https://formacao.klasse.ao";
+  const host = window.location.host.toLowerCase();
+  if (
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.endsWith(".localhost")
+  ) {
+    return "http://localhost:3001";
+  }
+  return "https://formacao.klasse.ao";
+}
+
 export default function RedirectPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -62,10 +75,43 @@ export default function RedirectPage() {
           const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
           const role: string = profile?.role ?? "guest";
           const escola_id: string | null = profile?.escola_id ?? null;
+          const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
+          const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+          const tenantType = String(
+            appMetadata.tenant_type ??
+              userMetadata.tenant_type ??
+              appMetadata.modelo_ensino ??
+              userMetadata.modelo_ensino ??
+              ""
+          )
+            .trim()
+            .toLowerCase();
           const resolvedEscolaId = escola_id || (await resolveEscolaIdForUser(supabase, user.id));
           const baseEscolaId = escola_id || resolvedEscolaId;
           const resolvedParam = baseEscolaId ? await resolveEscolaParam(supabase, baseEscolaId) : null;
           const escolaParam = resolvedParam?.slug ? resolvedParam.slug : baseEscolaId;
+
+          const isFormacaoRole =
+            role === "formacao_admin" ||
+            role === "formacao_secretaria" ||
+            role === "formacao_financeiro" ||
+            role === "formador" ||
+            role === "formando";
+          if (tenantType === "formacao" || isFormacaoRole) {
+            const formacaoBaseUrl = getFormacaoBaseUrl();
+            if (role === "formacao_admin") {
+              window.location.replace(`${formacaoBaseUrl}/admin/dashboard`);
+            } else if (role === "formacao_secretaria") {
+              window.location.replace(`${formacaoBaseUrl}/secretaria/catalogo-cursos`);
+            } else if (role === "formacao_financeiro") {
+              window.location.replace(`${formacaoBaseUrl}/financeiro/dashboard`);
+            } else if (role === "formador") {
+              window.location.replace(`${formacaoBaseUrl}/agenda`);
+            } else {
+              window.location.replace(`${formacaoBaseUrl}/meus-cursos`);
+            }
+            return;
+          }
 
           // Roteamento por role
           if (escola_id && (role === "admin" || role === "staff_admin")) {

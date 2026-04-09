@@ -30,6 +30,21 @@ async function resolveIdentifierToEmail(identifier: string) {
   }
 }
 
+async function getFormacaoBaseUrl() {
+  const host = (await headers()).get("host") ?? "";
+  const normalizedHost = host.toLowerCase();
+
+  if (
+    normalizedHost.startsWith("localhost") ||
+    normalizedHost.startsWith("127.0.0.1") ||
+    normalizedHost.endsWith(".localhost")
+  ) {
+    return "http://localhost:3001";
+  }
+
+  return "https://formacao.klasse.ao";
+}
+
 export async function loginAction(_: unknown, formData: FormData) {
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
@@ -96,6 +111,25 @@ export async function loginAction(_: unknown, formData: FormData) {
 
       if ((papelNormalizado === "admin" || papelNormalizado === "staff_admin" || papelNormalizado === "admin_escola") && escola_id) {
         redirect(`/escola/${escolaParam ?? escola_id}/admin/dashboard`);
+      } else if (
+        papelNormalizado === "formacao_admin" ||
+        papelNormalizado === "formacao_secretaria" ||
+        papelNormalizado === "formacao_financeiro" ||
+        papelNormalizado === "formador" ||
+        papelNormalizado === "formando"
+      ) {
+        const formacaoBaseUrl = await getFormacaoBaseUrl();
+        if (papelNormalizado === "formacao_admin") {
+          redirect(`${formacaoBaseUrl}/admin/dashboard`);
+        } else if (papelNormalizado === "formacao_secretaria") {
+          redirect(`${formacaoBaseUrl}/secretaria/catalogo-cursos`);
+        } else if (papelNormalizado === "formacao_financeiro") {
+          redirect(`${formacaoBaseUrl}/financeiro/dashboard`);
+        } else if (papelNormalizado === "formador") {
+          redirect(`${formacaoBaseUrl}/agenda`);
+        } else {
+          redirect(`${formacaoBaseUrl}/meus-cursos`);
+        }
       } else if (papelNormalizado === "secretaria") {
         if (escola_id) {
           redirect(`/escola/${escolaParam ?? escola_id}/secretaria`);
