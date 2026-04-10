@@ -320,7 +320,20 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
   const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
   const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
   const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
-  const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
+  let escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
+
+  // Fallback para utilizadores legados sem escola_id no JWT metadata.
+  if (!escolaId && user.id) {
+    const { data: escolaUser } = await supabase
+      .from('escola_users')
+      .select('escola_id')
+      .eq('user_id', user.id)
+      .not('escola_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+
+    escolaId = (escolaUser?.escola_id as string | null) ?? null;
+  }
   const tenantType = normalizeTenantType(
     appMetadata.tenant_type ??
       userMetadata.tenant_type ??
