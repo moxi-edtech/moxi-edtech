@@ -13,6 +13,7 @@ import {
 import { isRoleAllowedForProduct } from '@/lib/permissions';
 
 type AuthContext = {
+  userId: string | null;
   role: string | null;
   escolaId: string | null;
   tenantType: TenantType | null;
@@ -244,6 +245,7 @@ function extractJwtAuthContext(request: NextRequest): AuthContext | null {
 
   const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
   const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
+  const userId = (payload.sub ?? null) as string | null;
   const tenantType = normalizeTenantType(
     appMetadata.tenant_type ??
       userMetadata.tenant_type ??
@@ -251,7 +253,7 @@ function extractJwtAuthContext(request: NextRequest): AuthContext | null {
       userMetadata.modelo_ensino
   );
 
-  return { role, escolaId, tenantType };
+  return { userId, role, escolaId, tenantType };
 }
 
 function getLandingPathByContext(ctx: AuthContext): string {
@@ -342,6 +344,7 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
   );
 
   return {
+    userId: user.id ?? null,
     role,
     escolaId,
     tenantType,
@@ -512,7 +515,24 @@ export async function middleware(request: NextRequest) {
         }
 
         if (tenant.role !== 'global_admin') {
-          if (!tenant.escolaId || tenant.escolaId !== resolved.id) {
+          let hasTenantAccess = Boolean(tenant.escolaId && tenant.escolaId === resolved.id);
+
+          // Utilizadores multi-escola ou legados podem não ter o tenant activo no JWT.
+          if (!hasTenantAccess && tenant.userId) {
+            const supabase = createSupabaseClient(request, response);
+            if (supabase) {
+              const { data: membership } = await supabase
+                .from('escola_users')
+                .select('escola_id')
+                .eq('user_id', tenant.userId)
+                .eq('escola_id', resolved.id)
+                .limit(1)
+                .maybeSingle();
+              hasTenantAccess = Boolean(membership?.escola_id);
+            }
+          }
+
+          if (!hasTenantAccess) {
             return finalizeResponse(request, createForbiddenResponse(response, isApi), allowedOrigin);
           }
         }
