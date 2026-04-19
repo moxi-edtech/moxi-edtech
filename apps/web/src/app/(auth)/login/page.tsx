@@ -1,17 +1,21 @@
-import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import BrandPanel from "./BrandPanel";
-import LoginForm from "./LoginForm";
 
-export const metadata: Metadata = {
-  title: "Login • Klasse",
-  description: "Acesse sua conta Klasse.",
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+type SearchParams = Promise<{ redirect?: string; next?: string }>;
+
+function resolveAuthLoginUrl(host: string, isLocalHost: boolean) {
+  if (process.env.NODE_ENV !== "production") {
+    return (process.env.KLASSE_AUTH_LOCAL_URL ?? "http://auth.lvh.me:3000/login").trim();
+  }
+
+  const configured = process.env.KLASSE_AUTH_URL?.trim();
+  if (!configured) {
+    throw new Error(
+      `Missing KLASSE_AUTH_URL in production for host "${host || "unknown"}" (isLocalHost=${isLocalHost})`
+    );
+  }
+  return configured;
+}
 
 function normalizeRedirect(redirectRaw: string | undefined, origin: string) {
   const value = String(redirectRaw ?? "").trim();
@@ -24,42 +28,36 @@ function normalizeRedirect(redirectRaw: string | undefined, origin: string) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string; next?: string }>;
+  searchParams: SearchParams;
 }) {
-  const shouldUseCentralAuth =
-    process.env.KLASSE_USE_CENTRAL_AUTH === "1" || process.env.NODE_ENV === "production";
+  const headerStore = await headers();
+  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const isLocalHost =
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".lvh.me");
 
-  if (shouldUseCentralAuth) {
-    const authLoginUrl = (process.env.KLASSE_AUTH_URL ?? "https://auth.klasse.ao/login").trim();
-    const params = await searchParams;
-    const headerStore = await headers();
-    const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-    const origin = host
-      ? `${protocol}://${host}`
-      : (process.env.NEXT_PUBLIC_BASE_URL ?? "https://app.klasse.ao").replace(/\/$/, "");
-    const redirectTarget = normalizeRedirect(
-      typeof params.redirect === "string" ? params.redirect : params.next,
-      origin
-    );
+  const authLoginUrl = resolveAuthLoginUrl(host, isLocalHost);
 
-    try {
-      const url = new URL(authLoginUrl);
-      url.searchParams.set("redirect", redirectTarget);
-      redirect(url.toString());
-    } catch {
-      redirect(`${authLoginUrl}?redirect=${encodeURIComponent(redirectTarget)}`);
-    }
-  }
-
-  return (
-    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
-      <BrandPanel />
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-[420px]">
-          <LoginForm />
-        </div>
-      </div>
-    </div>
+  const params = await searchParams;
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const origin = host
+    ? `${protocol}://${host}`
+    : (process.env.NEXT_PUBLIC_BASE_URL ?? "https://app.klasse.ao").replace(/\/$/, "");
+  const redirectTarget = normalizeRedirect(
+    typeof params.redirect === "string" ? params.redirect : params.next,
+    origin
   );
+
+  try {
+    const url = new URL(authLoginUrl);
+    url.searchParams.set("redirect", redirectTarget);
+    redirect(url.toString());
+  } catch {
+    redirect(`${authLoginUrl}?redirect=${encodeURIComponent(redirectTarget)}`);
+  }
 }

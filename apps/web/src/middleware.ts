@@ -203,6 +203,42 @@ const PRODUCT_HOSTNAMES: Record<Exclude<ProductContext, 'unknown' | 'landing'>, 
   k12: 'app.klasse.ao',
   formacao: 'formacao.klasse.ao',
 };
+function safeAbsoluteUrl(
+  value: string | undefined,
+  fallback: string
+): string {
+  const candidate = (value ?? "").trim();
+  if (candidate) {
+    try {
+      const parsed = new URL(candidate);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.toString();
+      }
+    } catch {
+      // ignore invalid candidate and fallback below
+    }
+  }
+  return fallback;
+}
+
+function resolveUniversalLoginUrl(): string {
+  if (process.env.NODE_ENV !== "production") {
+    return safeAbsoluteUrl(
+      process.env.KLASSE_AUTH_LOCAL_URL,
+      "http://auth.lvh.me:3000/login"
+    );
+  }
+
+  const configured = process.env.KLASSE_AUTH_URL?.trim();
+  if (!configured) {
+    throw new Error("Missing KLASSE_AUTH_URL in production");
+  }
+
+  return safeAbsoluteUrl(
+    configured,
+    configured
+  );
+}
 
 function getLandingPathByContext(ctx: AuthContext): string {
   if (ctx.tenantType === 'formacao') {
@@ -271,8 +307,8 @@ function redirectToProductHost(
     requestUrl: request.nextUrl,
     targetProduct: target,
     pathname,
-    localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://localhost:3000',
-    localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://localhost:3001',
+    localK12Origin: process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001',
+    localFormacaoOrigin: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://formacao.lvh.me:3002',
   });
   const sameDestination =
     redirectUrl.protocol === request.nextUrl.protocol &&
@@ -292,6 +328,25 @@ function createForbiddenResponse(baseResponse: NextResponse, isApi: boolean) {
     : new NextResponse('Forbidden', { status: 403 });
   applyResponseCookies(baseResponse, denied);
   return denied;
+}
+
+function redirectToCentralAuth(request: NextRequest, baseResponse: NextResponse) {
+  const loginUrl = new URL(resolveUniversalLoginUrl());
+  const canonicalOrigin = safeAbsoluteUrl(
+    process.env.KLASSE_K12_LOCAL_ORIGIN,
+    "http://app.lvh.me:3001"
+  );
+  const canonicalReturnTo =
+    process.env.NODE_ENV !== 'production'
+      ? new URL(
+          `${request.nextUrl.pathname}${request.nextUrl.search}`,
+          canonicalOrigin
+        ).toString()
+      : request.nextUrl.href;
+  loginUrl.searchParams.set('redirect', canonicalReturnTo);
+  const redirectResponse = NextResponse.redirect(loginUrl);
+  applyResponseCookies(baseResponse, redirectResponse);
+  return redirectResponse;
 }
 
 function createSupabaseClient(request: NextRequest, response: NextResponse) {
@@ -338,6 +393,29 @@ async function resolveEscolaSlugMapping(
 }
 
 export async function middleware(request: NextRequest) {
+  const host = (request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    (host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.endsWith('.localhost'))
+  ) {
+    const canonicalOrigin = (process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001').trim();
+    try {
+      const canonical = new URL(canonicalOrigin);
+      if (canonical.host && canonical.host !== host) {
+        const next = request.nextUrl.clone();
+        next.protocol = canonical.protocol;
+        next.hostname = canonical.hostname;
+        next.port = canonical.port;
+        return NextResponse.redirect(next, 307);
+      }
+    } catch {
+      // ignore invalid canonical origin and continue normal flow
+    }
+  }
+
   const { pathname } = request.nextUrl;
   const productContext = detectProductContextFromHostname(request.headers.get('host'));
   const apiPath = isApiPath(pathname);
@@ -426,6 +504,17 @@ export async function middleware(request: NextRequest) {
       if (resolved) {
         const tenant = await resolveAuthContext(request, response);
         if (!tenant) {
+          if (!isApi) {
+            console.info(
+              JSON.stringify({
+                event: 'redirect_decision',
+                path: pathname,
+                hasSession: false,
+                timestamp: new Date().toISOString(),
+              })
+            );
+            return finalizeResponse(request, redirectToCentralAuth(request, response), allowedOrigin);
+          }
           return finalizeResponse(request, createForbiddenResponse(response, isApi), allowedOrigin);
         }
 
@@ -460,6 +549,14 @@ export async function middleware(request: NextRequest) {
 
   const authContext = await resolveAuthContext(request, response);
   if (!authContext?.role) {
+    console.info(
+      JSON.stringify({
+        event: 'redirect_decision',
+        path: pathname,
+        hasSession: false,
+        timestamp: new Date().toISOString(),
+      })
+    );
     logAuthEvent({
       action: 'resolve_context_failed',
       route: pathname,
@@ -468,9 +565,7 @@ export async function middleware(request: NextRequest) {
       tenant_type: authContext?.tenantType ?? null,
       details: { reason: 'role_not_resolved' },
     });
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    return finalizeResponse(request, NextResponse.redirect(loginUrl), allowedOrigin);
+    return finalizeResponse(request, redirectToCentralAuth(request, response), allowedOrigin);
   }
 
   if (
