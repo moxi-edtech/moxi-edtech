@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { createClient } from "@/lib/supabaseClient"; 
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 // Importa os teus componentes (ajusta os caminhos se necessário)
@@ -34,34 +33,27 @@ export default function ConfiguracoesPage({ params }: Props) {
         return;
       }
       try {
-        // --- Existing checkStatus logic ---
-        const supabase = createClient();
-        const [turmasResult, escolaNomeResult] = await Promise.all([
-          supabase
-            .from('turmas')
-            .select('*', { count: 'exact', head: true })
-            .eq('escola_id', escolaId),
-          supabase
-            .from('escolas')
-            .select('nome, slug')
-            .eq('id', escolaId)
-            .maybeSingle(),
+        const [setupStatusRes, escolaNomeRes] = await Promise.all([
+          fetch(`/api/escola/${escolaId}/admin/setup/status`, { cache: "no-store" }),
+          fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" }),
         ]);
 
         if (cancelled) return;
 
-        if (!turmasResult.error && turmasResult.count && turmasResult.count > 0) {
-          setSetupComplete(true);
-        } else {
-          setSetupComplete(false);
-        }
+        const setupStatusJson = await setupStatusRes.json().catch(() => null);
+        const nomeJson = await escolaNomeRes.json().catch(() => null);
+        const nomePayload = nomeJson?.data ?? nomeJson ?? {};
 
-        const nome = (escolaNomeResult.data as any)?.nome as string | undefined;
-        const slug = (escolaNomeResult.data as any)?.slug as string | undefined;
+        const setupData = setupStatusJson?.data ?? {};
+        const hasSetupByStatus = Boolean(
+          setupData.turmas_ok ?? setupData.has_turmas_no_ano
+        );
+        setSetupComplete(setupStatusRes.ok && hasSetupByStatus);
+
+        const nome = (nomePayload?.nome as string | undefined) ?? "";
+        const slug = (nomePayload?.slug as string | undefined) ?? "";
         if (nome) setSchoolDisplayName(nome);
         if (slug) setEscolaParam(String(slug));
-        // --- End existing checkStatus logic ---
-
       } catch (error: any) {
         console.error("Erro ao carregar dados:", error);
       } finally {

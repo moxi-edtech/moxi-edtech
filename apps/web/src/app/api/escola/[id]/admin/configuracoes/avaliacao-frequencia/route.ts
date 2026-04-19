@@ -22,7 +22,10 @@ const avaliacaoConfigSchema = z.object({
 const payloadSchema = z.object({
   frequencia_modelo: z.enum(['POR_AULA', 'POR_PERIODO']),
   frequencia_min_percent: z.number().int().min(0).max(100),
-  modelo_avaliacao: z.string().min(1),
+  modelo_avaliacao: z.string().trim().optional().transform((value) => {
+    if (!value || value.length === 0) return 'SIMPLIFICADO';
+    return value;
+  }),
   avaliacao_config: avaliacaoConfigSchema.optional(),
 });
 
@@ -57,11 +60,11 @@ const buildFormulaFromComponentes = (componentes: AvaliacaoComponente[]) => {
   };
 };
 
-const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, escolaId: string) => {
+const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, resolvedEscolaId: string) => {
   let defaultConfigQuery = supabase
     .from('modelos_avaliacao')
     .select('componentes')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .eq('is_default', true)
 
   defaultConfigQuery = applyKf2ListInvariants(defaultConfigQuery, {
@@ -83,6 +86,9 @@ const withNoStore = (response: NextResponse, start?: number) => {
   return response;
 };
 
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const start = Date.now();
   try {
@@ -94,9 +100,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }), start);
     }
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
+      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
+    }
+
     const { data: hasRole, error: rolesError } = await supabase
       .rpc('user_has_role_in_school', {
-        p_escola_id: requestedEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_roles: ['admin_escola', 'secretaria', 'admin'],
       });
 
@@ -115,12 +126,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
-
-    if (userEscolaId && userEscolaId !== requestedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
-    }
+    const effectiveEscolaId = resolvedEscolaId;
 
     const { data: config, error } = await supabase
       .from('configuracoes_escola')
@@ -136,7 +142,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
-    const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'PADRAO_ESCOLA';
+    const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'SIMPLIFICADO';
     const defaultConfig = await resolveDefaultConfig(supabase, effectiveEscolaId);
     const avaliacaoConfig = hasComponentes(config?.avaliacao_config)
       ? config?.avaliacao_config
@@ -170,9 +176,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }), start);
     }
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
+      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
+    }
+
     const { data: hasRole, error: rolesError } = await supabase
       .rpc('user_has_role_in_school', {
-        p_escola_id: requestedEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_roles: ['admin_escola', 'secretaria', 'admin'],
       });
 
@@ -191,12 +202,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
-
-    if (userEscolaId && userEscolaId !== requestedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
-    }
+    const effectiveEscolaId = resolvedEscolaId;
 
     const body = await req.json();
     const parseResult = payloadSchema.safeParse(body);
@@ -261,7 +267,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    if (payload.modelo_avaliacao) {
+    if (payload.modelo_avaliacao && isUuid(payload.modelo_avaliacao)) {
       const { error: updateModeloError } = await supabase
         .from('modelos_avaliacao')
         .update({

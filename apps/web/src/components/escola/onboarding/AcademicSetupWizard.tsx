@@ -133,7 +133,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const { toast, dismiss, success, error, warning } = useToast();
   const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const escolaUuidResolved = escolaUuid || escolaId;
+  const escolaUuidResolved = escolaUuid;
+  const escolaContextId = escolaUuidResolved || escolaParam;
   const [step, setStep] = useState(1);
 
   // --- STATES (STEP 1) ---
@@ -199,6 +200,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   useEffect(() => {
     let cancelled = false;
     async function fetchSession() {
+      if (!escolaUuidResolved) return;
       try {
         const { data: ano } = await supabase.from('anos_letivos').select('*').eq('escola_id', escolaUuidResolved).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
         if (!cancelled && ano) {
@@ -224,7 +226,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   useEffect(() => {
     async function fn() {
       try {
-        const res = await fetch(`/api/escolas/${escolaUuidResolved}/nome`, { cache: "no-store" });
+        if (!escolaContextId) return;
+        const res = await fetch(`/api/escolas/${escolaContextId}/nome`, { cache: "no-store" });
         const j = await res.json();
         const n = j?.nome ?? j?.data?.nome;
         const nif = j?.nif ?? j?.data?.nif;
@@ -235,16 +238,16 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         if (plano) setSchoolPlan(plano);
       } catch (e) { console.error(e); }
     }
-    if (escolaUuidResolved) fn();
-  }, [escolaUuidResolved]);
+    if (escolaContextId) fn();
+  }, [escolaContextId]);
 
   useEffect(() => {
     let active = true;
     async function loadDraft() {
-      if (!escolaUuidResolved) return;
+      if (!escolaContextId) return;
       if (Object.keys(curriculumOverrides).length > 0) return;
       try {
-        const res = await fetch(`/api/escolas/${escolaUuidResolved}/onboarding/draft`, { cache: "no-store" });
+        const res = await fetch(`/api/escolas/${escolaContextId}/onboarding/draft`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         const overrides = json?.draft?.data?.curriculumOverrides;
         if (active && overrides && typeof overrides === "object") {
@@ -258,7 +261,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     return () => {
       active = false;
     };
-  }, [escolaUuidResolved, curriculumOverrides]);
+  }, [escolaContextId, curriculumOverrides]);
 
   // Fetch Config (Step 2)
   useEffect(() => {
@@ -267,9 +270,10 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       if (!escolaParam) return;
       setLoadingConfig(true);
       try {
+        if (!escolaContextId) return;
         const [configRes, modelosRes] = await Promise.all([
           fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
-          fetch(`/api/escolas/${escolaUuidResolved}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
+          fetch(`/api/escolas/${escolaContextId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
         ]);
         const j = await configRes.json();
         const modelosJson = await modelosRes.json().catch(() => null);
@@ -295,7 +299,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     }
     fn();
     return () => { active = false; };
-  }, [escolaParam, escolaUuidResolved]);
+  }, [escolaParam, escolaContextId]);
 
   // Fetch Counts
   useEffect(() => {
@@ -355,11 +359,26 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const handleSavePreferences = async () => {
     const tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
     try {
-        const r = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
+      const modeloAvaliacaoPayload =
+        (modeloAvaliacao && modeloAvaliacao.trim()) ||
+        (modelosAvaliacao[0]?.id ?? "SIMPLIFICADO");
+
+      const r = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frequencia_modelo: frequenciaModelo, frequencia_min_percent: frequenciaMinPercent, modelo_avaliacao: modeloAvaliacao, avaliacao_config: avaliacaoConfig })
+        body: JSON.stringify({
+          frequencia_modelo: frequenciaModelo,
+          frequencia_min_percent: frequenciaMinPercent,
+          modelo_avaliacao: modeloAvaliacaoPayload,
+          avaliacao_config: avaliacaoConfig
+        })
       });
-      if (!r.ok) throw new Error("Erro ao salvar regras");
+      if (!r.ok) {
+        const json = await r.json().catch(() => null);
+        const issues = Array.isArray(json?.issues)
+          ? json.issues.map((issue: any) => issue.message).join(", ")
+          : "";
+        throw new Error(issues || json?.error || "Erro ao salvar regras");
+      }
       dismiss(tid);
       success("Regras salvas.");
       return true;
@@ -376,6 +395,9 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   };
 
   const loadPresetBlueprint = async (presetKey: string) => {
+    if (!escolaUuidResolved) {
+      throw new Error("Escola ainda não resolvida.");
+    }
     if (presetCacheRef.current[presetKey]) return presetCacheRef.current[presetKey];
 
     const { data: presetRows, error: presetErr } = await supabase
@@ -439,6 +461,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const handleApplyCurriculumPreset = async () => {
     if (!matrix.length) return error("Matriz vazia.");
     if (!anoLetivoId) return error("Sessão não definida.");
+    if (!escolaContextId) return error("Escola ainda não resolvida.");
     
     setApplyingPreset(true);
     let tid = toast({ variant: "syncing", title: "Criando cursos e disciplinas...", duration: 0 });
@@ -451,7 +474,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       }, {} as any);
 
       const applied: any = {};
-      const cursosList = await fetchAllPaginated<any>(`/api/escolas/${escolaUuidResolved}/cursos`);
+      const cursosList = await fetchAllPaginated<any>(`/api/escolas/${escolaContextId}/cursos`);
 
       for (const k in grouped) {
         const { cursoNome, rows } = grouped[k];
@@ -541,9 +564,10 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleGenerateTurmas = async () => {
     if (!anoLetivoId) return error("Sem ano letivo.");
+    if (!escolaContextId) return error("Escola ainda não resolvida.");
     const tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
     try {
-      const slotsRes = await fetch(`/api/escolas/${escolaUuidResolved}/horarios/slots`, { cache: "no-store" });
+      const slotsRes = await fetch(`/api/escolas/${escolaContextId}/horarios/slots`, { cache: "no-store" });
       const slotsJson = await slotsRes.json().catch(() => null);
       const slotsPayload = slotsRes.ok && slotsJson?.ok ? (slotsJson.items || []) : [];
       const selectedTurnos = (Object.keys(turnos) as Array<keyof TurnosState>)
@@ -602,7 +626,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         );
       }
 
-      const classesDb = await fetchAllPaginated<any>(`/api/escolas/${escolaUuidResolved}/classes`);
+      const classesDb = await fetchAllPaginated<any>(`/api/escolas/${escolaContextId}/classes`);
       const mapClasses: any = {}; // cursoId -> { nome: id }
       classesDb.forEach((c: any) => {
         if(!mapClasses[c.curso_id]) mapClasses[c.curso_id] = {};
@@ -658,7 +682,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
       // Finalizar onboarding no banco de dados
       try {
-        await fetch(`/api/escolas/${escolaUuidResolved}/onboarding/core/finalize`, {
+        await fetch(`/api/escolas/${escolaContextId}/onboarding/core/finalize`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tipo: "academico" })
@@ -756,7 +780,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
           {step === 3 && (
             <AcademicStep2
-              escolaId={escolaUuidResolved}
+              escolaId={escolaContextId}
               presetCategory={presetCategory} onPresetCategoryChange={setPresetCategory}
               matrix={matrix} onMatrixChange={setMatrix} onMatrixUpdate={handleMatrixUpdate}
               turnos={turnos}

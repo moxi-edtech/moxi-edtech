@@ -24,7 +24,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
 
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
+    // Permission is enforced by resolver for UUID and slug path params.
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
 
@@ -47,11 +48,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       .from('vw_escola_setup_status')
       .select('*')
       .eq('escola_id', userEscolaId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching setup status:', error);
-      return NextResponse.json({ ok: false, error: 'Status do setup não encontrado.' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Erro ao consultar status do setup.' }, { status: 500 });
     }
 
     const { data: estruturaCounts, error: estruturaError } = await supabase
@@ -79,26 +80,34 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       && typeof config?.frequencia_min_percent === 'number';
     const avaliacaoFrequenciaOk = avaliacaoOk && frequenciaOk;
 
+    const setupData = data ?? {
+      escola_id: userEscolaId,
+      has_ano_letivo_ativo: false,
+      has_3_trimestres: false,
+      has_curriculo_published: false,
+      has_turmas_no_ano: false,
+    };
+
     const progressSteps = [
-      data.has_ano_letivo_ativo,
-      data.has_3_trimestres,
+      setupData.has_ano_letivo_ativo,
+      setupData.has_3_trimestres,
       avaliacaoFrequenciaOk,
-      data.has_curriculo_published,
-      data.has_turmas_no_ano,
+      setupData.has_curriculo_published,
+      setupData.has_turmas_no_ano,
     ];
     const progressPercent = Math.round((progressSteps.filter(Boolean).length / progressSteps.length) * 100);
 
     return NextResponse.json({
       ok: true,
       data: {
-        ...data,
-        ano_letivo_ok: data.has_ano_letivo_ativo,
-        periodos_ok: data.has_3_trimestres,
+        ...setupData,
+        ano_letivo_ok: setupData.has_ano_letivo_ativo,
+        periodos_ok: setupData.has_3_trimestres,
         avaliacao_ok: avaliacaoOk,
         frequencia_ok: frequenciaOk,
         avaliacao_frequencia_ok: avaliacaoFrequenciaOk,
-        curriculo_ok: data.has_curriculo_published,
-        turmas_ok: data.has_turmas_no_ano,
+        curriculo_ok: setupData.has_curriculo_published,
+        turmas_ok: setupData.has_turmas_no_ano,
         progress_percent: progressPercent,
         modelo_avaliacao: modeloAvaliacao,
         estrutura_counts: estruturaCounts
