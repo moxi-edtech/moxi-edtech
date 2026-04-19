@@ -7,24 +7,34 @@
     "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
     "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
     "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit:context": "node --test --import tsx tests/unit/context-regression.spec.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@moxi/auth-middleware": "workspace:*",
     "@moxi/tenant-sdk": "workspace:*",
+    "@react-pdf/renderer": "^4.3.2",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.81.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^0.562.0",
     "next": "15.5.7",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-hook-form": "^7.72.1",
+    "resend": "^6.9.1",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
     "autoprefixer": "^10.4.22",
     "tailwindcss": "^4.1.17",
     "tailwindcss-animate": "^1.0.7",
-    "@types/node": "^24.10.0",
-    "@types/react": "^19.2.2",
     "typescript": "5.9.3"
   }
 }
