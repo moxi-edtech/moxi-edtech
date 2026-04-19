@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev": "pnpm -C apps/web dev",
+    "dev:all": "concurrently \"pnpm -C apps/auth exec next dev -p 3000\" \"pnpm -C apps/web exec next dev -p 3001\" \"pnpm -C apps/formacao exec next dev -p 3002\"",
     "dev:formacao": "pnpm -C apps/formacao dev",
     "build": "pnpm -C apps/web build",
     "build:formacao": "pnpm -C apps/formacao build",
@@ -54,6 +55,7 @@
   "devDependencies": {
     "@types/node": "^24.10.0",
     "autoprefixer": "^10.4.22",
+    "concurrently": "^9.2.1",
     "fast-glob": "^3.3.3",
     "tsx": "^4.21.0"
   },
