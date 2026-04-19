@@ -1,5 +1,6 @@
 import { supabaseServer } from '~/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { resolveEscolaIdForUser } from '~/lib/tenant/resolveEscolaIdForUser';
 
 export default async function EscolaIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,17 +15,22 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
     return redirect('/login');
   }
 
+  const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, id);
+  if (!userEscolaId) {
+    return redirect('/dashboard');
+  }
+
   const { data: escolaUsuario, error } = await supabase
     .from('escola_users')
     .select('papel')
-    .eq('escola_id', id)
+    .eq('escola_id', userEscolaId)
     .eq('user_id', user.id)
     .single();
 
   const { data: escolaInfo } = await supabase
     .from('escolas')
     .select('slug')
-    .eq('id', id)
+    .eq('id', userEscolaId)
     .maybeSingle();
   const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : id;
 
