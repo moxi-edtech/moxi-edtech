@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
-import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import type { FormacaoDatabase, FormacaoSupabaseClient } from "@/lib/db-types";
+import type { Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     formando_user_id?: string;
     cohort_id?: string;
     numero_documento?: string;
-    payload_snapshot?: Record<string, unknown>;
+    payload_snapshot?: Json;
   } | null;
 
   const formandoUserId = String(body?.formando_user_id ?? "").trim();
@@ -61,19 +62,20 @@ export async function POST(request: Request) {
   }
 
   const numero = String(body?.numero_documento ?? "").trim() || buildDocNumber(auth.escolaId || "CF");
+  const insertPayload: FormacaoDatabase["public"]["Tables"]["formacao_certificados_emitidos"]["Insert"] = {
+    escola_id: auth.escolaId,
+    template_id: String(body?.template_id ?? "").trim() || null,
+    formando_user_id: formandoUserId,
+    cohort_id: String(body?.cohort_id ?? "").trim() || null,
+    numero_documento: numero,
+    payload_snapshot: body?.payload_snapshot ?? {},
+    created_by: auth.userId,
+  };
 
   const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_certificados_emitidos")
-    .insert({
-      escola_id: auth.escolaId,
-      template_id: String(body?.template_id ?? "").trim() || null,
-      formando_user_id: formandoUserId,
-      cohort_id: String(body?.cohort_id ?? "").trim() || null,
-      numero_documento: numero,
-      payload_snapshot: body?.payload_snapshot ?? {},
-      created_by: auth.userId,
-    })
+    .insert(insertPayload)
     .select("id, numero_documento, emitido_em, formando_user_id")
     .single();
 
