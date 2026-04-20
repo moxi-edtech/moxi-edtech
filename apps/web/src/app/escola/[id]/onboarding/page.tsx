@@ -12,17 +12,25 @@ export default async function OnboardingPage({ params }: { params: Promise<{ id:
   const escolaId = resolved.escolaId
   let escolaParam = resolved.slug ?? id
 
-  // Se o onboarding já foi concluído, envia para o dashboard
+  // Se o onboarding já foi concluído, ou já existe ano letivo ativo, envia para o dashboard
   try {
-    const { data } = await s
-      .from('escolas')
-      .select('onboarding_finalizado, slug')
-      .eq('id', escolaId)
-      .limit(1)
-    const e0 = (data?.[0] as any) || {}
-    const done = Boolean(e0.onboarding_finalizado)
-    escolaParam = e0.slug ? String(e0.slug) : escolaParam
-    if (done) {
+    const [{ data: escolaData }, { data: anoAtivoRows }] = await Promise.all([
+      s
+        .from('escolas')
+        .select('onboarding_finalizado, slug')
+        .eq('id', escolaId)
+        .maybeSingle(),
+      s
+        .from('anos_letivos')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('ativo', true)
+        .limit(1),
+    ])
+    const done = Boolean(escolaData?.onboarding_finalizado)
+    const hasAnoLetivoAtivo = Array.isArray(anoAtivoRows) && anoAtivoRows.length > 0
+    escolaParam = escolaData?.slug ? String(escolaData.slug) : escolaParam
+    if (done || hasAnoLetivoAtivo) {
       redirect(`/escola/${escolaParam}/admin`)
     }
   } catch {}
