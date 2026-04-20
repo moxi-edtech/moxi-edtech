@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabaseServer"
-import { hasPermission } from "@/lib/permissions"
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import { assertEscolaAccessAndPermissions } from "@/lib/api/assertEscolaAccessAndPermissions"
 import { recordAuditServer } from "@/lib/audit"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 
@@ -26,52 +25,20 @@ export async function GET(
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    const access = await assertEscolaAccessAndPermissions({
+      client: sserver as any,
+      userId: user.id,
+      requestedEscolaId: escolaId,
+      requiredPermissions: ['configurar_escola'],
+    })
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status })
     }
-
-    // Authorization: user must be linked with configurar_escola permission
-    let authorized = false
-    try {
-      let vincQuery = sserver
-        .from("escola_users")
-        .select("papel")
-        .eq("escola_id", escolaId)
-        .eq("user_id", user.id)
-
-      vincQuery = applyKf2ListInvariants(vincQuery, {
-        defaultLimit: 1,
-        order: [{ column: "created_at", ascending: false }],
-      })
-
-      const { data: vinc } = await vincQuery
-      if (vinc && vinc.length > 0) {
-        const papel = (vinc[0] as any).papel as any
-        authorized = hasPermission(papel, 'configurar_escola')
-      }
-    } catch (_) {}
-
-    if (!authorized) {
-      try {
-        let adminQuery = sserver
-          .from("escola_administradores")
-          .select("user_id")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-
-        adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 1, order: [{ column: "created_at", ascending: false }] })
-        const { data: adminLink } = await adminQuery
-        authorized = Boolean(adminLink && adminLink.length > 0)
-      } catch (_) {}
-    }
-
-    if (!authorized) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
     let draftQuery = (sserver as any)
       .from("onboarding_drafts")
       .select("data, step, updated_at")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", access.escolaId)
       .eq("user_id", user.id)
 
     draftQuery = applyKf2ListInvariants(draftQuery, { defaultLimit: 1, order: [{ column: "updated_at", ascending: false }] })
@@ -103,49 +70,18 @@ export async function PUT(
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    const access = await assertEscolaAccessAndPermissions({
+      client: sserver as any,
+      userId: user.id,
+      requestedEscolaId: escolaId,
+      requiredPermissions: ['configurar_escola'],
+    })
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status })
     }
-
-    // Lightweight auth: ensure user is linked to escola with configurar_escola (same as GET)
-    let authorized = false
-    try {
-      let vincQuery = sserver
-        .from("escola_users")
-        .select("papel")
-        .eq("escola_id", escolaId)
-        .eq("user_id", user.id)
-
-      vincQuery = applyKf2ListInvariants(vincQuery, {
-        defaultLimit: 1,
-        order: [{ column: "created_at", ascending: false }],
-      })
-
-      const { data: vinc } = await vincQuery
-      if (vinc && vinc.length > 0) {
-        const papel = (vinc[0] as any).papel as any
-        authorized = hasPermission(papel, 'configurar_escola')
-      }
-    } catch (_) {}
-    if (!authorized) {
-      try {
-        let adminQuery = sserver
-          .from("escola_administradores")
-          .select("user_id")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-
-        adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 1, order: [{ column: "created_at", ascending: false }] })
-        const { data: adminLink } = await adminQuery
-        authorized = Boolean(adminLink && adminLink.length > 0)
-      } catch (_) {}
-    }
-
-    if (!authorized) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
     const baseRow: any = {
-      escola_id: escolaId,
+      escola_id: access.escolaId,
       user_id: user.id,
       data: data ?? {},
       updated_at: new Date().toISOString(),
@@ -160,7 +96,7 @@ export async function PUT(
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     recordAuditServer({
-      escolaId,
+      escolaId: access.escolaId,
       portal: "admin_escola",
       acao: "ONBOARDING_DRAFT_SAVED",
       entity: "onboarding_drafts",
@@ -185,21 +121,26 @@ export async function DELETE(
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    const access = await assertEscolaAccessAndPermissions({
+      client: sserver as any,
+      userId: user.id,
+      requestedEscolaId: escolaId,
+      requiredPermissions: ['configurar_escola'],
+    })
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status })
     }
 
     const { error } = await (sserver as any)
       .from("onboarding_drafts")
       .delete()
-      .eq("escola_id", escolaId)
+      .eq("escola_id", access.escolaId)
       .eq("user_id", user.id)
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     recordAuditServer({
-      escolaId,
+      escolaId: access.escolaId,
       portal: "admin_escola",
       acao: "ONBOARDING_DRAFT_DELETED",
       entity: "onboarding_drafts",

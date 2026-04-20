@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { canManageEscolaResources } from "../permissions";
+import { assertEscolaAccessAndPermissions } from "@/lib/api/assertEscolaAccessAndPermissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const createSchema = z.object({
@@ -28,18 +27,23 @@ export async function GET(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase as any,
+      userId: user.id,
+      requestedEscolaId: escolaId,
+      requiredPermissions: ["configurar_escola"],
+    });
+    if (!access.ok) {
+      return NextResponse.json(
+        { ok: false, error: access.error, code: access.code },
+        { status: access.status }
+      );
     }
-
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
-    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     let query = (supabase as any)
       .from("modelos_avaliacao")
       .select("id, nome, curso_id, componentes, tipo, regras, formula, is_default, created_at, updated_at")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", access.escolaId);
 
     query = applyKf2ListInvariants(query, {
       limit,
@@ -70,13 +74,18 @@ export async function POST(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase as any,
+      userId: user.id,
+      requestedEscolaId: escolaId,
+      requiredPermissions: ["configurar_escola"],
+    });
+    if (!access.ok) {
+      return NextResponse.json(
+        { ok: false, error: access.error, code: access.code },
+        { status: access.status }
+      );
     }
-
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
-    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
     const parsed = createSchema.safeParse(body);
@@ -88,7 +97,7 @@ export async function POST(
     const { data, error } = await (supabase as any)
       .from("modelos_avaliacao")
       .insert({
-        escola_id: escolaId,
+        escola_id: access.escolaId,
         nome: parsed.data.nome,
         componentes: parsed.data.componentes,
         tipo: parsed.data.tipo ?? 'trimestral',
@@ -104,7 +113,7 @@ export async function POST(
       await (supabase as any)
         .from("modelos_avaliacao")
         .update({ is_default: false })
-        .eq("escola_id", escolaId)
+        .eq("escola_id", access.escolaId)
         .neq("id", data.id);
     }
 

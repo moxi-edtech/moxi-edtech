@@ -94,6 +94,7 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
     admin: 'admin',
     admin_escola: 'admin_escola',
     staff_admin: 'staff_admin',
+    staff: 'staff_admin',
     administrador: 'admin_escola',
     diretor: 'admin_escola',
     gestor: 'admin_escola',

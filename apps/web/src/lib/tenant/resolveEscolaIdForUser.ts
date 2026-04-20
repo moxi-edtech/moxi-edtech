@@ -31,19 +31,49 @@ export async function resolveEscolaIdForUser(
       : (await resolveEscolaParam(client, requestedEscolaId)).escolaId;
     if (!normalizedRequestedId) return null;
 
+    const cacheAndReturn = (value: string) => {
+      cache.set(cacheKey, { escolaId: value, expiresAt: Date.now() + CACHE_TTL_MS });
+      return value;
+    };
+
     try {
       const { data: allowed, error } = await client.rpc("has_access_to_escola_fast", {
         p_escola_id: normalizedRequestedId,
       });
-      if (error) return null;
-      const resolved = allowed ? String(normalizedRequestedId) : null;
-      if (resolved) {
-        cache.set(cacheKey, { escolaId: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
+      if (!error && allowed) return cacheAndReturn(String(normalizedRequestedId));
+    } catch {}
+
+    // Defensive fallback: in case RPC auth context is inconsistent, verify direct links.
+    try {
+      const { data: profile } = await client
+        .from("profiles")
+        .select("escola_id, current_escola_id")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const profileEscolaId = (profile?.current_escola_id ?? profile?.escola_id) as string | null | undefined;
+      if (profileEscolaId && String(profileEscolaId) === String(normalizedRequestedId)) {
+        return cacheAndReturn(String(normalizedRequestedId));
       }
-      return resolved;
+    } catch {}
+
+    try {
+      const { data: vinc } = await client
+        .from("escola_users")
+        .select("user_id")
+        .eq("escola_id", normalizedRequestedId)
+        .eq("user_id", userId)
+        .limit(1);
+      if (Array.isArray(vinc) && vinc.length > 0) {
+        return cacheAndReturn(String(normalizedRequestedId));
+      }
     } catch {
       return null;
     }
+
+    return null;
   }
 
   try {
