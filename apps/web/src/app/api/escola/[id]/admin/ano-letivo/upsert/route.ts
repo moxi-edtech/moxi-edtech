@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
-import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { assertEscolaAccessAndPermissions } from '@/lib/api/assertEscolaAccessAndPermissions';
+import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from '@/lib/permissions';
 import { z } from 'zod';
 import type { Database } from '~types/supabase';
 
@@ -14,7 +15,7 @@ const upsertSchema = z.object({
   ativo: z.boolean(),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<Database>();
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,27 +24,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    const { id: requestedEscolaId } = params;
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
-      return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
+    const { id: requestedEscolaId } = await params;
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase as any,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: PAPEL_GROUP_ESCOLA_ADMIN_SETUP,
+      route: '/api/escola/[id]/admin/ano-letivo/upsert',
+    });
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status });
     }
-
-    const { data: hasRole, error: rolesError } = await supabase
-      .rpc('user_has_role_in_school', {
-        p_escola_id: userEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin'],
-      });
-
-    if (rolesError) {
-      console.error('Error verifying user roles:', rolesError);
-      return NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 });
-    }
-
-    if (!hasRole) {
-      return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
-    }
+    const userEscolaId = access.escolaId;
 
     const body = await req.json();
     const parseResult = upsertSchema.safeParse(body);

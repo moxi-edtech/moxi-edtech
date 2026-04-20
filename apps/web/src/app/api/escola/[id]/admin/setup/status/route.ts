@@ -1,7 +1,8 @@
 // @kf2 allow-scan
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
-import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { assertEscolaAccessAndPermissions } from '@/lib/api/assertEscolaAccessAndPermissions';
+import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from '@/lib/permissions';
 import type { Database } from '~types/supabase';
 import { applyKf2ListInvariants } from '@/lib/kf2';
 
@@ -22,27 +23,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-
-    // Permission is enforced by resolver for UUID and slug path params.
-    if (!userEscolaId) {
-      return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase as any,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: PAPEL_GROUP_ESCOLA_ADMIN_SETUP,
+      route: '/api/escola/[id]/admin/setup/status',
+    });
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status });
     }
-
-    const { data: hasRole, error: rolesError } = await supabase
-      .rpc('user_has_role_in_school', {
-        p_escola_id: userEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin'],
-      });
-
-    if (rolesError) {
-      console.error('Error fetching user roles:', rolesError);
-      return NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 });
-    }
-
-    if (!hasRole) {
-      return NextResponse.json({ ok: false, error: 'Você não tem permissão para acessar este recurso.' }, { status: 403 });
-    }
+    const userEscolaId = access.escolaId;
 
     const { data, error } = await supabase
       .from('vw_escola_setup_status')
@@ -80,13 +71,30 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       && typeof config?.frequencia_min_percent === 'number';
     const avaliacaoFrequenciaOk = avaliacaoOk && frequenciaOk;
 
+    let hasAnoAtivoFallback = false;
+    if (!data?.has_ano_letivo_ativo) {
+      const { data: anoAtivoRows, error: anoAtivoError } = await supabase
+        .from('anos_letivos')
+        .select('id')
+        .eq('escola_id', userEscolaId)
+        .eq('ativo', true)
+        .limit(1);
+      if (anoAtivoError) {
+        console.warn('Error fetching fallback anos_letivos ativos:', anoAtivoError);
+      }
+      hasAnoAtivoFallback = Array.isArray(anoAtivoRows) && anoAtivoRows.length > 0;
+    }
+
     const setupData = data ?? {
       escola_id: userEscolaId,
-      has_ano_letivo_ativo: false,
+      has_ano_letivo_ativo: hasAnoAtivoFallback,
       has_3_trimestres: false,
       has_curriculo_published: false,
       has_turmas_no_ano: false,
     };
+    if (data && !data.has_ano_letivo_ativo && hasAnoAtivoFallback) {
+      setupData.has_ano_letivo_ativo = true;
+    }
 
     const progressSteps = [
       setupData.has_ano_letivo_ativo,

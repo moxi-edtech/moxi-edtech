@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { assertEscolaAccessAndPermissions } from "@/lib/api/assertEscolaAccessAndPermissions";
+import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from "@/lib/permissions";
 import type { Database } from "~types/supabase";
 
 type CommitResponse = {
@@ -32,21 +33,17 @@ export async function POST(
       return respond({ ok: false, error: "Idempotency-Key obrigatório" }, 400);
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
-      return respond({ ok: false, error: "Sem permissão" }, 403);
-    }
-
-    const { data: hasRole, error: roleError } = await supabase.rpc('user_has_role_in_school', {
-      p_escola_id: userEscolaId,
-      p_roles: ['admin_escola', 'secretaria', 'admin'],
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase as any,
+      userId: user.id,
+      requestedEscolaId: escolaId,
+      allowedPapels: PAPEL_GROUP_ESCOLA_ADMIN_SETUP,
+      route: '/api/escola/[id]/admin/setup/commit',
     });
-    if (roleError) {
-      return respond({ ok: false, error: "Erro ao verificar permissões" }, 500);
+    if (!access.ok) {
+      return respond({ ok: false, error: access.error, code: access.code }, access.status);
     }
-    if (!hasRole) {
-      return respond({ ok: false, error: "Sem permissão" }, 403);
-    }
+    const userEscolaId = access.escolaId;
 
     const anoValue = typeof ano === "number" ? ano : typeof ano === "string" ? Number(ano) : null;
     const resolvedAnoValue = Number.isFinite(anoValue ?? NaN) ? anoValue : null;

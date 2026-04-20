@@ -6,6 +6,7 @@ import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabaseClient";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import { shouldRouteToEscolaAdmin } from "@/lib/escola/onboardingGate";
 
 function getFormacaoBaseUrl() {
   if (typeof window === "undefined") return "https://formacao.klasse.ao";
@@ -34,23 +35,7 @@ export default function RedirectPage() {
     const resolve = async () => {
       try {
         const shouldRouteToAdmin = async (escolaId: string) => {
-          const [{ data: escola }, { data: anoAtivoRows }] = await Promise.all([
-            supabase
-              .from("escolas")
-              .select("onboarding_finalizado")
-              .eq("id", escolaId)
-              .maybeSingle(),
-            supabase
-              .from("anos_letivos")
-              .select("id")
-              .eq("escola_id", escolaId)
-              .eq("ativo", true)
-              .limit(1),
-          ]);
-
-          const onboardingDone = Boolean(escola?.onboarding_finalizado);
-          const hasAnoLetivoAtivo = Array.isArray(anoAtivoRows) && anoAtivoRows.length > 0;
-          return onboardingDone || hasAnoLetivoAtivo;
+          return shouldRouteToEscolaAdmin(supabase as any, escolaId);
         };
 
         // 🔑 sempre tenta pegar o usuário validado
