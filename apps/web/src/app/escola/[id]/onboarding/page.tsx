@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam"
+import { shouldRouteToEscolaAdmin } from "@/lib/escola/onboardingGate"
 
 export default async function OnboardingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -14,23 +15,18 @@ export default async function OnboardingPage({ params }: { params: Promise<{ id:
 
   // Se o onboarding já foi concluído, ou já existe ano letivo ativo, envia para o dashboard
   try {
-    const [{ data: escolaData }, { data: anoAtivoRows }] = await Promise.all([
+    const [{ data: escolaRows }, shouldGoAdmin] = await Promise.all([
       s
         .from('escolas')
-        .select('onboarding_finalizado, slug')
+        .select('slug')
         .eq('id', escolaId)
-        .maybeSingle(),
-      s
-        .from('anos_letivos')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('ativo', true)
         .limit(1),
+      shouldRouteToEscolaAdmin(s as any, escolaId),
     ])
-    const done = Boolean(escolaData?.onboarding_finalizado)
-    const hasAnoLetivoAtivo = Array.isArray(anoAtivoRows) && anoAtivoRows.length > 0
-    escolaParam = escolaData?.slug ? String(escolaData.slug) : escolaParam
-    if (done || hasAnoLetivoAtivo) {
+    escolaParam = escolaRows && escolaRows.length > 0 && escolaRows[0]?.slug
+      ? String(escolaRows[0].slug)
+      : escolaParam
+    if (shouldGoAdmin) {
       redirect(`/escola/${escolaParam}/admin`)
     }
   } catch {}

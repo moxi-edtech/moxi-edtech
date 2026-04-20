@@ -45,14 +45,14 @@ export async function resolveEscolaIdForUser(
 
     // Defensive fallback: in case RPC auth context is inconsistent, verify direct links.
     try {
-      const { data: profile } = await client
+      const { data: profileRows } = await client
         .from("profiles")
         .select("escola_id, current_escola_id")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
 
+      const profile = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
       const profileEscolaId = (profile?.current_escola_id ?? profile?.escola_id) as string | null | undefined;
       if (profileEscolaId && String(profileEscolaId) === String(normalizedRequestedId)) {
         return cacheAndReturn(String(normalizedRequestedId));

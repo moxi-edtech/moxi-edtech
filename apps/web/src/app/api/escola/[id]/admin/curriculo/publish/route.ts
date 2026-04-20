@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
-import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { assertEscolaAccessAndPermissions } from '@/lib/api/assertEscolaAccessAndPermissions';
+import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from '@/lib/permissions';
 import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao';
 import { buildSyncTurmasSummary, requiresNoRebuildConfirmation } from '@/lib/academico/curriculo-operacao';
@@ -109,18 +110,18 @@ type SyncExistingTurmasResult = {
 
 async function syncPublishedMatrizToExistingTurmas(args: {
   supabase: any;
-  escolaId: string;
+  resolvedEscolaId: string;
   cursoId: string;
   anoLetivoId: string;
   syncMode: SyncMode;
   confirmReconcileSync: boolean;
 }): Promise<SyncExistingTurmasResult> {
-  const { supabase, escolaId, cursoId, anoLetivoId, syncMode, confirmReconcileSync } = args;
+  const { supabase, resolvedEscolaId, cursoId, anoLetivoId, syncMode, confirmReconcileSync } = args;
 
   const { data: turmasRows, error: turmasErr } = await supabase
     .from('turmas')
     .select('id, classe_id')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .eq('curso_id', cursoId)
     .eq('ano_letivo_id', anoLetivoId);
   if (turmasErr) throw new Error(turmasErr.message || 'Falha ao carregar turmas para sincronização.');
@@ -152,7 +153,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
   const { data: publishedCurriculos, error: currErr } = await supabase
     .from('curso_curriculos')
     .select('id, classe_id')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .eq('curso_id', cursoId)
     .eq('ano_letivo_id', anoLetivoId)
     .eq('status', 'published');
@@ -191,7 +192,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
   const { data: matrizRows, error: matrizErr } = await supabase
     .from('curso_matriz')
     .select('id, classe_id')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .eq('curso_id', cursoId)
     .eq('ativo', true)
     .in('curso_curriculo_id', curriculoIds);
@@ -211,7 +212,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
     const matrizIds = matrizByClasse.get(turma.classe_id) ?? [];
     for (const cursoMatrizId of matrizIds) {
       insertsRaw.push({
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         turma_id: turma.id,
         curso_matriz_id: cursoMatrizId,
         professor_id: null,
@@ -253,7 +254,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
   const { data: existingRows, error: existingErr } = await supabase
     .from('turma_disciplinas')
     .select('turma_id, curso_matriz_id')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .in('turma_id', turmaIds)
     .in('curso_matriz_id', cursoMatrizIds);
   if (existingErr) throw new Error(existingErr.message || 'Falha ao mapear vínculos existentes de turma_disciplinas.');
@@ -261,18 +262,18 @@ async function syncPublishedMatrizToExistingTurmas(args: {
   const existingKeySet = new Set<string>();
   for (const row of existingRows || []) {
     if (!row?.turma_id || !row?.curso_matriz_id) continue;
-    existingKeySet.add(`${escolaId}:${row.turma_id}:${row.curso_matriz_id}`);
+    existingKeySet.add(`${resolvedEscolaId}:${row.turma_id}:${row.curso_matriz_id}`);
   }
 
   const { data: existingTurmaDisciplinasRows, error: existingTdErr } = await supabase
     .from('turma_disciplinas')
     .select('id, turma_id, curso_matriz_id, disciplina_id')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .in('turma_id', turmaIds);
   if (existingTdErr) throw new Error(existingTdErr.message || 'Falha ao carregar turma_disciplinas para detectar obsoletas.');
 
   const obsoleteCandidates = (existingTurmaDisciplinasRows || [])
-    .filter((row: any) => row?.id && row?.turma_id && !desiredKeySet.has(`${escolaId}:${row.turma_id}:${row.curso_matriz_id}`))
+    .filter((row: any) => row?.id && row?.turma_id && !desiredKeySet.has(`${resolvedEscolaId}:${row.turma_id}:${row.curso_matriz_id}`))
     .map((row: any) => ({
       id: String(row.id),
       turma_id: String(row.turma_id),
@@ -310,7 +311,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
       const { data: avaliacaoRows, error: avalErr } = await supabase
         .from('avaliacoes')
         .select('turma_disciplina_id')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .in('turma_disciplina_id', obsoleteIds);
       if (avalErr) throw new Error(avalErr.message || 'Falha ao verificar dependências de avaliações.');
       const avalBlocked = new Set((avaliacaoRows || []).map((row: any) => String(row.turma_disciplina_id)));
@@ -318,7 +319,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
       const { data: aulaRows, error: aulaErr } = await supabase
         .from('aulas')
         .select('turma_disciplina_id')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .in('turma_disciplina_id', obsoleteIds);
       if (aulaErr) throw new Error(aulaErr.message || 'Falha ao verificar dependências de aulas.');
       const aulaBlocked = new Set((aulaRows || []).map((row: any) => String(row.turma_disciplina_id)));
@@ -329,7 +330,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
         const { data: tdpRows, error: tdpErr } = await supabase
           .from('turma_disciplinas_professores')
           .select('turma_id, disciplina_id')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .in('turma_id', turmaIds)
           .in('disciplina_id', obsoleteDisciplinaIds);
         if (tdpErr) throw new Error(tdpErr.message || 'Falha ao verificar dependências de alocação docente.');
@@ -351,7 +352,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
         const { error: delErr } = await supabase
           .from('turma_disciplinas')
           .delete()
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .in('id', safeToDeleteIds);
         if (delErr) throw new Error(delErr.message || 'Falha ao remover vínculos obsoletos no modo reconcile.');
         reconcileRemoved = safeToDeleteIds.length;
@@ -389,30 +390,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
-      return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
-    }
-
-    const { data: hasRole, error: rolesError } = await supabase
-      .rpc('user_has_role_in_school', {
-        p_escola_id: userEscolaId,
-        p_roles: ['admin_escola'],
-      });
-
-    if (rolesError) {
-      return NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 });
-    }
-
-    if (!hasRole) {
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase as any,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: PAPEL_GROUP_ESCOLA_ADMIN_SETUP,
+      route: '/api/escola/[id]/admin/curriculo/publish',
+    });
+    if (!access.ok) {
       return NextResponse.json({
         ok: false,
-        error: 'Permissão insuficiente para publicar currículo.',
-        message: 'A publicação de currículo requer papel admin_escola nesta escola.',
-        code: 'ADMIN_ESCOLA_REQUIRED',
-      }, { status: 403 });
+        error: access.error || 'Permissão insuficiente para publicar currículo.',
+        message: 'A publicação de currículo requer perfil administrativo nesta escola (admin_escola, secretaria ou admin).',
+        code: access.code || 'ADMIN_ROLE_REQUIRED',
+      }, { status: access.status });
     }
+    const resolvedEscolaId = access.escolaId;
 
     const body = await req.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(body);
@@ -437,7 +430,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { count: turmasExistentesAntes } = await supabase
       .from('turmas')
       .select('id', { count: 'estimated', head: true })
-      .eq('escola_id', userEscolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('curso_id', cursoId)
       .eq('ano_letivo_id', anoLetivoId);
 
@@ -460,7 +453,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const { data, error } = await supabase.rpc('curriculo_publish', {
-      p_escola_id: userEscolaId,
+      p_escola_id: resolvedEscolaId,
       p_curso_id: cursoId,
       p_ano_letivo_id: anoLetivoId,
       p_version: version,
@@ -647,7 +640,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
 
       emitirEvento(supabase, {
-        escola_id: userEscolaId,
+        escola_id: resolvedEscolaId,
         tipo: 'curriculo.publish_failed',
         payload: {
           curso_id: cursoId,
@@ -672,7 +665,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     emitirEvento(supabase, {
-      escola_id: userEscolaId,
+      escola_id: resolvedEscolaId,
       tipo: 'curriculo.published',
       payload: {
         curso_id: cursoId,
@@ -690,7 +683,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }).catch(() => null);
 
     await dispatchProfessorNotificacao({
-      escolaId: userEscolaId,
+      escolaId: resolvedEscolaId,
       key: 'CURRICULO_PUBLICADO',
       actorId: user.id,
       actorRole: 'admin',
@@ -723,7 +716,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       try {
         syncExistingTurmas = await syncPublishedMatrizToExistingTurmas({
           supabase: supabase as any,
-          escolaId: userEscolaId,
+          resolvedEscolaId,
           cursoId,
           anoLetivoId,
           syncMode,
@@ -780,7 +773,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const { count: turmasCount } = await supabase
         .from('turmas')
         .select('id', { count: 'estimated', head: true })
-        .eq('escola_id', userEscolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('curso_id', cursoId)
         .eq('ano_letivo_id', anoLetivoId);
 
@@ -788,14 +781,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const { data: anoLetivoRow } = await supabase
           .from('anos_letivos')
           .select('ano')
-          .eq('escola_id', userEscolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('id', anoLetivoId)
           .maybeSingle();
         if (anoLetivoRow?.ano) {
           const { data: classes } = await supabase
             .from('classes')
             .select('id, turno')
-            .eq('escola_id', userEscolaId)
+            .eq('escola_id', resolvedEscolaId)
             .eq('curso_id', cursoId);
           const resolvedClasses = (classes || []).map((row: any) => ({
             classeId: row.id,
@@ -809,7 +802,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             : ['M'];
 
           const { error: genError } = await supabase.rpc('gerar_turmas_from_curriculo', {
-            p_escola_id: userEscolaId,
+            p_escola_id: resolvedEscolaId,
             p_curso_id: cursoId,
             p_ano_letivo: anoLetivoRow.ano,
             p_generation_params: {
@@ -840,7 +833,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { count: turmasDepoisPublish } = await supabase
       .from('turmas')
       .select('id', { count: 'estimated', head: true })
-      .eq('escola_id', userEscolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('curso_id', cursoId)
       .eq('ano_letivo_id', anoLetivoId);
 

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
-import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { assertEscolaAccessAndPermissions } from '@/lib/api/assertEscolaAccessAndPermissions';
+import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from '@/lib/permissions';
 import type { Database } from '~types/supabase';
 import { applyKf2ListInvariants } from '@/lib/kf2';
 
@@ -100,33 +101,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }), start);
     }
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    if (!resolvedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
-    }
-
-    const { data: hasRole, error: rolesError } = await supabase
-      .rpc('user_has_role_in_school', {
-        p_escola_id: resolvedEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin'],
-      });
-
-    if (rolesError) {
-      console.error('Error fetching user roles:', rolesError);
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: PAPEL_GROUP_ESCOLA_ADMIN_SETUP,
+      route: '/api/escola/[id]/admin/configuracoes/avaliacao-frequencia',
+    });
+    if (!access.ok) {
       return withNoStore(
-        NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 }),
+        NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status }),
         start
       );
     }
-
-    if (!hasRole) {
-      return withNoStore(
-        NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 }),
-        start
-      );
-    }
-
-    const effectiveEscolaId = resolvedEscolaId;
+    const effectiveEscolaId = access.escolaId;
 
     const { data: config, error } = await supabase
       .from('configuracoes_escola')
@@ -176,33 +164,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }), start);
     }
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    if (!resolvedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
-    }
-
-    const { data: hasRole, error: rolesError } = await supabase
-      .rpc('user_has_role_in_school', {
-        p_escola_id: resolvedEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin'],
-      });
-
-    if (rolesError) {
-      console.error('Error fetching user roles:', rolesError);
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: PAPEL_GROUP_ESCOLA_ADMIN_SETUP,
+      route: '/api/escola/[id]/admin/configuracoes/avaliacao-frequencia',
+    });
+    if (!access.ok) {
       return withNoStore(
-        NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 }),
+        NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status }),
         start
       );
     }
-
-    if (!hasRole) {
-      return withNoStore(
-        NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 }),
-        start
-      );
-    }
-
-    const effectiveEscolaId = resolvedEscolaId;
+    const effectiveEscolaId = access.escolaId;
 
     const body = await req.json();
     const parseResult = payloadSchema.safeParse(body);

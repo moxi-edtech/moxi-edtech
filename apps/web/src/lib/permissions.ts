@@ -117,6 +117,21 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
   return map[key] ?? null
 }
 
+export const PAPEL_GROUP_ESCOLA_ADMIN_SETUP: ReadonlyArray<Papel> = [
+  'admin',
+  'staff_admin',
+  'admin_escola',
+  'secretaria',
+]
+
+export function hasSomePapel(
+  papel: Papel | string | null | undefined,
+  allowed: ReadonlyArray<Papel>
+): boolean {
+  const normalized = normalizePapel(papel)
+  return Boolean(normalized && allowed.includes(normalized))
+}
+
 const ADMIN_PERMISSIONS = new Set<Permission>([
   'criar_usuario',
   'editar_usuario',

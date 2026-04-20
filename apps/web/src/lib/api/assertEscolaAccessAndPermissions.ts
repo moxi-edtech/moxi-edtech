@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hasPermission, type Permission } from "@/lib/permissions";
+import { hasPermission, hasSomePapel, type Papel, type Permission } from "@/lib/permissions";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
@@ -26,6 +26,30 @@ type Options = {
   userId: string;
   requestedEscolaId: string;
   requiredPermissions?: Permission[];
+  allowedPapels?: ReadonlyArray<Papel>;
+  route?: string;
+};
+
+const logAccessDecision = (payload: {
+  route?: string;
+  userId: string;
+  requestedEscolaId: string;
+  resolvedEscolaId?: string | null;
+  decision: "allow" | "deny";
+  code: string;
+}) => {
+  console.info(
+    JSON.stringify({
+      event: "escola_access_decision",
+      timestamp: new Date().toISOString(),
+      route: payload.route ?? null,
+      user_id: payload.userId,
+      requested_escola: payload.requestedEscolaId,
+      resolved_escola: payload.resolvedEscolaId ?? null,
+      decision: payload.decision,
+      code: payload.code,
+    })
+  );
 };
 
 export async function assertEscolaAccessAndPermissions({
@@ -33,9 +57,18 @@ export async function assertEscolaAccessAndPermissions({
   userId,
   requestedEscolaId,
   requiredPermissions = [],
+  allowedPapels = [],
+  route,
 }: Options): Promise<EscolaAccessResult> {
   const escolaId = await resolveEscolaIdForUser(client, userId, requestedEscolaId);
   if (!escolaId) {
+    logAccessDecision({
+      route,
+      userId,
+      requestedEscolaId,
+      decision: "deny",
+      code: "ESCOLA_ACCESS_DENIED",
+    });
     return {
       ok: false,
       status: 403,
@@ -84,6 +117,14 @@ export async function assertEscolaAccessAndPermissions({
   const isGlobalAdmin = profileRole === "super_admin" || profileRole === "global_admin";
   const hasBasicLink = isGlobalAdmin || hasProfileLink || hasEscolaLink || hasAdminLink;
   if (!hasBasicLink) {
+    logAccessDecision({
+      route,
+      userId,
+      requestedEscolaId,
+      resolvedEscolaId: escolaId,
+      decision: "deny",
+      code: "ESCOLA_LINK_NOT_FOUND",
+    });
     return {
       ok: false,
       status: 403,
@@ -111,6 +152,36 @@ export async function assertEscolaAccessAndPermissions({
     }
   }
 
+  if (allowedPapels.length > 0 && !isGlobalAdmin) {
+    const allowedByProfile = hasSomePapel(profileRole, allowedPapels);
+    const allowedByPapel = hasSomePapel(escolaPapel, allowedPapels);
+    if (!(allowedByProfile || allowedByPapel || hasAdminLink)) {
+      logAccessDecision({
+        route,
+        userId,
+        requestedEscolaId,
+        resolvedEscolaId: escolaId,
+        decision: "deny",
+        code: "ROLE_NOT_ALLOWED",
+      });
+      return {
+        ok: false,
+        status: 403,
+        error: "Sem permissão",
+        code: "ROLE_NOT_ALLOWED",
+      };
+    }
+  }
+
+  logAccessDecision({
+    route,
+    userId,
+    requestedEscolaId,
+    resolvedEscolaId: escolaId,
+    decision: "allow",
+    code: "ACCESS_GRANTED",
+  });
+
   return {
     ok: true,
     escolaId,
@@ -118,4 +189,3 @@ export async function assertEscolaAccessAndPermissions({
     escolaPapel: escolaPapel ? String(escolaPapel) : null,
   };
 }
-
