@@ -13,9 +13,10 @@ function getFormacaoBaseUrl() {
   if (
     host.startsWith("localhost") ||
     host.startsWith("127.0.0.1") ||
-    host.endsWith(".localhost")
+    host.endsWith(".localhost") ||
+    host.endsWith(".lvh.me")
   ) {
-    return "http://localhost:3001";
+    return "http://formacao.lvh.me:3002";
   }
   return "https://formacao.klasse.ao";
 }
@@ -32,6 +33,26 @@ export default function RedirectPage() {
 
     const resolve = async () => {
       try {
+        const shouldRouteToAdmin = async (escolaId: string) => {
+          const [{ data: escola }, { data: anoAtivoRows }] = await Promise.all([
+            supabase
+              .from("escolas")
+              .select("onboarding_finalizado")
+              .eq("id", escolaId)
+              .maybeSingle(),
+            supabase
+              .from("anos_letivos")
+              .select("id")
+              .eq("escola_id", escolaId)
+              .eq("ativo", true)
+              .limit(1),
+          ]);
+
+          const onboardingDone = Boolean(escola?.onboarding_finalizado);
+          const hasAnoLetivoAtivo = Array.isArray(anoAtivoRows) && anoAtivoRows.length > 0;
+          return onboardingDone || hasAnoLetivoAtivo;
+        };
+
         // 🔑 sempre tenta pegar o usuário validado
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -87,6 +108,10 @@ export default function RedirectPage() {
           const baseEscolaId = escola_id || resolvedEscolaId;
           const resolvedParam = baseEscolaId ? await resolveEscolaParam(supabase, baseEscolaId) : null;
           const escolaParam = resolvedParam?.slug ? resolvedParam.slug : baseEscolaId;
+          const isK12AdminRole =
+            role === "admin" ||
+            role === "admin_escola" ||
+            role === "staff_admin";
 
           const isFormacaoRole =
             role === "formacao_admin" ||
@@ -96,7 +121,12 @@ export default function RedirectPage() {
             role === "formando";
           if (tenantType === "formacao" || isFormacaoRole) {
             const formacaoBaseUrl = getFormacaoBaseUrl();
-            if (role === "formacao_admin") {
+            if (
+              role === "formacao_admin" ||
+              role === "admin" ||
+              role === "admin_escola" ||
+              role === "staff_admin"
+            ) {
               window.location.replace(`${formacaoBaseUrl}/admin/dashboard`);
             } else if (role === "formacao_secretaria") {
               window.location.replace(`${formacaoBaseUrl}/secretaria/catalogo-cursos`);
@@ -111,18 +141,12 @@ export default function RedirectPage() {
           }
 
           // Roteamento por role
-          if (escola_id && (role === "admin" || role === "staff_admin")) {
-            const { data: esc } = await supabase
-              .from("escolas")
-              .select("onboarding_finalizado")
-              .eq("id", escola_id)
-              .limit(1);
-            const e0 = (esc && esc.length > 0) ? esc[0] : { onboarding_finalizado: false };
-            const done = Boolean(e0.onboarding_finalizado);
+          if (baseEscolaId && isK12AdminRole) {
+            const done = await shouldRouteToAdmin(baseEscolaId);
             if (escolaParam) {
               router.replace(done ? `/escola/${escolaParam}/admin` : `/escola/${escolaParam}/onboarding`);
             } else {
-              router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
+              router.replace(done ? `/escola/${baseEscolaId}/admin` : `/escola/${baseEscolaId}/onboarding`);
             }
             return;
           }
@@ -132,18 +156,14 @@ export default function RedirectPage() {
               router.replace("/super-admin");
               break;
             case "admin":
-              if (escola_id) {
-                const { data: esc } = await supabase
-                  .from("escolas")
-                  .select("onboarding_finalizado")
-                  .eq("id", escola_id)
-                  .limit(1);
-                const e0 = (esc && esc.length > 0) ? esc[0] : { onboarding_finalizado: false };
-                const done = Boolean(e0.onboarding_finalizado);
+            case "admin_escola":
+            case "staff_admin":
+              if (baseEscolaId) {
+                const done = await shouldRouteToAdmin(baseEscolaId);
                 if (escolaParam) {
                   router.replace(done ? `/escola/${escolaParam}/admin` : `/escola/${escolaParam}/onboarding`);
                 } else {
-                  router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
+                  router.replace(done ? `/escola/${baseEscolaId}/admin` : `/escola/${baseEscolaId}/onboarding`);
                 }
               } else {
                 router.replace("/admin");
