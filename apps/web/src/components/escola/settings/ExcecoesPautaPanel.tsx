@@ -47,7 +47,12 @@ interface Disciplina {
   nome: string;
 }
 
-export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: string }> }) {
+type ExcecoesPautaPanelProps = {
+  escolaId?: string;
+  params?: Promise<{ id: string }>;
+};
+
+export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: ExcecoesPautaPanelProps) {
   const [escolaId, setEscolaId] = useState<string | null>(null);
   const [excecoes, setExcecoes] = useState<Excecao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,8 +74,14 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
   const supabase = createClient();
 
   useEffect(() => {
-    params.then(p => setEscolaId(p.id));
-  }, [params]);
+    if (escolaIdProp) {
+      setEscolaId(escolaIdProp);
+      return;
+    }
+    if (params) {
+      params.then((p) => setEscolaId(p.id));
+    }
+  }, [escolaIdProp, params]);
 
   useEffect(() => {
     if (escolaId) {

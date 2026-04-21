@@ -30,7 +30,10 @@ import {
   UsersRound,
   Wallet,
   Layers,
-  BadgeDollarSign
+  BadgeDollarSign,
+  AlertTriangle,
+  ShieldCheck,
+  Landmark,
 } from "lucide-react";
 import type { NavItem } from "@/lib/sidebarNav";
 
@@ -57,7 +60,10 @@ const ICON_MAP: Record<string, any> = {
   UsersRound,
   Wallet,
   Layers,
-  BadgeDollarSign
+  BadgeDollarSign,
+  AlertTriangle,
+  ShieldCheck,
+  Landmark,
 };
 
 function cn(...c: Array<string | false | null | undefined>) {

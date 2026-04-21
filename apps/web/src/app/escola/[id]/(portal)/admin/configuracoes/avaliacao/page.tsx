@@ -270,7 +270,7 @@ export default function AvaliacaoUnificadaClient() {
       subtitle="Defina as regras do jogo: como os alunos são aprovados."
       menuItems={buildConfigMenuItems(base)}
       embedded
-      backHref={`${base}?tab=avaliacoes`}
+      backHref={base}
       prevHref={`${base}/calendario`}
       nextHref={`${base}/turmas`}
       saveDisabled={true} // Controle local
