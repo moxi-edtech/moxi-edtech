@@ -1,0 +1,16 @@
+import { redirect } from "next/navigation";
+import { getFormacaoAuthContext } from "@/lib/auth-context";
+import ConciliacaoClient from "./ConciliacaoClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function ConciliacaoPage() {
+  const auth = await getFormacaoAuthContext();
+  if (!auth) redirect("/login");
+
+  if (!["formacao_financeiro", "formacao_admin", "super_admin", "global_admin"].includes(String(auth.role))) {
+    redirect("/forbidden");
+  }
+
+  return <ConciliacaoClient />;
+}

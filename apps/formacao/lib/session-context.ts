@@ -1,21 +1,21 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 
-type TenantType = "k12" | "formacao";
+type TenantType = "k12" | "formacao" | "solo_creator";
 
 type EscolaUserRow = Database["public"]["Tables"]["escola_users"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
 type MembershipRow = Pick<EscolaUserRow, "escola_id" | "papel" | "tenant_type" | "created_at"> & {
   escola:
-    | Pick<Database["public"]["Tables"]["escolas"]["Row"], "slug" | "tenant_type">
-    | Pick<Database["public"]["Tables"]["escolas"]["Row"], "slug" | "tenant_type">[]
+    | Pick<Database["public"]["Tables"]["escolas"]["Row"], "nome" | "slug" | "tenant_type">
+    | Pick<Database["public"]["Tables"]["escolas"]["Row"], "nome" | "slug" | "tenant_type">[]
     | null;
 };
 
 function normalizeEscolaRelation(
   escola: MembershipRow["escola"]
-): Pick<Database["public"]["Tables"]["escolas"]["Row"], "slug" | "tenant_type"> | null {
+): Pick<Database["public"]["Tables"]["escolas"]["Row"], "nome" | "slug" | "tenant_type"> | null {
   if (!escola) return null;
   return Array.isArray(escola) ? escola[0] ?? null : escola;
 }
@@ -24,15 +24,17 @@ export type FormacaoSessionContext = {
   userId: string;
   tenantId: string | null;
   tenantSlug: string | null;
+  tenantName: string | null;
   tenantType: TenantType | null;
   role: string | null;
+  displayName: string | null;
 };
 
 function normalizeTenantType(value: unknown): TenantType | null {
   const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
-  if (normalized === "k12" || normalized === "formacao") return normalized;
+  if (normalized === "k12" || normalized === "formacao" || normalized === "solo_creator") return normalized;
   return null;
 }
 
@@ -64,7 +66,7 @@ export async function resolveFormacaoSessionContext(): Promise<FormacaoSessionCo
 
   const { data: membershipsRaw } = await supabase
     .from("escola_users")
-    .select("escola_id,papel,tenant_type,created_at,escola:escolas(slug,tenant_type)")
+    .select("escola_id,papel,tenant_type,created_at,escola:escolas(nome,slug,tenant_type)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
   const memberships = (membershipsRaw ?? []) as MembershipRow[];
@@ -79,6 +81,18 @@ export async function resolveFormacaoSessionContext(): Promise<FormacaoSessionCo
   const profile = ((profilesRaw ?? [])[0] ?? null) as Pick<ProfileRow, "role" | "current_escola_id"> | null;
 
   const selectedMembership = chooseMembership(memberships, profile?.current_escola_id ?? null, "formacao");
+  const fallbackEscolaId = selectedMembership?.escola_id ?? profile?.current_escola_id ?? null;
+
+  const fallbackEscola =
+    !selectedMembership && fallbackEscolaId
+      ? await supabase
+          .from("escolas")
+          .select("nome,slug,tenant_type")
+          .eq("id", fallbackEscolaId)
+          .maybeSingle()
+      : { data: null };
+
+  const selectedEscola = normalizeEscolaRelation(selectedMembership?.escola ?? null) ?? fallbackEscola.data ?? null;
   const roleFromMembership = selectedMembership?.papel?.trim().toLowerCase() ?? null;
   const roleFromProfile = String(profile?.role ?? "")
     .trim()
@@ -86,11 +100,19 @@ export async function resolveFormacaoSessionContext(): Promise<FormacaoSessionCo
 
   return {
     userId: user.id,
-    tenantId: selectedMembership?.escola_id ?? null,
-    tenantSlug: normalizeEscolaRelation(selectedMembership?.escola ?? null)?.slug ?? null,
+    tenantId: fallbackEscolaId,
+    tenantSlug: String(selectedEscola?.slug ?? "").trim() || null,
+    tenantName: String(selectedEscola?.nome ?? "").trim() || null,
     tenantType:
       normalizeTenantType(selectedMembership?.tenant_type) ??
-      normalizeTenantType(normalizeEscolaRelation(selectedMembership?.escola ?? null)?.tenant_type),
+      normalizeTenantType(selectedEscola?.tenant_type),
     role: roleFromMembership ?? (roleFromProfile || null),
+    displayName:
+      String(
+        user.user_metadata?.full_name ??
+          user.user_metadata?.name ??
+          user.email ??
+          ""
+      ).trim() || null,
   };
 }

@@ -177,7 +177,7 @@ export default function CertificadosPage() {
             ))}
           </select>
           <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.formando_user_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" />
-          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.cohort_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="Cohort id (opcional)" />
+          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.cohort_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="ID da turma (opcional)" />
           <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.numero_documento} onChange={(e) => setEmissaoForm((p) => ({ ...p, numero_documento: e.target.value }))} placeholder="Número (opcional)" />
         </div>
         <button type="submit" className="w-fit rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Emitir</button>

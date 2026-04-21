@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { GraduationCap } from "lucide-react";
+import { CourseCard } from "@/components/shared/CourseCard";
 
 type CursoItem = {
   id: string;
@@ -22,6 +25,7 @@ type CursoItem = {
 };
 
 export default function MeusCursosClient() {
+  const router = useRouter();
   const [items, setItems] = useState<CursoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,56 +53,54 @@ export default function MeusCursosClient() {
   }, []);
 
   return (
-    <div className="grid gap-3.5">
-      <h1 className="m-0 text-3xl font-bold text-zinc-900">Meus Cursos</h1>
-      <p className="m-0 text-zinc-600">
-        Cursos vinculados ao formando por inscrições/cobranças com estado de pagamento.
-      </p>
+    <div className="max-w-5xl mx-auto space-y-8 pb-12">
+      <header className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F6B3B]/10 text-[#1F6B3B]">
+            <GraduationCap size={24} />
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">meu percurso</p>
+        </div>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900">Meus Cursos</h1>
+        <p className="mt-2 text-sm text-slate-500 font-medium">
+          Acompanha o teu progresso académico e o estado das tuas inscrições.
+        </p>
+      </header>
 
-      {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
-      {loading ? <p className="m-0 text-sm text-zinc-700">Carregando...</p> : null}
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-sm font-bold">
+          {error}
+        </div>
+      )}
 
-      <section className="overflow-hidden rounded-xl border border-zinc-200">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-zinc-50">
-            <tr>
-              <Th>Curso</Th>
-              <Th>Cohort</Th>
-              <Th>Período</Th>
-              <Th>Referência</Th>
-              <Th>Valor</Th>
-              <Th>Pagamento</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <Td>{item.cohort?.curso_nome ?? item.descricao}</Td>
-                <Td>{item.cohort?.nome ?? "-"}</Td>
-                <Td>
-                  {item.cohort?.data_inicio ?? "-"} {"->"} {item.cohort?.data_fim ?? "-"}
-                </Td>
-                <Td>{item.referencia ?? "-"}</Td>
-                <Td>{item.valor_total}</Td>
-                <Td>{item.status_pagamento}</Td>
-              </tr>
-            ))}
-            {items.length === 0 ? (
-              <tr>
-                <Td colSpan={6}>Nenhum curso ativo encontrado.</Td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </section>
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[1, 2].map(i => (
+            <div key={i} className="h-48 rounded-[2rem] bg-white border border-slate-100 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2">
+          {items.map((item) => (
+            <CourseCard
+              key={item.id}
+              id={item.id}
+              title={item.cohort?.curso_nome ?? item.descricao}
+              price={item.valor_total}
+              format="PRESENCIAL"
+              actionLabel="Ver Pagamento"
+              onActionClick={(_id) => router.push("/pagamentos")}
+            />
+          ))}
+
+          {!loading && items.length === 0 && (
+            <div className="col-span-full py-20 text-center rounded-[2.2rem] bg-white border border-dashed border-slate-200">
+              <GraduationCap size={48} className="mx-auto text-slate-200 mb-4" />
+              <p className="text-slate-400 font-bold">Ainda não tens inscrições ativas.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="border-b border-zinc-200 px-2.5 py-2 text-left font-medium text-zinc-700">{children}</th>;
-}
-
-function Td({ children, colSpan }: { children: React.ReactNode; colSpan?: number }) {
-  return <td colSpan={colSpan} className="border-b border-zinc-200 px-2.5 py-2 text-zinc-800">{children}</td>;
 }

@@ -5,7 +5,7 @@ type AuthEvent = {
   route: string;
   user_id?: string | null;
   tenant_id?: string | null;
-  tenant_type?: "k12" | "formacao" | null;
+  tenant_type?: "k12" | "formacao" | "solo_creator" | null;
   details?: Record<string, unknown>;
 };
 
@@ -21,4 +21,3 @@ export function logAuthEvent(event: AuthEvent) {
   };
   console.info(JSON.stringify(payload));
 }
-

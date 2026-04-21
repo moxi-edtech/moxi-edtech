@@ -11,20 +11,108 @@ const allowedRoles = [
   "global_admin",
 ];
 
+type CursoModuloPayload = {
+  titulo?: string;
+  carga_horaria?: number | null;
+  descricao?: string | null;
+};
+
+function sanitizeModulos(modulos: CursoModuloPayload[] | null | undefined) {
+  if (!Array.isArray(modulos)) return [];
+  return modulos
+    .map((modulo, index) => {
+      const titulo = String(modulo?.titulo ?? "").trim();
+      const descricao = String(modulo?.descricao ?? "").trim() || null;
+      const carga = modulo?.carga_horaria == null ? null : Number(modulo.carga_horaria);
+      const cargaHoraria =
+        typeof carga === "number" && Number.isFinite(carga) && carga > 0 ? Math.floor(carga) : null;
+      return {
+        ordem: index + 1,
+        titulo,
+        descricao,
+        carga_horaria: cargaHoraria,
+      };
+    })
+    .filter((modulo) => modulo.titulo.length > 0);
+}
+
 export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
   const s = auth.supabase as FormacaoSupabaseClient;
-  const { data, error } = await s
+  const { data: cursos, error: cursosError } = await s
     .from("formacao_cursos")
     .select("id, codigo, nome, area, modalidade, carga_horaria, status, created_at")
     .eq("escola_id", auth.escolaId)
     .order("created_at", { ascending: false })
     .limit(300);
 
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, items: data ?? [] });
+  if (cursosError) return NextResponse.json({ ok: false, error: cursosError.message }, { status: 400 });
+
+  const cursoIds = (cursos ?? []).map((curso) => String(curso.id));
+  if (cursoIds.length === 0) return NextResponse.json({ ok: true, items: [] });
+
+  const [{ data: comerciais, error: comerciaisError }, { data: modulos, error: modulosError }] =
+    await Promise.all([
+      s
+        .from("formacao_curso_comercial")
+        .select("curso_id, preco_tabela, desconto_ativo, desconto_percentual, parceria_b2b_ativa")
+        .eq("escola_id", auth.escolaId)
+        .in("curso_id", cursoIds),
+      s
+        .from("formacao_curso_modulos")
+        .select("curso_id, ordem, titulo, carga_horaria, descricao")
+        .eq("escola_id", auth.escolaId)
+        .in("curso_id", cursoIds)
+        .order("ordem", { ascending: true }),
+    ]);
+
+  if (comerciaisError) return NextResponse.json({ ok: false, error: comerciaisError.message }, { status: 400 });
+  if (modulosError) return NextResponse.json({ ok: false, error: modulosError.message }, { status: 400 });
+
+  const comercialByCurso = new Map(
+    (comerciais ?? []).map((item) => [
+      String(item.curso_id),
+      {
+        preco_tabela: Number(item.preco_tabela ?? 0),
+        desconto_ativo: Boolean(item.desconto_ativo),
+        desconto_percentual: Number(item.desconto_percentual ?? 0),
+        parceria_b2b_ativa: Boolean(item.parceria_b2b_ativa),
+      },
+    ])
+  );
+
+  const modulosByCurso = new Map<string, Array<{ ordem: number; titulo: string; carga_horaria: number | null; descricao: string | null }>>();
+  for (const modulo of modulos ?? []) {
+    const key = String(modulo.curso_id);
+    const list = modulosByCurso.get(key) ?? [];
+    list.push({
+      ordem: Number(modulo.ordem),
+      titulo: String(modulo.titulo),
+      carga_horaria: modulo.carga_horaria == null ? null : Number(modulo.carga_horaria),
+      descricao: modulo.descricao ? String(modulo.descricao) : null,
+    });
+    modulosByCurso.set(key, list);
+  }
+
+  const items = (cursos ?? []).map((curso) => {
+    const key = String(curso.id);
+    const comercial = comercialByCurso.get(key) ?? {
+      preco_tabela: 0,
+      desconto_ativo: false,
+      desconto_percentual: 0,
+      parceria_b2b_ativa: false,
+    };
+
+    return {
+      ...curso,
+      ...comercial,
+      modulos: modulosByCurso.get(key) ?? [],
+    };
+  });
+
+  return NextResponse.json({ ok: true, items });
 }
 
 export async function POST(request: Request) {
@@ -37,6 +125,11 @@ export async function POST(request: Request) {
     area?: string;
     modalidade?: "presencial" | "online" | "hibrido";
     carga_horaria?: number;
+    preco_tabela?: number;
+    desconto_ativo?: boolean;
+    desconto_percentual?: number;
+    parceria_b2b_ativa?: boolean;
+    modulos?: CursoModuloPayload[];
   } | null;
 
   const codigo = String(body?.codigo ?? "").trim().toUpperCase();
@@ -48,6 +141,15 @@ export async function POST(request: Request) {
     : "presencial") as "presencial" | "online" | "hibrido";
   const cargaHoraria =
     body?.carga_horaria && Number(body.carga_horaria) > 0 ? Number(body.carga_horaria) : null;
+  const precoTabelaRaw = Number(body?.preco_tabela ?? 0);
+  const precoTabela = Number.isFinite(precoTabelaRaw) ? Math.max(0, precoTabelaRaw) : 0;
+  const descontoAtivo = Boolean(body?.desconto_ativo);
+  const descontoPercentualRaw = Number(body?.desconto_percentual ?? 0);
+  const descontoPercentual = Number.isFinite(descontoPercentualRaw)
+    ? Math.min(100, Math.max(0, descontoPercentualRaw))
+    : 0;
+  const parceriaB2BAtiva = Boolean(body?.parceria_b2b_ativa);
+  const modulos = sanitizeModulos(body?.modulos);
 
   if (!codigo || !nome) {
     return NextResponse.json({ ok: false, error: "codigo e nome são obrigatórios" }, { status: 400 });
@@ -69,7 +171,47 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, item: data });
+
+  if (!data?.id) {
+    return NextResponse.json({ ok: false, error: "curso criado sem identificador" }, { status: 500 });
+  }
+
+  const { error: comercialError } = await s.from("formacao_curso_comercial").upsert(
+    {
+      escola_id: auth.escolaId,
+      curso_id: data.id,
+      preco_tabela: precoTabela,
+      desconto_ativo: descontoAtivo,
+      desconto_percentual: descontoPercentual,
+      parceria_b2b_ativa: parceriaB2BAtiva,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "curso_id" }
+  );
+  if (comercialError) return NextResponse.json({ ok: false, error: comercialError.message }, { status: 400 });
+
+  if (modulos.length > 0) {
+    const { error: modulosError } = await s.from("formacao_curso_modulos").insert(
+      modulos.map((modulo) => ({
+        escola_id: auth.escolaId,
+        curso_id: data.id,
+        ...modulo,
+      }))
+    );
+    if (modulosError) return NextResponse.json({ ok: false, error: modulosError.message }, { status: 400 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    item: {
+      ...data,
+      preco_tabela: precoTabela,
+      desconto_ativo: descontoAtivo,
+      desconto_percentual: descontoPercentual,
+      parceria_b2b_ativa: parceriaB2BAtiva,
+      modulos,
+    },
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -84,6 +226,11 @@ export async function PATCH(request: Request) {
     modalidade?: "presencial" | "online" | "hibrido";
     carga_horaria?: number | null;
     status?: "ativo" | "inativo";
+    preco_tabela?: number;
+    desconto_ativo?: boolean;
+    desconto_percentual?: number;
+    parceria_b2b_ativa?: boolean;
+    modulos?: CursoModuloPayload[];
   } | null;
 
   const id = String(body?.id ?? "").trim();
@@ -108,6 +255,27 @@ export async function PATCH(request: Request) {
     patch.status = body.status;
   }
 
+  const modulos = body?.modulos ? sanitizeModulos(body.modulos) : null;
+  const comercialPayload =
+    body?.preco_tabela !== undefined ||
+    body?.desconto_ativo !== undefined ||
+    body?.desconto_percentual !== undefined ||
+    body?.parceria_b2b_ativa !== undefined
+      ? {
+          escola_id: auth.escolaId,
+          curso_id: id,
+          preco_tabela: Number.isFinite(Number(body?.preco_tabela))
+            ? Math.max(0, Number(body?.preco_tabela))
+            : 0,
+          desconto_ativo: Boolean(body?.desconto_ativo),
+          desconto_percentual: Number.isFinite(Number(body?.desconto_percentual))
+            ? Math.min(100, Math.max(0, Number(body?.desconto_percentual)))
+            : 0,
+          parceria_b2b_ativa: Boolean(body?.parceria_b2b_ativa),
+          updated_at: new Date().toISOString(),
+        }
+      : null;
+
   const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_cursos")
@@ -118,6 +286,38 @@ export async function PATCH(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+  if (comercialPayload) {
+    const { error: comercialError } = await s
+      .from("formacao_curso_comercial")
+      .upsert(comercialPayload, { onConflict: "curso_id" });
+    if (comercialError) return NextResponse.json({ ok: false, error: comercialError.message }, { status: 400 });
+  }
+
+  if (modulos) {
+    const { error: deleteModulosError } = await s
+      .from("formacao_curso_modulos")
+      .delete()
+      .eq("escola_id", auth.escolaId)
+      .eq("curso_id", id);
+    if (deleteModulosError) {
+      return NextResponse.json({ ok: false, error: deleteModulosError.message }, { status: 400 });
+    }
+
+    if (modulos.length > 0) {
+      const { error: insertModulosError } = await s.from("formacao_curso_modulos").insert(
+        modulos.map((modulo) => ({
+          escola_id: auth.escolaId,
+          curso_id: id,
+          ...modulo,
+        }))
+      );
+      if (insertModulosError) {
+        return NextResponse.json({ ok: false, error: insertModulosError.message }, { status: 400 });
+      }
+    }
+  }
+
   return NextResponse.json({ ok: true, item: data });
 }
 
@@ -129,6 +329,24 @@ export async function DELETE(request: Request) {
   if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
   const s = auth.supabase as FormacaoSupabaseClient;
+  const { error: deleteComercialError } = await s
+    .from("formacao_curso_comercial")
+    .delete()
+    .eq("escola_id", auth.escolaId)
+    .eq("curso_id", id);
+  if (deleteComercialError) {
+    return NextResponse.json({ ok: false, error: deleteComercialError.message }, { status: 400 });
+  }
+
+  const { error: deleteModulosError } = await s
+    .from("formacao_curso_modulos")
+    .delete()
+    .eq("escola_id", auth.escolaId)
+    .eq("curso_id", id);
+  if (deleteModulosError) {
+    return NextResponse.json({ ok: false, error: deleteModulosError.message }, { status: 400 });
+  }
+
   const { error } = await s
     .from("formacao_cursos")
     .delete()

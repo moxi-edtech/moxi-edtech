@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import { getCohortReferenceValue } from "@/lib/cohort-finance";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,6 @@ async function ensureConsumidorFinal(s: FormacaoSupabaseClient, escolaId: string
 }
 
 const allowedRoles = [
-  "formando",
   "formacao_financeiro",
   "formacao_admin",
   "super_admin",
@@ -54,10 +54,6 @@ export async function GET() {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (auth.role === "formando") {
-    query = query.eq("formando_user_id", auth.userId);
-  }
-
   const { data, error } = await query;
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -71,6 +67,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     descricao?: string;
     formando_user_id?: string;
+    cohort_id?: string;
     quantidade?: number;
     preco_unitario?: number;
     desconto?: number;
@@ -80,12 +77,13 @@ export async function POST(request: Request) {
 
   const descricao = String(body?.descricao ?? "").trim();
   const quantidade = Number(body?.quantidade ?? 1);
-  const precoUnitario = Number(body?.preco_unitario ?? 0);
+  const precoUnitarioInput = Number(body?.preco_unitario ?? 0);
   const desconto = Number(body?.desconto ?? 0);
+  const cohortId = String(body?.cohort_id ?? "").trim() || null;
   const vencimentoEm = String(body?.vencimento_em ?? "").trim();
-  const formandoUserId = auth.role === "formando" ? auth.userId : String(body?.formando_user_id ?? "").trim();
+  const formandoUserId = String(body?.formando_user_id ?? "").trim();
 
-  if (!descricao || !formandoUserId || quantidade <= 0 || precoUnitario < 0 || !vencimentoEm) {
+  if (!descricao || !formandoUserId || quantidade <= 0 || precoUnitarioInput < 0 || !vencimentoEm) {
     return NextResponse.json(
       { ok: false, error: "descricao, formando_user_id, vencimento_em, quantidade e preco_unitario são obrigatórios" },
       { status: 400 }
@@ -94,6 +92,14 @@ export async function POST(request: Request) {
 
   const s = auth.supabase as FormacaoSupabaseClient;
   try {
+    const cohortReference = await getCohortReferenceValue(s, auth.escolaId as string, cohortId);
+    const precoUnitario =
+      precoUnitarioInput > 0
+        ? precoUnitarioInput
+        : cohortReference != null
+          ? cohortReference
+          : precoUnitarioInput;
+
     const clienteId = await ensureConsumidorFinal(s, auth.escolaId as string);
     const referencia = String(body?.referencia ?? "").trim() || buildReference("B2C", auth.escolaId || "FAT");
 
@@ -104,6 +110,7 @@ export async function POST(request: Request) {
       .insert({
         escola_id: auth.escolaId,
         cliente_b2b_id: clienteId,
+        cohort_id: cohortId,
         referencia,
         vencimento_em: vencimentoEm,
         total_bruto: totalBruto,
@@ -169,10 +176,6 @@ export async function PATCH(request: Request) {
     .eq("escola_id", auth.escolaId)
     .eq("id", id);
 
-  if (auth.role === "formando") {
-    query = query.eq("formando_user_id", auth.userId);
-  }
-
   const { data, error } = await query
     .select("id, fatura_lote_id, formando_user_id, descricao, valor_total, status_pagamento")
     .single();
@@ -193,10 +196,6 @@ export async function DELETE(request: Request) {
     .delete()
     .eq("escola_id", auth.escolaId)
     .eq("id", id);
-
-  if (auth.role === "formando") {
-    query = query.eq("formando_user_id", auth.userId);
-  }
 
   const { error } = await query;
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

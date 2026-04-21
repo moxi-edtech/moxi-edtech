@@ -1,113 +1,181 @@
-"use client";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveFormacaoSessionContext } from "@/lib/session-context";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
-import { useMemo, useState } from "react";
+export const dynamic = "force-dynamic";
 
-type StepKey =
-  | "dados"
-  | "cursos"
-  | "cohorts"
-  | "cronograma"
-  | "formadores"
-  | "formandos"
-  | "b2b_certificados";
+type StepStatus = "done" | "pending";
 
-const STEPS: Array<{ key: StepKey; title: string; hint: string }> = [
-  { key: "dados", title: "Dados Base", hint: "NIPC, MAPTESS, regime fiscal" },
-  { key: "cursos", title: "Cursos", hint: "Catálogo e áreas de formação" },
-  { key: "cohorts", title: "Cohorts", hint: "Edições, vagas e datas" },
-  { key: "cronograma", title: "Cronograma", hint: "Calendário de aulas" },
-  { key: "formadores", title: "Formadores", hint: "Equipa docente e honorários" },
-  { key: "formandos", title: "Formandos", hint: "Inscrições e turmas" },
-  { key: "b2b_certificados", title: "B2B + Certificados", hint: "Clientes empresariais e templates" },
-];
+type Step = {
+  key: string;
+  title: string;
+  hint: string;
+  status: StepStatus;
+  required: boolean;
+  href: string;
+  actionLabel: string;
+};
 
-export default function FormacaoOnboardingPage() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [done, setDone] = useState<Record<StepKey, boolean>>({
-    dados: false,
-    cursos: false,
-    cohorts: false,
-    cronograma: false,
-    formadores: false,
-    formandos: false,
-    b2b_certificados: false,
-  });
+function stepStatusClass(status: StepStatus) {
+  return status === "done"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-amber-200 bg-amber-50 text-amber-700";
+}
 
-  const progress = useMemo(() => {
-    const total = STEPS.length;
-    const completed = STEPS.filter((step) => done[step.key]).length;
-    return { total, completed, percent: Math.round((completed / total) * 100) };
-  }, [done]);
+export default async function FormacaoOnboardingPage() {
+  const session = await resolveFormacaoSessionContext();
+  if (!session?.userId) redirect("/login");
+  if (!session.tenantId) redirect("/forbidden");
 
-  const activeStep = STEPS[currentStep - 1];
+  const role = String(session.role ?? "").trim().toLowerCase();
+  if (!["formacao_admin", "super_admin", "global_admin"].includes(role)) {
+    redirect("/forbidden");
+  }
+
+  const s = (await supabaseServer()) as FormacaoSupabaseClient;
+  const escolaId = session.tenantId;
+
+  const [
+    cursosRes,
+    cohortsRes,
+    valoresRes,
+    formadoresRes,
+    cobrancasRes,
+  ] = await Promise.all([
+    s.from("formacao_cursos").select("id").eq("escola_id", escolaId).limit(1),
+    s.from("formacao_cohorts").select("id").eq("escola_id", escolaId).limit(1),
+    s
+      .from("formacao_cohort_financeiro")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .gt("valor_referencia", 0)
+      .limit(1),
+    s.from("formacao_cohort_formadores").select("id").eq("escola_id", escolaId).limit(1),
+    s.from("formacao_faturas_lote_itens").select("id").eq("escola_id", escolaId).limit(1),
+  ]);
+
+  const hasCurso = (cursosRes.data ?? []).length > 0;
+  const hasCohort = (cohortsRes.data ?? []).length > 0;
+  const hasValor = (valoresRes.data ?? []).length > 0;
+  const hasFormador = (formadoresRes.data ?? []).length > 0;
+  const hasCobranca = (cobrancasRes.data ?? []).length > 0;
+
+  const steps: Step[] = [
+    {
+      key: "curso",
+      title: "Curso criado",
+      hint: "Pelo menos 1 curso ativo no catálogo.",
+      status: hasCurso ? "done" : "pending",
+      required: true,
+      href: "/admin/cursos",
+      actionLabel: hasCurso ? "Ver cursos" : "Criar curso",
+    },
+    {
+      key: "cohort",
+      title: "Turma criada (datas e vagas)",
+      hint: "Pelo menos 1 edição operacional com calendário.",
+      status: hasCohort ? "done" : "pending",
+      required: true,
+      href: "/admin/cohorts",
+      actionLabel: hasCohort ? "Ver turmas" : "Criar turma",
+    },
+    {
+      key: "valor",
+      title: "Valor do curso definido para a turma",
+      hint: "Definir valor de referência (> 0) para cobrança.",
+      status: hasValor ? "done" : "pending",
+      required: true,
+      href: "/admin/cohorts",
+      actionLabel: hasValor ? "Rever valor" : "Definir valor",
+    },
+    {
+      key: "formador",
+      title: "Formador atribuído à turma",
+      hint: "Pelo menos 1 formador vinculado à edição.",
+      status: hasFormador ? "done" : "pending",
+      required: true,
+      href: "/admin/equipa",
+      actionLabel: "Cadastrar formador",
+    },
+    {
+      key: "cobranca",
+      title: "Primeira cobrança preparada (opcional)",
+      hint: "Recomendado criar a primeira cobrança para validar operação financeira.",
+      status: hasCobranca ? "done" : "pending",
+      required: false,
+      href: "/financeiro/faturacao-b2c",
+      actionLabel: hasCobranca ? "Ver cobranças" : "Preparar cobrança",
+    },
+  ];
+
+  const requiredSteps = steps.filter((step) => step.required);
+  const requiredDone = requiredSteps.filter((step) => step.status === "done").length;
+  const requiredTotal = requiredSteps.length;
+  const progressPct = Math.round((requiredDone / requiredTotal) * 100);
+  const onboardingReady = requiredDone === requiredTotal;
 
   return (
-    <div className="grid gap-4">
-      <header>
-        <p className="m-0 text-xs uppercase tracking-wider text-zinc-500">
-          Onboarding Formação
-        </p>
-        <h1 className="my-1.5 text-3xl font-bold text-zinc-900">Setup Inicial do Centro</h1>
-        <p className="m-0 text-zinc-600">
-          Fluxo exclusivo de Formação, separado do onboarding K12.
+    <div className="grid gap-5">
+      <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">onboarding operacional</p>
+        <h1 className="mt-1 text-3xl font-semibold text-slate-900">Activação do Centro de Formação</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Dados base já vêm do provisionamento Super Admin. Aqui garantimos go-live operacional.
         </p>
       </header>
 
-      <section className="rounded-xl border border-zinc-200 p-3">
-        <div className="mb-2 flex items-center justify-between text-sm text-zinc-700">
-          <span>Progresso</span>
-          <strong>{progress.completed}/{progress.total} ({progress.percent}%)</strong>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+          <span>Obrigatórios concluídos</span>
+          <strong>
+            {requiredDone}/{requiredTotal} ({progressPct}%)
+          </strong>
         </div>
-        <div className="h-2.5 rounded-full bg-zinc-200">
+        <div className="h-2.5 rounded-full bg-slate-100">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-green-600 to-sky-500"
-            style={{ width: `${progress.percent}%` }}
+            className="h-full rounded-full bg-gradient-to-r from-[#C8902A] to-[#E3B23C]"
+            style={{ width: `${progressPct}%` }}
           />
         </div>
+        <p className="mt-3 text-xs text-slate-500">
+          {onboardingReady
+            ? "Centro pronto para operar: curso, turma, valor e formador já configurados."
+            : "Conclua os 4 itens obrigatórios para marcar o centro como operacional."}
+        </p>
       </section>
 
-      <section className="grid gap-2">
-        {STEPS.map((step, index) => {
-          const active = currentStep === index + 1;
-          return (
-            <button
-              key={step.key}
-              type="button"
-              onClick={() => setCurrentStep(index + 1)}
-              className={`cursor-pointer rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                active ? "border-sky-200 bg-sky-50" : "border-zinc-200 bg-white hover:bg-zinc-50"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <strong>{index + 1}. {step.title}</strong>
-                <span className="text-xs text-zinc-500">{done[step.key] ? "Concluído" : "Pendente"}</span>
+      <section className="grid gap-3">
+        {steps.map((step, index) => (
+          <article
+            key={step.key}
+            className="rounded-xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  passo {index + 1} {step.required ? "· obrigatório" : "· opcional"}
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-900">{step.title}</h2>
+                <p className="mt-1 text-sm text-slate-600">{step.hint}</p>
               </div>
-              <p className="mb-0 mt-1.5 text-sm text-zinc-600">{step.hint}</p>
-            </button>
-          );
-        })}
-      </section>
 
-      <section className="rounded-xl border border-zinc-200 p-3.5">
-        <h2 className="mt-0 text-xl font-semibold text-zinc-900">{activeStep.title}</h2>
-        <p className="mt-0 text-zinc-600">{activeStep.hint}</p>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${stepStatusClass(step.status)}`}>
+                {step.status === "done" ? "Concluído" : "Pendente"}
+              </span>
+            </div>
 
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setDone((prev) => ({ ...prev, [activeStep.key]: !prev[activeStep.key] }))}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-          >
-            {done[activeStep.key] ? "Marcar pendente" : "Marcar concluído"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrentStep((prev) => Math.min(STEPS.length, prev + 1))}
-            className="rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Próximo passo
-          </button>
-        </div>
+            <div className="mt-3">
+              <Link
+                href={step.href}
+                className="inline-flex items-center justify-center rounded-lg border border-[#C8902A] bg-[#C8902A] px-3 py-1.5 text-xs font-semibold text-slate-900 transition-all duration-200 hover:bg-[#B07E21]"
+              >
+                {step.actionLabel} →
+              </Link>
+            </div>
+          </article>
+        ))}
       </section>
     </div>
   );

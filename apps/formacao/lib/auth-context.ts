@@ -11,8 +11,13 @@ export type FormacaoRole =
 
 export type FormacaoAuthContext = {
   userId: string;
+  displayName: string | null;
   role: FormacaoRole | null;
-  tenantType: "k12" | "formacao" | null;
+  tenantId: string | null;
+  tenantSlug: string | null;
+  escolaId: string | null;
+  tenantName: string | null;
+  tenantType: "k12" | "formacao" | "solo_creator" | null;
 };
 
 export async function getFormacaoAuthContext(): Promise<FormacaoAuthContext | null> {
@@ -26,8 +31,16 @@ export async function getFormacaoAuthContext(): Promise<FormacaoAuthContext | nu
 
   return {
     userId: session.userId,
+    displayName: session.displayName,
     role: isFormacaoRole(roleRaw) ? roleRaw : null,
-    tenantType: tenantRaw === "k12" || tenantRaw === "formacao" ? tenantRaw : null,
+    tenantId: session.tenantId,
+    tenantSlug: session.tenantSlug,
+    escolaId: session.tenantId,
+    tenantName: session.tenantName,
+    tenantType:
+      tenantRaw === "k12" || tenantRaw === "formacao" || tenantRaw === "solo_creator"
+        ? tenantRaw
+        : null,
   };
 }
 
