@@ -23,15 +23,17 @@ const avaliacaoConfigSchema = z.object({
 const payloadSchema = z.object({
   frequencia_modelo: z.enum(['POR_AULA', 'POR_PERIODO']),
   frequencia_min_percent: z.number().int().min(0).max(100),
-  modelo_avaliacao: z.string().trim().optional().transform((value) => {
-    if (!value || value.length === 0) return 'SIMPLIFICADO';
-    return value;
-  }),
+  modelo_avaliacao: z.string().trim().optional(),
   avaliacao_config: avaliacaoConfigSchema.optional(),
 });
 
 type AvaliacaoComponente = { code: string; peso?: number; ativo?: boolean };
 type AvaliacaoConfig = { componentes?: AvaliacaoComponente[] };
+type ModeloAvaliacaoRow = {
+  id: string;
+  escola_id: string | null;
+  componentes: unknown;
+};
 
 const hasComponentes = (config: unknown): config is AvaliacaoConfig => {
   if (!config || typeof config !== 'object') return false;
@@ -61,22 +63,47 @@ const buildFormulaFromComponentes = (componentes: AvaliacaoComponente[]) => {
   };
 };
 
-const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, resolvedEscolaId: string) => {
+const resolveDefaultModel = async (supabase: SupabaseClient<Database>, resolvedEscolaId: string) => {
+  const pickCandidate = (rows: ModeloAvaliacaoRow[]) => {
+    const escolaRows = rows.filter((row) => row.escola_id === resolvedEscolaId);
+    const globalRows = rows.filter((row) => row.escola_id == null);
+    const candidates = [...escolaRows, ...globalRows, ...rows];
+    const withComponentes = candidates.find((row) => hasComponentes(normalizeComponentes(row.componentes)));
+    return withComponentes ?? candidates[0] ?? null;
+  };
+
   let defaultConfigQuery = supabase
     .from('modelos_avaliacao')
-    .select('componentes')
-    .eq('escola_id', resolvedEscolaId)
+    .select('id, escola_id, componentes')
     .eq('is_default', true)
+    .or(`escola_id.eq.${resolvedEscolaId},escola_id.is.null`);
 
   defaultConfigQuery = applyKf2ListInvariants(defaultConfigQuery, {
-    defaultLimit: 1,
+    defaultLimit: 20,
     order: [{ column: 'updated_at', ascending: false }],
-  })
+  });
 
-  const { data } = await defaultConfigQuery.maybeSingle();
+  const { data, error } = await defaultConfigQuery;
+  let rows = (!error && Array.isArray(data) ? (data as unknown as ModeloAvaliacaoRow[]) : []);
+  if (rows.length === 0) {
+    let fallbackQuery = supabase
+      .from('modelos_avaliacao')
+      .select('id, escola_id, componentes')
+      .eq('is_default', true);
+    fallbackQuery = applyKf2ListInvariants(fallbackQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'updated_at', ascending: false }],
+    });
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    rows = (!fallbackError && Array.isArray(fallbackData) ? (fallbackData as unknown as ModeloAvaliacaoRow[]) : []);
+  }
+  const chosen = pickCandidate(rows);
+  if (!chosen) return null;
 
-  if (!data) return null;
-  return normalizeComponentes(data.componentes);
+  return {
+    id: chosen.id,
+    config: normalizeComponentes(chosen.componentes),
+  };
 };
 
 const withNoStore = (response: NextResponse, start?: number) => {
@@ -89,6 +116,19 @@ const withNoStore = (response: NextResponse, start?: number) => {
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+const MODELOS_AVALIACAO_VALIDOS = new Set([
+  'SIMPLIFICADO',
+  'ANGOLANO_TRADICIONAL',
+  'COMPETENCIAS',
+  'DEPOIS',
+]);
+
+const normalizeModeloAvaliacaoCode = (value?: string | null) => {
+  const normalized = (value ?? '').trim().toUpperCase();
+  if (MODELOS_AVALIACAO_VALIDOS.has(normalized)) return normalized;
+  return 'SIMPLIFICADO';
+};
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const start = Date.now();
@@ -130,11 +170,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
-    const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'SIMPLIFICADO';
-    const defaultConfig = await resolveDefaultConfig(supabase, effectiveEscolaId);
+    const defaultModel = await resolveDefaultModel(supabase, effectiveEscolaId);
+    const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'PADRAO_ESCOLA';
     const avaliacaoConfig = hasComponentes(config?.avaliacao_config)
       ? config?.avaliacao_config
-      : defaultConfig ?? { componentes: [] };
+      : defaultModel?.config ?? { componentes: [] };
 
     return withNoStore(NextResponse.json({
       ok: true,
@@ -190,10 +230,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const payload = parseResult.data;
-    const defaultConfig = await resolveDefaultConfig(supabase, effectiveEscolaId);
+    const defaultModel = await resolveDefaultModel(supabase, effectiveEscolaId);
+    const requestedModelRef = payload.modelo_avaliacao?.trim() ?? '';
+    const modeloAvaliacao = normalizeModeloAvaliacaoCode(
+      isUuid(requestedModelRef) ? null : requestedModelRef
+    );
     const avaliacaoConfig = hasComponentes(payload.avaliacao_config)
       ? payload.avaliacao_config
-      : defaultConfig ?? { componentes: [] };
+      : defaultModel?.config ?? { componentes: [] };
     const formulaAvaliacao = buildFormulaFromComponentes(avaliacaoConfig.componentes ?? []);
 
     const { data: existing, error: existingError } = await supabase
@@ -222,7 +266,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ...baseConfig,
       frequencia_modelo: payload.frequencia_modelo,
       frequencia_min_percent: payload.frequencia_min_percent,
-      modelo_avaliacao: payload.modelo_avaliacao,
+      modelo_avaliacao: modeloAvaliacao,
       avaliacao_config:
         avaliacaoConfig as Database['public']['Tables']['configuracoes_escola']['Row']['avaliacao_config'],
       updated_at: new Date().toISOString(),
@@ -242,7 +286,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    if (payload.modelo_avaliacao && isUuid(payload.modelo_avaliacao)) {
+    if (requestedModelRef && isUuid(requestedModelRef)) {
       const { error: updateModeloError } = await supabase
         .from('modelos_avaliacao')
         .update({
@@ -250,8 +294,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           formula: formulaAvaliacao,
           updated_at: new Date().toISOString(),
         })
-        .eq('escola_id', effectiveEscolaId)
-        .eq('id', payload.modelo_avaliacao);
+        .eq('id', requestedModelRef);
 
       if (updateModeloError) {
         console.error('Error updating modelos_avaliacao formula:', updateModeloError);

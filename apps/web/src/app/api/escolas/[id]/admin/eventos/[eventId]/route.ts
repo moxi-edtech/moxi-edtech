@@ -41,7 +41,7 @@ export async function PATCH(
     }
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -84,7 +84,7 @@ export async function DELETE(
     }
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 

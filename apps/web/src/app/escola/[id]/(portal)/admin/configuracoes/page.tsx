@@ -6,8 +6,8 @@ import { useState, useEffect, use } from "react";
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import SettingsHub from "@/components/escola/settings/SettingsHub";
-import SettingsHubSkeleton from "@/components/escola/settings/SettingsHubSkeleton";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
 
 // Definição de Props para Next.js 15
 type Props = {
@@ -21,16 +21,18 @@ export default function ConfiguracoesPage({ params }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
 
-  const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [forceWizard, setForceWizard] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
   const [pageSetupStatus, setPageSetupStatus] = useState<{ // Renamed to avoid conflict
     has_ano_letivo_ativo: boolean;
     has_3_trimestres: boolean;
+    avaliacao_frequencia_ok?: boolean;
     has_curriculo_published: boolean;
     has_turmas_no_ano: boolean;
-    percentage: number;
+    percentage?: number;
+    progress_percent?: number;
   } | null>(null);
 
   // 2. Verificar Estado da Escola no Cliente
@@ -38,26 +40,35 @@ export default function ConfiguracoesPage({ params }: Props) {
     let cancelled = false;
     async function fetchData() {
       if (!escolaId) {
-        setLoading(false);
         return;
       }
       try {
-        // --- Existing checkStatus logic for pageSetupStatus ---
-        const pageRes = await fetch(`/api/escola/${escolaParam}/admin/setup/status`, {
-          cache: "no-store",
-        });
-        const pageJson = await pageRes.json().catch(() => null);
+        setStatusLoading(true);
+        const setupRes = await fetchSetupState(escolaParam);
         if (cancelled) return;
 
-        if (pageRes.status === 401) {
+        if (!setupRes.ok && setupRes.error === "UNAUTHORIZED") {
           setAuthRequired(true);
           setPageSetupStatus(null);
           return;
         }
-        
-        if (pageRes.ok && pageJson?.data) {
+
+        if (setupRes.ok && setupRes.data) {
+          const badges = setupRes.data.badges ?? {};
+          const progress_percent =
+            typeof setupRes.data.completion_percent === "number"
+              ? setupRes.data.completion_percent
+              : setupProgressFromBadges(badges);
+
           setAuthRequired(false);
-          setPageSetupStatus(pageJson.data);
+          setPageSetupStatus({
+            has_ano_letivo_ativo: Boolean(badges.ano_letivo_ok),
+            has_3_trimestres: Boolean(badges.periodos_ok),
+            avaliacao_frequencia_ok: Boolean(badges.avaliacao_ok),
+            has_curriculo_published: Boolean(badges.curriculo_published_ok),
+            has_turmas_no_ano: Boolean(badges.turmas_ok),
+            progress_percent,
+          });
         } else {
           setPageSetupStatus(null);
         }
@@ -68,11 +79,10 @@ export default function ConfiguracoesPage({ params }: Props) {
           setPageSetupStatus(null); // Reset page status on error
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setStatusLoading(false);
       }
     }
 
-    setLoading(true);
     fetchData();
 
     return () => {
@@ -81,10 +91,6 @@ export default function ConfiguracoesPage({ params }: Props) {
   }, [escolaParam]);
 
   // 3. Estado de Carregamento
-  if (loading) {
-    return <SettingsHubSkeleton />;
-  }
-
   if (authRequired) {
     const nextPath = `/escola/${escolaParam}/admin/configuracoes`;
     return (
@@ -97,11 +103,13 @@ export default function ConfiguracoesPage({ params }: Props) {
     );
   }
 
-  const setupComplete = Boolean(pageSetupStatus && pageSetupStatus.percentage === 100);
+  const progressPercent = pageSetupStatus?.progress_percent ?? pageSetupStatus?.percentage ?? 0;
+  const setupComplete = Boolean(pageSetupStatus && progressPercent === 100);
 
   const checklistItems = [
     { label: "Ano letivo ativo", ok: pageSetupStatus?.has_ano_letivo_ativo },
     { label: "3 trimestres configurados", ok: pageSetupStatus?.has_3_trimestres },
+    { label: "Avaliação e frequência configuradas", ok: pageSetupStatus?.avaliacao_frequencia_ok },
     { label: "Currículo publicado", ok: pageSetupStatus?.has_curriculo_published },
     { label: "Turmas geradas no ano", ok: pageSetupStatus?.has_turmas_no_ano },
   ];
@@ -146,7 +154,7 @@ export default function ConfiguracoesPage({ params }: Props) {
                 </div>
                 {pageSetupStatus && (
                   <div className="text-xs text-klasse-gold-800 mt-1">
-                    Progresso atual: {pageSetupStatus.percentage}%
+                    Progresso atual: {statusLoading ? "..." : `${progressPercent}%`}
                   </div>
                 )}
               </div>

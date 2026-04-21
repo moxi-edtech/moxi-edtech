@@ -67,7 +67,7 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
@@ -77,7 +77,7 @@ export async function POST(
       const { data: vinc } = await s
         .from('escola_users')
         .select('papel')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('user_id', user.id)
         .maybeSingle()
       const papel = (vinc as any)?.papel as string | undefined
@@ -88,7 +88,7 @@ export async function POST(
         const { data: adminLink } = await s
           .from('escola_administradores')
           .select('user_id')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('user_id', user.id)
           .limit(1)
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0)
@@ -101,7 +101,7 @@ export async function POST(
           .from('profiles')
           .select('role, escola_id')
           .eq('user_id', user.id)
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .limit(1)
         allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin')
       } catch {}
@@ -112,7 +112,7 @@ export async function POST(
     await (s as any)
       .from('anos_letivos')
       .update({ ativo: false } as any)
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
 
     const anoLetivoNumero = Number(String(data_inicio).slice(0, 4))
 
@@ -136,7 +136,7 @@ export async function POST(
     const { data: cfg } = await (s as any)
       .from('configuracoes_escola')
       .select('periodo_tipo')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .maybeSingle()
 
     const periodoTipo = ((cfg as any)?.periodo_tipo as string | undefined)?.toLowerCase() || 'trimestre'
@@ -185,7 +185,7 @@ export async function POST(
       await (s as any)
         .from('onboarding_drafts')
         .delete()
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
     } catch (_) {}
 
     // Sinaliza que ajustes acadêmicos são necessários após rotacionar sessão
@@ -209,7 +209,7 @@ export async function POST(
       const { data: sessList } = await (s as any)
         .from('anos_letivos')
         .select('id, ano, data_inicio, data_fim, ativo')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .order('ano', { ascending: false })
       all = (sessList || []).map((row: any) => ({
         id: row.id,

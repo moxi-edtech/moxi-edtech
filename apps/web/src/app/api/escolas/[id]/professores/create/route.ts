@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const userEscolaId = await resolveEscolaIdForUser(supabase, requesterId, escolaId)
     obsEscolaId = userEscolaId ?? null
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .from('escola_users')
       .select('papel, role')
       .eq('user_id', requesterId)
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
       .limit(1)
 
     const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as { role?: string | null } | undefined)?.role)
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       const { data } = await supabase
         .from('escola_administradores')
         .select('user_id')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', userEscolaId)
         .eq('user_id', requesterId)
         .limit(1)
 
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         const { data: existingTeacher } = await supabase
           .from('teachers')
           .select('id')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', userEscolaId)
           .eq('profile_id', userId)
           .maybeSingle()
         existingTeacherId = (existingTeacher as { id?: string | null } | null)?.id ?? null
@@ -193,21 +193,21 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         await supabase
           .from('teachers')
           .delete()
-          .eq('escola_id', escolaId)
+          .eq('escola_id', userEscolaId)
           .eq('profile_id', userId)
       } catch {}
       try {
         await supabase
           .from('professores')
           .delete()
-          .eq('escola_id', escolaId)
+          .eq('escola_id', userEscolaId)
           .eq('profile_id', userId)
       } catch {}
       try {
         await supabase
           .from('escola_users')
           .delete()
-          .eq('escola_id', escolaId)
+          .eq('escola_id', userEscolaId)
           .eq('user_id', userId)
       } catch {}
       try {

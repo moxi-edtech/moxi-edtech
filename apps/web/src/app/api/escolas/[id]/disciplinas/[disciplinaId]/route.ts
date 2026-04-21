@@ -28,20 +28,20 @@ const resolveStatusCompletude = (payload: {
     : "incompleto";
 };
 
-async function authorize(escolaId: string) {
+async function authorize(requestedEscolaId: string) {
   const supabase = await createRouteClient();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401, error: "Não autenticado" };
 
-  const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+  if (!resolvedEscolaId) {
     return { ok: false as const, status: 403, error: "Sem permissão" };
   }
 
-  const authz = await authorizeDisciplinaManage(supabase as any, escolaId, user.id);
+  const authz = await authorizeDisciplinaManage(supabase as any, resolvedEscolaId, user.id);
   if (!authz.allowed) return { ok: false as const, status: 403, error: authz.reason || 'Sem permissão' };
-  return { ok: true as const, supabase };
+  return { ok: true as const, supabase, resolvedEscolaId };
 }
 
 // PUT /api/escolas/[id]/disciplinas/[disciplinaId]
@@ -53,6 +53,7 @@ export async function PUT(
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
   const { supabase } = authz;
+  const resolvedEscolaId = authz.resolvedEscolaId;
 
   try {
     const raw = await req.json();
@@ -86,7 +87,7 @@ export async function PUT(
     const { data: cmRow } = await (supabase as any)
       .from('curso_matriz')
       .select('id, disciplina_id, classe_id, curso_id, obrigatoria, carga_horaria, ordem, curso_curriculo_id, curriculo:curso_curriculos(id,status,curso_id,ano_letivo_id,version), carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, modelo_excecao_id, conta_para_media_med')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('id', disciplinaId)
       .maybeSingle();
 
@@ -98,7 +99,7 @@ export async function PUT(
       const { data: draftCurriculo } = await (supabase as any)
         .from('curso_curriculos')
         .select('id, version')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('curso_id', curriculo.curso_id)
         .eq('ano_letivo_id', curriculo.ano_letivo_id)
         .eq('classe_id', cmRow.classe_id)
@@ -112,7 +113,7 @@ export async function PUT(
         const { data: last } = await (supabase as any)
           .from('curso_curriculos')
           .select('version')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('curso_id', curriculo.curso_id)
           .eq('ano_letivo_id', curriculo.ano_letivo_id)
           .eq('classe_id', cmRow.classe_id)
@@ -123,7 +124,7 @@ export async function PUT(
         const { data: createdDraft, error: draftErr } = await (supabase as any)
           .from('curso_curriculos')
           .insert({
-            escola_id: escolaId,
+            escola_id: resolvedEscolaId,
             curso_id: curriculo.curso_id,
             ano_letivo_id: curriculo.ano_letivo_id,
             version: nextVersion,
@@ -142,7 +143,7 @@ export async function PUT(
         const { data: publishedRows, error: publishedErr } = await (supabase as any)
           .from('curso_matriz')
           .select('disciplina_id, classe_id, curso_id, obrigatoria, ordem, ativo, carga_horaria, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, modelo_excecao_id, status_completude')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('curso_curriculo_id', curriculo.id)
           .eq('classe_id', cmRow.classe_id);
         if (publishedErr) {
@@ -152,7 +153,7 @@ export async function PUT(
         if ((publishedRows || []).length > 0) {
           const inserts = (publishedRows || []).map((row: any) => ({
             ...row,
-            escola_id: escolaId,
+            escola_id: resolvedEscolaId,
             curso_curriculo_id: draftId,
           }));
           const { error: copyErr } = await (supabase as any)
@@ -166,7 +167,7 @@ export async function PUT(
         const { data: draftRow } = await (supabase as any)
           .from('curso_matriz')
           .select('id')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('curso_curriculo_id', draftId)
           .eq('disciplina_id', cmRow.disciplina_id)
           .eq('classe_id', cmRow.classe_id)
@@ -179,7 +180,7 @@ export async function PUT(
       const { data: linkedCurriculos } = await (supabase as any)
         .from('curso_matriz')
         .select('id, curriculo:curso_curriculos(status)')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('disciplina_id', disciplinaCatalogoId)
         .eq('classe_id', cmRow?.classe_id)
         .limit(25);
@@ -199,7 +200,7 @@ export async function PUT(
         .from('disciplinas_catalogo')
         .update(catalogUpdates)
         .eq('id', disciplinaCatalogoId)
-        .eq('escola_id', escolaId);
+        .eq('escola_id', resolvedEscolaId);
       if (catalogErr) return NextResponse.json({ ok: false, error: catalogErr.message }, { status: 400 });
     }
 
@@ -256,7 +257,7 @@ export async function PUT(
           .from('curso_matriz')
           .update(matrizUpdates)
           .eq('id', targetMatrizId)
-          .eq('escola_id', escolaId);
+          .eq('escola_id', resolvedEscolaId);
         if (matrizErr) return NextResponse.json({ ok: false, error: matrizErr.message }, { status: 400 });
       }
     }
@@ -289,7 +290,7 @@ export async function PUT(
       const { error: turmaErr } = await (supabase as any)
         .from('turma_disciplinas')
         .update(turmaUpdates)
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .in('curso_matriz_id', turmaMatrizIds);
       if (turmaErr) return NextResponse.json({ ok: false, error: turmaErr.message }, { status: 400 });
     }
@@ -298,7 +299,7 @@ export async function PUT(
       .from('disciplinas_catalogo')
       .select('id, nome, sigla, is_avaliavel, area')
       .eq('id', disciplinaCatalogoId)
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .maybeSingle();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     const payload = {
@@ -325,12 +326,13 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
   }
   const { supabase } = authz;
+  const resolvedEscolaId = authz.resolvedEscolaId;
 
   try {
     const { data: cmRow } = await (supabase as any)
       .from('curso_matriz')
       .select('id, disciplina_id, curriculo:curso_curriculos(status)')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('id', disciplinaId)
       .maybeSingle();
 
@@ -342,7 +344,7 @@ export async function DELETE(
         .from('curso_matriz')
         .delete()
         .eq('id', cmRow.id)
-        .eq('escola_id', escolaId);
+        .eq('escola_id', resolvedEscolaId);
       if (error) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
       }
@@ -352,7 +354,7 @@ export async function DELETE(
     const { data: links } = await (supabase as any)
       .from('curso_matriz')
       .select('id, curriculo:curso_curriculos(status)')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('disciplina_id', disciplinaId)
       .limit(25);
 
@@ -368,7 +370,7 @@ export async function DELETE(
       .from('disciplinas_catalogo')
       .delete()
       .eq('id', disciplinaId)
-      .eq('escola_id', escolaId);
+      .eq('escola_id', resolvedEscolaId);
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }

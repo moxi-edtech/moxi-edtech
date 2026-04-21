@@ -30,11 +30,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
-    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', userEscolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await supabase.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: linkBefore } = await supabase
       .from('escola_users')
       .select('user_id')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
       .eq('user_id', userId)
       .limit(1)
     const ativoBefore = Boolean(linkBefore && linkBefore.length > 0)
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
       await supabase.from('escola_users').insert([{ escola_id: escolaId, user_id: userId, papel: papel || 'secretaria' } as TablesInsert<'escola_users'>]).select('user_id').single()
     } catch {
-      if (papel) await supabase.from('escola_users').update({ papel }).eq('escola_id', escolaId).eq('user_id', userId)
+      if (papel) await supabase.from('escola_users').update({ papel }).eq('escola_id', userEscolaId).eq('user_id', userId)
     }
       // set profile.escola_id to this if empty
       if (!prof?.[0]?.escola_id) await supabase.from('profiles').update({ escola_id: escolaId }).eq('user_id', userId)
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_ATIVADO', entity: 'usuario', entityId: userId, details: { email, papel: papel || 'secretaria', ativo_before: ativoBefore, ativo_after: true, role_before: roleBefore } }).catch(() => null)
     } else {
       // remove link
-      await supabase.from('escola_users').delete().eq('escola_id', escolaId).eq('user_id', userId)
+      await supabase.from('escola_users').delete().eq('escola_id', userEscolaId).eq('user_id', userId)
       // if profile.escola_id equals this, null it
       if (prof?.[0]?.escola_id === escolaId) await supabase.from('profiles').update({ escola_id: null }).eq('user_id', userId)
       // if user has no more school links, downgrade role to 'guest'

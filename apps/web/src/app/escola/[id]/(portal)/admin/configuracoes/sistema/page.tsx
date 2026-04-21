@@ -19,6 +19,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
 
 // --- TYPES ---
 type SetupState = {
@@ -109,23 +110,47 @@ export default function SistemaConfiguracoesPage() {
     const load = async () => {
       try {
         // Fetch Setup State
-        const stateRes = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
-        const stateJson = await stateRes.json().catch(() => null);
-        if (stateRes.status === 401) {
+        const setupRes = await fetchSetupState(escolaParam);
+        if (!setupRes.ok && setupRes.error === "UNAUTHORIZED") {
           setAuthRequired(true);
           setSetupState(null);
           setImpact(null);
           return;
         }
         
-        if (stateRes.ok && stateJson?.data) {
+        if (setupRes.ok && setupRes?.data) {
           setAuthRequired(false);
-          const badges = stateJson.data.badges || {};
+          const badges = setupRes.data.badges || {};
           const total = modules.length;
-          const done = Object.values(badges).filter(Boolean).length;
-          const percent = Math.round((done / total) * 100);
+          const percent = typeof setupRes.data.completion_percent === "number"
+            ? setupRes.data.completion_percent
+            : setupProgressFromBadges(badges);
           
-          setSetupState({ ...stateJson.data, completion_percent: percent });
+          setSetupState({
+            stage: setupRes.data.stage ?? "setup",
+            next_action: setupRes.data.next_action?.href
+              ? {
+                  label: setupRes.data.next_action.label ?? "Continuar",
+                  href: setupRes.data.next_action.href,
+                }
+              : undefined,
+            blockers: Array.isArray(setupRes.data.blockers)
+              ? setupRes.data.blockers.map((blocker) => ({
+                  title: blocker?.title ?? "",
+                  detail: blocker?.detail ?? "",
+                  severity: blocker?.severity ?? "warning",
+                }))
+              : [],
+            badges: {
+              calendario: Boolean(badges.ano_letivo_ok) && Boolean(badges.periodos_ok),
+              avaliacao: Boolean(badges.avaliacao_ok),
+              turmas: Boolean(badges.turmas_ok),
+              financeiro: false,
+              fluxos: false,
+              sistema: false,
+            },
+            completion_percent: total > 0 ? percent : 0,
+          });
         }
 
         // Fetch Impacto

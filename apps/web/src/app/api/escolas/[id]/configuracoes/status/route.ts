@@ -23,7 +23,7 @@ export async function GET(
     }
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
 
@@ -50,7 +50,7 @@ export async function GET(
     const { data: cursoRow, error: cursoError } = await (s as any)
       .from("cursos")
       .select("id")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .limit(1)
       .maybeSingle();
 
@@ -61,7 +61,7 @@ export async function GET(
     const { data: financeiroRow, error: financeiroError } = await (s as any)
       .from("financeiro_tabelas")
       .select("id")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .limit(1)
       .maybeSingle();
       

@@ -12,7 +12,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const { data: { user } } = await supabase.auth.getUser()
     if (!user?.id) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
     const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ['gerenciar_turmas'])
@@ -21,7 +21,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
 
     // Confirm turma belongs to escola
-    const { data: tCheck, error: tErr } = await supabase.from('turmas').select('id').eq('id', turmaId).eq('escola_id', escolaId).maybeSingle()
+    const { data: tCheck, error: tErr } = await supabase.from('turmas').select('id').eq('id', turmaId).eq('escola_id', userEscolaId).maybeSingle()
     if (tErr) return NextResponse.json({ ok: false, error: tErr.message }, { status: 400 })
     if (!tCheck) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
 

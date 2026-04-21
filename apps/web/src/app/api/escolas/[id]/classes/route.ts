@@ -66,11 +66,11 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     let rows: any[] = [];
@@ -78,7 +78,7 @@ export async function GET(
       let query = (supabase as any)
         .from('classes')
         .select('id, nome, descricao, ordem, nivel, curso_id, ano_letivo_id, turno, carga_horaria_semanal, min_disciplinas_core')
-        .eq('escola_id', escolaId);
+        .eq('escola_id', userEscolaId);
 
       if (cursoId) query = query.eq('curso_id', cursoId);
 
@@ -106,7 +106,7 @@ export async function GET(
         let retry = (supabase as any)
           .from('classes')
           .select('id, nome, ordem')
-          .eq('escola_id', escolaId);
+          .eq('escola_id', userEscolaId);
 
         if (cursor) {
           const [cursorOrdem, cursorId] = cursor.split(',');
@@ -185,11 +185,11 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -221,7 +221,7 @@ export async function POST(
         const { data } = await (supabase as any)
           .from('classes')
           .select('ordem')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', userEscolaId)
           .order('ordem', { ascending: false })
           .limit(1);
         const top = (data || [])[0] as any;
@@ -230,7 +230,7 @@ export async function POST(
     }
 
     const payload: any = {
-      escola_id: escolaId,
+      escola_id: userEscolaId,
       nome: parsed.data.nome,
       ordem,
       curso_id: parsed.data.curso_id,
@@ -246,7 +246,7 @@ export async function POST(
       .from("cursos")
       .select("id, curriculum_key, course_code")
       .eq("id", parsed.data.curso_id)
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
       .maybeSingle();
 
     if (cursoErr) {

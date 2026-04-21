@@ -8,15 +8,15 @@ const bodySchema = z.object({
   professor_id: z.string().uuid().nullable().optional(),
 });
 
-async function assertManagePermission(supabase: any, escolaId: string, userId: string) {
-  const userEscolaId = await resolveEscolaIdForUser(supabase, userId, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+async function assertManagePermission(supabase: any, requestedEscolaId: string, userId: string) {
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, userId, requestedEscolaId);
+  if (!resolvedEscolaId) {
     return { ok: false as const, response: NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }) };
   }
 
   const authz = await authorizeEscolaAction(
     supabase,
-    escolaId,
+    resolvedEscolaId,
     userId,
     ["configurar_escola", "gerenciar_disciplinas"]
   );
@@ -28,7 +28,7 @@ async function assertManagePermission(supabase: any, escolaId: string, userId: s
     };
   }
 
-  return { ok: true as const };
+  return { ok: true as const, resolvedEscolaId };
 }
 
 export async function GET(
@@ -45,11 +45,12 @@ export async function GET(
 
     const perm = await assertManagePermission(supabase as any, escolaId, user.id);
     if (!perm.ok) return perm.response;
+    const resolvedEscolaId = perm.resolvedEscolaId;
 
     const { data: mapRows, error: mapErr } = await (supabase as any).rpc(
       "get_curso_professor_responsavel_map",
       {
-        p_escola_id: escolaId,
+        p_escola_id: resolvedEscolaId,
         p_curso_ids: [cursoId],
       }
     );
@@ -69,7 +70,7 @@ export async function GET(
     const { data: professorRow } = await (supabase as any)
       .from("professores")
       .select("id, profile_id, profiles!professores_profile_id_fkey ( nome, email )")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .eq("id", linked.professor_id)
       .maybeSingle();
 
@@ -112,6 +113,7 @@ export async function PUT(
 
     const perm = await assertManagePermission(supabase as any, escolaId, user.id);
     if (!perm.ok) return perm.response;
+    const resolvedEscolaId = perm.resolvedEscolaId;
 
     const body = await req.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(body);
@@ -127,7 +129,7 @@ export async function PUT(
     const { data: rpcRows, error: rpcErr } = await (supabase as any).rpc(
       "set_curso_professor_responsavel",
       {
-        p_escola_id: escolaId,
+        p_escola_id: resolvedEscolaId,
         p_curso_id: cursoId,
         p_professor_id: professorId,
         p_actor_id: user.id,

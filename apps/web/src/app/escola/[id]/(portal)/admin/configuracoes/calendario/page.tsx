@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { format, parseISO } from "date-fns"; // Recomendo usar date-fns se tiver, senão use helpers nativos abaixo
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { fetchPeriodosLetivos } from "@/lib/periodosLetivosClient";
 
 // --- TYPES ---
 type Periodo = {
@@ -57,14 +58,13 @@ export default function CalendarioConfigPage({ params }: Props) {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos`, { cache: "no-store" });
-        const json = await res.json().catch(() => null);
+        const json = await fetchPeriodosLetivos(escolaParam);
         
         if (cancelled) return;
 
-        if (res.ok && json?.periodos) {
-          setPeriodos(json.periodos);
-          setAnoLetivo(json.ano_letivo);
+        if (!json.error && Array.isArray(json?.periodos)) {
+          setPeriodos(json.periodos as Periodo[]);
+          setAnoLetivo(json.ano_letivo ?? null);
         } else {
           error("Não foi possível carregar os períodos.");
         }

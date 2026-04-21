@@ -41,7 +41,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
 
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
 

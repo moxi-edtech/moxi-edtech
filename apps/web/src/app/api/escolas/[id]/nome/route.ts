@@ -8,6 +8,16 @@ import { parsePlanTier } from "@/config/plans";
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+type NomePayload = {
+  ok: boolean;
+  nome?: string | null;
+  plano?: string | null;
+  status?: string | null;
+  error?: string;
+};
+
+const inFlightByKey = new Map<string, Promise<NomePayload>>();
+
 // GET /api/escolas/[id]/nome
 // Returns the escola display name using service role after authorization.
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -52,22 +62,41 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       }
     }
 
-    const queryStart = shouldLog ? performance.now() : 0;
-    const { data, error } = await supabase
-      .from("vw_escola_info" as any)
-      .select("nome, plano_atual, status")
-      .eq("escola_id", resolvedEscolaId || escolaId)
-      .maybeSingle();
-    if (shouldLog) log('query', performance.now() - queryStart);
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    const targetEscolaId = resolvedEscolaId || escolaId;
+    const key = `${user.id}:${targetEscolaId}`;
 
-    const row = data as any;
-    const response = NextResponse.json({
-      ok: true,
-      nome: row?.nome ?? null,
-      plano: row?.plano_atual ? parsePlanTier(row.plano_atual) : null,
-      status: row?.status ?? null,
-    });
+    const existing = inFlightByKey.get(key);
+    const queryPromise =
+      existing ??
+      (async () => {
+        const queryStart = shouldLog ? performance.now() : 0;
+        const { data, error } = await supabase
+          .from("vw_escola_info" as any)
+          .select("nome, plano_atual, status")
+          .eq("escola_id", targetEscolaId)
+          .maybeSingle();
+        if (shouldLog) log('query', performance.now() - queryStart);
+        if (error) {
+          return { ok: false, error: error.message } satisfies NomePayload;
+        }
+        const row = data as any;
+        return {
+          ok: true,
+          nome: row?.nome ?? null,
+          plano: row?.plano_atual ? parsePlanTier(row.plano_atual) : null,
+          status: row?.status ?? null,
+        } satisfies NomePayload;
+      })();
+
+    inFlightByKey.set(key, queryPromise);
+    const payload = await queryPromise;
+    inFlightByKey.delete(key);
+
+    if (!payload.ok) {
+      return NextResponse.json({ ok: false, error: payload.error ?? "Erro ao consultar escola" }, { status: 400 });
+    }
+
+    const response = NextResponse.json(payload);
     if (shouldLog) log('total', performance.now() - totalStart);
     return response;
   } catch (e) {

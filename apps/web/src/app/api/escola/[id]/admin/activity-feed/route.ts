@@ -45,14 +45,16 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-    if (!escolaId || escolaId !== requestedEscolaId) {
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    // `requestedEscolaId` may be a slug (e.g. "escola-klasse") while `escolaId` is normalized UUID.
+    // Permission is already enforced by resolveEscolaIdForUser, so only null should be denied.
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
     const roleCheck = await requireRoleInSchool({
       supabase: supabase as any,
-      escolaId,
+      escolaId: resolvedEscolaId,
       roles: ["admin_escola", "admin", "staff_admin", "secretaria"],
     });
 
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       .select(
         "id, escola_id, occurred_at, event_family, event_type, actor_name, headline, subline, amount_kz, turma_nome, aluno_nome, payload"
       )
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .order("occurred_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(limit + 1);

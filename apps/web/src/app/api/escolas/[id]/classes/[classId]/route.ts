@@ -4,21 +4,21 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
-async function authorize(escolaId: string) {
+async function authorize(requestedEscolaId: string) {
   const supabase = await createRouteClient();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
   if (!user)
     return { ok: false as const, status: 401, error: "Não autenticado" };
 
-  const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+  if (!resolvedEscolaId) {
     return { ok: false as const, status: 403, error: "Sem permissão" };
   }
 
   const authz = await authorizeEscolaAction(
     supabase as any,
-    escolaId,
+    resolvedEscolaId,
     user.id,
     ['configurar_escola', 'gerenciar_disciplinas']
   );
@@ -32,7 +32,7 @@ async function authorize(escolaId: string) {
       .select("escola_id")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+    if (!profCheck || (profCheck as any).escola_id !== resolvedEscolaId) {
       return {
         ok: false as const,
         status: 403,
@@ -40,7 +40,7 @@ async function authorize(escolaId: string) {
       };
     }
   } catch {}
-  return { ok: true as const, supabase };
+  return { ok: true as const, supabase, resolvedEscolaId };
 }
 
 // PUT /api/escolas/[id]/classes/[classId]
@@ -57,6 +57,7 @@ export async function PUT(
       { status: authz.status }
     );
   const { supabase } = authz;
+  const resolvedEscolaId = authz.resolvedEscolaId;
 
   try {
     const raw = await req.json();
@@ -81,7 +82,7 @@ export async function PUT(
       .from("classes")
       .update(updates)
       .eq("id", classId)
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .select("id, nome, descricao, ordem, nivel, ano_letivo_id, turno, carga_horaria_semanal, min_disciplinas_core")
       .single();
     if (error)
@@ -107,13 +108,14 @@ export async function DELETE(
       { status: authz.status }
     );
   const { supabase } = authz;
+  const resolvedEscolaId = authz.resolvedEscolaId;
 
   try {
     const { error } = await (supabase as any)
       .from("classes")
       .delete()
       .eq("id", classId)
-      .eq("escola_id", escolaId);
+      .eq("escola_id", resolvedEscolaId);
     if (error)
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });

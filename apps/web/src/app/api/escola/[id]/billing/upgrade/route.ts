@@ -45,8 +45,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-    if (!escolaId || escolaId !== requestedEscolaId) {
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Acesso negado a esta escola." }, { status: 403 });
     }
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: assinatura, error: assinaturaError } = await supabase
       .from("assinaturas")
       .select("id, escola_id, plano, ciclo, status, data_renovacao, valor_kz, metodo_pagamento")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .maybeSingle();
 
     if (assinaturaError) throw assinaturaError;
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         valor_kz: updatedValue,
       })
       .eq("id", assinatura.id)
-      .eq("escola_id", escolaId);
+      .eq("escola_id", resolvedEscolaId);
 
     if (updateError) throw updateError;
 

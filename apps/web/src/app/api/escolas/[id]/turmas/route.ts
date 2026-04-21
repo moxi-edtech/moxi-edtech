@@ -60,7 +60,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       metaEscolaId ? String(metaEscolaId) : null
     );
     if (shouldLog) log('resolve', performance.now() - resolveStart);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       if (shouldLog) log('total', performance.now() - totalStart);
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
@@ -78,14 +78,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const turno = url.searchParams.get('turno');
     const cursoId = url.searchParams.get('curso_id');
     const status = url.searchParams.get('status');
-    const limit = Number(url.searchParams.get('limit') || 30);
+    const requestedLimit = Number(url.searchParams.get('limit') || 100);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 200)
+      : 100;
     const cursor = url.searchParams.get('cursor');
 
     // 4. Query usando a view que resolve curso/classe
     let query = supabase
       .from('vw_turmas_para_matricula')
       .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
     
     if (cursor) {
       const [cursorNome, cursorId] = cursor.split(',');
@@ -138,7 +141,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       let fallbackQuery = supabase
         .from('turmas' as any)
         .select('id, nome, turma_codigo, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', userEscolaId)
 
       if (cursor) {
         const [cursorNome, cursorId] = cursor.split(',');
@@ -272,7 +275,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
     }
 
@@ -316,7 +319,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const { data: anoRow } = await (supabase as any)
         .from('anos_letivos')
         .select('ano')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', userEscolaId)
         .eq('ano', Number(ano_letivo))
         .maybeSingle()
       if (!anoRow) {

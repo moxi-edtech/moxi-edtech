@@ -35,11 +35,11 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     // Buscar cursos com colunas opcionais em fallback
@@ -48,7 +48,7 @@ export async function GET(
       let query = (supabase as any)
         .from('cursos')
         .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
-        .eq('escola_id', escolaId);
+        .eq('escola_id', userEscolaId);
 
       if (cursor) {
         const [cursorNome, cursorId] = cursor.split(',');
@@ -72,7 +72,7 @@ export async function GET(
         let retryQuery = (supabase as any)
           .from('cursos')
           .select('id, nome, codigo')
-          .eq('escola_id', escolaId);
+          .eq('escola_id', userEscolaId);
 
         if (cursor) {
           const [cursorNome, cursorId] = cursor.split(',');
@@ -100,7 +100,7 @@ export async function GET(
     const cursoIds = rows.map((r: any) => r.id).filter(Boolean) as string[];
     const { data: professoresPorCursoRows } = cursoIds.length
       ? await (supabase as any).rpc("get_curso_professor_responsavel_map", {
-          p_escola_id: escolaId,
+          p_escola_id: userEscolaId,
           p_curso_ids: cursoIds,
         })
       : { data: [] as Array<{ curso_id: string; professor_id: string | null }> };
@@ -166,11 +166,11 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -193,9 +193,9 @@ export async function POST(
       parsed.data.course_code || parsed.data.curriculum_key || null;
 
     const payload: any = {
-      escola_id: escolaId,
+      escola_id: userEscolaId,
       nome: parsed.data.nome,
-      codigo: parsed.data.codigo || makeCursoCodigo(parsed.data.nome, escolaId),
+      codigo: parsed.data.codigo || makeCursoCodigo(parsed.data.nome, userEscolaId),
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
@@ -218,7 +218,7 @@ export async function POST(
 
     try {
       await (supabase as any).from("notifications").insert({
-        escola_id: escolaId,
+        escola_id: userEscolaId,
         target_role: "financeiro",
         tipo: "curso_precos_pendentes",
         titulo: `Novo curso criado: ${ins?.nome || parsed.data.nome}`,

@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
 
     const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     let query = supabase
       .from("turmas")
       .select("id, nome, turma_codigo, ano_letivo, cursos ( nome )")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", resolvedEscolaId);
 
     query = applyKf2ListInvariants(query, {
       limit,

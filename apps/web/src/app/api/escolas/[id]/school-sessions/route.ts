@@ -7,7 +7,7 @@ export async function GET(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = await context.params;
+  const { id: requestedEscolaId } = await context.params;
 
   try {
     const supabase = await createRouteClient();
@@ -15,6 +15,11 @@ export async function GET(
     const user = auth?.user;
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
     let allowed = false;
@@ -37,7 +42,7 @@ export async function GET(
         const { data: vinc } = await supabase
           .from("escola_users")
           .select("papel")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .eq("user_id", user.id)
           .maybeSingle();
         allowed = Boolean((vinc as any)?.papel);
@@ -50,7 +55,7 @@ export async function GET(
         const { data: adminLink } = await supabase
           .from("escola_administradores")
           .select("user_id")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .eq("user_id", user.id)
           .limit(1);
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
@@ -69,7 +74,7 @@ export async function GET(
         const profRow = prof?.[0] as any;
         const escolaFromProfile = profRow?.escola_id || profRow?.current_escola_id;
 
-        allowed = Boolean(profRow && profRow.role === "admin" && escolaFromProfile === escolaId);
+        allowed = Boolean(profRow && profRow.role === "admin" && escolaFromProfile === resolvedEscolaId);
       } catch {}
     }
 
@@ -88,15 +93,10 @@ export async function GET(
         ano_letivo: `${row.ano}/${row.ano + 1}`,
       }));
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
-    }
-
     let adminQuery = (supabase as any)
       .from("anos_letivos")
       .select("id, ano, data_inicio, data_fim, ativo")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .order("ano", { ascending: false });
 
     adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 50 });

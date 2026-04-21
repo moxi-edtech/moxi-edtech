@@ -14,13 +14,13 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
     let papel: string | null = null
     try {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle()
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).maybeSingle()
       papel = (vinc as any)?.papel ?? null
     } catch {}
     if (!hasPermission(papel as any, 'configurar_escola')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
@@ -46,13 +46,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
     let papel: string | null = null
     try {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle()
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).maybeSingle()
       papel = (vinc as any)?.papel ?? null
     } catch {}
     if (!hasPermission(papel as any, 'configurar_escola')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })

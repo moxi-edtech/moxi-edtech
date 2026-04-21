@@ -591,7 +591,7 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
       }
       if (filters.curso   !== "todos") params.set("curso_id",  filters.curso);
       if (busca.trim())                params.set("busca",  busca.trim());
-      params.set("limit", "30");
+      params.set("limit", "100");
       if (options?.cursor) params.set("cursor", options.cursor);
 
       const res  = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
@@ -906,14 +906,18 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
               </table>
             </div>
 
-            {nextCursor && (
-              <div className="flex justify-center py-4">
-                <button onClick={loadMore} disabled={loadingMore}
-                  className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors">
-                  {loadingMore ? "Carregando…" : "Carregar mais"}
-                </button>
-              </div>
-            )}
+          </div>
+        )}
+
+        {nextCursor && (
+          <div className="flex justify-center py-4">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+            >
+              {loadingMore ? "Carregando…" : "Carregar mais"}
+            </button>
           </div>
         )}
       </div>

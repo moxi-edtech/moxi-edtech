@@ -4,6 +4,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { supabaseServer }    from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
 
 import type {
@@ -33,10 +34,22 @@ type Props = { escolaId: string; escolaNome?: string };
 
 export default async function EscolaAdminDashboardData({ escolaId, escolaNome }: Props) {
   const s            = await supabaseServer();
+  const { data: userRes } = await s.auth.getUser();
+  const user = userRes?.user ?? null;
   const cookieHeader = (await cookies()).toString();
   const host         = (await headers()).get("host");
   const protocol     = process.env.NODE_ENV === "development" ? "http" : "https";
   const baseUrl      = host ? `${protocol}://${host}` : "";
+  const metaEscolaId = (user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+  const resolvedEscolaId = user
+    ? await resolveEscolaIdForUser(
+        s as any,
+        user.id,
+        escolaId,
+        metaEscolaId ? String(metaEscolaId) : null
+      )
+    : null;
+  const scopedEscolaId = resolvedEscolaId ?? escolaId;
 
   // Scoped to this escola — fixes the "/financeiro" global fallback bug
 
@@ -78,7 +91,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     let missingPricingQuery = s
       .from("vw_financeiro_missing_pricing_count")
       .select("ano_letivo, missing_count")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", scopedEscolaId);
     missingPricingQuery = applyKf2ListInvariants(missingPricingQuery, {
       defaultLimit: 1,
       order: [{ column: "ano_letivo", ascending: false }],
@@ -88,7 +101,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     let financeiroKpiQuery = s
       .from("vw_financeiro_kpis_mes")
       .select("mes_ref, previsto_total, realizado_total")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", scopedEscolaId)
       .eq("mes_ref", currentMonthStart);
     financeiroKpiQuery = applyKf2ListInvariants(financeiroKpiQuery, {
       defaultLimit: 1,
@@ -112,40 +125,40 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     ] = await Promise.all([
       s.from("vw_admin_dashboard_counts")
         .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", scopedEscolaId)
         .maybeSingle(),
 
       s.from("vw_admin_pending_turmas_count")
         .select("pendentes_total")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", scopedEscolaId)
         .maybeSingle(),
 
       s.from("curso_curriculos")
         .select("id")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", scopedEscolaId)
         .eq("status", "draft"),
 
       s.from("vw_escola_setup_status")
         .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", scopedEscolaId)
         .maybeSingle(),
 
       s.from("configuracoes_escola")
         .select("frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", scopedEscolaId)
         .maybeSingle(),
 
       // Fetch active ano_letivo year for the header badge
       s.from("anos_letivos")
         .select("ano")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", scopedEscolaId)
         .eq("status", "ativo")
         .maybeSingle(),
 
       missingPricingQuery,
       financeiroKpiQuery,
 
-      s.from("escolas").select("nome, slug").eq("id", escolaId).maybeSingle(),
+      s.from("escolas").select("nome, slug").eq("id", scopedEscolaId).maybeSingle(),
 
       fetchJson(`/api/escolas/${escolaId}/admin/dashboard`, { ok: false, charts: null }),
 
@@ -217,12 +230,12 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       const [horarioRes, avaliacaoRes] = await Promise.all([
         s.from("curso_matriz")
           .select("disciplina_id")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", scopedEscolaId)
           .eq("status_horario", "incompleto")
           .in("curso_curriculo_id", draftIds),
         s.from("curso_matriz")
           .select("disciplina_id")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", scopedEscolaId)
           .eq("status_avaliacao", "incompleto")
           .in("curso_curriculo_id", draftIds),
       ]);

@@ -58,14 +58,14 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
     const { data: vinc } = await s
       .from("escola_users")
       .select("papel")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .eq("user_id", user.id)
       .limit(1);
     const papel = (vinc?.[0] as { papel?: string | null })?.papel ?? null;
@@ -85,7 +85,7 @@ export async function POST(
     const { data: existingPagamento } = await s
       .from("pagamentos")
       .select("id, referencia, meta")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .contains("meta", { idempotency_key: idempotencyKey })
       .maybeSingle();
     if (existingPagamento) {
@@ -151,7 +151,7 @@ export async function POST(
         .from("financeiro_lancamentos")
         .delete()
         .eq("id", lancamentoId)
-        .eq("escola_id", escolaId);
+        .eq("escola_id", resolvedEscolaId);
       return NextResponse.json(
         { ok: false, error: pagamentoRes.error?.message || "Falha ao registrar pagamento" },
         { status: 400 }

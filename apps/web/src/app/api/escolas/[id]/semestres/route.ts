@@ -30,7 +30,7 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 
@@ -43,20 +43,20 @@ export async function GET(
     } catch {}
     if (!allowed) {
       try {
-        const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle();
+        const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).maybeSingle();
         const papel = (vinc as any)?.papel as string | undefined;
         allowed = !!papel && hasPermission(papel as any, 'configurar_escola');
       } catch {}
     }
     if (!allowed) {
       try {
-        const { data: adminLink } = await s.from('escola_administradores').select('user_id').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
+        const { data: adminLink } = await s.from('escola_administradores').select('user_id').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).limit(1);
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
       } catch {}
     }
     if (!allowed) {
       try {
-        const { data: prof } = await s.from('profiles').select('role, escola_id').eq('user_id', user.id).eq('escola_id', escolaId).limit(1);
+        const { data: prof } = await s.from('profiles').select('role, escola_id').eq('user_id', user.id).eq('escola_id', resolvedEscolaId).limit(1);
         allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin');
       } catch {}
     }
@@ -71,7 +71,7 @@ export async function GET(
     if (sErr) return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
     if (!sess || (sess as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
 
-    let q = (s as any).from('semestres').select('id, session_id, escola_id, nome, data_inicio, data_fim, attendance_type, permitir_submissao_final, tipo').eq('session_id', sessao_id).eq('escola_id', escolaId);
+    let q = (s as any).from('semestres').select('id, session_id, escola_id, nome, data_inicio, data_fim, attendance_type, permitir_submissao_final, tipo').eq('session_id', sessao_id).eq('escola_id', resolvedEscolaId);
     q = applyKf2ListInvariants(q);
 
     if (tipo && ['TRIMESTRE', 'BIMESTRE', 'SEMESTRE', 'ANUAL'].includes(tipo)) q = q.eq('tipo', tipo);
@@ -124,7 +124,7 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -145,7 +145,7 @@ export async function POST(
         const { data: vinc } = await s
           .from("escola_users")
           .select("papel")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .eq("user_id", user.id)
           .maybeSingle();
         const papel = (vinc as any)?.papel as string | undefined;
@@ -157,7 +157,7 @@ export async function POST(
         const { data: adminLink } = await s
           .from("escola_administradores")
           .select("user_id")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .eq("user_id", user.id)
           .limit(1);
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
@@ -169,7 +169,7 @@ export async function POST(
           .from("profiles")
           .select("role, escola_id")
           .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .limit(1);
         allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === "admin");
       } catch {}
@@ -211,7 +211,7 @@ export async function POST(
         const { data: cfg } = await (s as any)
           .from("configuracoes_escola")
           .select("periodo_tipo")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .maybeSingle();
         const p = (cfg as any)?.periodo_tipo as string | undefined; // 'semestre' | 'trimestre'
         if (p === "semestre") effectiveTipo = "SEMESTRE";

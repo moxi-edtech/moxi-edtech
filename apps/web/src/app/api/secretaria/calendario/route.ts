@@ -10,7 +10,9 @@ export async function GET(req: Request) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const url = new URL(req.url);
+    const requestedEscolaId = url.searchParams.get("escolaId") || url.searchParams.get("escola_id");
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: true, items: [] });
     }
@@ -18,10 +20,13 @@ export async function GET(req: Request) {
     let query = supabase
       .from('events')
       .select('id, escola_id, titulo, descricao, inicio_at, fim_at, publico_alvo')
-      .eq('escola_id', escolaId)
-      .order('inicio_at', { ascending: true });
+      .eq('escola_id', escolaId);
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 50,
+      order: [{ column: "inicio_at", ascending: true }],
+      tieBreakerColumn: "id",
+    });
 
     const { data, error } = await query;
 
@@ -44,7 +49,9 @@ export async function POST(req: Request) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const url = new URL(req.url);
+    const requestedEscolaId = url.searchParams.get("escolaId") || url.searchParams.get("escola_id");
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }
@@ -63,7 +70,7 @@ export async function POST(req: Request) {
         descricao,
         inicio_at,
         fim_at,
-        publico_alvo,
+        publico_alvo: publico_alvo || "todos",
         escola_id: escolaId,
       })
       .select()

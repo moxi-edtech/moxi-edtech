@@ -19,7 +19,7 @@ export async function DELETE(
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 
@@ -29,7 +29,7 @@ export async function DELETE(
       const { data: vinc } = await s
         .from('escola_users')
         .select('papel')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('user_id', user.id)
         .maybeSingle();
       const papel = (vinc as any)?.papel as string | undefined;
@@ -40,7 +40,7 @@ export async function DELETE(
         const { data: adminLink } = await s
           .from('escola_administradores')
           .select('user_id')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('user_id', user.id)
           .limit(1);
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
@@ -52,7 +52,7 @@ export async function DELETE(
           .from('profiles')
           .select('role, escola_id')
           .eq('user_id', user.id)
-          .eq('escola_id', escolaId)
+          .eq('escola_id', resolvedEscolaId)
           .limit(1);
         allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin');
       } catch {}
@@ -132,7 +132,7 @@ export async function DELETE(
       .from('anos_letivos')
       .delete()
       .eq('id', sessionId)
-      .eq('escola_id', escolaId);
+      .eq('escola_id', resolvedEscolaId);
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 });
 
     recordAuditServer({

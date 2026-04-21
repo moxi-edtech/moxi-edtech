@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
+import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
 import {
   Building2,
   BookOpen,
@@ -154,17 +155,16 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     async function fetchStatus() {
       if (!escolaParam) return;
       try {
-        const res = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
-        const json = await res.json().catch(() => null);
-        if (res.status === 401) {
+        const setupRes = await fetchSetupState(escolaParam);
+        if (!setupRes.ok && setupRes.error === "UNAUTHORIZED") {
           if (!cancelled) setAuthRequired(true);
           return;
         }
-        if (!res.ok) throw new Error(json?.error);
+        if (!setupRes.ok) throw new Error(setupRes.error ?? "Erro ao carregar setup");
         if (cancelled) return;
         setAuthRequired(false);
 
-        const data = json?.data ?? {};
+        const data = setupRes.data ?? {};
         setSetupStatus({
           ano_letivo_ok: data?.badges?.ano_letivo_ok,
           periodos_ok: data?.badges?.periodos_ok,
@@ -173,7 +173,11 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           curriculo_published_ok: data?.badges?.curriculo_published_ok,
           turmas_ok: data?.badges?.turmas_ok,
         });
-        if (typeof data?.completion_percent === "number") setProgress(data.completion_percent);
+        if (typeof data?.completion_percent === "number") {
+          setProgress(data.completion_percent);
+        } else {
+          setProgress(setupProgressFromBadges(data?.badges));
+        }
 
         const impactRes = await fetch(`/api/escola/${escolaParam}/admin/setup/impact`, {
           method: "POST",
@@ -201,7 +205,9 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   }, [escolaParam]);
 
   // ─── Derived ────────────────────────────────────────────────────────────────
-  const anoLetivoOk = setupStatus?.ano_letivo_ok && setupStatus?.periodos_ok;
+  const anoLetivoOk = setupStatus?.ano_letivo_ok;
+  const periodosOk = setupStatus?.periodos_ok;
+  const avaliacaoOk = setupStatus?.avaliacao_ok;
   const curriculoOk = setupStatus?.curriculo_published_ok;
   const turmasOk = setupStatus?.turmas_ok;
   const anoLetivoAtual = new Date().getFullYear();
@@ -336,6 +342,16 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-slate-500">Ano Letivo</span>
           <StatusBadge ok={anoLetivoOk} loading={loading} />
+        </div>
+        <span className="text-slate-200">·</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">Períodos</span>
+          <StatusBadge ok={periodosOk} loading={loading} />
+        </div>
+        <span className="text-slate-200">·</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">Avaliação</span>
+          <StatusBadge ok={avaliacaoOk} loading={loading} />
         </div>
         <span className="text-slate-200">·</span>
         <div className="flex items-center gap-1.5">

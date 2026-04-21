@@ -30,11 +30,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
-    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', userEscolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await supabase.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const { data: linkBefore } = await supabase
       .from('escola_users')
       .select('papel')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
       .eq('user_id', userId)
       .limit(1)
     const papelBefore = linkBefore?.[0]?.papel as string | undefined
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const roleBefore = (profBefore?.[0] as any)?.role as string | undefined
 
     if (papel) {
-      await supabase.from('escola_users').update({ papel }).eq('escola_id', escolaId).eq('user_id', userId)
+      await supabase.from('escola_users').update({ papel }).eq('escola_id', userEscolaId).eq('user_id', userId)
       // Force global role to match papel mapping when papel changes
       const mapped = mapPapelToGlobalRole(papel as any)
       await supabase.from('profiles').update({ role: mapped as any }).eq('user_id', userId)

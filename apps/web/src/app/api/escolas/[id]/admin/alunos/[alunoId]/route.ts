@@ -13,7 +13,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -21,7 +21,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
     const globalRole = (prof as any)?.role as string | undefined;
     if (!['super_admin','global_admin'].includes(globalRole || '')) {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).limit(1);
       const papel = (vinc?.[0] as any)?.papel as string | undefined;
       if (papel !== 'admin') return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
@@ -64,14 +64,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; a
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
     const globalRole = (prof as any)?.role as string | undefined;
     if (!['super_admin','global_admin'].includes(globalRole || '')) {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).limit(1);
       const papel = (vinc?.[0] as any)?.papel as string | undefined;
       if (papel !== 'admin') return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }

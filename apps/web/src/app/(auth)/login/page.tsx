@@ -1,63 +1,23 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import BrandPanel from "./BrandPanel";
+import LoginForm from "./LoginForm";
 
-type SearchParams = Promise<{ redirect?: string; next?: string }>;
+export const metadata = {
+  title: "Login • Klasse",
+  description: "Acesse sua conta Klasse.",
+};
 
-function resolveAuthLoginUrl(host: string, isLocalHost: boolean) {
-  if (process.env.NODE_ENV !== "production") {
-    return (process.env.KLASSE_AUTH_LOCAL_URL ?? "http://auth.lvh.me:3000/login").trim();
-  }
-
-  const configured = process.env.KLASSE_AUTH_URL?.trim();
-  if (!configured) {
-    throw new Error(
-      `Missing KLASSE_AUTH_URL in production for host "${host || "unknown"}" (isLocalHost=${isLocalHost})`
-    );
-  }
-  return configured;
-}
-
-function normalizeRedirect(redirectRaw: string | undefined, origin: string) {
-  const value = String(redirectRaw ?? "").trim();
-  if (!value) return `${origin}/redirect`;
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  if (value.startsWith("/")) return `${origin}${value}`;
-  return `${origin}/${value}`;
-}
-
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const headerStore = await headers();
-  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
-    .split(",")[0]
-    .trim()
-    .toLowerCase();
-  const isLocalHost =
-    host.startsWith("localhost") ||
-    host.startsWith("127.0.0.1") ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".lvh.me");
-
-  const authLoginUrl = resolveAuthLoginUrl(host, isLocalHost);
-
-  const params = await searchParams;
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  const origin = host
-    ? `${protocol}://${host}`
-    : (process.env.NEXT_PUBLIC_BASE_URL ?? "https://app.klasse.ao").replace(/\/$/, "");
-  const redirectTarget = normalizeRedirect(
-    typeof params.redirect === "string" ? params.redirect : params.next,
-    origin
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-white">
+      <BrandPanel />
+      <div className="flex items-center justify-center px-6 py-10">
+        <div className="w-full max-w-[420px]">
+          <LoginForm />
+          <p className="mt-10 text-center text-xs text-slate-500">
+            © {new Date().getFullYear()} Klasse. Todos os direitos reservados.
+          </p>
+        </div>
+      </div>
+    </div>
   );
-
-  try {
-    const url = new URL(authLoginUrl);
-    url.searchParams.set("redirect", redirectTarget);
-    redirect(url.toString());
-  } catch {
-    redirect(`${authLoginUrl}?redirect=${encodeURIComponent(redirectTarget)}`);
-  }
 }

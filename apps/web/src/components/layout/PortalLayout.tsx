@@ -16,6 +16,7 @@ import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { useUserRole } from "@/hooks/useUserRole"; // Import useUserRole
 import { sidebarConfig, type IconName } from "@/lib/sidebarNav"; // Import sidebarConfig and IconName
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
 
 import Image from "next/image";
 import { usePathname } from "next/navigation"; // Import usePathname
@@ -128,30 +129,12 @@ export default function PortalLayout({
         if (!mounted || !escolaId) return
         setEscolaIdState(escolaId); // Set the new state variable
 
-        // Carrega nome e plano da escola via cache local
+        // Carrega nome e plano da escola via cache local + dedupe em memória
         try {
-          const cacheKey = `escolas:nome:${escolaId}`
-          if (typeof sessionStorage !== 'undefined') {
-            const cached = sessionStorage.getItem(cacheKey)
-            if (cached) {
-              const parsed = JSON.parse(cached) as { nome?: string | null; plano?: PlanTier | null }
-              if (mounted && parsed?.nome) setEscolaNome(String(parsed.nome))
-              if (mounted && parsed?.plano) setPlan(parsePlanTier(parsed.plano))
-              return
-            }
-          }
-          const res = await fetch(`/api/escolas/${escolaId}/nome`)
-          const json = await res.json().catch(() => null)
-          if (mounted && res.ok && json?.ok && json?.nome) {
-            setEscolaNome(String(json.nome))
-          }
-          if (mounted) {
-            const p = json?.plano ?? null
-            if (p) setPlan(parsePlanTier(p))
-          }
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ nome: json?.nome ?? null, plano: json?.plano ?? null }))
-          }
+          const info = await fetchEscolaInfo(escolaId)
+          if (!mounted) return
+          setEscolaNome(info.nome ? String(info.nome) : null)
+          setPlan(info.plano ? parsePlanTier(info.plano as PlanTier) : null)
         } catch {}
         
       } catch {}

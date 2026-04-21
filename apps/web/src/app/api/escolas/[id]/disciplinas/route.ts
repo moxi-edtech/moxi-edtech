@@ -49,7 +49,7 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -70,7 +70,7 @@ export async function GET(
            curriculo:curso_curriculos(status)
           `
         )
-        .eq("escola_id", escolaId);
+        .eq("escola_id", userEscolaId);
 
       if (cursoId) query = query.eq('curso_id', cursoId);
       if (classeId) query = query.eq('classe_id', classeId);
@@ -160,7 +160,7 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -202,7 +202,7 @@ export async function POST(
       const { data: exist } = await (supabase as any)
         .from('disciplinas_catalogo')
         .select('id')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', userEscolaId)
         .eq('nome', parsed.data.nome)
         .maybeSingle();
       if (exist?.id) {
@@ -216,7 +216,7 @@ export async function POST(
             .from('disciplinas_catalogo')
             .update(updatePayload)
             .eq('id', disciplinaId)
-            .eq('escola_id', escolaId);
+            .eq('escola_id', userEscolaId);
           if (updateErr) return NextResponse.json({ ok: false, error: updateErr.message }, { status: 400 });
         }
       }

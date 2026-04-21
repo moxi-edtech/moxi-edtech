@@ -28,7 +28,7 @@ export async function POST(
     if (!user) return respond({ ok: false, error: "Não autenticado" }, 401);
 
     const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return respond({ ok: false, error: "Sem permissão" }, 403);
     }
 
