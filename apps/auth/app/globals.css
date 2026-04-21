@@ -1,3 +1,12 @@
+@import "tailwindcss";
+@source "./**/*.{js,ts,jsx,tsx,mdx}";
+@source "../lib/**/*.{js,ts,jsx,tsx,mdx}";
+
+@theme {
+  --color-klasse-green: #1f6b3b;
+  --color-klasse-gold: #e3b23c;
+}
+
 :root {
   --bg: #f7f8fc;
   --fg: #0f172a;
@@ -21,4 +30,16 @@ body {
 input,
 button {
   font: inherit;
+}
+
+@keyframes authBgPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.35;
+  }
 }
