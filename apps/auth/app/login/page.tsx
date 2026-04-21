@@ -1,3 +1,4 @@
+import BrandPanel from "./BrandPanel";
 import LoginForm from "./LoginForm";
 
 type SearchParams = Promise<{ redirect?: string }>;
@@ -15,27 +16,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   const redirectTo = normalizeReturnTo(params.redirect);
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
-      <section
-        style={{
-          width: "min(460px, 100%)",
-          border: "1px solid var(--line)",
-          borderRadius: 16,
-          background: "var(--card)",
-          padding: 22,
-          boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: "#64748b" }}>
-          KLASSE Auth
-        </p>
-        <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>Login Central</h1>
-        <p style={{ margin: "0 0 16px", color: "#475569", fontSize: 14 }}>
-          Sessão única para K12 e Formação.
-        </p>
-
-        <LoginForm redirectTo={redirectTo} />
-      </section>
-    </main>
+    <div className="grid min-h-screen w-full grid-cols-1 md:grid-cols-2">
+      <BrandPanel />
+      <main className="grid place-items-center bg-slate-50 p-6">
+        <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <LoginForm redirectTo={redirectTo} />
+        </section>
+      </main>
+    </div>
   );
 }
