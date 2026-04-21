@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../types/supabase";
 
-export type TenantType = "k12" | "formacao";
+export type TenantType = "k12" | "formacao" | "solo_creator";
 export type ProductContext = "k12" | "formacao";
 
 type MiddlewareRequestLike = {
@@ -106,7 +106,7 @@ function normalizeTenantType(value: unknown): TenantType | null {
   const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
-  if (normalized === "k12" || normalized === "formacao") return normalized;
+  if (normalized === "k12" || normalized === "formacao" || normalized === "solo_creator") return normalized;
   return null;
 }
 
