@@ -1,0 +1,67 @@
+name: Formacao Via B Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  via-b-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORMACAO_E2E_BASE_URL: http://127.0.0.1:3002
+      FORMACAO_E2E_ROWS: "3"
+      FORMACAO_E2E_ESCOLA_ID: ${{ secrets.FORMACAO_E2E_ESCOLA_ID }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start Formacao app
+        run: |
+          pnpm -C apps/formacao exec next dev -p 3002 > /tmp/formacao-dev.log 2>&1 &
+          echo $! > /tmp/formacao-dev.pid
+
+      - name: Wait for app
+        run: |
+          for i in {1..60}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$FORMACAO_E2E_BASE_URL/" || true)
+            if [ "$code" = "200" ] || [ "$code" = "307" ] || [ "$code" = "302" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Formacao app did not become ready"
+          cat /tmp/formacao-dev.log || true
+          exit 1
+
+      - name: Via B happy-path smoke
+        run: pnpm exec node scripts/e2e_upload_b2b.mjs
+
+      - name: Via B duplicate-row smoke
+        run: pnpm exec node scripts/e2e_upload_b2b_duplicate_api_only.mjs
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formacao-via-b-smoke-artifacts
+          path: |
+            /tmp/e2e_upload_b2b_result.json
+            /tmp/e2e_upload_b2b_duplicate_api_only_result.json
+            /tmp/formacao-dev.log

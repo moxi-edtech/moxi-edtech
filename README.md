@@ -138,6 +138,7 @@ Isso garante que o que é exibido no componente `StructureMarketplace` seja semp
 
 - **Design Tokens**: Consulte as diretrizes de design visual e tokens CSS em [`docs/design-tokens.md`](./docs/design-tokens.md).
 - **Iconografia Oficial**: Veja o mapeamento oficial de ícones em [`docs/icon-map.md`](./docs/icon-map.md).
+- **Hub do App Formação**: Índice centralizado de documentos e changelogs em [`docs/INDEX_FORMACAO.md`](./docs/INDEX_FORMACAO.md).
 
 ---
 

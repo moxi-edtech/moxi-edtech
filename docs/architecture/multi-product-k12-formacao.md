@@ -76,17 +76,18 @@
   - trigger to keep `escola_users.tenant_type` synced with school
   - index for lookups (`tenant_type`, `slug`)
 
-## 8) Phased Rollout Plan
-1. **Foundation (this change)**
-   - introduce tenant_type schema + resolver + middleware guards.
-2. **Dual-run**
-   - keep legacy Formação routes in `apps/web` while `apps/formacao` becomes canonical host app.
-3. **Route migration**
-   - migrate Formação pages/APIs from `apps/web` to `apps/formacao` in slices.
-4. **Contract hardening**
-   - require productContext in critical backend guards.
-5. **Cleanup**
-   - remove legacy Formação routes from K12 app once traffic is fully switched.
+## 8) Phased Rollout Plan (Status 11/04/2026)
+1. **Foundation** ✅
+   - `tenant_type` em `escolas` e `escola_users` implementado e auditado.
+   - Resolver e Middleware operacionais em ambos os apps.
+2. **Dual-run** 🔄
+   - Rotas legadas em `apps/web` ainda ativas, mas `apps/formacao` já é o host canônico.
+3. **Route migration** ✅ (Sprints de Abril/2026)
+   - Inscrições, B2B, Self-Service e Dashboards Operacionais (Admin/Financeiro) migradas para `apps/formacao`.
+4. **Contract hardening** 🔄
+   - Em curso: exigir `productContext` em guardas de banco e RLS.
+5. **Cleanup** ❌
+   - Pendente: remoção das rotas legadas.
 
 ## 9) Non-Goals (explicit)
 - no Supabase split
