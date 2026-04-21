@@ -1,20 +1,25 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { resolveSessionContexts } from "@/lib/session-context";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { getUserTenants } from "@/lib/getUserTenants";
+
+export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ redirect?: string }>;
 
 export default async function SelectContextPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const list = await resolveSessionContexts();
+  const supabase = await supabaseServer();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
 
-  if (!list) {
+  if (!user) {
     redirect(`/login${params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : ""}`);
   }
 
-  if (list.contexts.length <= 1) {
-    const single = list.contexts[0];
-    const fallbackRedirect = single ? `/redirect?tenant_id=${encodeURIComponent(single.tenant_id)}` : "/login";
+  const tenants = await getUserTenants(user.id);
+  if (tenants.length <= 1) {
+    const single = tenants[0];
+    const fallbackRedirect = single ? "/redirect" : "/login?error=no_tenant";
     const withTarget = params.redirect
       ? `${fallbackRedirect}${fallbackRedirect.includes("?") ? "&" : "?"}redirect=${encodeURIComponent(params.redirect)}`
       : fallbackRedirect;
@@ -38,29 +43,40 @@ export default async function SelectContextPage({ searchParams }: { searchParams
           Esta conta possui múltiplos tenants. Escolha o contexto para continuar.
         </p>
         <div style={{ display: "grid", gap: 10 }}>
-          {list.contexts.map((ctx) => {
-            const hrefBase = `/redirect?tenant_id=${encodeURIComponent(ctx.tenant_id)}`;
-            const href = params.redirect
-              ? `${hrefBase}&redirect=${encodeURIComponent(params.redirect)}`
-              : hrefBase;
+          {tenants.map((tenant) => {
             return (
-              <Link
-                key={ctx.tenant_id}
-                href={href}
+              <form
+                key={tenant.tenantId}
+                action="/select-context/choose"
+                method="POST"
                 style={{
-                  display: "block",
+                  display: "grid",
                   border: "1px solid #e2e8f0",
                   borderRadius: 12,
                   padding: "12px 14px",
-                  textDecoration: "none",
-                  color: "#0f172a",
                 }}
               >
-                <strong>{ctx.tenant_slug ?? ctx.tenant_id}</strong>
+                <input type="hidden" name="tenantId" value={tenant.tenantId} />
+                <input type="hidden" name="redirect_to" value={params.redirect ?? ""} />
+                <button
+                  type="submit"
+                  style={{
+                    appearance: "none",
+                    border: 0,
+                    background: "transparent",
+                    textAlign: "left",
+                    padding: 0,
+                    margin: 0,
+                    cursor: "pointer",
+                    color: "#0f172a",
+                  }}
+                >
+                  <strong>{tenant.tenantName}</strong>
+                </button>
                 <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-                  {ctx.tenant_type} · {ctx.user_role}
+                  {tenant.tenantType} · {tenant.role}
                 </div>
-              </Link>
+              </form>
             );
           })}
         </div>
@@ -68,4 +84,3 @@ export default async function SelectContextPage({ searchParams }: { searchParams
     </main>
   );
 }
-
