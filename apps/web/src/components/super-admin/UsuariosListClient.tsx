@@ -8,7 +8,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Search, ShieldAlert, KeyRound, Trash2, Edit2, CheckCircle2 } from "lucide-react";
+import { Plus, X, Search, ShieldAlert, KeyRound, Trash2, Edit2, CheckCircle2, Mail } from "lucide-react";
+import { toast } from "sonner";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -260,6 +261,28 @@ function ListaUsuarios() {
     } finally { setResetLoading(false); }
   };
 
+  const handleResendInvite = async (u: Usuario) => {
+    try {
+      setSaving(u.id);
+      const res = await fetch("/api/super-admin/users/resend-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: u.id }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao reenviar convite.");
+      }
+      toast.success(`Convite reenviado para ${u.email}.`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Erro ao reenviar convite.";
+      setErro(message);
+      toast.error(message);
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const filteredUsers = usuarios.filter(u => 
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (u.nome && u.nome.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -442,6 +465,9 @@ function ListaUsuarios() {
                             </button>
                             <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="p-2 rounded-xl bg-white border border-slate-200 text-[#E3B23C] hover:bg-amber-50 transition-all shadow-sm" title="Forçar Nova Senha">
                               <KeyRound className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="p-2 rounded-xl bg-white border border-slate-200 text-[#1F6B3B] hover:bg-green-50 transition-all shadow-sm disabled:opacity-50" title="Reenviar Convite">
+                              <Mail className="w-4 h-4" />
                             </button>
                             <button onClick={() => handleDelete(u.id, u.email)} className="p-2 rounded-xl bg-white border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm" title="Revogar Acesso">
                               <Trash2 className="w-4 h-4" />

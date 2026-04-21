@@ -6,6 +6,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { allowedPapeisSet } from "@/lib/roles";
 import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
+import { buildCredentialsEmail, buildInviteEmail, sendMail } from "@/lib/mailer";
 import { z } from "zod";
 // ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 
@@ -267,10 +268,69 @@ export async function POST(request: Request) {
       },
     }).catch(() => null);
 
+    const { data: escola } = await supabase
+      .from("escolas")
+      .select("nome")
+      .eq("id", escolaId)
+      .maybeSingle();
+
+    const escolaNome = String((escola as { nome?: string | null } | null)?.nome ?? "sua escola");
+    const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${new URL(request.url).origin}/login`).replace(/\/$/, "");
+
+    let emailStatus: {
+      attempted: boolean;
+      ok: boolean;
+      kind?: "credentials" | "invite";
+      error?: string | null;
+    } = { attempted: false, ok: false };
+
+    if (createdNewAuthUser || forcedPasswordReset) {
+      const mail = buildCredentialsEmail({
+        nome,
+        email: email.trim().toLowerCase(),
+        senha_temp: password,
+        escolaNome,
+        loginUrl,
+      });
+      const sent = await sendMail({
+        to: email.trim().toLowerCase(),
+        subject: mail.subject,
+        html: String(mail.html),
+        text: String(mail.text),
+      });
+      emailStatus = {
+        attempted: true,
+        ok: sent.ok,
+        kind: "credentials",
+        error: sent.ok ? null : sent.error,
+      };
+    } else {
+      const invite = buildInviteEmail({
+        escolaNome,
+        onboardingUrl: loginUrl,
+        convidadoEmail: email.trim().toLowerCase(),
+        convidadoNome: nome,
+        papel: papelDb,
+      });
+      const sent = await sendMail({
+        to: email.trim().toLowerCase(),
+        subject: invite.subject,
+        html: String(invite.html),
+        text: String(invite.text),
+      });
+      emailStatus = {
+        attempted: true,
+        ok: sent.ok,
+        kind: "invite",
+        error: sent.ok ? null : sent.error,
+      };
+    }
+
     return NextResponse.json({
       ok: true,
       userId: authUser!.user.id,
       tempPassword: createdNewAuthUser || forcedPasswordReset ? password : null,
+      emailStatus,
     });
   } catch (err) {
     if (err instanceof PayloadLimitError) {
