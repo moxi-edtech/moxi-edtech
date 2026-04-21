@@ -7,6 +7,8 @@ import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { logAuthEvent } from "@/lib/auth-log";
 import { readEnv } from "@/lib/env";
 import { checkLoginRateLimit } from "@/lib/rateLimit";
+import { getUserTenants } from "@/lib/getUserTenants";
+import { setTenantContextCookie, clearTenantContextCookie } from "@/lib/tenantContextCookie";
 
 type ResolveIdentifierJobResponse = {
   ok?: boolean;
@@ -130,6 +132,20 @@ export async function loginAction(_: unknown, formData: FormData) {
         timestamp: new Date().toISOString(),
       })
     );
+
+    const tenants = await getUserTenants(data.user.id);
+    if (tenants.length === 1) {
+      const single = tenants[0];
+      await setTenantContextCookie({
+        uid: data.user.id,
+        tenant_id: single.tenantId,
+        tenant_slug: null,
+        tenant_type: single.tenantType,
+        role: single.role,
+      });
+    } else {
+      await clearTenantContextCookie();
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("Supabase env")) {
