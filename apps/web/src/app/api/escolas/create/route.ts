@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import type { Database } from "~types/supabase"
 import type { DBWithRPC } from '@/types/supabase-augment'
-import { buildOnboardingEmail, sendMail } from '@/lib/mailer'
+import { buildCredentialsEmail, buildInviteEmail, buildOnboardingEmail, sendMail } from '@/lib/mailer'
 import { parsePlanTier } from '@/config/plans'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { mapPapelToGlobalRole } from '@/lib/permissions'
@@ -96,6 +96,7 @@ export async function POST(request: Request) {
 
     const origin = new URL(request.url).origin
     const actionLink = `${origin}`
+    const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, "")
     const escolaNome = payload?.escolaNome || payload?.escola_nome || body.nome
     const escolaPlano = body.plano ? parsePlanTier(body.plano) : null
 
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
       }
     }
 
-    let emailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false }
+    let onboardingEmailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false }
     if (adminEmail) {
       const { subject, html, text } = buildOnboardingEmail({
         escolaNome: escolaNome || 'sua escola',
@@ -139,7 +140,43 @@ export async function POST(request: Request) {
         plano: escolaPlano || undefined,
       })
       const sent = await sendMail({ to: adminEmail, subject, html: String(html), text: String(text) })
-      emailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
+      onboardingEmailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
+    }
+
+    let credentialsEmailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false }
+    if (adminEmail && adminUserCreated && adminPassword) {
+      const mail = buildCredentialsEmail({
+        nome: adminNome ?? undefined,
+        email: adminEmail,
+        senha_temp: adminPassword,
+        escolaNome: escolaNome || body.nome,
+        loginUrl,
+      })
+      const sent = await sendMail({
+        to: adminEmail,
+        subject: mail.subject,
+        html: String(mail.html),
+        text: String(mail.text),
+      })
+      credentialsEmailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
+    }
+
+    let inviteEmailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false }
+    if (adminEmail && !adminUserCreated) {
+      const invite = buildInviteEmail({
+        escolaNome: escolaNome || body.nome,
+        onboardingUrl: loginUrl,
+        convidadoEmail: adminEmail,
+        convidadoNome: adminNome ?? undefined,
+        papel: adminPapel,
+      })
+      const sent = await sendMail({
+        to: adminEmail,
+        subject: invite.subject,
+        html: String(invite.html),
+        text: String(invite.text),
+      })
+      inviteEmailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
     }
 
     return NextResponse.json({
@@ -149,7 +186,11 @@ export async function POST(request: Request) {
       adminUserCreated,
       adminError,
       actionLink,
-      emailStatus,
+      emailStatus: {
+        onboarding: onboardingEmailStatus,
+        credentials: credentialsEmailStatus,
+        invite: inviteEmailStatus,
+      },
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

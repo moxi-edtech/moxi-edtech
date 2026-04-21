@@ -17,6 +17,8 @@ import {
 interface KlasseWelcomeEmailProps {
   nomeUsuario?: string;
   linkAcesso?: string;
+  escolaNome?: string;
+  plano?: string | null;
 }
 
 const baseUrl = process.env.VERCEL_URL
@@ -26,6 +28,8 @@ const baseUrl = process.env.VERCEL_URL
 export const KlasseWelcomeEmail = ({
   nomeUsuario = "Gestor",
   linkAcesso = "https://klasse.ao/login",
+  escolaNome = "sua escola",
+  plano = null,
 }: KlasseWelcomeEmailProps) => {
   const previewText = "Bem-vindo ao KLASSE! Vamos começar sua escola.";
 
@@ -51,6 +55,10 @@ export const KlasseWelcomeEmail = ({
 
           <Text style={{ color: "#475569", fontSize: "14px", lineHeight: "24px" }}>
             Olá, <strong>{nomeUsuario}</strong>. Que bom ter você aqui.
+          </Text>
+
+          <Text style={{ color: "#475569", fontSize: "14px", lineHeight: "24px" }}>
+            Escola: <strong>{escolaNome}</strong>{plano ? <> • Plano: <strong>{plano}</strong></> : null}
           </Text>
 
           <Text style={{ color: "#475569", fontSize: "14px", lineHeight: "24px" }}>

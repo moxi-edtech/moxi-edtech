@@ -6,6 +6,7 @@ import type { DBWithRPC } from "@/types/supabase-augment";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { mapPapelToGlobalRole } from "@/lib/permissions";
+import { buildCredentialsEmail, buildInviteEmail, sendMail } from "@/lib/mailer";
 
 const emptyToNull = (value: unknown) => {
   if (typeof value === "string" && value.trim() === "") return null;
@@ -85,6 +86,12 @@ type TeamProvisionResult = {
   papel: string;
   tempPassword: string | null;
   createdNew: boolean;
+  emailStatus?: {
+    attempted: boolean;
+    ok: boolean;
+    kind?: "credentials" | "invite";
+    error?: string | null;
+  };
 };
 
 export async function POST(request: Request) {
@@ -230,6 +237,51 @@ export async function POST(request: Request) {
         telefone: member.telefone ?? null,
         papel: member.papel,
       });
+
+      const origin = new URL(request.url).origin;
+      const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, "");
+      const emailDisplayRole = member.papel.replace(/^formacao_/, "");
+      if (result.createdNew && result.tempPassword) {
+        const mail = buildCredentialsEmail({
+          nome: member.nome,
+          email: member.email,
+          senha_temp: result.tempPassword,
+          escolaNome: payload.centro.nome,
+          loginUrl,
+        });
+        const sent = await sendMail({
+          to: member.email,
+          subject: mail.subject,
+          html: String(mail.html),
+          text: String(mail.text),
+        });
+        result.emailStatus = {
+          attempted: true,
+          ok: sent.ok,
+          kind: "credentials",
+          error: sent.ok ? null : sent.error,
+        };
+      } else {
+        const mail = buildInviteEmail({
+          escolaNome: payload.centro.nome,
+          onboardingUrl: loginUrl,
+          convidadoEmail: member.email,
+          convidadoNome: member.nome,
+          papel: emailDisplayRole,
+        });
+        const sent = await sendMail({
+          to: member.email,
+          subject: mail.subject,
+          html: String(mail.html),
+          text: String(mail.text),
+        });
+        result.emailStatus = {
+          attempted: true,
+          ok: sent.ok,
+          kind: "invite",
+          error: sent.ok ? null : sent.error,
+        };
+      }
       provisionados.push(result);
     }
 

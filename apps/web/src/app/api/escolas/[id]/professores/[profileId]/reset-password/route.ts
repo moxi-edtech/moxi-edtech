@@ -50,6 +50,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       attributes: { password: tempPassword, user_metadata: { must_change_password: true } },
     })
 
+    let emailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false }
     try {
       const { data: prof } = await supabase
         .from('profiles')
@@ -65,7 +66,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           .eq('id', escolaIdTarget || escolaId)
           .maybeSingle()
         const escolaNome = (escola as any)?.nome ?? null
-        const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
+        const origin = new URL(req.url).origin
+        const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, "")
         const mail = buildCredentialsEmail({
           nome: (prof as any)?.nome ?? null,
           email,
@@ -73,11 +75,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           escolaNome,
           loginUrl,
         })
-        await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+        const sent = await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+        emailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
       }
-    } catch {}
+    } catch (error) {
+      emailStatus = { attempted: true, ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
 
-    return NextResponse.json({ ok: true, senha_temp: tempPassword })
+    return NextResponse.json({ ok: true, senha_temp: tempPassword, emailStatus })
   } catch (err) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }

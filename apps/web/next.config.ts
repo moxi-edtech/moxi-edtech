@@ -4,6 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 import bundleAnalyzer from "@next/bundle-analyzer";
 
 const LUCIDE_SOURCEMAP_STRIPPER = path.join(__dirname, "loaders", "strip-lucide-sourcemap.js");
+const IS_VERCEL = process.env.VERCEL === "1";
 
 const REQUIRED_PUBLIC_ENV = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"];
 const OPTIONAL_SERVER_ENV = ["SUPABASE_SERVICE_ROLE_KEY"];
@@ -40,7 +41,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: false,
+    // Vercel hobby/pro container is OOM-ing during Next's integrated type-check step.
+    // Keep strict type-checking in CI/local via `pnpm -C apps/web typecheck`.
+    ignoreBuildErrors: IS_VERCEL,
   },
   turbopack: {
     rules: {

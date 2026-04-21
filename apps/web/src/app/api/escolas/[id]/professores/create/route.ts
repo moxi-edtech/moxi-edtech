@@ -7,6 +7,7 @@ import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permi
 import { sanitizeEmail } from '@/lib/sanitize'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { emitirEvento } from '@/lib/eventos/emitirEvento'
+import { buildCredentialsEmail, buildInviteEmail, sendMail } from '@/lib/mailer'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
 
@@ -275,6 +276,65 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     const teacherId = (rpcData as { teacher_id?: string | null } | null)?.teacher_id ?? null
+
+    const origin = new URL(req.url).origin
+    const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, '')
+    const { data: escolaInfo } = await supabase
+      .from('escolas')
+      .select('nome')
+      .eq('id', escolaId)
+      .maybeSingle()
+    const escolaNome = String((escolaInfo as { nome?: string | null } | null)?.nome ?? 'sua escola')
+
+    let emailStatus: {
+      attempted: boolean
+      ok: boolean
+      kind?: 'credentials' | 'invite'
+      error?: string | null
+    } = { attempted: false, ok: false }
+
+    if (userCreated && tempPassword) {
+      const mail = buildCredentialsEmail({
+        nome,
+        email,
+        senha_temp: tempPassword,
+        escolaNome,
+        loginUrl,
+      })
+      const sent = await sendMail({
+        to: email,
+        subject: mail.subject,
+        html: String(mail.html),
+        text: String(mail.text),
+      })
+      emailStatus = {
+        attempted: true,
+        ok: sent.ok,
+        kind: 'credentials',
+        error: sent.ok ? null : sent.error,
+      }
+    } else {
+      const invite = buildInviteEmail({
+        escolaNome,
+        onboardingUrl: loginUrl,
+        convidadoEmail: email,
+        convidadoNome: nome,
+        papel: 'professor',
+      })
+      const sent = await sendMail({
+        to: email,
+        subject: invite.subject,
+        html: String(invite.html),
+        text: String(invite.text),
+      })
+      emailStatus = {
+        attempted: true,
+        ok: sent.ok,
+        kind: 'invite',
+        error: sent.ok ? null : sent.error,
+      }
+    }
+
     emitObs('success', 200, { teacher_id: teacherId, user_created: userCreated })
 
     return NextResponse.json({
@@ -282,6 +342,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       userId,
       teacherId,
       senha_temp: userCreated ? tempPassword : null,
+      emailStatus,
     })
   } catch (err) {
     if (obsSupabase && obsEscolaId) {
