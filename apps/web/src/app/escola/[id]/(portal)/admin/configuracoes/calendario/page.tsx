@@ -152,7 +152,7 @@ export default function CalendarioConfigPage({ params }: Props) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link
-              href={`${base}?tab=calendario`}
+              href={base}
               className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors"
             >
               <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />

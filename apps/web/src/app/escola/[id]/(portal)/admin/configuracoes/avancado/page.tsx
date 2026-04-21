@@ -49,7 +49,7 @@ export default function AvancadoConfiguracoesPage() {
       subtitle="Ajustes críticos e políticas de segurança."
       menuItems={menuItems}
       embedded
-      backHref={`${base}?tab=avancado`}
+      backHref={base}
       prevHref={`${base}/fluxos`}
       nextHref={`${base}/sandbox`}
       testHref={`${base}/sandbox`}

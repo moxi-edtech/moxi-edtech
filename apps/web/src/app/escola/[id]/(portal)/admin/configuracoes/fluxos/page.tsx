@@ -120,7 +120,7 @@ export default function FluxosConfiguracaoPage() {
         subtitle="Defina o caminho que a nota percorre até o boletim."
         menuItems={menuItems}
         embedded
-        backHref={`${base}?tab=fluxos`}
+        backHref={base}
         prevHref={`${base}/financeiro`}
         nextHref={`${base}/avancado`}
         statusItems={auditStatus}

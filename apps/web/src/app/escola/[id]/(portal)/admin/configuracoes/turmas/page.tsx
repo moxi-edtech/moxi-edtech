@@ -803,7 +803,7 @@ export default function TurmasConfiguracoesPage() {
         subtitle="Controle central: publique currículos, ajuste classes e gere turmas com segurança."
         menuItems={menuItems}
         embedded
-        backHref={`${base}?tab=turmas`}
+        backHref={base}
         prevHref={`${base}/avaliacao`}
         nextHref={`${base}/financeiro`}
         testHref={`${base}/sandbox`}
@@ -826,7 +826,7 @@ export default function TurmasConfiguracoesPage() {
       subtitle="Controle central: publique currículos, ajuste classes e gere turmas com segurança."
       menuItems={menuItems}
       embedded
-      backHref={`${base}?tab=turmas`}
+      backHref={base}
       prevHref={`${base}/avaliacao`}
       nextHref={`${base}/financeiro`}
       testHref={`${base}/sandbox`}

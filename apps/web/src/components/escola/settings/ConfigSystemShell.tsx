@@ -15,6 +15,7 @@ type ConfigSystemShellProps = {
   nextHref?: string;
   testHref?: string;
   embedded?: boolean;
+  showInternalMenu?: boolean;
   backHref?: string;
   impact?: {
     alunos?: number;
@@ -39,6 +40,7 @@ export default function ConfigSystemShell({
   nextHref,
   testHref,
   embedded = false,
+  showInternalMenu = true,
   backHref,
   impact,
   statusItems,
@@ -52,6 +54,9 @@ export default function ConfigSystemShell({
     impact?.turmas !== undefined ? `${impact.turmas} turmas afetadas` : null,
     impact?.professores !== undefined ? `${impact.professores} professores envolvidos` : null,
   ].filter(Boolean) as string[];
+  const hasStatusData = status.length > 0 || impactSummary.length > 0;
+  const hasActionControls = Boolean(onSave || testHref);
+  const showRightPanel = hasStatusData || hasActionControls;
   return (
     <div className={embedded ? "w-full h-full space-y-6" : "max-w-6xl mx-auto p-6 space-y-6"}>
       <header className="flex flex-col gap-2">
@@ -109,18 +114,30 @@ export default function ConfigSystemShell({
           </div>
         </main>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_240px] gap-6">
-          <aside className="space-y-2">
-            {menuItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:border-slate-200"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </aside>
+        <div
+          className={
+            showInternalMenu
+              ? showRightPanel
+                ? "grid grid-cols-1 lg:grid-cols-[220px_1fr_240px] gap-6"
+                : "grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6"
+              : showRightPanel
+                ? "grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6"
+                : "grid grid-cols-1 gap-6"
+          }
+        >
+          {showInternalMenu ? (
+            <aside className="space-y-2">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:border-slate-200"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </aside>
+          ) : null}
 
           <main className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
             {children}
@@ -144,48 +161,51 @@ export default function ConfigSystemShell({
             </div>
           </main>
 
-          <aside className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800">Barra de status</h3>
-              <p className="text-xs text-slate-500">Impacto estimado das mudanças.</p>
-            </div>
-            {status.length > 0 && (
-              <ul className="text-xs text-slate-600 space-y-2">
-                {status.map((item, index) => (
-                  <li key={`${item}-${index}`}>{item}</li>
-                ))}
-              </ul>
-            )}
-            {impactSummary.length > 0 && (
-              <ul className="text-xs text-slate-600 space-y-2">
-                {impactSummary.map((item, index) => (
-                  <li key={`${item}-${index}`}>{item}</li>
-                ))}
-              </ul>
-            )}
-            {impactSummary.length === 0 && status.length === 0 && (
-              <p className="text-xs text-slate-500">Sem impacto calculado.</p>
-            )}
-            <div className="flex flex-col gap-2">
-              {onSave && (
-                <button
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                  onClick={onSave}
-                  disabled={saveDisabled}
-                >
-                  {customSaveLabel || "Salvar"}
-                </button>
+          {showRightPanel ? (
+            <aside className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+              {hasStatusData ? (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">Barra de status</h3>
+                  <p className="text-xs text-slate-500">Impacto estimado das mudanças.</p>
+                </div>
+              ) : null}
+              {status.length > 0 && (
+                <ul className="text-xs text-slate-600 space-y-2">
+                  {status.map((item, index) => (
+                    <li key={`${item}-${index}`}>{item}</li>
+                  ))}
+                </ul>
               )}
-              {testHref && (
-                <Link
-                  href={testHref}
-                  className="rounded-lg bg-klasse-gold px-3 py-2 text-center text-xs font-semibold text-white"
-                >
-                  Testar
-                </Link>
+              {impactSummary.length > 0 && (
+                <ul className="text-xs text-slate-600 space-y-2">
+                  {impactSummary.map((item, index) => (
+                    <li key={`${item}-${index}`}>{item}</li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </aside>
+              {hasActionControls ? (
+                <div className="flex flex-col gap-2">
+                  {onSave && (
+                    <button
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      onClick={onSave}
+                      disabled={saveDisabled}
+                    >
+                      {customSaveLabel || "Salvar"}
+                    </button>
+                  )}
+                  {testHref && (
+                    <Link
+                      href={testHref}
+                      className="rounded-lg bg-klasse-gold px-3 py-2 text-center text-xs font-semibold text-white"
+                    >
+                      Testar
+                    </Link>
+                  )}
+                </div>
+              ) : null}
+            </aside>
+          ) : null}
         </div>
       )}
     </div>
