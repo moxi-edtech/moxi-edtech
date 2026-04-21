@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const auth = await requireFormacaoRoles([
-    "formando",
     "formacao_financeiro",
     "formacao_admin",
     "super_admin",

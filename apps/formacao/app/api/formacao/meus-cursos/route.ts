@@ -55,6 +55,33 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  if (auth.role === "formando") {
+    const { data: blockedRows, error: blockedError } = await s
+      .from("formacao_inscricoes")
+      .select("id")
+      .eq("escola_id", auth.escolaId)
+      .eq("formando_user_id", auth.userId)
+      .is("cancelled_at", null)
+      .contains("metadata", { portal_access_blocked: true })
+      .limit(1);
+
+    if (blockedError) {
+      return NextResponse.json({ ok: false, error: blockedError.message }, { status: 400 });
+    }
+
+    if ((blockedRows ?? []).length > 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "PORTAL_BLOCKED",
+          error: "Acesso ao portal bloqueado. Regularize os pagamentos para continuar.",
+        },
+        { status: 423 }
+      );
+    }
+  }
+
   let itemsQuery = s
     .from("formacao_faturas_lote_itens")
     .select(
@@ -75,7 +102,7 @@ export async function GET() {
     new Set(
       ((items ?? []) as RawItem[])
         .map((item) => item?.formacao_faturas_lote?.cohort_id)
-        .filter((value: unknown) => typeof value === "string" && value.length > 0)
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
     )
   );
 

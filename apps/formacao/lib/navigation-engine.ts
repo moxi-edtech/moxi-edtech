@@ -1,0 +1,226 @@
+/**
+ * MOTOR DE NAVEGAÇÃO MULTI-TENANT & RBAC (PRO-SOLO)
+ * Ficheiro puro: Sem Hooks, Sem Context, Apenas Lógica Síncrona.
+ */
+
+export type TenantType = "K12" | "CENTER" | "SOLO_CREATOR";
+export type UserRole = "ADMIN" | "MENTOR" | "SECRETARIA" | "ALUNO";
+
+export interface NavItem {
+  id: string;
+  href: string;
+  icon: string; // Nome do ícone para ser resolvido pelo componente de UI
+  label: string | (Partial<Record<TenantType, string>> & { default: string });
+  allowedTenantTypes?: TenantType[];
+  allowedRoles?: UserRole[];
+  group: "Gestão" | "Académico" | "Financeiro" | "Suporte";
+}
+
+/**
+ * Mapeia tenant_type do banco para o tipo de navegação.
+ * "formacao" deve sempre resultar em CENTER.
+ */
+export function mapTenantTypeFromDb(tenantFromDB: string | null | undefined): TenantType {
+  if (tenantFromDB === "k12") return "K12";
+  if (tenantFromDB === "solo_creator") return "SOLO_CREATOR";
+  if (tenantFromDB === "formacao") return "CENTER";
+  return "CENTER";
+}
+
+export function mapUserRoleFromDb(role: string | null | undefined): UserRole {
+  if (["formacao_admin", "super_admin", "global_admin"].includes(String(role))) return "ADMIN";
+  if (role === "formador" || role === "mentor") return "MENTOR";
+  if (role === "formando") return "ALUNO";
+  return "SECRETARIA";
+}
+
+export function isCenterAdminDashboardType(type: TenantType): boolean {
+  return type === "CENTER" || type === "K12";
+}
+
+export function shouldRedirectToK12FromFormacaoApp(
+  tenantFromDb: "k12" | "formacao" | "solo_creator" | null | undefined
+): boolean {
+  return tenantFromDb === "k12";
+}
+
+export function isCriticalTenantMappingMismatch(
+  tenantFromDb: string | null | undefined,
+  mappedType: TenantType
+): boolean {
+  return String(tenantFromDb ?? "").trim().toLowerCase() === "formacao" && mappedType === "SOLO_CREATOR";
+}
+
+export const NAVIGATION_CONFIG: NavItem[] = [
+  {
+    id: "dashboard-admin",
+    href: "/admin/dashboard",
+    icon: "LayoutDashboard",
+    label: { default: "Dashboard" },
+    allowedRoles: ["ADMIN"],
+    group: "Gestão",
+  },
+  {
+    id: "dashboard-mentor",
+    href: "/mentor/dashboard",
+    icon: "LayoutDashboard",
+    label: { default: "Dashboard" },
+    allowedRoles: ["MENTOR"],
+    group: "Gestão",
+  },
+  {
+    id: "agenda",
+    href: "/agenda",
+    icon: "Calendar",
+    label: { default: "Minha Agenda" },
+    allowedRoles: ["MENTOR"],
+    group: "Académico",
+  },
+  {
+    id: "honorarios",
+    href: "/honorarios",
+    icon: "Wallet",
+    label: { default: "Meus Honorários" },
+    allowedRoles: ["MENTOR"],
+    group: "Financeiro",
+  },
+  {
+    id: "dashboard-aluno",
+    href: "/aluno/dashboard",
+    icon: "LayoutDashboard",
+    label: { default: "Início" },
+    allowedRoles: ["ALUNO"],
+    group: "Gestão",
+  },
+  {
+    id: "nova-mentoria",
+    href: "/admin/mentorias/nova",
+    icon: "Rocket",
+    label: { default: "Lançar Mentoria" },
+    allowedTenantTypes: ["SOLO_CREATOR"],
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Gestão",
+  },
+  {
+    id: "catalogo-cursos",
+    href: "/admin/cursos",
+    icon: "GraduationCap",
+    label: { default: "Catálogo de Cursos" },
+    allowedTenantTypes: ["CENTER", "K12"],
+    allowedRoles: ["ADMIN", "SECRETARIA"],
+    group: "Académico",
+  },
+  {
+    id: "equipa",
+    href: "/admin/equipa",
+    icon: "Users",
+    label: { default: "Equipa" },
+    allowedTenantTypes: ["CENTER", "K12"],
+    allowedRoles: ["ADMIN"],
+    group: "Gestão",
+  },
+  {
+    id: "inbox",
+    href: "/secretaria/inbox",
+    icon: "Inbox",
+    label: { default: "Inbox Operacional" },
+    allowedRoles: ["SECRETARIA", "ADMIN"],
+    group: "Académico",
+  },
+  {
+    id: "cohorts",
+    href: "/admin/cohorts",
+    icon: "Users",
+    label: { 
+      default: "Turmas & Cohorts", 
+      SOLO_CREATOR: "Mentorias & Eventos" 
+    },
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Académico",
+  },
+  {
+    id: "alunos",
+    href: "/meus-cursos",
+    icon: "GraduationCap",
+    label: { 
+      default: "Meus Cursos", 
+      SOLO_CREATOR: "Minhas Mentorias" 
+    },
+    allowedRoles: ["ALUNO"],
+    group: "Académico",
+  },
+  {
+    id: "pagamentos",
+    href: "/pagamentos",
+    icon: "CreditCard",
+    label: { default: "Pagamentos" },
+    allowedRoles: ["ALUNO"],
+    group: "Financeiro",
+  },
+  {
+    id: "financeiro",
+    href: "/financeiro/dashboard",
+    icon: "BadgeDollarSign",
+    label: { default: "Financeiro & B2B" },
+    allowedTenantTypes: ["CENTER", "K12"],
+    allowedRoles: ["ADMIN"],
+    group: "Financeiro",
+  },
+  {
+    id: "infra",
+    href: "/admin/onboarding",
+    icon: "Building2",
+    label: { default: "Salas & Infraestrutura" },
+    allowedTenantTypes: ["CENTER", "K12"],
+    allowedRoles: ["ADMIN"],
+    group: "Gestão",
+  }
+];
+
+/**
+ * Filtra e resolve os labels da navegação com base no contexto.
+ */
+export function getAuthorizedNavigation(
+  items: NavItem[],
+  tenantType: TenantType,
+  userRole: UserRole
+) {
+  return items
+    .filter((item) => {
+      // 1. Filtro por Tenant
+      if (item.allowedTenantTypes && !item.allowedTenantTypes.includes(tenantType)) {
+        return false;
+      }
+      // 2. Filtro por Role
+      if (item.allowedRoles && !item.allowedRoles.includes(userRole)) {
+        // No contexto de Centro, ADMIN e MENTOR compartilham menus de Gestão.
+        if (
+          tenantType === "CENTER" &&
+          item.group === "Gestão" &&
+          (userRole === "ADMIN" || userRole === "MENTOR") &&
+          (item.allowedRoles.includes("ADMIN") || item.allowedRoles.includes("MENTOR"))
+        ) {
+          return true;
+        }
+        return false;
+      }
+      return true;
+    })
+    .map((item) => {
+      // 3. Resolução de Micro-copy dinâmico
+      let finalLabel = "";
+      if (typeof item.label === "string") {
+        finalLabel = item.label;
+      } else {
+        finalLabel = item.label[tenantType] || item.label.default || "";
+      }
+
+      return {
+        id: item.id,
+        href: item.href,
+        icon: item.icon,
+        label: finalLabel,
+        group: item.group,
+      };
+    });
+}

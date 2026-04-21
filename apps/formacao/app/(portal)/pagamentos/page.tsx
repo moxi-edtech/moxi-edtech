@@ -12,7 +12,6 @@ export default async function PagamentosFormacaoPage() {
     ![
       "formando",
       "formacao_financeiro",
-      "formacao_admin",
       "super_admin",
       "global_admin",
     ].includes(String(auth.role))

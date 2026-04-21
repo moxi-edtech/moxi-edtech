@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import { getCohortReferenceValue } from "@/lib/cohort-finance";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
   } | null;
 
   const clienteId = String(body?.cliente_b2b_id ?? "").trim();
+  const cohortId = String(body?.cohort_id ?? "").trim() || null;
   const vencimentoEm = String(body?.vencimento_em ?? "").trim();
   const itens = Array.isArray(body?.itens) ? body.itens : [];
 
@@ -63,25 +65,46 @@ export async function POST(request: Request) {
     );
   }
 
-  const totalBruto = itens.reduce(
+  const s = auth.supabase as FormacaoSupabaseClient;
+  const cohortReference = await getCohortReferenceValue(s, auth.escolaId as string, cohortId);
+  const referencia = String(body?.referencia ?? "").trim() || buildReference("B2B", auth.escolaId || "FAT");
+
+  const normalizedItens = itens.map((item) => {
+    const quantidade = Number(item.quantidade || 1);
+    const desconto = Number(item.desconto || 0);
+    const incomingPrice = Number(item.preco_unitario || 0);
+    const resolvedPrice =
+      incomingPrice > 0
+        ? incomingPrice
+        : cohortReference != null
+          ? cohortReference
+          : incomingPrice;
+
+    return {
+      formando_user_id: String(item.formando_user_id || "").trim(),
+      descricao: String(item.descricao || "").trim(),
+      quantidade,
+      preco_unitario: resolvedPrice,
+      desconto,
+    };
+  });
+
+  const totalBrutoResolved = normalizedItens.reduce(
     (sum, item) => sum + Number(item.quantidade || 0) * Number(item.preco_unitario || 0),
     0
   );
-  const totalDesconto = itens.reduce((sum, item) => sum + Number(item.desconto || 0), 0);
-
-  const s = auth.supabase as FormacaoSupabaseClient;
-  const referencia = String(body?.referencia ?? "").trim() || buildReference("B2B", auth.escolaId || "FAT");
+  const totalDescontoResolved = normalizedItens.reduce((sum, item) => sum + Number(item.desconto || 0), 0);
 
   const { data: fatura, error: faturaErr } = await s
     .from("formacao_faturas_lote")
     .insert({
       escola_id: auth.escolaId,
       cliente_b2b_id: clienteId,
-      cohort_id: String(body?.cohort_id ?? "").trim() || null,
+      cohort_id: cohortId,
       referencia,
       vencimento_em: vencimentoEm,
-      total_bruto: totalBruto,
-      total_desconto: totalDesconto,
+      total_bruto: totalBrutoResolved,
+      total_desconto: totalDescontoResolved,
       status: "emitida",
       created_by: auth.userId,
     })
@@ -90,14 +113,14 @@ export async function POST(request: Request) {
 
   if (faturaErr) return NextResponse.json({ ok: false, error: faturaErr.message }, { status: 400 });
 
-  const itensPayload = itens.map((item) => ({
+  const itensPayload = normalizedItens.map((item) => ({
     escola_id: auth.escolaId,
     fatura_lote_id: fatura.id,
-    formando_user_id: String(item.formando_user_id || "").trim(),
-    descricao: String(item.descricao || "").trim(),
-    quantidade: Number(item.quantidade || 1),
-    preco_unitario: Number(item.preco_unitario || 0),
-    desconto: Number(item.desconto || 0),
+    formando_user_id: item.formando_user_id,
+    descricao: item.descricao,
+    quantidade: item.quantidade,
+    preco_unitario: item.preco_unitario,
+    desconto: item.desconto,
     status_pagamento: "pendente",
   }));
 

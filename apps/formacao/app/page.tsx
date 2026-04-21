@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDefaultFormacaoPath, getFormacaoAuthContext } from "@/lib/auth-context";
@@ -13,6 +14,12 @@ export default async function FormacaoHomePage() {
   return (
     <main className="grid min-h-screen place-items-center p-6">
       <section className="w-full max-w-3xl rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="h-9 w-9 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
+            <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
+          </div>
+          <span className="text-sm font-semibold text-zinc-900">KLASSE</span>
+        </div>
         <p className="m-0 text-xs uppercase tracking-[0.14em] text-zinc-500">
           KLASSE Multi-Product
         </p>
