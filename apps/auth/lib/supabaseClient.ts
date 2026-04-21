@@ -2,16 +2,16 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
+import { readEnv } from "@/lib/env";
 
-const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
-const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+const url = readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const anonKey = readEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 function resolveCookieOptions() {
   const domain =
-    process.env.NEXT_PUBLIC_KLASSE_COOKIE_DOMAIN?.trim() ||
-    process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    readEnv(process.env.NEXT_PUBLIC_KLASSE_COOKIE_DOMAIN, process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_DOMAIN) ||
     (typeof window !== "undefined" && window.location.hostname.endsWith(".klasse.ao") ? ".klasse.ao" : "");
-  const sameSiteRaw = (process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_SAMESITE ?? "lax").trim().toLowerCase();
+  const sameSiteRaw = readEnv(process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_SAMESITE, "lax").toLowerCase();
   const sameSite: "lax" | "strict" | "none" =
     sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
   const secure = typeof window !== "undefined" && window.location.protocol === "https:";

@@ -1,9 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { logAuthEvent } from "@/lib/auth-log";
+import { readEnv } from "@/lib/env";
+import { checkLoginRateLimit } from "@/lib/rateLimit";
 
 type ResolveIdentifierJobResponse = {
   ok?: boolean;
@@ -28,13 +31,13 @@ function normalizeReturnTo(raw: string | null | undefined) {
 async function resolveIdentifierToEmail(identifier: string): Promise<string | null> {
   if (identifier.includes("@")) return identifier.toLowerCase();
 
-  const token = (process.env.AUTH_ADMIN_JOB_TOKEN ?? process.env.CRON_SECRET ?? "").trim();
+  const token = readEnv(process.env.AUTH_ADMIN_JOB_TOKEN, process.env.CRON_SECRET);
   if (!token) return null;
 
-  const baseUrl = (
-    process.env.AUTH_ADMIN_BASE_URL ??
-    (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://app.klasse.ao")
-  ).trim();
+  const baseUrl = readEnv(
+    process.env.AUTH_ADMIN_BASE_URL,
+    process.env.NODE_ENV === "development" ? "http://auth.lvh.me:3000" : "https://app.klasse.ao"
+  );
 
   try {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/jobs/auth-admin`, {
@@ -59,6 +62,18 @@ async function resolveIdentifierToEmail(identifier: string): Promise<string | nu
 }
 
 export async function loginAction(_: unknown, formData: FormData) {
+  const headerStore = await headers();
+  const ip = headerStore.get("x-forwarded-for") ?? headerStore.get("x-real-ip") ?? "unknown";
+  const rate = await checkLoginRateLimit(ip);
+  if (!rate.success) {
+    logAuthEvent({
+      action: "deny",
+      route: "/login",
+      details: { reason: "rate_limited", ip: rate.ip },
+    });
+    return { ok: false, message: "Muitas tentativas. Tente novamente em instantes." };
+  }
+
   const parsed = LoginSchema.safeParse({
     identifier: formData.get("identifier"),
     password: formData.get("password"),
@@ -70,42 +85,63 @@ export async function loginAction(_: unknown, formData: FormData) {
     logAuthEvent({
       action: "deny",
       route: "/login",
-      details: { reason: "invalid_payload" },
+      details: { reason: "invalid_payload", ip: rate.ip },
     });
     return { ok: false, message };
   }
 
-  const email = await resolveIdentifierToEmail(parsed.data.identifier);
-  if (!email) {
+  console.info(
+    JSON.stringify({
+      event: "login_attempt",
+      user: parsed.data.identifier.trim().toLowerCase(),
+      ip: rate.ip,
+      timestamp: new Date().toISOString(),
+    })
+  );
+
+  try {
+    const email = await resolveIdentifierToEmail(parsed.data.identifier);
+    if (!email) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    const supabase = await supabaseRouteClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: parsed.data.password,
+    });
+
+    if (error || !data.user) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    logAuthEvent({
+      action: "login",
+      route: "/login",
+      user_id: data.user.id,
+      tenant_type: null,
+      details: { ip: rate.ip },
+    });
+    console.info(
+      JSON.stringify({
+        event: "login_success",
+        path: "/login",
+        hasSession: true,
+        timestamp: new Date().toISOString(),
+      })
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("Supabase env")) {
+      return { ok: false, message: "Configuração de autenticação inválida no servidor." };
+    }
     logAuthEvent({
       action: "deny",
       route: "/login",
-      details: { reason: "identifier_not_resolved" },
+      details: { reason: "invalid_credentials", ip: rate.ip },
     });
     return { ok: false, message: "Credenciais inválidas. Verifique os dados e tente novamente." };
   }
-
-  const supabase = await supabaseRouteClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password: parsed.data.password,
-  });
-
-  if (error || !data.user) {
-    logAuthEvent({
-      action: "deny",
-      route: "/login",
-      details: { reason: "invalid_credentials" },
-    });
-    return { ok: false, message: "Credenciais inválidas. Verifique os dados e tente novamente." };
-  }
-
-  logAuthEvent({
-    action: "login",
-    route: "/login",
-    user_id: data.user.id,
-    tenant_type: null,
-  });
 
   const returnTo = normalizeReturnTo(parsed.data.redirect_to);
   const qs = returnTo ? `?redirect=${encodeURIComponent(returnTo)}` : "";

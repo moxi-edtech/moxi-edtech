@@ -1,19 +1,45 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { resolveSessionContext, resolveSessionContexts } from "@/lib/session-context";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { getUserTenants } from "@/lib/getUserTenants";
 import { logAuthEvent } from "@/lib/auth-log";
+import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
 
-type SearchParams = Promise<{ redirect?: string; tenant_id?: string }>;
-type ProductContext = "k12" | "formacao";
+type GlobalRole = "super_admin" | "global_admin" | null;
 
-function resolveProductBases(host: string) {
+export const dynamic = "force-dynamic";
+
+type SearchParams = Promise<{ redirect?: string }>;
+
+function isLocalOrigin(value: string) {
+  const v = value.trim().toLowerCase();
+  return (
+    v.includes("localhost") ||
+    v.includes("127.0.0.1") ||
+    v.includes(".localhost") ||
+    v.includes(".lvh.me")
+  );
+}
+
+function resolveProductBases(host: string, redirectHint?: string) {
   const isLocalHost =
-    host.startsWith("localhost") || host.startsWith("127.0.0.1") || host.endsWith(".localhost");
+    isLocalOrigin(host) ||
+    isLocalOrigin(redirectHint ?? "") ||
+    process.env.NODE_ENV !== "production";
 
   if (isLocalHost) {
+    const prefersLocalhost =
+      host.includes("localhost") ||
+      host.includes(".localhost") ||
+      isLocalOrigin(redirectHint ?? "") && (redirectHint ?? "").toLowerCase().includes("localhost");
+
     return {
-      k12: process.env.KLASSE_K12_LOCAL_ORIGIN?.trim() || "http://localhost:3000",
-      formacao: process.env.KLASSE_FORMACAO_LOCAL_ORIGIN?.trim() || "http://localhost:3001",
+      k12:
+        process.env.KLASSE_K12_LOCAL_ORIGIN?.trim() ||
+        (prefersLocalhost ? "http://app.localhost:3001" : "http://app.lvh.me:3001"),
+      formacao:
+        process.env.KLASSE_FORMACAO_LOCAL_ORIGIN?.trim() ||
+        (prefersLocalhost ? "http://formacao.localhost:3002" : "http://formacao.lvh.me:3002"),
     };
   }
 
@@ -42,33 +68,54 @@ function normalizeRedirectTarget(raw: string | undefined, expectedBase: string) 
   }
 }
 
-function getDefaultProductPath(product: ProductContext) {
-  return product === "formacao" ? "/dashboard" : "/redirect";
+function normalizeRole(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+async function resolveGlobalRole(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+  userMetadata: unknown,
+  appMetadata: unknown
+): Promise<GlobalRole> {
+  try {
+    const { data: isSuperAdmin } = await supabase.rpc("check_super_admin_role");
+    if (Boolean(isSuperAdmin)) return "super_admin";
+  } catch {
+    // no-op: fallback below
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const profileRole = normalizeRole((profile as { role?: unknown } | null)?.role);
+  if (profileRole === "super_admin" || profileRole === "superadmin") return "super_admin";
+  if (profileRole === "global_admin") return "global_admin";
+
+  const metadataRole = normalizeRole(
+    (userMetadata as Record<string, unknown> | null | undefined)?.role ??
+      (appMetadata as Record<string, unknown> | null | undefined)?.role
+  );
+  if (metadataRole === "super_admin" || metadataRole === "superadmin") return "super_admin";
+  if (metadataRole === "global_admin") return "global_admin";
+
+  return null;
 }
 
 export default async function RedirectPage({ searchParams }: { searchParams: SearchParams }) {
-  const headerStore = await headers();
-  const host = (
-    headerStore.get("x-forwarded-host") ??
-    headerStore.get("host") ??
-    ""
-  )
-    .split(",")[0]
-    .trim()
-    .toLowerCase();
+  const supabase = await supabaseServer();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
 
   const params = await searchParams;
-  const requestedTenantId = String(params.tenant_id ?? "").trim();
-  const hintedProduct = (() => {
-    const hinted = String(params.redirect ?? "").toLowerCase();
-    if (hinted.includes("formacao.klasse.ao") || hinted.includes("localhost:3001")) return "formacao";
-    if (hinted.includes("app.klasse.ao") || hinted.includes("localhost:3000")) return "k12";
-    return null;
-  })() as ProductContext | null;
+  const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
 
-  const contextList = await resolveSessionContexts();
-  if (!contextList) {
-    const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
+  if (!user) {
     logAuthEvent({
       action: "resolve_context_failed",
       route: "/redirect",
@@ -77,53 +124,75 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     redirect(`/login${loginSuffix}`);
   }
 
-  if (!requestedTenantId && contextList.contexts.length > 1) {
+  const tenants = await getUserTenants(user.id);
+  const globalRole = await resolveGlobalRole(supabase, user.id, user.user_metadata, user.app_metadata);
+
+  if (tenants.length === 0 && globalRole) {
+    const headerStore = await headers();
+    const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+      .split(",")[0]
+      .trim()
+      .toLowerCase();
+    const bases = resolveProductBases(host, params.redirect);
+    const productBase = bases.k12;
+    const preferred = normalizeRedirectTarget(params.redirect, productBase);
+    const preferredPath = preferred ? new URL(preferred).pathname : "";
+    const blockedPreferred = preferredPath === "/redirect" || preferredPath === "/login";
+    const destination =
+      preferred && !blockedPreferred
+        ? preferred
+        : `${productBase.replace(/\/$/, "")}/super-admin`;
+
+    logAuthEvent({
+      action: "redirect",
+      route: "/redirect",
+      user_id: user.id,
+      tenant_type: null,
+      details: { reason: "global_admin_without_tenant", role: globalRole, destination },
+    });
+    redirect(destination);
+  }
+
+  if (tenants.length === 0) {
+    logAuthEvent({
+      action: "resolve_context_failed",
+      route: "/redirect",
+      user_id: user.id,
+      details: { reason: "no_tenant" },
+    });
+    redirect("/login?error=no_tenant");
+  }
+
+  if (tenants.length > 1) {
     const selectUrl = `/select-context${params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : ""}`;
     logAuthEvent({
       action: "redirect",
       route: "/redirect",
-      user_id: contextList.user_id,
-      details: { reason: "multi_tenant_requires_selection", contexts: contextList.contexts.length },
+      user_id: user.id,
+      details: { reason: "multi_tenant_requires_selection", tenants: tenants.length },
     });
     redirect(selectUrl);
   }
 
-  const session = await resolveSessionContext({
-    requestedTenantId: requestedTenantId || null,
-    preferredProduct: hintedProduct,
-  });
+  const selected = tenants[0];
+  const destinationConfig = resolveTenantRoute(selected);
 
-  if (!session) {
-    const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
-    logAuthEvent({
-      action: "resolve_context_failed",
-      route: "/redirect",
-      details: { reason: "no_session_context" },
-    });
-    redirect(`/login${loginSuffix}`);
-  }
-
-  if (!session.tenant_id || !session.tenant_type) {
-    logAuthEvent({
-      action: "resolve_context_failed",
-      route: "/redirect",
-      user_id: session.user_id,
-      details: { reason: "tenant_id_or_tenant_type_missing" },
-    });
-    throw new Error("AUTH_CONTEXT_INVALID: tenant_id and tenant_type are required for redirect");
-  }
-
-  const product: ProductContext = session.product_context ?? "k12";
-  const bases = resolveProductBases(host);
-  const productBase = product === "formacao" ? bases.formacao : bases.k12;
+  const headerStore = await headers();
+  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const bases = resolveProductBases(host, params.redirect);
+  const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
   const preferred = normalizeRedirectTarget(params.redirect, productBase);
-  const destination = preferred ?? `${productBase.replace(/\/$/, "")}${getDefaultProductPath(product)}`;
+  const destination = preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
+
   logAuthEvent({
     action: "redirect",
     route: "/redirect",
-    user_id: session.user_id,
-    tenant_id: session.tenant_id,
-    tenant_type: session.tenant_type,
+    user_id: user.id,
+    tenant_id: selected.tenantId,
+    tenant_type: selected.tenantType,
     details: { destination },
   });
 

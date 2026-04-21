@@ -2,13 +2,24 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
+import { readEnv } from "@/lib/env";
 
 function getSupabaseEnv() {
-  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
-  const anonKey = (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+  const url = readEnv(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const anonKey = readEnv(process.env.SUPABASE_ANON_KEY, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   if (!url || !anonKey) {
     throw new Error("Missing Supabase env for apps/auth");
+  }
+  if (url.includes("YOUR-PROJECT-REF") || anonKey.includes("YOUR_PUBLIC_ANON_KEY")) {
+    throw new Error("Invalid Supabase env placeholder values for apps/auth");
+  }
+  try {
+    // Validate malformed envs early (for example quoted strings with escapes).
+    // eslint-disable-next-line no-new
+    new URL(url);
+  } catch {
+    throw new Error("Invalid Supabase URL env for apps/auth");
   }
 
   return { url, anonKey };
@@ -16,10 +27,9 @@ function getSupabaseEnv() {
 
 function resolveCookieOptions() {
   const domain =
-    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
-    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
-    (process.env.NODE_ENV === "production" ? ".klasse.ao" : "");
-  const sameSiteRaw = (process.env.KLASSE_AUTH_COOKIE_SAMESITE ?? "lax").trim().toLowerCase();
+    readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN) ||
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : ".localhost");
+  const sameSiteRaw = readEnv(process.env.KLASSE_AUTH_COOKIE_SAMESITE, "lax").toLowerCase();
   const sameSite: "lax" | "strict" | "none" =
     sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
   const secure = process.env.NODE_ENV === "production";
