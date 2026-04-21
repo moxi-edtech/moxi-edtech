@@ -1,0 +1,306 @@
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.get_setup_state(p_escola_id uuid, p_ano_letivo integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_ano_letivo_id uuid;
+  v_ano_ativo boolean := false;
+  v_periodos_count integer := 0;
+  v_periodos_overlap boolean := false;
+  v_periodos_peso_total integer := 0;
+  v_periodos_trava_invalid boolean := false;
+  v_periodos_ok boolean := false;
+  v_avaliacao_ok boolean := false;
+  v_curriculo_draft_ok boolean := false;
+  v_curriculo_published_ok boolean := false;
+  v_turmas_count integer := 0;
+  v_turmas_sem_disciplinas integer := 0;
+  v_turmas_ok boolean := false;
+  v_blockers jsonb := '[]'::jsonb;
+  v_stage text := 'SETUP_EMPTY';
+  v_next_action jsonb;
+  v_calendario_href text := format('/escola/%s/admin/configuracoes/calendario', p_escola_id);
+  v_avaliacao_href text := format('/escola/%s/admin/configuracoes/avaliacao', p_escola_id);
+  v_turmas_href text := format('/escola/%s/admin/configuracoes/turmas', p_escola_id);
+BEGIN
+  IF p_escola_id IS DISTINCT FROM public.current_tenant_escola_id() THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+
+  IF NOT public.user_has_role_in_school(p_escola_id, ARRAY['admin_escola', 'secretaria', 'admin']) THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+
+  SELECT id, ativo
+    INTO v_ano_letivo_id, v_ano_ativo
+    FROM public.anos_letivos
+   WHERE escola_id = p_escola_id
+     AND ano = p_ano_letivo
+   ORDER BY created_at DESC
+   LIMIT 1;
+
+  IF v_ano_letivo_id IS NOT NULL THEN
+    SELECT count(*)::int
+      INTO v_periodos_count
+      FROM public.periodos_letivos
+     WHERE escola_id = p_escola_id
+       AND ano_letivo_id = v_ano_letivo_id;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM public.periodos_letivos p1
+        JOIN public.periodos_letivos p2
+          ON p1.id < p2.id
+         AND p1.escola_id = p_escola_id
+         AND p2.escola_id = p_escola_id
+         AND p1.ano_letivo_id = v_ano_letivo_id
+         AND p2.ano_letivo_id = v_ano_letivo_id
+         AND daterange(p1.data_inicio, p1.data_fim, '[]') && daterange(p2.data_inicio, p2.data_fim, '[]')
+    )
+      INTO v_periodos_overlap;
+
+    SELECT COALESCE(SUM(peso), 0)
+      INTO v_periodos_peso_total
+      FROM public.periodos_letivos
+     WHERE escola_id = p_escola_id
+       AND ano_letivo_id = v_ano_letivo_id
+       AND peso IS NOT NULL;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM public.periodos_letivos pl
+       WHERE pl.escola_id = p_escola_id
+         AND pl.ano_letivo_id = v_ano_letivo_id
+         AND pl.trava_notas_em IS NOT NULL
+         AND pl.trava_notas_em::date < pl.data_fim
+    )
+      INTO v_periodos_trava_invalid;
+
+    v_periodos_ok := v_periodos_count > 0
+      AND NOT v_periodos_overlap
+      AND (v_periodos_peso_total IN (0, 100))
+      AND NOT v_periodos_trava_invalid;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM public.configuracoes_escola
+       WHERE escola_id = p_escola_id
+         AND modelo_avaliacao IS NOT NULL
+    )
+      INTO v_avaliacao_ok;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM public.curso_curriculos
+       WHERE escola_id = p_escola_id
+         AND ano_letivo_id = v_ano_letivo_id
+         AND status = 'draft'
+    )
+      INTO v_curriculo_draft_ok;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM public.curso_curriculos
+       WHERE escola_id = p_escola_id
+         AND ano_letivo_id = v_ano_letivo_id
+         AND status = 'published'
+    )
+      INTO v_curriculo_published_ok;
+
+    SELECT count(*)::int
+      INTO v_turmas_count
+      FROM public.turmas
+     WHERE escola_id = p_escola_id
+       AND ano_letivo = p_ano_letivo;
+
+    SELECT count(*)::int
+      INTO v_turmas_sem_disciplinas
+      FROM public.turmas t
+     WHERE t.escola_id = p_escola_id
+       AND t.ano_letivo = p_ano_letivo
+       AND NOT EXISTS (
+        SELECT 1
+          FROM public.turma_disciplinas td
+         WHERE td.escola_id = t.escola_id
+           AND td.turma_id = t.id
+       );
+
+    v_turmas_ok := v_turmas_count > 0 AND v_turmas_sem_disciplinas = 0;
+  END IF;
+
+  IF v_ano_letivo_id IS NULL OR v_ano_ativo IS NOT TRUE THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'NO_ACTIVE_ANO_LETIVO',
+      'severity', 'P0',
+      'title', 'Ano letivo ativo não encontrado',
+      'detail', 'Defina um ano letivo ativo para continuar.',
+      'fix_cta', jsonb_build_object('label', 'Configurar ano letivo', 'href', v_calendario_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND v_periodos_count = 0 THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'PERIODOS_INVALID',
+      'severity', 'P0',
+      'title', 'Períodos letivos ausentes',
+      'detail', 'Crie os períodos do ano letivo antes de avançar.',
+      'fix_cta', jsonb_build_object('label', 'Configurar períodos', 'href', v_calendario_href)
+    ));
+  END IF;
+
+  IF v_periodos_overlap THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'PERIODOS_OVERLAP',
+      'severity', 'P0',
+      'title', 'Períodos sobrepostos',
+      'detail', 'Revise as datas para evitar conflitos.',
+      'fix_cta', jsonb_build_object('label', 'Revisar períodos', 'href', v_calendario_href)
+    ));
+  END IF;
+
+  IF v_periodos_peso_total NOT IN (0, 100) THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'PESOS_NOT_100',
+      'severity', 'P0',
+      'title', 'Pesos dos períodos incoerentes',
+      'detail', 'A soma dos pesos deve fechar 100%.',
+      'fix_cta', jsonb_build_object('label', 'Revisar pesos', 'href', v_calendario_href)
+    ));
+  END IF;
+
+  IF v_periodos_trava_invalid THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'PERIODOS_INVALID',
+      'severity', 'P0',
+      'title', 'Trava de notas inválida',
+      'detail', 'A trava deve ser igual ou posterior ao fim do período.',
+      'fix_cta', jsonb_build_object('label', 'Revisar travas', 'href', v_calendario_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND NOT v_avaliacao_ok THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'NO_AVALIACAO_MODEL',
+      'severity', 'P1',
+      'title', 'Modelo de avaliação pendente',
+      'detail', 'Defina o modelo de avaliação e frequência.',
+      'fix_cta', jsonb_build_object('label', 'Configurar avaliação', 'href', v_avaliacao_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND NOT v_curriculo_draft_ok THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'NO_CURRICULO_DRAFT',
+      'severity', 'P1',
+      'title', 'Currículo rascunho ausente',
+      'detail', 'Aplique um preset para criar o currículo.',
+      'fix_cta', jsonb_build_object('label', 'Aplicar preset', 'href', v_turmas_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND NOT v_curriculo_published_ok THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'NO_CURRICULO_PUBLISHED',
+      'severity', 'P0',
+      'title', 'Currículo publicado ausente',
+      'detail', 'Publique o currículo antes de gerar turmas.',
+      'fix_cta', jsonb_build_object('label', 'Publicar currículo', 'href', v_turmas_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND v_turmas_count = 0 THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'NO_TURMAS',
+      'severity', 'P0',
+      'title', 'Nenhuma turma gerada',
+      'detail', 'Gere turmas a partir do currículo publicado.',
+      'fix_cta', jsonb_build_object('label', 'Gerar turmas', 'href', v_turmas_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND v_turmas_sem_disciplinas > 0 THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'TURMAS_MISSING_DISCIPLINAS',
+      'severity', 'P0',
+      'title', 'Turmas sem disciplinas',
+      'detail', 'Republique o currículo para reconstruir disciplinas.',
+      'fix_cta', jsonb_build_object('label', 'Reconstruir disciplinas', 'href', v_turmas_href)
+    ));
+  END IF;
+
+  IF v_ano_letivo_id IS NOT NULL AND v_ano_ativo THEN
+    v_stage := 'SETUP_TEMPORAL_OK';
+  END IF;
+  IF v_periodos_ok AND v_avaliacao_ok THEN
+    v_stage := 'SETUP_AVALIACAO_OK';
+  END IF;
+  IF v_curriculo_draft_ok THEN
+    v_stage := 'SETUP_CURRICULO_DRAFT_OK';
+  END IF;
+  IF v_curriculo_published_ok THEN
+    v_stage := 'SETUP_CURRICULO_PUBLISHED_OK';
+  END IF;
+  IF v_turmas_ok THEN
+    v_stage := 'SETUP_TURMAS_OK';
+  END IF;
+  IF v_ano_ativo AND v_periodos_ok AND v_avaliacao_ok AND v_curriculo_published_ok AND v_turmas_ok THEN
+    v_stage := 'SETUP_READY';
+  END IF;
+
+  v_next_action := jsonb_build_object(
+    'key',
+      CASE
+        WHEN v_ano_letivo_id IS NULL OR v_ano_ativo IS NOT TRUE THEN 'CONFIGURE_ANO_LETIVO'
+        WHEN NOT v_periodos_ok THEN 'CONFIGURE_PERIODOS'
+        WHEN NOT v_avaliacao_ok THEN 'CONFIGURE_AVALIACAO'
+        WHEN NOT v_curriculo_draft_ok THEN 'APPLY_PRESET'
+        WHEN NOT v_curriculo_published_ok THEN 'PUBLISH_CURRICULO'
+        WHEN NOT v_turmas_ok THEN 'GENERATE_TURMAS'
+        ELSE 'RUN_VALIDATION'
+      END,
+    'label',
+      CASE
+        WHEN v_ano_letivo_id IS NULL OR v_ano_ativo IS NOT TRUE THEN 'Configurar ano letivo'
+        WHEN NOT v_periodos_ok THEN 'Configurar períodos'
+        WHEN NOT v_avaliacao_ok THEN 'Configurar avaliação'
+        WHEN NOT v_curriculo_draft_ok THEN 'Aplicar preset curricular'
+        WHEN NOT v_curriculo_published_ok THEN 'Publicar currículo'
+        WHEN NOT v_turmas_ok THEN 'Gerar turmas'
+        ELSE 'Rodar validações'
+      END,
+    'href',
+      CASE
+        WHEN v_ano_letivo_id IS NULL OR v_ano_ativo IS NOT TRUE THEN v_calendario_href
+        WHEN NOT v_periodos_ok THEN v_calendario_href
+        WHEN NOT v_avaliacao_ok THEN v_avaliacao_href
+        WHEN NOT v_curriculo_draft_ok THEN v_turmas_href
+        WHEN NOT v_curriculo_published_ok THEN v_turmas_href
+        WHEN NOT v_turmas_ok THEN v_turmas_href
+        ELSE v_calendario_href
+      END
+  );
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'escola_id', p_escola_id,
+    'ano_letivo', p_ano_letivo,
+    'stage', v_stage,
+    'badges', jsonb_build_object(
+      'ano_letivo_ok', v_ano_letivo_id IS NOT NULL AND v_ano_ativo,
+      'periodos_ok', v_periodos_ok,
+      'avaliacao_ok', v_avaliacao_ok,
+      'curriculo_draft_ok', v_curriculo_draft_ok,
+      'curriculo_published_ok', v_curriculo_published_ok,
+      'turmas_ok', v_turmas_ok
+    ),
+    'blockers', v_blockers,
+    'next_action', v_next_action
+  );
+END;
+$function$;
+
+COMMIT;
