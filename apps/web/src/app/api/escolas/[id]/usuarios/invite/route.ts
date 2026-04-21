@@ -9,6 +9,7 @@ import { sanitizeEmail } from '@/lib/sanitize'
 import { papelEscolaSchema } from '@/lib/roles'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { buildCredentialsEmail, buildInviteEmail, sendMail } from '@/lib/mailer'
 
 // ❌ REMOVIDO: generateNumeroLogin
 
@@ -252,11 +253,67 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
     }).catch(() => null)
 
+    const origin = new URL(req.url).origin
+    const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, "")
+    let emailStatus: {
+      attempted: boolean
+      ok: boolean
+      kind?: 'credentials' | 'invite'
+      error?: string | null
+    } = { attempted: false, ok: false }
+
+    const { data: escolaInfo } = await supabase.from('escolas').select('nome').eq('id', escolaId).maybeSingle()
+    const escolaNome = String((escolaInfo as { nome?: string | null } | null)?.nome ?? 'sua escola')
+
+    if (userCreated && tempPassword) {
+      const mail = buildCredentialsEmail({
+        nome,
+        email,
+        senha_temp: tempPassword,
+        escolaNome,
+        numero_processo_login: existingNumeroLogin ?? undefined,
+        loginUrl,
+      })
+      const sent = await sendMail({
+        to: email,
+        subject: mail.subject,
+        html: String(mail.html),
+        text: String(mail.text),
+      })
+      emailStatus = {
+        attempted: true,
+        ok: sent.ok,
+        kind: 'credentials',
+        error: sent.ok ? null : sent.error,
+      }
+    } else {
+      const invite = buildInviteEmail({
+        escolaNome,
+        onboardingUrl: loginUrl,
+        convidadoEmail: email,
+        convidadoNome: nome,
+        papel,
+      })
+      const sent = await sendMail({
+        to: email,
+        subject: invite.subject,
+        html: String(invite.html),
+        text: String(invite.text),
+      })
+      emailStatus = {
+        attempted: true,
+        ok: sent.ok,
+        kind: 'invite',
+        error: sent.ok ? null : sent.error,
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       userId,
       numero_processo_login: existingNumeroLogin,
       senha_temp: tempPassword,
+      emailStatus,
     })
   } catch (err) {
     return NextResponse.json({

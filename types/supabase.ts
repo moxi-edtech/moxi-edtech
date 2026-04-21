@@ -15438,6 +15438,11 @@ export type Database = {
           turno: string
         }[]
       }
+      get_public_landing_data: { Args: { p_slug: string }; Returns: Json }
+      get_public_slug_for_current_tenant: {
+        Args: { p_escola_id?: string }
+        Returns: string
+      }
       get_recent_cron_runs: {
         Args: { p_limit?: number }
         Returns: {

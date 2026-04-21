@@ -37,6 +37,13 @@ type Props = {
   initialSchoolName?: string;
 };
 
+type PeriodoConfig = {
+  numero: number;
+  data_inicio: string;
+  data_fim: string;
+  trava_notas_em: string;
+};
+
 // --- HELPERS ---
 async function fetchAllPaginated<T>(endpoint: string, limit = 50): Promise<T[]> {
   const items: T[] = [];
@@ -145,7 +152,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [anoLetivoId, setAnoLetivoId] = useState<string | null>(null);
   const [dataInicio, setDataInicio] = useState<string>(`${new Date().getFullYear()}-01-01`);
   const [dataFim, setDataFim] = useState<string>(`${new Date().getFullYear()}-12-31`);
-  const [periodosConfig, setPeriodosConfig] = useState([
+  const [periodosConfig, setPeriodosConfig] = useState<PeriodoConfig[]>([
     { numero: 1, data_inicio: `${new Date().getFullYear()}-01-01`, data_fim: `${new Date().getFullYear()}-04-30`, trava_notas_em: "" },
     { numero: 2, data_inicio: `${new Date().getFullYear()}-05-01`, data_fim: `${new Date().getFullYear()}-08-31`, trava_notas_em: "" },
     { numero: 3, data_inicio: `${new Date().getFullYear()}-09-01`, data_fim: `${new Date().getFullYear()}-12-31`, trava_notas_em: "" },
@@ -186,7 +193,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   }, [initialSchoolName]);
 
   // Init Dates based on Year
-  const buildDefaultPeriodos = (ano: number) => ([
+  const buildDefaultPeriodos = (ano: number): PeriodoConfig[] => ([
     { numero: 1, data_inicio: `${ano}-01-01`, data_fim: `${ano}-04-30`, trava_notas_em: "" },
     { numero: 2, data_inicio: `${ano}-05-01`, data_fim: `${ano}-08-31`, trava_notas_em: "" },
     { numero: 3, data_inicio: `${ano}-09-01`, data_fim: `${ano}-12-31`, trava_notas_em: "" },
@@ -229,7 +236,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const buildPeriodosFromRange = (
     start: string,
     end: string,
-    current: Array<{ numero: number; data_inicio: string; data_fim: string; trava_notas_em: string }>
+    current: PeriodoConfig[]
   ) => {
     const startDate = parseDateOnlyUtc(start);
     const endDate = parseDateOnlyUtc(end);
@@ -240,7 +247,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     const baseSize = Math.floor(totalDays / count);
     let remainder = totalDays % count;
 
-    const next = [];
+    const next: PeriodoConfig[] = [];
     let cursor = startDate;
     for (let i = 0; i < count; i += 1) {
       const size = baseSize + (remainder > 0 ? 1 : 0);

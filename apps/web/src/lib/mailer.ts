@@ -40,12 +40,14 @@ export async function sendMail({ to, subject, html, text }: SendArgs): Promise<{
 }
 
 export function buildOnboardingEmail(args: { escolaNome: string; onboardingUrl: string; adminEmail: string; adminNome?: string; plano?: string | null | undefined }) {
-  const { onboardingUrl, adminNome, plano } = args
+  const { onboardingUrl, adminNome, plano, escolaNome } = args
   const brand = getBranding()
   const subject = `Bem-vindo ao ${brand.name}${plano ? ` • Plano ${plano}` : ''} • Inicie o onboarding da escola`
   const element = createElement(KlasseWelcomeEmail, {
     nomeUsuario: adminNome || 'Gestor',
     linkAcesso: onboardingUrl,
+    escolaNome,
+    plano: plano ?? null,
   })
   const html = render(element)
   const text = render(element, { plainText: true })
@@ -69,19 +71,27 @@ export function buildInviteEmail(args: {
     onboardingUrl ? `Aceitar convite: ${onboardingUrl}` : '',
   ].filter(Boolean).join('\n')
 
+  const buttonHtml = onboardingUrl
+    ? `<a href="${onboardingUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no KLASSE</a>`
+    : ''
+
   const html = `
-  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; line-height:1.6; color:#0f172a;">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-      ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:28px;" />` : ''}
-      <span style="font-size:18px; font-weight:700;">${escapeHtml(brand.name)}</span>
+  <div style="background-color:#f8fafc; margin:0; padding:24px 8px; font-family:Helvetica, Arial, sans-serif;">
+    <div style="border:1px solid #eaeaea; border-radius:16px; margin:40px auto; padding:20px; max-width:465px; background-color:#ffffff; box-shadow:0 1px 4px rgba(15,23,42,0.08); line-height:1.6; color:#0f172a;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; justify-content:center;">
+        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:32px;" />` : ''}
+        <span style="font-size:20px; font-weight:700;">${escapeHtml(brand.name)}</span>
+      </div>
+      <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Convite para ${escapeHtml(escolaNome)}</h2>
+      ${convidadoNome ? `<p style="margin:0 0 8px 0;">Olá, <strong>${escapeHtml(convidadoNome)}</strong>.</p>` : '<p style="margin:0 0 8px 0;">Olá,</p>'}
+      <p style="margin:0 0 8px 0; color:#475569;">Você foi convidado para aceder ao <strong>${escapeHtml(brand.name)}</strong> da escola <strong>${escapeHtml(escolaNome)}</strong>.</p>
+      ${papel ? `<p style="margin:0 0 8px 0; color:#475569;">Perfil: <strong>${escapeHtml(papel)}</strong></p>` : ''}
+      ${buttonHtml ? `<div style="text-align:center; margin:24px 0;">${buttonHtml}</div>` : ''}
+      <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
+      <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(convidadoEmail)}.</p>
+      ${brand.supportEmail ? `<p style="margin:8px 0 0 0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 KLASSE EdTech. Luanda, Angola.</p>
     </div>
-    <h2 style="margin:0 0 12px 0; font-size:20px;">Convite para ${escapeHtml(escolaNome)}</h2>
-    ${convidadoNome ? `<p style=\"margin:0 0 8px 0;\">Olá, <strong>${escapeHtml(convidadoNome)}</strong>.</p>` : ''}
-    <p style="margin:0 0 8px 0;">Você foi convidado para aceder ao ${escapeHtml(brand.name)} da escola <strong>${escapeHtml(escolaNome)}</strong>.</p>
-    ${papel ? `<p style=\"margin:0 0 8px 0;\">Perfil: <strong>${escapeHtml(papel)}</strong></p>` : ''}
-    ${onboardingUrl ? `<p style=\"margin:16px 0 0 0;\"><a href=\"${onboardingUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Aceitar convite</a></p>` : ''}
-    <p style="margin:24px 0 8px 0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(convidadoEmail)}.</p>
-    ${brand.supportEmail ? `<p style=\"margin:8px 0 0 0; font-size:12px; color:#64748b;\">Suporte: <a href=\"mailto:${escapeHtml(brand.supportEmail)}\">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
   </div>
   `
   return { subject, html, text }
@@ -98,15 +108,20 @@ export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: st
   ].filter(Boolean).join('\n')
 
   const html = `
-  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; line-height:1.6; color:#0f172a;">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-      ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:28px;" />` : ''}
-      <span style="font-size:18px; font-weight:700;">${escapeHtml(brand.name)}</span>
+  <div style="background-color:#f8fafc; margin:0; padding:24px 8px; font-family:Helvetica, Arial, sans-serif;">
+    <div style="border:1px solid #eaeaea; border-radius:16px; margin:40px auto; padding:20px; max-width:465px; background-color:#ffffff; box-shadow:0 1px 4px rgba(15,23,42,0.08); line-height:1.6; color:#0f172a;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; justify-content:center;">
+        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:32px;" />` : ''}
+        <span style="font-size:20px; font-weight:700;">${escapeHtml(brand.name)}</span>
+      </div>
+      <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Redefinir senha</h2>
+      <p style="margin:0 0 8px 0; color:#475569;">Recebemos um pedido para redefinir sua senha no ${escapeHtml(brand.name)}.</p>
+      ${resetUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${resetUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Redefinir senha</a></div>` : ''}
+      ${expiresEm ? `<p style="margin:0 0 8px 0; font-size:13px; color:#475569;">Este link expira em <strong>${escapeHtml(expiresEm)}</strong>.</p>` : ''}
+      <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
+      ${brand.supportEmail ? `<p style="margin:0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 KLASSE EdTech. Luanda, Angola.</p>
     </div>
-    <h2 style="margin:0 0 12px 0; font-size:20px;">Redefinir senha</h2>
-    <p style="margin:0 0 8px 0;">Recebemos um pedido para redefinir sua senha no ${escapeHtml(brand.name)}.</p>
-    ${resetUrl ? `<p style=\"margin:16px 0 0 0;\"><a href=\"${resetUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Redefinir senha</a></p>` : ''}
-    ${expiresEm ? `<p style=\"margin:16px 0 0 0; font-size:13px; color:#475569;\">Este link expira em ${escapeHtml(expiresEm)}.</p>` : ''}
   </div>
   `
   return { subject, html, text }
@@ -179,6 +194,7 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
   const text = [
     nome ? `Olá, ${nome}.` : `Olá,`,
     `Suas credenciais foram configuradas no ${brand.name}${escolaNome ? ` para a escola "${escolaNome}"` : ''}.`,
+    `Login: ${email}`,
     numero_processo_login ? `Número de processo (login): ${numero_processo_login}` : '',
     senha_temp ? `Senha temporária: ${senha_temp}` : '',
     loginUrl ? `Acesse: ${loginUrl}` : '',
@@ -186,20 +202,25 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
   ].filter(Boolean).join('\n')
 
   const html = `
-  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; line-height:1.6; color:#0f172a;">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-      ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:28px;" />` : ''}
-      <span style="font-size:18px; font-weight:700;">${escapeHtml(brand.name)}</span>
+  <div style="background-color:#f8fafc; margin:0; padding:24px 8px; font-family:Helvetica, Arial, sans-serif;">
+    <div style="border:1px solid #eaeaea; border-radius:16px; margin:40px auto; padding:20px; max-width:465px; background-color:#ffffff; box-shadow:0 1px 4px rgba(15,23,42,0.08); line-height:1.6; color:#0f172a;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; justify-content:center;">
+        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:32px;" />` : ''}
+        <span style="font-size:20px; font-weight:700;">${escapeHtml(brand.name)}</span>
+      </div>
+      <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Seus dados de acesso</h2>
+      ${nome ? `<p style="margin:0 0 8px 0;">Olá, <strong>${escapeHtml(nome)}</strong>.</p>` : '<p style="margin:0 0 8px 0;">Olá,</p>'}
+      <p style="margin:0 0 8px 0; color:#475569;">Suas credenciais foram configuradas${escolaNome ? ` para a escola <strong>${escapeHtml(escolaNome)}</strong>` : ''}.</p>
+      <p style="margin:0 0 8px 0; color:#475569;">Login: <strong>${escapeHtml(email)}</strong></p>
+      ${numero_processo_login ? `<p style="margin:0 0 8px 0; color:#475569;">Número de processo (login): <strong>${escapeHtml(numero_processo_login)}</strong></p>` : ''}
+      ${senha_temp ? `<p style="margin:0 0 8px 0; color:#475569;">Senha temporária: <strong>${escapeHtml(senha_temp)}</strong></p>` : ''}
+      ${loginUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${loginUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no KLASSE</a></div>` : ''}
+      ${senha_temp ? `<p style="margin:0 0 8px 0; font-size:13px; color:#334155;">Por segurança, altere sua senha após o primeiro acesso.</p>` : ''}
+      <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
+      <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(email)}.</p>
+      ${brand.supportEmail ? `<p style="margin:8px 0 0 0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 KLASSE EdTech. Luanda, Angola.</p>
     </div>
-    <h2 style="margin:0 0 12px 0; font-size:20px;">Seus dados de acesso</h2>
-    ${nome ? `<p style=\"margin:0 0 8px 0;\">Olá, <strong>${escapeHtml(nome)}</strong>.</p>` : ''}
-    <p style="margin:0 0 8px 0;">Suas credenciais foram configuradas${escolaNome ? ` para a escola <strong>${escapeHtml(escolaNome)}</strong>` : ''}.</p>
-    ${numero_processo_login ? `<p style=\"margin:0 0 8px 0;\">Número de processo (login): <strong>${escapeHtml(numero_processo_login)}</strong></p>` : ''}
-    ${senha_temp ? `<p style=\"margin:0 0 8px 0;\">Senha temporária: <strong>${escapeHtml(senha_temp)}</strong></p>` : ''}
-    ${loginUrl ? `<p style=\"margin:0 0 8px 0;\"><a href=\"${loginUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Acessar o sistema</a></p>` : ''}
-    ${senha_temp ? `<p style=\"margin:16px 0 0 0; font-size:13px; color:#334155;\">Por segurança, altere sua senha após o primeiro acesso.</p>` : ''}
-    <p style="margin:24px 0 8px 0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(email)}.</p>
-    ${brand.supportEmail ? `<p style=\"margin:8px 0 0 0; font-size:12px; color:#64748b;\">Suporte: <a href=\"mailto:${escapeHtml(brand.supportEmail)}\">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
   </div>
   `
   return { subject, html, text }
@@ -214,7 +235,8 @@ let resendClient: Resend | null = null
 function getResendConfig(): ResendConfig | null {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return null
-  const from = process.env.RESEND_FROM_EMAIL || 'Klasse <suporte@klasse.ao>'
+  const rawFrom = process.env.RESEND_FROM_EMAIL || 'Klasse <suporte@klasse.ao>'
+  const from = rawFrom.replace(/\\n/g, '').replace(/\r?\n/g, '').trim()
   return { apiKey, from }
 }
 

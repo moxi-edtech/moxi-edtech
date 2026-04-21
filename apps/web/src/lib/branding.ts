@@ -10,8 +10,9 @@ export type BrandingConfig = {
 }
 
 export function getBranding(): BrandingConfig {
-  const name = process.env.BRAND_NAME?.trim() || 'MoxiNexa'
-  const primaryColor = process.env.BRAND_PRIMARY_COLOR?.trim() || '#2563eb'
+  const rawName = process.env.BRAND_NAME?.trim() || 'KLASSE'
+  const name = /moxinexa/i.test(rawName) ? 'KLASSE' : rawName
+  const primaryColor = process.env.BRAND_PRIMARY_COLOR?.trim() || '#1F6B3B'
   const logoUrl = process.env.BRAND_LOGO_URL?.trim() || null
   const supportEmail = process.env.BRAND_SUPPORT_EMAIL?.trim() || null
   const financeEmail = process.env.BRAND_FINANCE_EMAIL?.trim() || null
