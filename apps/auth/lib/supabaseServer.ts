@@ -26,9 +26,15 @@ function getSupabaseEnv() {
 }
 
 function resolveCookieOptions() {
+  const localOrigin = readEnv(process.env.KLASSE_AUTH_LOCAL_ORIGIN, "").toLowerCase();
+  const inferredDevDomain = localOrigin.includes(".localhost")
+    ? ".localhost"
+    : localOrigin.includes(".lvh.me")
+      ? ".lvh.me"
+      : ".lvh.me";
   const domain =
     readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN) ||
-    (process.env.NODE_ENV === "production" ? ".klasse.ao" : ".localhost");
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : inferredDevDomain);
   const sameSiteRaw = readEnv(process.env.KLASSE_AUTH_COOKIE_SAMESITE, "lax").toLowerCase();
   const sameSite: "lax" | "strict" | "none" =
     sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";

@@ -8,9 +8,15 @@ const url = readEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const anonKey = readEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 function resolveCookieOptions() {
+  const hostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+  const inferredDevDomain = hostname.endsWith(".localhost")
+    ? ".localhost"
+    : hostname.endsWith(".lvh.me")
+      ? ".lvh.me"
+      : "";
   const domain =
     readEnv(process.env.NEXT_PUBLIC_KLASSE_COOKIE_DOMAIN, process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_DOMAIN) ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith(".klasse.ao") ? ".klasse.ao" : "");
+    (hostname.endsWith(".klasse.ao") ? ".klasse.ao" : inferredDevDomain);
   const sameSiteRaw = readEnv(process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_SAMESITE, "lax").toLowerCase();
   const sameSite: "lax" | "strict" | "none" =
     sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";

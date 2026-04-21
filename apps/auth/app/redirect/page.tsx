@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { getUserTenants } from "@/lib/getUserTenants";
 import { logAuthEvent } from "@/lib/auth-log";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
+import { getTenantContextCookieForUser, clearTenantContextCookie } from "@/lib/tenantContextCookie";
 
 type GlobalRole = "super_admin" | "global_admin" | null;
 
@@ -116,12 +117,42 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
 
   if (!user) {
+    await clearTenantContextCookie();
     logAuthEvent({
       action: "resolve_context_failed",
       route: "/redirect",
       details: { reason: "no_session" },
     });
     redirect(`/login${loginSuffix}`);
+  }
+
+  const cachedContext = await getTenantContextCookieForUser(user.id);
+  if (cachedContext) {
+    const headerStore = await headers();
+    const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+      .split(",")[0]
+      .trim()
+      .toLowerCase();
+    const bases = resolveProductBases(host, params.redirect);
+    const destinationConfig = resolveTenantRoute({
+      tenantId: cachedContext.tenant_id,
+      tenantName: "",
+      tenantType: cachedContext.tenant_type,
+      role: cachedContext.role,
+    });
+    const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
+    const preferred = normalizeRedirectTarget(params.redirect, productBase);
+    const destination = preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
+
+    logAuthEvent({
+      action: "redirect",
+      route: "/redirect",
+      user_id: user.id,
+      tenant_id: cachedContext.tenant_id,
+      tenant_type: cachedContext.tenant_type,
+      details: { destination, source: "tenant_context_cookie" },
+    });
+    redirect(destination);
   }
 
   const tenants = await getUserTenants(user.id);

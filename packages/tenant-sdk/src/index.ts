@@ -102,7 +102,7 @@ export function clearTenantConfigCache() {
   tenantConfigCache.clear();
 }
 
-export type TenantType = "k12" | "formacao";
+export type TenantType = "k12" | "formacao" | "solo_creator";
 export type ProductContext = "k12" | "formacao" | "landing" | "unknown";
 
 export type TenantResolverResult = {
@@ -161,6 +161,7 @@ export function normalizeTenantType(value: unknown): TenantType | null {
   const normalized = value.trim().toLowerCase();
   if (normalized === "k12") return "k12";
   if (normalized === "formacao") return "formacao";
+  if (normalized === "solo_creator") return "solo_creator";
   return null;
 }
 

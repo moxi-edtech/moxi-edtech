@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { validateUserTenant } from "@/lib/getUserTenants";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
 import { logAuthEvent } from "@/lib/auth-log";
+import { setTenantContextCookie } from "@/lib/tenantContextCookie";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,14 @@ export async function POST(req: Request) {
     productBase
   );
   const destination = preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
+
+  await setTenantContextCookie({
+    uid: user.id,
+    tenant_id: tenant.tenantId,
+    tenant_slug: null,
+    tenant_type: tenant.tenantType,
+    role: tenant.role,
+  });
 
   logAuthEvent({
     action: "redirect",
