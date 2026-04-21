@@ -417,8 +417,8 @@ export default async function Page(props: {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id);
-  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) redirect("/login");
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
+  if (!resolvedEscolaId) redirect("/login");
 
   const { data: escolaInfo } = await supabase
     .from("escolas")

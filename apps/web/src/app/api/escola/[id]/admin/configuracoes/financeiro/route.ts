@@ -15,11 +15,11 @@ const payloadSchema = z.object({
   moeda: z.string().min(1).optional(),
 });
 
-const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createRouteClient>>, escolaId: string) => {
+const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createRouteClient>>, resolvedEscolaId: string) => {
   const { data: anoLetivo } = await supabase
     .from("anos_letivos")
     .select("id, ano")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", resolvedEscolaId)
     .order("ativo", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(1)
@@ -29,12 +29,12 @@ const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createR
 
 const fetchConfiguracoesFinanceiro = async (
   supabase: Awaited<ReturnType<typeof createRouteClient>>,
-  escolaId: string
+  resolvedEscolaId: string
 ) => {
   return (supabase as any)
     .from("configuracoes_financeiro")
     .select("dia_vencimento_padrao, multa_atraso_percent, juros_diarios_percent, bloquear_inadimplentes, moeda")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", resolvedEscolaId)
     .maybeSingle();
 };
 
@@ -57,14 +57,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return withNoStore(NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }), start);
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
       return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
     const { data: hasRole, error: rolesError } = await supabase
       .rpc("user_has_role_in_school", {
-        p_escola_id: userEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_roles: ["admin_escola", "secretaria", "admin", "financeiro"],
       });
 
@@ -78,7 +78,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
-    const anoLetivo = await resolveAnoLetivoAtivo(supabase, userEscolaId);
+    const anoLetivo = await resolveAnoLetivoAtivo(supabase, resolvedEscolaId);
     if (!anoLetivo) {
       return withNoStore(
         NextResponse.json({ ok: false, error: "Ano letivo não encontrado." }, { status: 400 }),
@@ -86,7 +86,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
-    const { data: configuracoes, error: configError } = await fetchConfiguracoesFinanceiro(supabase, userEscolaId);
+    const { data: configuracoes, error: configError } = await fetchConfiguracoesFinanceiro(supabase, resolvedEscolaId);
     if (configError) {
       return withNoStore(NextResponse.json({ ok: false, error: configError.message }, { status: 500 }), start);
     }
@@ -94,7 +94,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     let tabelaPadraoQuery = supabase
       .from("financeiro_tabelas")
       .select("dia_vencimento, multa_atraso_percentual, multa_diaria")
-      .eq("escola_id", userEscolaId)
+      .eq("escola_id", resolvedEscolaId)
       .eq("ano_letivo", anoLetivo.ano)
       .is("curso_id", null)
       .is("classe_id", null)
@@ -133,14 +133,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return withNoStore(NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }), start);
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
       return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
     const { data: hasRole, error: rolesError } = await supabase
       .rpc("user_has_role_in_school", {
-        p_escola_id: userEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_roles: ["admin_escola", "secretaria", "admin", "financeiro"],
       });
 
@@ -163,7 +163,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    const anoLetivo = await resolveAnoLetivoAtivo(supabase, userEscolaId);
+    const anoLetivo = await resolveAnoLetivoAtivo(supabase, resolvedEscolaId);
     if (!anoLetivo) {
       return withNoStore(
         NextResponse.json({ ok: false, error: "Ano letivo não encontrado." }, { status: 400 }),
@@ -172,7 +172,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const payload = {
-      escola_id: userEscolaId,
+      escola_id: resolvedEscolaId,
       ano_letivo: anoLetivo.ano,
       curso_id: null,
       classe_id: null,
@@ -194,7 +194,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const configPayload = {
-      escola_id: userEscolaId,
+      escola_id: resolvedEscolaId,
       dia_vencimento_padrao: parsed.data.dia_vencimento_padrao,
       multa_atraso_percent: parsed.data.multa_atraso_percent,
       juros_diarios_percent: parsed.data.juros_diarios_percent,

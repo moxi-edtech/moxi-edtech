@@ -18,14 +18,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
 
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+  if (!resolvedEscolaId) {
     redirect("/login");
   }
 
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="alunos_list" />
-      <AlunosSecretariaPage escolaId={escolaId} />
+      <AlunosSecretariaPage escolaId={resolvedEscolaId} />
     </>
   );
 }

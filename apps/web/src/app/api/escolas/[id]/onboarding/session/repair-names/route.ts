@@ -23,7 +23,7 @@ export async function POST(
       );
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -33,7 +33,7 @@ export async function POST(
       const { data: vinc } = await s
         .from("escola_users")
         .select("papel")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", resolvedEscolaId)
         .eq("user_id", user.id)
         .maybeSingle();
       const papel = (vinc as any)?.papel as string | undefined;
@@ -44,7 +44,7 @@ export async function POST(
         const { data: adminLink } = await s
           .from("escola_administradores")
           .select("user_id")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .eq("user_id", user.id)
           .limit(1);
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
@@ -56,7 +56,7 @@ export async function POST(
           .from("profiles")
           .select("role, escola_id")
           .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .limit(1);
         allowed = Boolean(
           prof && prof.length > 0 && (prof[0] as any).role === "admin"
@@ -73,7 +73,7 @@ export async function POST(
     const { data: sessions, error } = await (s as any)
       .from("anos_letivos")
       .select("id, ano, data_inicio, data_fim, ativo")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", resolvedEscolaId);
     if (error)
       return NextResponse.json(
         { ok: false, error: error.message },

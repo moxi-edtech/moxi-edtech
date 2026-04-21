@@ -25,7 +25,7 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -35,7 +35,7 @@ export async function GET(
     let turmasQuery = (supabase as any)
       .from("turmas")
       .select("id, nome, classe_id, turno, capacidade_maxima, status_validacao, classes(id, nome)")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
       .eq("curso_id", cursoId)
       .eq("status_validacao", "ativo")
       .order("nome", { ascending: true });
@@ -56,7 +56,7 @@ export async function GET(
       .from("matriculas")
       .select("id, turma_id, status, aluno:alunos(id, nome, bi_numero)")
       .in("turma_id", turmaIds)
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
       .eq("status", "ativo")
       .order("created_at", { ascending: false });
 

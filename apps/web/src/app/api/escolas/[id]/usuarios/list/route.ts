@@ -19,18 +19,18 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
-    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', userEscolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     let linksQuery = supabase
       .from('escola_users')
       .select('user_id, papel')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
 
     linksQuery = applyKf2ListInvariants(linksQuery, { defaultLimit: 50 })
 

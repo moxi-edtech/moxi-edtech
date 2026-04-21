@@ -41,7 +41,7 @@ const bodySchema = z.object({
     .default({ autoPublish: false, generateTurmas: true }),
 });
 
-const buildDefaultConfig = async (supabase: any, escolaId: string, presetKey: string) => {
+const buildDefaultConfig = async (supabase: any, resolvedEscolaId: string, presetKey: string) => {
   const { data: presetRows, error: presetErr } = await supabase
     .from('curriculum_preset_subjects')
     .select('id, name, grade_level, weekly_hours')
@@ -57,7 +57,7 @@ const buildDefaultConfig = async (supabase: any, escolaId: string, presetKey: st
   const { data: schoolRows, error: schoolErr } = await supabase
     .from('school_subjects')
     .select('preset_subject_id, custom_weekly_hours, custom_name, is_active')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .in('preset_subject_id', presetIds);
 
   if (schoolErr) throw new Error(schoolErr.message || 'Falha ao carregar disciplinas da escola.');
@@ -125,7 +125,7 @@ function isMissingOrchestratorFunction(err: { message?: string | null; code?: st
 
 async function compensateInstallPartialFailure(args: {
   supabase: any;
-  escolaId: string;
+  resolvedEscolaId: string;
   cursoId: string | null;
   anoLetivoId: string;
   appliedVersion: number | null;
@@ -134,7 +134,7 @@ async function compensateInstallPartialFailure(args: {
 }) {
   const {
     supabase,
-    escolaId,
+    resolvedEscolaId,
     cursoId,
     anoLetivoId,
     appliedVersion,
@@ -152,7 +152,7 @@ async function compensateInstallPartialFailure(args: {
     const { error } = await supabase
       .from('curso_curriculos')
       .update({ status: 'archived' })
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('curso_id', cursoId)
       .eq('ano_letivo_id', anoLetivoId)
       .eq('version', appliedVersion)
@@ -176,14 +176,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-    if (!userEscolaId || userEscolaId !== requestedEscolaId) {
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
 
     const { data: hasRole, error: rolesError } = await supabase
       .rpc('user_has_role_in_school', {
-        p_escola_id: userEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_roles: ['admin_escola', 'secretaria', 'admin'],
       });
 
@@ -214,13 +214,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? supabase
           .from('anos_letivos')
           .select('id, ano, ativo')
-          .eq('escola_id', userEscolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('id', effectiveAnoLetivoId)
           .maybeSingle()
       : supabase
           .from('anos_letivos')
           .select('id, ano, ativo')
-          .eq('escola_id', userEscolaId)
+          .eq('escola_id', resolvedEscolaId)
           .order('ativo', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(1)
@@ -244,7 +244,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const { error: lockError } = await supabase
       .rpc('lock_curriculo_install', {
-        p_escola_id: userEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_preset_key: presetKey,
         p_ano_letivo_id: anoLetivo.id,
       });
@@ -257,7 +257,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: orchestratedDataRaw, error: orchestratedError } = await (supabase as any).rpc(
       'curriculo_install_orchestrated',
       {
-        p_escola_id: userEscolaId,
+        p_escola_id: resolvedEscolaId,
         p_preset_key: presetKey,
         p_ano_letivo_id: anoLetivo.id,
         p_auto_publish: options.autoPublish,
@@ -281,9 +281,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!orchestratedError) {
       const orchestrated = Array.isArray(orchestratedDataRaw) ? orchestratedDataRaw[0] : orchestratedDataRaw;
       if (orchestrated?.ok === false && orchestrated?.step === 'already_published') {
-        const appliedPayload = buildInstallPresetSkippedAppliedPayload(userEscolaId);
+        const appliedPayload = buildInstallPresetSkippedAppliedPayload(resolvedEscolaId);
         emitirEvento(supabase, {
-          escola_id: userEscolaId,
+          escola_id: resolvedEscolaId,
           tipo: 'curriculo.install_preset_skipped',
           payload: {
             preset_key: presetKey,
@@ -313,7 +313,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: cursoExistente } = await supabase
       .from('cursos')
       .select('id, nome')
-      .eq('escola_id', userEscolaId)
+      .eq('escola_id', resolvedEscolaId)
       .or(`codigo.eq.${normalizedCourseCode},course_code.eq.${normalizedCourseCode}`)
       .maybeSingle();
 
@@ -322,7 +322,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const { data: published } = await supabase
         .from('curso_curriculos')
         .select('id')
-        .eq('escola_id', userEscolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('curso_id', cursoExistente.id)
         .eq('ano_letivo_id', effectiveAnoLetivoId ?? anoLetivo.id)
         .eq('status', 'published')
@@ -335,7 +335,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       try {
         applyResult = await applyCurriculumPreset({
           supabase,
-          escolaId: userEscolaId,
+          escolaId: resolvedEscolaId,
           presetKey: presetKey as CurriculumKey,
           customData: customData as any,
           advancedConfig: advancedConfig ?? undefined,
@@ -381,9 +381,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       steps.publish = { stage: 'publish', status: 'skipped' };
       steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
       steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
-      const appliedPayload = buildInstallPresetSkippedAppliedPayload(userEscolaId);
+      const appliedPayload = buildInstallPresetSkippedAppliedPayload(resolvedEscolaId);
       emitirEvento(supabase, {
-        escola_id: userEscolaId,
+        escola_id: resolvedEscolaId,
         tipo: 'curriculo.install_preset_skipped',
         payload: {
           preset_key: presetKey,
@@ -420,7 +420,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (options.autoPublish && applyResult?.curriculo) {
       const { data: publishData, error: publishError } = await supabase
         .rpc('curriculo_publish', {
-          p_escola_id: userEscolaId,
+          p_escola_id: resolvedEscolaId,
           p_curso_id: cursoId,
           p_ano_letivo_id: anoLetivo.id,
           p_version: applyResult.curriculo.version,
@@ -433,7 +433,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
         const compensation = await compensateInstallPartialFailure({
           supabase: supabase as any,
-          escolaId: userEscolaId,
+          resolvedEscolaId,
           cursoId,
           anoLetivoId: anoLetivo.id,
           appliedVersion: applyResult?.curriculo?.version ?? null,
@@ -460,7 +460,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
         const compensation = await compensateInstallPartialFailure({
           supabase: supabase as any,
-          escolaId: userEscolaId,
+          resolvedEscolaId,
           cursoId,
           anoLetivoId: anoLetivo.id,
           appliedVersion: applyResult?.curriculo?.version ?? null,
@@ -491,7 +491,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const curriculoNome = [applyResult?.curso?.nome, anoLetivo.ano].filter(Boolean).join(' ');
 
         await emitirEvento(supabase, {
-          escola_id: userEscolaId,
+          escola_id: resolvedEscolaId,
           tipo: 'curriculo.published',
           payload: {
             curriculo_nome: curriculoNome || 'Curriculo publicado',
@@ -512,14 +512,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { count: matrizCount } = await supabase
       .from('curso_matriz')
       .select('id', { count: 'estimated', head: true })
-      .eq('escola_id', userEscolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('curso_id', cursoId);
 
     let matrizBackfill: { ok: boolean; inserted: number } | null = null;
     if (!matrizCount || matrizCount === 0) {
       const { data: backfillCount, error: backfillError } = await supabase
         .rpc('curriculo_backfill_matriz_from_preset', {
-          p_escola_id: userEscolaId,
+          p_escola_id: resolvedEscolaId,
           p_curso_id: cursoId,
         });
 
@@ -528,7 +528,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
         const compensation = await compensateInstallPartialFailure({
           supabase: supabase as any,
-          escolaId: userEscolaId,
+          resolvedEscolaId,
           cursoId,
           anoLetivoId: anoLetivo.id,
           appliedVersion: applyResult?.curriculo?.version ?? null,
@@ -553,7 +553,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
         const compensation = await compensateInstallPartialFailure({
           supabase: supabase as any,
-          escolaId: userEscolaId,
+          resolvedEscolaId,
           cursoId,
           anoLetivoId: anoLetivo.id,
           appliedVersion: applyResult?.curriculo?.version ?? null,
@@ -581,16 +581,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const { count: turmasExistentes } = await supabase
         .from('turmas')
         .select('id', { count: 'estimated', head: true })
-        .eq('escola_id', userEscolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('curso_id', cursoId)
         .eq('ano_letivo', anoLetivo.ano);
 
       if (!turmasExistentes || turmasExistentes === 0) {
-        const configToUse = advancedConfig ?? await buildDefaultConfig(supabase, userEscolaId, presetKey);
+        const configToUse = advancedConfig ?? await buildDefaultConfig(supabase, resolvedEscolaId, presetKey);
         const { data: classesRows } = await supabase
           .from('classes')
           .select('id, nome')
-          .eq('escola_id', userEscolaId)
+          .eq('escola_id', resolvedEscolaId)
           .eq('curso_id', cursoId)
           .in('nome', configToUse.classes);
 
@@ -605,7 +605,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ].filter(Boolean);
 
         const origin = new URL(req.url).origin;
-        const res = await fetch(`${origin}/api/escola/${userEscolaId}/admin/turmas/generate`, {
+        const res = await fetch(`${origin}/api/escola/${resolvedEscolaId}/admin/turmas/generate`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -626,7 +626,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           steps.generate_turmas = { stage: 'generate_turmas', status: 'failed', error: errorMessage };
           const compensation = await compensateInstallPartialFailure({
             supabase: supabase as any,
-            escolaId: userEscolaId,
+            resolvedEscolaId,
             cursoId,
             anoLetivoId: anoLetivo.id,
             appliedVersion: applyResult?.curriculo?.version ?? null,

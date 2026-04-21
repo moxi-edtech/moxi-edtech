@@ -38,6 +38,7 @@ const TeamMemberSchema = z.object({
 });
 
 const ProvisionCentroSchema = z.object({
+  tenant_type: z.enum(["formacao", "solo_creator"]).default("formacao"),
   centro: z.object({
     nome: z.string().trim().min(2),
     abrev: z.preprocess(emptyToNull, z.string().trim().max(20).optional().nullable()),
@@ -124,12 +125,14 @@ export async function POST(request: Request) {
     }
 
     const payload = parsed.data;
+    const isSolo = payload.tenant_type === "solo_creator";
+
     const hasAdmin = payload.equipe_inicial.some((member) => member.papel === "formacao_admin");
     const hasSecretaria = payload.equipe_inicial.some(
       (member) => member.papel === "formacao_secretaria"
     );
 
-    if (!hasAdmin || !hasSecretaria) {
+    if (!isSolo && (!hasAdmin || !hasSecretaria)) {
       return NextResponse.json(
         {
           ok: false,
@@ -172,7 +175,7 @@ export async function POST(request: Request) {
     const escolaPatch = await supabaseUntyped
       .from("escolas")
       .update({
-        tenant_type: "formacao",
+        tenant_type: payload.tenant_type,
         plano_atual: mapCentroPlanToSchoolTier(payload.perfil_formacao.plano),
         status: "ativa",
       })

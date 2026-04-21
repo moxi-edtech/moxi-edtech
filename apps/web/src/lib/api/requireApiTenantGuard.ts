@@ -5,7 +5,7 @@ import { resolveTenantContextForUser } from "@/lib/tenant/resolveTenantContext";
 import { isRoleAllowedForProduct, type ProductContext } from "@/lib/permissions";
 import type { Database } from "~types/supabase";
 
-type TenantType = "k12" | "formacao";
+type TenantType = "k12" | "formacao" | "solo_creator";
 
 type GuardOptions = {
   productContext: ProductContext;
@@ -62,7 +62,11 @@ export async function requireApiTenantGuard(options: GuardOptions): Promise<Guar
     };
   }
 
-  const tenantType = (tenantContext.tenant_type === "formacao" ? "formacao" : "k12") as TenantType;
+  const rawTenantType = String(tenantContext.tenant_type ?? "").trim().toLowerCase();
+  const tenantType: TenantType =
+    rawTenantType === "formacao" || rawTenantType === "solo_creator" || rawTenantType === "k12"
+      ? (rawTenantType as TenantType)
+      : "k12";
   const role = String(tenantContext.user_role ?? "")
     .trim()
     .toLowerCase();
@@ -119,4 +123,3 @@ export async function requireApiTenantGuard(options: GuardOptions): Promise<Guar
     role,
   };
 }
-

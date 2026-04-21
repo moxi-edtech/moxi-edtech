@@ -44,6 +44,10 @@ function getAdminClient() {
   return createClient<Database>(url, key);
 }
 
+function normalizeBi(value: string) {
+  return value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+}
+
 export async function POST(req: Request) {
   const token = normalizeToken(resolveJobToken(req));
   const expected = normalizeToken(process.env.AUTH_ADMIN_JOB_TOKEN || process.env.CRON_SECRET);
@@ -114,6 +118,24 @@ export async function POST(req: Request) {
             .order("created_at", { ascending: false })
             .limit(1);
           if (!e2) email = (byPhone?.[0] as any)?.email || null;
+        }
+
+        // BI fallback (ex.: 001234567LA049), mantendo email como fonte final de auth.
+        const normalizedBi = normalizeBi(raw);
+        const looksLikeBi =
+          normalizedBi.length >= 6 && /[A-Z]/.test(normalizedBi) && /\d/.test(normalizedBi);
+        if (!email && looksLikeBi) {
+          const biCandidates = Array.from(new Set([normalizedBi, raw.toUpperCase(), raw]));
+          const { data: byBi, error: e3 } = await admin
+            .from("profiles")
+            .select("email_auth, email")
+            .in("bi_numero", biCandidates)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          if (!e3) {
+            const row = byBi?.[0] as { email_auth: string | null; email: string | null } | undefined;
+            email = row?.email_auth ?? row?.email ?? null;
+          }
         }
 
         return NextResponse.json({ ok: true, data: { email: email ? String(email).toLowerCase() : null } });

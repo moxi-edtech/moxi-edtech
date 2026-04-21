@@ -4,14 +4,14 @@ import { hasPermission } from "@/lib/permissions";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 
-async function authorize(escolaId: string) {
+async function authorize(requestedEscolaId: string) {
   const s = await supabaseServer();
   const { data: auth } = await s.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401, error: "Não autenticado" };
 
-  const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+  const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, requestedEscolaId);
+  if (!resolvedEscolaId) {
     return { ok: false as const, status: 403, error: "Sem permissão" };
   }
 
@@ -30,7 +30,7 @@ async function authorize(escolaId: string) {
       const { data: vinc } = await s
         .from("escola_users")
         .select("papel")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", resolvedEscolaId)
         .eq("user_id", user.id)
         .maybeSingle();
       const papel = (vinc as any)?.papel as any | undefined;
@@ -42,7 +42,7 @@ async function authorize(escolaId: string) {
       const { data: adminLink } = await s
         .from("escola_administradores")
         .select("user_id")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", resolvedEscolaId)
         .eq("user_id", user.id)
         .limit(1);
       allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
@@ -54,13 +54,13 @@ async function authorize(escolaId: string) {
         .from("profiles")
         .select("role, escola_id")
         .eq("user_id", user.id)
-        .eq("escola_id", escolaId)
+        .eq("escola_id", resolvedEscolaId)
         .limit(1);
       allowed = Boolean(prof2 && prof2.length > 0 && (prof2[0] as any).role === "admin");
     } catch {}
   }
   if (!allowed) return { ok: false as const, status: 403, error: "Sem permissão" };
-  return { ok: true as const };
+  return { ok: true as const, resolvedEscolaId };
 }
 
 // POST /api/escolas/[id]/academico/offers/backfill
@@ -75,13 +75,15 @@ export async function POST(
     const authz = await authorize(escolaId);
     if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
 
+    const resolvedEscolaId = authz.resolvedEscolaId;
+
     const s = await supabaseServer();
 
     // 1) Sessions ativas da escola
     const { data: sessions, error: sessErr } = await (s as any)
       .from("school_sessions")
       .select("id")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .eq("status", "ativa");
     if (sessErr) return NextResponse.json({ ok: false, error: sessErr.message }, { status: 400 });
     const sessionIds: string[] = (sessions || []).map((s: any) => s.id);
@@ -102,7 +104,7 @@ export async function POST(
     const { data: turmasRows } = await (s as any)
       .from("turmas")
       .select("id, classe_id, session_id")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .in("session_id", sessionIds);
     const turmasBySession = new Map<string, Array<{ id: string; classe_id: string | null }>>();
     for (const t of (turmasRows || []) as Array<{ id: string; classe_id: string | null; session_id: string }>) {
@@ -114,7 +116,7 @@ export async function POST(
     const { data: discRows } = await (s as any)
       .from("disciplinas")
       .select("classe_id, curso_id")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .not("classe_id", "is", null)
       .not("curso_id", "is", null);
     const pairSet = new Set<string>();
@@ -130,7 +132,7 @@ export async function POST(
     const { data: ofertasRows } = await (s as any)
       .from("cursos_oferta")
       .select("curso_id, turma_id, semestre_id")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", resolvedEscolaId);
     const hasOferta = new Set<string>();
     for (const r of (ofertasRows || []) as Array<{ curso_id: string; turma_id: string; semestre_id: string }>) {
       hasOferta.add(`${r.curso_id}::${r.turma_id}::${r.semestre_id}`);
@@ -151,7 +153,7 @@ export async function POST(
             const key = `${curso_id}::${t.id}::${semId}`;
             if (hasOferta.has(key)) continue;
             planned++;
-            toInsert.push({ escola_id: escolaId, curso_id, turma_id: t.id, semestre_id: semId });
+            toInsert.push({ escola_id: resolvedEscolaId, curso_id, turma_id: t.id, semestre_id: semId });
             // Guarda para que múltiplos loops não planejem duas vezes a mesma oferta
             hasOferta.add(key);
           }

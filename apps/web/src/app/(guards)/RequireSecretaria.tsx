@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { Tables } from "~types/supabase";
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value.trim()
+  );
+}
+
 export default function RequireSecretaria({
   children,
   escolaId,
@@ -29,7 +35,23 @@ export default function RequireSecretaria({
         .eq("user_id", user.id);
 
       if (escolaId) {
-        vinculoQuery.eq("escola_id", escolaId);
+        let resolvedEscolaId = escolaId;
+
+        if (!isUuid(escolaId)) {
+          const { data: escolaBySlug } = await supabase
+            .from("escolas")
+            .select("id")
+            .eq("slug", escolaId)
+            .maybeSingle();
+          resolvedEscolaId = escolaBySlug?.id ? String(escolaBySlug.id) : "";
+        }
+
+        if (!resolvedEscolaId) {
+          router.replace("/");
+          return;
+        }
+
+        vinculoQuery.eq("escola_id", resolvedEscolaId);
       }
 
       const { data: vinculos, error } = await vinculoQuery.limit(10);

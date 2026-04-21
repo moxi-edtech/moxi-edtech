@@ -25,7 +25,7 @@ export async function GET(
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
   const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+  if (!userEscolaId) {
     return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
   }
 
@@ -35,7 +35,7 @@ export async function GET(
   let cursoQuery = (supabase as any)
     .from("cursos")
     .select("id, curriculum_key")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", userEscolaId)
     .eq("id", cursoId)
 
   cursoQuery = applyKf2ListInvariants(cursoQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
@@ -68,7 +68,7 @@ export async function GET(
       const { data: schoolRows } = await (supabase as any)
         .from("school_subjects")
         .select("preset_subject_id, custom_weekly_hours, custom_name, is_active")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", userEscolaId)
         .in("preset_subject_id", presetIds);
       schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
     }

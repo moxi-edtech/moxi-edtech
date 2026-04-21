@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .from('escola_users')
       .select('papel, role')
       .eq('user_id', requesterId)
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
       .limit(1)
 
     const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as any)?.role)
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: teacherRow } = await supabase
       .from('teachers')
       .select('id')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', userEscolaId)
       .eq('profile_id', profileId)
       .maybeSingle()
 
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       const { data: valid } = await supabase
         .from('disciplinas_catalogo')
         .select('id')
-        .eq('escola_id', escolaId)
+        .eq('escola_id', userEscolaId)
         .in('id', disciplinaIds)
 
       const validIds = (valid || []).map((d: any) => d.id)

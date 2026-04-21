@@ -21,7 +21,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
 
@@ -29,7 +29,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
       .from("escola_users")
       .select("papel, role")
       .eq("user_id", user.id)
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
 
     vincQuery = applyKf2ListInvariants(vincQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
 
@@ -44,7 +44,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
       .select(
         "turma_disciplina_id, turma_id, turma_nome, disciplina_id, disciplina_nome, trimestre, tipo, avaliacao_id, total_alunos, notas_lancadas, pendentes"
       )
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
       .eq("profile_id", profileId)
 
     pendenciasQuery = applyKf2ListInvariants(pendenciasQuery, {
@@ -116,7 +116,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
       const { data: anoLetivo } = await supabase
         .from("anos_letivos")
         .select("id")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", userEscolaId)
         .eq("ativo", true)
         .maybeSingle()
 
@@ -126,7 +126,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
             let periodosQ = supabase
               .from("periodos_letivos")
               .select("numero, data_inicio, data_fim")
-              .eq("escola_id", escolaId)
+              .eq("escola_id", userEscolaId)
               .eq("ano_letivo_id", anoLetivo.id)
               .eq("tipo", "TRIMESTRE")
 

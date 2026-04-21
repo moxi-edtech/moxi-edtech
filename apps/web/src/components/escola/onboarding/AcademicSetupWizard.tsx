@@ -175,6 +175,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const supabase = useMemo(() => createClient(), []);
   const presetCacheRef = useRef<Record<string, Array<{ nome: string; classe: string; horas: number }>>>({});
+  const sessionLoadedRef = useRef(false);
+  const step1TouchedRef = useRef(false);
 
   // --- EFFECTS (Logic) ---
   
@@ -190,11 +192,85 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     { numero: 3, data_inicio: `${ano}-09-01`, data_fim: `${ano}-12-31`, trava_notas_em: "" },
   ]);
 
+  const parseDateOnlyUtc = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+
+    let y = 0;
+    let m = 0;
+    let d = 0;
+
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      y = Number(isoMatch[1]);
+      m = Number(isoMatch[2]);
+      d = Number(isoMatch[3]);
+    }
+
+    const brMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!isoMatch && brMatch) {
+      d = Number(brMatch[1]);
+      m = Number(brMatch[2]);
+      y = Number(brMatch[3]);
+    }
+
+    if (!y || !m || !d) return null;
+    return new Date(Date.UTC(y, m - 1, d));
+  };
+
+  const formatDateOnlyUtc = (date: Date) => date.toISOString().slice(0, 10);
+
+  const addDaysUtc = (date: Date, days: number) => {
+    const copy = new Date(date.getTime());
+    copy.setUTCDate(copy.getUTCDate() + days);
+    return copy;
+  };
+
+  const buildPeriodosFromRange = (
+    start: string,
+    end: string,
+    current: Array<{ numero: number; data_inicio: string; data_fim: string; trava_notas_em: string }>
+  ) => {
+    const startDate = parseDateOnlyUtc(start);
+    const endDate = parseDateOnlyUtc(end);
+    if (!startDate || !endDate || endDate < startDate) return current;
+
+    const count = Math.max(1, current.length || 3);
+    const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
+    const baseSize = Math.floor(totalDays / count);
+    let remainder = totalDays % count;
+
+    const next = [];
+    let cursor = startDate;
+    for (let i = 0; i < count; i += 1) {
+      const size = baseSize + (remainder > 0 ? 1 : 0);
+      remainder = Math.max(0, remainder - 1);
+      const periodEnd = addDaysUtc(cursor, Math.max(0, size - 1));
+      next.push({
+        numero: current[i]?.numero ?? i + 1,
+        data_inicio: formatDateOnlyUtc(cursor),
+        data_fim: formatDateOnlyUtc(periodEnd),
+        trava_notas_em: current[i]?.trava_notas_em ?? "",
+      });
+      cursor = addDaysUtc(periodEnd, 1);
+    }
+
+    return next;
+  };
+
   useEffect(() => {
+    // Quando já existe sessão ativa carregada do backend, não sobrescrever
+    // o intervalo real com o padrão Jan-Dez do ano numérico.
+    if (sessionLoadedRef.current) return;
     setDataInicio(`${anoLetivo}-01-01`);
     setDataFim(`${anoLetivo}-12-31`);
     setPeriodosConfig(buildDefaultPeriodos(anoLetivo));
   }, [anoLetivo]);
+
+  const periodosConfigDerived = useMemo(
+    () => buildPeriodosFromRange(dataInicio, dataFim, periodosConfig),
+    [dataInicio, dataFim, periodosConfig]
+  );
 
   // Fetch Session
   useEffect(() => {
@@ -204,16 +280,40 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       try {
         const { data: ano } = await supabase.from('anos_letivos').select('*').eq('escola_id', escolaUuidResolved).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
         if (!cancelled && ano) {
+          if (step1TouchedRef.current) return;
+          sessionLoadedRef.current = true;
           setAnoLetivo(ano.ano);
           setAnoLetivoId(ano.id);
           setDataInicio(ano.data_inicio);
           setDataFim(ano.data_fim);
           setSessaoAtiva({ id: ano.id, nome: `Ano ${ano.ano}`, ano_letivo: String(ano.ano), data_inicio: ano.data_inicio, data_fim: ano.data_fim, status: ano.ativo ? 'ativa' : 'arquivada' });
           
-          const { data: pDb } = await supabase.from('periodos_letivos').select('*').eq('escola_id', escolaUuidResolved).eq('ano_letivo_id', ano.id).order('numero');
-          if (pDb) {
+          const { data: pDb } = await supabase
+            .from('periodos_letivos')
+            .select('*')
+            .eq('escola_id', escolaUuidResolved)
+            .eq('ano_letivo_id', ano.id)
+            .order('numero');
+
+          if (Array.isArray(pDb) && pDb.length > 0) {
             setPeriodos(pDb.map((p: any) => ({ ...p, nome: `Trimestre ${p.numero}`, sessao_id: ano.id })));
-            setPeriodosConfig(pDb.map((p: any) => ({ numero: p.numero, data_inicio: p.data_inicio, data_fim: p.data_fim, trava_notas_em: p.trava_notas_em ? String(p.trava_notas_em).slice(0, 16) : "" })));
+            const mapped = pDb.map((p: any) => ({
+              numero: p.numero,
+              data_inicio: p.data_inicio,
+              data_fim: p.data_fim,
+              trava_notas_em: p.trava_notas_em ? String(p.trava_notas_em).slice(0, 16) : "",
+            }));
+            setPeriodosConfig(buildPeriodosFromRange(ano.data_inicio, ano.data_fim, mapped));
+          } else {
+            // Mantém a seção de períodos visível para configuração inicial.
+            setPeriodos([]);
+            setPeriodosConfig(
+              buildPeriodosFromRange(
+                ano.data_inicio,
+                ano.data_fim,
+                buildDefaultPeriodos(ano.ano)
+              )
+            );
           }
         }
       } catch (e) { console.error(e); }
@@ -318,6 +418,9 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   // --- HANDLERS ---
   const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
+  const markStep1Touched = () => {
+    step1TouchedRef.current = true;
+  };
 
   const handleCreateSession = async () => {
     setCreatingSession(true);
@@ -331,7 +434,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       if (!r1.ok) throw new Error(j1.error || "Erro na sessão");
       const aid = j1.data.id;
 
-      const periods = periodosConfig.map(p => ({
+      const periods = periodosConfigDerived.map(p => ({
         ano_letivo_id: aid, tipo: 'TRIMESTRE', numero: p.numero,
         data_inicio: p.data_inicio, data_fim: p.data_fim,
         trava_notas_em: p.trava_notas_em ? new Date(p.trava_notas_em).toISOString() : null
@@ -361,7 +464,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     try {
       const modeloAvaliacaoPayload =
         (modeloAvaliacao && modeloAvaliacao.trim()) ||
-        (modelosAvaliacao[0]?.id ?? "SIMPLIFICADO");
+        (modelosAvaliacao[0]?.id ?? "");
 
       const r = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -750,11 +853,26 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               schoolNif={schoolNif}
               schoolPlan={schoolPlan}
               setSchoolDisplayName={setSchoolDisplayName}
-              anoLetivo={anoLetivo} setAnoLetivo={setAnoLetivo}
-              dataInicio={dataInicio} setDataInicio={setDataInicio}
-              dataFim={dataFim} setDataFim={setDataFim}
-              periodosConfig={periodosConfig}
-              onPeriodoChange={(n, f, v) => setPeriodosConfig(prev => prev.map(p => p.numero === n ? { ...p, [f]: v } : p))}
+              anoLetivo={anoLetivo}
+              setAnoLetivo={(val) => {
+                markStep1Touched();
+                setAnoLetivo(val);
+              }}
+              dataInicio={dataInicio}
+              setDataInicio={(val) => {
+                markStep1Touched();
+                setDataInicio(val);
+              }}
+              dataFim={dataFim}
+              setDataFim={(val) => {
+                markStep1Touched();
+                setDataFim(val);
+              }}
+              periodosConfig={periodosConfigDerived}
+              onPeriodoChange={(n, f, v) => {
+                markStep1Touched();
+                setPeriodosConfig(prev => prev.map(p => p.numero === n ? { ...p, [f]: v } : p));
+              }}
               turnos={turnos} onTurnoToggle={handleTurnoToggle}
               sessaoAtiva={sessaoAtiva} periodos={periodos}
               creatingSession={creatingSession} onCreateSession={handleCreateSession}

@@ -18,7 +18,7 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -63,7 +63,25 @@ export async function GET(
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data });
+    const badges = data?.badges ?? {};
+    const setupSteps = [
+      Boolean(badges.ano_letivo_ok),
+      Boolean(badges.periodos_ok),
+      Boolean(badges.avaliacao_ok),
+      Boolean(badges.curriculo_published_ok),
+      Boolean(badges.turmas_ok),
+    ];
+    const completionPercent = Math.round(
+      (setupSteps.filter(Boolean).length / setupSteps.length) * 100
+    );
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        ...data,
+        completion_percent: completionPercent,
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

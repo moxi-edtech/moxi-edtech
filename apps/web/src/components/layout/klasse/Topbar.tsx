@@ -53,10 +53,6 @@ export default function Topbar({
           <div className="h-9 w-9 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
             <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
           </div>
-          <div className="hidden sm:block min-w-0 leading-4">
-            <div className="text-sm font-semibold text-slate-900">KLASSE</div>
-            <div className="text-[11px] text-slate-500">gestão escolar</div>
-          </div>
         </Link>
 
         <div className="hidden lg:flex flex-col min-w-0">

@@ -23,6 +23,7 @@ function normalizeOptionalEmail(value: string): string | null {
 }
 
 type CentroFormData = {
+  operacao_tipo: "formacao" | "solo_creator";
   centro: {
     nome: string;
     abrev: string;
@@ -78,6 +79,7 @@ export default function NovoCentroFormacaoPage() {
   >(null);
 
   const [form, setForm] = useState<CentroFormData>({
+    operacao_tipo: "formacao",
     centro: {
       nome: "",
       abrev: "",
@@ -129,6 +131,11 @@ export default function NovoCentroFormacaoPage() {
       const validMembers = form.equipe_inicial.filter(
         (member) => member.nome.trim().length >= 2 && /.+@.+\..+/.test(member.email.trim())
       );
+      
+      if (form.operacao_tipo === "solo_creator") {
+        return validMembers.some((member) => member.papel === "formacao_admin");
+      }
+
       const hasAdmin = validMembers.some((member) => member.papel === "formacao_admin");
       const hasSecretaria = validMembers.some((member) => member.papel === "formacao_secretaria");
       return validMembers.length >= 2 && hasAdmin && hasSecretaria;
@@ -179,6 +186,7 @@ export default function NovoCentroFormacaoPage() {
       setResult(null);
 
       const payload = {
+        tenant_type: form.operacao_tipo,
         centro: {
           ...form.centro,
           abrev: form.centro.abrev || null,
@@ -285,7 +293,31 @@ export default function NovoCentroFormacaoPage() {
 
       <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5">
         {step === 1 ? (
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <section className="space-y-6">
+            <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo de Operação</span>
+              <div className="mt-2 flex gap-3">
+                {[
+                  { id: "formacao", label: "Centro de Formação", sub: "Corporativo" },
+                  { id: "solo_creator", label: "Solo Creator", sub: "Mentor/Coach" }
+                ].map((tipo) => (
+                  <button
+                    key={tipo.id}
+                    onClick={() => setForm(prev => ({ ...prev, operacao_tipo: tipo.id as any }))}
+                    className={`flex-1 flex flex-col items-start p-3 rounded-xl border-2 transition-all ${
+                      form.operacao_tipo === tipo.id 
+                        ? "border-klasse-green bg-white shadow-md ring-4 ring-emerald-50" 
+                        : "border-slate-100 bg-slate-50 opacity-60 grayscale"
+                    }`}
+                  >
+                    <span className="text-xs font-black text-slate-900">{tipo.label}</span>
+                    <span className="text-[10px] font-bold text-slate-400">{tipo.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Nome do centro *">
               <input
                 value={form.centro.nome}
@@ -343,7 +375,8 @@ export default function NovoCentroFormacaoPage() {
                 className={INPUT_CLASS}
               />
             </Field>
-          </section>
+          </div>
+        </section>
         ) : null}
 
         {step === 2 ? (

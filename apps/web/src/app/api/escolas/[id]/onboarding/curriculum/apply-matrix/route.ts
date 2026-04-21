@@ -71,7 +71,7 @@ export async function POST(
     }
 
     const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 

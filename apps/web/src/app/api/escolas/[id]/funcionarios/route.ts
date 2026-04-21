@@ -22,7 +22,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId)
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
 
@@ -30,7 +30,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       .from("escola_users")
       .select("papel, role")
       .eq("user_id", user.id)
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
 
     vincQuery = applyKf2ListInvariants(vincQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
 
@@ -45,7 +45,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     let vinculosQuery = queryClient
       .from("escola_users")
       .select("id, user_id, created_at, papel")
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
       .in("papel", FUNCIONARIO_PAPEIS)
 
     vinculosQuery = applyKf2ListInvariants(vinculosQuery, {

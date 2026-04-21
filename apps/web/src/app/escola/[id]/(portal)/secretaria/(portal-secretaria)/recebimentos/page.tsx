@@ -17,7 +17,7 @@ export default async function RecebimentosPage({ params }: { params: Promise<{ i
   }
 
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+  if (!resolvedEscolaId) {
     redirect("/login");
   }
 

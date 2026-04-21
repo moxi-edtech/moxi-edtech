@@ -9,10 +9,6 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const hasComponentes = (config?: { componentes?: { code: string }[] }) => (
-  Array.isArray(config?.componentes) && config.componentes.length > 0
-);
-
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: requestedEscolaId } = await params;
@@ -35,16 +31,53 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     }
     const userEscolaId = access.escolaId;
 
-    const { data, error } = await supabase
-      .from('vw_escola_setup_status')
-      .select('*')
+    let anoLetivoAtivo: number | null = null;
+    let activeYearQuery = supabase
+      .from('anos_letivos')
+      .select('ano')
       .eq('escola_id', userEscolaId)
-      .maybeSingle();
+      .eq('ativo', true);
+    activeYearQuery = applyKf2ListInvariants(activeYearQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'created_at', ascending: false }],
+    });
+    const { data: activeYearRows, error: activeYearError } = await activeYearQuery;
+    if (activeYearError) {
+      console.error('Error fetching active school year:', activeYearError);
+      return NextResponse.json({ ok: false, error: 'Erro ao consultar ano letivo ativo.' }, { status: 500 });
+    }
+    const activeYear = Array.isArray(activeYearRows) ? activeYearRows[0] : activeYearRows;
+    anoLetivoAtivo = typeof activeYear?.ano === 'number' ? activeYear.ano : null;
 
-    if (error) {
-      console.error('Error fetching setup status:', error);
+    if (!anoLetivoAtivo) {
+      return NextResponse.json({ ok: true, data: {
+        escola_id: userEscolaId,
+        has_ano_letivo_ativo: false,
+        has_3_trimestres: false,
+        has_curriculo_published: false,
+        has_turmas_no_ano: false,
+        ano_letivo_ok: false,
+        periodos_ok: false,
+        avaliacao_ok: false,
+        frequencia_ok: false,
+        avaliacao_frequencia_ok: false,
+        curriculo_ok: false,
+        turmas_ok: false,
+        progress_percent: 0,
+        modelo_avaliacao: '',
+      } }, { status: 200 });
+    }
+
+    const { data: stateData, error: stateError } = await (supabase as any).rpc('get_setup_state', {
+      p_escola_id: userEscolaId,
+      p_ano_letivo: anoLetivoAtivo,
+    });
+    if (stateError) {
+      console.error('Error fetching setup state via RPC:', stateError);
       return NextResponse.json({ ok: false, error: 'Erro ao consultar status do setup.' }, { status: 500 });
     }
+
+    const badges = stateData?.badges ?? {};
 
     const { data: estruturaCounts, error: estruturaError } = await supabase
       .from('vw_escola_estrutura_counts')
@@ -58,48 +91,32 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     let configQuery = supabase
       .from('configuracoes_escola')
-      .select('frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config')
-      .eq('escola_id', userEscolaId)
+      .select('modelo_avaliacao')
+      .eq('escola_id', userEscolaId);
 
-    configQuery = applyKf2ListInvariants(configQuery, { defaultLimit: 1, order: [{ column: 'updated_at', ascending: false }] })
+    configQuery = applyKf2ListInvariants(configQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'updated_at', ascending: false }],
+    });
 
     const { data: config } = await configQuery.maybeSingle();
 
     const modeloAvaliacao = (config?.modelo_avaliacao ?? '').toString();
-    const avaliacaoOk = hasComponentes(config?.avaliacao_config as any);
-    const frequenciaOk = Boolean(config?.frequencia_modelo)
-      && typeof config?.frequencia_min_percent === 'number';
-    const avaliacaoFrequenciaOk = avaliacaoOk && frequenciaOk;
-
-    let hasAnoAtivoFallback = false;
-    if (!data?.has_ano_letivo_ativo) {
-      const { data: anoAtivoRows, error: anoAtivoError } = await supabase
-        .from('anos_letivos')
-        .select('id')
-        .eq('escola_id', userEscolaId)
-        .eq('ativo', true)
-        .limit(1);
-      if (anoAtivoError) {
-        console.warn('Error fetching fallback anos_letivos ativos:', anoAtivoError);
-      }
-      hasAnoAtivoFallback = Array.isArray(anoAtivoRows) && anoAtivoRows.length > 0;
-    }
-
-    const setupData = data ?? {
+    const avaliacaoOk = Boolean(badges.avaliacao_ok);
+    const frequenciaOk = Boolean(badges.avaliacao_ok);
+    const avaliacaoFrequenciaOk = Boolean(badges.avaliacao_ok);
+    const setupData = {
       escola_id: userEscolaId,
-      has_ano_letivo_ativo: hasAnoAtivoFallback,
-      has_3_trimestres: false,
-      has_curriculo_published: false,
-      has_turmas_no_ano: false,
+      has_ano_letivo_ativo: Boolean(badges.ano_letivo_ok),
+      has_3_trimestres: Boolean(badges.periodos_ok),
+      has_curriculo_published: Boolean(badges.curriculo_published_ok),
+      has_turmas_no_ano: Boolean(badges.turmas_ok),
     };
-    if (data && !data.has_ano_letivo_ativo && hasAnoAtivoFallback) {
-      setupData.has_ano_letivo_ativo = true;
-    }
 
     const progressSteps = [
       setupData.has_ano_letivo_ativo,
       setupData.has_3_trimestres,
-      avaliacaoFrequenciaOk,
+      Boolean(badges.avaliacao_ok),
       setupData.has_curriculo_published,
       setupData.has_turmas_no_ano,
     ];
@@ -109,6 +126,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       ok: true,
       data: {
         ...setupData,
+        ano_letivo: anoLetivoAtivo,
         ano_letivo_ok: setupData.has_ano_letivo_ativo,
         periodos_ok: setupData.has_3_trimestres,
         avaliacao_ok: avaliacaoOk,

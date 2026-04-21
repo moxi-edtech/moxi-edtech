@@ -401,11 +401,12 @@ function ProfileDrawer({
 
   return (
     <>
-      <div
-        className={`fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity
-          ${aluno ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        onClick={onClose}
-      />
+      {aluno ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity opacity-100"
+          onClick={onClose}
+        />
+      ) : null}
 
       <div className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl
         border-l border-slate-200 flex flex-col transition-transform duration-300
@@ -641,11 +642,12 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
 
   return (
     <>
-      <div
-        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity
-          ${aluno ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        onClick={onClose}
-      />
+      {aluno ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity opacity-100"
+          onClick={onClose}
+        />
+      ) : null}
 
       <div className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
         border-l border-slate-200 flex flex-col transition-transform duration-300

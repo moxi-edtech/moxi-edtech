@@ -40,7 +40,7 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -53,7 +53,7 @@ export async function GET(
       let query = (supabase as any)
         .from('vw_escola_cursos_stats' as any)
         .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
-        .eq('escola_id', escolaId);
+        .eq('escola_id', userEscolaId);
 
       if (cursor) {
         const [cursorNome, cursorId] = cursor.split(',');
@@ -78,7 +78,7 @@ export async function GET(
         let retryQuery = (supabase as any)
           .from('vw_escola_cursos_stats' as any)
           .select('id, nome, codigo')
-          .eq('escola_id', escolaId);
+          .eq('escola_id', userEscolaId);
 
         if (cursor) {
           const [cursorNome, cursorId] = cursor.split(',');
@@ -105,11 +105,11 @@ export async function GET(
     const { data: classRows } = await (supabase as any)
       .from('classes')
       .select('id, curso_id')
-      .eq('escola_id', escolaId);
+      .eq('escola_id', userEscolaId);
     const { data: turmaRows } = await (supabase as any)
       .from('turmas')
       .select('id, curso_id')
-      .eq('escola_id', escolaId);
+      .eq('escola_id', userEscolaId);
 
     const classCounts = new Map<string, number>();
     (classRows || []).forEach((row: any) => {
@@ -163,7 +163,7 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-    if (!userEscolaId || userEscolaId !== escolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 

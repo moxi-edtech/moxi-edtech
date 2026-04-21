@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: vinc } = await s
       .from('escola_users')
       .select('papel')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .eq('user_id', user.id)
       .limit(1)
     const papel = (vinc?.[0] as { papel?: string | null })?.papel ?? null
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: existingPagamento } = await s
       .from('pagamentos')
       .select('id, escola_id, valor_pago, metodo, referencia, status, created_at, meta')
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .contains('meta', { idempotency_key: idempotencyKey })
       .maybeSingle()
     if (existingPagamento) {

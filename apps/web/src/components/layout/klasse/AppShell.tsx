@@ -9,6 +9,7 @@ import { useMemo, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { createClient } from "@/lib/supabaseClient";
+import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
 
 const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
@@ -117,20 +118,19 @@ export default function AppShell({
 
     const load = async () => {
       try {
-        const res = await fetch(`/api/escolas/${navEscolaId}/nome`, { cache: "no-store" });
-        const json = await res.json().catch(() => null);
+        const info = await fetchEscolaInfo(navEscolaId);
         if (cancelled) return;
 
-        if (!res.ok || !json?.ok) {
+        if (!info.nome) {
           setEscolaNome(null);
           setPlanoNome(null);
           setStatus(null);
           return;
         }
 
-        const escolaStatus = json.status || null;
-        setEscolaNome(json.nome || null);
-        setPlanoNome(json.plano ? PLAN_NAMES[json.plano as PlanTier] : null);
+        const escolaStatus = info.status || null;
+        setEscolaNome(info.nome || null);
+        setPlanoNome(info.plano ? PLAN_NAMES[info.plano as PlanTier] : null);
         setStatus(escolaStatus);
 
         // Redirecionar se suspensa (e não for superadmin)

@@ -16,14 +16,14 @@ const maxByTipo: Record<string, number> = {
   ANUAL: 1,
 };
 
-async function ensureAuth(escolaId: string) {
+async function ensureAuth(requestedEscolaId: string) {
   const s = await supabaseServer();
   const { data: auth } = await s.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401 as const, error: 'Não autenticado' };
 
-  const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
-  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+  const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, requestedEscolaId);
+  if (!resolvedEscolaId) {
     return { ok: false as const, status: 403 as const, error: 'Sem permissão' };
   }
 
@@ -35,26 +35,26 @@ async function ensureAuth(escolaId: string) {
   } catch {}
   if (!allowed) {
     try {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle();
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).maybeSingle();
       const papel = (vinc as any)?.papel as string | undefined;
       allowed = !!papel && hasPermission(papel as any, 'configurar_escola');
     } catch {}
   }
   if (!allowed) {
     try {
-      const { data: adminLink } = await s.from('escola_administradores').select('user_id').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
+      const { data: adminLink } = await s.from('escola_administradores').select('user_id').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).limit(1);
       allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
     } catch {}
   }
   if (!allowed) {
     try {
-      const { data: prof } = await s.from('profiles').select('role, escola_id').eq('user_id', user.id).eq('escola_id', escolaId).limit(1);
+      const { data: prof } = await s.from('profiles').select('role, escola_id').eq('user_id', user.id).eq('escola_id', resolvedEscolaId).limit(1);
       allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin');
     } catch {}
   }
   if (!allowed) return { ok: false as const, status: 403 as const, error: 'Sem permissão' };
 
-  return { ok: true as const };
+  return { ok: true as const, resolvedEscolaId };
 }
 
 // PUT /api/escolas/[id]/semestres/[semestreId]
@@ -66,6 +66,7 @@ export async function PUT(
   try {
     const auth = await ensureAuth(escolaId);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    const resolvedEscolaId = auth.resolvedEscolaId;
     const s = await supabaseServer();
 
     // Fetch existente
@@ -75,7 +76,7 @@ export async function PUT(
       .eq('id', semestreId)
       .maybeSingle();
     if (selErr) return NextResponse.json({ ok: false, error: selErr.message }, { status: 400 });
-    if (!current || (current as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Período não encontrado' }, { status: 404 });
+    if (!current || (current as any).escola_id !== resolvedEscolaId) return NextResponse.json({ ok: false, error: 'Período não encontrado' }, { status: 404 });
 
     // Payload parcial
     const schema = z.object({
@@ -107,7 +108,7 @@ export async function PUT(
       .eq('id', (current as any).session_id)
       .maybeSingle();
     if (sErr) return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
-    if (!sess || (sess as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
+    if (!sess || (sess as any).escola_id !== resolvedEscolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
 
     const sessionStart = new Date(String((sess as any).data_inicio));
     const sessionEnd = new Date(String((sess as any).data_fim));
@@ -197,6 +198,7 @@ export async function DELETE(
   try {
     const auth = await ensureAuth(escolaId);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    const resolvedEscolaId = auth.resolvedEscolaId;
     const s = await supabaseServer();
 
     // Verifica existência e pertencimento
@@ -206,9 +208,9 @@ export async function DELETE(
       .eq('id', semestreId)
       .maybeSingle();
     if (selErr) return NextResponse.json({ ok: false, error: selErr.message }, { status: 400 });
-    if (!current || (current as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Período não encontrado' }, { status: 404 });
+    if (!current || (current as any).escola_id !== resolvedEscolaId) return NextResponse.json({ ok: false, error: 'Período não encontrado' }, { status: 404 });
 
-    const { error: delErr } = await (s as any).from('semestres').delete().eq('id', semestreId).eq('escola_id', escolaId);
+    const { error: delErr } = await (s as any).from('semestres').delete().eq('id', semestreId).eq('escola_id', resolvedEscolaId);
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 });
 
     recordAuditServer({

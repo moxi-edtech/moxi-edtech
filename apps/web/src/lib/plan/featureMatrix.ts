@@ -7,7 +7,7 @@ import {
 } from "@/config/plans";
 import type { ProductContext } from "@/lib/permissions";
 
-type TenantType = "k12" | "formacao";
+type TenantType = "k12" | "formacao" | "solo_creator";
 
 export type FeatureGateConfig = {
   feature: FeatureKey;
@@ -23,7 +23,7 @@ export const FEATURE_GATE_MATRIX: Record<FeatureKey, FeatureGateConfig> = {
     feature: "fin_recibo_pdf",
     minPlan: "essencial",
     products: ["k12", "formacao"],
-    tenantTypes: ["k12", "formacao"],
+    tenantTypes: ["k12", "formacao", "solo_creator"],
     errorCode: "PLAN_FEATURE_REQUIRED",
     upgradeCta: "upgrade_fin_recibo_pdf",
   },
@@ -47,7 +47,7 @@ export const FEATURE_GATE_MATRIX: Record<FeatureKey, FeatureGateConfig> = {
     feature: "doc_qr_code",
     minPlan: "premium",
     products: ["k12", "formacao"],
-    tenantTypes: ["k12", "formacao"],
+    tenantTypes: ["k12", "formacao", "solo_creator"],
     errorCode: "PLAN_FEATURE_REQUIRED",
     upgradeCta: "upgrade_doc_qr_code",
   },
@@ -55,7 +55,7 @@ export const FEATURE_GATE_MATRIX: Record<FeatureKey, FeatureGateConfig> = {
     feature: "relatorio_avancado",
     minPlan: "premium",
     products: ["k12", "formacao"],
-    tenantTypes: ["k12", "formacao"],
+    tenantTypes: ["k12", "formacao", "solo_creator"],
     errorCode: "PLAN_FEATURE_REQUIRED",
     upgradeCta: "upgrade_relatorio_avancado",
   },
@@ -71,7 +71,7 @@ export const FEATURE_GATE_MATRIX: Record<FeatureKey, FeatureGateConfig> = {
     feature: "suporte_prioritario",
     minPlan: "premium",
     products: ["k12", "formacao"],
-    tenantTypes: ["k12", "formacao"],
+    tenantTypes: ["k12", "formacao", "solo_creator"],
     errorCode: "PLAN_FEATURE_REQUIRED",
     upgradeCta: "upgrade_suporte_prioritario",
   },

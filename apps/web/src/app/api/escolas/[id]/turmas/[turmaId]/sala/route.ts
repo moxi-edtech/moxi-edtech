@@ -20,7 +20,7 @@ export async function POST(
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
   const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+  if (!userEscolaId) {
     return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
   }
 
@@ -38,7 +38,7 @@ export async function POST(
   const { error } = await (supabase as any)
     .from("turmas")
     .update({ sala: parsed.data.sala })
-    .eq("escola_id", escolaId)
+    .eq("escola_id", userEscolaId)
     .eq("id", turmaId);
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

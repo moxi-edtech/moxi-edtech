@@ -9,7 +9,7 @@ const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 if (!url || !anonKey) {
   console.error(
     "[Supabase] NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY não definidos. " +
-      "Verifique as variáveis de ambiente na Vercel (Production)."
+      "Verifique as variáveis de ambiente em apps/web/.env.local (dev) ou no ambiente de produção."
   );
 }
 
@@ -48,4 +48,3 @@ export const createClient = () => {
     cookieOptions: resolveCookieOptions(),
   });
 };
-

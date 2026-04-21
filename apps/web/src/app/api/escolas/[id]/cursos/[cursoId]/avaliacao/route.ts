@@ -20,7 +20,7 @@ export async function GET(
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
   const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+  if (!userEscolaId) {
     return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
   }
 
@@ -30,13 +30,13 @@ export async function GET(
   const { data: config } = await supabase
     .from("configuracoes_escola")
     .select("modelo_avaliacao")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", userEscolaId)
     .maybeSingle();
 
   const { data: modelos, error: modelosError } = await supabase
     .from("modelos_avaliacao")
     .select("id, nome, curso_id, formula, regras, componentes, is_default")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", userEscolaId)
     .or(`curso_id.is.null,curso_id.eq.${cursoId}`)
     .order("updated_at", { ascending: false });
 
@@ -73,7 +73,7 @@ export async function POST(
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
   const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-  if (!userEscolaId || userEscolaId !== escolaId) {
+  if (!userEscolaId) {
     return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
   }
 
@@ -92,7 +92,7 @@ export async function POST(
     const { error: clearError } = await supabase
       .from("modelos_avaliacao")
       .update({ is_default: false })
-      .eq("escola_id", escolaId)
+      .eq("escola_id", userEscolaId)
       .eq("curso_id", cursoId);
 
     if (clearError) {
@@ -109,7 +109,7 @@ export async function POST(
   const { data: modelo, error: modeloError } = await supabase
     .from("modelos_avaliacao")
     .select("id, nome, curso_id, formula, regras, componentes")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", userEscolaId)
     .eq("id", modeloId)
     .maybeSingle();
 
@@ -146,7 +146,7 @@ export async function POST(
   const { error: updateError } = await supabase
     .from("modelos_avaliacao")
     .update({ is_default: false })
-    .eq("escola_id", escolaId)
+    .eq("escola_id", userEscolaId)
     .eq("curso_id", cursoId)
     .neq("id", courseModelId);
 
@@ -159,7 +159,7 @@ export async function POST(
       .from("modelos_avaliacao")
       .update({ is_default: true })
       .eq("id", courseModelId)
-      .eq("escola_id", escolaId);
+      .eq("escola_id", userEscolaId);
     if (setDefaultError) {
       return NextResponse.json({ ok: false, error: setDefaultError.message }, { status: 400 });
     }
