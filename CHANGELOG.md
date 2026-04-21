@@ -2,6 +2,30 @@
 
 Todas as mudanças notáveis neste repositório serão documentadas aqui.
 
+## 2026-04-11 - Ecossistema de Vendas e Admissões (Formação)
+
+### Adicionado
+- **Funil de Vendas Web**: Landing Page dinâmica (`/[slug]`) adaptável por Centro de Formação.
+- **Checkout Inteligente**: Modal de matrícula em 2 passos com upload de comprovativo/talão.
+- **Inbox Operacional**: Dashboard da secretaria para aprovação de inscrições via **React Server Actions**.
+- **Motor de Navegação**: Sistema centralizado de menu com filtragem por **TenantType** e **RBAC**.
+- **Lançamento de Mentoria**: Formulário **100% Mobile-First** para criação atómica de cursos e turmas por Solo Creators.
+- **Link Mágico Corporativo**: Arquitetura de patrocínio B2B com bypass de pagamento e controlo de quotas.
+- **Automação de Matrícula**: Postgres Trigger para promoção automática de alunos (Staging -> Oficial).
+- **Portal do Formando Premium**: Dashboard com acesso rápido, gamificação de progresso e envio direto de talões de pagamento (Self-Service).
+- **Dashboard do Mentor**: Área dedicada para o formador gerir a sua agenda de turmas e registar honorários via telemóvel.
+- **Identidade Digital**: Geração automática de credenciais e e-mails via Resend.
+- **Documentos**: Emissão de Comprovativos de Inscrição em PDF.
+- **Marketing**: Partilha rápida via WhatsApp e Copiar Link no catálogo.
+
+### Melhorado
+- **Polimento UI/UX**: Interfaces recalibradas para fluxos operacionais específicos (Mobile para Mentores, Desktop para Secretaria).
+- **Conversão B2C**: Adicionados gatilhos de escassez e badges de lotação na Landing Page.
+- **Micro-copy Dinâmico**: Adaptação de nomes de menus conforme o perfil (ex: "Mentorias" para Solo Creators).
+- **Design Adaptativo**: Dashboard Admin focada em Mobile; Inbox focada em Desktop/Tablet.
+- **Dashboards Reais**: Métricas reais de faturamento e inscritos integradas ao Supabase.
+- **Segurança**: Validação de inputs com Zod e isolamento de tenants via RLS.
+
 ## 2026-03-03
 
 - Secretaria / Compatibilidade de API:
