@@ -2,6 +2,11 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 
 import { useToast } from "@/components/feedback/FeedbackSystem"
 import { usePresetsMeta } from "@/hooks/usePresetSubjects"
+import {
+  fetchFinanceiroTabelas,
+  invalidateFinanceiroTabelasCache,
+} from "@/lib/financeiroTabelasClient"
+import { fetchSchoolSessions } from "@/lib/schoolSessionsClient"
 
 export type Catalogo = { id: string; nome: string; codigo?: string; curso_id?: string }
 
@@ -232,15 +237,9 @@ export function usePrecosLogic(escolaId: string) {
   const carregarSessions = useMemo(() => {
     return async () => {
     try {
-      const res = await fetch("/api/secretaria/school-sessions")
-      const json = await res.json().catch(() => null)
-      if (!res.ok || !json) return
-
-      const sessionItems = Array.isArray(json.data)
-        ? (json.data as SessionItem[])
-        : Array.isArray(json.items)
-          ? (json.items as SessionItem[])
-          : []
+      const response = await fetchSchoolSessions(escolaId)
+      if (!response.ok) return
+      const sessionItems = (response.data ?? []) as SessionItem[]
 
       setSessions(sessionItems)
       const active = sessionItems.find((s) => s.status === "ativa")
@@ -250,7 +249,7 @@ export function usePrecosLogic(escolaId: string) {
       console.error(e)
     }
     }
-  }, [])
+  }, [escolaId])
 
   const carregarTabelas = useMemo(() => {
     return async () => {
@@ -259,17 +258,14 @@ export function usePrecosLogic(escolaId: string) {
     setTabelas([])
     setResolved(null)
     try {
-      const res = await fetch(
-        `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(
-          anoLetivoParam
-        )}`,
-        { cache: "no-store" }
-      )
-      const json = await res.json().catch(() => null)
+      const json = await fetchFinanceiroTabelas({
+        escolaId,
+        anoLetivo: anoLetivoParam,
+      })
       if (tabelasRequestRef.current !== requestId) return
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao carregar preços")
+      if (!json?.ok) throw new Error(json?.error || "Erro ao carregar preços")
       setTabelas((json.items as TabelaPrecoItem[]) || [])
-      setResolved(json.resolved || null)
+      setResolved((json.resolved as ResolvedPreco | null) ?? null)
     } catch (e: unknown) {
       error(formatError(e, "Erro ao carregar tabelas"))
     } finally {
@@ -292,16 +288,15 @@ export function usePrecosLogic(escolaId: string) {
       return
     }
     try {
-      const res = await fetch(
-        `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(
-          anoLetivoParam
-        )}&curso_id=${encodeURIComponent(cursoIdValido)}&classe_id=${encodeURIComponent(classeIdValido)}`,
-        { cache: "no-store" }
-      )
-      const json = await res.json().catch(() => null)
+      const json = await fetchFinanceiroTabelas({
+        escolaId,
+        anoLetivo: anoLetivoParam,
+        cursoId: cursoIdValido || undefined,
+        classeId: classeIdValido || undefined,
+      })
       if (simulacaoRequestRef.current !== requestId) return
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao resolver preços")
-      setResolved(json.resolved || null)
+      if (!json?.ok) throw new Error(json?.error || "Erro ao resolver preços")
+      setResolved((json.resolved as ResolvedPreco | null) ?? null)
     } catch (e: unknown) {
       error(formatError(e, "Erro ao simular preço"))
     } finally {
@@ -356,6 +351,7 @@ export function usePrecosLogic(escolaId: string) {
 
       success("Tabela salva com sucesso")
       setForm(initialForm)
+      invalidateFinanceiroTabelasCache(escolaId)
       carregarTabelas()
     } catch (e: unknown) {
       error(formatError(e, "Falha ao salvar"))
@@ -434,6 +430,8 @@ export function usePrecosLogic(escolaId: string) {
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao aplicar aos pendentes")
       success(`Preços aplicados em ${Number(json?.updated ?? 0)} mensalidade(s) pendente(s).`)
+      invalidateFinanceiroTabelasCache(escolaId)
+      carregarTabelas()
     } catch (e: unknown) {
       error(formatError(e, "Falha ao aplicar aos pendentes"))
     } finally {
