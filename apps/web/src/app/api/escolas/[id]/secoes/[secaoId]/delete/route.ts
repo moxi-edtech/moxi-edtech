@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string; secaoId: string }> }) {
   const { id: escolaId, secaoId } = await ctx.params
@@ -10,11 +11,15 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const s = await supabaseServer()
     const { data: { user } } = await s.auth.getUser()
     if (!user?.id) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', user.id).eq('escola_id', escolaId).limit(1)
+    const userEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!userEscolaId) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', user.id).eq('escola_id', userEscolaId).limit(1)
     const papel = vinc?.[0]?.papel as any
-    if (!hasPermission(papel, 'gerenciar_turmas')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    if (!hasPermission(papel, 'gerenciar_turmas') && !hasPermission(papel, 'configurar_escola')) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', user.id).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
+    if (!profCheck || (profCheck as any).escola_id !== userEscolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
 
     // Confirm secao belongs to escola (via join turma)
     const { data: t } = await s
@@ -22,7 +27,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
       .select('id, turma_id, turmas!inner(id, escola_id)')
       .eq('id', secaoId)
       .limit(1)
-    const ok = t && t[0] && ((t[0] as any).turmas?.escola_id === escolaId)
+    const ok = t && t[0] && ((t[0] as any).turmas?.escola_id === userEscolaId)
     if (!ok) return NextResponse.json({ ok: false, error: 'Seção não encontrada' }, { status: 404 })
 
     // Dependent deletions
@@ -35,7 +40,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const { error: delErr } = await s.from('secoes').delete().eq('id', secaoId)
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'SECAO_EXCLUIDA_CASCADE', entity: 'secao', entityId: secaoId, details: { matIds } }).catch(() => null)
+    recordAuditServer({ escolaId: userEscolaId, portal: 'admin_escola', acao: 'SECAO_EXCLUIDA_CASCADE', entity: 'secao', entityId: secaoId, details: { matIds } }).catch(() => null)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

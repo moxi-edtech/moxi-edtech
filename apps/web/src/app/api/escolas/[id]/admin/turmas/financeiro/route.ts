@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }

@@ -6,6 +6,7 @@ import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission, type Papel } from '@/lib/permissions'
 import { normalizeAnoLetivo } from '@/lib/financeiro/tabela-preco'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // Schema validation
 const BodySchema = z.object({
@@ -38,6 +39,8 @@ export async function POST(
     const { data: userRes } = await supabase.auth.getUser()
     const userId = userRes?.user?.id
     if (!userId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, userId, escolaId)
+    if (!resolvedEscolaId) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     // 2. Parse Body
     const json = await req.json()
@@ -49,18 +52,18 @@ export async function POST(
     const body = parse.data
     
     // 3. Authorization (Permissions)
-    const { data: vinc } = await supabase.from('escola_usuarios').select('papel').eq('user_id', userId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await supabase.from('escola_usuarios').select('papel').eq('user_id', userId).eq('escola_id', resolvedEscolaId).limit(1)
     const papel = vinc?.[0]?.papel as Papel | undefined
     if (!hasPermission(papel, 'criar_matricula')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     // 4. Validate School Status
     const { data: profCheck } = await supabase.from('profiles').select('escola_id').eq('user_id', userId).maybeSingle()
-    if (!profCheck || String(profCheck.escola_id) !== String(escolaId)) {
+    if (!profCheck || String(profCheck.escola_id) !== String(resolvedEscolaId)) {
         // Allow admin if current_escola_id matches? For safety, we keep strict check.
         // Or check current_escola_id if your system allows switching context.
     }
     
-    const { data: esc } = await supabase.from('escolas').select('status').eq('id', escolaId).limit(1).maybeSingle()
+    const { data: esc } = await supabase.from('escolas').select('status').eq('id', resolvedEscolaId).limit(1).maybeSingle()
     if (esc?.status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite criar matrículas.' }, { status: 400 })
     if (esc?.status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa. Regularize pagamentos.' }, { status: 400 })
 
@@ -134,7 +137,7 @@ export async function POST(
             // status is already 'ativo' from RPC, but we can respect body.status if needed
             status: body.status || 'ativo'
         })
-        .eq('escola_id', escolaId)
+        .eq('escola_id', resolvedEscolaId)
         .eq('aluno_id', body.aluno_id)
         .eq('ano_letivo', anoLetivoInt)
         .select()
@@ -147,7 +150,7 @@ export async function POST(
 
     // 9. AUDIT
     recordAuditServer({
-      escolaId,
+      escolaId: resolvedEscolaId,
       portal: 'secretaria',
       acao: 'MATRICULA_CRIADA',
       entity: 'matricula',

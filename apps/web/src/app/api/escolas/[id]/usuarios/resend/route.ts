@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'criar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await supabase.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
+    if (!profCheck || (profCheck as any).escola_id !== userEscolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     const lower = email.toLowerCase()
 
     const list = await callAuthAdminJob(req, 'listUsers', { page: 1, perPage: 1000 })
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         const { data: escolaRow } = await supabase
           .from('escolas')
           .select('nome')
-          .eq('id', escolaId)
+          .eq('id', userEscolaId)
           .maybeSingle()
         const { data: profileRow } = await supabase
           .from('profiles')
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
     }
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_REINVITE', entity: 'usuario', entityId: user.id, details: { email: lower, emailStatus } }).catch(() => null)
+    recordAuditServer({ escolaId: userEscolaId, portal: 'admin_escola', acao: 'USUARIO_REINVITE', entity: 'usuario', entityId: user.id, details: { email: lower, emailStatus } }).catch(() => null)
     return NextResponse.json({ ok: true, emailStatus })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

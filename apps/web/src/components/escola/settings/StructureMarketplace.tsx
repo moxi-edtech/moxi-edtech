@@ -8,6 +8,7 @@ import { useToast } from "@/components/feedback/FeedbackSystem";
 import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
 import { usePresetsCatalog, usePresetsMeta } from "@/hooks/usePresetSubjects";
 import { createClient } from "@/lib/supabaseClient";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import {
   PRESET_TO_TYPE,
   TYPE_COLORS,
@@ -108,6 +109,14 @@ type CourseAvaliacao = {
 type ActiveTab = "my_courses" | "catalog";
 type ManagerTab = "turmas" | "disciplinas" | "avaliacao";
 
+type TurmaCleanupItem = {
+  id: string;
+  nome: string;
+  classe: string;
+  turno: string;
+  total_alunos: number;
+};
+
 export type CurriculoStatus = {
   curso_id: string;
   classe_id?: string | null;
@@ -145,7 +154,9 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 // ---------- Component ----------
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
-  const escolaParam = escolaId;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const apiEscolaId = escolaParam;
   const supabase = useMemo(() => createClient(), []);
   const { success, error, warning, toast: rawToast } = useToast();
   const searchParams = useSearchParams();
@@ -181,6 +192,12 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [resolvePendencias, setResolvePendencias] = useState(false);
   const [autoResolveTriggered, setAutoResolveTriggered] = useState(false);
   const [autoFocusTriggered, setAutoFocusTriggered] = useState(false);
+  const [turmaCleanupOpen, setTurmaCleanupOpen] = useState(false);
+  const [turmaCleanupLoading, setTurmaCleanupLoading] = useState(false);
+  const [turmaCleanupRunning, setTurmaCleanupRunning] = useState(false);
+  const [turmaCleanupCourse, setTurmaCleanupCourse] = useState<ActiveCourse | null>(null);
+  const [turmaCleanupItems, setTurmaCleanupItems] = useState<TurmaCleanupItem[]>([]);
+  const [turmaCleanupSelectedIds, setTurmaCleanupSelectedIds] = useState<string[]>([]);
 
   const openCreateDisciplina = useCallback(() => {
     setDisciplinaModalMode("create");
@@ -243,11 +260,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   // -------- Fetch courses --------
   const fetchCourses = useCallback(async () => {
+    if (!apiEscolaId) {
+      setLoadingCourses(false);
+      return;
+    }
     setLoadingCourses(true);
     const ac = new AbortController();
     try {
       const data = await apiGet<ActiveCourse[]>(
-        `/api/escolas/${escolaId}/cursos/stats`,
+        `/api/escolas/${apiEscolaId}/cursos/stats`,
         ac.signal
       );
       setCourses(data || []);
@@ -258,7 +279,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setLoadingCourses(false);
     }
     return () => ac.abort();
-  }, [escolaId]);
+  }, [apiEscolaId]);
 
   useEffect(() => {
     fetchCourses();
@@ -297,14 +318,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Details --------
   const fetchCourseDetails = useCallback(
     async (courseId: string): Promise<CourseDetails> => {
+      if (!apiEscolaId) throw new Error("Escola não identificada.");
       const [classesRes, disciplinasRes, turmasRes] = await Promise.all([
-        fetch(`/api/escolas/${escolaId}/classes?curso_id=${courseId}&limit=50`, {
+        fetch(`/api/escolas/${apiEscolaId}/classes?curso_id=${courseId}&limit=50`, {
           cache: "no-store",
         }),
-        fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${courseId}&limit=200`, {
+        fetch(`/api/escolas/${apiEscolaId}/disciplinas?curso_id=${courseId}&limit=200`, {
           cache: "no-store",
         }),
-        fetch(`/api/escolas/${escolaId}/turmas?curso_id=${courseId}&limit=50`, {
+        fetch(`/api/escolas/${apiEscolaId}/turmas?curso_id=${courseId}&limit=50`, {
           cache: "no-store",
         }),
       ]);
@@ -419,11 +441,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         turmas,
       };
     },
-    [curriculoAnoLetivo?.id, escolaId]
+    [apiEscolaId, curriculoAnoLetivo?.id]
   );
 
   const handleOpenManager = useCallback(
     async (courseId: string, tab: ManagerTab = "turmas") => {
+      if (!apiEscolaId) {
+        error("Escola não identificada.");
+        return;
+      }
       setSelectedCourseId(courseId);
       setManagerTab(tab);
       setLoadingDetails(true);
@@ -434,7 +460,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       try {
         const [nextDetails, avaliacaoRes] = await Promise.all([
           fetchCourseDetails(courseId),
-          fetch(`/api/escolas/${escolaId}/cursos/${courseId}/avaliacao`, { cache: "no-store" })
+          fetch(`/api/escolas/${apiEscolaId}/cursos/${courseId}/avaliacao`, { cache: "no-store" })
             .then(async (res) => {
               const json = await res.json().catch(() => null);
               if (!res.ok || json?.ok === false) {
@@ -454,7 +480,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         setLoadingAvaliacao(false);
       }
     },
-    [error, escolaId, fetchCourseDetails]
+    [apiEscolaId, error, fetchCourseDetails]
   );
 
   useEffect(() => {
@@ -467,7 +493,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         const targetCourseId = courseIdFromQuery || courses[0]?.id;
         if (!targetCourseId) return;
         if (!courseIdFromQuery) {
-          const res = await fetch(`/api/escolas/${escolaId}/disciplinas?status_completude=incompleto&limit=1`, {
+          const res = await fetch(`/api/escolas/${apiEscolaId}/disciplinas?status_completude=incompleto&limit=1`, {
             cache: "no-store",
           });
           const json = await res.json().catch(() => null);
@@ -490,7 +516,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     };
 
     run();
-  }, [autoResolveTriggered, courseIdFromQuery, courses, escolaId, handleOpenManager, loadingCourses, searchParams]);
+  }, [apiEscolaId, autoResolveTriggered, courseIdFromQuery, courses, handleOpenManager, loadingCourses, searchParams]);
 
   useEffect(() => {
     if (autoFocusTriggered) return;
@@ -729,6 +755,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   );
 
   const handleSave = useCallback(async () => {
+    if (!apiEscolaId) {
+      error("Escola não identificada.");
+      return;
+    }
     if (!draft) return;
 
     if (!draft.label.trim()) {
@@ -789,7 +819,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           );
         }
       } else {
-        const createRes = await fetch(`/api/escolas/${escolaId}/cursos`, {
+        const createRes = await fetch(`/api/escolas/${apiEscolaId}/cursos`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -808,7 +838,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
         const createdClasses: Array<{ id: string; nome: string }> = [];
         for (const cls of draft.classes) {
-          const classRes = await fetch(`/api/escolas/${escolaId}/classes`, {
+          const classRes = await fetch(`/api/escolas/${apiEscolaId}/classes`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nome: cls, curso_id: cursoId }),
@@ -824,7 +854,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
         for (const cls of createdClasses) {
           for (const disciplina of draft.subjects) {
-            const discRes = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+            const discRes = await fetch(`/api/escolas/${apiEscolaId}/disciplinas`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -863,9 +893,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     } finally {
       setInstalling(false);
     }
-  }, [draft, escolaId, fetchCourses]);
+  }, [apiEscolaId, draft, error, fetchCourses, success, warning]);
 
   const handleRemoveCourse = useCallback((id: string, totalAlunos: number) => {
+    if (!apiEscolaId) {
+      error("Escola não identificada.");
+      return;
+    }
     if (totalAlunos > 0) {
       error("Curso tem alunos vinculados.");
       return;
@@ -880,7 +914,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       onConfirm: async () => {
         closeConfirm();
         try {
-          const res = await fetch(`/api/escolas/${escolaId}/cursos/${id}`, {
+          const res = await fetch(`/api/escolas/${apiEscolaId}/cursos/${id}`, {
             method: "DELETE",
           });
           const json = await res.json().catch(() => null);
@@ -894,10 +928,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         }
       },
     });
-  }, [escolaId, fetchCourses]);
+  }, [apiEscolaId, error, fetchCourses, success]);
 
   const handleSaveDisciplina = useCallback(
     async (payload: DisciplinaForm) => {
+      if (!apiEscolaId) {
+        error("Escola não identificada.");
+        return;
+      }
       if (!details || !selectedCourseId) return;
       try {
         if (disciplinaModalMode === "create") {
@@ -917,7 +955,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
           await Promise.all(
             targetClasses.map(async (classe) => {
-              const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+              const res = await fetch(`/api/escolas/${apiEscolaId}/disciplinas`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -976,7 +1014,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
         await Promise.all(
           matrixIds.map(async (matrixId) => {
-            const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+            const res = await fetch(`/api/escolas/${apiEscolaId}/disciplinas/${matrixId}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -1024,7 +1062,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       disciplinaEditingMatrixByClass,
       disciplinaEditingMatrixIds,
       disciplinaModalMode,
-      escolaId,
+      apiEscolaId,
       fetchCourseDetails,
       selectedCourseId,
     ]
@@ -1042,9 +1080,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   const handleUpdateAvaliacao = useCallback(
     async (payload: { override: boolean; modeloId?: string | null }) => {
+      if (!apiEscolaId) {
+        error("Escola não identificada.");
+        return;
+      }
       if (!selectedCourseId) return;
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/cursos/${selectedCourseId}/avaliacao`, {
+        const res = await fetch(`/api/escolas/${apiEscolaId}/cursos/${selectedCourseId}/avaliacao`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ override: payload.override, modelo_id: payload.modeloId ?? null }),
@@ -1053,7 +1095,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error || "Falha ao atualizar avaliação do curso.");
         }
-        const refreshed = await fetch(`/api/escolas/${escolaId}/cursos/${selectedCourseId}/avaliacao`, {
+        const refreshed = await fetch(`/api/escolas/${apiEscolaId}/cursos/${selectedCourseId}/avaliacao`, {
           cache: "no-store",
         }).then(async (resp) => {
           const data = await resp.json().catch(() => null);
@@ -1068,7 +1110,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         error(e?.message || "Erro ao salvar regra do curso.");
       }
     },
-    [error, escolaId, selectedCourseId, success]
+    [apiEscolaId, error, selectedCourseId, success]
   );
 
   useEffect(() => {
@@ -1081,6 +1123,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   const handleDeleteDisciplina = useCallback(
     async (id: string) => {
+      if (!apiEscolaId) {
+        error("Escola não identificada.");
+        return;
+      }
       if (!details || !selectedCourseId) return;
       const disciplina = details.disciplinas.find((d) => d.id === id);
       const matrixIds = disciplina?.matrix_ids ?? [];
@@ -1088,7 +1134,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       try {
         await Promise.all(
           matrixIds.map(async (matrixId) => {
-            const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+            const res = await fetch(`/api/escolas/${apiEscolaId}/disciplinas/${matrixId}`, {
               method: "DELETE",
             });
             const json = await res.json().catch(() => null);
@@ -1105,8 +1151,103 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         error(e?.message || "Falha ao remover disciplina.");
       }
     },
-    [details, escolaId, fetchCourseDetails, selectedCourseId]
+    [apiEscolaId, details, error, fetchCourseDetails, selectedCourseId, success]
   );
+
+  const openTurmaCleanup = useCallback(
+    async (course: ActiveCourse) => {
+      setTurmaCleanupCourse(course);
+      setTurmaCleanupOpen(true);
+      setTurmaCleanupLoading(true);
+      setTurmaCleanupSelectedIds([]);
+      try {
+        const courseDetails = await fetchCourseDetails(course.id);
+        setTurmaCleanupItems(courseDetails.turmas ?? []);
+      } catch (e: any) {
+        setTurmaCleanupOpen(false);
+        error(e?.message || "Falha ao carregar turmas do curso.");
+      } finally {
+        setTurmaCleanupLoading(false);
+      }
+    },
+    [error, fetchCourseDetails]
+  );
+
+  const toggleTurmaCleanupSelection = useCallback((turmaId: string) => {
+    setTurmaCleanupSelectedIds((prev) =>
+      prev.includes(turmaId) ? prev.filter((id) => id !== turmaId) : [...prev, turmaId]
+    );
+  }, []);
+
+  const runTurmaCleanup = useCallback(async () => {
+    if (!apiEscolaId) {
+      error("Escola não identificada.");
+      return;
+    }
+    if (!turmaCleanupCourse || turmaCleanupSelectedIds.length === 0) return;
+    const selectedSet = new Set(turmaCleanupSelectedIds);
+    const blocked = turmaCleanupItems.filter(
+      (turma) => selectedSet.has(turma.id) && turma.total_alunos > 0
+    );
+    if (blocked.length > 0) {
+      error("Há turmas selecionadas com alunos ativos. Desmarque essas turmas para continuar.");
+      return;
+    }
+
+    setTurmaCleanupRunning(true);
+    try {
+      const results = await Promise.allSettled(
+        turmaCleanupSelectedIds.map(async (turmaId) => {
+          const res = await fetch(`/api/escolas/${apiEscolaId}/turmas/${turmaId}/delete`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+          });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || json?.ok === false) {
+            throw new Error(json?.error || "Falha ao excluir turma.");
+          }
+          return turmaId;
+        })
+      );
+
+      const removed = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (removed > 0) {
+        success(`${removed} turma(s) excluída(s) com sucesso.`);
+      }
+      if (failed > 0) {
+        warning(
+          "Algumas turmas não foram excluídas",
+          `${failed} exclusão(ões) falharam. Revise permissões e vínculos restantes.`
+        );
+      }
+
+      const refreshedDetails = await fetchCourseDetails(turmaCleanupCourse.id);
+      setTurmaCleanupItems(refreshedDetails.turmas ?? []);
+      setTurmaCleanupSelectedIds([]);
+      fetchCourses();
+
+      if (selectedCourseId === turmaCleanupCourse.id) {
+        setDetails(refreshedDetails);
+      }
+    } catch (e: any) {
+      error(e?.message || "Falha ao excluir turmas selecionadas.");
+    } finally {
+      setTurmaCleanupRunning(false);
+    }
+  }, [
+    error,
+    apiEscolaId,
+    fetchCourseDetails,
+    fetchCourses,
+    selectedCourseId,
+    success,
+    turmaCleanupCourse,
+    turmaCleanupItems,
+    turmaCleanupSelectedIds,
+    warning,
+  ]);
 
   // -------- Manager view --------
   if (resolvePendenciasRequested && (loadingCourses || loadingDetails || !selectedCourseId || !details)) {
@@ -1235,6 +1376,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                   key={curso.id}
                   curso={curso}
                   onOpen={() => handleOpenManager(curso.id)}
+                  onCleanup={() => openTurmaCleanup(curso)}
                   onRemove={() => handleRemoveCourse(curso.id, curso.total_alunos)}
                 />
               ))}
@@ -1362,6 +1504,26 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         />
       )}
 
+      {turmaCleanupOpen && (
+        <TurmaCleanupModal
+          open={turmaCleanupOpen}
+          courseName={turmaCleanupCourse?.nome ?? ""}
+          items={turmaCleanupItems}
+          selectedIds={turmaCleanupSelectedIds}
+          loading={turmaCleanupLoading}
+          running={turmaCleanupRunning}
+          onToggle={toggleTurmaCleanupSelection}
+          onClose={() => {
+            if (turmaCleanupRunning) return;
+            setTurmaCleanupOpen(false);
+            setTurmaCleanupItems([]);
+            setTurmaCleanupSelectedIds([]);
+            setTurmaCleanupCourse(null);
+          }}
+          onConfirm={runTurmaCleanup}
+        />
+      )}
+
     </div>
   );
 }
@@ -1370,10 +1532,12 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 function CourseCard({
   curso,
   onOpen,
+  onCleanup,
   onRemove,
 }: {
   curso: ActiveCourse;
   onOpen: () => void;
+  onCleanup: () => void;
   onRemove: () => void;
 }) {
   return (
@@ -1398,17 +1562,30 @@ function CourseCard({
           <p className="text-xs text-slate-500 font-mono mt-1 truncate">{curso.codigo}</p>
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          title="Remover"
-        >
-          <Trash2 className="w-4 h-4 text-red-600" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCleanup();
+            }}
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            title="Excluir turmas excedentes"
+          >
+            Excluir turmas excedentes
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            title="Remover curso"
+          >
+            <Trash2 className="w-4 h-4 text-red-600" />
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
@@ -1419,6 +1596,135 @@ function CourseCard({
         <div className="rounded-xl border border-slate-200 bg-white p-3">
           <p className="text-slate-500">Turmas</p>
           <p className="text-sm font-semibold text-slate-900">{curso.total_turmas}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+        >
+          Gerir turmas
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TurmaCleanupModal({
+  open,
+  courseName,
+  items,
+  selectedIds,
+  loading,
+  running,
+  onToggle,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  courseName: string;
+  items: TurmaCleanupItem[];
+  selectedIds: string[];
+  loading: boolean;
+  running: boolean;
+  onToggle: (turmaId: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+  const selectedSet = new Set(selectedIds);
+  const selectedCount = selectedIds.length;
+  const blockedCount = items.filter((turma) => turma.total_alunos > 0).length;
+  const canConfirm = selectedCount > 0 && !running;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Excluir turmas excedentes</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Curso: <span className="font-semibold text-slate-700">{courseName || "-"}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={running}
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-60"
+          >
+            Fechar
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <p className="text-xs text-slate-600">
+            Selecione apenas turmas criadas a mais. Turmas com alunos ativos ficam bloqueadas.
+          </p>
+
+          {loading ? (
+            <Spinner label="Carregando turmas..." />
+          ) : items.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+              Nenhuma turma encontrada para este curso.
+            </div>
+          ) : (
+            <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+              {items.map((turma) => {
+                const blocked = turma.total_alunos > 0;
+                return (
+                  <label
+                    key={turma.id}
+                    className={cx(
+                      "flex items-center justify-between gap-3 px-4 py-3 text-xs",
+                      blocked ? "bg-rose-50/60" : "bg-white hover:bg-slate-50",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(turma.id)}
+                        onChange={() => onToggle(turma.id)}
+                        disabled={blocked || running}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{turma.nome}</p>
+                        <p className="text-slate-500 truncate">
+                          {turma.classe} · {turma.turno}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={cx("font-semibold", blocked ? "text-rose-700" : "text-slate-700")}>
+                        {turma.total_alunos} aluno(s)
+                      </p>
+                      {blocked && <p className="text-[11px] text-rose-600">bloqueada</p>}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 flex items-center justify-between">
+          <p className="text-xs text-slate-600">
+            Selecionadas: <span className="font-semibold text-slate-900">{selectedCount}</span> ·
+            Bloqueadas com alunos: <span className="font-semibold text-slate-900"> {blockedCount}</span>
+          </p>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!canConfirm}
+            className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+          >
+            {running ? "Excluindo..." : "Excluir selecionadas"}
+          </button>
         </div>
       </div>
     </div>

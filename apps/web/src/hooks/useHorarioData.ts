@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SchedulerAula, SchedulerSlot } from "@/components/escola/horarios/SchedulerBoard";
 import {
   calculateTotalSlots,
@@ -171,7 +171,11 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
     Promise.all([
       fetchJson(`/api/escolas/${escolaId}/horarios/slots`, controller.signal, "no-store"),
       fetchJson(`/api/escolas/${escolaId}/salas`, controller.signal, "no-store"),
-      fetchJson(`/api/secretaria/turmas-simples?ano=${anoAtual}`, controller.signal, "no-store"),
+      fetchJson(
+        `/api/secretaria/turmas-simples?ano=${anoAtual}&escola_id=${encodeURIComponent(escolaId)}`,
+        controller.signal,
+        "no-store"
+      ),
     ])
       .then(([slotsRes, salasRes, turmasRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
@@ -254,9 +258,7 @@ export function useHorarioTurmaData({
   });
   const requestRef = useRef(0);
 
-  const slotLookupReady = useMemo(() => Object.keys(slotLookup).length > 0, [slotLookup]);
-
-  const canLoadTurmaData = Boolean(escolaId && turmaId && versaoId && slotLookupReady);
+  const canLoadTurmaData = Boolean(escolaId && turmaId && versaoId);
 
   useEffect(() => {
     if (!canLoadTurmaData) {
@@ -292,6 +294,15 @@ export function useHorarioTurmaData({
       .then(([disciplinasRes, quadroRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
 
+        const disciplinasError =
+          !disciplinasRes.res.ok
+            ? disciplinasRes.json?.error ?? `Falha ao carregar disciplinas (HTTP ${disciplinasRes.res.status})`
+            : null;
+        const quadroError =
+          !quadroRes.res.ok
+            ? quadroRes.json?.error ?? `Falha ao carregar quadro (HTTP ${quadroRes.res.status})`
+            : null;
+
         const aulasPayload =
           disciplinasRes.res.ok && disciplinasRes.json.ok && Array.isArray(disciplinasRes.json.items)
             ? disciplinasRes.json.items
@@ -321,7 +332,7 @@ export function useHorarioTurmaData({
             sala_id: item.sala_id ?? null,
           })),
           loading: false,
-          error: null,
+          error: disciplinasError || quadroError,
         });
       })
       .catch((error) => {

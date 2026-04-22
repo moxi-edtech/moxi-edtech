@@ -38,9 +38,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await supabase.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
+    if (!profCheck || (profCheck as any).escola_id !== userEscolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     // Bloqueia atualizações quando escola suspensa/excluída
-    const { data: esc } = await supabase.from('escolas').select('status').eq('id', escolaId).limit(1)
+    const { data: esc } = await supabase.from('escolas').select('status').eq('id', userEscolaId).limit(1)
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite alterações.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para alterar usuários.' }, { status: 400 })
@@ -85,7 +85,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const papelAfter = papel ?? papelBefore
     const roleAfter = roleEnum ?? roleBefore
-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_ATUALIZADO', entity: 'usuario', entityId: userId, details: { email: lower, papel_before: papelBefore, papel_after: papelAfter, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
+    recordAuditServer({ escolaId: userEscolaId, portal: 'admin_escola', acao: 'USUARIO_ATUALIZADO', entity: 'usuario', entityId: userId, details: { email: lower, papel_before: papelBefore, papel_after: papelAfter, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

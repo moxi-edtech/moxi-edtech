@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const querySchema = z
   .object({
@@ -43,6 +44,11 @@ export async function GET(
     const { anoLetivoId, classeId, courseId, turmaId, scope } = parsed.data;
 
     const supabase = await supabaseServerTyped<Database>();
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!resolvedEscolaId) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     let query = supabase
       .from('vw_matriculas_validas')
@@ -69,7 +75,7 @@ export async function GET(
         created_at
       `
       )
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .eq("ano_letivo_id", anoLetivoId)
       .order("created_at", { ascending: false });
 
@@ -123,7 +129,7 @@ export async function GET(
 
     return NextResponse.json({
       ok: true,
-      filters: { escolaId, anoLetivoId, classeId, courseId: courseId ?? null, scope, turmaId: turmaId ?? null },
+      filters: { escolaId: resolvedEscolaId, anoLetivoId, classeId, courseId: courseId ?? null, scope, turmaId: turmaId ?? null },
       meta: { total, pendentes },
       matriculas,
     });

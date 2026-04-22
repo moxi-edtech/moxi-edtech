@@ -5,6 +5,7 @@ import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { buildPlanLimitError, checkAlunoPlanLimit } from '@/lib/plan/limits'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -46,12 +47,17 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
     }
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!resolvedEscolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
     // 1. Verificação de Permissões
     const { data: vinc } = await s
       .from('escola_users')
       .select('papel')
       .eq('user_id', user.id)
-      .eq('escola_id', escolaId)
+      .eq('escola_id', resolvedEscolaId)
       .limit(1)
     const papel = (vinc?.[0] as any)?.papel || null
 
@@ -65,37 +71,37 @@ export async function POST(
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+    if (!profCheck || (profCheck as any).escola_id !== resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     }
 
-    const limitCheck = await checkAlunoPlanLimit(s as any, escolaId, 1)
+    const limitCheck = await checkAlunoPlanLimit(s as any, resolvedEscolaId, 1)
     if (!limitCheck.ok) {
       await s.from('notifications').insert({
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         target_role: 'super_admin',
         tipo: 'plan_limit_alunos',
         titulo: 'Limite de alunos atingido',
         mensagem: `A escola atingiu o limite de alunos (${limitCheck.current}/${limitCheck.max}).`,
-        link_acao: `/super-admin/escolas/${escolaId}`,
+        link_acao: `/super-admin/escolas/${resolvedEscolaId}`,
       })
 
       recordAuditServer({
-        escolaId,
+        escolaId: resolvedEscolaId,
         portal: 'secretaria',
         acao: 'PLAN_LIMIT_ALUNOS',
         entity: 'alunos',
         details: limitCheck,
       }).catch(() => null)
 
-      return NextResponse.json(buildPlanLimitError(escolaId, limitCheck), { status: 403 })
+      return NextResponse.json(buildPlanLimitError(resolvedEscolaId, limitCheck), { status: 403 })
     }
 
     const admin = await supabaseServer()
 
     // 2. Preparação do Payload
     const insertPayload: any = {
-      escola_id: escolaId,
+      escola_id: resolvedEscolaId,
       nome: body.nome,
       deleted_at: null, // GARANTE REATIVAÇÃO se for soft-deleted
     }
@@ -113,7 +119,7 @@ export async function POST(
           email: body.email,
           email_confirm: true,
           user_metadata: { nome: body.nome },
-          app_metadata: { role: 'aluno', escola_id: escolaId },
+          app_metadata: { role: 'aluno', escola_id: resolvedEscolaId },
         })
       } catch {
         createdUser = null
@@ -143,8 +149,8 @@ export async function POST(
           email: body.email,
           nome: body.nome,
           role: 'aluno',
-          escola_id: escolaId,
-          current_escola_id: escolaId,
+          escola_id: resolvedEscolaId,
+          current_escola_id: resolvedEscolaId,
         }
         await admin.from('profiles' as any).upsert(profilePayload, { onConflict: 'user_id' })
 
@@ -152,7 +158,7 @@ export async function POST(
         await admin
           .from('escola_users' as any)
           .upsert(
-            { escola_id: escolaId, user_id: targetUserId, papel: 'aluno' } as any,
+            { escola_id: resolvedEscolaId, user_id: targetUserId, papel: 'aluno' } as any,
             { onConflict: 'escola_id,user_id' }
           )
       }
@@ -187,7 +193,7 @@ export async function POST(
 
     // 5. Auditoria
     recordAuditServer({
-      escolaId,
+      escolaId: resolvedEscolaId,
       portal: 'secretaria',
       acao: 'ALUNO_CRIADO_OU_ATUALIZADO',
       entity: 'aluno',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
@@ -9,11 +10,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    const userEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!userEscolaId) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     // Must be admin of this escola
     let papel: string | null = null
     try {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle()
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', userEscolaId).eq('user_id', user.id).maybeSingle()
       papel = (vinc as any)?.papel ?? null
     } catch {}
     if (!hasPermission(papel as any, 'configurar_escola')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const base = process.env.NEXT_PUBLIC_BASE_URL || ''
     const payload = await req.json().catch(() => ({}))
-    const res = await fetch(`${base}/api/escolas/${escolaId}/seed/academico`, {
+    const res = await fetch(`${base}/api/escolas/${userEscolaId}/seed/academico`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-test-seed-key': TEST_SEED_KEY },
       body: JSON.stringify(payload),

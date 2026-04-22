@@ -24,7 +24,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
   }
 
-  const allowed = await canManageEscolaResources(supabase, escolaId, user.id);
+  const allowed = await canManageEscolaResources(supabase, userEscolaId, user.id);
   if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
   const { data: config } = await supabase
@@ -77,7 +77,7 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
   }
 
-  const allowed = await canManageEscolaResources(supabase, escolaId, user.id);
+  const allowed = await canManageEscolaResources(supabase, userEscolaId, user.id);
   if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
   const body = await req.json().catch(() => null);
@@ -126,7 +126,7 @@ export async function POST(
     const { data: created, error: createError } = await supabase
       .from("modelos_avaliacao")
       .insert({
-        escola_id: escolaId,
+        escola_id: userEscolaId,
         nome: `${modelo.nome} (Curso)`,
         curso_id: cursoId,
         formula: modelo.formula,
