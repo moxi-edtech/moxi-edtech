@@ -119,6 +119,7 @@ export default function FluxosConfiguracaoPage() {
         title="Fluxos de Trabalho"
         subtitle="Defina o caminho que a nota percorre até o boletim."
         menuItems={menuItems}
+        showInternalMenu={false}
         embedded
         backHref={base}
         prevHref={`${base}/financeiro`}

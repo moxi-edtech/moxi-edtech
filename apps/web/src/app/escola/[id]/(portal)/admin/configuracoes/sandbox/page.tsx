@@ -134,6 +134,7 @@ export default function SandboxConfiguracoesPage() {
       title="Sandbox · Teste de Impacto"
       subtitle="Simule o comportamento do ano letivo antes de publicar."
       menuItems={menuItems}
+      showInternalMenu={false}
       prevHref={`${base}/fluxos`}
       nextHref={`${base}/sistema`} // Volta pro início ou dashboard
       // O botão "Save" padrão fica desabilitado até rodar a simulação

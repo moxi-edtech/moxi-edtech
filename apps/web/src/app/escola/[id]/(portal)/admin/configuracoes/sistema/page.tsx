@@ -182,6 +182,7 @@ export default function SistemaConfiguracoesPage() {
         title="Configurações do Sistema"
         subtitle="Painel de Controle do Ano Letivo."
         menuItems={buildConfigMenuItems(base)}
+        showInternalMenu={false}
         nextHref={`${base}/calendario`}
         testHref={`${base}/sandbox`}
         statusItems={["Sessão expirada"]}
@@ -204,6 +205,7 @@ export default function SistemaConfiguracoesPage() {
       title="Configurações do Sistema"
       subtitle="Painel de Controle do Ano Letivo."
       menuItems={buildConfigMenuItems(base)}
+      showInternalMenu={false}
       nextHref={`${base}/calendario`}
       testHref={`${base}/sandbox`}
       statusItems={blockersList.length > 0 ? blockersList : ["Sistema Operante"]}

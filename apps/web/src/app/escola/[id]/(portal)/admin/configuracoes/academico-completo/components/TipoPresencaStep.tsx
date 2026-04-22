@@ -190,6 +190,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
       title="Avaliação & Frequência"
       subtitle="Defina as regras do jogo: como os alunos são aprovados."
       menuItems={buildConfigMenuItems(base)}
+      showInternalMenu={false}
       prevHref={`${base}/calendario`}
       nextHref={`${base}/turmas`}
       // Escondemos o botão de save global do Shell para controlar localmente

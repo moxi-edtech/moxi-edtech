@@ -802,6 +802,7 @@ export default function TurmasConfiguracoesPage() {
         title="Gestão de Turmas & Currículo"
         subtitle="Controle central: publique currículos, ajuste classes e gere turmas com segurança."
         menuItems={menuItems}
+        showInternalMenu={false}
         embedded
         backHref={base}
         prevHref={`${base}/avaliacao`}
@@ -825,6 +826,7 @@ export default function TurmasConfiguracoesPage() {
       title="Gestão de Turmas & Currículo"
       subtitle="Controle central: publique currículos, ajuste classes e gere turmas com segurança."
       menuItems={menuItems}
+      showInternalMenu={false}
       embedded
       backHref={base}
       prevHref={`${base}/avaliacao`}

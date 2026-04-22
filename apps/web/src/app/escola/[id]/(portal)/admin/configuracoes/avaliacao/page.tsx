@@ -269,6 +269,7 @@ export default function AvaliacaoUnificadaClient() {
       title="Avaliação & Frequência"
       subtitle="Defina as regras do jogo: como os alunos são aprovados."
       menuItems={buildConfigMenuItems(base)}
+      showInternalMenu={false}
       embedded
       backHref={base}
       prevHref={`${base}/calendario`}
