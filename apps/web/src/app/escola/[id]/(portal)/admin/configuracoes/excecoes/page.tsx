@@ -19,6 +19,7 @@ export default function ExcecoesConfiguracoesPage() {
       title="Exceções"
       subtitle="Defina exceções de pauta e regras específicas por disciplina/turma."
       menuItems={buildConfigMenuItems(base)}
+      showInternalMenu={false}
       embedded
       backHref={base}
       prevHref={`${base}/fluxos`}

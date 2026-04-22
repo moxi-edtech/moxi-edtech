@@ -132,6 +132,7 @@ export default function MensalidadesEmolumentosPage() {
       menuItems={buildConfigMenuItems(base)}
       backHref={`/escola/${escolaParam}/admin`}
       embedded={!isStandalone}
+      showInternalMenu={false}
     >
       <div className="space-y-6">
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
