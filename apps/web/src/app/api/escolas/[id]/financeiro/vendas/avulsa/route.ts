@@ -78,7 +78,7 @@ export async function POST(
       .select("escola_id")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!profCheck || profCheck.escola_id !== escolaId) {
+    if (!profCheck || profCheck.escola_id !== resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Perfil não vinculado à escola" }, { status: 403 });
     }
 
@@ -105,7 +105,7 @@ export async function POST(
     const lancRes = await s
       .from("financeiro_lancamentos")
       .insert({
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         aluno_id: body.aluno_id,
         matricula_id: body.matricula_id ?? null,
         tipo: "debito",
@@ -133,7 +133,7 @@ export async function POST(
     const pagamentoRes = await s
       .from("pagamentos")
       .insert({
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         aluno_id: body.aluno_id,
         valor_pago: body.valor,
         status: body.pago_imediato ? "pago" : "pendente",
@@ -163,7 +163,7 @@ export async function POST(
     } catch {}
 
     recordAuditServer({
-      escolaId,
+      escolaId: resolvedEscolaId,
       portal: "financeiro",
       acao: "VENDA_AVULSA_REGISTRADA",
       entity: "pagamento",
@@ -191,7 +191,7 @@ export async function POST(
         }).format(body.valor);
 
         await emitirEvento(s, {
-          escola_id: escolaId,
+          escola_id: resolvedEscolaId,
           tipo: "pagamento.confirmado",
           payload: {
             aluno_id: body.aluno_id,

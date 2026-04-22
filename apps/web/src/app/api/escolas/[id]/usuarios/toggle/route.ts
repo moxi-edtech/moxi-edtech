@@ -38,9 +38,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await supabase.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
+    if (!profCheck || (profCheck as any).escola_id !== userEscolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     // Bloqueia alteração de vínculos quando escola suspensa/excluída
-    const { data: esc } = await supabase.from('escolas').select('status').eq('id', escolaId).limit(1)
+    const { data: esc } = await supabase.from('escolas').select('status').eq('id', userEscolaId).limit(1)
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite alterações de usuários.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para alterar usuários.' }, { status: 400 })
@@ -69,16 +69,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (ativo) {
       // ensure link exists
     try {
-      await supabase.from('escola_users').insert([{ escola_id: escolaId, user_id: userId, papel: papel || 'secretaria' } as TablesInsert<'escola_users'>]).select('user_id').single()
+      await supabase.from('escola_users').insert([{ escola_id: userEscolaId, user_id: userId, papel: papel || 'secretaria' } as TablesInsert<'escola_users'>]).select('user_id').single()
     } catch {
       if (papel) await supabase.from('escola_users').update({ papel }).eq('escola_id', userEscolaId).eq('user_id', userId)
     }
       // set profile.escola_id to this if empty
-      if (!prof?.[0]?.escola_id) await supabase.from('profiles').update({ escola_id: escolaId }).eq('user_id', userId)
+      if (!prof?.[0]?.escola_id) await supabase.from('profiles').update({ escola_id: userEscolaId }).eq('user_id', userId)
       // ensure app_metadata.escola_id set
       await callAuthAdminJob(req, 'updateUserById', {
         userId,
-        attributes: { app_metadata: { escola_id: escolaId } as any },
+          attributes: { app_metadata: { escola_id: userEscolaId } as any },
       }).catch(() => null)
       // align global role with papel
       const mapped = mapPapelToGlobalRole(((papel || 'secretaria') as any))
@@ -89,12 +89,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           attributes: { app_metadata: { role: mapped } as any },
         })
       } catch {}
-      recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_ATIVADO', entity: 'usuario', entityId: userId, details: { email, papel: papel || 'secretaria', ativo_before: ativoBefore, ativo_after: true, role_before: roleBefore } }).catch(() => null)
+      recordAuditServer({ escolaId: userEscolaId, portal: 'admin_escola', acao: 'USUARIO_ATIVADO', entity: 'usuario', entityId: userId, details: { email, papel: papel || 'secretaria', ativo_before: ativoBefore, ativo_after: true, role_before: roleBefore } }).catch(() => null)
     } else {
       // remove link
       await supabase.from('escola_users').delete().eq('escola_id', userEscolaId).eq('user_id', userId)
       // if profile.escola_id equals this, null it
-      if (prof?.[0]?.escola_id === escolaId) await supabase.from('profiles').update({ escola_id: null }).eq('user_id', userId)
+      if (prof?.[0]?.escola_id === userEscolaId) await supabase.from('profiles').update({ escola_id: null }).eq('user_id', userId)
       // if user has no more school links, downgrade role to 'guest'
       let roleAfter = roleBefore
       const { data: remaining } = await supabase
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         }).catch(() => null)
         roleAfter = 'guest'
       }
-      recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_DESATIVADO', entity: 'usuario', entityId: userId, details: { email, ativo_before: ativoBefore, ativo_after: false, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
+      recordAuditServer({ escolaId: userEscolaId, portal: 'admin_escola', acao: 'USUARIO_DESATIVADO', entity: 'usuario', entityId: userId, details: { email, ativo_before: ativoBefore, ativo_after: false, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
     }
 
     return NextResponse.json({ ok: true })

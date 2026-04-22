@@ -44,7 +44,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     // Buscar cursos com colunas opcionais em fallback
@@ -167,7 +167,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -193,7 +193,7 @@ export async function POST(
       parsed.data.course_code || parsed.data.curriculum_key || null;
 
     const payload: any = {
-      escola_id: escolaId,
+      escola_id: userEscolaId,
       nome: parsed.data.nome,
       codigo: codigoFinal, // Garante que sempre tenha código
     };
@@ -222,7 +222,7 @@ export async function POST(
 
     try {
       await (supabase as any).from("notifications").insert({
-        escola_id: escolaId,
+        escola_id: userEscolaId,
         target_role: "financeiro",
         tipo: "curso_precos_pendentes",
         titulo: `Novo curso criado: ${ins?.nome || parsed.data.nome}`,

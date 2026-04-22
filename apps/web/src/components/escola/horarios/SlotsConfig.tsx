@@ -335,7 +335,12 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
       if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
          return crypto.randomUUID();
       }
-      return `slot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      // Fallback para ambientes sem randomUUID (mantém formato UUID para backend).
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+         const random = Math.floor(Math.random() * 16);
+         const value = char === "x" ? random : (random & 0x3) | 0x8;
+         return value.toString(16);
+      });
    };
 
    const handleGenerate = () => {

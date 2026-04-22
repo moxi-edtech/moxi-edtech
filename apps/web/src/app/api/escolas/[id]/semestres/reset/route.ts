@@ -129,7 +129,7 @@ export async function POST(
 
     // Hard check: perfil deve pertencer à escola
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', user.id).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+    if (!profCheck || (profCheck as any).escola_id !== resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     }
 
@@ -143,7 +143,7 @@ export async function POST(
       console.error('[semestres.reset.POST] session fetch error', { message: sErr.message, code: (sErr as any)?.code })
       return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 })
     }
-    if (!sess || (sess as any).escola_id !== escolaId) {
+    if (!sess || (sess as any).escola_id !== resolvedEscolaId) {
       console.error('[semestres.reset.POST] session not found or mismatched school', { escolaId, sessao_id })
       return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 })
     }
@@ -196,7 +196,7 @@ export async function POST(
       const parts = splitRange(sessionStart, sessionEnd, qtd)
       toInsert = parts.map((p, i) => ({
         session_id: sessao_id,
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         nome: `${i + 1}º ${label}`,
         data_inicio: p.inicio,
         data_fim: p.fim,
@@ -217,7 +217,7 @@ export async function POST(
         const fimISO = dateToISO(periodEnd)
         toInsert.push({
           session_id: sessao_id,
-          escola_id: escolaId,
+          escola_id: resolvedEscolaId,
           nome: `${i + 1}º ${label}`,
           data_inicio: inicioISO,
           data_fim: fimISO,

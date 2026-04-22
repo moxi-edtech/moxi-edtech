@@ -54,12 +54,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     // Hard check: user profile must belong to this escola
     const { data: profCheck } = await s.from('profiles').select('escola_id').eq('user_id', user.id).maybeSingle()
-    if (!profCheck || profCheck.escola_id !== escolaId) {
+    if (!profCheck || profCheck.escola_id !== resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     }
 
     // Status gate: bloqueia suspensa/excluida
-    const { data: esc } = await s.from('escolas').select('status').eq('id', escolaId).limit(1)
+    const { data: esc } = await s.from('escolas').select('status').eq('id', resolvedEscolaId).limit(1)
     const status = (esc?.[0] as { status?: string | null })?.status ?? undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite lançamentos financeiros.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para registrar pagamentos.' }, { status: 400 })
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: row, error } = await s
       .from('pagamentos')
       .insert({
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         valor_pago: body.valor,
         metodo: body.metodo,
         referencia: body.referencia ?? null,
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     if (error || !row) return NextResponse.json({ ok: false, error: error?.message || 'Falha ao registrar pagamento' }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'financeiro', acao: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor_pago, metodo: row.metodo, status: row.status } }).catch(() => null)
+    recordAuditServer({ escolaId: resolvedEscolaId, portal: 'financeiro', acao: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor_pago, metodo: row.metodo, status: row.status } }).catch(() => null)
 
     return NextResponse.json({ ok: true, pagamento: row })
   } catch (err) {

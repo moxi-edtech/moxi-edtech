@@ -9,6 +9,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
 import { sanitizeEmail } from "@/lib/sanitize";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const BodySchema = z.object({
   email: z.string().email(),
@@ -47,11 +48,16 @@ export async function POST(
       );
     }
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
     const { data: vinc } = await s
       .from("escola_users")
       .select("papel")
       .eq("user_id", user.id)
-      .eq("escola_id", escolaId)
+      .eq("escola_id", resolvedEscolaId)
       .limit(1);
 
     const papel = (vinc?.[0] as any)?.papel || null;
@@ -69,7 +75,7 @@ export async function POST(
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+    if (!profCheck || (profCheck as any).escola_id !== resolvedEscolaId) {
       return NextResponse.json(
         { ok: false, error: "Perfil não vinculado à escola" },
         { status: 403 },
@@ -83,7 +89,7 @@ export async function POST(
         .from("profiles" as any)
         .select("numero_processo_login")
         .eq("email", email)
-        .eq("escola_id", escolaId)
+        .eq("escola_id", resolvedEscolaId)
         .limit(1);
 
       numeroLogin = (existing?.[0] as any)?.numero_processo_login ?? null;
@@ -137,8 +143,8 @@ export async function POST(
             nome,
             numero_processo_login: numeroLogin ?? null, // se já havia matrícula anterior, reaproveita; senão fica null
             role: "aluno" as any,
-            escola_id: escolaId,
-            current_escola_id: escolaId,
+            escola_id: resolvedEscolaId,
+            current_escola_id: resolvedEscolaId,
           } as TablesInsert<"profiles">,
         ]);
       } catch {
@@ -152,7 +158,7 @@ export async function POST(
           attributes: {
             app_metadata: {
               role: "aluno",
-              escola_id: escolaId,
+              escola_id: resolvedEscolaId,
               numero_usuario: numeroLogin || undefined,
             },
           },
@@ -167,8 +173,8 @@ export async function POST(
           .from("profiles")
         .update({
           role: "aluno" as any,
-          escola_id: escolaId,
-          current_escola_id: escolaId,
+          escola_id: resolvedEscolaId,
+          current_escola_id: resolvedEscolaId,
           // numero_processo_login: numeroLogin ?? undefined, // só atualizamos se já houver
         })
           .eq("user_id", userId);
@@ -182,7 +188,7 @@ export async function POST(
           attributes: {
             app_metadata: {
               role: "aluno",
-              escola_id: escolaId,
+              escola_id: resolvedEscolaId,
               numero_usuario: numeroLogin || undefined,
             },
           },
@@ -198,7 +204,7 @@ export async function POST(
         .from("escola_users")
         .upsert(
           {
-            escola_id: escolaId,
+            escola_id: resolvedEscolaId,
             user_id: userId!,
             papel: "aluno",
           } as TablesInsert<"escola_users">,
@@ -223,7 +229,7 @@ export async function POST(
         await s
           .from("alunos")
           .update({ profile_id: userId! } as any)
-          .eq("escola_id", escolaId)
+          .eq("escola_id", resolvedEscolaId)
           .eq("email", email);
       } catch {
         // best-effort
@@ -232,7 +238,7 @@ export async function POST(
 
     // 5) Auditoria
     recordAuditServer({
-      escolaId,
+      escolaId: resolvedEscolaId,
       portal: "secretaria",
       acao: "ALUNO_CONVIDADO",
       entity: "aluno",
@@ -250,7 +256,7 @@ export async function POST(
         const { data: esc } = await s
           .from("escolas" as any)
           .select("nome")
-          .eq("id", escolaId)
+          .eq("id", resolvedEscolaId)
           .maybeSingle();
         const escolaNome = (esc as any)?.nome ?? null;
         const loginUrl = process.env.NEXT_PUBLIC_BASE_URL

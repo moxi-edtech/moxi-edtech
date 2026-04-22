@@ -11,7 +11,7 @@ export const revalidate = 0
 const TimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, 'Formato de hora inválido (HH:MM ou HH:MM:SS)')
 
 const SlotSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().optional(),
   turno_id: z.string().min(1),
   ordem: z.number().int().min(1),
   inicio: TimeSchema,
@@ -41,6 +41,13 @@ type Conflict = {
   inicio: string
   fim: string
   conflicting_with: { id?: string; inicio: string; fim: string }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function normalizeUuid(value?: string | null): string | undefined {
+  if (!value) return undefined
+  return UUID_RE.test(value) ? value : undefined
 }
 
 function toSeconds(time: string): number {
@@ -163,7 +170,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const turnoIds = Array.from(new Set(parsed.data.slots.map((slot) => slot.turno_id)))
     const dias = Array.from(new Set(parsed.data.slots.map((slot) => slot.dia_semana)))
-    const upsertIds = parsed.data.slots.map((slot) => slot.id).filter((id): id is string => Boolean(id))
+    const upsertIds = parsed.data.slots
+      .map((slot) => normalizeUuid(slot.id))
+      .filter((id): id is string => Boolean(id))
 
     const { data: existingSlots, error: existingError } = await supabase
       .from('horario_slots')
@@ -194,16 +203,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       )
     }
 
-    const payload = parsed.data.slots.map((slot: SlotPayload) => ({
-      id: slot.id,
-      escola_id: escolaIdResolved,
-      turno_id: slot.turno_id,
-      ordem: slot.ordem,
-      inicio: slot.inicio,
-      fim: slot.fim,
-      dia_semana: slot.dia_semana,
-      is_intervalo: slot.is_intervalo ?? false,
-    }))
+    const payload = parsed.data.slots.map((slot: SlotPayload) => {
+      const id = normalizeUuid(slot.id)
+      return {
+        ...(id ? { id } : {}),
+        escola_id: escolaIdResolved,
+        turno_id: slot.turno_id,
+        ordem: slot.ordem,
+        inicio: slot.inicio,
+        fim: slot.fim,
+        dia_semana: slot.dia_semana,
+        is_intervalo: slot.is_intervalo ?? false,
+      }
+    })
 
     const { data, error } = await supabase
       .from('horario_slots')

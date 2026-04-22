@@ -24,7 +24,7 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
   }
 
-  const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+  const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
   if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
   const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));

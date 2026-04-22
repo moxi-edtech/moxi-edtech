@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { createServiceRoleClient, invalidateTenantConfig } from '@moxi/tenant-sdk'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
@@ -10,21 +11,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    const userEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!userEscolaId) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     let papel: string | null = null
     try {
-      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle()
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', userEscolaId).eq('user_id', user.id).maybeSingle()
       papel = (vinc as any)?.papel ?? null
     } catch {}
     if (!hasPermission(papel as any, 'configurar_escola')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     const { enabled } = await req.json()
     const admin = createServiceRoleClient()
-    const { error } = await admin.from('escolas').update({ use_mv_dashboards: !!enabled }).eq('id', escolaId)
+    const { error } = await admin.from('escolas').update({ use_mv_dashboards: !!enabled }).eq('id', userEscolaId)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
 
     // Keep cached tenant configuration aligned with updates from this route
-    invalidateTenantConfig(escolaId)
+    invalidateTenantConfig(userEscolaId)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

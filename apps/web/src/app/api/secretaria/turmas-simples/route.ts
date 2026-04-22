@@ -136,7 +136,62 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers });
     }
 
-    let items = turmasView || [];
+    let items: any[] = turmasView || [];
+
+    // Fallback operacional:
+    // algumas escolas têm turmas em produção, mas a view de matrícula pode vir vazia
+    // por defasagem de refresh/critério. Para módulos como horários, usamos turmas reais.
+    if (!error && items.length === 0) {
+      let turmasQuery = supabase
+        .from('turmas')
+        .select('id, nome, turma_codigo, turma_code, turno, capacidade_maxima, sala, classe_id, curso_id, ano_letivo, status_validacao, session_id')
+        .eq('escola_id', escolaId);
+
+      if (sessionId && anoLetivo) {
+        turmasQuery = turmasQuery.eq('ano_letivo', anoLetivo).or(`session_id.eq.${sessionId},session_id.is.null`);
+      } else if (sessionId) {
+        turmasQuery = turmasQuery.eq('session_id', sessionId);
+      } else if (anoLetivo) {
+        turmasQuery = turmasQuery.eq('ano_letivo', anoLetivo);
+      }
+
+      if (turno) turmasQuery = turmasQuery.eq('turno', turno);
+
+      turmasQuery = applyKf2ListInvariants(turmasQuery, {
+        defaultLimit: 50,
+        order: [
+          { column: 'nome', ascending: true },
+          { column: 'id', ascending: false },
+        ],
+      });
+
+      const { data: turmasFallback, error: fallbackError } = await turmasQuery;
+      if (fallbackError) {
+        console.error('Erro no fallback de turmas-simples:', fallbackError);
+      } else {
+        items = (turmasFallback || []).map((t: any) => ({
+          id: t.id,
+          escola_id: escolaId,
+          session_id: t.session_id ?? null,
+          turma_nome: t.nome ?? null,
+          turma_codigo: t.turma_codigo ?? t.turma_code ?? null,
+          turno: t.turno ?? null,
+          capacidade_maxima: t.capacidade_maxima ?? null,
+          sala: t.sala ?? null,
+          classe_nome: null,
+          curso_nome: null,
+          curso_tipo: null,
+          curso_is_custom: null,
+          curso_global_hash: null,
+          classe_id: t.classe_id ?? null,
+          curso_id: t.curso_id ?? null,
+          ano_letivo: t.ano_letivo ?? null,
+          ocupacao_atual: 0,
+          ultima_matricula: null,
+          status_validacao: t.status_validacao ?? null,
+        }));
+      }
+    }
 
     // 5. Filtrar se aluno já está matriculado (Lógica de Negócio)
     if (alunoId && items.length > 0) {

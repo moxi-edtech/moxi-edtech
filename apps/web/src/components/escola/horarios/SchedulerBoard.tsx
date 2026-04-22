@@ -187,6 +187,12 @@ export function SchedulerBoard({
     },
     [salas, effectiveTurmaSala]
   );
+  const shouldShowTurmaSalaWarning = useMemo(() => {
+    if (effectiveTurmaSala || !onAssignTurmaSala) return false;
+    const currentGrid = controlledGrid ?? grid;
+    const hasAllocatedItems = Object.values(currentGrid).some((value) => Boolean(value));
+    return hasAllocatedItems;
+  }, [effectiveTurmaSala, onAssignTurmaSala, controlledGrid, grid]);
 
   // Conflitos (Mantive sua lógica, apenas formatação)
   const detectedConflicts = useMemo(() => {
@@ -247,10 +253,10 @@ export function SchedulerBoard({
               <div className="mt-1">Revise os slots destacados antes de publicar.</div>
             </div>
           )}
-          {!effectiveTurmaSala && onAssignTurmaSala && (
+          {shouldShowTurmaSalaWarning && (
             <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
               <div className="font-semibold">Turma sem sala definida.</div>
-              <div className="mt-1">Defina a sala para todo o horário.</div>
+              <div className="mt-1">Defina uma sala padrão para concluir o horário da turma.</div>
               <button
                 type="button"
                 onClick={() => setAssigningTurmaSala(true)}

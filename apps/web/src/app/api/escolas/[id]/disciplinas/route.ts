@@ -53,7 +53,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const rows = await (async () => {
@@ -164,7 +164,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -224,7 +224,7 @@ export async function POST(
         const { data: nova, error: discErr } = await (supabase as any)
           .from('disciplinas_catalogo')
           .insert({
-            escola_id: escolaId,
+            escola_id: userEscolaId,
             nome: parsed.data.nome,
             sigla: parsed.data.sigla ?? null,
             is_avaliavel: parsed.data.is_avaliavel ?? true,
@@ -254,7 +254,7 @@ export async function POST(
     });
 
     const payload: any = {
-      escola_id: escolaId,
+      escola_id: userEscolaId,
       curso_id: parsed.data.curso_id,
       classe_id: parsed.data.classe_id,
       disciplina_id: disciplinaId,

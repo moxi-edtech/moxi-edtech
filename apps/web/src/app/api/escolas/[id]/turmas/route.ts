@@ -66,7 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const permsStart = shouldLog ? performance.now() : 0;
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (shouldLog) log('perms', performance.now() - permsStart);
     if (!allowed) {
       if (shouldLog) log('total', performance.now() - totalStart);
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
     }
 
-    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, userEscolaId, user.id);
     if (!allowed) {
       return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
     }
@@ -304,7 +304,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const gate = await validarCurriculoParaTurma(supabase as any, {
-      escola_id: escolaId,
+      escola_id: userEscolaId,
       curso_id: String(curso_id),
       ano_letivo: String(ano_letivo),
       classe_id: classe_id ? String(classe_id) : null,
@@ -333,7 +333,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { data, error } = await (supabase as any)
       .from('turmas')
       .insert({
-        escola_id: escolaId,
+        escola_id: userEscolaId,
         nome,
         turno,
         ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025

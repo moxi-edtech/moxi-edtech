@@ -69,7 +69,7 @@ export async function GET(
       .eq('id', sessao_id)
       .maybeSingle();
     if (sErr) return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
-    if (!sess || (sess as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
+    if (!sess || (sess as any).escola_id !== resolvedEscolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
 
     let q = (s as any).from('semestres').select('id, session_id, escola_id, nome, data_inicio, data_fim, attendance_type, permitir_submissao_final, tipo').eq('session_id', sessao_id).eq('escola_id', resolvedEscolaId);
     q = applyKf2ListInvariants(q);
@@ -183,7 +183,7 @@ export async function POST(
       .eq("id", sessao_id)
       .maybeSingle();
     if (sErr) return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
-    if (!sess || (sess as any).escola_id !== escolaId) {
+    if (!sess || (sess as any).escola_id !== resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sessão inválida para esta escola" }, { status: 404 });
     }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
@@ -12,9 +11,23 @@ export async function GET(
   try {
     const url = new URL(req.url);
     const anoParam = url.searchParams.get("ano");
-    const supabase = await supabaseServerTyped<Database>();
-    const { data: auth } = await supabase.auth.getUser();
-    const user = auth?.user;
+    const supabase = await createRouteClient();
+
+    let user: { id: string } | null = null;
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        const status = (authError as { status?: number }).status;
+        if (status === 400 || status === 401) {
+          return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+        }
+        return NextResponse.json({ ok: false, error: authError.message }, { status: 401 });
+      }
+      user = auth?.user ? { id: auth.user.id } : null;
+    } catch {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
