@@ -267,13 +267,13 @@ function ListaUsuarios() {
       const res = await fetch("/api/super-admin/users/resend-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: u.id }),
+        body: JSON.stringify({ userId: u.id, mode: "credentials" }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao reenviar convite.");
       }
-      toast.success(`Convite reenviado para ${u.email}.`);
+      toast.success(`Credenciais reenviadas para ${u.email}.`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Erro ao reenviar convite.";
       setErro(message);
