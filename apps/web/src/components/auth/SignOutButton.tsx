@@ -20,7 +20,7 @@ export default function SignOutButton({
   label = 'Sair',
   className,
   title,
-  redirectTo = '/login',
+  redirectTo = '/',
   variant = 'ghost',
   size = 'sm',
 }: Props) {
