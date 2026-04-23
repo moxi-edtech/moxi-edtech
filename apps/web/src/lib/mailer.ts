@@ -63,11 +63,15 @@ export function buildInviteEmail(args: {
 }) {
   const { escolaNome, onboardingUrl, convidadoEmail, convidadoNome, papel } = args
   const brand = getBranding()
+  const guidance = getInviteGuidance(papel)
   const subject = `Convite ${brand.name} • ${escolaNome}`
   const text = [
     convidadoNome ? `Olá, ${convidadoNome}.` : 'Olá,',
     `Você foi convidado para aceder ao ${brand.name} da escola "${escolaNome}".`,
-    papel ? `Perfil: ${papel}.` : '',
+    guidance.cargo ? `Cargo: ${guidance.cargo}.` : '',
+    guidance.portal ? `Portal: ${guidance.portal}.` : '',
+    guidance.tasks.length > 0 ? `Ao entrar, você deverá:` : '',
+    ...guidance.tasks.map((task) => `- ${task}`),
     onboardingUrl ? `Aceitar convite: ${onboardingUrl}` : '',
   ].filter(Boolean).join('\n')
 
@@ -85,7 +89,16 @@ export function buildInviteEmail(args: {
       <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Convite para ${escapeHtml(escolaNome)}</h2>
       ${convidadoNome ? `<p style="margin:0 0 8px 0;">Olá, <strong>${escapeHtml(convidadoNome)}</strong>.</p>` : '<p style="margin:0 0 8px 0;">Olá,</p>'}
       <p style="margin:0 0 8px 0; color:#475569;">Você foi convidado para aceder ao <strong>${escapeHtml(brand.name)}</strong> da escola <strong>${escapeHtml(escolaNome)}</strong>.</p>
-      ${papel ? `<p style="margin:0 0 8px 0; color:#475569;">Perfil: <strong>${escapeHtml(papel)}</strong></p>` : ''}
+      ${guidance.cargo ? `<p style="margin:0 0 8px 0; color:#475569;">Cargo: <strong>${escapeHtml(guidance.cargo)}</strong></p>` : ''}
+      ${guidance.portal ? `<p style="margin:0 0 8px 0; color:#475569;">Portal: <strong>${escapeHtml(guidance.portal)}</strong></p>` : ''}
+      ${guidance.tasks.length > 0 ? `
+      <div style="margin:14px 0 8px 0; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; background:#f8fafc;">
+        <p style="margin:0 0 8px 0; color:#334155; font-size:13px; font-weight:700;">Primeiros passos</p>
+        <ul style="margin:0; padding-left:18px; color:#475569; font-size:13px;">
+          ${guidance.tasks.map((task) => `<li style="margin:0 0 6px 0;">${escapeHtml(task)}</li>`).join('')}
+        </ul>
+      </div>
+      ` : ''}
       ${buttonHtml ? `<div style="text-align:center; margin:24px 0;">${buttonHtml}</div>` : ''}
       <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
       <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(convidadoEmail)}.</p>
@@ -95,6 +108,72 @@ export function buildInviteEmail(args: {
   </div>
   `
   return { subject, html, text }
+}
+
+function getInviteGuidance(papel?: string | null): { cargo: string | null; portal: string | null; tasks: string[] } {
+  const role = String(papel || '').trim().toLowerCase()
+
+  if (!role) {
+    return {
+      cargo: null,
+      portal: 'Portal da Escola',
+      tasks: [
+        'Completar o primeiro acesso e validar seus dados de perfil.',
+        'Revisar os módulos disponíveis no seu painel.',
+      ],
+    }
+  }
+
+  const map: Record<string, { cargo: string; portal: string; tasks: string[] }> = {
+    secretaria: {
+      cargo: 'Secretaria',
+      portal: 'Portal da Secretaria',
+      tasks: [
+        'Conferir e atualizar dados de alunos e encarregados.',
+        'Gerir matrículas, transferências e documentação escolar.',
+        'Acompanhar comunicação oficial e pendências administrativas.',
+      ],
+    },
+    financeiro: {
+      cargo: 'Financeiro',
+      portal: 'Portal Financeiro',
+      tasks: [
+        'Revisar tabelas de preços, mensalidades e emolumentos.',
+        'Acompanhar cobranças, pagamentos e recibos.',
+        'Monitorar pendências financeiras e regularizações.',
+      ],
+    },
+    admin_escola: {
+      cargo: 'Administrador da Escola',
+      portal: 'Portal Administrativo',
+      tasks: [
+        'Validar configurações acadêmicas e operacionais da escola.',
+        'Revisar permissões de utilizadores e fluxos de aprovação.',
+        'Acompanhar indicadores críticos do painel administrativo.',
+      ],
+    },
+    professor: {
+      cargo: 'Professor',
+      portal: 'Portal do Professor',
+      tasks: [
+        'Conferir turmas, disciplinas e horários atribuídos.',
+        'Lançar notas e frequências dentro dos prazos.',
+        'Acompanhar recados e orientações pedagógicas.',
+      ],
+    },
+  }
+
+  const guidance = map[role]
+  if (guidance) return guidance
+
+  return {
+    cargo: papel || null,
+    portal: 'Portal da Escola',
+    tasks: [
+      'Concluir o primeiro acesso e revisar suas permissões.',
+      'Validar as tarefas pendentes no seu painel inicial.',
+    ],
+  }
 }
 
 export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: string | null }) {
