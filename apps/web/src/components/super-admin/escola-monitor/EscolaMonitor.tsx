@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   RefreshCw, Eye, Database, Download, CreditCard, UserPlus,
-  GraduationCap, Presentation, Wrench, MoreHorizontal,
+  GraduationCap, Presentation, MoreHorizontal,
   Phone, Mail, Calendar, ChevronRight, Activity, Users,
   School, FileText, Settings, StickyNote, TrendingUp,
   AlertTriangle, CheckCircle, Clock, Zap, BarChart3, ShieldCheck, XCircle,
@@ -48,7 +48,7 @@ const TIPO_CONFIG: Record<string, { icon: any, colorClass: string, bgClass: stri
   matricula: { icon: UserPlus,      colorClass: "text-klasse-gold",  bgClass: "bg-klasse-gold/10",  label: "Matrícula"  },
   nota:      { icon: GraduationCap, colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Notas"      },
   presenca:  { icon: Presentation,  colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Presença"   },
-  config:    { icon: Wrench,        colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Config"     },
+  config:    { icon: Settings,      colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Config"     },
   outro:     { icon: Activity,      colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Outro"      },
 };
 

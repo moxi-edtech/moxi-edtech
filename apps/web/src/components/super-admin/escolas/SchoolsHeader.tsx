@@ -2,7 +2,7 @@
 "use client"
 
 import { useRouter } from "next/navigation";
-import { Plus, Wrench } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 
 type SchoolsHeaderProps = {
   fallbackSource?: string | null;
@@ -42,16 +42,16 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
         <button 
           onClick={() => onRepairAdmins(true)} 
           disabled={loading}
-          className="h-11 px-5 rounded-2xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50"
+          className="h-11 px-5 rounded-xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50"
         >
           <div className="flex items-center gap-2">
-            <Wrench size={14} /> Auditoria de Admins
+            <Settings size={14} /> Auditoria de Admins
           </div>
         </button>
         
         <button 
           onClick={() => router.push("/super-admin/escolas/nova")}
-          className="h-11 px-6 rounded-2xl bg-[#1F6B3B] text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-[0_10px_20px_rgba(31,107,59,0.2)] transition-all active:scale-95"
+          className="h-11 px-6 rounded-xl bg-klasse-green text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-sm transition-all active:scale-95"
         >
           <div className="flex items-center gap-2">
             <Plus size={16} strokeWidth={3} /> Provisionar Unidade
