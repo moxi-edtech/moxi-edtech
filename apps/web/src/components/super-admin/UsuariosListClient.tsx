@@ -8,9 +8,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Search, ShieldAlert, KeyRound, Trash2, Edit2, CheckCircle2, Mail } from "lucide-react";
+import { Check, Filter, Mail, Pencil, Plus, Search, Shield, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -120,11 +119,7 @@ function generateStrongPassword(len = 16) {
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export function SuperAdminUsuariosListClient() {
-  return (
-    <RequireSuperAdmin>
-      <ListaUsuarios />
-    </RequireSuperAdmin>
-  );
+  return <ListaUsuarios />;
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
@@ -329,7 +324,7 @@ function ListaUsuarios() {
         
         {erro && (
           <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-geist">
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+            <Shield className="w-5 h-5 flex-shrink-0" />
             <p>{erro}</p>
           </div>
         )}
@@ -454,23 +449,27 @@ function ListaUsuarios() {
                             <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-sm">
                               Cancelar
                             </button>
-                            <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-[#E3B23C] text-white text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
-                              <CheckCircle2 className="w-3 h-3" /> {isSaving ? "A gravar..." : "Guardar"}
+                            <button onClick={() => handleSave(u.id)} disabled={isSaving} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-klasse-gold text-white text-xs font-bold hover:brightness-95 transition-colors shadow-sm disabled:opacity-50">
+                              <Check className="w-3 h-3" /> {isSaving ? "A gravar..." : "Guardar"}
                             </button>
                           </div>
                         ) : (
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEdit(u)} className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all shadow-sm" title="Editar Perfil">
-                              <Edit2 className="w-4 h-4" />
+                            <button onClick={() => handleEdit(u)} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-klasse-gold hover:bg-slate-50 transition-all shadow-sm inline-flex items-center gap-2" title="Editar Perfil">
+                              <Pencil className="w-4 h-4" />
+                              <span className="hidden md:inline text-xs font-semibold">Editar</span>
                             </button>
-                            <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="p-2 rounded-xl bg-white border border-slate-200 text-[#E3B23C] hover:bg-amber-50 transition-all shadow-sm" title="Forçar Nova Senha">
-                              <KeyRound className="w-4 h-4" />
+                            <button onClick={() => { setResetUser(u); setResetPassword(""); setResetError(null); }} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-klasse-gold hover:bg-amber-50 transition-all shadow-sm inline-flex items-center gap-2" title="Forçar Nova Senha">
+                              <Filter className="w-4 h-4" />
+                              <span className="hidden md:inline text-xs font-semibold">Reset</span>
                             </button>
-                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="p-2 rounded-xl bg-white border border-slate-200 text-[#1F6B3B] hover:bg-green-50 transition-all shadow-sm disabled:opacity-50" title="Reenviar Convite">
+                            <button onClick={() => handleResendInvite(u)} disabled={isSaving} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-klasse-gold hover:bg-green-50 transition-all shadow-sm disabled:opacity-50 inline-flex items-center gap-2" title="Reenviar Convite">
                               <Mail className="w-4 h-4" />
+                              <span className="hidden md:inline text-xs font-semibold">Reenviar</span>
                             </button>
-                            <button onClick={() => handleDelete(u.id, u.email)} className="p-2 rounded-xl bg-white border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm" title="Revogar Acesso">
+                            <button onClick={() => handleDelete(u.id, u.email)} className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm inline-flex items-center gap-2" title="Revogar Acesso">
                               <Trash2 className="w-4 h-4" />
+                              <span className="hidden md:inline text-xs font-semibold">Remover</span>
                             </button>
                           </div>
                         )}
@@ -492,7 +491,7 @@ function ListaUsuarios() {
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-[#E3B23C]" />
+                  <Filter className="w-4 h-4 text-klasse-gold" />
                   Override de Credenciais
                 </h3>
                 <p className="text-[10px] text-slate-500 mt-1">{resetUser.email}</p>

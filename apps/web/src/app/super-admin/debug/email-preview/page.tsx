@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { Button } from "@/components/ui/Button";
 
 type PreviewResponse = {
@@ -107,9 +106,5 @@ function EmailPreviewClient() {
 }
 
 export default function Page() {
-  return (
-    <RequireSuperAdmin>
-      <EmailPreviewClient />
-    </RequireSuperAdmin>
-  )
+  return <EmailPreviewClient />
 }
