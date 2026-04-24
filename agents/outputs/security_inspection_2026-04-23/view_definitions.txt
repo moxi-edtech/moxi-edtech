@@ -1,0 +1,238 @@
+public|escolas_view|false| SELECT e.id,
+    e.nome,
+    e.status,
+    e.plano_atual,
+    e.plano_atual::text AS plano,
+    (( SELECT max(al.created_at) AS max
+           FROM audit_logs al
+          WHERE al.escola_id = e.id))::timestamp without time zone AS last_access,
+    COALESCE(a.total_alunos, 0) AS total_alunos,
+    COALESCE(pf.total_professores, 0) AS total_professores,
+    e.endereco AS cidade,
+    NULL::text AS estado
+   FROM escolas e
+     LEFT JOIN ( SELECT alunos.escola_id,
+            count(*)::integer AS total_alunos
+           FROM alunos
+          GROUP BY alunos.escola_id) a ON a.escola_id = e.id
+     LEFT JOIN ( SELECT p.escola_id,
+            count(*)::integer AS total_professores
+           FROM profiles p
+          WHERE p.role = 'professor'::user_role
+          GROUP BY p.escola_id) pf ON pf.escola_id = e.id;
+public|vw_admin_activity_feed_enriched|false| SELECT e.id,
+    e.escola_id,
+    e.occurred_at,
+    e.event_family,
+    e.event_type,
+    COALESCE(NULLIF(p.nome, ''::text), NULLIF(au.raw_user_meta_data ->> 'full_name'::text, ''::text), 'Sistema'::text) AS actor_name,
+    COALESCE(NULLIF(e.payload ->> 'headline'::text, ''::text),
+        CASE
+            WHEN e.event_type = 'PAGAMENTO_REGISTRADO'::text THEN 'Pagamento confirmado'::text
+            WHEN e.event_type = 'NOTA_LANCADA_BATCH'::text THEN 'Lançamento de notas concluído'::text
+            WHEN e.event_type = 'DOCUMENTO_EMITIDO'::text THEN 'Documento emitido'::text
+            WHEN e.event_type ~~ 'MATRICULA_%'::text THEN 'Actualização de matrícula'::text
+            WHEN e.event_type ~~ 'ADMISSAO_%'::text THEN 'Actualização de admissão'::text
+            ELSE initcap(replace(lower(e.event_type), '_'::text, ' '::text))
+        END) AS headline,
+    COALESCE(NULLIF(e.payload ->> 'subline'::text, ''::text), e.payload ->> 'turma_nome'::text, e.payload ->> 'aluno_nome'::text, e.payload ->> 'documento_nome'::text) AS subline,
+    NULLIF(e.payload ->> 'valor_numeric'::text, ''::text)::numeric(14,2) AS amount_kz,
+    NULLIF(COALESCE(e.payload ->> 'turma_nome'::text, t.nome), ''::text) AS turma_nome,
+    NULLIF(COALESCE(e.payload ->> 'aluno_nome'::text, a.nome_completo, a.nome), ''::text) AS aluno_nome,
+    e.payload
+   FROM admin_activity_events e
+     LEFT JOIN profiles p ON p.user_id = e.actor_id
+     LEFT JOIN auth.users au ON au.id = e.actor_id
+     LEFT JOIN alunos a ON a.id::text = COALESCE(e.payload ->> 'aluno_id'::text, e.entity_id)
+     LEFT JOIN turmas t ON t.id::text = COALESCE(e.payload ->> 'turma_id'::text, e.payload #>> '{turma,id}'::text[]);
+public|vw_boletim_por_matricula|false| SELECT escola_id,
+    matricula_id,
+    aluno_id,
+    turma_id,
+    ano_letivo,
+    disciplina_id,
+    disciplina_nome,
+    disciplina_sigla,
+    trimestre,
+    conta_para_media_med,
+    notas_por_tipo,
+    nota_final,
+    status,
+    needs_config,
+    total_avaliacoes,
+    total_notas,
+    missing_count,
+    has_missing
+   FROM internal.mv_boletim_por_matricula
+  WHERE escola_id = current_tenant_escola_id();
+public|vw_escola_cursos_stats|false| SELECT escola_id,
+    id,
+    nome,
+    nivel,
+    descricao,
+    codigo,
+    course_code,
+    curriculum_key,
+    tipo
+   FROM internal.mv_escola_cursos_stats
+  WHERE (escola_id IN ( SELECT eu.escola_id
+           FROM escola_users eu
+          WHERE eu.user_id = auth.uid()));
+public|vw_escola_info|false| SELECT escola_id,
+    nome,
+    plano_atual,
+    status
+   FROM internal.mv_escola_info m
+  WHERE is_super_or_global_admin() OR (escola_id IN ( SELECT eu.escola_id
+           FROM escola_users eu
+          WHERE eu.user_id = auth.uid())) OR (EXISTS ( SELECT 1
+           FROM onboarding_drafts od
+          WHERE od.escola_id = m.escola_id AND od.user_id = auth.uid()));
+public|vw_formacao_cohorts_lotacao|false| SELECT escola_id,
+    cohort_id,
+    cohort_nome,
+    vagas,
+    inscritos_total,
+    inscritos_pagos,
+    lotacao_percentual
+   FROM internal.mv_formacao_cohorts_lotacao
+  WHERE escola_id = current_tenant_escola_id();
+public|vw_formacao_cohorts_overview|false| SELECT c.id,
+    c.escola_id,
+    c.codigo,
+    c.nome,
+    c.curso_nome,
+    c.carga_horaria_total,
+    c.vagas,
+    c.data_inicio,
+    c.data_fim,
+    c.status,
+    count(DISTINCT fcf.formador_user_id) AS total_formadores
+   FROM formacao_cohorts c
+     LEFT JOIN formacao_cohort_formadores fcf ON fcf.escola_id = c.escola_id AND fcf.cohort_id = c.id
+  WHERE c.escola_id = current_tenant_escola_id()
+  GROUP BY c.id, c.escola_id, c.codigo, c.nome, c.curso_nome, c.carga_horaria_total, c.vagas, c.data_inicio, c.data_fim, c.status;
+public|vw_formacao_faturas_formando|false| SELECT i.id AS item_id,
+    i.escola_id,
+    i.formando_user_id,
+    i.fatura_lote_id,
+    f.referencia,
+    f.emissao_em,
+    f.vencimento_em,
+    f.status AS status_fatura,
+    i.status_pagamento,
+    i.descricao,
+    i.quantidade,
+    i.preco_unitario,
+    i.desconto,
+    i.valor_total
+   FROM formacao_faturas_lote_itens i
+     JOIN formacao_faturas_lote f ON f.id = i.fatura_lote_id AND f.escola_id = i.escola_id
+  WHERE i.escola_id = current_tenant_escola_id();
+public|vw_formacao_honorarios_formador|false| SELECT h.id,
+    h.escola_id,
+    h.formador_user_id,
+    h.cohort_id,
+    c.nome AS cohort_nome,
+    h.referencia,
+    h.competencia,
+    h.horas_ministradas,
+    h.valor_hora,
+    h.bonus,
+    h.desconto,
+    h.valor_bruto,
+    h.valor_liquido,
+    h.status
+   FROM formacao_honorarios_lancamentos h
+     LEFT JOIN formacao_cohorts c ON c.id = h.cohort_id AND c.escola_id = h.escola_id
+  WHERE h.escola_id = current_tenant_escola_id();
+public|vw_formacao_inadimplencia_resumo|false| SELECT escola_id,
+    b2c_titulos_em_aberto,
+    b2c_valor_em_aberto,
+    b2b_faturas_em_aberto,
+    b2b_valor_em_aberto,
+    total_em_aberto
+   FROM internal.mv_formacao_inadimplencia_resumo
+  WHERE escola_id = current_tenant_escola_id();
+public|vw_formacao_margem_por_edicao|false| SELECT escola_id,
+    cohort_id,
+    cohort_nome,
+    receita_total,
+    custo_honorarios,
+    margem_bruta
+   FROM internal.mv_formacao_margem_por_edicao
+  WHERE escola_id = current_tenant_escola_id();
+public|vw_freq_por_turma_dia|false| SELECT escola_id,
+    turma_id,
+    dia,
+    total,
+    presentes
+   FROM mv_freq_por_turma_dia
+  WHERE escola_id = current_tenant_escola_id();
+public|vw_historico_snapshot_status|false| SELECT escola_id,
+    ano_letivo_id,
+    matricula_id,
+    historico_ano_id,
+    status,
+    lock_run_id,
+    lock_step,
+    lock_reason,
+    locked_at,
+    reopened_at,
+    reopened_by,
+    reopened_reason,
+    allow_reopen,
+    updated_at
+   FROM historico_snapshot_locks hsl;
+public|vw_rotinas_compat|false| SELECT q.id,
+    q.turma_id,
+    NULL::uuid AS secao_id,
+    q.disciplina_id AS curso_oferta_id,
+    p.profile_id AS professor_user_id,
+    hs.dia_semana AS weekday,
+    hs.inicio,
+    hs.fim,
+    COALESCE(s.nome, t.sala) AS sala,
+    q.escola_id
+   FROM quadro_horarios q
+     JOIN horario_slots hs ON hs.id = q.slot_id
+     JOIN horario_versoes hv ON hv.id = q.versao_id
+     LEFT JOIN professores p ON p.id = q.professor_id
+     LEFT JOIN salas s ON s.id = q.sala_id
+     LEFT JOIN turmas t ON t.id = q.turma_id
+  WHERE COALESCE(hs.is_intervalo, false) = false AND hv.status = 'publicada'::text;
+public|vw_super_admin_audit_metrics|false| SELECT escola_id,
+    ultimo_acesso,
+    accessos_24h,
+    error_count_24h,
+    last_error
+   FROM internal.mv_super_admin_audit_metrics
+  WHERE is_super_or_global_admin();
+public|vw_super_admin_escola_metrics|false| SELECT escola_id,
+    alunos_ativos,
+    alunos_inativos,
+    professores,
+    turmas_ativas,
+    turmas_total,
+    matriculas_ativas
+   FROM internal.mv_super_admin_escola_metrics
+  WHERE is_super_or_global_admin();
+public|vw_top_cursos_media|false| SELECT escola_id,
+    curso_id,
+    curso_nome,
+    media
+   FROM internal.mv_top_cursos_media
+  WHERE (escola_id IN ( SELECT eu.escola_id
+           FROM escola_users eu
+          WHERE eu.user_id = auth.uid()));
+public|vw_top_turmas_hoje|false| SELECT escola_id,
+    turma_id,
+    turma_nome,
+    dia,
+    total,
+    presentes,
+    percent
+   FROM internal.mv_top_turmas_hoje
+  WHERE (escola_id IN ( SELECT eu.escola_id
+           FROM escola_users eu
+          WHERE eu.user_id = auth.uid()));
