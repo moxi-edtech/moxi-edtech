@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { Button } from "@/components/ui/Button";
 import AuditPageView from "@/components/audit/AuditPageView";
 import type { Database } from "~types/supabase";
@@ -71,10 +70,10 @@ const STEP_CONFIG = [
 
 export default function Page() {
   return (
-    <RequireSuperAdmin>
+    <>
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="usuario_create" />
       <CriarUsuarioForm />
-    </RequireSuperAdmin>
+    </>
   );
 }
 

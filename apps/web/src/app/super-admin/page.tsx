@@ -1,79 +1,76 @@
-// apps/web/src/app/super-admin/page.tsx
-import { Suspense } from "react"
-import KpiSection from "@/components/super-admin/KpiSection"
-import ChartsSection from "@/components/super-admin/ChartsSection"
-import ActivitiesSection from "@/components/super-admin/ActivitiesSection"
-import QuickActionsSection from "@/components/super-admin/QuickActionsSection"
-import MorningBriefing from "@/components/super-admin/MorningBriefing"
-import SchoolsSection from "@/components/super-admin/SchoolsSection"
-import { getDashboardData, getChartsData } from "@/lib/charts"
-import { getGlobalHealthSummary, getGlobalActivities } from "@/lib/super-admin/escola-saude"
-import { supabaseServer } from "@/lib/supabaseServer"
+import ControlPanelSection from "@/components/super-admin/ControlPanelSection";
+import CrmSection from "@/components/super-admin/CrmSection";
+import ManagementSection from "@/components/super-admin/ManagementSection";
+import { getDashboardData, getChartsData, type ChartsData } from "@/lib/charts";
+import { getGlobalHealthSummary, getGlobalActivities } from "@/lib/super-admin/escola-saude";
+import { supabaseServer } from "@/lib/supabaseServer";
 
-// ─── Data fetching server-side ────────────────────────────────────────────────
-async function getPageData() {
+type DashboardData = {
+  escolas?: number;
+  usuarios?: number;
+  matriculas?: number;
+  financeiro?: number;
+};
+
+type HealthSummary = {
+  escolasEmRisco: number;
+  scoreMedio: number;
+};
+
+type Activity = {
+  id: string;
+  titulo: string;
+  resumo: string;
+  data: string;
+};
+
+type School = {
+  id: string;
+  nome: string;
+  plano: string;
+  onboarding_finalizado: boolean;
+  progresso_onboarding: number;
+  alunos_ativos: number;
+};
+
+async function getPageData(): Promise<{
+  dashboard?: DashboardData;
+  charts?: ChartsData;
+  health?: HealthSummary;
+  activities: Activity[];
+  schools: School[];
+}> {
   try {
-    const supabase = await supabaseServer()
+    const supabase = await supabaseServer();
+    const rpcClient = supabase as { rpc: (fn: string) => Promise<{ data: unknown }> };
     const [dashboard, charts, health, activities, schoolsRes] = await Promise.allSettled([
-      getDashboardData(),      
-      getChartsData(),         
-      getGlobalHealthSummary(), 
-      getGlobalActivities(),   
-      (supabase as any).rpc("admin_get_escola_health_metrics")
-    ])
+      getDashboardData(),
+      getChartsData(),
+      getGlobalHealthSummary(),
+      getGlobalActivities(),
+      rpcClient.rpc("admin_get_escola_health_metrics"),
+    ]);
 
     return {
-      dashboard: dashboard.status === "fulfilled" ? dashboard.value : null,
-      charts:    charts.status    === "fulfilled" ? charts.value    : null,
-      health:    health.status    === "fulfilled" ? health.value    : undefined,
+      dashboard: dashboard.status === "fulfilled" ? dashboard.value : undefined,
+      charts: charts.status === "fulfilled" ? charts.value : undefined,
+      health: health.status === "fulfilled" ? health.value : undefined,
       activities: activities.status === "fulfilled" ? activities.value : [],
-      schools:   schoolsRes.status === "fulfilled" ? (schoolsRes.value.data || []) : [],
-    }
+      schools: schoolsRes.status === "fulfilled" ? ((schoolsRes.value.data as School[] | null) ?? []) : [],
+    };
   } catch {
-    return { dashboard: null, charts: null, health: undefined, activities: [], schools: [] }
+    return { dashboard: undefined, charts: undefined, health: undefined, activities: [], schools: [] };
   }
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function SuperAdminDashboard() {
-  const { dashboard, charts, health, activities, schools } = await getPageData()
+  const { dashboard, charts, health, activities, schools } = await getPageData();
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
-      
-      {/* 1. Camada de Recepção e Status */}
-      <Suspense fallback={<div className="h-32 bg-white border border-slate-100 rounded-[2.5rem] animate-pulse" />}>
-        <MorningBriefing data={health} />
-      </Suspense>
-
-      {/* 2. Camada de Inteligência de Dados */}
-      <div className="space-y-8">
-        <ChartsSection data={charts ?? undefined} />
-        
-        <Suspense fallback={
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-white border border-slate-100 rounded-3xl animate-pulse" />
-            ))}
-          </div>
-        }>
-          <KpiSection data={dashboard ?? undefined} />
-        </Suspense>
-      </div>
-
-      {/* 3. Acompanhamento da Rede (Onboarding) */}
-      <SchoolsSection escolas={schools} />
-
-      {/* 4. Central de Comando (Área Própria / Full Width) */}
-      <div className="py-4">
-        <QuickActionsSection />
-      </div>
-
-      {/* 5. Camada de Auditoria e Histórico */}
-      <div className="max-w-5xl">
-        <ActivitiesSection activities={activities} />
-      </div>
-
+    <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
+      <ControlPanelSection health={health} charts={charts} activities={activities} />
+      <ManagementSection dashboard={dashboard} charts={charts} schools={schools} />
+      <CrmSection />
     </div>
-  )
+  );
 }
