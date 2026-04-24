@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 
 type DebugPayload = {
   ok: boolean;
@@ -112,9 +111,5 @@ function SessionDebug() {
 }
 
 export default function Page() {
-  return (
-    <RequireSuperAdmin>
-      <SessionDebug />
-    </RequireSuperAdmin>
-  );
+  return <SessionDebug />;
 }

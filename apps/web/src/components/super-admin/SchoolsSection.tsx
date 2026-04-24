@@ -1,102 +1,94 @@
-// apps/web/src/components/super-admin/SchoolsSection.tsx
-"use client"
+"use client";
 
-import { CheckCircle2, CircleDashed, ArrowRight } from "lucide-react"
+import { ArrowRight, Check, CircleDashed } from "lucide-react";
+import { WidgetEmpty, WidgetSkeleton } from "@/components/super-admin/WidgetStates";
 
 interface Escola {
-  id: string
-  nome: string
-  plano: string
-  onboarding_finalizado: boolean
-  progresso_onboarding: number
-  alunos_ativos: number
+  id: string;
+  nome: string;
+  plano: string;
+  onboarding_finalizado: boolean;
+  progresso_onboarding: number;
+  alunos_ativos: number;
 }
 
 interface Props {
-  escolas: Escola[]
+  escolas?: Escola[];
+  isLoading?: boolean;
 }
 
-export default function SchoolsSection({ escolas }: { escolas: Escola[] }) {
+export default function SchoolsSection({ escolas, isLoading = false }: Props) {
+  if (isLoading) return <WidgetSkeleton lines={4} />;
+
+  const schools = escolas ?? [];
+
   return (
-    <section className="bg-white p-10 rounded-[3rem] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-      <div className="flex items-center justify-between mb-10">
+    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Acompanhamento da Rede</h2>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-            Progresso de integração das nossas escolas
-          </p>
+          <h2 className="text-xl font-bold text-slate-950">Acompanhamento da Rede</h2>
+          <p className="mt-1 text-sm text-slate-500">Progresso de integração das escolas.</p>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold text-[#1F6B3B] bg-[#1F6B3B]/5 px-3 py-1 rounded-full uppercase tracking-widest">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#1F6B3B] animate-pulse" />
-          {escolas.length} Unidades
-        </div>
+        <span className="inline-flex items-center gap-2 rounded-full bg-klasse-green/10 px-3 py-1 text-sm font-medium text-klasse-green">
+          <span className="h-1.5 w-1.5 rounded-full bg-klasse-green" />
+          {schools.length} unidades
+        </span>
       </div>
 
-      <div className="grid gap-4">
-        {escolas.length === 0 ? (
-          <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-[2rem]">
-            <p className="text-slate-400 text-sm font-medium">Ainda não temos escolas em fase de activação.</p>
-          </div>
+      <div className="grid gap-3">
+        {schools.length === 0 ? (
+          <WidgetEmpty
+            title="Sem escolas em onboarding"
+            message="Nenhuma escola foi carregada para acompanhamento de ativação."
+            nextStep="Verifique sincronização de tenants e execute refresh da lista de escolas."
+          />
         ) : (
-          escolas.map((escola) => (
-            <div 
-              key={escola.id} 
-              className="group flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[2rem] bg-white border border-slate-100 hover:border-[#1F6B3B]/20 hover:shadow-[0_15px_30px_rgba(0,0,0,0.03)] transition-all duration-300"
+          schools.map((escola) => (
+            <article
+              key={escola.id}
+              className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 p-4 transition hover:ring-1 hover:ring-klasse-gold/25 md:flex-row md:items-center"
             >
-              {/* Info da Escola */}
-              <div className="flex items-center gap-5 min-w-0 md:w-1/3">
-                <div className="h-14 w-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 group-hover:bg-[#1F6B3B]/5 transition-colors">
-                  <span className="text-lg font-black text-slate-400 group-hover:text-[#1F6B3B] transition-colors">
-                    {escola.nome.substring(0, 2).toUpperCase()}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-900 truncate uppercase tracking-tight">
-                    {escola.nome}
-                  </h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Plano {escola.plano}
-                  </p>
-                </div>
+              <div className="min-w-0 md:w-1/3">
+                <h3 className="truncate text-sm font-semibold text-slate-950">{escola.nome}</h3>
+                <p className="text-sm text-slate-500">Plano {escola.plano}</p>
               </div>
 
-              {/* Barra de Progresso */}
-              <div className="flex-1 max-w-md">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="w-full md:max-w-md">
+                <div className="mb-1 flex items-center justify-between text-sm">
+                  <span className="text-slate-500">
                     {escola.onboarding_finalizado ? "Tudo pronto para operar" : "Em fase de configuração"}
                   </span>
-                  <span className="text-[10px] font-black text-slate-900">{escola.progresso_onboarding}%</span>
+                  <span className="font-semibold text-slate-950">{escola.progresso_onboarding}%</span>
                 </div>
-                <div className="h-2 bg-slate-50 rounded-full overflow-hidden p-0.5 border border-slate-100">
-                  <div 
-                    className="h-full rounded-full bg-[#1F6B3B] transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(31,107,59,0.3)]"
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-klasse-green transition-all duration-700"
                     style={{ width: `${escola.progresso_onboarding}%` }}
                   />
                 </div>
               </div>
 
-              {/* Status e Acção */}
-              <div className="flex items-center justify-end gap-6 md:w-1/4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alunos</p>
-                  <p className="text-sm font-black text-slate-900">{escola.alunos_ativos.toLocaleString()}</p>
-                </div>
-                
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  escola.onboarding_finalizado ? "bg-klasse-green-50 text-[#1F6B3B]" : "bg-slate-50 text-slate-300"
-                }`}>
-                  {escola.onboarding_finalizado ? <CheckCircle2 size={20} /> : <CircleDashed size={20} className="animate-spin-slow" />}
-                </div>
+              <div className="flex items-center justify-between gap-3 md:w-1/4 md:justify-end">
+                <p className="text-sm text-slate-500">Alunos: {escola.alunos_ativos.toLocaleString()}</p>
 
-                <button className="h-10 w-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-300 hover:text-[#1F6B3B] hover:border-[#1F6B3B] hover:bg-white transition-all group/btn shadow-sm">
-                  <ArrowRight size={16} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${
+                    escola.onboarding_finalizado ? "bg-klasse-green/10 text-klasse-green" : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {escola.onboarding_finalizado ? <Check className="h-4 w-4" /> : <CircleDashed className="h-4 w-4" />}
+                  {escola.onboarding_finalizado ? "Concluído" : "Em curso"}
+                </span>
+
+                <button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:ring-1 hover:ring-klasse-gold/25">
+                  Ver escola
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
-            </div>
+            </article>
           ))
         )}
       </div>
     </section>
-  )
+  );
 }

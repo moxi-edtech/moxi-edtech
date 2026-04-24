@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -41,12 +40,12 @@ interface OnboardingRequest {
 
 export default function NovaEscolaPage() {
   return (
-    <RequireSuperAdmin>
+    <>
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_create" />
-      <div className="min-h-screen bg-slate-50 p-6">
+      <div className="bg-slate-50 p-6">
         <CriarEscolaForm />
       </div>
-    </RequireSuperAdmin>
+    </>
   );
 }
 

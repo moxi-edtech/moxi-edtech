@@ -2,7 +2,7 @@
 "use client"
 
 import type { School, OnboardingProgress, EditForm } from "./types";
-import { ExternalLink, CreditCard, Power, Trash2, Edit3, Save, X } from "lucide-react";
+import { Check, CreditCard, Eye, Pencil, Power, Trash2, X } from "lucide-react";
 
 type SchoolRowProps = {
   school: School;
@@ -94,34 +94,37 @@ export function SchoolRow({
       <td className="py-5 px-6">{statusBadge(String(school.status))}</td>
       <td className="py-5 px-6"><SaudeBar valor={saude} /></td>
       <td className="py-5 px-6">
-        <span className="text-[10px] font-black text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md uppercase tracking-widest">
+        <span className="text-[10px] font-black text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full uppercase tracking-widest">
           {school.plan}
         </span>
       </td>
       <td className="py-5 px-6">
-        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button 
-            title="Abrir Portal" 
+            title="Ver Portal" 
             onClick={() => onEnterPortal(school.id)} 
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-[#1F6B3B] hover:bg-[#1F6B3B]/5 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
           >
-            <ExternalLink size={16} />
+            <Eye size={16} />
+            <span className="hidden md:inline text-xs font-semibold">Ver</span>
           </button>
           
           <button 
             title="Financeiro" 
             onClick={() => onSendBilling(school.id)} 
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-[#E3B23C] hover:bg-[#E3B23C]/5 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
           >
             <CreditCard size={16} />
+            <span className="hidden md:inline text-xs font-semibold">Financeiro</span>
           </button>
           
           <button 
             title="Editar Unidade" 
             onClick={() => onEdit(school)} 
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
           >
-            <Edit3 size={16} />
+            <Pencil size={16} />
+            <span className="hidden md:inline text-xs font-semibold">Editar</span>
           </button>
           
           <div className="w-px h-4 bg-slate-100 mx-1" />
@@ -129,17 +132,19 @@ export function SchoolRow({
           <button 
             title={String(school.status).toLowerCase() === 'suspensa' ? 'Reactivar' : 'Suspender'} 
             onClick={() => onSuspend(school)} 
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-klasse-gold-600 hover:bg-klasse-gold-50 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold/10 transition-all"
           >
             <Power size={16} />
+            <span className="hidden md:inline text-xs font-semibold">{String(school.status).toLowerCase() === 'suspensa' ? 'Reativar' : 'Suspender'}</span>
           </button>
           
           <button 
             title="Remover Unidade" 
             onClick={() => onDelete(school)} 
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+            className="h-9 px-3 inline-flex items-center gap-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
           >
             <Trash2 size={16} />
+            <span className="hidden md:inline text-xs font-semibold">Remover</span>
           </button>
         </div>
       </td>
@@ -151,7 +156,7 @@ export function SchoolRow({
     return v === undefined || v === null ? fallback : v;
   };
 
-  const inputCls = "h-9 border border-slate-200 bg-white rounded-xl px-3 text-xs font-bold text-slate-900 outline-none focus:border-[#1F6B3B] transition-all w-full";
+  const inputCls = "h-9 border border-slate-200 bg-white rounded-xl px-3 text-xs font-bold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 transition-all w-full";
 
   const renderEditing = () => (
     <tr className="bg-[#1F6B3B]/5">
@@ -190,12 +195,14 @@ export function SchoolRow({
           <button 
             disabled={String(saving) === String(school.id)} 
             onClick={() => onSave(school.id)}
-            className="h-9 w-9 rounded-xl bg-[#1F6B3B] text-white flex items-center justify-center hover:brightness-110 shadow-sm"
+            className="h-9 px-3 rounded-xl bg-klasse-gold text-white inline-flex items-center gap-2 hover:brightness-95 shadow-sm"
           >
-            {String(saving) === String(school.id) ? <span className="animate-spin text-[10px]">...</span> : <Save size={16} />}
+            {String(saving) === String(school.id) ? <span className="animate-spin text-[10px]">...</span> : <Check size={16} />}
+            <span className="hidden md:inline text-xs font-semibold">Guardar</span>
           </button>
-          <button onClick={onCancel} className="h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-400 flex items-center justify-center hover:bg-slate-50 transition-colors">
+          <button onClick={onCancel} className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-400 inline-flex items-center gap-2 hover:bg-slate-50 transition-colors">
             <X size={16} />
+            <span className="hidden md:inline text-xs font-semibold">Cancelar</span>
           </button>
         </div>
       </td>
