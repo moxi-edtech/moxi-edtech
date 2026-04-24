@@ -1,0 +1,62 @@
+COLUMN|public|curriculum_preset_subjects_expected|component|USER-DEFINED|NO|
+COLUMN|public|curriculum_preset_subjects_expected|grade_level|text|NO|
+COLUMN|public|curriculum_preset_subjects_expected|id|uuid|NO|gen_random_uuid()
+COLUMN|public|curriculum_preset_subjects_expected|name|text|NO|
+COLUMN|public|curriculum_preset_subjects_expected|preset_id|text|NO|
+COLUMN|public|curriculum_preset_subjects_expected|subject_type|text|YES|'core'::text
+COLUMN|public|curriculum_preset_subjects_expected|weekly_hours|integer|NO|
+COLUMN|public|curso_professor_responsavel|created_at|timestamp with time zone|NO|now()
+COLUMN|public|curso_professor_responsavel|created_by|uuid|YES|
+COLUMN|public|curso_professor_responsavel|curso_id|uuid|NO|
+COLUMN|public|curso_professor_responsavel|escola_id|uuid|NO|
+COLUMN|public|curso_professor_responsavel|professor_id|uuid|NO|
+COLUMN|public|curso_professor_responsavel|updated_at|timestamp with time zone|NO|now()
+COLUMN|public|curso_professor_responsavel|updated_by|uuid|YES|
+COLUMN|public|financeiro_fiscal_links|created_at|timestamp with time zone|NO|now()
+COLUMN|public|financeiro_fiscal_links|empresa_id|uuid|NO|
+COLUMN|public|financeiro_fiscal_links|escola_id|uuid|NO|
+COLUMN|public|financeiro_fiscal_links|fiscal_documento_id|uuid|YES|
+COLUMN|public|financeiro_fiscal_links|fiscal_error|text|YES|
+COLUMN|public|financeiro_fiscal_links|id|uuid|NO|gen_random_uuid()
+COLUMN|public|financeiro_fiscal_links|idempotency_key|text|NO|
+COLUMN|public|financeiro_fiscal_links|origem_id|text|NO|
+COLUMN|public|financeiro_fiscal_links|origem_tipo|text|NO|
+COLUMN|public|financeiro_fiscal_links|payload_snapshot|jsonb|NO|'{}'::jsonb
+COLUMN|public|financeiro_fiscal_links|status|text|NO|'pending'::text
+COLUMN|public|financeiro_fiscal_links|updated_at|timestamp with time zone|NO|now()
+COLUMN|public|fiscal_reprocess_jobs|completed_at|timestamp with time zone|YES|
+COLUMN|public|fiscal_reprocess_jobs|created_at|timestamp with time zone|NO|now()
+COLUMN|public|fiscal_reprocess_jobs|empresa_id|uuid|NO|
+COLUMN|public|fiscal_reprocess_jobs|error_message|text|YES|
+COLUMN|public|fiscal_reprocess_jobs|escola_id|uuid|NO|
+COLUMN|public|fiscal_reprocess_jobs|failed_links|integer|NO|0
+COLUMN|public|fiscal_reprocess_jobs|id|uuid|NO|gen_random_uuid()
+COLUMN|public|fiscal_reprocess_jobs|metadata|jsonb|NO|'{}'::jsonb
+COLUMN|public|fiscal_reprocess_jobs|processed_links|integer|NO|0
+COLUMN|public|fiscal_reprocess_jobs|requested_by|uuid|YES|
+COLUMN|public|fiscal_reprocess_jobs|started_at|timestamp with time zone|YES|
+COLUMN|public|fiscal_reprocess_jobs|status|text|NO|'queued'::text
+COLUMN|public|fiscal_reprocess_jobs|success_links|integer|NO|0
+COLUMN|public|fiscal_reprocess_jobs|total_links|integer|NO|0
+COLUMN|public|fiscal_reprocess_jobs|updated_at|timestamp with time zone|NO|now()
+COLUMN|public|horario_versoes|created_at|timestamp with time zone|NO|now()
+COLUMN|public|horario_versoes|escola_id|uuid|NO|
+COLUMN|public|horario_versoes|id|uuid|NO|gen_random_uuid()
+COLUMN|public|horario_versoes|publicado_em|timestamp with time zone|YES|
+COLUMN|public|horario_versoes|status|text|NO|'draft'::text
+COLUMN|public|horario_versoes|turma_id|uuid|NO|
+COLUMN|public|horario_versoes|updated_at|timestamp with time zone|NO|now()
+COLUMN|public|matriculas_status_audit|alterado_por|uuid|YES|
+COLUMN|public|matriculas_status_audit|created_at|timestamp with time zone|NO|now()
+COLUMN|public|matriculas_status_audit|id|bigint|NO|nextval('matriculas_status_audit_id_seq'::regclass)
+COLUMN|public|matriculas_status_audit|matricula_id|uuid|NO|
+COLUMN|public|matriculas_status_audit|motivo|text|YES|
+COLUMN|public|matriculas_status_audit|origem|text|NO|
+COLUMN|public|matriculas_status_audit|status_anterior|text|NO|
+COLUMN|public|matriculas_status_audit|status_novo|text|NO|
+TABLE|public|curriculum_preset_subjects_expected|false|false||
+TABLE|public|curso_professor_responsavel|false|false||
+TABLE|public|financeiro_fiscal_links|false|false||
+TABLE|public|fiscal_reprocess_jobs|false|false||
+TABLE|public|horario_versoes|false|false||
+TABLE|public|matriculas_status_audit|false|false||

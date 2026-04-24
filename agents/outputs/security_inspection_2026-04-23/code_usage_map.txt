@@ -1,0 +1,238 @@
+## vw_admin_activity_feed_enriched
+supabase/migrations/20261219110000_admin_activity_feed.sql:159:create or replace view public.vw_admin_activity_feed_enriched as
+supabase/migrations/20261219110000_admin_activity_feed.sql:194:grant select on public.vw_admin_activity_feed_enriched to authenticated;
+apps/web/src/app/api/escola/[id]/admin/activity-feed/route.ts:75:      .from("vw_admin_activity_feed_enriched")
+
+## vw_top_cursos_media
+supabase/migrations/20260302000005_set_security_invoker_views.sql:3:ALTER VIEW public.vw_top_cursos_media SET (security_invoker = true);
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:391:CREATE OR REPLACE VIEW public.vw_top_cursos_media AS
+apps/web/src/app/api/admin/insights/quick/route.ts:39:          .from("vw_top_cursos_media")
+apps/web/src/app/api/escolas/[id]/insights/quick/route.ts:39:        .from('vw_top_cursos_media' as any)
+
+## vw_super_admin_audit_metrics
+apps/web/src/app/super-admin/escolas/[id]/hooks.ts:123:    .from('vw_super_admin_audit_metrics')
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:454:CREATE OR REPLACE VIEW public.vw_super_admin_audit_metrics AS
+supabase/migrations/20260302000005_set_security_invoker_views.sql:5:ALTER VIEW public.vw_super_admin_audit_metrics SET (security_invoker = true);
+
+## vw_top_turmas_hoje
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:375:CREATE OR REPLACE VIEW public.vw_top_turmas_hoje AS
+supabase/migrations/20260302000005_set_security_invoker_views.sql:6:ALTER VIEW public.vw_top_turmas_hoje SET (security_invoker = true);
+apps/web/src/app/api/admin/insights/quick/route.ts:33:          .from("vw_top_turmas_hoje")
+apps/web/src/app/api/escolas/[id]/insights/quick/route.ts:33:        .from('vw_top_turmas_hoje' as any)
+
+## vw_formacao_margem_por_edicao
+supabase/migrations/20260407143000_formacao_financeiro_mvs.sql:113:CREATE OR REPLACE VIEW public.vw_formacao_margem_por_edicao AS
+supabase/migrations/20260407143000_formacao_financeiro_mvs.sql:120:GRANT SELECT ON public.vw_formacao_margem_por_edicao TO authenticated;
+
+## vw_formacao_honorarios_formador
+supabase/migrations/20260407130000_formacao_schema_rls_foundation.sql:421:CREATE OR REPLACE VIEW public.vw_formacao_honorarios_formador AS
+supabase/migrations/20260407130000_formacao_schema_rls_foundation.sql:445:GRANT SELECT ON public.vw_formacao_honorarios_formador TO authenticated;
+
+## escolas_view
+supabase/migrations/20260127020139_remote_schema.sql:9596:CREATE OR REPLACE VIEW "public"."escolas_view" WITH ("security_invoker"='true') AS
+supabase/migrations/20260127020139_remote_schema.sql:9619:ALTER VIEW "public"."escolas_view" OWNER TO "postgres";
+supabase/migrations/20260127020139_remote_schema.sql:18787:GRANT ALL ON TABLE "public"."escolas_view" TO "anon";
+supabase/migrations/20260127020139_remote_schema.sql:18788:GRANT ALL ON TABLE "public"."escolas_view" TO "authenticated";
+supabase/migrations/20260127020139_remote_schema.sql:18789:GRANT ALL ON TABLE "public"."escolas_view" TO "service_role";
+apps/web/src/app/super-admin/escolas/[id]/edit/page.tsx:56:      .from("escolas_view" as unknown as never)
+apps/web/src/app/api/super-admin/escolas/list/route.ts:43:        .from('escolas_view' as any)
+
+## vw_rotinas_compat
+supabase/migrations/20261216000000_schedule_ssot_and_rotinas_compat.sql:6:DROP VIEW IF EXISTS public.vw_rotinas_compat;
+supabase/migrations/20261216000000_schedule_ssot_and_rotinas_compat.sql:8:CREATE VIEW public.vw_rotinas_compat AS
+supabase/migrations/20261216000000_schedule_ssot_and_rotinas_compat.sql:27:COMMENT ON VIEW public.vw_rotinas_compat IS
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:191:DROP VIEW IF EXISTS public.vw_rotinas_compat;
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:192:CREATE VIEW public.vw_rotinas_compat AS
+apps/web/src/app/api/jobs/escolas/[id]/seed/academico/route.ts:312:    const { data: rotinas } = await admin.from('vw_rotinas_compat').select('id, weekday, secao_id, curso_oferta_id')
+
+## vw_historico_snapshot_status
+supabase/migrations/20261204110000_historico_snapshot_lock_and_reopen_policy.sql:193:CREATE OR REPLACE VIEW public.vw_historico_snapshot_status AS
+supabase/migrations/20261204110000_historico_snapshot_lock_and_reopen_policy.sql:211:GRANT SELECT ON public.vw_historico_snapshot_status TO authenticated;
+apps/web/src/app/api/secretaria/historico/snapshot/route.ts:47:      .from("vw_historico_snapshot_status")
+
+## vw_formacao_faturas_formando
+supabase/migrations/20260407130000_formacao_schema_rls_foundation.sql:399:CREATE OR REPLACE VIEW public.vw_formacao_faturas_formando AS
+supabase/migrations/20260407130000_formacao_schema_rls_foundation.sql:444:GRANT SELECT ON public.vw_formacao_faturas_formando TO authenticated;
+
+## vw_escola_cursos_stats
+supabase/migrations/20260302000005_set_security_invoker_views.sql:11:ALTER VIEW public.vw_escola_cursos_stats SET (security_invoker = true);
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:424:CREATE OR REPLACE VIEW public.vw_escola_cursos_stats AS
+apps/web/src/app/api/escolas/[id]/cursos/stats/route.ts:54:        .from('vw_escola_cursos_stats' as any)
+apps/web/src/app/api/escolas/[id]/cursos/stats/route.ts:79:          .from('vw_escola_cursos_stats' as any)
+
+## vw_boletim_por_matricula
+apps/web/src/lib/pedagogico/pauta-anual.ts:128:      .from("vw_boletim_por_matricula")
+supabase/migrations/20261201110000_gradeengine_filtro_oficial_mensalidades_matricula_unique.sql:40:  FROM public.vw_boletim_por_matricula
+supabase/migrations/20261201110000_gradeengine_filtro_oficial_mensalidades_matricula_unique.sql:58:      FROM public.vw_boletim_por_matricula
+supabase/migrations/20261201110000_gradeengine_filtro_oficial_mensalidades_matricula_unique.sql:77:      FROM public.vw_boletim_por_matricula
+supabase/migrations/20260203000008_materialize_vw_boletim.sql:4:-- MIGRATION: Otimização do Boletim (vw_boletim_por_matricula -> mv_boletim_por_matricula)
+supabase/migrations/20260203000008_materialize_vw_boletim.sql:13:ALTER VIEW IF EXISTS public.vw_boletim_por_matricula RENAME TO vw_boletim_por_matricula_legacy;
+supabase/migrations/20260203000008_materialize_vw_boletim.sql:140:CREATE OR REPLACE VIEW public.vw_boletim_por_matricula
+supabase/migrations/20261205000013_update_boletim_cascade.sql:3:DROP VIEW IF EXISTS public.vw_boletim_por_matricula;
+supabase/migrations/20261205000013_update_boletim_cascade.sql:250:CREATE OR REPLACE VIEW public.vw_boletim_por_matricula
+supabase/migrations/20261204112000_update_gerar_historico_snapshot_guards.sql:65:    FROM public.vw_boletim_por_matricula
+supabase/migrations/20261205000011_update_boletim_media_trimestral.sql:3:DROP VIEW IF EXISTS public.vw_boletim_por_matricula;
+supabase/migrations/20261205000011_update_boletim_media_trimestral.sql:238:CREATE OR REPLACE VIEW public.vw_boletim_por_matricula
+supabase/migrations/20260203000012_rpc_gerar_historico_anual.sql:52:    FROM public.vw_boletim_por_matricula -- Lê da view que aponta para a MV
+supabase/migrations/20260301000000_harden_rpc_guards_and_boletim_refresh.sql:878:    FROM public.vw_boletim_por_matricula
+supabase/migrations/20260301000000_harden_rpc_guards_and_boletim_refresh.sql:1054:    FROM public.vw_boletim_por_matricula b
+supabase/migrations/20260320000004_update_boletim_conta_para_media.sql:3:DROP VIEW IF EXISTS public.vw_boletim_por_matricula;
+supabase/migrations/20260320000004_update_boletim_conta_para_media.sql:210:CREATE OR REPLACE VIEW public.vw_boletim_por_matricula
+supabase/migrations/20261218090000_harden_mapa_aproveitamento_rpc.sql:100:    JOIN public.vw_boletim_por_matricula vbm ON vbm.matricula_id = m.id
+supabase/migrations/20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql:120:DROP VIEW IF EXISTS public.vw_boletim_por_matricula;
+supabase/migrations/20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql:338:CREATE OR REPLACE VIEW public.vw_boletim_por_matricula
+supabase/migrations/20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql:379:  FROM public.vw_boletim_por_matricula
+supabase/migrations/20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql:399:      FROM public.vw_boletim_por_matricula
+supabase/migrations/20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql:418:      FROM public.vw_boletim_por_matricula
+apps/web/src/lib/documentos/oficiaisBatchServer.tsx:70:      .from("vw_boletim_por_matricula")
+supabase/migrations/20261218100000_refine_mapa_aproveitamento_consolidation.sql:40:    JOIN public.vw_boletim_por_matricula vbm ON vbm.matricula_id = m.id
+supabase/migrations/20261217020000_gradeengine_reprovacao_por_faltas.sql:53:  FROM public.vw_boletim_por_matricula
+supabase/migrations/20261217020000_gradeengine_reprovacao_por_faltas.sql:70:      FROM public.vw_boletim_por_matricula
+supabase/migrations/20261217020000_gradeengine_reprovacao_por_faltas.sql:89:      FROM public.vw_boletim_por_matricula
+supabase/migrations/20261120132000_update_boletim_por_disciplina.sql:3:DROP VIEW IF EXISTS public.vw_boletim_por_matricula;
+supabase/migrations/20261120132000_update_boletim_por_disciplina.sql:195:CREATE OR REPLACE VIEW public.vw_boletim_por_matricula
+supabase/migrations/20260127020139_remote_schema.sql:10803:CREATE OR REPLACE VIEW "public"."vw_boletim_por_matricula" WITH ("security_invoker"='true') AS
+supabase/migrations/20260127020139_remote_schema.sql:10924:ALTER VIEW "public"."vw_boletim_por_matricula" OWNER TO "postgres";
+supabase/migrations/20260127020139_remote_schema.sql:19185:GRANT ALL ON TABLE "public"."vw_boletim_por_matricula" TO "authenticated";
+supabase/migrations/20260127020139_remote_schema.sql:19186:GRANT ALL ON TABLE "public"."vw_boletim_por_matricula" TO "service_role";
+supabase/migrations/20260302000005_set_security_invoker_views.sql:10:ALTER VIEW public.vw_boletim_por_matricula SET (security_invoker = true);
+apps/web/src/app/secretaria/documentos/[docId]/boletim-trimestral/print/page.tsx:54:    .from("vw_boletim_por_matricula")
+apps/web/src/app/api/secretaria/documentos/boletim/batch/route.ts:96:      .from('vw_boletim_por_matricula')
+apps/web/src/app/api/secretaria/fechamento-academico/validacoes/engine.ts:145:          .from("vw_boletim_por_matricula")
+apps/web/src/app/api/aluno/boletim/route.ts:128:      .from("vw_boletim_por_matricula")
+apps/web/src/app/api/aluno/boletim/pdf/route.ts:31:      .from("vw_boletim_por_matricula")
+apps/web/src/app/api/aluno/disciplinas/[disciplinaId]/notas/route.ts:31:      .from("vw_boletim_por_matricula")
+
+## vw_super_admin_escola_metrics
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:442:CREATE OR REPLACE VIEW public.vw_super_admin_escola_metrics AS
+supabase/migrations/20260302000005_set_security_invoker_views.sql:13:ALTER VIEW public.vw_super_admin_escola_metrics SET (security_invoker = true);
+apps/web/src/app/super-admin/escolas/[id]/hooks.ts:94:    .from('vw_super_admin_escola_metrics')
+
+## vw_formacao_cohorts_lotacao
+supabase/migrations/20260407143000_formacao_financeiro_mvs.sql:103:CREATE OR REPLACE VIEW public.vw_formacao_cohorts_lotacao AS
+supabase/migrations/20260407143000_formacao_financeiro_mvs.sql:118:GRANT SELECT ON public.vw_formacao_cohorts_lotacao TO authenticated;
+
+## vw_formacao_cohorts_overview
+supabase/migrations/20260407130000_formacao_schema_rls_foundation.sql:377:CREATE OR REPLACE VIEW public.vw_formacao_cohorts_overview AS
+supabase/migrations/20260407130000_formacao_schema_rls_foundation.sql:443:GRANT SELECT ON public.vw_formacao_cohorts_overview TO authenticated;
+
+## vw_formacao_inadimplencia_resumo
+supabase/migrations/20260407143000_formacao_financeiro_mvs.sql:108:CREATE OR REPLACE VIEW public.vw_formacao_inadimplencia_resumo AS
+supabase/migrations/20260407143000_formacao_financeiro_mvs.sql:119:GRANT SELECT ON public.vw_formacao_inadimplencia_resumo TO authenticated;
+
+## vw_escola_info
+apps/web/src/app/secretaria/documentos/_print/getDocumento.ts:56:    .from("vw_escola_info" as any)
+apps/web/src/app/api/admin/dashboard/summary/route.ts:29:      .from("vw_escola_info")
+apps/web/src/app/api/financeiro/dashboard/summary/route.ts:29:      .from("vw_escola_info" as any)
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:404:CREATE OR REPLACE VIEW public.vw_escola_info AS
+supabase/migrations/20260302000005_set_security_invoker_views.sql:16:ALTER VIEW public.vw_escola_info SET (security_invoker = true);
+apps/web/src/app/api/secretaria/dashboard/summary/route.ts:77:        .from("vw_escola_info")
+apps/web/src/app/api/escolas/[id]/plano/route.ts:27:      .from('vw_escola_info')
+apps/web/src/app/api/escolas/[id]/nome/route.ts:74:          .from("vw_escola_info" as any)
+
+## vw_freq_por_turma_dia
+supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql:335:CREATE OR REPLACE VIEW public.vw_freq_por_turma_dia AS
+supabase/migrations/20260302000005_set_security_invoker_views.sql:17:ALTER VIEW public.vw_freq_por_turma_dia SET (security_invoker = true);
+
+## curriculum_preset_subjects_expected
+supabase/migrations/20260321070000_align_puniv_presets.sql:32:    FROM public.curriculum_preset_subjects_expected
+supabase/migrations/20260321070000_align_puniv_presets.sql:39:      FROM public.curriculum_preset_subjects_expected
+supabase/migrations/20260321070000_align_puniv_presets.sql:44:      DELETE FROM public.curriculum_preset_subjects_expected
+supabase/migrations/20260321070000_align_puniv_presets.sql:49:      UPDATE public.curriculum_preset_subjects_expected
+supabase/migrations/20260321070000_align_puniv_presets.sql:63:DELETE FROM public.curriculum_preset_subjects_expected
+supabase/migrations/20260321040000_preset_expected_catalog.sql:1:CREATE TABLE IF NOT EXISTS public.curriculum_preset_subjects_expected (
+supabase/migrations/20260321040000_preset_expected_catalog.sql:12:INSERT INTO public.curriculum_preset_subjects_expected (
+supabase/migrations/20260321040000_preset_expected_catalog.sql:50:    FROM public.curriculum_preset_subjects_expected e
+supabase/migrations/20260321040000_preset_expected_catalog.sql:69:      FROM public.curriculum_preset_subjects_expected e
+supabase/migrations/20260321080000_align_saude_presets.sql:333:  DELETE FROM public.curriculum_preset_subjects_expected
+supabase/migrations/20260321080000_align_saude_presets.sql:337:INSERT INTO public.curriculum_preset_subjects_expected (
+
+## fiscal_reprocess_jobs
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:268:          update public.fiscal_reprocess_jobs
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:315:          update public.fiscal_reprocess_jobs
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:329:            update public.fiscal_reprocess_jobs
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:523:              update public.fiscal_reprocess_jobs
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:542:          update public.fiscal_reprocess_jobs
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:566:          update public.fiscal_reprocess_jobs
+supabase/migrations/20260329113000_create_fiscal_reprocess_jobs.sql:1:CREATE TABLE IF NOT EXISTS public.fiscal_reprocess_jobs (
+supabase/migrations/20260329113000_create_fiscal_reprocess_jobs.sql:21:  ON public.fiscal_reprocess_jobs (escola_id, empresa_id, created_at DESC);
+supabase/migrations/20260329113000_create_fiscal_reprocess_jobs.sql:24:  ON public.fiscal_reprocess_jobs (status, created_at DESC);
+supabase/migrations/20260329113000_create_fiscal_reprocess_jobs.sql:26:GRANT SELECT, INSERT, UPDATE, DELETE ON public.fiscal_reprocess_jobs TO authenticated;
+apps/web/src/app/api/fiscal/financeiro/reprocess/route.ts:152:      .from("fiscal_reprocess_jobs")
+apps/web/src/app/api/fiscal/financeiro/reprocess/route.ts:245:      .from("fiscal_reprocess_jobs")
+apps/web/src/app/api/fiscal/financeiro/reprocess/route.ts:263:      .from("fiscal_reprocess_jobs")
+apps/web/src/app/api/fiscal/financeiro/reprocess/route.ts:309:        .from("fiscal_reprocess_jobs")
+
+## curso_professor_responsavel
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:3:CREATE TABLE IF NOT EXISTS public.curso_professor_responsavel (
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:15:  ON public.curso_professor_responsavel (escola_id, professor_id);
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:28:  ON public.curso_professor_responsavel;
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:31:BEFORE UPDATE ON public.curso_professor_responsavel
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:68:    DELETE FROM public.curso_professor_responsavel cpr
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:88:  INSERT INTO public.curso_professor_responsavel (
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:109:  FROM public.curso_professor_responsavel cpr
+supabase/migrations/20270403180000_curso_professor_responsavel_and_atribuicao_atomic.sql:128:  FROM public.curso_professor_responsavel cpr
+
+## matriculas_status_audit
+supabase/migrations/20260322000000_fix_matriculas_status_audit_actor.sql:11:    INSERT INTO public.matriculas_status_audit (
+
+## horario_versoes
+supabase/migrations/20261216020000_quadro_tenant_cohesion.sql:9:CREATE UNIQUE INDEX IF NOT EXISTS ux_horario_versoes_id_escola ON public.horario_versoes (id, escola_id);
+supabase/migrations/20261216020000_quadro_tenant_cohesion.sql:10:CREATE UNIQUE INDEX IF NOT EXISTS ux_horario_versoes_id_escola_turma ON public.horario_versoes (id, escola_id, turma_id);
+supabase/migrations/20261216020000_quadro_tenant_cohesion.sql:46:    REFERENCES public.horario_versoes (id, escola_id, turma_id)
+supabase/migrations/20261216020000_quadro_tenant_cohesion.sql:112:  FROM public.horario_versoes
+supabase/migrations/20261217000000_horario_curriculo_audit_guardrails.sql:7:  versao_id uuid REFERENCES public.horario_versoes(id) ON DELETE SET NULL,
+supabase/migrations/20261217000000_horario_curriculo_audit_guardrails.sql:133:  FROM public.horario_versoes
+supabase/migrations/20261217000000_horario_curriculo_audit_guardrails.sql:152:  UPDATE public.horario_versoes
+supabase/migrations/20261217000000_horario_curriculo_audit_guardrails.sql:160:  UPDATE public.horario_versoes
+supabase/migrations/20261217000000_horario_curriculo_audit_guardrails.sql:206:  FROM public.horario_versoes
+supabase/migrations/20261216040000_upsert_quadro_horarios_versao_atomic.sql:24:  FROM public.horario_versoes
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:3:CREATE TABLE IF NOT EXISTS public.horario_versoes (
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:14:  ON public.horario_versoes (escola_id, turma_id, status, created_at DESC);
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:17:  ON public.horario_versoes (escola_id, turma_id)
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:21:INSERT INTO public.horario_versoes (id, escola_id, turma_id, status, publicado_em, created_at, updated_at)
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:31:LEFT JOIN public.horario_versoes hv ON hv.id = q.versao_id
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:38:  REFERENCES public.horario_versoes(id)
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:60:  FROM public.horario_versoes hv
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:70:      JOIN public.horario_versoes hv ON hv.id = q.versao_id
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:83:      JOIN public.horario_versoes hv ON hv.id = q.versao_id
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:117:    FROM public.horario_versoes
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:129:  INSERT INTO public.horario_versoes (escola_id, turma_id, status)
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:152:  FROM public.horario_versoes
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:171:  UPDATE public.horario_versoes
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:179:  UPDATE public.horario_versoes
+supabase/migrations/20261216010000_horario_versoes_publish_atomic.sql:206:JOIN public.horario_versoes hv ON hv.id = q.versao_id
+apps/web/src/app/api/aluno/dashboard/route.ts:47:      horario_versoes: {
+apps/web/src/app/api/aluno/dashboard/route.ts:74:            .from('horario_versoes')
+apps/web/src/app/api/professor/agenda/route.ts:53:      .from('horario_versoes')
+apps/web/src/app/api/secretaria/turmas/[id]/horario/versao/route.ts:35:      .from("horario_versoes")
+apps/web/src/app/api/secretaria/turmas/[id]/horario/versao/route.ts:47:        .from("horario_versoes")
+apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts:35:    .from('horario_versoes')
+apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts:172:        .from('horario_versoes')
+apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts:340:      .from('horario_versoes')
+apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts:361:      .from('horario_versoes')
+
+## financeiro_fiscal_links
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:302:          from public.financeiro_fiscal_links
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:402:              update public.financeiro_fiscal_links
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:461:              update public.financeiro_fiscal_links
+apps/web/src/inngest/functions/fiscal-financeiro-reprocess.ts:494:            update public.financeiro_fiscal_links
+supabase/migrations/20270324113000_financeiro_fiscal_links_and_status.sql:1:CREATE TABLE IF NOT EXISTS public.financeiro_fiscal_links (
+supabase/migrations/20270324113000_financeiro_fiscal_links_and_status.sql:20:  ON public.financeiro_fiscal_links (escola_id, status, created_at DESC);
+supabase/migrations/20270324113000_financeiro_fiscal_links_and_status.sql:23:  ON public.financeiro_fiscal_links (empresa_id, status, created_at DESC);
+supabase/migrations/20270324113000_financeiro_fiscal_links_and_status.sql:26:  ON public.financeiro_fiscal_links (fiscal_documento_id);
+supabase/migrations/20270324113000_financeiro_fiscal_links_and_status.sql:66:GRANT SELECT, INSERT, UPDATE, DELETE ON public.financeiro_fiscal_links TO authenticated;
+apps/web/src/app/api/financeiro/itens/venda/route.ts:83:      .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/itens/venda/route.ts:106:          .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/itens/venda/route.ts:193:        .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/itens/venda/route.ts:205:        .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/pagamentos/registrar/route.ts:189:      .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/pagamentos/registrar/route.ts:195:          .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/pagamentos/registrar/route.ts:302:        .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/pagamentos/registrar/route.ts:336:        .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/recibos/emitir/route.ts:141:      .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/recibos/emitir/route.ts:147:          .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/recibos/emitir/route.ts:202:        .from("financeiro_fiscal_links")
+apps/web/src/app/api/financeiro/recibos/emitir/route.ts:236:      .from("financeiro_fiscal_links")
+apps/web/src/app/api/fiscal/financeiro/reprocess/route.ts:88:    .from("financeiro_fiscal_links")
+
