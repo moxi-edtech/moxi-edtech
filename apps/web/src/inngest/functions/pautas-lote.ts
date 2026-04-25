@@ -21,8 +21,7 @@ const getSupabaseAdmin = () => {
 }
 
 export const pautasLote = inngest.createFunction(
-  { id: "pautas-lote" },
-  { event: "docs/pautas-lote.requested" },
+  { id: "pautas-lote", triggers: [{ event: "docs/pautas-lote.requested" }] },
   async ({ event, step }) => {
     const supabase = getSupabaseAdmin()
     const { job_id, escola_id, turma_ids, tipo, periodo_letivo_id } = event.data

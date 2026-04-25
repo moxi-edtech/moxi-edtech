@@ -64,13 +64,9 @@ export async function GET() {
     const supabase = auth.supabase;
 
     const [healthRes, paymentRes, schoolRes] = await Promise.all([
-      (supabase as { rpc: (fn: string) => Promise<{ data: unknown; error: unknown }> }).rpc("admin_get_escola_health_metrics"),
-      (supabase.from("vw_pagamentos_status" as never) as unknown as {
-        select: (fields: string) => Promise<{ data: unknown[] | null; error: unknown }>;
-      }).select("escola_id,status,total"),
-      (supabase.from("escolas" as never) as unknown as {
-        select: (fields: string) => Promise<{ data: unknown[] | null; error: unknown }>;
-      }).select("id,nome,plano,status,created_at,last_access"),
+      supabase.rpc("admin_get_escola_health_metrics"),
+      supabase.from("vw_pagamentos_status").select("escola_id,status,total"),
+      supabase.from("escolas").select("id,nome,plano,status,created_at,last_access"),
     ]);
 
     if (healthRes.error) {

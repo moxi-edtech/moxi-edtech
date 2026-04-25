@@ -30,8 +30,7 @@ const getSupabaseForExecutor = (accessToken: string) => {
 };
 
 export const fechamentoAcademicoRun = inngest.createFunction(
-  { id: "fechamento-academico-run" },
-  { event: "academico/fechamento.run.requested" },
+  { id: "fechamento-academico-run", triggers: [{ event: "academico/fechamento.run.requested" }] },
   async ({ event }) => {
     const supabaseAdmin = getSupabaseAdmin();
     const { run_id, escola_id, executor_user_id, executor_access_token, acao, ano_letivo_id, periodo_letivo_id, turma_ids, matricula_ids, motivo, allow_reaberto_override } = event.data as any;

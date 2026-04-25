@@ -42,13 +42,12 @@ async function getPageData(): Promise<{
 }> {
   try {
     const supabase = await supabaseServer();
-    const rpcClient = supabase as { rpc: (fn: string) => Promise<{ data: unknown }> };
     const [dashboard, charts, health, activities, schoolsRes] = await Promise.allSettled([
       getDashboardData(),
       getChartsData(),
       getGlobalHealthSummary(),
       getGlobalActivities(),
-      rpcClient.rpc("admin_get_escola_health_metrics"),
+      supabase.rpc("admin_get_escola_health_metrics"),
     ]);
 
     return {
