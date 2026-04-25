@@ -206,8 +206,7 @@ async function ensureBucket(supabase: ReturnType<typeof getSupabaseAdmin>) {
 }
 
 export const fiscalSaftExport = inngest.createFunction(
-  { id: "fiscal-saft-export" },
-  { event: "fiscal/saft-export.requested" },
+  { id: "fiscal-saft-export", triggers: [{ event: "fiscal/saft-export.requested" }] },
   async ({ event, step }) => {
     const data = event.data as FiscalExportEvent;
     const supabase = getSupabaseAdmin();

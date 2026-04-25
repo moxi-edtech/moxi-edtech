@@ -256,8 +256,7 @@ async function emitAndSign(params: {
 }
 
 export const fiscalFinanceiroReprocess = inngest.createFunction(
-  { id: "fiscal-financeiro-reprocess-pending" },
-  { event: "fiscal/financeiro-reprocess.requested" },
+  { id: "fiscal-financeiro-reprocess-pending", triggers: [{ event: "fiscal/financeiro-reprocess.requested" }] },
   async ({ event, step }) => {
     const data = event.data as ReprocessEvent;
     const sql = postgres(resolveDbUrl(), { max: 1 });
