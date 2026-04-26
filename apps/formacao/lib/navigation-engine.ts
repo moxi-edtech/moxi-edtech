@@ -29,7 +29,7 @@ export function mapTenantTypeFromDb(tenantFromDB: string | null | undefined): Te
 
 export function mapUserRoleFromDb(role: string | null | undefined): UserRole {
   if (["formacao_admin", "super_admin", "global_admin"].includes(String(role))) return "ADMIN";
-  if (role === "formador" || role === "mentor") return "MENTOR";
+  if (role === "formador" || role === "mentor" || role === "solo_admin" || role === "creator") return "MENTOR";
   if (role === "formando") return "ALUNO";
   return "SECRETARIA";
 }

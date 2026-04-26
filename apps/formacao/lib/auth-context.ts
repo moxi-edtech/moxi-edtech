@@ -1,13 +1,7 @@
 import { resolveFormacaoSessionContext } from "@/lib/session-context";
+import { normalizeRoleForTenant, type CanonicalFormacaoRole } from "@/lib/role-semantics";
 
-export type FormacaoRole =
-  | "formacao_admin"
-  | "formacao_secretaria"
-  | "formacao_financeiro"
-  | "formador"
-  | "formando"
-  | "super_admin"
-  | "global_admin";
+export type FormacaoRole = CanonicalFormacaoRole;
 
 export type FormacaoAuthContext = {
   userId: string;
@@ -28,19 +22,20 @@ export async function getFormacaoAuthContext(): Promise<FormacaoAuthContext | nu
   const tenantRaw = String(session.tenantType ?? "")
     .trim()
     .toLowerCase();
+  const normalizedTenantType =
+    tenantRaw === "k12" || tenantRaw === "formacao" || tenantRaw === "solo_creator"
+      ? tenantRaw
+      : null;
 
   return {
     userId: session.userId,
     displayName: session.displayName,
-    role: isFormacaoRole(roleRaw) ? roleRaw : null,
+    role: normalizeRoleForTenant(roleRaw, normalizedTenantType),
     tenantId: session.tenantId,
     tenantSlug: session.tenantSlug,
     escolaId: session.tenantId,
     tenantName: session.tenantName,
-    tenantType:
-      tenantRaw === "k12" || tenantRaw === "formacao" || tenantRaw === "solo_creator"
-        ? tenantRaw
-        : null,
+    tenantType: normalizedTenantType,
   };
 }
 
@@ -64,6 +59,8 @@ export function getDefaultFormacaoPath(
       return "/agenda";
     case "formando":
       return "/meus-cursos";
+    case "solo_admin":
+      return "/mentor/dashboard";
     default:
       return "/dashboard";
   }
@@ -81,7 +78,7 @@ export function canAccessFormacaoPath(role: string | null | undefined, pathname:
   }
 
   if (pathname.startsWith("/mentor")) {
-    return isAdminRole || normalized === "mentor" || normalized === "formador";
+    return isAdminRole || normalized === "solo_admin";
   }
 
   if (pathname.startsWith("/secretaria")) {
@@ -112,13 +109,5 @@ export function canAccessFormacaoPath(role: string | null | undefined, pathname:
 }
 
 function isFormacaoRole(value: string): value is FormacaoRole {
-  return [
-    "formacao_admin",
-    "formacao_secretaria",
-    "formacao_financeiro",
-    "formador",
-    "formando",
-    "super_admin",
-    "global_admin",
-  ].includes(value);
+  return normalizeRoleForTenant(value, "formacao") !== null || normalizeRoleForTenant(value, "solo_creator") !== null;
 }

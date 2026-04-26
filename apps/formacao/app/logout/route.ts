@@ -18,6 +18,8 @@ function resolveAuthLoginUrl(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const response = NextResponse.redirect(resolveAuthLoginUrl(request));
+
   try {
     const supabase = await supabaseServer();
     await supabase.auth.signOut();
@@ -25,5 +27,22 @@ export async function GET(request: Request) {
     // Best-effort logout: always continue to centralized login.
   }
 
-  return NextResponse.redirect(resolveAuthLoginUrl(request));
+  const domain =
+    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
+    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : ".lvh.me");
+  const sameSiteRaw = (process.env.KLASSE_AUTH_COOKIE_SAMESITE ?? "lax").toLowerCase();
+  const sameSite: "lax" | "strict" | "none" =
+    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
+
+  response.cookies.set("klasse_ctx", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite,
+    path: "/",
+    ...(domain ? { domain } : {}),
+    maxAge: 0,
+  });
+
+  return response;
 }

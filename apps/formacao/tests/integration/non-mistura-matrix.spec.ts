@@ -4,6 +4,7 @@ import {
   mapTenantTypeFromDb,
 } from "../../lib/navigation-engine";
 import { decideProductAccess } from "../../lib/product-access";
+import { normalizeRoleForTenant } from "../../lib/role-semantics";
 
 type EvalResult =
   | { outcome: "allow" }
@@ -12,7 +13,7 @@ type EvalResult =
 
 const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/admin", roles: ["formacao_admin", "super_admin", "global_admin"] },
-  { prefix: "/mentor", roles: ["mentor", "formador", "formacao_admin", "super_admin", "global_admin"] },
+  { prefix: "/mentor", roles: ["solo_admin", "formacao_admin", "super_admin", "global_admin"] },
   { prefix: "/secretaria", roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"] },
   { prefix: "/financeiro", roles: ["formacao_financeiro", "formacao_admin", "super_admin", "global_admin"] },
   { prefix: "/agenda", roles: ["formador", "formacao_admin", "super_admin", "global_admin"] },
@@ -42,7 +43,9 @@ function evaluateProtectedPath(tenantTypeDb: "k12" | "formacao" | "solo_creator"
   if (productDecision.action === "redirect") {
     return { outcome: "redirect", target: productDecision.target };
   }
-  return hasRoleAccess(role, pathname) ? { outcome: "allow" } : { outcome: "deny", reason: "role_mismatch" };
+  const normalizedRole = normalizeRoleForTenant(role, tenantTypeDb);
+  if (!normalizedRole) return { outcome: "deny", reason: "role_mismatch" };
+  return hasRoleAccess(normalizedRole, pathname) ? { outcome: "allow" } : { outcome: "deny", reason: "role_mismatch" };
 }
 
 test("Matriz integração: CENTER admin sem mistura com SOLO", () => {

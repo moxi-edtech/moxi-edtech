@@ -7,6 +7,7 @@ import {
   mapTenantTypeFromDb,
   shouldRedirectToK12FromFormacaoApp,
 } from "@/lib/navigation-engine";
+import { normalizeRoleForTenant } from "@/lib/role-semantics";
 import { decideProductAccess } from "@/lib/product-access";
 import {
   buildProductRedirectUrl,
@@ -42,6 +43,7 @@ function resolveUniversalLoginUrl() {
 }
 
 const UNIVERSAL_LOGIN_URL = resolveUniversalLoginUrl();
+const TENANT_CONTEXT_COOKIE = "klasse_ctx";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -60,7 +62,7 @@ const PROTECTED_PREFIXES = [
 
 const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/admin", roles: ["formacao_admin", "super_admin", "global_admin"] },
-  { prefix: "/mentor", roles: ["mentor", "formador", "formacao_admin", "super_admin", "global_admin"] },
+  { prefix: "/mentor", roles: ["solo_admin", "formacao_admin", "super_admin", "global_admin"] },
   {
     prefix: "/secretaria",
     roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"],
@@ -102,6 +104,104 @@ const PRODUCT_RULES: Array<{ prefix: string; allowedTenantTypes: Array<"CENTER" 
   { prefix: "/mentor", allowedTenantTypes: ["SOLO_CREATOR"] },
 ];
 
+type TenantContextCookiePayload = {
+  uid: string;
+  tenant_id: string;
+  tenant_type: TenantType;
+  role: string;
+  exp: number;
+};
+
+function resolveTenantContextCookieSecret() {
+  return (
+    process.env.KLASSE_CONTEXT_COOKIE_SECRET?.trim() ||
+    process.env.AUTH_CONTEXT_COOKIE_SECRET?.trim() ||
+    process.env.CRON_SECRET?.trim() ||
+    process.env.AUTH_ADMIN_JOB_TOKEN?.trim() ||
+    "dev-only-klasse-context-secret"
+  );
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function signTenantContextPayload(payloadEncoded: string): Promise<string | null> {
+  const cryptoApi = globalThis.crypto;
+  if (!cryptoApi?.subtle) return null;
+  const key = await cryptoApi.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(resolveTenantContextCookieSecret()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await cryptoApi.subtle.sign("HMAC", key, new TextEncoder().encode(payloadEncoded));
+  return bytesToBase64Url(new Uint8Array(signature));
+}
+
+function hasLikelySupabaseSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      ({ name }) =>
+        name.startsWith("sb-") &&
+        (name.includes("auth-token") || name.includes("access-token") || name.includes("refresh-token"))
+    );
+}
+
+async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise<AuthContext | null> {
+  const raw = request.cookies.get(TENANT_CONTEXT_COOKIE)?.value;
+  if (!raw || !hasLikelySupabaseSessionCookie(request)) return null;
+
+  const [payloadEncoded, signature] = raw.split(".");
+  if (!payloadEncoded || !signature) return null;
+
+  const expectedSignature = await signTenantContextPayload(payloadEncoded);
+  if (!expectedSignature || expectedSignature !== signature) return null;
+
+  try {
+    const payloadJson = new TextDecoder().decode(base64UrlToBytes(payloadEncoded));
+    const payload = JSON.parse(payloadJson) as TenantContextCookiePayload;
+    const tenantType = String(payload.tenant_type ?? "").trim().toLowerCase();
+    const normalizedTenantType =
+      tenantType === "k12" || tenantType === "formacao" || tenantType === "solo_creator"
+        ? (tenantType as TenantType)
+        : null;
+
+    if (!payload.uid || !payload.tenant_id || !normalizedTenantType || !payload.exp) return null;
+    if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
+
+    const normalizedRole = normalizeRoleForTenant(payload.role, normalizedTenantType);
+    if (!normalizedRole) return null;
+
+    return {
+      userId: payload.uid,
+      tenantId: payload.tenant_id,
+      role: normalizedRole,
+      tenantType: normalizedTenantType,
+      hasSession: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function createSupabaseClient(request: NextRequest, response: NextResponse) {
   return createMiddlewareSupabaseClient({
     request,
@@ -115,6 +215,9 @@ function createSupabaseClient(request: NextRequest, response: NextResponse) {
 }
 
 async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext> {
+  const cookieContext = await resolveAuthContextFromTenantCookie(request);
+  if (cookieContext) return cookieContext;
+
   const supabase = createSupabaseClient(request, response);
   if (!supabase) return { userId: null, tenantId: null, role: null, tenantType: null, hasSession: false };
   const resolved = await resolveDbAuthContext({
@@ -122,10 +225,15 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
     preferredTenantType: null,
   });
 
+  const normalizedRole = normalizeRoleForTenant(
+    resolved.role,
+    (resolved.tenantType as TenantType | null) ?? null
+  );
+
   return {
     userId: resolved.userId,
     tenantId: resolved.tenantId,
-    role: resolved.role,
+    role: normalizedRole,
     tenantType: resolved.tenantType as TenantType | null,
     hasSession: resolved.hasSession,
   };

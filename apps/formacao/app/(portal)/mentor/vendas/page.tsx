@@ -40,7 +40,7 @@ export default async function MentorVendasPage() {
   const auth = await getFormacaoAuthContext();
   if (!auth) redirect("/login");
 
-  if (auth.role !== "formador" && !["super_admin", "global_admin", "formacao_admin"].includes(String(auth.role))) {
+  if (auth.role !== "solo_admin" && !["super_admin", "global_admin", "formacao_admin"].includes(String(auth.role))) {
     redirect("/forbidden");
   }
 
