@@ -27,20 +27,19 @@ export default async function FinanceiroDashboardPage() {
 
   let faturamentoTotal = 0;
   let pendenteTotal = 0;
-  let vencidoTotal = 0;
+  let margemBrutaTotal = 0;
   let clientesB2bCount = 0;
-  let faturasCount = 0;
+  let titulosEmAbertoCount = 0;
 
   if (escolaId) {
     const s = (await supabaseServer()) as FormacaoSupabaseClient;
-    const today = new Date().toISOString().split("T")[0];
 
-    const [faturasRes, clientesRes] = await Promise.all([
+    const [inadimplenciaRes, margemRes, clientesRes] = await Promise.all([
       s
-        .from("formacao_faturas_lote")
-        .select("total_bruto, total_liquido, status, vencimento_em")
-        .eq("escola_id", escolaId)
-        .neq("status", "cancelada"),
+        .from("vw_formacao_inadimplencia_resumo")
+        .select("b2c_titulos_em_aberto, b2b_faturas_em_aberto, total_em_aberto")
+        .maybeSingle(),
+      s.from("vw_formacao_margem_por_edicao").select("receita_total, margem_bruta"),
       s
         .from("formacao_clientes_b2b")
         .select("id", { count: "exact", head: true })
@@ -48,21 +47,19 @@ export default async function FinanceiroDashboardPage() {
         .eq("status", "ativo"),
     ]);
 
-    const faturas = faturasRes.data ?? [];
-    faturasCount = faturas.length;
     clientesB2bCount = clientesRes.count ?? 0;
-
-    faturas.forEach((f) => {
-      const valor = Number(f.total_bruto || 0);
-      faturamentoTotal += valor;
-
-      if (["emitida", "parcial"].includes(f.status)) {
-        pendenteTotal += valor;
-        if (f.vencimento_em && f.vencimento_em < today) {
-          vencidoTotal += valor;
-        }
-      }
-    });
+    pendenteTotal = Number(inadimplenciaRes.data?.total_em_aberto ?? 0);
+    titulosEmAbertoCount =
+      Number(inadimplenciaRes.data?.b2c_titulos_em_aberto ?? 0) +
+      Number(inadimplenciaRes.data?.b2b_faturas_em_aberto ?? 0);
+    faturamentoTotal = ((margemRes.data ?? []) as Array<{ receita_total: number | null }>).reduce(
+      (acc, row) => acc + Number(row.receita_total ?? 0),
+      0
+    );
+    margemBrutaTotal = ((margemRes.data ?? []) as Array<{ margem_bruta: number | null }>).reduce(
+      (acc, row) => acc + Number(row.margem_bruta ?? 0),
+      0
+    );
   }
 
   const formatCurrency = (val: number) =>
@@ -90,26 +87,26 @@ export default async function FinanceiroDashboardPage() {
         <MetricCard
           title="Faturado Total"
           value={formatCurrency(faturamentoTotal)}
-          subtitle={`${faturasCount} faturas emitidas`}
+          subtitle="Receita agregada por edição"
           tone="neutral"
         />
         <MetricCard
           title="Pendente"
           value={formatCurrency(pendenteTotal)}
-          subtitle="Aguardando recebimento"
+          subtitle={`${titulosEmAbertoCount} títulos/faturas em aberto`}
           tone="warning"
         />
         <MetricCard
-          title="Vencido"
-          value={formatCurrency(vencidoTotal)}
-          subtitle="Cobranças em atraso"
-          tone="danger"
+          title="Margem Bruta"
+          value={formatCurrency(margemBrutaTotal)}
+          subtitle="Receita menos honorários"
+          tone="positive"
         />
         <MetricCard
           title="Clientes B2B"
           value={String(clientesB2bCount)}
           subtitle="Carteira ativa"
-          tone="positive"
+          tone="neutral"
         />
       </section>
 

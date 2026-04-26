@@ -6,7 +6,7 @@ import { getDefaultFormacaoPath, getFormacaoAuthContext } from "@/lib/auth-conte
 import PortalNavLink from "./_components/PortalNavLink";
 import { 
   getAuthorizedNavigation, 
-  NAVIGATION_CONFIG, 
+  getNavigationConfigForTenant,
   mapTenantTypeFromDb,
   mapUserRoleFromDb,
 } from "@/lib/navigation-engine";
@@ -53,7 +53,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const userRoleFromDB = String(auth.role ?? "");
   const type = mapTenantTypeFromDb(tenantFromDB);
   const role = mapUserRoleFromDb(userRoleFromDB);
-  const defaultPath = getDefaultFormacaoPath(auth.role);
+  const defaultPath = getDefaultFormacaoPath(auth.role, auth.tenantType);
   const route =
     requestHeaders.get("x-klasse-route") ??
     requestHeaders.get("x-pathname") ??
@@ -86,8 +86,8 @@ export default async function PortalLayout({ children }: { children: React.React
     );
   }
   
-  // INVOCAÇÃO DO MOTOR INTELIGENTE
-  const authorizedNav = getAuthorizedNavigation(NAVIGATION_CONFIG, type, role);
+  const tenantNavConfig = getNavigationConfigForTenant(type);
+  const authorizedNav = getAuthorizedNavigation(tenantNavConfig, type, role);
 
   const groupedNav = ["Gestão", "Académico", "Financeiro", "Suporte"]
     .map((group) => ({

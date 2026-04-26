@@ -7,6 +7,10 @@ BEGIN;
 -- - gestor keeps select/update/delete over own school scope
 
 DROP POLICY IF EXISTS "Gestores gerem as suas próprias inscrições staging" ON public.formacao_inscricoes_staging;
+DROP POLICY IF EXISTS formacao_inscricoes_staging_select_gestores ON public.formacao_inscricoes_staging;
+DROP POLICY IF EXISTS formacao_inscricoes_staging_update_gestores ON public.formacao_inscricoes_staging;
+DROP POLICY IF EXISTS formacao_inscricoes_staging_delete_gestores ON public.formacao_inscricoes_staging;
+DROP POLICY IF EXISTS formacao_inscricoes_staging_insert_authenticated ON public.formacao_inscricoes_staging;
 
 CREATE POLICY formacao_inscricoes_staging_select_gestores
 ON public.formacao_inscricoes_staging

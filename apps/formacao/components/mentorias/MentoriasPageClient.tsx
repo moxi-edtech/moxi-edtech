@@ -1,0 +1,1656 @@
+"use client";
+
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { trackFunnelClient } from "@/lib/funnel-client";
+
+type Cohort = {
+  id: string;
+  codigo: string;
+  nome: string;
+  curso_nome: string;
+  carga_horaria_total: number;
+  vagas: number;
+  data_inicio: string;
+  data_fim: string;
+  status: string;
+  created_at: string;
+  valor_referencia?: number | null;
+};
+
+type FormadorOption = {
+  user_id: string;
+  nome: string;
+  email: string | null;
+};
+
+type CursoCatalogo = {
+  id: string;
+  codigo: string;
+  nome: string;
+  area: string | null;
+  modalidade: "presencial" | "online" | "hibrido";
+  carga_horaria: number | null;
+  status: string;
+  preco_tabela: number;
+  desconto_ativo: boolean;
+  desconto_percentual: number;
+  parceria_b2b_ativa: boolean;
+  modulos: Array<{
+    ordem: number;
+    titulo: string;
+    carga_horaria: number | null;
+    descricao: string | null;
+  }>;
+};
+
+type CohortDetail = {
+  cohort: Cohort;
+  summary: {
+    formandos: number;
+    sessoes: number;
+    materiais: number;
+    certificados: number;
+  };
+  tabs: {
+    formandos: Array<{
+      user_id: string;
+      inscricao_id: string | null;
+      nome: string;
+      email: string | null;
+      telefone: string | null;
+      presenca_percentual: number | null;
+      status_pagamento: string;
+      academic_status: string;
+      access_blocked: boolean;
+      valor_total: number;
+      descricao: string;
+      parcelas: Array<{
+        item_id: string;
+        descricao: string;
+        status: "pago" | "pendente" | "atrasado";
+        valor: number;
+      }>;
+    }>;
+    sessoes: Array<{
+      id: string;
+      formador_user_id: string;
+      formador_nome: string;
+      competencia: string;
+      horas_ministradas: number;
+      valor_hora: number;
+      status: string;
+    }>;
+    materiais: Array<{
+      id: string;
+      titulo: string;
+      tipo: string;
+      status: string;
+      updated_at: string;
+    }>;
+    certificados: Array<{
+      id: string;
+      numero_documento: string;
+      emitido_em: string;
+      formando_user_id: string;
+      formando_nome: string;
+      template_id: string | null;
+    }>;
+    formadores: Array<{
+      id: string;
+      user_id: string;
+      nome: string;
+      email: string | null;
+      percentual_honorario: number;
+      created_at: string;
+    }>;
+  };
+  finance: {
+    mode: "b2b" | "b2c";
+    recebido: number;
+    pendente: number;
+    atualizado_em: string;
+    b2c: {
+      parcelas: string[];
+    };
+    b2b: {
+      cliente: {
+        id: string;
+        nome_fantasia: string;
+        razao_social: string | null;
+      };
+      fatura: {
+        id: string;
+        referencia: string;
+        vencimento_em: string;
+        total_liquido: number;
+        status: string;
+      };
+      colaboradores_cobertos: Array<{
+        user_id: string;
+        nome: string;
+        email: string | null;
+      }>;
+    } | null;
+  };
+};
+
+type StatusFilter = "todos" | "rascunho" | "aberta" | "em curso" | "concluída" | "cancelada";
+type DetailTab = "formandos" | "sessoes" | "materiais" | "certificados";
+type MetodoPagamento = "tpa" | "transferencia" | "numerario";
+
+type MvpPagamentoStatus = "PAGO" | "PENDENTE" | "ATRASADO";
+type MvpB2CRow = {
+  id: string;
+  nome: string;
+  inscricao: MvpPagamentoStatus;
+  modulo1: MvpPagamentoStatus;
+  modulo2: MvpPagamentoStatus;
+};
+
+const MVP_B2C_ROWS: MvpB2CRow[] = [
+  { id: "a1", nome: "João Silva", inscricao: "PAGO", modulo1: "PAGO", modulo2: "PENDENTE" },
+  { id: "a2", nome: "Maria Oliveira", inscricao: "PAGO", modulo1: "ATRASADO", modulo2: "PENDENTE" },
+  { id: "a3", nome: "Carlos Santos", inscricao: "PENDENTE", modulo1: "PENDENTE", modulo2: "ATRASADO" },
+];
+
+const MVP_B2B_DATA = {
+  empresa: "Unitel S.A.",
+  valorGlobal: "1.500.000 Kz",
+  estado: "PENDENTE" as MvpPagamentoStatus,
+  colaboradores: ["João Silva", "Maria Oliveira", "Carlos Santos", "Ana Pereira", "Luís Costa"],
+};
+
+function normalizeStatus(raw: string): Exclude<StatusFilter, "todos"> {
+  const status = String(raw).trim().toLowerCase();
+  if (status === "planeada" || status === "rascunho") return "rascunho";
+  if (status === "aberta") return "aberta";
+  if (status === "em_andamento" || status === "em curso") return "em curso";
+  if (status === "concluida" || status === "concluída") return "concluída";
+  if (status === "cancelada") return "cancelada";
+  return "rascunho";
+}
+
+function toApiStatus(status: Exclude<StatusFilter, "todos">) {
+  if (status === "rascunho") return "planeada";
+  if (status === "em curso") return "em_andamento";
+  if (status === "concluída") return "concluida";
+  return status;
+}
+
+function statusPillClass(status: Exclude<StatusFilter, "todos">) {
+  if (status === "rascunho") return "bg-slate-100 text-slate-700 border-slate-200";
+  if (status === "aberta") return "bg-blue-100 text-blue-700 border-blue-200";
+  if (status === "em curso") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  if (status === "concluída") return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-rose-100 text-rose-700 border-rose-200";
+}
+
+function paymentPillClass(status: string) {
+  const value = status.toLowerCase();
+  if (value.includes("pago")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  if (value.includes("atras")) return "bg-rose-100 text-rose-700 border-rose-200";
+  return "bg-amber-100 text-amber-700 border-amber-200";
+}
+
+function academicStatusPillClass(status: string) {
+  const value = String(status ?? "").trim().toLowerCase();
+  if (value === "apto") return "bg-green-100 text-green-700 border-green-200";
+  if (value === "desistente" || value === "não apto" || value === "nao_apto") return "bg-red-100 text-red-700 border-red-200";
+  if (value === "cursando") return "bg-slate-100 text-slate-700 border-slate-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function normalizeAcademicStatus(status: string) {
+  const value = String(status ?? "").trim().toLowerCase();
+  if (value === "nao_apto" || value === "não apto") return "nao_apto";
+  if (value === "desistente") return "desistente";
+  if (value === "apto") return "apto";
+  return "cursando";
+}
+
+function academicStatusLabel(status: string) {
+  const value = normalizeAcademicStatus(status);
+  if (value === "nao_apto") return "Não apto";
+  if (value === "desistente") return "Desistente";
+  if (value === "apto") return "Apto";
+  return "Cursando";
+}
+
+function renderMvpCell(
+  status: MvpPagamentoStatus,
+  formandoNome: string,
+  parcela: string,
+  onRegister: (itemId: string, formingoNome: string, parcela: string, valor: number) => void
+) {
+  const isLate = status === "ATRASADO";
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(status)}`}>
+        {status}
+      </span>
+      {isLate ? (
+        <button
+          type="button"
+          onClick={() => onRegister(`mvp:${formandoNome}:${parcela}`, formandoNome, parcela, 25000)}
+          className="inline-flex items-center gap-1 rounded-md border border-[#E4EBE6] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
+        >
+          + Registar Pagamento
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export default function CohortsPage() {
+  const searchParams = useSearchParams();
+  const [items, setItems] = useState<Cohort[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [formandoSearch, setFormandoSearch] = useState("");
+  const [formandoAcademicFilter, setFormandoAcademicFilter] = useState<"todos" | "cursando" | "desistente" | "apto" | "nao_apto">("todos");
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<StatusFilter>("todos");
+  const [activeTab, setActiveTab] = useState<DetailTab>("formandos");
+
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detail, setDetail] = useState<CohortDetail | null>(null);
+  const [financeView, setFinanceView] = useState<"b2c" | "b2b">("b2c");
+  const [showPagamentoModal, setShowPagamentoModal] = useState(false);
+  const [pagamentoTarget, setPagamentoTarget] = useState<{ itemId: string; formandoNome: string; parcela: string } | null>(null);
+  const [pagamentoForm, setPagamentoForm] = useState({
+    valor: "",
+    metodo: "transferencia" as MetodoPagamento,
+    comprovativo: "",
+  });
+  const [formandoBusy, setFormandoBusy] = useState<Record<string, boolean>>({});
+  const [statusEditorTarget, setStatusEditorTarget] = useState<{ user_id: string; nome: string; status: "cursando" | "desistente" | "apto" | "nao_apto" } | null>(null);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formadores, setFormadores] = useState<FormadorOption[]>([]);
+  const [catalogoCursos, setCatalogoCursos] = useState<CursoCatalogo[]>([]);
+  const [form, setForm] = useState({
+    codigo: "",
+    nome: "",
+    curso_id: "",
+    curso_nome: "",
+    carga_horaria_total: "",
+    vagas: "",
+    data_inicio: "",
+    data_fim: "",
+    status: "aberta" as Exclude<StatusFilter, "todos">,
+    formador_user_id: "",
+    percentual_honorario: "100",
+    valor_referencia: "",
+  });
+
+  const loadCohorts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch("/api/formacao/backoffice/cohorts", { cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as
+        | { ok: boolean; error?: string; items?: Cohort[] }
+        | null;
+
+      if (!res.ok || !json?.ok || !Array.isArray(json.items)) {
+        throw new Error(json?.error || "Falha ao carregar turmas");
+      }
+
+      const nextItems = json.items;
+      setItems(nextItems);
+      if (nextItems.length > 0) {
+        setSelectedId((prev) => prev ?? nextItems[0].id);
+      } else {
+        setSelectedId(null);
+        setDetail(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFormadores = async () => {
+    try {
+      const res = await fetch("/api/formacao/backoffice/cohorts/options", { cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as
+        | { ok: boolean; formadores?: FormadorOption[] }
+        | null;
+
+      if (!res.ok || !json?.ok || !Array.isArray(json.formadores)) return;
+      setFormadores(json.formadores);
+    } catch {
+      setFormadores([]);
+    }
+  };
+
+  const loadCatalogoCursos = async () => {
+    try {
+      const res = await fetch("/api/formacao/backoffice/cursos", { cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as
+        | { ok: boolean; items?: CursoCatalogo[] }
+        | null;
+      if (!res.ok || !json?.ok || !Array.isArray(json.items)) return;
+      setCatalogoCursos(json.items.filter((item) => String(item.status).toLowerCase().includes("ativo")));
+    } catch {
+      setCatalogoCursos([]);
+    }
+  };
+
+  const loadDetail = async (id: string) => {
+    try {
+      setDetailLoading(true);
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${id}`, { cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as
+        | {
+            ok: boolean;
+            error?: string;
+            cohort?: Cohort;
+            summary?: CohortDetail["summary"];
+            tabs?: CohortDetail["tabs"];
+            finance?: CohortDetail["finance"];
+          }
+        | null;
+
+      if (!res.ok || !json?.ok || !json?.cohort || !json.tabs || !json.summary || !json.finance) {
+        throw new Error(json?.error || "Falha ao carregar detalhe da turma");
+      }
+
+      setDetail({ cohort: json.cohort, tabs: json.tabs, summary: json.summary, finance: json.finance });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado");
+      setDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCohorts();
+    loadFormadores();
+    loadCatalogoCursos();
+  }, []);
+
+  useEffect(() => {
+    const shouldOpenCreate = searchParams.get("openCreate") === "1";
+    const focusTarget = searchParams.get("focus");
+    if (!shouldOpenCreate) return;
+
+    setShowCreateModal(true);
+
+    if (focusTarget === "formador") {
+      const timer = setTimeout(() => {
+        const el = document.getElementById("cohort-formador-user-id");
+        el?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    loadDetail(selectedId);
+  }, [selectedId]);
+
+  const statusCounts = useMemo(() => {
+    const base = {
+      todos: items.length,
+      rascunho: 0,
+      aberta: 0,
+      "em curso": 0,
+      concluída: 0,
+      cancelada: 0,
+    } as Record<StatusFilter, number>;
+
+    for (const item of items) {
+      const normalized = normalizeStatus(item.status);
+      base[normalized] += 1;
+    }
+
+    return base;
+  }, [items]);
+
+  const visibleItems = useMemo(() => {
+    if (activeStatus === "todos") return items;
+    return items.filter((item) => normalizeStatus(item.status) === activeStatus);
+  }, [activeStatus, items]);
+
+  const createCohort = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    trackFunnelClient({
+      event: "mentor_cta_click",
+      stage: "mentorias",
+      source: "mentorias_create_submit",
+      details: { action: "submit_nova_turma" },
+    });
+
+    const payload = {
+      codigo: form.codigo,
+      nome: form.nome,
+      curso_id: form.curso_id,
+      curso_nome: form.curso_nome,
+      carga_horaria_total: Number(form.carga_horaria_total),
+      vagas: Number(form.vagas),
+      data_inicio: form.data_inicio,
+      data_fim: form.data_fim,
+      status: toApiStatus(form.status),
+      formador_user_id: form.formador_user_id || undefined,
+      percentual_honorario: form.formador_user_id ? Number(form.percentual_honorario) : undefined,
+      valor_referencia: form.valor_referencia ? Number(form.valor_referencia) : undefined,
+    };
+
+    const res = await fetch("/api/formacao/backoffice/cohorts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string; item?: Cohort } | null;
+    if (!res.ok || !json?.ok || !json.item) {
+      trackFunnelClient({
+        event: "mentor_mentoria_submit_failed",
+        stage: "mentorias",
+        source: "mentorias_create_submit",
+        details: { reason: json?.error || "Falha ao criar turma" },
+      });
+      setError(json?.error || "Falha ao criar turma");
+      return;
+    }
+
+    trackFunnelClient({
+      event: "mentor_mentoria_submit_success",
+      stage: "mentorias",
+      source: "mentorias_create_submit",
+      details: { turma_id: json.item.id },
+    });
+
+    setShowCreateModal(false);
+    setForm({
+      codigo: "",
+      nome: "",
+      curso_id: "",
+      curso_nome: "",
+      carga_horaria_total: "",
+      vagas: "",
+      data_inicio: "",
+      data_fim: "",
+      status: "aberta",
+      formador_user_id: "",
+      percentual_honorario: "100",
+      valor_referencia: "",
+    });
+
+    await loadCohorts();
+    setSelectedId(json.item.id);
+  };
+
+  const onSelectCurso = (cursoId: string) => {
+    const curso = catalogoCursos.find((item) => item.id === cursoId);
+    if (!curso) {
+      setForm((prev) => ({
+        ...prev,
+        curso_id: "",
+        curso_nome: "",
+        carga_horaria_total: "",
+        valor_referencia: "",
+      }));
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      curso_id: curso.id,
+      curso_nome: curso.nome,
+      carga_horaria_total: String(curso.carga_horaria ?? ""),
+      valor_referencia: String(curso.preco_tabela ?? 0),
+    }));
+  };
+
+  const changeStatus = async (id: string, status: Exclude<StatusFilter, "todos">) => {
+    setError(null);
+    setInfo(null);
+    const res = await fetch("/api/formacao/backoffice/cohorts", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, status: toApiStatus(status) }),
+    });
+
+    const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+    if (!res.ok || !json?.ok) {
+      setError(json?.error || "Falha ao atualizar status da turma");
+      return;
+    }
+
+    await loadCohorts();
+    if (selectedId === id) await loadDetail(id);
+  };
+
+  const removeItem = async (id: string) => {
+    setError(null);
+    setInfo(null);
+
+    const res = await fetch(`/api/formacao/backoffice/cohorts?id=${id}`, {
+      method: "DELETE",
+    });
+
+    const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+    if (!res.ok || !json?.ok) {
+      setError(json?.error || "Falha ao remover turma");
+      return;
+    }
+
+    await loadCohorts();
+  };
+
+  const openPagamentoModal = (itemId: string, formandoNome: string, parcela: string, valor: number) => {
+    setPagamentoTarget({ itemId, formandoNome, parcela });
+    setPagamentoForm({
+      valor: String(Number(valor || 0)),
+      metodo: "transferencia",
+      comprovativo: "",
+    });
+    setShowPagamentoModal(true);
+  };
+
+  const registrarPagamentoRapido = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!pagamentoTarget) return;
+
+    setError(null);
+    setInfo(null);
+    const res = await fetch("/api/formacao/financeiro/faturacao-b2c", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: pagamentoTarget.itemId, status_pagamento: "pago" }),
+    });
+    const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+    if (!res.ok || !json?.ok) {
+      setError(json?.error || "Falha ao registar pagamento");
+      return;
+    }
+
+    setShowPagamentoModal(false);
+    setPagamentoTarget(null);
+    setPagamentoForm({ valor: "", metodo: "transferencia", comprovativo: "" });
+    if (selectedId) await loadDetail(selectedId);
+  };
+
+  const runFormandoAction = async (
+    formandoUserId: string,
+    payload:
+      | { action: "resend_access" }
+      | { action: "set_access_block"; blocked: boolean }
+      | { action: "set_academic_status"; status: "cursando" | "desistente" | "apto" | "nao_apto" }
+  ) => {
+    if (!detail) return;
+    setError(null);
+    setInfo(null);
+    setFormandoBusy((prev) => ({ ...prev, [formandoUserId]: true }));
+    try {
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${detail.cohort.id}/formandos/${formandoUserId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string; message?: string } | null;
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao executar ação do formando");
+      }
+      await loadDetail(detail.cohort.id);
+      setInfo(json?.message || "Ação aplicada com sucesso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado");
+    } finally {
+      setFormandoBusy((prev) => ({ ...prev, [formandoUserId]: false }));
+    }
+  };
+
+  const visibleFormandos = useMemo(() => {
+    const all = detail?.tabs.formandos ?? [];
+    const query = formandoSearch.trim().toLowerCase();
+    return all.filter((formando) => {
+      const normalizedAcademic = normalizeAcademicStatus(formando.academic_status);
+      const academicMatch = formandoAcademicFilter === "todos" || normalizedAcademic === formandoAcademicFilter;
+      if (!academicMatch) return false;
+      if (!query) return true;
+      const name = String(formando.nome ?? "").toLowerCase();
+      const email = String(formando.email ?? "").toLowerCase();
+      return name.includes(query) || email.includes(query);
+    });
+  }, [detail?.tabs.formandos, formandoAcademicFilter, formandoSearch]);
+
+  return (
+    <div className="grid gap-5">
+      <header className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8A9E8F]">académico</p>
+            <h1 className="mt-1 text-3xl font-semibold text-[#111811]">Turmas</h1>
+            <p className="mt-1 text-sm text-[#4A6352]">
+              Gestão de turmas com detalhe por formandos, sessões, materiais e certificados.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              trackFunnelClient({
+                event: "mentor_cta_click",
+                stage: "mentorias",
+                source: "mentorias_open_create_modal",
+                details: { action: "open_modal" },
+              });
+              setShowCreateModal(true);
+            }}
+            className="rounded-xl border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+          >
+            + Nova turma
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(["todos", "rascunho", "aberta", "em curso", "concluída", "cancelada"] as StatusFilter[]).map(
+            (filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setActiveStatus(filter)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  activeStatus === filter
+                    ? "border-klasse-gold bg-klasse-gold/10 text-klasse-gold"
+                    : "border-[#E4EBE6] bg-white text-[#4A6352] hover:bg-[#F7F9F7]"
+                }`}
+              >
+                {filter} · {statusCounts[filter]}
+              </button>
+            )
+          )}
+        </div>
+      </header>
+
+      {error ? <p className="m-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+      {info ? <p className="m-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{info}</p> : null}
+
+      <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="rounded-2xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#8A9E8F]">lista de turmas</p>
+
+          {loading ? <p className="px-2 py-4 text-sm text-[#4A6352]">Carregando turmas...</p> : null}
+
+          <div className="grid max-h-[66vh] gap-2 overflow-auto pr-1">
+            {visibleItems.map((item) => {
+              const normalizedStatus = normalizeStatus(item.status);
+              const active = selectedId === item.id;
+
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setSelectedId(item.id)}
+                  className={`w-full rounded-xl border p-3 text-left transition ${
+                    active
+                      ? "border-klasse-gold bg-klasse-gold/5"
+                      : "border-[#E4EBE6] bg-white hover:border-[#C9D8CF] hover:bg-[#FAFCFA]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-[#111811]">{item.nome}</p>
+                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusPillClass(normalizedStatus)}`}>
+                      {normalizedStatus}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-xs text-[#4A6352]">{item.codigo} · {item.curso_nome}</p>
+                  <p className="mt-1 text-xs text-[#8A9E8F]">{item.data_inicio} → {item.data_fim}</p>
+                </button>
+              );
+            })}
+
+            {!loading && visibleItems.length === 0 ? (
+              <p className="px-2 py-4 text-sm text-[#4A6352]">Nenhuma turma neste filtro.</p>
+            ) : null}
+          </div>
+        </aside>
+
+        <section className="rounded-2xl border border-[#E4EBE6] bg-white p-4 shadow-sm">
+          {!selectedId ? (
+            <p className="text-sm text-[#4A6352]">Selecione uma turma para ver detalhes.</p>
+          ) : detailLoading ? (
+            <p className="text-sm text-[#4A6352]">Carregando detalhe da turma...</p>
+          ) : !detail ? (
+            <p className="text-sm text-[#4A6352]">Não foi possível carregar o detalhe.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E4EBE6] pb-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">{detail.cohort.codigo}</p>
+                  <h2 className="text-2xl font-semibold text-[#111811]">{detail.cohort.nome}</h2>
+                  <p className="text-sm text-[#4A6352]">{detail.cohort.curso_nome} · {detail.cohort.data_inicio} → {detail.cohort.data_fim}</p>
+                  <p className="text-xs text-[#8A9E8F]">
+                    Valor referência: {formatMoney(Number(detail.cohort.valor_referencia ?? 0))}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Formandos: {detail.summary.formandos}</span>
+                  <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Sessões: {detail.summary.sessoes}</span>
+                  <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Materiais: {detail.summary.materiais}</span>
+                  <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Certificados: {detail.summary.certificados}</span>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {(["formandos", "sessoes", "materiais", "certificados"] as DetailTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${
+                      activeTab === tab
+                        ? "border-klasse-gold bg-klasse-gold/10 text-klasse-gold"
+                        : "border-[#E4EBE6] bg-white text-[#4A6352] hover:bg-[#F7F9F7]"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+
+                <div className="ml-auto flex flex-wrap gap-1.5">
+                  {(["rascunho", "aberta", "em curso", "concluída", "cancelada"] as Exclude<StatusFilter, "todos">[]).map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => changeStatus(detail.cohort.id, status)}
+                      className="rounded-md border border-[#E4EBE6] px-2.5 py-1 text-xs text-[#4A6352] hover:bg-[#F7F9F7]"
+                    >
+                      {status}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => removeItem(detail.cohort.id)}
+                    className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50"
+                  >
+                    apagar
+                  </button>
+                </div>
+              </div>
+
+              {activeTab === "formandos" ? (
+                <div className="mt-3 grid gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.16em] text-[#8A9E8F]">Gestão Financeira da Turma</p>
+                      <h3 className="text-xl font-semibold text-[#111811]">Painel de pagamentos</h3>
+                    </div>
+                    <div className="inline-flex rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-1">
+                      <button
+                        type="button"
+                        onClick={() => setFinanceView("b2c")}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          financeView === "b2c" ? "bg-white text-[#1F6B3B] shadow-sm" : "text-[#4A6352] hover:bg-white/70"
+                        }`}
+                      >
+                        Visão B2C (Particulares)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFinanceView("b2b")}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          financeView === "b2b" ? "bg-white text-[#1F6B3B] shadow-sm" : "text-[#4A6352] hover:bg-white/70"
+                        }`}
+                      >
+                        Visão B2B (Corporativo)
+                      </button>
+                    </div>
+                  </div>
+
+                  {financeView === "b2c" ? (
+                    <>
+                      <div className="space-y-2 md:hidden">
+                        {MVP_B2C_ROWS.map((row) => (
+                          <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+                            <p className="text-sm font-semibold text-[#111811]">{row.nome}</p>
+                            <div className="mt-2 grid gap-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-[#4A6352]">Inscrição</span>
+                                {renderMvpCell(row.inscricao, row.nome, "Inscrição", openPagamentoModal)}
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-[#4A6352]">Módulo 1</span>
+                                {renderMvpCell(row.modulo1, row.nome, "Módulo 1", openPagamentoModal)}
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-[#4A6352]">Módulo 2</span>
+                                {renderMvpCell(row.modulo2, row.nome, "Módulo 2", openPagamentoModal)}
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+
+                      <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+                        <table className="min-w-[760px] w-full border-collapse text-sm">
+                          <thead className="bg-[#F7F9F7] text-[#4A6352]">
+                            <tr>
+                              <Th>Nome do Formando</Th>
+                              <Th>Inscrição</Th>
+                              <Th>Módulo 1</Th>
+                              <Th>Módulo 2</Th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {MVP_B2C_ROWS.map((row) => (
+                              <tr key={row.id}>
+                                <Td>{row.nome}</Td>
+                                <Td>{renderMvpCell(row.inscricao, row.nome, "Inscrição", openPagamentoModal)}</Td>
+                                <Td>{renderMvpCell(row.modulo1, row.nome, "Módulo 1", openPagamentoModal)}</Td>
+                                <Td>{renderMvpCell(row.modulo2, row.nome, "Módulo 2", openPagamentoModal)}</Td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-3">
+                        <div className="mb-2">
+                          <p className="text-xs uppercase tracking-[0.16em] text-[#8A9E8F]">Operação de Acesso e Estado</p>
+                          <h4 className="text-sm font-semibold text-[#111811]">Gestão de acessos e estado académico</h4>
+                        </div>
+
+                        <div className="mb-3 grid gap-2 rounded-xl border border-[#E4EBE6] bg-white p-3 md:grid-cols-[1fr_220px_auto]">
+                          <input
+                            value={formandoSearch}
+                            onChange={(event) => setFormandoSearch(event.target.value)}
+                            placeholder="Pesquisar por nome ou email..."
+                            className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
+                          />
+                          <select
+                            value={formandoAcademicFilter}
+                            onChange={(event) =>
+                              setFormandoAcademicFilter(
+                                event.target.value as "todos" | "cursando" | "desistente" | "apto" | "nao_apto"
+                              )
+                            }
+                            className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
+                          >
+                            <option value="todos">Todos os estados</option>
+                            <option value="cursando">Cursando</option>
+                            <option value="desistente">Desistente</option>
+                            <option value="apto">Apto</option>
+                            <option value="nao_apto">Não apto</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setInfo("Adicionar Formando será ligado ao fluxo de inscrição da secretaria nesta turma.")}
+                            className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+                          >
+                            Adicionar Formando
+                          </button>
+                        </div>
+
+                        <div className="space-y-2 md:hidden">
+                          {visibleFormandos.map((formando) => {
+                            const busy = Boolean(formandoBusy[formando.user_id]);
+                            return (
+                              <article key={formando.user_id} className="rounded-xl border border-[#E4EBE6] bg-white p-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+                                    <p className="text-xs text-[#4A6352] underline underline-offset-2 decoration-dotted">{formando.email ?? "sem email"}</p>
+                                  </div>
+                                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${academicStatusPillClass(formando.academic_status)}`}>
+                                    {academicStatusLabel(formando.academic_status)}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={!formando.access_blocked}
+                                    disabled={busy}
+                                    onClick={() =>
+                                      runFormandoAction(formando.user_id, {
+                                        action: "set_access_block",
+                                        blocked: !formando.access_blocked,
+                                      })
+                                    }
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                                      formando.access_blocked ? "bg-slate-300" : "bg-emerald-500"
+                                    } disabled:opacity-60`}
+                                  >
+                                    <span
+                                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                                        formando.access_blocked ? "translate-x-1" : "translate-x-5"
+                                      }`}
+                                    />
+                                  </button>
+                                  <span className="text-xs text-[#4A6352]">
+                                    {formando.access_blocked ? "Acesso bloqueado" : "Acesso ativo"}
+                                  </span>
+
+                                  <details className="relative">
+                                    <summary className="list-none cursor-pointer rounded-md border border-[#E4EBE6] bg-white p-1.5 text-xs text-[#4A6352]">
+                                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                                        <circle cx="5" cy="12" r="1.8" />
+                                        <circle cx="12" cy="12" r="1.8" />
+                                        <circle cx="19" cy="12" r="1.8" />
+                                      </svg>
+                                    </summary>
+                                    <div className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setInfo(
+                                            `Perfil: ${formando.nome} · ${formando.email ?? "sem email"} · ${formando.telefone ?? "sem telefone"}`
+                                          )
+                                        }
+                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+                                      >
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" strokeWidth="1.8" />
+                                          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                                        </svg>
+                                        Visualizar Perfil
+                                      </button>
+                                      {formando.inscricao_id ? (
+                                        <a
+                                          href={`/api/formacao/inscricoes/${formando.inscricao_id}/comprovativo`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+                                        >
+                                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                            <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" stroke="currentColor" strokeWidth="1.8" />
+                                          </svg>
+                                          Descarregar Comprovativo
+                                        </a>
+                                      ) : null}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setStatusEditorTarget({
+                                            user_id: formando.user_id,
+                                            nome: formando.nome,
+                                            status: normalizeAcademicStatus(formando.academic_status),
+                                          })
+                                        }
+                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+                                      >
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                          <path d="m4 20 4.5-1 9-9-3.5-3.5-9 9L4 20Z" stroke="currentColor" strokeWidth="1.8" />
+                                          <path d="m12.8 7.2 3.5 3.5" stroke="currentColor" strokeWidth="1.8" />
+                                        </svg>
+                                        Editar Estado Académico
+                                      </button>
+                                      <div className="my-1 h-px bg-[#E4EBE6]" />
+                                      <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => runFormandoAction(formando.user_id, { action: "resend_access" })}
+                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7] disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                          <path d="M3 6h18v12H3V6Z" stroke="currentColor" strokeWidth="1.8" />
+                                          <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="1.8" />
+                                        </svg>
+                                        Reenviar acesso
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() =>
+                                          runFormandoAction(formando.user_id, {
+                                            action: "set_academic_status",
+                                            status: "desistente",
+                                          })
+                                        }
+                                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                          <path d="M4 7h16M9.5 7V5h5v2M8 7l.7 12h6.6L16 7" stroke="currentColor" strokeWidth="1.8" />
+                                        </svg>
+                                        Remover da Turma
+                                      </button>
+                                    </div>
+                                  </details>
+                                </div>
+                              </article>
+                            );
+                          })}
+                          {visibleFormandos.length === 0 ? (
+                            <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+                              Nenhum formando encontrado para os filtros atuais.
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white md:block">
+                          <table className="min-w-[980px] w-full border-collapse text-sm">
+                            <thead className="bg-[#FAFCFA] text-[#4A6352]">
+                              <tr>
+                                <Th>Formando</Th>
+                                <Th>Acesso ao Portal</Th>
+                                <Th>Status Académico</Th>
+                                <Th>Ações</Th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleFormandos.map((formando) => {
+                                const busy = Boolean(formandoBusy[formando.user_id]);
+                                return (
+                                  <tr key={formando.user_id}>
+                                    <Td>
+                                      <div className="grid gap-0.5">
+                                        <span className="font-semibold">{formando.nome}</span>
+                                        <span className="text-xs text-[#8A9E8F] underline underline-offset-2 decoration-dotted">{formando.email ?? "sem email"}</span>
+                                      </div>
+                                    </Td>
+                                    <Td>
+                                      <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={!formando.access_blocked}
+                                        disabled={busy}
+                                        onClick={() =>
+                                          runFormandoAction(formando.user_id, {
+                                            action: "set_access_block",
+                                            blocked: !formando.access_blocked,
+                                          })
+                                        }
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                                          formando.access_blocked ? "bg-slate-300" : "bg-emerald-500"
+                                        } disabled:opacity-60`}
+                                      >
+                                        <span
+                                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                                            formando.access_blocked ? "translate-x-1" : "translate-x-5"
+                                          }`}
+                                        />
+                                      </button>
+                                    </Td>
+                                    <Td>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${academicStatusPillClass(formando.academic_status)}`}>
+                                          {academicStatusLabel(formando.academic_status)}
+                                        </span>
+                                      </div>
+                                    </Td>
+                                    <Td>
+                                      <div className="flex items-center gap-2">
+                                        <details className="relative">
+                                          <summary className="list-none cursor-pointer rounded-md border border-[#E4EBE6] bg-white p-1.5 text-xs text-[#4A6352]">
+                                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                                              <circle cx="5" cy="12" r="1.8" />
+                                              <circle cx="12" cy="12" r="1.8" />
+                                              <circle cx="19" cy="12" r="1.8" />
+                                            </svg>
+                                          </summary>
+                                          <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setInfo(
+                                                  `Perfil: ${formando.nome} · ${formando.email ?? "sem email"} · ${formando.telefone ?? "sem telefone"}`
+                                                )
+                                              }
+                                              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+                                            >
+                                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" strokeWidth="1.8" />
+                                                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                                              </svg>
+                                              Visualizar Perfil
+                                            </button>
+                                            {formando.inscricao_id ? (
+                                              <a
+                                                href={`/api/formacao/inscricoes/${formando.inscricao_id}/comprovativo`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+                                              >
+                                                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                                  <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" stroke="currentColor" strokeWidth="1.8" />
+                                                </svg>
+                                                Descarregar Comprovativo
+                                              </a>
+                                            ) : null}
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setStatusEditorTarget({
+                                                  user_id: formando.user_id,
+                                                  nome: formando.nome,
+                                                  status: normalizeAcademicStatus(formando.academic_status),
+                                                })
+                                              }
+                                              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+                                            >
+                                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                                <path d="m4 20 4.5-1 9-9-3.5-3.5-9 9L4 20Z" stroke="currentColor" strokeWidth="1.8" />
+                                                <path d="m12.8 7.2 3.5 3.5" stroke="currentColor" strokeWidth="1.8" />
+                                              </svg>
+                                              Editar Estado Académico
+                                            </button>
+                                            <div className="my-1 h-px bg-[#E4EBE6]" />
+                                            <button
+                                              type="button"
+                                              disabled={busy}
+                                              onClick={() => runFormandoAction(formando.user_id, { action: "resend_access" })}
+                                              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7] disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                                <path d="M3 6h18v12H3V6Z" stroke="currentColor" strokeWidth="1.8" />
+                                                <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="1.8" />
+                                              </svg>
+                                              Reenviar acesso
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={busy}
+                                              onClick={() =>
+                                                runFormandoAction(formando.user_id, {
+                                                  action: "set_academic_status",
+                                                  status: "desistente",
+                                                })
+                                              }
+                                              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                                                <path d="M4 7h16M9.5 7V5h5v2M8 7l.7 12h6.6L16 7" stroke="currentColor" strokeWidth="1.8" />
+                                              </svg>
+                                              Remover da Turma
+                                            </button>
+                                          </div>
+                                        </details>
+                                      </div>
+                                    </Td>
+                                  </tr>
+                                );
+                              })}
+                              {visibleFormandos.length === 0 ? (
+                                <tr>
+                                  <Td colSpan={4}>Nenhum formando encontrado para os filtros atuais.</Td>
+                                </tr>
+                              ) : null}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid gap-3">
+                      <article className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A9E8F]">Cliente corporativo</p>
+                        <h3 className="mt-1 text-2xl font-semibold text-[#111811]">{MVP_B2B_DATA.empresa}</h3>
+                        <p className="mt-1 text-sm text-[#4A6352]">Valor total da faturação: {MVP_B2B_DATA.valorGlobal}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(MVP_B2B_DATA.estado)}`}>
+                            {MVP_B2B_DATA.estado}
+                          </span>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-md border border-klasse-gold bg-klasse-gold px-2.5 py-1.5 text-xs font-semibold text-white hover:brightness-95"
+                          >
+                            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                              <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" stroke="currentColor" strokeWidth="1.8" />
+                            </svg>
+                            Descarregar Fatura Proforma
+                          </button>
+                        </div>
+                      </article>
+
+                      <article className="rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A9E8F]">Funcionários cobertos no contrato</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-[#111811]">
+                          {MVP_B2B_DATA.colaboradores.map((nome) => (
+                            <li key={nome}>{nome}</li>
+                          ))}
+                        </ul>
+                      </article>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {activeTab === "sessoes" ? (
+                <>
+                  <div className="mt-3 space-y-2 md:hidden">
+                    {detail.tabs.sessoes.map((row) => (
+                      <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+                        <p className="text-sm font-semibold text-[#111811]">{row.competencia}</p>
+                        <p className="mt-0.5 text-xs text-[#4A6352]">Formador: {row.formador_nome}</p>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs text-[#4A6352]">Horas: {row.horas_ministradas}</span>
+                          <span className="text-xs font-semibold text-[#111811]">{formatMoney(row.valor_hora)}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-[#8A9E8F]">Status: {row.status}</p>
+                      </article>
+                    ))}
+                    {detail.tabs.sessoes.length === 0 ? (
+                      <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+                        Sem sessões lançadas para esta turma.
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+                    <table className="min-w-[760px] w-full border-collapse text-sm">
+                      <thead className="bg-[#F7F9F7] text-[#4A6352]">
+                        <tr>
+                          <Th>Competência</Th>
+                          <Th>Formador</Th>
+                          <Th>Horas</Th>
+                          <Th>Valor hora</Th>
+                          <Th>Status</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.tabs.sessoes.map((row) => (
+                          <tr key={row.id}>
+                            <Td>{row.competencia}</Td>
+                            <Td>{row.formador_nome}</Td>
+                            <Td>{row.horas_ministradas}</Td>
+                            <Td>{formatMoney(row.valor_hora)}</Td>
+                            <Td>{row.status}</Td>
+                          </tr>
+                        ))}
+                        {detail.tabs.sessoes.length === 0 ? (
+                          <tr>
+                            <Td colSpan={5}>Sem sessões lançadas para esta turma.</Td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : null}
+
+              {activeTab === "materiais" ? (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {detail.tabs.materiais.map((row) => (
+                    <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-3">
+                      <p className="text-sm font-semibold text-[#111811]">{row.titulo}</p>
+                      <p className="mt-1 text-xs text-[#4A6352]">Tipo: {row.tipo}</p>
+                      <p className="text-xs text-[#8A9E8F]">Atualizado em: {row.updated_at}</p>
+                    </article>
+                  ))}
+                  {detail.tabs.materiais.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-3 py-6 text-sm text-[#4A6352]">
+                      Sem materiais cadastrados para esta turma.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {activeTab === "certificados" ? (
+                <>
+                  <div className="mt-3 space-y-2 md:hidden">
+                    {detail.tabs.certificados.map((row) => (
+                      <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+                        <p className="text-sm font-semibold text-[#111811]">{row.numero_documento}</p>
+                        <p className="mt-0.5 text-xs text-[#4A6352]">Formando: {row.formando_nome}</p>
+                        <p className="mt-0.5 text-xs text-[#4A6352]">Emitido em: {row.emitido_em}</p>
+                        <p className="mt-0.5 text-xs text-[#8A9E8F]">Template: {row.template_id ?? "-"}</p>
+                      </article>
+                    ))}
+                    {detail.tabs.certificados.length === 0 ? (
+                      <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+                        Sem certificados emitidos para esta turma.
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+                    <table className="min-w-[720px] w-full border-collapse text-sm">
+                      <thead className="bg-[#F7F9F7] text-[#4A6352]">
+                        <tr>
+                          <Th>Número</Th>
+                          <Th>Formando</Th>
+                          <Th>Emitido em</Th>
+                          <Th>Template</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.tabs.certificados.map((row) => (
+                          <tr key={row.id}>
+                            <Td>{row.numero_documento}</Td>
+                            <Td>{row.formando_nome}</Td>
+                            <Td>{row.emitido_em}</Td>
+                            <Td>{row.template_id ?? "-"}</Td>
+                          </tr>
+                        ))}
+                        {detail.tabs.certificados.length === 0 ? (
+                          <tr>
+                            <Td colSpan={4}>Sem certificados emitidos para esta turma.</Td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : null}
+            </>
+          )}
+        </section>
+      </div>
+
+      {showCreateModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <form onSubmit={createCohort} className="w-full max-w-3xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">nova turma</p>
+                <h3 className="text-xl font-semibold text-[#111811]">Criar turma operacional</h3>
+              </div>
+              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]">
+                fechar
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              <Input label="Código" value={form.codigo} onChange={(value) => setForm((prev) => ({ ...prev, codigo: value }))} placeholder="COH-2026-01" required />
+              <Input label="Nome" value={form.nome} onChange={(value) => setForm((prev) => ({ ...prev, nome: value }))} placeholder="Turma Manhã" required />
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Curso (Catálogo)</span>
+                <select
+                  value={form.curso_id}
+                  onChange={(e) => onSelectCurso(e.target.value)}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                  required
+                >
+                  <option value="">Selecionar curso</option>
+                  {catalogoCursos.map((curso) => (
+                    <option key={curso.id} value={curso.id}>
+                      {curso.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Input label="Curso (nome)" value={form.curso_nome} onChange={(value) => setForm((prev) => ({ ...prev, curso_nome: value }))} placeholder="Informática" required />
+              <Input label="Carga horária" type="number" min={1} value={form.carga_horaria_total} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria_total: value }))} placeholder="120" required />
+              <Input label="Vagas" type="number" min={1} value={form.vagas} onChange={(value) => setForm((prev) => ({ ...prev, vagas: value }))} placeholder="30" required />
+              <Input label="Valor (referência)" type="number" min={0} value={form.valor_referencia} onChange={(value) => setForm((prev) => ({ ...prev, valor_referencia: value }))} placeholder="50000" />
+              <Input label="Data início" type="date" value={form.data_inicio} onChange={(value) => setForm((prev) => ({ ...prev, data_inicio: value }))} required />
+              <Input label="Data fim" type="date" value={form.data_fim} onChange={(value) => setForm((prev) => ({ ...prev, data_fim: value }))} required />
+
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Status</span>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as Exclude<StatusFilter, "todos"> }))}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                >
+                  <option value="rascunho">rascunho</option>
+                  <option value="aberta">aberta</option>
+                  <option value="em curso">em curso</option>
+                  <option value="concluída">concluída</option>
+                  <option value="cancelada">cancelada</option>
+                </select>
+              </label>
+
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Formador atribuído</span>
+                <select
+                  id="cohort-formador-user-id"
+                  value={form.formador_user_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, formador_user_id: e.target.value }))}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                >
+                  <option value="">Selecionar depois</option>
+                  {formadores.map((item) => (
+                    <option key={item.user_id} value={item.user_id}>
+                      {item.nome}
+                    </option>
+                  ))}
+                </select>
+                <Link href="/mentor/alunos" className="text-xs font-semibold text-klasse-gold hover:brightness-95">
+                  Cadastrar novo formador →
+                </Link>
+              </label>
+
+              <Input
+                label="% honorário do formador"
+                type="number"
+                min={1}
+                max={100}
+                value={form.percentual_honorario}
+                onChange={(value) => setForm((prev) => ({ ...prev, percentual_honorario: value }))}
+                placeholder="100"
+                disabled={!form.formador_user_id}
+              />
+            </div>
+
+            <p className="mt-3 text-xs text-[#8A9E8F]">
+              Ao selecionar um curso, o sistema puxa automaticamente carga horária e valor de referência do catálogo.
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]">
+                Cancelar
+              </button>
+              <button type="submit" className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
+                Criar turma
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {showPagamentoModal && pagamentoTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <form onSubmit={registrarPagamentoRapido} className="w-full max-w-md rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">registo rápido</p>
+                <h3 className="text-lg font-semibold text-[#111811]">Registar pagamento</h3>
+                <p className="text-xs text-[#4A6352]">
+                  {pagamentoTarget.formandoNome} · {pagamentoTarget.parcela}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPagamentoModal(false)}
+                className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+              >
+                fechar
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              <Input
+                label="Valor pago"
+                type="number"
+                min={0}
+                value={pagamentoForm.valor}
+                onChange={(value) => setPagamentoForm((prev) => ({ ...prev, valor: value }))}
+                required
+              />
+
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Método</span>
+                <select
+                  value={pagamentoForm.metodo}
+                  onChange={(event) =>
+                    setPagamentoForm((prev) => ({ ...prev, metodo: event.target.value as MetodoPagamento }))
+                  }
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                >
+                  <option value="tpa">TPA</option>
+                  <option value="transferencia">Transferência</option>
+                  <option value="numerario">Numerário</option>
+                </select>
+              </label>
+
+              <Input
+                label="Comprovativo (URL / referência)"
+                value={pagamentoForm.comprovativo}
+                onChange={(value) => setPagamentoForm((prev) => ({ ...prev, comprovativo: value }))}
+                placeholder="Opcional nesta versão"
+              />
+            </div>
+
+            <p className="mt-3 text-xs text-[#8A9E8F]">
+              Nesta versão o registo rápido muda o estado da parcela para pago e mantém os detalhes operacionais no fluxo financeiro.
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPagamentoModal(false)}
+                className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+              >
+                Aprovar pagamento
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {statusEditorTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">estado académico</p>
+                <h3 className="text-lg font-semibold text-[#111811]">Editar estado</h3>
+                <p className="text-xs text-[#4A6352]">{statusEditorTarget.nome}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStatusEditorTarget(null)}
+                className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+              >
+                fechar
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-2">
+              <select
+                value={statusEditorTarget.status}
+                onChange={(event) =>
+                  setStatusEditorTarget((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          status: event.target.value as "cursando" | "desistente" | "apto" | "nao_apto",
+                        }
+                      : null
+                  )
+                }
+                className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
+              >
+                <option value="cursando">Cursando</option>
+                <option value="desistente">Desistente</option>
+                <option value="apto">Apto</option>
+                <option value="nao_apto">Não apto</option>
+              </select>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusEditorTarget(null)}
+                className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const target = statusEditorTarget;
+                  if (!target) return;
+                  await runFormandoAction(target.user_id, {
+                    action: "set_academic_status",
+                    status: target.status,
+                  });
+                  setStatusEditorTarget(null);
+                }}
+                className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  type = "text",
+  min,
+  max,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  type?: string;
+  min?: number;
+  max?: number;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="grid gap-1 text-sm text-[#4A6352]">
+      <span>{label}</span>
+      <input
+        type={type}
+        min={min}
+        max={max}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold disabled:cursor-not-allowed disabled:bg-[#F7F9F7]"
+      />
+    </label>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return <th className="border-b border-[#E4EBE6] px-2.5 py-2 text-left font-medium">{children}</th>;
+}
+
+function Td({ children, colSpan }: { children: React.ReactNode; colSpan?: number }) {
+  return <td colSpan={colSpan} className="border-b border-[#E4EBE6] px-2.5 py-2 text-[#111811]">{children}</td>;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("pt-AO", {
+    style: "currency",
+    currency: "AOA",
+    maximumFractionDigits: 0,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-AO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}

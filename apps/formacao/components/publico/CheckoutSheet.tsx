@@ -11,17 +11,20 @@ import { Input } from "@/components/ui/input";
 import { Form } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { trackFunnelClient } from "@/lib/funnel-client";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   curso: {
     id: string;
+    cohortRef: string;
     title: string;
     price: number;
   };
   tenant: {
     id: string;
+    slug: string;
     nome: string;
     iban?: string | null;
   };
@@ -117,11 +120,17 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
 
     setSubmitting(true);
     setUploadError(null);
+    trackFunnelClient({
+      event: "mentor_cta_click",
+      stage: "checkout",
+      source: "checkout_submit_clicked",
+      details: { cohort_ref: curso.cohortRef, tenant_slug: tenant.slug },
+    });
 
     try {
       const result = await submeterCheckoutAction({
-        escola_id: tenant.id,
-        cohort_id: curso.id,
+        centro_slug: tenant.slug,
+        cohort_ref: curso.cohortRef,
         nome_completo: validation.data.nome_completo,
         identificacao: validation.data.identificacao,
         telefone: validation.data.telefone,
@@ -129,10 +138,22 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
       });
 
       if (!result.ok) {
+        trackFunnelClient({
+          event: "mentor_checkout_submit_failed",
+          stage: "checkout",
+          source: "checkout_submit_action",
+          details: { cohort_ref: curso.cohortRef, tenant_slug: tenant.slug, reason: result.error },
+        });
         setUploadError(result.error);
         return;
       }
 
+      trackFunnelClient({
+        event: "mentor_checkout_submit_success",
+        stage: "checkout",
+        source: "checkout_submit_action",
+        details: { cohort_ref: curso.cohortRef, tenant_slug: tenant.slug },
+      });
       form.reset();
       setUploadName(null);
       onOpenChange(false);

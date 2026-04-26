@@ -81,6 +81,7 @@ export default async function CorporateLandingPage({ params }: Props) {
             escolaId={validation.escolaId}
             cohortId={validation.cohortId}
             faturaId={validation.contratoId}
+            b2bToken={token}
             empresa={validation.empresa}
           />
         </div>

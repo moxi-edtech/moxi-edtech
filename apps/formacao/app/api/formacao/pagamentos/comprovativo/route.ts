@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const auth = await requireFormacaoRoles(["formando"]);

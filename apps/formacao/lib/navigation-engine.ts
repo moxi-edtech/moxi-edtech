@@ -51,7 +51,7 @@ export function isCriticalTenantMappingMismatch(
   return String(tenantFromDb ?? "").trim().toLowerCase() === "formacao" && mappedType === "SOLO_CREATOR";
 }
 
-export const NAVIGATION_CONFIG: NavItem[] = [
+export const CENTER_NAV_CONFIG: NavItem[] = [
   {
     id: "dashboard-admin",
     href: "/admin/dashboard",
@@ -61,12 +61,36 @@ export const NAVIGATION_CONFIG: NavItem[] = [
     group: "Gestão",
   },
   {
-    id: "dashboard-mentor",
-    href: "/mentor/dashboard",
-    icon: "LayoutDashboard",
-    label: { default: "Dashboard" },
-    allowedRoles: ["MENTOR"],
+    id: "catalogo-cursos",
+    href: "/admin/cursos",
+    icon: "GraduationCap",
+    label: { default: "Catálogo de Cursos" },
+    allowedRoles: ["ADMIN", "SECRETARIA"],
+    group: "Académico",
+  },
+  {
+    id: "equipa",
+    href: "/admin/equipa",
+    icon: "Users",
+    label: { default: "Equipa" },
+    allowedRoles: ["ADMIN"],
     group: "Gestão",
+  },
+  {
+    id: "inbox",
+    href: "/secretaria/inbox",
+    icon: "Inbox",
+    label: { default: "Inbox Operacional" },
+    allowedRoles: ["SECRETARIA", "ADMIN"],
+    group: "Académico",
+  },
+  {
+    id: "cohorts",
+    href: "/admin/cohorts",
+    icon: "Users",
+    label: { default: "Turmas & Cohorts" },
+    allowedRoles: ["ADMIN"],
+    group: "Académico",
   },
   {
     id: "agenda",
@@ -93,59 +117,10 @@ export const NAVIGATION_CONFIG: NavItem[] = [
     group: "Gestão",
   },
   {
-    id: "nova-mentoria",
-    href: "/admin/mentorias/nova",
-    icon: "Rocket",
-    label: { default: "Lançar Mentoria" },
-    allowedTenantTypes: ["SOLO_CREATOR"],
-    allowedRoles: ["ADMIN", "MENTOR"],
-    group: "Gestão",
-  },
-  {
-    id: "catalogo-cursos",
-    href: "/admin/cursos",
-    icon: "GraduationCap",
-    label: { default: "Catálogo de Cursos" },
-    allowedTenantTypes: ["CENTER", "K12"],
-    allowedRoles: ["ADMIN", "SECRETARIA"],
-    group: "Académico",
-  },
-  {
-    id: "equipa",
-    href: "/admin/equipa",
-    icon: "Users",
-    label: { default: "Equipa" },
-    allowedTenantTypes: ["CENTER", "K12"],
-    allowedRoles: ["ADMIN"],
-    group: "Gestão",
-  },
-  {
-    id: "inbox",
-    href: "/secretaria/inbox",
-    icon: "Inbox",
-    label: { default: "Inbox Operacional" },
-    allowedRoles: ["SECRETARIA", "ADMIN"],
-    group: "Académico",
-  },
-  {
-    id: "cohorts",
-    href: "/admin/cohorts",
-    icon: "Users",
-    label: { 
-      default: "Turmas & Cohorts", 
-      SOLO_CREATOR: "Mentorias & Eventos" 
-    },
-    allowedRoles: ["ADMIN", "MENTOR"],
-    group: "Académico",
-  },
-  {
     id: "alunos",
     href: "/meus-cursos",
     icon: "GraduationCap",
-    label: { 
-      default: "Meus Cursos", 
-      SOLO_CREATOR: "Minhas Mentorias" 
-    },
+    label: { default: "Meus Cursos" },
     allowedRoles: ["ALUNO"],
     group: "Académico",
   },
@@ -162,7 +137,6 @@ export const NAVIGATION_CONFIG: NavItem[] = [
     href: "/financeiro/dashboard",
     icon: "BadgeDollarSign",
     label: { default: "Financeiro & B2B" },
-    allowedTenantTypes: ["CENTER", "K12"],
     allowedRoles: ["ADMIN"],
     group: "Financeiro",
   },
@@ -171,11 +145,60 @@ export const NAVIGATION_CONFIG: NavItem[] = [
     href: "/admin/onboarding",
     icon: "Building2",
     label: { default: "Salas & Infraestrutura" },
-    allowedTenantTypes: ["CENTER", "K12"],
     allowedRoles: ["ADMIN"],
     group: "Gestão",
   }
 ];
+
+export const SOLO_NAV_CONFIG: NavItem[] = [
+  {
+    id: "dashboard-mentor",
+    href: "/mentor/dashboard",
+    icon: "LayoutDashboard",
+    label: { default: "Visão Geral" },
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Gestão",
+  },
+  {
+    id: "mentorias",
+    href: "/mentor/mentorias",
+    icon: "Users",
+    label: { default: "Mentorias & Eventos" },
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Académico",
+  },
+  {
+    id: "nova-mentoria",
+    href: "/mentor/mentorias/nova",
+    icon: "Rocket",
+    label: { default: "Lançar Mentoria" },
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Académico",
+  },
+  {
+    id: "alunos",
+    href: "/mentor/alunos",
+    icon: "GraduationCap",
+    label: { default: "Meus Alunos" },
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Académico",
+  },
+  {
+    id: "vendas",
+    href: "/mentor/vendas",
+    icon: "BadgeDollarSign",
+    label: { default: "Vendas" },
+    allowedRoles: ["ADMIN", "MENTOR"],
+    group: "Financeiro",
+  },
+];
+
+export function getNavigationConfigForTenant(tenantType: TenantType): NavItem[] {
+  if (tenantType === "SOLO_CREATOR") {
+    return SOLO_NAV_CONFIG;
+  }
+  return CENTER_NAV_CONFIG;
+}
 
 /**
  * Filtra e resolve os labels da navegação com base no contexto.
@@ -193,15 +216,6 @@ export function getAuthorizedNavigation(
       }
       // 2. Filtro por Role
       if (item.allowedRoles && !item.allowedRoles.includes(userRole)) {
-        // No contexto de Centro, ADMIN e MENTOR compartilham menus de Gestão.
-        if (
-          tenantType === "CENTER" &&
-          item.group === "Gestão" &&
-          (userRole === "ADMIN" || userRole === "MENTOR") &&
-          (item.allowedRoles.includes("ADMIN") || item.allowedRoles.includes("MENTOR"))
-        ) {
-          return true;
-        }
         return false;
       }
       return true;

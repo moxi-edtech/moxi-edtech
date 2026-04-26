@@ -3,7 +3,7 @@ import { getDefaultFormacaoPath, getFormacaoAuthContext } from "@/lib/auth-conte
 
 export default async function ForbiddenPage() {
   const auth = await getFormacaoAuthContext();
-  const defaultPath = getDefaultFormacaoPath(auth?.role);
+  const defaultPath = getDefaultFormacaoPath(auth?.role, auth?.tenantType);
 
   return (
     <main className="grid min-h-screen place-items-center p-6">

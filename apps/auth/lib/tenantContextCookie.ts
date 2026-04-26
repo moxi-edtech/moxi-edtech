@@ -8,7 +8,7 @@ export type TenantContextCookie = {
   uid: string;
   tenant_id: string;
   tenant_slug: string | null;
-  tenant_type: "k12" | "formacao";
+  tenant_type: "k12" | "formacao" | "solo_creator";
   role: string;
   iat: number;
   exp: number;
@@ -93,7 +93,7 @@ export async function setTenantContextCookie(input: {
   uid: string;
   tenant_id: string;
   tenant_slug?: string | null;
-  tenant_type: "k12" | "formacao";
+  tenant_type: "k12" | "formacao" | "solo_creator";
   role: string;
   ttlSeconds?: number;
 }) {

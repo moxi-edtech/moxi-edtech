@@ -19,10 +19,11 @@ type Props = {
   escolaId: string;
   cohortId: string;
   faturaId: string;
+  b2bToken: string;
   empresa: string;
 };
 
-export function CorporateEnrollmentForm({ escolaId, cohortId, faturaId, empresa }: Props) {
+export function CorporateEnrollmentForm({ escolaId, cohortId, faturaId, b2bToken, empresa }: Props) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -56,7 +57,8 @@ export function CorporateEnrollmentForm({ escolaId, cohortId, faturaId, empresa 
           ...validation.data,
           escola_id: escolaId,
           cohort_id: cohortId,
-          fatura_id: faturaId
+          fatura_id: faturaId,
+          b2b_token: b2bToken,
         }),
       });
 

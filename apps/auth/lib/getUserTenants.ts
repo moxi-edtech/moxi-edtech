@@ -2,7 +2,7 @@ import "server-only";
 
 import { supabaseServer } from "@/lib/supabaseServer";
 
-export type TenantType = "k12" | "formacao";
+export type TenantType = "k12" | "formacao" | "solo_creator";
 
 export type UserTenant = {
   tenantId: string;
@@ -15,7 +15,7 @@ function normalizeTenantType(value: unknown): TenantType | null {
   const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
-  if (normalized === "k12" || normalized === "formacao") return normalized;
+  if (normalized === "k12" || normalized === "formacao" || normalized === "solo_creator") return normalized;
   return null;
 }
 

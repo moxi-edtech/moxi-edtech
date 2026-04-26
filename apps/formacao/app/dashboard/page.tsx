@@ -9,7 +9,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const defaultPath = getDefaultFormacaoPath(auth.role);
+  const defaultPath = getDefaultFormacaoPath(auth.role, auth.tenantType);
   if (defaultPath !== "/dashboard") {
     redirect(defaultPath);
   }

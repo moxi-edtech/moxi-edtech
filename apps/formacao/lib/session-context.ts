@@ -41,18 +41,20 @@ function normalizeTenantType(value: unknown): TenantType | null {
 function chooseMembership(
   memberships: MembershipRow[],
   currentEscolaId: string | null,
-  preferredProduct: TenantType = "formacao"
+  preferredProduct: TenantType | null = null
 ): MembershipRow | null {
   if (memberships.length === 0) return null;
-
-  const preferred = memberships.find(
-    (row) => normalizeTenantType(row.tenant_type ?? normalizeEscolaRelation(row.escola)?.tenant_type) === preferredProduct
-  );
-  if (preferred) return preferred;
 
   if (currentEscolaId) {
     const current = memberships.find((row) => row.escola_id === currentEscolaId);
     if (current) return current;
+  }
+
+  if (preferredProduct) {
+    const preferred = memberships.find(
+      (row) => normalizeTenantType(row.tenant_type ?? normalizeEscolaRelation(row.escola)?.tenant_type) === preferredProduct
+    );
+    if (preferred) return preferred;
   }
 
   return memberships[0] ?? null;
@@ -80,7 +82,7 @@ export async function resolveFormacaoSessionContext(): Promise<FormacaoSessionCo
 
   const profile = ((profilesRaw ?? [])[0] ?? null) as Pick<ProfileRow, "role" | "current_escola_id"> | null;
 
-  const selectedMembership = chooseMembership(memberships, profile?.current_escola_id ?? null, "formacao");
+  const selectedMembership = chooseMembership(memberships, profile?.current_escola_id ?? null, null);
   const fallbackEscolaId = selectedMembership?.escola_id ?? profile?.current_escola_id ?? null;
 
   const fallbackEscola =

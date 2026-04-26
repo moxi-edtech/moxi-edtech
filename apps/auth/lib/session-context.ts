@@ -2,7 +2,7 @@ import "server-only";
 
 import { supabaseServer } from "@/lib/supabaseServer";
 
-type TenantType = "k12" | "formacao";
+type TenantType = "k12" | "formacao" | "solo_creator";
 type ProductContext = TenantType;
 
 export type SessionContext = {
@@ -23,7 +23,7 @@ function normalizeTenantType(value: unknown): TenantType | null {
   const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
-  if (normalized === "k12" || normalized === "formacao") return normalized;
+  if (normalized === "k12" || normalized === "formacao" || normalized === "solo_creator") return normalized;
   return null;
 }
 
@@ -104,4 +104,3 @@ export async function resolveSessionContext(params?: {
 
   return list.contexts[0] ?? null;
 }
-

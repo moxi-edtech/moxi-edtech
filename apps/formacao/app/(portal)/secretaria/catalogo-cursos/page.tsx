@@ -60,12 +60,8 @@ export default async function SecretariaCatalogoCursosPage() {
 
   // Fallback final seguro: RPC SECURITY DEFINER mínima para ler apenas o slug autorizado.
   if (!centroSlug) {
-    const callGetPublicSlug = s.rpc as unknown as (
-      fn: string,
-      args: { p_escola_id: string | null }
-    ) => Promise<{ data: string | null }>;
-    const { data: slugByRpc } = await callGetPublicSlug("get_public_slug_for_current_tenant", {
-      p_escola_id: auth.tenantId,
+    const { data: slugByRpc } = await s.rpc("get_public_slug_for_current_tenant", {
+      p_escola_id: auth.tenantId ?? undefined,
     });
     centroSlug = String(slugByRpc ?? "").trim();
   }
