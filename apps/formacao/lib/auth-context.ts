@@ -44,7 +44,13 @@ export async function getFormacaoAuthContext(): Promise<FormacaoAuthContext | nu
   };
 }
 
-export function getDefaultFormacaoPath(role: string | null | undefined): string {
+export function getDefaultFormacaoPath(
+  role: string | null | undefined,
+  tenantType?: "k12" | "formacao" | "solo_creator" | null
+): string {
+  if (tenantType === "solo_creator") {
+    return "/mentor/dashboard";
+  }
   switch (role) {
     case "formacao_admin":
     case "super_admin":
@@ -72,6 +78,10 @@ export function canAccessFormacaoPath(role: string | null | undefined, pathname:
 
   if (pathname.startsWith("/admin")) {
     return isAdminRole;
+  }
+
+  if (pathname.startsWith("/mentor")) {
+    return isAdminRole || normalized === "mentor" || normalized === "formador";
   }
 
   if (pathname.startsWith("/secretaria")) {

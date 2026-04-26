@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function FormacaoHomePage() {
   const auth = await getFormacaoAuthContext();
   if (auth?.userId) {
-    redirect(getDefaultFormacaoPath(auth.role));
+    redirect(getDefaultFormacaoPath(auth.role, auth.tenantType));
   }
 
   return (

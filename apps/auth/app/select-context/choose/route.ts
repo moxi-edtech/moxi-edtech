@@ -110,6 +110,22 @@ export async function POST(req: Request) {
     role: tenant.role,
   });
 
+  const { error: profileUpdateError } = await supabase
+    .from("profiles")
+    .update({ current_escola_id: tenant.tenantId })
+    .eq("user_id", user.id);
+  if (profileUpdateError) {
+    console.warn(
+      JSON.stringify({
+        event: "select_context_profile_update_failed",
+        user_id: user.id,
+        tenant_id: tenant.tenantId,
+        error: profileUpdateError.message,
+        timestamp: new Date().toISOString(),
+      })
+    );
+  }
+
   logAuthEvent({
     action: "redirect",
     route: "/select-context/choose",

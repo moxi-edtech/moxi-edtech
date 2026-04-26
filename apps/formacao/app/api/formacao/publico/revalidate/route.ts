@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const secret = String(process.env.FORMACAO_PUBLIC_REVALIDATE_SECRET ?? "").trim();
   const provided = request.headers.get("x-revalidate-secret") ?? "";
@@ -17,4 +19,3 @@ export async function POST(request: Request) {
   revalidatePath(`/${slug}`);
   return NextResponse.json({ ok: true, revalidated: `/${slug}` });
 }
-

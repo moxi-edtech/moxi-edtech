@@ -5,6 +5,7 @@ import { mentoriaSchema, type MentoriaInput } from "@/lib/validations/mentoria";
 import { getFormacaoAuthContext } from "@/lib/auth-context";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import { logFunnelEvent } from "@/lib/funnel-log";
 
 export async function criarMentoriaAction(data: MentoriaInput) {
   const auth = await getFormacaoAuthContext();
@@ -65,6 +66,16 @@ export async function criarMentoriaAction(data: MentoriaInput) {
     }
 
     revalidatePath("/admin/dashboard");
+    revalidatePath("/mentor/dashboard");
+    logFunnelEvent({
+      event: "mentor_mentoria_submit_success",
+      stage: "nova_mentoria",
+      tenant_id: escolaId,
+      tenant_slug: auth.tenantSlug,
+      user_id: auth.userId,
+      source: "criarMentoriaAction",
+      details: { turma_id: cohort.id, modalidade: data.modalidade, preco: data.preco },
+    });
     
     return { 
       success: true, 
@@ -72,6 +83,15 @@ export async function criarMentoriaAction(data: MentoriaInput) {
       tenant_slug: auth.tenantSlug
     };
   } catch (err: unknown) {
+    logFunnelEvent({
+      event: "mentor_mentoria_submit_failed",
+      stage: "nova_mentoria",
+      tenant_id: escolaId,
+      tenant_slug: auth.tenantSlug,
+      user_id: auth.userId,
+      source: "criarMentoriaAction",
+      details: { reason: err instanceof Error ? err.message : "unknown_error" },
+    });
     console.error("Erro ao criar mentoria:", err);
     return { error: err instanceof Error ? err.message : "Erro interno ao processar mentoria" };
   }

@@ -22,6 +22,7 @@ type Props = {
   tenantType: "formacao" | "solo_creator";
   centro: {
     id: string;
+    slug: string;
     nome: string;
     logo_url?: string | null;
   };
@@ -84,11 +85,13 @@ export function LandingContent({ tenantType, centro, fiscal, cohorts }: Props) {
             }}
             curso={{
               id: selectedCohort.id,
+              cohortRef: selectedCohort.codigo,
               title: selectedCohort.curso_nome,
               price: selectedCohort.valor_referencia,
             }}
             tenant={{
               id: centro.id,
+              slug: centro.slug,
               nome: centro.nome,
               iban: fiscal?.iban ?? null,
             }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { trackFunnelClient } from "@/lib/funnel-client";
 
 type Props = {
   centroSlug: string;
@@ -77,16 +78,34 @@ export default function InscricaoSelfServiceForm({
         if (code === "PASSWORD_REQUIRED" || code === "ACCOUNT_EXISTS_USE_PASSWORD") {
           setRequirePassword(true);
         }
+        trackFunnelClient({
+          event: "self_service_inscricao_submit_failed",
+          stage: "inscricao",
+          source: "inscricao_self_service_form",
+          details: { centro_slug: centroSlug, cohort_ref: cohortRef, code, reason: message },
+        });
         setState({ ok: false, message, code, emailHint: body?.email_hint ?? null });
         return;
       }
 
+      trackFunnelClient({
+        event: "self_service_inscricao_submit_success",
+        stage: "inscricao",
+        source: "inscricao_self_service_form",
+        details: { centro_slug: centroSlug, cohort_ref: cohortRef },
+      });
       setState({
         ok: true,
         message: `Inscrição confirmada em ${cursoNome} (${cohortNome}) do ${centroNome}.`,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro inesperado no envio.";
+      trackFunnelClient({
+        event: "self_service_inscricao_submit_failed",
+        stage: "inscricao",
+        source: "inscricao_self_service_form",
+        details: { centro_slug: centroSlug, cohort_ref: cohortRef, reason: message },
+      });
       setState({ ok: false, message });
     } finally {
       setPending(false);

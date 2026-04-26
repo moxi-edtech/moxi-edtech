@@ -10,6 +10,10 @@ BEGIN;
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS escola_propria_assinatura ON public.assinaturas;
 DROP POLICY IF EXISTS super_admin_all_assinaturas ON public.assinaturas;
+DROP POLICY IF EXISTS assinaturas_select_unified ON public.assinaturas;
+DROP POLICY IF EXISTS assinaturas_insert_super_admin ON public.assinaturas;
+DROP POLICY IF EXISTS assinaturas_update_super_admin ON public.assinaturas;
+DROP POLICY IF EXISTS assinaturas_delete_super_admin ON public.assinaturas;
 
 CREATE POLICY assinaturas_select_unified
 ON public.assinaturas
@@ -45,6 +49,10 @@ USING (check_super_admin_role());
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS escola_propria_pagamentos_saas ON public.pagamentos_saas;
 DROP POLICY IF EXISTS super_admin_all_pagamentos_saas ON public.pagamentos_saas;
+DROP POLICY IF EXISTS pagamentos_saas_select_unified ON public.pagamentos_saas;
+DROP POLICY IF EXISTS pagamentos_saas_insert_super_admin ON public.pagamentos_saas;
+DROP POLICY IF EXISTS pagamentos_saas_update_super_admin ON public.pagamentos_saas;
+DROP POLICY IF EXISTS pagamentos_saas_delete_super_admin ON public.pagamentos_saas;
 
 CREATE POLICY pagamentos_saas_select_unified
 ON public.pagamentos_saas
@@ -80,6 +88,9 @@ USING (check_super_admin_role());
 -- After : keep SELECT tenant, split ALL into explicit write-only policies
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS financeiro_templates_cobranca_write ON public.financeiro_templates_cobranca;
+DROP POLICY IF EXISTS financeiro_templates_cobranca_insert ON public.financeiro_templates_cobranca;
+DROP POLICY IF EXISTS financeiro_templates_cobranca_update ON public.financeiro_templates_cobranca;
+DROP POLICY IF EXISTS financeiro_templates_cobranca_delete ON public.financeiro_templates_cobranca;
 
 CREATE POLICY financeiro_templates_cobranca_insert
 ON public.financeiro_templates_cobranca
@@ -162,6 +173,7 @@ DROP POLICY IF EXISTS pagamentos_select_secretaria_own ON public.pagamentos;
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS fecho_approve_financeiro ON public.fecho_caixa;
 DROP POLICY IF EXISTS fecho_update_secretaria ON public.fecho_caixa;
+DROP POLICY IF EXISTS fecho_update_unified ON public.fecho_caixa;
 
 CREATE POLICY fecho_update_unified
 ON public.fecho_caixa

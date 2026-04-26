@@ -71,6 +71,22 @@ USING (
   AND (can_access_formacao_backoffice(escola_id) OR (formando_user_id = (select auth.uid())))
 );
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'formacao_inscricoes_staging'
+      AND policyname = 'Gestores gerem as suas próprias inscrições staging'
+  ) THEN
+    CREATE POLICY "Gestores gerem as suas próprias inscrições staging"
+      ON public.formacao_inscricoes_staging
+      USING (true);
+  END IF;
+END
+$$;
+
 ALTER POLICY "Gestores gerem as suas próprias inscrições staging" ON public.formacao_inscricoes_staging
 USING (
   escola_id IN (
@@ -123,6 +139,22 @@ USING (destinatario_id = (select auth.uid()));
 ALTER POLICY notificacoes_proprias_update ON public.notificacoes
 USING (destinatario_id = (select auth.uid()))
 WITH CHECK (destinatario_id = (select auth.uid()));
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'pagamentos'
+      AND policyname = 'pagamentos_select_secretaria_own'
+  ) THEN
+    CREATE POLICY pagamentos_select_secretaria_own
+      ON public.pagamentos
+      USING (true);
+  END IF;
+END
+$$;
 
 ALTER POLICY pagamentos_select_secretaria_own ON public.pagamentos
 USING (

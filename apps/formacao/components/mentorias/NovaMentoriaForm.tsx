@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { 
   Rocket, 
   MapPin, 
-  Users, 
   Calendar, 
   CheckCircle2, 
   Copy, 
@@ -14,11 +13,17 @@ import {
   ChevronRight,
   Monitor,
   Video,
-  Map
 } from "lucide-react";
 import { mentoriaSchema, type MentoriaInput } from "@/lib/validations/mentoria";
 import { criarMentoriaAction } from "@/app/actions/mentoria-actions";
 import { toast } from "@/lib/toast";
+import { trackFunnelClient } from "@/lib/funnel-client";
+
+function nextDayISODate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
 
 export default function NovaMentoriaForm() {
   const [successData, setSuccessData] = useState<{ link: string } | null>(null);
@@ -29,17 +34,32 @@ export default function NovaMentoriaForm() {
     handleSubmit,
     control,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<MentoriaInput>({
     defaultValues: {
       modalidade: "ONLINE",
       preco: 0,
+      data_inicio: nextDayISODate(),
     }
   });
 
   const modalidade = useWatch({ control, name: "modalidade" });
+  const precoAtual = useWatch({ control, name: "preco" });
+  const precoFormatado = useMemo(() => {
+    const value = Number(precoAtual ?? 0);
+    return new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(
+      Number.isFinite(value) ? value : 0
+    );
+  }, [precoAtual]);
 
   async function onSubmit(data: MentoriaInput) {
+    trackFunnelClient({
+      event: "mentor_mentoria_submit_started",
+      stage: "nova_mentoria",
+      source: "nova_mentoria_form_submit",
+      details: { modalidade: data.modalidade, preco: data.preco },
+    });
     const validation = mentoriaSchema.safeParse(data);
     if (!validation.success) {
       for (const issue of validation.error.issues) {
@@ -55,13 +75,31 @@ export default function NovaMentoriaForm() {
     try {
       const res = await criarMentoriaAction(validation.data);
       if (res.error) {
+        trackFunnelClient({
+          event: "mentor_mentoria_submit_failed",
+          stage: "nova_mentoria",
+          source: "nova_mentoria_action",
+          details: { reason: res.error },
+        });
         toast({ title: "Erro", description: res.error, variant: "destructive" });
       } else if (res.success && res.turma_id) {
         const publicLink = `${window.location.origin}/${res.tenant_slug}`;
         setSuccessData({ link: publicLink });
+        trackFunnelClient({
+          event: "mentor_mentoria_submit_success",
+          stage: "nova_mentoria",
+          source: "nova_mentoria_action",
+          details: { turma_id: res.turma_id, tenant_slug: res.tenant_slug },
+        });
         toast({ title: "Sucesso!", description: "Mentoria criada com sucesso." });
       }
     } catch {
+      trackFunnelClient({
+        event: "mentor_mentoria_submit_failed",
+        stage: "nova_mentoria",
+        source: "nova_mentoria_action",
+        details: { reason: "network_or_unexpected_error" },
+      });
       toast({ title: "Erro", description: "Falha na conexão com o servidor.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -86,6 +124,12 @@ export default function NovaMentoriaForm() {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(successData.link);
+                  trackFunnelClient({
+                    event: "mentor_cta_click",
+                    stage: "checkout",
+                    source: "nova_mentoria_copy_link",
+                    details: { action: "copy_link" },
+                  });
                   toast({ title: "Copiado!", description: "Link copiado para a área de transferência." });
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 transition-all"
@@ -97,6 +141,14 @@ export default function NovaMentoriaForm() {
             <a 
               href={successData.link}
               target="_blank"
+              onClick={() =>
+                trackFunnelClient({
+                  event: "mentor_cta_click",
+                  stage: "checkout",
+                  source: "nova_mentoria_open_sales_page",
+                  details: { action: "open_sales_page" },
+                })
+              }
               className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-sm font-bold text-white transition-all hover:bg-slate-800"
             >
               Ver Página de Vendas <ExternalLink size={18} />
@@ -123,7 +175,7 @@ export default function NovaMentoriaForm() {
               <Rocket size={32} />
             </div>
             <h1 className="text-3xl font-black tracking-tight text-slate-900">Lançar Mentoria</h1>
-            <p className="text-base text-slate-500 mt-2 font-medium">O seu evento pronto em segundos.</p>
+            <p className="text-base text-slate-500 mt-2 font-medium">Publique em menos de 1 minuto e comece a vender hoje.</p>
           </header>
 
           <div className="space-y-6">
@@ -141,11 +193,37 @@ export default function NovaMentoriaForm() {
             <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Preço (AOA)</label>
               <input 
-                {...register("preco")}
+                {...register("preco", { valueAsNumber: true })}
                 type="number"
                 placeholder="0.00"
+                min={0}
                 className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 text-xl outline-none transition-all focus:bg-white focus:ring-8 focus:ring-klasse-gold/5 focus:border-klasse-gold font-black text-klasse-gold"
               />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[0, 5000, 15000, 30000].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      trackFunnelClient({
+                        event: "mentor_cta_click",
+                        stage: "nova_mentoria",
+                        source: "nova_mentoria_price_preset",
+                        details: { value },
+                      });
+                      setValue("preco", value, { shouldDirty: true, shouldValidate: true });
+                    }}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 hover:border-klasse-gold hover:text-klasse-gold"
+                  >
+                    {new Intl.NumberFormat("pt-AO", {
+                      style: "currency",
+                      currency: "AOA",
+                      maximumFractionDigits: 0,
+                    }).format(value)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 ml-1">Preço atual: {precoFormatado}</p>
               {errors.preco && <p className="text-[10px] font-bold text-rose-500 ml-1">{errors.preco.message}</p>}
             </div>
 
@@ -205,8 +283,9 @@ export default function NovaMentoriaForm() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Vagas</label>
                   <input 
-                    {...register("vagas_limite")}
+                    {...register("vagas_limite", { valueAsNumber: true })}
                     type="number"
+                    min={1}
                     placeholder="Capacidade"
                     className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 text-base outline-none transition-all focus:bg-white focus:ring-8 focus:ring-klasse-gold/5 focus:border-klasse-gold font-semibold"
                   />

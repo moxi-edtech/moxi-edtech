@@ -1,14 +1,5 @@
-import NovaMentoriaForm from "./NovaMentoriaForm";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Lançar Mentoria | KLASSE Formação",
-  description: "Crie a sua mentoria ou evento em segundos.",
-};
-
-export default function NovaMentoriaPage() {
-  return (
-    <div className="py-8">
-      <NovaMentoriaForm />
-    </div>
-  );
+export default function LegacyAdminMentoriaNovaPage() {
+  redirect("/mentor/mentorias/nova");
 }

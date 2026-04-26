@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { detectProductContextFromHostname, normalizeTenantType } from "@moxi/tenant-sdk";
+import { detectProductContextFromHostname } from "@moxi/tenant-sdk";
 import { logAuthEvent } from "@/lib/auth-log";
 import {
   isCriticalTenantMappingMismatch,
   mapTenantTypeFromDb,
   shouldRedirectToK12FromFormacaoApp,
 } from "@/lib/navigation-engine";
+import { decideProductAccess } from "@/lib/product-access";
 import {
   buildProductRedirectUrl,
   createMiddlewareSupabaseClient,
@@ -46,6 +47,7 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/formacao",
   "/agenda",
+  "/mentor",
   "/honorarios",
   "/financeiro",
   "/secretaria",
@@ -58,6 +60,7 @@ const PROTECTED_PREFIXES = [
 
 const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/admin", roles: ["formacao_admin", "super_admin", "global_admin"] },
+  { prefix: "/mentor", roles: ["mentor", "formador", "formacao_admin", "super_admin", "global_admin"] },
   {
     prefix: "/secretaria",
     roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"],
@@ -92,6 +95,13 @@ const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
   },
 ];
 
+const PRODUCT_RULES: Array<{ prefix: string; allowedTenantTypes: Array<"CENTER" | "K12" | "SOLO_CREATOR"> }> = [
+  { prefix: "/admin", allowedTenantTypes: ["CENTER", "K12"] },
+  { prefix: "/secretaria", allowedTenantTypes: ["CENTER", "K12"] },
+  { prefix: "/financeiro", allowedTenantTypes: ["CENTER", "K12"] },
+  { prefix: "/mentor", allowedTenantTypes: ["SOLO_CREATOR"] },
+];
+
 function createSupabaseClient(request: NextRequest, response: NextResponse) {
   return createMiddlewareSupabaseClient({
     request,
@@ -109,7 +119,7 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
   if (!supabase) return { userId: null, tenantId: null, role: null, tenantType: null, hasSession: false };
   const resolved = await resolveDbAuthContext({
     supabase,
-    preferredTenantType: "formacao",
+    preferredTenantType: null,
   });
 
   return {
@@ -210,8 +220,12 @@ async function isFormandoPortalBlocked(request: NextRequest, response: NextRespo
   return (data ?? []).length > 0;
 }
 
-function getDefaultPathByRole(role: string | null): string {
+function getDefaultPathByRole(role: string | null, tenantType: TenantType | null): string {
+  const normalizedTenantType = String(tenantType ?? "").trim().toLowerCase();
   const normalizedRole = String(role ?? "").trim().toLowerCase();
+  if (normalizedTenantType === "solo_creator") {
+    return "/mentor/dashboard";
+  }
   switch (normalizedRole) {
     case "formacao_admin":
     case "super_admin":
@@ -357,7 +371,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = getDefaultPathByRole(auth.role);
+    redirectUrl.pathname = getDefaultPathByRole(auth.role, auth.tenantType);
     redirectUrl.search = "";
     logAuthEvent({
       action: "redirect",
@@ -429,7 +443,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = getDefaultPathByRole(auth.role);
+    redirectUrl.pathname = getDefaultPathByRole(auth.role, auth.tenantType);
     redirectUrl.search = "";
     logAuthEvent({
       action: "redirect",
@@ -496,6 +510,66 @@ export async function middleware(request: NextRequest) {
     return redirectWithCookies(response, NextResponse.redirect(redirectToBlocked(request)));
   }
 
+  const mappedTenantType = mapTenantTypeFromDb(auth.tenantType);
+  const productAccessDecision = decideProductAccess(mappedTenantType, pathname);
+  if (productAccessDecision.action === "redirect") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = productAccessDecision.target;
+    redirectUrl.search = "";
+    logAuthEvent({
+      action: "redirect",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: {
+        reason: productAccessDecision.reason,
+        source_prefix: "/admin",
+        target_path: productAccessDecision.target,
+      },
+    });
+    return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
+  }
+  if (productAccessDecision.action === "deny") {
+    logAuthEvent({
+      action: "deny",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: {
+        reason: productAccessDecision.reason,
+        mapped_tenant_type: mappedTenantType,
+      },
+    });
+    const deniedUrl = request.nextUrl.clone();
+    deniedUrl.pathname = "/forbidden";
+    deniedUrl.searchParams.set("next", pathname);
+    return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+  }
+
+  for (const rule of PRODUCT_RULES) {
+    if (pathname.startsWith(rule.prefix) && !rule.allowedTenantTypes.includes(mappedTenantType)) {
+      logAuthEvent({
+        action: "deny",
+        route: pathname,
+        user_id: auth.userId,
+        tenant_id: auth.tenantId,
+        tenant_type: auth.tenantType,
+        details: {
+          reason: "product_mismatch",
+          required_prefix: rule.prefix,
+          required_tenant_types: rule.allowedTenantTypes,
+          mapped_tenant_type: mappedTenantType,
+        },
+      });
+      const deniedUrl = request.nextUrl.clone();
+      deniedUrl.pathname = "/forbidden";
+      deniedUrl.searchParams.set("next", pathname);
+      return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+    }
+  }
+
   for (const rule of ROLE_RULES) {
     if (pathname.startsWith(rule.prefix) && normalizedRole && !rule.roles.includes(normalizedRole)) {
       logAuthEvent({
@@ -514,7 +588,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname === "/dashboard") {
-    const target = getDefaultPathByRole(auth.role);
+    const target = getDefaultPathByRole(auth.role, auth.tenantType);
     if (target !== "/dashboard") {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = target;
@@ -532,6 +606,7 @@ export const config = {
     "/dashboard/:path*",
     "/formacao/:path*",
     "/agenda/:path*",
+    "/mentor/:path*",
     "/honorarios/:path*",
     "/financeiro/:path*",
     "/secretaria/:path*",

@@ -154,7 +154,7 @@ export default async function PublicCentroLandingPage({ params }: Props) {
       <main className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
         <LandingContent
           tenantType={tenantType}
-          centro={{ id: data.escola.id, nome: data.escola.nome, logo_url: data.escola.logo_url }}
+          centro={{ id: data.escola.id, slug: data.escola.slug, nome: data.escola.nome, logo_url: data.escola.logo_url }}
           fiscal={data.fiscal}
           cohorts={data.cohorts}
         />

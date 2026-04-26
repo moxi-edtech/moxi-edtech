@@ -6,6 +6,8 @@
     "dev": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next dev",
     "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
     "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
+    "test:unit": "node --test --import tsx tests/unit/*.spec.ts",
+    "test:integration": "node --test --import tsx tests/integration/*.spec.ts",
     "typecheck": "tsc --noEmit",
     "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000"
   },
