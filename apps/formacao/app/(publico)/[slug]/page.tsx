@@ -158,6 +158,57 @@ export default async function PublicCentroLandingPage({ params }: Props) {
           fiscal={data.fiscal}
           cohorts={data.cohorts}
         />
+
+        <section className="mt-32 grid gap-12 lg:grid-cols-3">
+          <div className="rounded-3xl border border-white/5 bg-white/5 p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-klasse-gold/20 text-klasse-gold">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="mt-6 text-xl font-bold text-white">Certificação Válida</h3>
+            <p className="mt-4 leading-relaxed text-slate-400">Ao concluir a formação com sucesso, terá acesso a um certificado reconhecido para impulsionar o seu currículo.</p>
+          </div>
+          <div className="rounded-3xl border border-white/5 bg-white/5 p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-klasse-gold/20 text-klasse-gold">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="mt-6 text-xl font-bold text-white">Flexibilidade Total</h3>
+            <p className="mt-4 leading-relaxed text-slate-400">Escolha entre formatos presenciais, online ou gravados que se adaptam perfeitamente à sua rotina diária.</p>
+          </div>
+          <div className="rounded-3xl border border-white/5 bg-white/5 p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-klasse-gold/20 text-klasse-gold">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
+            <h3 className="mt-6 text-xl font-bold text-white">Pagamento Facilitado</h3>
+            <p className="mt-4 leading-relaxed text-slate-400">Processo de inscrição simplificado com confirmação rápida via transferência bancária ou depósito.</p>
+          </div>
+        </section>
+
+        <section className="mt-32">
+          <div className="text-center">
+            <h2 className="text-3xl font-black text-white sm:text-4xl">Dúvidas Frequentes</h2>
+            <p className="mt-4 text-slate-400">Tudo o que precisa de saber para começar a sua jornada.</p>
+          </div>
+          <div className="mx-auto mt-16 max-w-3xl divide-y divide-white/5">
+            <div className="py-6">
+              <h4 className="text-lg font-bold text-white">Como recebo o acesso ao curso?</h4>
+              <p className="mt-3 leading-relaxed text-slate-400">Após o envio do comprovativo, a nossa secretaria validará o pagamento em até 24h úteis. Receberá as credenciais de acesso por e-mail ou SMS.</p>
+            </div>
+            <div className="py-6">
+              <h4 className="text-lg font-bold text-white">Os cursos têm suporte dos formadores?</h4>
+              <p className="mt-3 leading-relaxed text-slate-400">Sim, todos os nossos programas incluem canais de dúvida direto com os especialistas para garantir a sua aprendizagem.</p>
+            </div>
+            <div className="py-6">
+              <h4 className="text-lg font-bold text-white">Posso solicitar fatura da minha inscrição?</h4>
+              <p className="mt-3 leading-relaxed text-slate-400">Com certeza. Basta solicitar à secretaria através do portal do aluno após a confirmação da sua matrícula.</p>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-white/10 bg-slate-950 py-12">

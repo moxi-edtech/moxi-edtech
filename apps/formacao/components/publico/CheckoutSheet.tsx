@@ -186,12 +186,43 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
               </p>
             </div>
 
-            <div className="border-b border-slate-100 bg-klasse-gold/5 p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-klasse-gold">Dados Bancários</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{tenant.nome}</p>
-              <p className="mt-1 text-sm font-black text-slate-900 [font-family:var(--font-geist-mono)]">
-                {tenant.iban || "IBAN indisponível. Contacte a secretaria."}
-              </p>
+            <div className="space-y-4 bg-slate-950 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-klasse-gold">Dados para Pagamento</p>
+                  <h3 className="mt-1 text-sm font-bold text-white">{tenant.nome}</h3>
+                </div>
+                <div className="h-10 w-10 rounded-xl bg-klasse-gold/10 p-2 text-klasse-gold">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">IBAN para Transferência</p>
+                <p className="mt-1 select-all font-mono text-sm font-black tracking-wider text-klasse-gold">
+                  {tenant.iban || "IBAN indisponível. Contacte a secretaria."}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-medium text-slate-400">Instruções:</p>
+                <ul className="space-y-2 text-[11px] text-slate-400">
+                  <li className="flex gap-2">
+                    <span className="font-bold text-klasse-gold">1.</span>
+                    Efetue a transferência ou depósito do valor exato.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-bold text-klasse-gold">2.</span>
+                    Tire uma foto ou guarde o comprovativo digital.
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-bold text-klasse-gold">3.</span>
+                    Anexe o ficheiro abaixo para validar a sua vaga.
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <Form form={form}>
