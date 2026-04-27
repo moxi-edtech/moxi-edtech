@@ -12,6 +12,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import { TalentOptInPrompt } from "@/components/aluno/TalentOptInPrompt";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export default async function AlunoDashboardPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6 pb-12">
+      <TalentOptInPrompt escolaNome={auth.tenantName} />
+
       <header className="text-center py-4">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">portal do formando</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 leading-tight">Olá, {auth.displayName?.split(' ')[0]}</h1>
@@ -93,6 +96,22 @@ export default async function AlunoDashboardPage() {
             </div>
           </div>
           <ChevronRight className="text-slate-300 group-hover:text-orange-600 transition-colors" size={20} />
+        </Link>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="px-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Carreira</h3>
+        <Link href="/aluno/carreira" className="flex items-center justify-between p-5 rounded-[2rem] bg-white border border-slate-200 group active:scale-[0.98] transition-all">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+              <GraduationCap size={24} />
+            </div>
+            <div>
+              <p className="font-bold text-slate-900">Passaporte Profissional</p>
+              <p className="text-xs text-slate-500">Ative o perfil anónimo e responda a entrevistas</p>
+            </div>
+          </div>
+          <ChevronRight className="text-slate-300 group-hover:text-emerald-600 transition-colors" size={20} />
         </Link>
       </section>
 

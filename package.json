@@ -37,6 +37,7 @@
     "db:select:remote": "bash scripts/db-select-remote.sh",
     "db:select:local": "bash scripts/db-select-local.sh",
     "test:rls": "psql -f supabase/tests/assert_tenant_rls.sql",
+    "test:rls:talent-pool": "bash scripts/test-talent-pool-rls.sh",
     "agent:kf2": "tsx agents/scan/kf2-search-audit.ts",
     "agent:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents --out agents/outputs",
     "agents:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents --out agents/outputs",
