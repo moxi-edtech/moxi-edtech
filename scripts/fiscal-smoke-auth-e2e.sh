@@ -7,10 +7,41 @@ COOKIE="${COOKIE:-}"
 AUTH_BEARER="${AUTH_BEARER:-}"
 ESCOLA_ID="${ESCOLA_ID:-}"
 EMPRESA_ID="${EMPRESA_ID:-}"
+LOGIN_EMAIL="${LOGIN_EMAIL:-}"
+LOGIN_PASSWORD="${LOGIN_PASSWORD:-}"
+NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL:-}}"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY:-}}"
 YEAR="$(date +%Y)"
 FT_PREFIXO_SERIE="${FT_PREFIXO_SERIE:-FR}"
 RC_PREFIXO_SERIE="${RC_PREFIXO_SERIE:-RC}"
 TEST_FOREIGN_CURRENCY="${TEST_FOREIGN_CURRENCY:-0}"
+COOKIE_JAR="$(mktemp)"
+
+if [[ -z "$COOKIE" && -z "$AUTH_BEARER" && -n "$LOGIN_EMAIL" && -n "$LOGIN_PASSWORD" ]]; then
+  if [[ -z "$NEXT_PUBLIC_SUPABASE_URL" || -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]]; then
+    echo "[ERR] Login automático requer SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL e SUPABASE_ANON_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY." >&2
+    exit 1
+  fi
+
+  PROJECT_REF="$(echo "$NEXT_PUBLIC_SUPABASE_URL" | sed -E 's#https?://([^.]+)\..*#\1#')"
+  AUTH_JSON="$(curl -sS -X POST "${NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password" \
+    -H "apikey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+    -H "Content-Type: application/json" \
+    --data-raw "{\"email\":\"${LOGIN_EMAIL}\",\"password\":\"${LOGIN_PASSWORD}\"}")"
+
+  ACCESS_TOKEN="$(printf '%s' "$AUTH_JSON" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p' | head -n1)"
+  REFRESH_TOKEN="$(printf '%s' "$AUTH_JSON" | sed -n 's/.*"refresh_token":"\([^"]*\)".*/\1/p' | head -n1)"
+
+  if [[ -z "$ACCESS_TOKEN" || -z "$REFRESH_TOKEN" ]]; then
+    echo "[ERR] Falha no login automático. Resposta auth: $AUTH_JSON" >&2
+    exit 1
+  fi
+
+  # O auth cookie esperado pelo @supabase/ssr usa o payload completo de sessão.
+  COOKIE_PAYLOAD="$(printf '%s' "$AUTH_JSON" | tr -d '\n')"
+  COOKIE_B64="$(printf '%s' "$COOKIE_PAYLOAD" | base64 | tr -d '\n')"
+  COOKIE="sb-${PROJECT_REF}-auth-token=base64-${COOKIE_B64}"
+fi
 
 if [[ (-z "$COOKIE" && -z "$AUTH_BEARER") || -z "$ESCOLA_ID" || -z "$EMPRESA_ID" ]]; then
   echo "Uso:"
@@ -18,6 +49,7 @@ if [[ (-z "$COOKIE" && -z "$AUTH_BEARER") || -z "$ESCOLA_ID" || -z "$EMPRESA_ID"
   echo "  COOKIE='nome1=valor1; nome2=valor2' OU AUTH_BEARER='eyJ...' \\" 
   echo "  ESCOLA_ID='uuid' EMPRESA_ID='uuid' \\" 
   echo "  FT_PREFIXO_SERIE='FR' RC_PREFIXO_SERIE='RC' \\" 
+  echo "  (opcional) LOGIN_EMAIL='user@dominio' LOGIN_PASSWORD='senha' para login automático \\" 
   echo "  $0"
   echo
   echo "Opcional: TEST_FOREIGN_CURRENCY=1 para emitir um documento em moeda estrangeira."
@@ -40,6 +72,7 @@ STATUS_STEP_8=""
 STATUS_STEP_9=""
 
 cleanup() {
+  rm -f "$COOKIE_JAR"
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -80,15 +113,15 @@ run_api_step() {
 
   if [[ "$method" == "GET" ]]; then
     if [[ -n "$AUTH_BEARER" ]]; then
-      LAST_STATUS="$(curl -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Authorization: Bearer ${AUTH_BEARER}" -H "x-escola-id: ${ESCOLA_ID}")"
+      LAST_STATUS="$(curl -L -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Authorization: Bearer ${AUTH_BEARER}" -H "x-escola-id: ${ESCOLA_ID}")"
     else
-      LAST_STATUS="$(curl -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Cookie: ${COOKIE}" -H "x-escola-id: ${ESCOLA_ID}")"
+      LAST_STATUS="$(curl -L -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Cookie: ${COOKIE}" -H "x-escola-id: ${ESCOLA_ID}" -c "$COOKIE_JAR" -b "$COOKIE_JAR")"
     fi
   else
     if [[ -n "$AUTH_BEARER" ]]; then
-      LAST_STATUS="$(curl -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Content-Type: application/json" -H "Authorization: Bearer ${AUTH_BEARER}" -H "x-escola-id: ${ESCOLA_ID}" --data-raw "$data")"
+      LAST_STATUS="$(curl -L -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Content-Type: application/json" -H "Authorization: Bearer ${AUTH_BEARER}" -H "x-escola-id: ${ESCOLA_ID}" --data-raw "$data")"
     else
-      LAST_STATUS="$(curl -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Content-Type: application/json" -H "Cookie: ${COOKIE}" -H "x-escola-id: ${ESCOLA_ID}" --data-raw "$data")"
+      LAST_STATUS="$(curl -L -sS -o "$body_file" -D "$header_file" -w "%{http_code}" -X "$method" "${BASE_URL}${path}" -H "Content-Type: application/json" -H "Cookie: ${COOKIE}" -H "x-escola-id: ${ESCOLA_ID}" --data-raw "$data" -c "$COOKIE_JAR" -b "$COOKIE_JAR")"
     fi
   fi
 
