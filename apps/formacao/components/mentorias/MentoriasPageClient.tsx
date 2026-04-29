@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { trackFunnelClient } from "@/lib/funnel-client";
+import { InscricaoBalcaoModal } from "../cohorts/InscricaoBalcaoModal";
 
 type Cohort = {
   id: string;
@@ -140,28 +141,6 @@ type StatusFilter = "todos" | "rascunho" | "aberta" | "em curso" | "concluída" 
 type DetailTab = "formandos" | "sessoes" | "materiais" | "certificados";
 type MetodoPagamento = "tpa" | "transferencia" | "numerario";
 
-type MvpPagamentoStatus = "PAGO" | "PENDENTE" | "ATRASADO";
-type MvpB2CRow = {
-  id: string;
-  nome: string;
-  inscricao: MvpPagamentoStatus;
-  modulo1: MvpPagamentoStatus;
-  modulo2: MvpPagamentoStatus;
-};
-
-const MVP_B2C_ROWS: MvpB2CRow[] = [
-  { id: "a1", nome: "João Silva", inscricao: "PAGO", modulo1: "PAGO", modulo2: "PENDENTE" },
-  { id: "a2", nome: "Maria Oliveira", inscricao: "PAGO", modulo1: "ATRASADO", modulo2: "PENDENTE" },
-  { id: "a3", nome: "Carlos Santos", inscricao: "PENDENTE", modulo1: "PENDENTE", modulo2: "ATRASADO" },
-];
-
-const MVP_B2B_DATA = {
-  empresa: "Unitel S.A.",
-  valorGlobal: "1.500.000 Kz",
-  estado: "PENDENTE" as MvpPagamentoStatus,
-  colaboradores: ["João Silva", "Maria Oliveira", "Carlos Santos", "Ana Pereira", "Luís Costa"],
-};
-
 function normalizeStatus(raw: string): Exclude<StatusFilter, "todos"> {
   const status = String(raw).trim().toLowerCase();
   if (status === "planeada" || status === "rascunho") return "rascunho";
@@ -218,22 +197,25 @@ function academicStatusLabel(status: string) {
   return "Cursando";
 }
 
-function renderMvpCell(
-  status: MvpPagamentoStatus,
+function renderPaymentCell(
+  status: string,
+  itemId: string,
   formandoNome: string,
   parcela: string,
+  valor: number,
   onRegister: (itemId: string, formingoNome: string, parcela: string, valor: number) => void
 ) {
-  const isLate = status === "ATRASADO";
+  const normalized = String(status ?? "").toLowerCase();
+  const isLateOrPending = normalized.includes("atras") || normalized.includes("pendente");
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(status)}`}>
         {status}
       </span>
-      {isLate ? (
+      {isLateOrPending ? (
         <button
           type="button"
-          onClick={() => onRegister(`mvp:${formandoNome}:${parcela}`, formandoNome, parcela, 25000)}
+          onClick={() => onRegister(itemId, formandoNome, parcela, valor)}
           className="inline-flex items-center gap-1 rounded-md border border-[#E4EBE6] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
         >
           + Registar Pagamento
@@ -260,6 +242,7 @@ export default function CohortsPage() {
   const [detail, setDetail] = useState<CohortDetail | null>(null);
   const [financeView, setFinanceView] = useState<"b2c" | "b2b">("b2c");
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
+  const [showInscricaoModal, setShowInscricaoModal] = useState(false);
   const [pagamentoTarget, setPagamentoTarget] = useState<{ itemId: string; formandoNome: string; parcela: string } | null>(null);
   const [pagamentoForm, setPagamentoForm] = useState({
     valor: "",
@@ -814,22 +797,16 @@ export default function CohortsPage() {
                   {financeView === "b2c" ? (
                     <>
                       <div className="space-y-2 md:hidden">
-                        {MVP_B2C_ROWS.map((row) => (
-                          <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
-                            <p className="text-sm font-semibold text-[#111811]">{row.nome}</p>
+                        {visibleFormandos.map((formando) => (
+                          <article key={formando.user_id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+                            <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
                             <div className="mt-2 grid gap-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-[#4A6352]">Inscrição</span>
-                                {renderMvpCell(row.inscricao, row.nome, "Inscrição", openPagamentoModal)}
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-[#4A6352]">Módulo 1</span>
-                                {renderMvpCell(row.modulo1, row.nome, "Módulo 1", openPagamentoModal)}
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-[#4A6352]">Módulo 2</span>
-                                {renderMvpCell(row.modulo2, row.nome, "Módulo 2", openPagamentoModal)}
-                              </div>
+                              {(formando.parcelas ?? []).slice(0, 3).map((parcela) => (
+                                <div key={parcela.item_id} className="flex items-center justify-between gap-2">
+                                  <span className="text-xs text-[#4A6352]">{parcela.descricao}</span>
+                                  {renderPaymentCell(parcela.status, parcela.item_id, formando.nome, parcela.descricao, parcela.valor, openPagamentoModal)}
+                                </div>
+                              ))}
                             </div>
                           </article>
                         ))}
@@ -846,12 +823,45 @@ export default function CohortsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {MVP_B2C_ROWS.map((row) => (
-                              <tr key={row.id}>
-                                <Td>{row.nome}</Td>
-                                <Td>{renderMvpCell(row.inscricao, row.nome, "Inscrição", openPagamentoModal)}</Td>
-                                <Td>{renderMvpCell(row.modulo1, row.nome, "Módulo 1", openPagamentoModal)}</Td>
-                                <Td>{renderMvpCell(row.modulo2, row.nome, "Módulo 2", openPagamentoModal)}</Td>
+                            {visibleFormandos.map((formando) => (
+                              <tr key={formando.user_id}>
+                                <Td>{formando.nome}</Td>
+                                <Td>
+                                  {formando.parcelas?.[0]
+                                    ? renderPaymentCell(
+                                        formando.parcelas[0].status,
+                                        formando.parcelas[0].item_id,
+                                        formando.nome,
+                                        formando.parcelas[0].descricao,
+                                        formando.parcelas[0].valor,
+                                        openPagamentoModal
+                                      )
+                                    : "—"}
+                                </Td>
+                                <Td>
+                                  {formando.parcelas?.[1]
+                                    ? renderPaymentCell(
+                                        formando.parcelas[1].status,
+                                        formando.parcelas[1].item_id,
+                                        formando.nome,
+                                        formando.parcelas[1].descricao,
+                                        formando.parcelas[1].valor,
+                                        openPagamentoModal
+                                      )
+                                    : "—"}
+                                </Td>
+                                <Td>
+                                  {formando.parcelas?.[2]
+                                    ? renderPaymentCell(
+                                        formando.parcelas[2].status,
+                                        formando.parcelas[2].item_id,
+                                        formando.nome,
+                                        formando.parcelas[2].descricao,
+                                        formando.parcelas[2].valor,
+                                        openPagamentoModal
+                                      )
+                                    : "—"}
+                                </Td>
                               </tr>
                             ))}
                           </tbody>
@@ -888,7 +898,7 @@ export default function CohortsPage() {
                           </select>
                           <button
                             type="button"
-                            onClick={() => setInfo("Adicionar Formando será ligado ao fluxo de inscrição da secretaria nesta turma.")}
+                            onClick={() => setShowInscricaoModal(true)}
                             className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
                           >
                             Adicionar Formando
@@ -1189,11 +1199,11 @@ export default function CohortsPage() {
                     <div className="grid gap-3">
                       <article className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A9E8F]">Cliente corporativo</p>
-                        <h3 className="mt-1 text-2xl font-semibold text-[#111811]">{MVP_B2B_DATA.empresa}</h3>
-                        <p className="mt-1 text-sm text-[#4A6352]">Valor total da faturação: {MVP_B2B_DATA.valorGlobal}</p>
+                        <h3 className="mt-1 text-2xl font-semibold text-[#111811]">{detail.finance.b2b?.cliente.nome_fantasia ?? "Sem cliente vinculado"}</h3>
+                        <p className="mt-1 text-sm text-[#4A6352]">Valor total da faturação: {detail.finance.b2b ? formatMoney(detail.finance.b2b.fatura.total_liquido) : "—"}</p>
                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(MVP_B2B_DATA.estado)}`}>
-                            {MVP_B2B_DATA.estado}
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(detail.finance.b2b?.fatura.status ?? "pendente")}`}>
+                            {detail.finance.b2b?.fatura.status ?? "pendente"}
                           </span>
                           <button
                             type="button"
@@ -1210,8 +1220,8 @@ export default function CohortsPage() {
                       <article className="rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A9E8F]">Funcionários cobertos no contrato</p>
                         <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-[#111811]">
-                          {MVP_B2B_DATA.colaboradores.map((nome) => (
-                            <li key={nome}>{nome}</li>
+                          {(detail.finance.b2b?.colaboradores_cobertos ?? []).map((colaborador) => (
+                            <li key={colaborador.user_id}>{colaborador.nome}</li>
                           ))}
                         </ul>
                       </article>
@@ -1587,6 +1597,16 @@ export default function CohortsPage() {
           </div>
         </div>
       ) : null}
+
+      {detail && (
+        <InscricaoBalcaoModal
+          open={showInscricaoModal}
+          onClose={() => setShowInscricaoModal(false)}
+          cohortId={detail.cohort.id}
+          cohortNome={detail.cohort.nome}
+          onSuccess={() => loadDetail(detail.cohort.id)}
+        />
+      )}
     </div>
   );
 }

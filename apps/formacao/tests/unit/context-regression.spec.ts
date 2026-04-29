@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   CENTER_NAV_CONFIG,
   getAuthorizedNavigation,
-  SOLO_NAV_CONFIG,
   isCenterAdminDashboardType,
   isCriticalTenantMappingMismatch,
   mapTenantTypeFromDb,
@@ -26,17 +25,17 @@ test("Caso A: admin formacao mapeia para CENTER e mostra menu de gestão/finance
   assert.ok(hrefs.includes("/admin/onboarding"));
 });
 
-test("Caso B: creator solo_creator mapeia para SOLO_CREATOR e cai no dashboard solo", () => {
+test("Caso B: solo_creator permanece mapeado, sem navegação de centro", () => {
   const mappedType = mapTenantTypeFromDb("solo_creator");
   const mappedRole = mapUserRoleFromDb("mentor");
-  const nav = getAuthorizedNavigation(SOLO_NAV_CONFIG, mappedType, mappedRole);
+  const nav = getAuthorizedNavigation(CENTER_NAV_CONFIG, mappedType, mappedRole);
   const hrefs = nav.map((item) => item.href);
 
   assert.equal(mappedType, "SOLO_CREATOR");
   assert.equal(mappedRole, "MENTOR");
   assert.equal(isCenterAdminDashboardType(mappedType), false);
-  assert.ok(hrefs.includes("/mentor/dashboard"));
-  assert.ok(hrefs.includes("/mentor/mentorias/nova"));
+  assert.equal(hrefs.includes("/mentor/dashboard"), false);
+  assert.equal(hrefs.includes("/mentor/mentorias/nova"), false);
   assert.equal(hrefs.includes("/admin/cohorts"), false);
   assert.equal(hrefs.includes("/financeiro/dashboard"), false);
 });

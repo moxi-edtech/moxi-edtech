@@ -95,20 +95,21 @@ export async function resolveFormacaoSessionContext(): Promise<FormacaoSessionCo
       : { data: null };
 
   const selectedEscola = normalizeEscolaRelation(selectedMembership?.escola ?? null) ?? fallbackEscola.data ?? null;
-  const roleFromMembership = selectedMembership?.papel?.trim().toLowerCase() ?? null;
-  const roleFromProfile = String(profile?.role ?? "")
-    .trim()
-    .toLowerCase();
+
+  // Priority: 1. Membership Role (Specific to this school) | 2. Profile Role (Global fallback)
+  const roleFromMembership = selectedMembership?.papel ? String(selectedMembership.papel).trim().toLowerCase() : null;
+  const roleFromProfile = profile?.role ? String(profile.role).trim().toLowerCase() : null;
+
+  const resolvedRole = roleFromMembership || roleFromProfile || null;
+  const resolvedTenantType = normalizeTenantType(selectedMembership?.tenant_type) ?? normalizeTenantType(selectedEscola?.tenant_type);
 
   return {
     userId: user.id,
     tenantId: fallbackEscolaId,
     tenantSlug: String(selectedEscola?.slug ?? "").trim() || null,
     tenantName: String(selectedEscola?.nome ?? "").trim() || null,
-    tenantType:
-      normalizeTenantType(selectedMembership?.tenant_type) ??
-      normalizeTenantType(selectedEscola?.tenant_type),
-    role: roleFromMembership ?? (roleFromProfile || null),
+    tenantType: resolvedTenantType,
+    role: resolvedRole,
     displayName:
       String(
         user.user_metadata?.full_name ??

@@ -4,8 +4,6 @@ import { getFormacaoAuthContext } from "@/lib/auth-context";
 import { resolveFormacaoSessionContext } from "@/lib/session-context";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
-import { isCenterAdminDashboardType, mapTenantTypeFromDb } from "@/lib/navigation-engine";
-import { TalentPoolTeaser } from "./_components/TalentPoolTeaser";
 
 export const dynamic = "force-dynamic";
 
@@ -49,11 +47,6 @@ export default async function AdminCentroDashboardPage() {
       0
     );
     onboardingDone = (fiscalRes.data ?? []).length > 0;
-  }
-
-  const type = mapTenantTypeFromDb(String(auth.tenantType ?? ""));
-  if (!isCenterAdminDashboardType(type)) {
-    redirect("/mentor/dashboard");
   }
 
   const catalogReady = cursosCount > 0;
@@ -154,8 +147,6 @@ export default async function AdminCentroDashboardPage() {
           ))}
         </section>
       </div>
-
-      <TalentPoolTeaser />
     </div>
   );
 }

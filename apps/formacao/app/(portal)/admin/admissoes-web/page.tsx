@@ -23,9 +23,15 @@ type StagingInscricao = {
   comprovativo_url: string;
   status: "PENDENTE" | "APROVADA" | "REJEITADA";
   created_at: string;
+  priority_score?: number;
+  priority_level?: "alta" | "media" | "baixa";
+  priority_reasons?: string[];
+  operational_recommendation?: string;
+  operational_recommendation_reason?: string;
   cohort: {
     nome: string;
     curso_nome: string;
+    data_inicio?: string | null;
   };
 };
 
@@ -82,6 +88,12 @@ export default function AdmissoesWebPage() {
                          item.bi_passaporte.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const priorityPill = (level?: "alta" | "media" | "baixa") => {
+    if (level === "alta") return "bg-rose-50 text-rose-700 border border-rose-100";
+    if (level === "media") return "bg-amber-50 text-amber-700 border border-amber-100";
+    return "bg-slate-100 text-slate-700 border border-slate-200";
+  };
 
   return (
     <div className="space-y-6">
@@ -161,7 +173,27 @@ export default function AdmissoesWebPage() {
                     <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(item.created_at).toLocaleDateString("pt-AO")}</span>
                     <span className="flex items-center gap-1 uppercase tracking-tight">BI: {item.bi_passaporte}</span>
                     <span className="flex items-center gap-1 uppercase tracking-tight text-klasse-gold">{item.cohort.curso_nome}</span>
+                    <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest ${priorityPill(item.priority_level)}`}>
+                      Prioridade {item.priority_level ?? "baixa"} · {item.priority_score ?? 0}
+                    </span>
                   </div>
+                  {item.priority_reasons && item.priority_reasons.length > 0 ? (
+                    <p className="mt-2 text-[11px] font-semibold text-slate-500">
+                      {item.priority_reasons.join(" · ")}
+                    </p>
+                  ) : null}
+                  {item.operational_recommendation ? (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">
+                        Próxima ação: {item.operational_recommendation}
+                      </span>
+                      {item.operational_recommendation_reason ? (
+                        <span className="text-[10px] font-semibold text-blue-700/80">
+                          {item.operational_recommendation_reason}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

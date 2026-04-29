@@ -16,13 +16,13 @@ export function DashboardActions({ cohorts }: Props) {
     <>
       <section className="grid grid-cols-2 gap-4">
         <Link 
-          href="/mentor/mentorias/nova"
+          href="/admin/cohorts"
           className="flex flex-col items-center justify-center gap-4 rounded-[2.5rem] bg-white border border-slate-200 p-8 shadow-lg active:scale-95 transition-all hover:border-klasse-gold/30 group"
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-klasse-gold/10 text-klasse-gold group-hover:scale-110 transition-transform">
             <Rocket size={28} />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Lançar Mentoria</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Abrir Nova Turma</span>
         </Link>
 
         <button 

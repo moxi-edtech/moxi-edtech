@@ -62,17 +62,47 @@ export async function POST(request: Request) {
   }
 
   const numero = String(body?.numero_documento ?? "").trim() || buildDocNumber(auth.escolaId || "CF");
+  const cohortId = String(body?.cohort_id ?? "").trim() || null;
+
+  const s = auth.supabase as FormacaoSupabaseClient;
+
+  const { data: formando, error: formandoError } = await s
+    .from("alunos")
+    .select("id")
+    .eq("escola_id", auth.escolaId)
+    .or(`usuario_auth_id.eq.${formandoUserId},profile_id.eq.${formandoUserId}`)
+    .limit(1)
+    .maybeSingle();
+
+  if (formandoError) return NextResponse.json({ ok: false, error: formandoError.message }, { status: 400 });
+  if (!formando) {
+    return NextResponse.json({ ok: false, error: "formando_user_id inválido para esta escola" }, { status: 400 });
+  }
+
+  if (cohortId) {
+    const { data: cohort, error: cohortError } = await s
+      .from("formacao_cohorts")
+      .select("id")
+      .eq("escola_id", auth.escolaId)
+      .eq("id", cohortId)
+      .limit(1)
+      .maybeSingle();
+
+    if (cohortError) return NextResponse.json({ ok: false, error: cohortError.message }, { status: 400 });
+    if (!cohort) {
+      return NextResponse.json({ ok: false, error: "cohort_id inválido para esta escola" }, { status: 400 });
+    }
+  }
+
   const insertPayload: FormacaoDatabase["public"]["Tables"]["formacao_certificados_emitidos"]["Insert"] = {
     escola_id: auth.escolaId,
     template_id: String(body?.template_id ?? "").trim() || null,
     formando_user_id: formandoUserId,
-    cohort_id: String(body?.cohort_id ?? "").trim() || null,
+    cohort_id: cohortId,
     numero_documento: numero,
     payload_snapshot: body?.payload_snapshot ?? {},
     created_by: auth.userId,
   };
-
-  const s = auth.supabase as FormacaoSupabaseClient;
   const { data, error } = await s
     .from("formacao_certificados_emitidos")
     .insert(insertPayload)

@@ -30,11 +30,19 @@ export default async function FinanceiroDashboardPage() {
   let margemBrutaTotal = 0;
   let clientesB2bCount = 0;
   let titulosEmAbertoCount = 0;
+  let copiloto: Array<{
+    segmento: "B2B" | "B2C";
+    prioridade: "alta" | "media" | "baixa";
+    titulo: string;
+    recomendacao: string;
+    quantidade: number;
+    valor: number;
+  }> = [];
 
   if (escolaId) {
     const s = (await supabaseServer()) as FormacaoSupabaseClient;
 
-    const [inadimplenciaRes, margemRes, clientesRes] = await Promise.all([
+    const [inadimplenciaRes, margemRes, clientesRes, b2bOpenRes, b2cOpenRes] = await Promise.all([
       s
         .from("vw_formacao_inadimplencia_resumo")
         .select("b2c_titulos_em_aberto, b2b_faturas_em_aberto, total_em_aberto")
@@ -45,6 +53,18 @@ export default async function FinanceiroDashboardPage() {
         .select("id", { count: "exact", head: true })
         .eq("escola_id", escolaId)
         .eq("status", "ativo"),
+      s
+        .from("formacao_faturas_lote")
+        .select("id, status, total_liquido, vencimento_em")
+        .eq("escola_id", escolaId)
+        .in("status", ["emitida", "parcial"])
+        .limit(500),
+      s
+        .from("formacao_faturas_lote_itens")
+        .select("id, status_pagamento, valor_total, formacao_faturas_lote:fatura_lote_id(vencimento_em)")
+        .eq("escola_id", escolaId)
+        .in("status_pagamento", ["pendente", "parcial"])
+        .limit(1000),
     ]);
 
     clientesB2bCount = clientesRes.count ?? 0;
@@ -60,6 +80,83 @@ export default async function FinanceiroDashboardPage() {
       (acc, row) => acc + Number(row.margem_bruta ?? 0),
       0
     );
+
+    const now = Date.now();
+    const msDay = 1000 * 60 * 60 * 24;
+    const b2bRows = (b2bOpenRes.data ?? []) as Array<{
+      total_liquido?: number | null;
+      vencimento_em?: string | null;
+    }>;
+    const b2cRows = (b2cOpenRes.data ?? []) as Array<{
+      valor_total?: number | null;
+      formacao_faturas_lote?: { vencimento_em?: string | null } | null;
+    }>;
+
+    const buildSeg = (
+      segment: "B2B" | "B2C",
+      rows: Array<{ amount: number; dueAt: string | null }>
+    ) => {
+      const overdue30 = rows.filter((r) => r.dueAt && (now - new Date(r.dueAt).getTime()) / msDay > 30);
+      const overdue7 = rows.filter((r) => r.dueAt && (now - new Date(r.dueAt).getTime()) / msDay > 7);
+      const upcoming3 = rows.filter((r) => r.dueAt && (new Date(r.dueAt).getTime() - now) / msDay <= 3);
+
+      const sum = (arr: Array<{ amount: number }>) => arr.reduce((acc, item) => acc + Number(item.amount || 0), 0);
+
+      const out: typeof copiloto = [];
+      if (overdue30.length > 0) {
+        out.push({
+          segmento: segment,
+          prioridade: "alta",
+          titulo: "Atrasos críticos (+30d)",
+          recomendacao: "Escalar cobrança imediata com contato direto e plano de regularização.",
+          quantidade: overdue30.length,
+          valor: sum(overdue30),
+        });
+      }
+      if (overdue7.length > 0) {
+        out.push({
+          segmento: segment,
+          prioridade: "media",
+          titulo: "Atrasos recorrentes (+7d)",
+          recomendacao: "Executar régua de follow-up em 24h (email + telefone).",
+          quantidade: overdue7.length,
+          valor: sum(overdue7),
+        });
+      }
+      if (upcoming3.length > 0) {
+        out.push({
+          segmento: segment,
+          prioridade: "baixa",
+          titulo: "Vencimentos próximos (<=3d)",
+          recomendacao: "Enviar lembrete preventivo com instruções de pagamento.",
+          quantidade: upcoming3.length,
+          valor: sum(upcoming3),
+        });
+      }
+      return out;
+    };
+
+    copiloto = [
+      ...buildSeg(
+        "B2B",
+        b2bRows.map((row) => ({
+          amount: Number(row.total_liquido ?? 0),
+          dueAt: row.vencimento_em ?? null,
+        }))
+      ),
+      ...buildSeg(
+        "B2C",
+        b2cRows.map((row) => ({
+          amount: Number(row.valor_total ?? 0),
+          dueAt: row.formacao_faturas_lote?.vencimento_em ?? null,
+        }))
+      ),
+    ].sort((a, b) => {
+      const rank = { alta: 3, media: 2, baixa: 1 } as const;
+      const priorityDiff = rank[b.prioridade] - rank[a.prioridade];
+      if (priorityDiff !== 0) return priorityDiff;
+      return b.valor - a.valor;
+    });
   }
 
   const formatCurrency = (val: number) =>
@@ -115,7 +212,13 @@ export default async function FinanceiroDashboardPage() {
           <h2 className="m-0 text-xl font-semibold text-slate-900">Módulos de Gestão</h2>
           <p className="mt-1 text-sm text-slate-600">Acesse as ferramentas operacionais de faturação.</p>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ModuleCard
+              title="Cohort Economics"
+              description="Análise de rentabilidade, CAC, ROI e tempo de conversão por edição e curso."
+              href="/financeiro/economics"
+              icon="📈"
+            />
             <ModuleCard
               title="Faturação B2B"
               description="Gestão de clientes corporativos, contratos e faturas agregadas por cohort."
@@ -149,6 +252,38 @@ export default async function FinanceiroDashboardPage() {
           </div>
         </article>
       </div>
+
+      <article className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="m-0 text-xl font-semibold text-slate-900">Copiloto de Cobrança</h2>
+        <p className="mt-1 text-sm text-slate-600">Recomendações automáticas de follow-up por segmento de inadimplência.</p>
+        <div className="mt-4 grid gap-3">
+          {copiloto.length === 0 ? (
+            <p className="m-0 text-sm text-slate-600">Sem alertas de follow-up no momento.</p>
+          ) : (
+            copiloto.map((item, idx) => (
+              <div key={`${item.segmento}-${item.titulo}-${idx}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-700">{item.segmento}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
+                    item.prioridade === "alta"
+                      ? "border border-rose-200 bg-rose-50 text-rose-700"
+                      : item.prioridade === "media"
+                        ? "border border-amber-200 bg-amber-50 text-amber-700"
+                        : "border border-slate-200 bg-slate-100 text-slate-700"
+                  }`}>
+                    {item.prioridade}
+                  </span>
+                  <strong className="text-sm text-slate-900">{item.titulo}</strong>
+                </div>
+                <p className="mt-1 text-sm text-slate-700">{item.recomendacao}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-600">
+                  {item.quantidade} casos · {formatCurrency(item.valor)}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </article>
     </div>
   );
 }

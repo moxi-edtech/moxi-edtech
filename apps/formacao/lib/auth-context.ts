@@ -44,7 +44,7 @@ export function getDefaultFormacaoPath(
   tenantType?: "k12" | "formacao" | "solo_creator" | null
 ): string {
   if (tenantType === "solo_creator") {
-    return "/mentor/dashboard";
+    return "/forbidden";
   }
   switch (role) {
     case "formacao_admin":
@@ -52,7 +52,7 @@ export function getDefaultFormacaoPath(
     case "global_admin":
       return "/admin/dashboard";
     case "formacao_secretaria":
-      return "/secretaria/catalogo-cursos";
+      return "/secretaria/turmas";
     case "formacao_financeiro":
       return "/financeiro/dashboard";
     case "formador":
@@ -60,7 +60,7 @@ export function getDefaultFormacaoPath(
     case "formando":
       return "/meus-cursos";
     case "solo_admin":
-      return "/mentor/dashboard";
+      return "/forbidden";
     default:
       return "/dashboard";
   }
@@ -78,7 +78,7 @@ export function canAccessFormacaoPath(role: string | null | undefined, pathname:
   }
 
   if (pathname.startsWith("/mentor")) {
-    return isAdminRole || normalized === "solo_admin";
+    return false;
   }
 
   if (pathname.startsWith("/secretaria")) {

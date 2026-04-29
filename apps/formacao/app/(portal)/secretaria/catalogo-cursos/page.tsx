@@ -9,7 +9,10 @@ export default async function SecretariaCatalogoCursosPage() {
   const auth = await getFormacaoAuthContext();
   if (!auth) redirect("/login");
 
-  if (!["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"].includes(String(auth.role))) {
+  const allowedRoles = ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin", "admin", "admin_escola"];
+  const userRole = String(auth.role ?? "").trim().toLowerCase();
+
+  if (!allowedRoles.includes(userRole)) {
     redirect("/forbidden");
   }
 
@@ -33,7 +36,7 @@ export default async function SecretariaCatalogoCursosPage() {
       .maybeSingle();
 
     const tenantType = String(membership?.tenant_type ?? "").trim().toLowerCase();
-    if (tenantType === "formacao" || tenantType === "solo_creator") {
+    if (tenantType === "formacao") {
       const { data: escola, error: escolaError } = await s
         .from("escolas")
         .select("slug")

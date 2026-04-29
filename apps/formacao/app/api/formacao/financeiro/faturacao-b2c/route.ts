@@ -35,6 +35,31 @@ async function ensureConsumidorFinal(s: FormacaoSupabaseClient, escolaId: string
   return data.id as string;
 }
 
+async function assertFormandoInTenant(s: FormacaoSupabaseClient, escolaId: string, userId: string) {
+  const { data, error } = await s
+    .from("alunos")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .or(`usuario_auth_id.eq.${userId},profile_id.eq.${userId}`)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) throw new Error("Formando não pertence a este centro");
+}
+
+async function assertCohortInTenant(s: FormacaoSupabaseClient, escolaId: string, cohortId: string | null) {
+  if (!cohortId) return;
+  const { data, error } = await s
+    .from("formacao_cohorts")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("id", cohortId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) throw new Error("cohort_id inválido para este centro");
+}
+
 const allowedRoles = [
   "formacao_financeiro",
   "formacao_admin",
@@ -92,6 +117,9 @@ export async function POST(request: Request) {
 
   const s = auth.supabase as FormacaoSupabaseClient;
   try {
+    await assertFormandoInTenant(s, auth.escolaId as string, formandoUserId);
+    await assertCohortInTenant(s, auth.escolaId as string, cohortId);
+
     const cohortReference = await getCohortReferenceValue(s, auth.escolaId as string, cohortId);
     const precoUnitario =
       precoUnitarioInput > 0

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getDefaultFormacaoPath, getFormacaoAuthContext } from "@/lib/auth-context";
-import { supabaseServer } from "@/lib/supabaseServer";
 import PortalNavLink from "./_components/PortalNavLink";
 import { 
   getAuthorizedNavigation, 
@@ -28,17 +27,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-async function ensureEmpresaParceiraProfile(): Promise<void> {
-  const supabase = await supabaseServer();
-  const rpcClient = supabase as unknown as {
-    rpc: (fn: string, args: { p_nif: string | null }) => Promise<{ error: { message: string } | null }>;
-  };
-  const { error } = await rpcClient.rpc("ensure_empresa_parceira_profile", { p_nif: null });
-  if (error) {
-    console.warn("[talent-pool] ensure_empresa_parceira_profile failed:", error.message);
-  }
-}
-
 function NavIcon({ name }: { name: string }) {
   const className = "h-4 w-4 shrink-0";
   const icons: Record<string, any> = {
@@ -59,9 +47,6 @@ function NavIcon({ name }: { name: string }) {
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const auth = await getFormacaoAuthContext();
   if (!auth) redirect("/login");
-  if (["formacao_admin", "super_admin", "global_admin"].includes(String(auth.role ?? ""))) {
-    await ensureEmpresaParceiraProfile();
-  }
   const requestHeaders = await headers();
 
   const tenantFromDB = String(auth.tenantType ?? "");

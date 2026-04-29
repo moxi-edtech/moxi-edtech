@@ -109,6 +109,78 @@ async function resolveFormandoUserId(
   return null;
 }
 
+async function findFormandoCandidates(
+  s: FormacaoSupabaseClient,
+  escolaId: string,
+  payload: InscricaoPayload
+) {
+  const email = String(payload.email ?? "").trim().toLowerCase();
+  const telefone = String(payload.telefone ?? "").trim();
+  const biNorm = normalizeBi(String(payload.bi_numero ?? "").trim());
+
+  if (!email && !telefone && !biNorm) return [];
+
+  let query = s
+    .from("profiles")
+    .select("user_id, nome, email, telefone, bi_numero")
+    .eq("escola_id", escolaId)
+    .limit(20);
+
+  if (email) query = query.eq("email", email);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((row) => {
+      const biMatches = !biNorm || normalizeBi(String(row.bi_numero ?? "")) === biNorm;
+      const telMatches = !telefone || String(row.telefone ?? "").trim() === telefone;
+      return biMatches && telMatches;
+    })
+    .map((row) => {
+      const typed = row as {
+        user_id: string;
+        nome: string | null;
+        email: string | null;
+        telefone: string | null;
+        bi_numero: string | null;
+      };
+      return {
+        user_id: String(typed.user_id),
+        nome: typed.nome ?? "Sem nome",
+        email: typed.email,
+        telefone: typed.telefone,
+        bi_numero: typed.bi_numero,
+        label: [typed.nome ?? "Sem nome", typed.email ?? "", typed.telefone ?? "", typed.bi_numero ?? ""]
+          .filter(Boolean)
+          .join(" · "),
+      };
+    });
+}
+
+async function assertCohortInTenant(s: FormacaoSupabaseClient, escolaId: string, cohortId: string) {
+  const { data, error } = await s
+    .from("formacao_cohorts")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("id", cohortId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
+}
+
+async function assertFormandoInTenant(s: FormacaoSupabaseClient, escolaId: string, userId: string) {
+  const { data, error } = await s
+    .from("alunos")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .or(`usuario_auth_id.eq.${userId},profile_id.eq.${userId}`)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
+}
+
 export async function GET(request: Request) {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
@@ -165,6 +237,15 @@ export async function POST(request: Request) {
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+  try {
+    const cohortExists = await assertCohortInTenant(s, String(auth.escolaId), cohortId);
+    if (!cohortExists) {
+      return NextResponse.json({ ok: false, error: "cohort_id inválido para esta escola" }, { status: 400 });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha ao validar turma";
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+  }
 
   let formandoUserId: string | null = null;
   let createdNewUser = false;
@@ -177,8 +258,17 @@ export async function POST(request: Request) {
   }
 
   if (formandoUserId === "__AMBIGUOUS__") {
+    const candidates = await findFormandoCandidates(s, String(auth.escolaId), body ?? {});
     return NextResponse.json(
-      { ok: false, error: "Mais de um formando encontrado. Informe formando_user_id explicitamente." },
+      {
+        ok: false,
+        error: "Foram encontrados múltiplos formandos compatíveis. Selecione um candidato para continuar.",
+        code: "FORMANDO_RESOLUTION_REQUIRED",
+        resolution: {
+          mode: "select_candidate",
+          candidates,
+        },
+      },
       { status: 409 }
     );
   }
@@ -234,14 +324,32 @@ export async function POST(request: Request) {
   }
 
   if (!formandoUserId) {
+    const candidates = await findFormandoCandidates(s, String(auth.escolaId), body ?? {});
     return NextResponse.json(
       {
         ok: false,
-        error: "Não foi possível resolver o utilizador para inscrição. Informe formando_user_id.",
-        code: "FORMANDO_NOT_RESOLVED",
+        error: "Não foi possível identificar o formando automaticamente. Revise os dados e selecione um candidato.",
+        code: "FORMANDO_RESOLUTION_REQUIRED",
+        resolution: {
+          mode: "review_or_select",
+          candidates,
+          required_fields: ["nome", "email|bi_numero|telefone"],
+        },
       },
       { status: 409 }
     );
+  }
+
+  if (String(body?.formando_user_id ?? "").trim()) {
+    try {
+      const isInTenant = await assertFormandoInTenant(s, String(auth.escolaId), String(formandoUserId));
+      if (!isInTenant) {
+        return NextResponse.json({ ok: false, error: "formando_user_id inválido para esta escola" }, { status: 400 });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao validar formando";
+      return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    }
   }
 
   const { data: perfil, error: perfilError } = await (s as FormacaoSupabaseClient & {

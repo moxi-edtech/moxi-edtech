@@ -33,6 +33,10 @@ type CohortOption = {
   valor_referencia: number | null;
   moeda: string;
 };
+type FormandoOption = {
+  user_id: string;
+  label: string;
+};
 
 const panelClass = "grid gap-2 rounded-2xl border border-slate-200 bg-white p-4";
 const inputClass = "rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[#1F6B3B] focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/20";
@@ -44,6 +48,8 @@ export default function FaturacaoB2BClient() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+  const [formandos, setFormandos] = useState<FormandoOption[]>([]);
+  const [formandoQuery, setFormandoQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,15 +76,17 @@ export default function FaturacaoB2BClient() {
     try {
       setLoading(true);
       setError(null);
-      const [clientesRes, faturasRes, cohortsRes] = await Promise.all([
+      const [clientesRes, faturasRes, cohortsRes, formandosRes] = await Promise.all([
         fetch("/api/formacao/financeiro/clientes-b2b", { cache: "no-store" }),
         fetch("/api/formacao/financeiro/faturacao-b2b", { cache: "no-store" }),
         fetch("/api/formacao/financeiro/cohort-precos", { cache: "no-store" }),
+        fetch("/api/formacao/financeiro/formandos?limit=20", { cache: "no-store" }),
       ]);
 
       const clientesJson = (await clientesRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: Cliente[] } | null;
       const faturasJson = (await faturasRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: Fatura[] } | null;
       const cohortsJson = (await cohortsRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: CohortOption[] } | null;
+      const formandosJson = (await formandosRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: FormandoOption[] } | null;
 
       if (!clientesRes.ok || !clientesJson?.ok || !Array.isArray(clientesJson.items)) {
         throw new Error(clientesJson?.error || "Falha ao carregar clientes B2B");
@@ -89,10 +97,14 @@ export default function FaturacaoB2BClient() {
       if (!cohortsRes.ok || !cohortsJson?.ok || !Array.isArray(cohortsJson.items)) {
         throw new Error(cohortsJson?.error || "Falha ao carregar turmas");
       }
+      if (!formandosRes.ok || !formandosJson?.ok || !Array.isArray(formandosJson.items)) {
+        throw new Error(formandosJson?.error || "Falha ao carregar formandos");
+      }
 
       setClientes(clientesJson.items);
       setFaturas(faturasJson.items);
       setCohorts(cohortsJson.items);
+      setFormandos(formandosJson.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -115,6 +127,22 @@ export default function FaturacaoB2BClient() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(async () => {
+      try {
+        const q = encodeURIComponent(formandoQuery.trim());
+        const res = await fetch(`/api/formacao/financeiro/formandos?limit=20&q=${q}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as { ok: boolean; items?: FormandoOption[] } | null;
+        if (res.ok && json?.ok && Array.isArray(json.items)) {
+          setFormandos(json.items);
+        }
+      } catch {
+        // noop
+      }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [formandoQuery]);
 
   const createCliente = async (event: FormEvent) => {
     event.preventDefault();
@@ -269,8 +297,19 @@ export default function FaturacaoB2BClient() {
               </option>
             ))}
           </select>
+          <input
+            className={inputClass}
+            value={formandoQuery}
+            onChange={(e) => setFormandoQuery(e.target.value)}
+            placeholder="Buscar formando por nome, email ou BI"
+          />
           <input className={inputClass} value={faturaForm.vencimento_em} onChange={(e) => setFaturaForm((p) => ({ ...p, vencimento_em: e.target.value }))} type="date" required />
-          <input className={inputClass} value={faturaForm.formando_user_id} onChange={(e) => setFaturaForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" required />
+          <select className={inputClass} value={faturaForm.formando_user_id} onChange={(e) => setFaturaForm((p) => ({ ...p, formando_user_id: e.target.value }))} required>
+            <option value="">Formando</option>
+            {formandos.map((formando) => (
+              <option key={formando.user_id} value={formando.user_id}>{formando.label}</option>
+            ))}
+          </select>
           <input className={inputClass} value={faturaForm.descricao} onChange={(e) => setFaturaForm((p) => ({ ...p, descricao: e.target.value }))} placeholder="Descrição" required />
           <input className={inputClass} value={faturaForm.quantidade} onChange={(e) => setFaturaForm((p) => ({ ...p, quantidade: e.target.value }))} type="number" min={1} step="0.01" placeholder="Quantidade" required />
           <input className={inputClass} value={faturaForm.preco_unitario} onChange={(e) => setFaturaForm((p) => ({ ...p, preco_unitario: e.target.value }))} type="number" min={0} step="0.01" placeholder="Preço unitário" required />

@@ -32,7 +32,8 @@ export async function GET() {
       *,
       cohort:formacao_cohorts (
         nome,
-        curso_nome
+        curso_nome,
+        data_inicio
       )
     `)
     .eq("escola_id", auth.escolaId)
@@ -40,7 +41,104 @@ export async function GET() {
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-  return NextResponse.json({ ok: true, items: data ?? [] });
+  const now = Date.now();
+  const prioritized = (data ?? [])
+    .map((item) => {
+      const typed = item as {
+        created_at?: string;
+        valor_cobrado?: number | null;
+        cohort?: { data_inicio?: string | null } | null;
+      } & Record<string, unknown>;
+
+      const createdAtMs = typed.created_at ? new Date(typed.created_at).getTime() : now;
+      const ageHours = Math.max(0, (now - createdAtMs) / (1000 * 60 * 60));
+
+      const cohortStartMs = typed.cohort?.data_inicio ? new Date(String(typed.cohort.data_inicio)).getTime() : null;
+      const daysToStart = cohortStartMs ? (cohortStartMs - now) / (1000 * 60 * 60 * 24) : null;
+
+      const value = Number(typed.valor_cobrado ?? 0);
+
+      let score = 0;
+      const reasons: string[] = [];
+
+      if (daysToStart !== null) {
+        if (daysToStart <= 3) {
+          score += 55;
+          reasons.push("Turma inicia em até 3 dias");
+        } else if (daysToStart <= 7) {
+          score += 35;
+          reasons.push("Turma inicia em até 7 dias");
+        } else if (daysToStart <= 14) {
+          score += 20;
+          reasons.push("Turma inicia em até 14 dias");
+        }
+      }
+
+      if (value >= 500000) {
+        score += 30;
+        reasons.push("Valor elevado");
+      } else if (value >= 200000) {
+        score += 20;
+        reasons.push("Valor relevante");
+      } else if (value > 0) {
+        score += 10;
+        reasons.push("Valor informado");
+      }
+
+      if (ageHours >= 72) {
+        score += 25;
+        reasons.push("Ticket com +72h");
+      } else if (ageHours >= 24) {
+        score += 15;
+        reasons.push("Ticket com +24h");
+      } else if (ageHours >= 8) {
+        score += 8;
+        reasons.push("Ticket com +8h");
+      }
+
+      const level = score >= 70 ? "alta" : score >= 35 ? "media" : "baixa";
+      const email = String((typed as { email?: string | null }).email ?? "").trim();
+      const telefone = String((typed as { telefone?: string | null }).telefone ?? "").trim();
+      const comprovativo = String((typed as { comprovativo_url?: string | null }).comprovativo_url ?? "").trim();
+
+      let recommendation = "Aprovar";
+      let recommendationReason = "Dados mínimos presentes para avançar com matrícula.";
+
+      if (!comprovativo) {
+        recommendation = "Pedir comprovativo";
+        recommendationReason = "Inscrição sem comprovativo anexado.";
+      } else if (!email && !telefone) {
+        recommendation = "Pedir contacto";
+        recommendationReason = "Falta email e telefone para comunicação operacional.";
+      } else if (level === "alta" && ageHours >= 24) {
+        recommendation = "Priorizar aprovação";
+        recommendationReason = "Ticket antigo e com urgência alta.";
+      } else if (daysToStart !== null && daysToStart <= 3) {
+        recommendation = "Aprovar hoje";
+        recommendationReason = "Turma inicia em até 3 dias.";
+      } else if (value >= 500000) {
+        recommendation = "Validar e aprovar";
+        recommendationReason = "Valor elevado, reduzir risco de atraso no ciclo financeiro.";
+      }
+
+      return {
+        ...typed,
+        priority_score: score,
+        priority_level: level,
+        priority_reasons: reasons,
+        operational_recommendation: recommendation,
+        operational_recommendation_reason: recommendationReason,
+      };
+    })
+    .sort((a, b) => {
+      const scoreDiff = Number(b.priority_score ?? 0) - Number(a.priority_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      const aCreated = a.created_at ? new Date(String(a.created_at)).getTime() : 0;
+      const bCreated = b.created_at ? new Date(String(b.created_at)).getTime() : 0;
+      return bCreated - aCreated;
+    });
+
+  return NextResponse.json({ ok: true, items: prioritized });
 }
 
 export async function PATCH(request: Request) {

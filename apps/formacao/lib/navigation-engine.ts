@@ -28,9 +28,10 @@ export function mapTenantTypeFromDb(tenantFromDB: string | null | undefined): Te
 }
 
 export function mapUserRoleFromDb(role: string | null | undefined): UserRole {
-  if (["formacao_admin", "super_admin", "global_admin"].includes(String(role))) return "ADMIN";
-  if (role === "formador" || role === "mentor" || role === "solo_admin" || role === "creator") return "MENTOR";
-  if (role === "formando") return "ALUNO";
+  const r = String(role ?? "").trim().toLowerCase();
+  if (["formacao_admin", "super_admin", "global_admin", "admin", "admin_escola", "staff_admin"].includes(r)) return "ADMIN";
+  if (r === "formador" || r === "mentor" || r === "solo_admin" || r === "creator") return "MENTOR";
+  if (r === "formando") return "ALUNO";
   return "SECRETARIA";
 }
 
@@ -61,8 +62,16 @@ export const CENTER_NAV_CONFIG: NavItem[] = [
     group: "Gestão",
   },
   {
+    id: "nova-inscricao",
+    href: "/secretaria/inscricoes",
+    icon: "UserPlus",
+    label: { default: "Nova Inscrição" },
+    allowedRoles: ["ADMIN", "SECRETARIA"],
+    group: "Académico",
+  },
+  {
     id: "catalogo-cursos",
-    href: "/admin/cursos",
+    href: "/secretaria/catalogo-cursos",
     icon: "GraduationCap",
     label: { default: "Catálogo de Cursos" },
     allowedRoles: ["ADMIN", "SECRETARIA"],
@@ -86,10 +95,10 @@ export const CENTER_NAV_CONFIG: NavItem[] = [
   },
   {
     id: "cohorts",
-    href: "/admin/cohorts",
+    href: "/secretaria/turmas",
     icon: "Users",
     label: { default: "Turmas & Cohorts" },
-    allowedRoles: ["ADMIN"],
+    allowedRoles: ["ADMIN", "SECRETARIA"],
     group: "Académico",
   },
   {
