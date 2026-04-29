@@ -41,14 +41,40 @@ export async function POST(request: Request) {
       .from("formacao-comprovativos")
       .getPublicUrl(filePath);
 
-    // 2. Registrar na tabela de staging ou criar uma nova tabela de quarentena para pagamentos?
-    // Para simplificar e seguir o fluxo de admissões, vamos usar a mesma lógica de 'staging'
-    // mas aplicada a pagamentos. 
-    // Como ainda não temos uma 'formacao_pagamentos_staging', vamos atualizar o item diretamente para 'em_verificacao'
-    // e guardar o link no metadata por agora, ou criar a tabela.
-    
-    // Melhor: Criar a tabela formacao_pagamentos_verificacao
-    
+    const { data: itemOwned, error: itemOwnedError } = await supabase
+      .from("formacao_faturas_lote_itens")
+      .select("id, escola_id, fatura_lote_id, status_pagamento")
+      .eq("id", item_id)
+      .eq("formando_user_id", auth.userId)
+      .eq("escola_id", auth.escolaId)
+      .maybeSingle();
+
+    if (itemOwnedError || !itemOwned?.id) {
+      return NextResponse.json({ ok: false, error: "Cobrança não encontrada para este utilizador" }, { status: 404 });
+    }
+
+    const { error: verifError } = await (supabase as any)
+      .from("formacao_pagamentos_verificacao")
+      .insert({
+        escola_id: auth.escolaId,
+        fatura_item_id: item_id,
+        formando_user_id: auth.userId,
+        comprovativo_url: publicUrl,
+        valor_informado: valorInformado ? Number(valorInformado) : null,
+        mensagem_aluno: mensagem || null,
+        status: "submetido",
+        metadata: {
+          origem: "portal_formando",
+          enviado_em: new Date().toISOString(),
+          content_type: file.type || null,
+          file_name: file.name || null,
+        },
+      });
+
+    if (verifError) {
+      return NextResponse.json({ ok: false, error: verifError.message }, { status: 400 });
+    }
+
     const { error: updateError } = await supabase
       .from("formacao_faturas_lote_itens")
       .update({

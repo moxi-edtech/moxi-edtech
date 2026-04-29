@@ -60,14 +60,19 @@ export function buildInviteEmail(args: {
   convidadoEmail: string
   convidadoNome?: string | null
   papel?: string | null
+  tenant_type?: string | null
 }) {
-  const { escolaNome, onboardingUrl, convidadoEmail, convidadoNome, papel } = args
+  const { escolaNome, onboardingUrl, convidadoEmail, convidadoNome, papel, tenant_type } = args
   const brand = getBranding()
-  const guidance = getInviteGuidance(papel)
-  const subject = `Convite ${brand.name} • ${escolaNome}`
+  const isFormacao = tenant_type === 'formacao'
+  const guidance = getInviteGuidance(papel, isFormacao)
+
+  const displayBrand = isFormacao ? `${brand.name} Formação` : brand.name
+  const subject = `Convite ${displayBrand} • ${escolaNome}`
+
   const text = [
     convidadoNome ? `Olá, ${convidadoNome}.` : 'Olá,',
-    `Você foi convidado para aceder ao ${brand.name} da escola "${escolaNome}".`,
+    `Você foi convidado para aceder ao ${displayBrand} do centro "${escolaNome}".`,
     guidance.cargo ? `Cargo: ${guidance.cargo}.` : '',
     guidance.portal ? `Portal: ${guidance.portal}.` : '',
     guidance.tasks.length > 0 ? `Ao entrar, você deverá:` : '',
@@ -84,16 +89,16 @@ export function buildInviteEmail(args: {
     <div style="border:1px solid #eaeaea; border-radius:16px; margin:40px auto; padding:20px; max-width:465px; background-color:#ffffff; box-shadow:0 1px 4px rgba(15,23,42,0.08); line-height:1.6; color:#0f172a;">
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; justify-content:center;">
         ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:32px;" />` : ''}
-        <span style="font-size:20px; font-weight:700;">${escapeHtml(brand.name)}</span>
+        <span style="font-size:20px; font-weight:700;">${escapeHtml(displayBrand)}</span>
       </div>
       <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Convite para ${escapeHtml(escolaNome)}</h2>
       ${convidadoNome ? `<p style="margin:0 0 8px 0;">Olá, <strong>${escapeHtml(convidadoNome)}</strong>.</p>` : '<p style="margin:0 0 8px 0;">Olá,</p>'}
-      <p style="margin:0 0 8px 0; color:#475569;">Você foi convidado para aceder ao <strong>${escapeHtml(brand.name)}</strong> da escola <strong>${escapeHtml(escolaNome)}</strong>.</p>
-      ${guidance.cargo ? `<p style="margin:0 0 8px 0; color:#475569;">Cargo: <strong>${escapeHtml(guidance.cargo)}</strong></p>` : ''}
-      ${guidance.portal ? `<p style="margin:0 0 8px 0; color:#475569;">Portal: <strong>${escapeHtml(guidance.portal)}</strong></p>` : ''}
+      <p style="margin:0 0 8px 0; color:#475569;">Você foi convidado para operar no centro <strong>${escapeHtml(escolaNome)}</strong> através da plataforma <strong>${escapeHtml(displayBrand)}</strong>.</p>
+      ${guidance.cargo ? `<p style="margin:0 0 8px 0; color:#475569;">Sua função: <strong>${escapeHtml(guidance.cargo)}</strong></p>` : ''}
+      ${guidance.portal ? `<p style="margin:0 0 8px 0; color:#475569;">Acesso via: <strong>${escapeHtml(guidance.portal)}</strong></p>` : ''}
       ${guidance.tasks.length > 0 ? `
       <div style="margin:14px 0 8px 0; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; background:#f8fafc;">
-        <p style="margin:0 0 8px 0; color:#334155; font-size:13px; font-weight:700;">Primeiros passos</p>
+        <p style="margin:0 0 8px 0; color:#334155; font-size:13px; font-weight:700;">Seu Checklist de Onboarding</p>
         <ul style="margin:0; padding-left:18px; color:#475569; font-size:13px;">
           ${guidance.tasks.map((task) => `<li style="margin:0 0 6px 0;">${escapeHtml(task)}</li>`).join('')}
         </ul>
@@ -110,9 +115,66 @@ export function buildInviteEmail(args: {
   return { subject, html, text }
 }
 
-function getInviteGuidance(papel?: string | null): { cargo: string | null; portal: string | null; tasks: string[] } {
+function getInviteGuidance(papel?: string | null, isFormacao: boolean = false): { cargo: string | null; portal: string | null; tasks: string[] } {
   const role = String(papel || '').trim().toLowerCase()
 
+  if (isFormacao) {
+    const formationMap: Record<string, { cargo: string; portal: string; tasks: string[] }> = {
+      formacao_admin: {
+        cargo: 'Gestor do Centro',
+        portal: 'Dashboard Administrativo (Formação)',
+        tasks: [
+          'Publicar o catálogo de cursos ativos.',
+          'Abrir as primeiras turmas (cohorts) e definir vagas.',
+          'Configurar a equipe inicial e permissões de acesso.',
+          'Acompanhar indicadores de ocupação e margem.'
+        ],
+      },
+      formacao_secretaria: {
+        cargo: 'Operador de Secretaria',
+        portal: 'Portal da Secretaria (Balcão)',
+        tasks: [
+          'Registar novas inscrições via balcão.',
+          'Validar inscrições vindas das Landing Pages.',
+          'Gerir o status dos formandos por turma.',
+          'Resolver ambiguidades e duplicidades de perfis.'
+        ],
+      },
+      formacao_financeiro: {
+        cargo: 'Responsável Financeiro',
+        portal: 'Dashboard Financeiro (B2B/B2C)',
+        tasks: [
+          'Configurar contratos e faturamento de clientes B2B.',
+          'Monitorizar faturas em aberto e inadimplência.',
+          'Realizar a reconciliação bancária de comprovativos.',
+          'Analisar a rentabilidade (Cohort Economics).'
+        ],
+      },
+      formador: {
+        cargo: 'Formador / Consultor',
+        portal: 'Portal do Formador',
+        tasks: [
+          'Consultar agenda de aulas e mentorias.',
+          'Monitorizar o progresso e presença dos formandos.',
+          'Validar honorários e lançamentos de carga horária.'
+        ],
+      },
+    }
+
+    const guidance = formationMap[role] || formationMap[role.replace(/^formacao_/, '')]
+    if (guidance) return guidance
+
+    return {
+      cargo: papel || 'Colaborador',
+      portal: 'Plataforma KLASSE Formação',
+      tasks: [
+        'Completar o primeiro acesso e validar seus dados.',
+        'Revisar os módulos operacionais do seu painel.'
+      ],
+    }
+  }
+
+  // Original generic school logic
   if (!role) {
     return {
       cargo: null,
@@ -206,18 +268,18 @@ export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: st
   return { subject, html, text }
 }
 
-export async function buildBillingRenewalEmail(args: { 
-  escolaNome: string; 
-  plano: string; 
-  valor: string; 
-  dataRenovacao: string; 
-  diasRestantes: number; 
-  referencia: string; 
+export async function buildBillingRenewalEmail(args: {
+  escolaNome: string;
+  plano: string;
+  valor: string;
+  dataRenovacao: string;
+  diasRestantes: number;
+  referencia: string;
   linkPagamento: string;
 }) {
   const brand = getBranding()
-  const subject = args.diasRestantes === 1 
-    ? `⚠️ Último dia de subscrição ${brand.name} • ${args.escolaNome}` 
+  const subject = args.diasRestantes === 1
+    ? `⚠️ Último dia de subscrição ${brand.name} • ${args.escolaNome}`
     : `Aviso de renovação ${brand.name} • ${args.diasRestantes} dias restantes`;
 
   const element = createElement(BillingRenewalEmail, args)

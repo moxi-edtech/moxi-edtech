@@ -1,4 +1,6 @@
 import "server-only";
+import fs from "node:fs";
+import path from "node:path";
 
 type AdminAction =
   | "createUser"
@@ -25,6 +27,42 @@ type AdminRequest = {
 
 const normalizeToken = (raw?: string | null) =>
   (raw || "").replace(/\\n/g, "").replace(/[\r\n]/g, "").trim();
+
+function readTokenFromEnvFiles() {
+  const candidates = [
+    path.join(process.cwd(), ".env.local"),
+    path.join(process.cwd(), "apps/formacao/.env.local"),
+  ];
+
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const content = fs.readFileSync(file, "utf8");
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const idx = trimmed.indexOf("=");
+        if (idx <= 0) continue;
+        const key = trimmed.slice(0, idx).trim();
+        const value = trimmed.slice(idx + 1).trim();
+        if (
+          key === "AUTH_ADMIN_JOB_TOKEN" ||
+          key === "CRON_SECRET" ||
+          key === "KLASSE_AUTH_ADMIN_JOB_TOKEN" ||
+          key === "KLASSE_JOB_TOKEN"
+        ) {
+          const normalized = normalizeToken(value);
+          if (normalized) return normalized;
+        }
+      }
+    } catch {
+      // no-op: continue fallback chain
+    }
+  }
+
+  return "";
+}
 
 function resolveJobsBase(req: Request) {
   const explicit = String(process.env.KLASSE_AUTH_ADMIN_JOB_BASE_URL ?? "").trim();
@@ -58,10 +96,10 @@ export async function callAuthAdminJob(req: Request, action: AdminAction, payloa
       process.env.CRON_SECRET ||
       process.env.KLASSE_AUTH_ADMIN_JOB_TOKEN ||
       process.env.KLASSE_JOB_TOKEN
-  );
+  ) || readTokenFromEnvFiles();
   if (!token) {
     throw new Error(
-      "Missing auth-admin job token. Set AUTH_ADMIN_JOB_TOKEN (or CRON_SECRET) in apps/formacao/.env.local."
+      "Missing auth-admin job token. Set AUTH_ADMIN_JOB_TOKEN (or CRON_SECRET) in the formacao production environment; use apps/formacao/.env.local only for local dev."
     );
   }
 

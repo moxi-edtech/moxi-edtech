@@ -17,6 +17,7 @@ export default function ConciliacaoClient() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -47,6 +48,25 @@ export default function ConciliacaoClient() {
     const total = items.reduce((sum, item) => sum + Number(item.valor_pago || 0), 0);
     return { total, quantidade: items.length };
   }, [items]);
+
+  const updateStatus = async (id: string, status: "em_analise" | "aprovado" | "rejeitado") => {
+    try {
+      setBusyId(id);
+      setError(null);
+      const res = await fetch("/api/formacao/financeiro/conciliacao", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar verificação");
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="grid gap-5">
@@ -89,6 +109,32 @@ export default function ConciliacaoClient() {
                 <span className="text-xs text-slate-400">Sem comprovativo</span>
               )}
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busyId === item.id}
+                onClick={() => updateStatus(item.id, "em_analise")}
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs"
+              >
+                Em análise
+              </button>
+              <button
+                type="button"
+                disabled={busyId === item.id}
+                onClick={() => updateStatus(item.id, "aprovado")}
+                className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700"
+              >
+                Aprovar
+              </button>
+              <button
+                type="button"
+                disabled={busyId === item.id}
+                onClick={() => updateStatus(item.id, "rejeitado")}
+                className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700"
+              >
+                Rejeitar
+              </button>
+            </div>
           </article>
         ))}
         {!loading && items.length === 0 ? (
@@ -106,6 +152,7 @@ export default function ConciliacaoClient() {
               <Th>Status</Th>
               <Th>Referência</Th>
               <Th>Comprovativo</Th>
+              <Th>Ações</Th>
             </tr>
           </thead>
           <tbody>
@@ -132,12 +179,19 @@ export default function ConciliacaoClient() {
                     <span className="text-xs text-slate-400">—</span>
                   )}
                 </Td>
+                <Td>
+                  <div className="flex gap-1">
+                    <button type="button" disabled={busyId === item.id} onClick={() => updateStatus(item.id, "em_analise")} className="rounded border border-slate-200 px-1.5 py-0.5 text-xs">Análise</button>
+                    <button type="button" disabled={busyId === item.id} onClick={() => updateStatus(item.id, "aprovado")} className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-700">Aprovar</button>
+                    <button type="button" disabled={busyId === item.id} onClick={() => updateStatus(item.id, "rejeitado")} className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs text-rose-700">Rejeitar</button>
+                  </div>
+                </Td>
               </tr>
             ))}
 
             {!loading && items.length === 0 ? (
               <tr>
-                <Td colSpan={6}>Sem comprovativos na fila de conciliação.</Td>
+                <Td colSpan={7}>Sem comprovativos na fila de conciliação.</Td>
               </tr>
             ) : null}
           </tbody>

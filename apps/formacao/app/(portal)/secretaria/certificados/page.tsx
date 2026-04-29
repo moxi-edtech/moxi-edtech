@@ -21,9 +21,21 @@ type Emissao = {
   template_id: string | null;
 };
 
+type FormandoOption = {
+  user_id: string;
+  label: string;
+};
+
+type CohortOption = {
+  id: string;
+  label: string;
+};
+
 export default function CertificadosPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [emissoes, setEmissoes] = useState<Emissao[]>([]);
+  const [formandos, setFormandos] = useState<FormandoOption[]>([]);
+  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [templateForm, setTemplateForm] = useState({
@@ -44,9 +56,10 @@ export default function CertificadosPage() {
   const load = async () => {
     try {
       setError(null);
-      const [templatesRes, emissoesRes] = await Promise.all([
+      const [templatesRes, emissoesRes, optionsRes] = await Promise.all([
         fetch("/api/formacao/certificados/templates", { cache: "no-store" }),
         fetch("/api/formacao/certificados/emissoes", { cache: "no-store" }),
+        fetch("/api/formacao/certificados/options", { cache: "no-store" }),
       ]);
 
       const templatesJson = (await templatesRes.json().catch(() => null)) as
@@ -55,6 +68,9 @@ export default function CertificadosPage() {
       const emissoesJson = (await emissoesRes.json().catch(() => null)) as
         | { ok: boolean; error?: string; items?: Emissao[] }
         | null;
+      const optionsJson = (await optionsRes.json().catch(() => null)) as
+        | { ok: boolean; error?: string; formandos?: FormandoOption[]; cohorts?: CohortOption[] }
+        | null;
 
       if (!templatesRes.ok || !templatesJson?.ok || !Array.isArray(templatesJson.items)) {
         throw new Error(templatesJson?.error || "Falha ao carregar templates");
@@ -62,9 +78,14 @@ export default function CertificadosPage() {
       if (!emissoesRes.ok || !emissoesJson?.ok || !Array.isArray(emissoesJson.items)) {
         throw new Error(emissoesJson?.error || "Falha ao carregar emissões");
       }
+      if (!optionsRes.ok || !optionsJson?.ok) {
+        throw new Error(optionsJson?.error || "Falha ao carregar opções");
+      }
 
       setTemplates(templatesJson.items);
       setEmissoes(emissoesJson.items);
+      setFormandos(Array.isArray(optionsJson.formandos) ? optionsJson.formandos : []);
+      setCohorts(Array.isArray(optionsJson.cohorts) ? optionsJson.cohorts : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
     }
@@ -176,8 +197,18 @@ export default function CertificadosPage() {
               <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
-          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.formando_user_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" />
-          <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.cohort_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="ID da turma (opcional)" />
+          <select className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.formando_user_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, formando_user_id: e.target.value }))} required>
+            <option value="">Selecione o formando</option>
+            {formandos.map((f) => (
+              <option key={f.user_id} value={f.user_id}>{f.label}</option>
+            ))}
+          </select>
+          <select className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.cohort_id} onChange={(e) => setEmissaoForm((p) => ({ ...p, cohort_id: e.target.value }))}>
+            <option value="">Sem turma</option>
+            {cohorts.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
           <input className="rounded-lg border border-zinc-200 px-3 py-2 text-sm" value={emissaoForm.numero_documento} onChange={(e) => setEmissaoForm((p) => ({ ...p, numero_documento: e.target.value }))} placeholder="Número (opcional)" />
         </div>
         <button type="submit" className="w-fit rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">Emitir</button>

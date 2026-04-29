@@ -70,6 +70,33 @@ export async function POST(request: Request) {
   const referencia = String(body?.referencia ?? "").trim() || buildRef(auth.escolaId || "HON");
 
   const s = auth.supabase as FormacaoSupabaseClient;
+  const { data: cohort, error: cohortError } = await s
+    .from("formacao_cohorts")
+    .select("id")
+    .eq("escola_id", auth.escolaId)
+    .eq("id", cohortId)
+    .limit(1)
+    .maybeSingle();
+
+  if (cohortError) return NextResponse.json({ ok: false, error: cohortError.message }, { status: 400 });
+  if (!cohort) {
+    return NextResponse.json({ ok: false, error: "cohort_id inválido para esta escola" }, { status: 400 });
+  }
+
+  const { data: formador, error: formadorError } = await s
+    .from("escola_users")
+    .select("user_id, papel")
+    .eq("escola_id", auth.escolaId)
+    .eq("user_id", formadorUserId)
+    .or("papel.eq.formador,papel.eq.formacao_formador")
+    .limit(1)
+    .maybeSingle();
+
+  if (formadorError) return NextResponse.json({ ok: false, error: formadorError.message }, { status: 400 });
+  if (!formador) {
+    return NextResponse.json({ ok: false, error: "formador_user_id inválido para esta escola" }, { status: 400 });
+  }
+
   const { data, error } = await s
     .from("formacao_honorarios_lancamentos")
     .insert({

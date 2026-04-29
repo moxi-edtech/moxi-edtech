@@ -2,18 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { decideProductAccess } from "../../lib/product-access";
 
-test("SOLO_CREATOR: legado /admin/cohorts redireciona para /mentor/mentorias", () => {
+test("SOLO_CREATOR: /admin/cohorts é negado no app Formação Centro", () => {
   const decision = decideProductAccess("SOLO_CREATOR", "/admin/cohorts");
-  assert.equal(decision.action, "redirect");
-  if (decision.action !== "redirect") return;
-  assert.equal(decision.target, "/mentor/mentorias");
+  assert.equal(decision.action, "deny");
 });
 
-test("SOLO_CREATOR: legado /admin/dashboard redireciona para /mentor/dashboard", () => {
+test("SOLO_CREATOR: /admin/dashboard é negado no app Formação Centro", () => {
   const decision = decideProductAccess("SOLO_CREATOR", "/admin/dashboard");
-  assert.equal(decision.action, "redirect");
-  if (decision.action !== "redirect") return;
-  assert.equal(decision.target, "/mentor/dashboard");
+  assert.equal(decision.action, "deny");
 });
 
 test("SOLO_CREATOR: namespace financeiro center-only é negado", () => {

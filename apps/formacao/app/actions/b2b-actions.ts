@@ -44,7 +44,7 @@ export async function registarVendaB2BAction(formData: FormData) {
     if (err) throw err;
 
     revalidatePath("/admin/dashboard");
-    revalidatePath("/mentor/dashboard");
+    revalidatePath("/admin/cohorts");
     return { 
       success: true, 
       message: "Venda B2B registada. O link mágico será ativado após a confirmação do pagamento.",

@@ -25,6 +25,43 @@ function buildReference(prefix: string, escolaId: string) {
   return `${prefix}-${escolaId.slice(0, 5).toUpperCase()}-${stamp}`;
 }
 
+async function assertFormandoInTenant(s: FormacaoSupabaseClient, escolaId: string, userId: string) {
+  const { data, error } = await s
+    .from("alunos")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .or(`usuario_auth_id.eq.${userId},profile_id.eq.${userId}`)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) throw new Error("Formando não pertence a este centro");
+}
+
+async function assertClienteInTenant(s: FormacaoSupabaseClient, escolaId: string, clienteId: string) {
+  const { data, error } = await s
+    .from("formacao_clientes_b2b")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("id", clienteId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) throw new Error("cliente_b2b_id inválido para este centro");
+}
+
+async function assertCohortInTenant(s: FormacaoSupabaseClient, escolaId: string, cohortId: string | null) {
+  if (!cohortId) return;
+  const { data, error } = await s
+    .from("formacao_cohorts")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .eq("id", cohortId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) throw new Error("cohort_id inválido para este centro");
+}
+
 export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
@@ -66,6 +103,16 @@ export async function POST(request: Request) {
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+  try {
+    await assertClienteInTenant(s, auth.escolaId as string, clienteId);
+    await assertCohortInTenant(s, auth.escolaId as string, cohortId);
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : "Dados inválidos para este centro" },
+      { status: 400 }
+    );
+  }
+
   const cohortReference = await getCohortReferenceValue(s, auth.escolaId as string, cohortId);
   const referencia = String(body?.referencia ?? "").trim() || buildReference("B2B", auth.escolaId || "FAT");
 
@@ -88,6 +135,17 @@ export async function POST(request: Request) {
       desconto,
     };
   });
+
+  try {
+    for (const item of normalizedItens) {
+      await assertFormandoInTenant(s, auth.escolaId as string, item.formando_user_id);
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : "Formando inválido para este centro" },
+      { status: 400 }
+    );
+  }
 
   const totalBrutoResolved = normalizedItens.reduce(
     (sum, item) => sum + Number(item.quantidade || 0) * Number(item.preco_unitario || 0),

@@ -66,7 +66,7 @@ export async function criarMentoriaAction(data: MentoriaInput) {
     }
 
     revalidatePath("/admin/dashboard");
-    revalidatePath("/mentor/dashboard");
+    revalidatePath("/admin/cohorts");
     logFunnelEvent({
       event: "mentor_mentoria_submit_success",
       stage: "nova_mentoria",

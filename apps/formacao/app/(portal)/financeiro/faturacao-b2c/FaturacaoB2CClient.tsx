@@ -20,6 +20,10 @@ type CohortOption = {
   valor_referencia: number | null;
   moeda: string;
 };
+type FormandoOption = {
+  user_id: string;
+  label: string;
+};
 
 const panelClass = "grid gap-2 rounded-2xl border border-slate-200 bg-white p-4";
 const inputClass = "rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm transition-all duration-200 focus:border-[#1F6B3B] focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/20";
@@ -30,6 +34,8 @@ const dangerButtonClass = "rounded-md border border-red-200 px-2 py-1 text-xs te
 export default function FaturacaoB2CClient({}: Props) {
   const [items, setItems] = useState<Item[]>([]);
   const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+  const [formandos, setFormandos] = useState<FormandoOption[]>([]);
+  const [formandoQuery, setFormandoQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -50,12 +56,16 @@ export default function FaturacaoB2CClient({}: Props) {
         fetch("/api/formacao/financeiro/faturacao-b2c", { cache: "no-store" }),
         fetch("/api/formacao/financeiro/cohort-precos", { cache: "no-store" }),
       ]);
+      const formandosRes = await fetch("/api/formacao/financeiro/formandos?limit=20", { cache: "no-store" });
       const itemsJson = (await itemsRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: Item[] } | null;
       const cohortsJson = (await cohortsRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: CohortOption[] } | null;
+      const formandosJson = (await formandosRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: FormandoOption[] } | null;
       if (!itemsRes.ok || !itemsJson?.ok || !Array.isArray(itemsJson.items)) throw new Error(itemsJson?.error || "Falha ao carregar cobranças B2C");
       if (!cohortsRes.ok || !cohortsJson?.ok || !Array.isArray(cohortsJson.items)) throw new Error(cohortsJson?.error || "Falha ao carregar turmas");
+      if (!formandosRes.ok || !formandosJson?.ok || !Array.isArray(formandosJson.items)) throw new Error(formandosJson?.error || "Falha ao carregar formandos");
       setItems(itemsJson.items);
       setCohorts(cohortsJson.items);
+      setFormandos(formandosJson.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -66,6 +76,23 @@ export default function FaturacaoB2CClient({}: Props) {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(async () => {
+      try {
+        const q = encodeURIComponent(formandoQuery.trim());
+        const res = await fetch(`/api/formacao/financeiro/formandos?limit=20&q=${q}`, { cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as { ok: boolean; items?: FormandoOption[] } | null;
+        if (res.ok && json?.ok && Array.isArray(json.items)) {
+          setFormandos(json.items);
+        }
+      } catch {
+        // noop: mantém resultados anteriores para não quebrar UX
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [formandoQuery]);
 
   const createItem = async (event: FormEvent) => {
     event.preventDefault();
@@ -152,7 +179,18 @@ export default function FaturacaoB2CClient({}: Props) {
       <form onSubmit={createItem} className={panelClass}>
         <strong>Nova cobrança B2C</strong>
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          <input className={inputClass} value={form.formando_user_id} onChange={(e) => setForm((p) => ({ ...p, formando_user_id: e.target.value }))} placeholder="Formando user_id" required />
+          <input
+            className={inputClass}
+            value={formandoQuery}
+            onChange={(e) => setFormandoQuery(e.target.value)}
+            placeholder="Buscar formando por nome, email ou BI"
+          />
+          <select className={inputClass} value={form.formando_user_id} onChange={(e) => setForm((p) => ({ ...p, formando_user_id: e.target.value }))} required>
+            <option value="">Formando</option>
+            {formandos.map((formando) => (
+              <option key={formando.user_id} value={formando.user_id}>{formando.label}</option>
+            ))}
+          </select>
           <select
             className={inputClass}
             value={form.cohort_id}

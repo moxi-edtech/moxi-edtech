@@ -31,84 +31,59 @@ type UploadPayload = {
   rows?: UploadRow[];
 };
 
-function normalizeBi(value: string) {
-  return value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-}
-
-function buildReference(prefix: string, escolaId: string) {
-  const stamp = Date.now().toString().slice(-8);
-  return `${prefix}-${escolaId.slice(0, 5).toUpperCase()}-${stamp}`;
-}
-
-function generateTemporaryPassword() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
-  const size = 14;
-  let value = "";
-  for (let i = 0; i < size; i += 1) {
-    const idx = Math.floor(Math.random() * alphabet.length);
-    value += alphabet[idx];
-  }
-  return value;
-}
-
-async function resolveFormandoUserId(
-  s: FormacaoSupabaseClient,
-  escolaId: string,
-  row: UploadRow
-) {
-  const email = String(row.email ?? "").trim().toLowerCase();
-  const telefone = String(row.telefone ?? "").trim();
-  const biNorm = normalizeBi(String(row.bi_numero ?? "").trim());
-
-  if (!email && !telefone && !biNorm) return null;
-
-  let query = s
-    .from("profiles")
-    .select("user_id, email, telefone, bi_numero")
-    .eq("escola_id", escolaId)
-    .limit(200);
-
-  if (email) query = query.eq("email", email);
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const candidates = (data ?? []).filter((profile) => {
-    const biMatches = !biNorm || normalizeBi(String(profile.bi_numero ?? "")) === biNorm;
-    const telMatches = !telefone || String(profile.telefone ?? "").trim() === telefone;
-    return biMatches && telMatches;
-  });
-
-  if (candidates.length === 1) return String(candidates[0].user_id);
-  if (candidates.length > 1) return "__AMBIGUOUS__";
-  return null;
-}
-
-async function ensureB2BClient(s: FormacaoSupabaseClient, escolaId: string, nome: string) {
-  const normalizedName = String(nome).trim();
-  if (!normalizedName) throw new Error("cliente_nome é obrigatório quando cliente_b2b_id não é informado");
-
-  const { data: existing } = await s
-    .from("formacao_clientes_b2b")
+async function assertCohortInTenant(s: FormacaoSupabaseClient, escolaId: string, cohortId: string) {
+  const { data, error } = await s
+    .from("formacao_cohorts")
     .select("id")
     .eq("escola_id", escolaId)
-    .eq("nome_fantasia", normalizedName)
+    .eq("id", cohortId)
     .limit(1)
     .maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(data?.id);
+}
 
-  if (existing?.id) return String(existing.id);
-
+async function assertB2BClientInTenant(s: FormacaoSupabaseClient, escolaId: string, clienteId: string) {
   const { data, error } = await s
     .from("formacao_clientes_b2b")
-    .insert({
-      escola_id: escolaId,
-      nome_fantasia: normalizedName,
-      status: "ativo",
-    })
     .select("id")
-    .single();
-
+    .eq("escola_id", escolaId)
+    .eq("id", clienteId)
+    .limit(1)
+    .maybeSingle();
   if (error) throw new Error(error.message);
-  return String(data.id);
+  return Boolean(data?.id);
+}
+
+export async function GET(request: Request) {
+  const auth = await requireFormacaoRoles(allowedRoles);
+  if (!auth.ok) return auth.response;
+
+  const batchId = new URL(request.url).searchParams.get("batch_id")?.trim() ?? "";
+  const s = auth.supabase as FormacaoSupabaseClient;
+
+  if (batchId) {
+    const { data, error } = await s
+      .from("formacao_b2b_upload_jobs")
+      .select("id, status, total_rows, processed_rows, success_count, failed_count, created_at, started_at, finished_at, last_error, report")
+      .eq("escola_id", auth.escolaId)
+      .eq("id", batchId)
+      .maybeSingle();
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    if (!data) return NextResponse.json({ ok: false, error: "batch_id não encontrado" }, { status: 404 });
+    return NextResponse.json({ ok: true, job: data });
+  }
+
+  const { data, error } = await s
+    .from("formacao_b2b_upload_jobs")
+    .select("id, status, total_rows, processed_rows, success_count, failed_count, created_at, started_at, finished_at")
+    .eq("escola_id", auth.escolaId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true, jobs: data ?? [] });
 }
 
 export async function POST(request: Request) {
@@ -120,269 +95,55 @@ export async function POST(request: Request) {
   const rows = Array.isArray(body?.rows) ? body.rows : [];
   const criarCobranca = body?.criar_cobranca !== false;
   const vencimentoEm = String(body?.vencimento_em ?? "").trim();
-  const descricaoCobranca = String(body?.descricao_cobranca ?? "Inscrição em cohort (B2B)").trim();
-  const valorPadrao = Math.max(0, Number(body?.valor_cobrado_padrao ?? 0));
   const clienteB2bIdInput = String(body?.cliente_b2b_id ?? "").trim();
-  const clienteNome = String(body?.cliente_nome ?? "").trim();
   const s = auth.supabase as FormacaoSupabaseClient;
 
-  if (!cohortId) {
-    return NextResponse.json({ ok: false, error: "cohort_id é obrigatório" }, { status: 400 });
-  }
-  if (rows.length === 0) {
-    return NextResponse.json({ ok: false, error: "rows deve conter ao menos 1 formando" }, { status: 400 });
-  }
-  if (rows.length > 500) {
-    return NextResponse.json({ ok: false, error: "rows excede limite de 500 por lote" }, { status: 400 });
-  }
+  if (!cohortId) return NextResponse.json({ ok: false, error: "cohort_id é obrigatório" }, { status: 400 });
+  if (rows.length === 0) return NextResponse.json({ ok: false, error: "rows deve conter ao menos 1 formando" }, { status: 400 });
+  if (rows.length > 5000) return NextResponse.json({ ok: false, error: "rows excede limite de 5000 por lote" }, { status: 400 });
   if (criarCobranca && !vencimentoEm) {
     return NextResponse.json({ ok: false, error: "vencimento_em é obrigatório quando criar_cobranca=true" }, { status: 400 });
   }
 
-  const seen = new Set<string>();
-  const results: Array<Record<string, unknown>> = [];
-  const successfulForBilling: Array<{ formandoUserId: string; valor: number; nome: string }> = [];
-  const credentials: Array<{ email: string; temporary_password: string; must_change_password: true }> = [];
+  try {
+    const cohortExists = await assertCohortInTenant(s, String(auth.escolaId), cohortId);
+    if (!cohortExists) return NextResponse.json({ ok: false, error: "cohort_id inválido para esta escola" }, { status: 400 });
 
-  for (let index = 0; index < rows.length; index += 1) {
-    const row = rows[index] ?? {};
-    const nome = String(row.nome ?? "").trim();
-    const email = String(row.email ?? "").trim().toLowerCase();
-    const biNumero = String(row.bi_numero ?? "").trim();
-    const telefone = String(row.telefone ?? "").trim();
-    const valorCobrado = Math.max(0, Number(row.valor_cobrado ?? valorPadrao));
-
-    const dedupKey = `${email}|${normalizeBi(biNumero)}|${telefone}`.trim();
-    if (seen.has(dedupKey)) {
-      results.push({ index, status: "error", code: "DUPLICATE_IN_PAYLOAD", error: "Linha duplicada no mesmo lote" });
-      continue;
+    if (clienteB2bIdInput) {
+      const clientExists = await assertB2BClientInTenant(s, String(auth.escolaId), clienteB2bIdInput);
+      if (!clientExists) {
+        return NextResponse.json({ ok: false, error: "cliente_b2b_id inválido para esta escola" }, { status: 400 });
+      }
     }
-    seen.add(dedupKey);
-
-    if (!nome) {
-      results.push({ index, status: "error", code: "INVALID_ROW", error: "nome é obrigatório" });
-      continue;
-    }
-    if (!email && !biNumero && !telefone) {
-      results.push({ index, status: "error", code: "INVALID_ROW", error: "informar ao menos email, bi_numero ou telefone" });
-      continue;
-    }
-
-    try {
-      let formingUserId = await resolveFormandoUserId(s, String(auth.escolaId), row);
-      let createdNewUser = false;
-      let tempPassword: string | null = null;
-
-      if (formingUserId === "__AMBIGUOUS__") {
-        results.push({
-          index,
-          status: "error",
-          code: "AMBIGUOUS_USER",
-          error: "Mais de um utilizador compatível encontrado para esta linha",
-        });
-        continue;
-      }
-
-      if (!formingUserId) {
-        if (!email) {
-          results.push({
-            index,
-            status: "error",
-            code: "EMAIL_REQUIRED_FOR_CREATE",
-            error: "email obrigatório para criação automática de utilizador",
-          });
-          continue;
-        }
-
-        tempPassword = generateTemporaryPassword();
-        const { data: signUpData, error: signUpError } = await s.auth.signUp({
-          email,
-          password: tempPassword,
-          options: {
-            data: {
-              nome,
-              role: "formando",
-              escola_id: auth.escolaId,
-              tenant_type: "formacao",
-            },
-          },
-        });
-
-        if (signUpError) {
-          const message = signUpError.message.toLowerCase();
-          if (message.includes("already") || message.includes("registered")) {
-            const { data: existingByEmail, error: lookupError } = await s
-              .from("profiles")
-              .select("user_id")
-              .eq("email", email)
-              .limit(2);
-
-            if (lookupError) {
-              results.push({ index, status: "error", code: "LOOKUP_FAILED", error: lookupError.message });
-              continue;
-            }
-            if ((existingByEmail ?? []).length === 1) {
-              formingUserId = String(existingByEmail?.[0]?.user_id ?? "").trim() || null;
-            } else {
-              results.push({
-                index,
-                status: "error",
-                code: "EMAIL_ALREADY_EXISTS",
-                error: "email já existe e não foi possível resolver utilizador único",
-              });
-              continue;
-            }
-          } else {
-            results.push({ index, status: "error", code: "AUTH_SIGNUP_FAILED", error: signUpError.message });
-            continue;
-          }
-        } else {
-          const createdId = String(signUpData.user?.id ?? "").trim();
-          if (!createdId) {
-            results.push({ index, status: "error", code: "AUTH_SIGNUP_EMPTY", error: "Auth retornou utilizador inválido" });
-            continue;
-          }
-          formingUserId = createdId;
-          createdNewUser = true;
-        }
-      }
-
-      if (!formingUserId) {
-        results.push({ index, status: "error", code: "USER_NOT_RESOLVED", error: "Não foi possível resolver utilizador" });
-        continue;
-      }
-
-      const { error: perfilError } = await (s as FormacaoSupabaseClient & {
-        rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
-      }).rpc("formacao_upsert_formando_profile", {
-        p_escola_id: auth.escolaId,
-        p_user_id: formingUserId,
-        p_nome: nome,
-        p_email: email || null,
-        p_bi_numero: biNumero || null,
-        p_telefone: telefone || null,
-      });
-
-      if (perfilError) {
-        results.push({ index, status: "error", code: "PROFILE_UPSERT_FAILED", error: perfilError.message });
-        continue;
-      }
-
-      const { error: inscricaoError } = await (s as FormacaoSupabaseClient & {
-        rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
-      }).rpc("formacao_create_inscricao", {
-        p_escola_id: auth.escolaId,
-        p_cohort_id: cohortId,
-        p_formando_user_id: formingUserId,
-        p_origem: "b2b_upload",
-        p_created_by: auth.userId,
-        p_nome_snapshot: nome || null,
-        p_email_snapshot: email || null,
-        p_bi_snapshot: biNumero || null,
-        p_telefone_snapshot: telefone || null,
-        p_valor_cobrado: valorCobrado,
-      });
-
-      if (inscricaoError) {
-        results.push({ index, status: "error", code: "ENROLLMENT_FAILED", error: inscricaoError.message });
-        continue;
-      }
-
-      successfulForBilling.push({ formandoUserId: formingUserId, valor: valorCobrado, nome });
-
-      if (createdNewUser && tempPassword && email) {
-        credentials.push({ email, temporary_password: tempPassword, must_change_password: true });
-      }
-
-      results.push({
-        index,
-        status: "ok",
-        created_user: createdNewUser,
-        user_id: formingUserId,
-        valor_cobrado: valorCobrado,
-      });
-    } catch (error) {
-      results.push({
-        index,
-        status: "error",
-        code: "UNEXPECTED",
-        error: error instanceof Error ? error.message : "Erro inesperado",
-      });
-    }
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Falha de validação" }, { status: 400 });
   }
 
-  let cobranca: Record<string, unknown> | null = null;
-  let cobrancaError: string | null = null;
-  if (criarCobranca && successfulForBilling.length > 0) {
-    try {
-      let clienteId = clienteB2bIdInput;
-      if (!clienteId) {
-        clienteId = await ensureB2BClient(s, String(auth.escolaId), clienteNome || "Cliente B2B");
-      }
-
-      const referencia = buildReference("B2B", String(auth.escolaId));
-      const totalBruto = successfulForBilling.reduce((sum, item) => sum + item.valor, 0);
-
-      const { data: fatura, error: faturaErr } = await s
-        .from("formacao_faturas_lote")
-        .insert({
-          escola_id: auth.escolaId,
-          cliente_b2b_id: clienteId,
-          cohort_id: cohortId,
-          referencia,
-          vencimento_em: vencimentoEm,
-          total_bruto: totalBruto,
-          total_desconto: 0,
-          status: "emitida",
-          created_by: auth.userId,
-        })
-        .select("id, referencia, total_liquido, status")
-        .single();
-
-      if (faturaErr) throw new Error(faturaErr.message);
-
-      const itens = successfulForBilling.map((item) => ({
-        escola_id: auth.escolaId,
-        fatura_lote_id: fatura.id,
-        formando_user_id: item.formandoUserId,
-        descricao: descricaoCobranca,
-        quantidade: 1,
-        preco_unitario: item.valor,
-        desconto: 0,
-        status_pagamento: "pendente",
-      }));
-
-      const { error: itemErr } = await s.from("formacao_faturas_lote_itens").insert(itens);
-      if (itemErr) throw new Error(itemErr.message);
-      cobranca = { fatura, itens_total: itens.length };
-    } catch (error) {
-      cobrancaError = error instanceof Error ? error.message : "Falha ao gerar cobrança B2B";
-    }
-  }
-
-  const total = rows.length;
-  const success = results.filter((item) => item.status === "ok").length;
-  const failed = total - success;
-
-  console.info(
-    JSON.stringify({
-      event: "b2b_import_completed",
+  const { data: job, error: jobError } = await s
+    .from("formacao_b2b_upload_jobs")
+    .insert({
       escola_id: auth.escolaId,
+      created_by: auth.userId,
       cohort_id: cohortId,
-      total,
-      success,
-      failed,
-      generated_invoice: Boolean(cobranca),
-      timestamp: new Date().toISOString(),
+      cliente_b2b_id: clienteB2bIdInput || null,
+      payload: body ?? {},
+      status: "queued",
+      total_rows: rows.length,
+      processed_rows: 0,
+      success_count: 0,
+      failed_count: 0,
     })
-  );
+    .select("id, status, total_rows, created_at")
+    .single();
+
+  if (jobError) return NextResponse.json({ ok: false, error: jobError.message }, { status: 400 });
 
   return NextResponse.json({
-    ok: failed === 0,
-    resumo: { total, success, failed },
-    resultados: results,
-    credentials,
-    cobranca,
-    cobranca_error: cobrancaError,
-  });
+    ok: true,
+    batch_id: job.id,
+    status: job.status,
+    total_rows: job.total_rows,
+    message: "Lote enfileirado. Execute /api/formacao/secretaria/inscricoes/upload-b2b/process para processar.",
+    report_csv_url: `/api/formacao/secretaria/inscricoes/upload-b2b/report.csv?batch_id=${job.id}`,
+  }, { status: 202 });
 }

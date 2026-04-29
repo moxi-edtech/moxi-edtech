@@ -19,9 +19,13 @@ type Item = {
 };
 
 type Props = { role: string; userId: string };
+type CohortOption = { id: string; label: string };
+type FormadorOption = { user_id: string; label: string };
 
 export default function HonorariosClient({ role, userId }: Props) {
   const [items, setItems] = useState<Item[]>([]);
+  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
+  const [formadores, setFormadores] = useState<FormadorOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -45,10 +49,29 @@ export default function HonorariosClient({ role, userId }: Props) {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/formacao/honorarios", { cache: "no-store" });
-      const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string; items?: Item[] } | null;
-      if (!res.ok || !json?.ok || !Array.isArray(json.items)) throw new Error(json?.error || "Falha ao carregar honorários");
-      setItems(json.items);
+      const [itemsRes, optionsRes] = await Promise.all([
+        fetch("/api/formacao/honorarios", { cache: "no-store" }),
+        fetch("/api/formacao/honorarios/options", { cache: "no-store" }),
+      ]);
+
+      const itemsJson = (await itemsRes.json().catch(() => null)) as { ok: boolean; error?: string; items?: Item[] } | null;
+      const optionsJson = (await optionsRes.json().catch(() => null)) as {
+        ok: boolean;
+        error?: string;
+        cohorts?: CohortOption[];
+        formadores?: FormadorOption[];
+      } | null;
+
+      if (!itemsRes.ok || !itemsJson?.ok || !Array.isArray(itemsJson.items)) {
+        throw new Error(itemsJson?.error || "Falha ao carregar honorários");
+      }
+      if (!optionsRes.ok || !optionsJson?.ok) {
+        throw new Error(optionsJson?.error || "Falha ao carregar opções");
+      }
+
+      setItems(itemsJson.items);
+      setCohorts(Array.isArray(optionsJson.cohorts) ? optionsJson.cohorts : []);
+      setFormadores(Array.isArray(optionsJson.formadores) ? optionsJson.formadores : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -154,7 +177,21 @@ export default function HonorariosClient({ role, userId }: Props) {
         <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 px-2">Novo Lançamento</h2>
         <form onSubmit={createItem} className="space-y-4">
           <div className="grid gap-3">
-            <input className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3 text-sm outline-none focus:bg-white focus:ring-8 focus:ring-[#1F6B3B]/5 focus:border-[#1F6B3B] font-semibold" value={form.cohort_id} onChange={(e) => setForm((p) => ({ ...p, cohort_id: e.target.value }))} placeholder="ID da Turma" required />
+            <select className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3 text-sm outline-none focus:bg-white focus:ring-8 focus:ring-[#1F6B3B]/5 focus:border-[#1F6B3B] font-semibold" value={form.cohort_id} onChange={(e) => setForm((p) => ({ ...p, cohort_id: e.target.value }))} required>
+              <option value="">Selecione a turma</option>
+              {cohorts.map((cohort) => (
+                <option key={cohort.id} value={cohort.id}>{cohort.label}</option>
+              ))}
+            </select>
+
+            {role !== "formador" && role !== "mentor" ? (
+              <select className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3 text-sm outline-none focus:bg-white focus:ring-8 focus:ring-[#1F6B3B]/5 focus:border-[#1F6B3B] font-semibold" value={form.formador_user_id} onChange={(e) => setForm((p) => ({ ...p, formador_user_id: e.target.value }))} required>
+                <option value="">Selecione o formador</option>
+                {formadores.map((formador) => (
+                  <option key={formador.user_id} value={formador.user_id}>{formador.label}</option>
+                ))}
+              </select>
+            ) : null}
             
             <div className="grid grid-cols-2 gap-3">
               <input className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-3 text-sm outline-none focus:bg-white focus:ring-8 focus:ring-[#1F6B3B]/5 focus:border-[#1F6B3B] font-semibold" value={form.horas_ministradas} onChange={(e) => setForm((p) => ({ ...p, horas_ministradas: e.target.value }))} placeholder="Horas" type="number" min={1} required />

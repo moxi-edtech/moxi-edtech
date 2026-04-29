@@ -53,6 +53,7 @@ const PROTECTED_PREFIXES = [
   "/honorarios",
   "/financeiro",
   "/secretaria",
+  "/secretaria/inscricoes",
   "/admin",
   "/meus-cursos",
   "/pagamentos",
@@ -62,7 +63,10 @@ const PROTECTED_PREFIXES = [
 
 const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
   { prefix: "/admin", roles: ["formacao_admin", "super_admin", "global_admin"] },
-  { prefix: "/mentor", roles: ["solo_admin", "formacao_admin", "super_admin", "global_admin"] },
+  {
+    prefix: "/secretaria/inscricoes",
+    roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"],
+  },
   {
     prefix: "/secretaria",
     roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"],
@@ -101,7 +105,6 @@ const PRODUCT_RULES: Array<{ prefix: string; allowedTenantTypes: Array<"CENTER" 
   { prefix: "/admin", allowedTenantTypes: ["CENTER", "K12"] },
   { prefix: "/secretaria", allowedTenantTypes: ["CENTER", "K12"] },
   { prefix: "/financeiro", allowedTenantTypes: ["CENTER", "K12"] },
-  { prefix: "/mentor", allowedTenantTypes: ["SOLO_CREATOR"] },
 ];
 
 type TenantContextCookiePayload = {
@@ -332,7 +335,7 @@ function getDefaultPathByRole(role: string | null, tenantType: TenantType | null
   const normalizedTenantType = String(tenantType ?? "").trim().toLowerCase();
   const normalizedRole = String(role ?? "").trim().toLowerCase();
   if (normalizedTenantType === "solo_creator") {
-    return "/mentor/dashboard";
+    return "/forbidden";
   }
   switch (normalizedRole) {
     case "formacao_admin":
@@ -340,7 +343,7 @@ function getDefaultPathByRole(role: string | null, tenantType: TenantType | null
     case "global_admin":
       return "/admin/dashboard";
     case "formacao_secretaria":
-      return "/secretaria/catalogo-cursos";
+      return "/secretaria/turmas";
     case "formacao_financeiro":
       return "/financeiro/dashboard";
     case "formador":
@@ -465,6 +468,20 @@ export async function middleware(request: NextRequest) {
       });
       return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
     }
+    if (auth.tenantType === "solo_creator") {
+      logAuthEvent({
+        action: "deny",
+        route: pathname,
+        user_id: auth.userId,
+        tenant_id: auth.tenantId,
+        tenant_type: auth.tenantType,
+        details: { reason: "solo_creator_not_supported_in_formacao_centro" },
+      });
+      const deniedUrl = request.nextUrl.clone();
+      deniedUrl.pathname = "/forbidden";
+      deniedUrl.searchParams.set("next", pathname);
+      return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+    }
 
     if (await isFormandoPortalBlocked(request, response, auth)) {
       logAuthEvent({
@@ -537,6 +554,20 @@ export async function middleware(request: NextRequest) {
       });
       return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
     }
+    if (auth.tenantType === "solo_creator") {
+      logAuthEvent({
+        action: "deny",
+        route: pathname,
+        user_id: auth.userId,
+        tenant_id: auth.tenantId,
+        tenant_type: auth.tenantType,
+        details: { reason: "solo_creator_not_supported_in_formacao_centro" },
+      });
+      const deniedUrl = request.nextUrl.clone();
+      deniedUrl.pathname = "/forbidden";
+      deniedUrl.searchParams.set("next", pathname);
+      return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+    }
 
     if (await isFormandoPortalBlocked(request, response, auth)) {
       logAuthEvent({
@@ -605,6 +636,20 @@ export async function middleware(request: NextRequest) {
     });
     return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
   }
+  if (auth.tenantType === "solo_creator") {
+    logAuthEvent({
+      action: "deny",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: { reason: "solo_creator_not_supported_in_formacao_centro" },
+    });
+    const deniedUrl = request.nextUrl.clone();
+    deniedUrl.pathname = "/forbidden";
+    deniedUrl.searchParams.set("next", pathname);
+    return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+  }
 
   if (await isFormandoPortalBlocked(request, response, auth)) {
     logAuthEvent({
@@ -620,24 +665,7 @@ export async function middleware(request: NextRequest) {
 
   const mappedTenantType = mapTenantTypeFromDb(auth.tenantType);
   const productAccessDecision = decideProductAccess(mappedTenantType, pathname);
-  if (productAccessDecision.action === "redirect") {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = productAccessDecision.target;
-    redirectUrl.search = "";
-    logAuthEvent({
-      action: "redirect",
-      route: pathname,
-      user_id: auth.userId,
-      tenant_id: auth.tenantId,
-      tenant_type: auth.tenantType,
-      details: {
-        reason: productAccessDecision.reason,
-        source_prefix: "/admin",
-        target_path: productAccessDecision.target,
-      },
-    });
-    return redirectWithCookies(response, NextResponse.redirect(redirectUrl));
-  }
+
   if (productAccessDecision.action === "deny") {
     logAuthEvent({
       action: "deny",
@@ -678,20 +706,28 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  for (const rule of ROLE_RULES) {
-    if (pathname.startsWith(rule.prefix) && normalizedRole && !rule.roles.includes(normalizedRole)) {
-      logAuthEvent({
-        action: "deny",
-        route: pathname,
-        user_id: auth.userId,
-        tenant_id: auth.tenantId,
-        tenant_type: auth.tenantType,
-        details: { reason: "role_mismatch", required_prefix: rule.prefix, role: normalizedRole },
-      });
-      const deniedUrl = request.nextUrl.clone();
-      deniedUrl.pathname = "/forbidden";
-      deniedUrl.searchParams.set("next", pathname);
-      return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+  // Sort rules by prefix length (descending) to match most specific first
+  const sortedRules = [...ROLE_RULES].sort((a, b) => b.prefix.length - a.prefix.length);
+
+  for (const rule of sortedRules) {
+    if (pathname.startsWith(rule.prefix)) {
+      const isAllowed = rule.roles.some(r => r.toLowerCase() === normalizedRole);
+      if (normalizedRole && !isAllowed) {
+        logAuthEvent({
+          action: "deny",
+          route: pathname,
+          user_id: auth.userId,
+          tenant_id: auth.tenantId,
+          tenant_type: auth.tenantType,
+          details: { reason: "role_mismatch", required_prefix: rule.prefix, role: normalizedRole, allowed: rule.roles },
+        });
+        const deniedUrl = request.nextUrl.clone();
+        deniedUrl.pathname = "/forbidden";
+        deniedUrl.searchParams.set("next", pathname);
+        return redirectWithCookies(response, NextResponse.redirect(deniedUrl));
+      }
+      // If matched this specific rule and allowed, stop checking other (more general) rules
+      break;
     }
   }
 
