@@ -3,6 +3,11 @@
 @plugin "tailwindcss-animate";
 @import "tailwindcss";
 
+@theme {
+  --color-klasse-gold: #C8902A;
+  --color-klasse-green: #1F6B3B;
+}
+
 :root {
   --bg: #f8fafc;
   --fg: #0f172a;

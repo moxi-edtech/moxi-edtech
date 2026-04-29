@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireFormacaoRoles } from "@/lib/route-auth";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import { buildFormadorAccessEmail, sendMail } from "@/lib/mailer";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,15 @@ type ProfileRow = {
   nome: string;
   email: string | null;
 };
+
+type RpcClient = {
+  rpc(
+    fn: string,
+    args: Record<string, unknown>
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+type LinkData = { properties?: { action_link?: string | null }; action_link?: string | null };
 
 function generateTemporaryPassword() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
@@ -23,54 +34,88 @@ function generateTemporaryPassword() {
   return value;
 }
 
-async function getFormadoresFromAuthAdmin(request: Request, escolaId: string) {
-  const listData = (await callAuthAdminJob(request, "listUsers", { page: 1, perPage: 1000 })) as
-    | {
-        users?: Array<{
-          id?: string | null;
-          email?: string | null;
-          app_metadata?: { role?: string | null; escola_id?: string | null; tenant_type?: string | null } | null;
-          user_metadata?: { nome?: string | null; role?: string | null; escola_id?: string | null } | null;
-        }>;
-      }
-    | null;
+function stripTrailingSlash(value: string) {
+  return value.replace(/\/$/, "");
+}
 
-  const users = Array.isArray(listData?.users) ? listData.users : [];
-  return users
-    .filter((u) => {
-      const appRole = String(u.app_metadata?.role ?? "").toLowerCase();
-      const userRole = String(u.user_metadata?.role ?? "").toLowerCase();
-      const role = appRole || userRole;
-      const appEscola = String(u.app_metadata?.escola_id ?? "");
-      const userEscola = String(u.user_metadata?.escola_id ?? "");
-      const scopeEscola = appEscola || userEscola;
-      return (
-        scopeEscola === escolaId &&
-        (role === "formador" || role === "formacao_formador" || role === "professor")
-      );
-    })
-    .map((u) => {
-      const userId = String(u.id ?? "");
-      if (!userId) return null;
-      const nome =
-        String(u.user_metadata?.nome ?? "").trim() ||
-        String(u.email ?? "").trim() ||
-        "Formador";
+function resolveFormacaoLoginUrl(request: Request) {
+  const configured = String(process.env.NEXT_PUBLIC_APP_URL ?? "").trim();
+  if (configured) return `${stripTrailingSlash(configured)}/login`;
+
+  const origin = new URL(request.url).origin;
+  return `${stripTrailingSlash(origin)}/login`;
+}
+
+function resolveAuthResetRedirectUrl(request: Request) {
+  const configuredAuthUrl = String(process.env.KLASSE_AUTH_URL ?? "").trim();
+  if (configuredAuthUrl) {
+    return `${stripTrailingSlash(configuredAuthUrl.replace(/\/login\/?$/, ""))}/reset-password`;
+  }
+
+  const configuredBase = String(
+    process.env.KLASSE_AUTH_ADMIN_JOB_BASE_URL ?? process.env.KLASSE_K12_LOCAL_ORIGIN ?? ""
+  ).trim();
+  if (configuredBase) return `${stripTrailingSlash(configuredBase)}/reset-password`;
+
+  const origin = new URL(request.url).origin;
+  if (origin.includes("://formacao.lvh.me")) {
+    return `${stripTrailingSlash(origin.replace("://formacao.lvh.me", "://app.lvh.me"))}/reset-password`;
+  }
+  if (origin.includes("://formacao.klasse.ao")) {
+    return "https://app.klasse.ao/reset-password";
+  }
+  return `${stripTrailingSlash(origin)}/reset-password`;
+}
+
+function extractActionLink(raw: unknown) {
+  const linkData = raw as LinkData | null;
+  return linkData?.properties?.action_link || linkData?.action_link || null;
+}
+
+async function generateRecoveryLink(request: Request, email: string) {
+  try {
+    const raw = await callAuthAdminJob(request, "generateLink", {
+      type: "recovery",
+      email,
+      options: { redirectTo: resolveAuthResetRedirectUrl(request) },
+    });
+    return { url: extractActionLink(raw), error: null as string | null };
+  } catch (error) {
+    return {
+      url: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function getFormadoresFromMemberships(client: FormacaoSupabaseClient, escolaId: string) {
+  const { data, error } = await (client as unknown as RpcClient).rpc("formacao_formadores_por_centro", {
+    p_escola_id: escolaId,
+  });
+
+  if (error) throw new Error(error.message);
+  if (!Array.isArray(data)) return [] as ProfileRow[];
+
+  return data
+    .map((row) => {
+      const parsed = row as { user_id?: string; nome?: string; email?: string | null };
+      if (!parsed.user_id || !parsed.nome) return null;
       return {
-        user_id: userId,
-        nome,
-        email: u.email ? String(u.email) : null,
-      } satisfies ProfileRow;
+        user_id: String(parsed.user_id),
+        nome: String(parsed.nome),
+        email: parsed.email ? String(parsed.email) : null,
+      };
     })
     .filter((row): row is ProfileRow => Boolean(row));
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
 
   try {
-    const items = await getFormadoresFromAuthAdmin(request, auth.escolaId);
+    const s = auth.supabase as FormacaoSupabaseClient;
+    const items = await getFormadoresFromMemberships(s, auth.escolaId);
     return NextResponse.json({
       ok: true,
       items: items.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
@@ -106,14 +151,44 @@ export async function POST(request: Request) {
   }
 
   try {
+    const s = auth.supabase as FormacaoSupabaseClient;
+    const { data: escola } = await s
+      .from("escolas")
+      .select("nome")
+      .eq("id", auth.escolaId)
+      .maybeSingle();
+    const escolaNome = String((escola as { nome?: string | null } | null)?.nome ?? "Centro de Formação").trim();
+
     const existingData = (await callAuthAdminJob(request, "findUserByEmail", { email })) as
       | { user?: { id?: string | null } | null }
       | null;
-    const existing = existingData?.user ?? null;
+    const existing = existingData?.user as
+      | {
+          id?: string | null;
+          app_metadata?: Record<string, unknown> | null;
+          user_metadata?: Record<string, unknown> | null;
+        }
+      | null;
     const tempPassword = generateTemporaryPassword();
 
     let userId = existing?.id ?? null;
     let createdNew = false;
+    let recoveryUrl: string | null = null;
+    let recoveryLinkError: string | null = null;
+
+    // Verificar se já existe vínculo para evitar downgrade de papel
+    const { data: existingMembership } = userId
+      ? await s
+          .from("escola_users")
+          .select("papel")
+          .eq("escola_id", auth.escolaId)
+          .eq("user_id", userId)
+          .maybeSingle()
+      : { data: null };
+
+    const currentPapel = existingMembership?.papel;
+    const isAdministrative = currentPapel === "formacao_admin" || currentPapel === "formacao_secretaria";
+    const targetRole = isAdministrative ? currentPapel : "formador";
 
     if (!userId) {
       const createdData = (await callAuthAdminJob(request, "createUser", {
@@ -125,6 +200,7 @@ export async function POST(request: Request) {
           role: "formador",
           escola_id: auth.escolaId,
           tenant_type: "formacao",
+          must_change_password: true,
         },
         app_metadata: {
           role: "formador",
@@ -140,13 +216,25 @@ export async function POST(request: Request) {
       await callAuthAdminJob(request, "updateUserById", {
         userId,
         attributes: {
+          user_metadata: {
+            ...(existing?.user_metadata ?? {}),
+            nome,
+            role: targetRole,
+            escola_id: auth.escolaId,
+            tenant_type: "formacao",
+          },
           app_metadata: {
-            role: "formador",
+            ...(existing?.app_metadata ?? {}),
+            role: targetRole,
             escola_id: auth.escolaId,
             tenant_type: "formacao",
           },
         },
       });
+
+      const recovery = await generateRecoveryLink(request, email);
+      recoveryUrl = recovery.url;
+      recoveryLinkError = recovery.error;
     }
 
     await callAuthAdminJob(request, "upsertProfile", {
@@ -155,7 +243,7 @@ export async function POST(request: Request) {
         email,
         nome,
         telefone: telefone || null,
-        role: "formador",
+        role: targetRole,
         escola_id: auth.escolaId,
         current_escola_id: auth.escolaId,
       },
@@ -164,18 +252,34 @@ export async function POST(request: Request) {
 
     await callAuthAdminJob(request, "upsertEscolaUser", {
       escolaUser: {
-          escola_id: auth.escolaId,
-          user_id: userId,
-          papel: "formador",
-          tenant_type: "formacao",
+        escola_id: auth.escolaId,
+        user_id: userId,
+        papel: targetRole,
+        tenant_type: "formacao",
       },
     });
+
+    const mailContent = buildFormadorAccessEmail({
+      nome,
+      email,
+      escolaNome,
+      senha_temp: createdNew ? tempPassword : null,
+      recoveryUrl,
+      loginUrl: resolveFormacaoLoginUrl(request),
+      existingUser: !createdNew,
+    });
+    const mailResult = await sendMail({ to: email, ...mailContent });
+    const emailSent = mailResult.ok;
 
     return NextResponse.json({
       ok: true,
       item: { user_id: userId, nome, email },
       created_new: createdNew,
-      temporary_password: createdNew ? tempPassword : null,
+      temporary_password: createdNew && !emailSent ? tempPassword : null,
+      email_sent: emailSent,
+      email_error: emailSent ? null : mailResult.error,
+      recovery_link_generated: !createdNew ? Boolean(recoveryUrl) : null,
+      recovery_link_error: recoveryLinkError,
     });
   } catch (error) {
     return NextResponse.json(

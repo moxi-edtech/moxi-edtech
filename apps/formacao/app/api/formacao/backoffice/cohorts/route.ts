@@ -12,6 +12,27 @@ const allowedRoles = [
   "global_admin",
 ];
 
+async function assertFormadorBelongsToCentro(client: FormacaoSupabaseClient, escolaId: string, userId: string) {
+  const { data, error } = await client
+    .from("escola_users")
+    .select("user_id,papel")
+    .eq("escola_id", escolaId)
+    .eq("tenant_type", "formacao")
+    .eq("user_id", userId)
+    .in("papel", ["formador", "formacao_admin", "formacao_secretaria"])
+    .maybeSingle();
+
+  if (error) return { ok: false as const, error: error.message, status: 400 };
+  if (!data) {
+    return {
+      ok: false as const,
+      error: "Formador não pertence a este centro. Cadastre-o primeiro em Equipa.",
+      status: 400,
+    };
+  }
+  return { ok: true as const };
+}
+
 export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
@@ -78,6 +99,18 @@ export async function POST(request: Request) {
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  if (formadorUserId) {
+    const formadorCheck = await assertFormadorBelongsToCentro(
+      s,
+      auth.escolaId as string,
+      formadorUserId
+    );
+    if (!formadorCheck.ok) {
+      return NextResponse.json({ ok: false, error: formadorCheck.error }, { status: formadorCheck.status });
+    }
+  }
+
   let cursoModulosSnapshot: Array<{
     ordem: number;
     titulo: string;
@@ -228,7 +261,7 @@ export async function PATCH(request: Request) {
     vagas?: number;
     data_inicio?: string;
     data_fim?: string;
-    status?: "planeada" | "em_andamento" | "concluida" | "cancelada";
+    status?: "planeada" | "aberta" | "em_andamento" | "concluida" | "cancelada";
   } | null;
 
   const id = String(body?.id ?? "").trim();
@@ -244,7 +277,7 @@ export async function PATCH(request: Request) {
   }
   if (typeof body?.data_inicio === "string") patch.data_inicio = body.data_inicio.trim();
   if (typeof body?.data_fim === "string") patch.data_fim = body.data_fim.trim();
-  if (body?.status && ["planeada", "em_andamento", "concluida", "cancelada"].includes(body.status)) {
+  if (body?.status && ["planeada", "aberta", "em_andamento", "concluida", "cancelada"].includes(body.status)) {
     patch.status = body.status;
   }
 

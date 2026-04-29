@@ -12,6 +12,13 @@ const allowedRoles = [
   "global_admin",
 ];
 
+type RpcClient = {
+  rpc(
+    fn: string,
+    args: Record<string, unknown>
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
 export async function GET() {
   const auth = await requireFormacaoRoles(allowedRoles);
   if (!auth.ok) return auth.response;
@@ -35,13 +42,11 @@ export async function GET() {
   const formadorIds = Array.from(new Set((refs ?? []).map((r) => String((r as { formador_user_id: string }).formador_user_id)))).filter(Boolean);
 
   if (auth.role !== "formador") {
-    const { data: escolaUsers } = await s
-      .from("escola_users")
-      .select("user_id, papel")
-      .eq("escola_id", auth.escolaId)
-      .or("papel.eq.formador,papel.eq.formacao_formador");
+    const { data: escolaUsers } = await (s as unknown as RpcClient).rpc("formacao_formadores_por_centro", {
+      p_escola_id: auth.escolaId,
+    });
 
-    for (const row of escolaUsers ?? []) {
+    for (const row of Array.isArray(escolaUsers) ? escolaUsers : []) {
       const userId = String((row as { user_id: string | null }).user_id ?? "").trim();
       if (userId) formadorIds.push(userId);
     }
