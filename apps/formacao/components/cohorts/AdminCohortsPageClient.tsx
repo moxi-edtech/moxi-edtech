@@ -24,6 +24,7 @@ type FormadorOption = {
   user_id: string;
   nome: string;
   email: string | null;
+  papel?: string;
 };
 
 type CursoCatalogo = {
@@ -138,7 +139,7 @@ type CohortDetail = {
 };
 
 type StatusFilter = "todos" | "rascunho" | "aberta" | "em curso" | "concluída" | "cancelada";
-type DetailTab = "formandos" | "sessoes" | "materiais" | "certificados";
+type DetailTab = "formandos" | "formadores" | "sessoes" | "materiais" | "certificados";
 type MetodoPagamento = "tpa" | "transferencia" | "numerario";
 
 function normalizeStatus(raw: string): Exclude<StatusFilter, "todos"> {
@@ -251,6 +252,11 @@ export default function CohortsPage() {
   });
   const [formandoBusy, setFormandoBusy] = useState<Record<string, boolean>>({});
   const [statusEditorTarget, setStatusEditorTarget] = useState<{ user_id: string; nome: string; status: "cursando" | "desistente" | "apto" | "nao_apto" } | null>(null);
+  const [formadorBusy, setFormadorBusy] = useState(false);
+  const [formadorAssignmentForm, setFormadorAssignmentForm] = useState({
+    formador_user_id: "",
+    percentual_honorario: "100",
+  });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formadores, setFormadores] = useState<FormadorOption[]>([]);
@@ -575,6 +581,66 @@ export default function CohortsPage() {
     }
   };
 
+  const assignFormadorToCohort = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!detail) return;
+
+    setError(null);
+    setInfo(null);
+    setFormadorBusy(true);
+
+    try {
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${detail.cohort.id}/formadores`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          formador_user_id: formadorAssignmentForm.formador_user_id,
+          percentual_honorario: Number(formadorAssignmentForm.percentual_honorario || 100),
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao atribuir formador");
+      }
+
+      setFormadorAssignmentForm({ formador_user_id: "", percentual_honorario: "100" });
+      await loadDetail(detail.cohort.id);
+      setInfo("Formador atribuído à edição.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado");
+    } finally {
+      setFormadorBusy(false);
+    }
+  };
+
+  const removeFormadorFromCohort = async (assignmentId: string) => {
+    if (!detail) return;
+
+    setError(null);
+    setInfo(null);
+    setFormadorBusy(true);
+
+    try {
+      const res = await fetch(
+        `/api/formacao/backoffice/cohorts/${detail.cohort.id}/formadores?assignment_id=${encodeURIComponent(assignmentId)}`,
+        { method: "DELETE" }
+      );
+      const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao remover formador");
+      }
+
+      await loadDetail(detail.cohort.id);
+      setInfo("Formador removido da edição.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro inesperado");
+    } finally {
+      setFormadorBusy(false);
+    }
+  };
+
   const visibleFormandos = useMemo(() => {
     const all = detail?.tabs.formandos ?? [];
     const query = formandoSearch.trim().toLowerCase();
@@ -588,6 +654,11 @@ export default function CohortsPage() {
       return name.includes(query) || email.includes(query);
     });
   }, [detail?.tabs.formandos, formandoAcademicFilter, formandoSearch]);
+
+  const availableFormadores = useMemo(() => {
+    const assigned = new Set((detail?.tabs.formadores ?? []).map((item) => item.user_id));
+    return formadores.filter((item) => !assigned.has(item.user_id));
+  }, [detail?.tabs.formadores, formadores]);
 
   return (
     <div className="grid gap-5">
@@ -702,7 +773,7 @@ export default function CohortsPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {(["formandos", "sessoes", "materiais", "certificados"] as DetailTab[]).map((tab) => (
+                {(["formandos", "formadores", "sessoes", "materiais", "certificados"] as DetailTab[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
@@ -737,6 +808,116 @@ export default function CohortsPage() {
                   </button>
                 </div>
               </div>
+
+              {activeTab === "formadores" ? (
+                <div className="mt-3 grid gap-3">
+                  <article className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A9E8F]">
+                          equipa pedagógica
+                        </p>
+                        <h3 className="mt-1 text-xl font-semibold text-[#111811]">
+                          Atribuir formador à edição
+                        </h3>
+                        <p className="mt-1 text-sm text-[#4A6352]">
+                          Selecione um formador já cadastrado no centro e defina o percentual de honorário para esta turma.
+                        </p>
+                      </div>
+                      <Link
+                        href="/admin/equipa"
+                        className="rounded-lg border border-klasse-gold bg-white px-3 py-2 text-xs font-semibold text-klasse-gold hover:bg-klasse-gold/10"
+                      >
+                        Cadastrar formador
+                      </Link>
+                    </div>
+
+                    <form onSubmit={assignFormadorToCohort} className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_auto]">
+                      <label className="grid gap-1 text-sm text-[#4A6352]">
+                        <span>Formador</span>
+                        <select
+                          value={formadorAssignmentForm.formador_user_id}
+                          onChange={(event) =>
+                            setFormadorAssignmentForm((prev) => ({
+                              ...prev,
+                              formador_user_id: event.target.value,
+                            }))
+                          }
+                          className="rounded-lg border border-[#E4EBE6] bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                          required
+                        >
+                          <option value="">Selecionar formador</option>
+                          {availableFormadores.map((item) => (
+                            <option key={item.user_id} value={item.user_id}>
+                              {item.nome}
+                              {item.papel && item.papel !== "formador" ? ` (${item.papel.replace("formacao_", "")})` : ""}
+                              {item.email ? ` · ${item.email}` : ""}
+                            </option>
+                          ))}
+                        </select>                      </label>
+
+                      <Input
+                        label="% honorário"
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={formadorAssignmentForm.percentual_honorario}
+                        onChange={(value) =>
+                          setFormadorAssignmentForm((prev) => ({
+                            ...prev,
+                            percentual_honorario: value,
+                          }))
+                        }
+                        required
+                      />
+
+                      <button
+                        type="submit"
+                        disabled={formadorBusy || availableFormadores.length === 0}
+                        className="self-end rounded-lg border border-[#8A5A12] bg-[#A86F18] px-4 py-2 text-sm font-black text-white shadow-sm shadow-[#A86F18]/20 hover:bg-[#8A5A12] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+                      >
+                        {formadorBusy ? "Atribuindo..." : "Atribuir"}
+                      </button>
+                    </form>
+
+                    {availableFormadores.length === 0 ? (
+                      <p className="mt-3 text-xs text-[#8A9E8F]">
+                        Todos os formadores cadastrados já estão atribuídos a esta edição ou ainda não há formadores no centro.
+                      </p>
+                    ) : null}
+                  </article>
+
+                  <section className="grid gap-2 md:grid-cols-2">
+                    {detail.tabs.formadores.map((formador) => (
+                      <article key={formador.id} className="rounded-2xl border border-[#E4EBE6] bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-[#111811]">{formador.nome}</p>
+                            <p className="mt-0.5 text-xs text-[#4A6352]">{formador.email ?? "sem email"}</p>
+                            <p className="mt-2 text-xs font-semibold text-[#8A9E8F]">
+                              Honorário: {Number(formador.percentual_honorario ?? 0)}%
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={formadorBusy}
+                            onClick={() => removeFormadorFromCohort(formador.id)}
+                            className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+
+                    {detail.tabs.formadores.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-8 text-sm text-[#4A6352]">
+                        Nenhum formador atribuído a esta edição.
+                      </div>
+                    ) : null}
+                  </section>
+                </div>
+              ) : null}
 
               {activeTab === "formandos" ? (
                 <div className="mt-3 grid gap-3">
@@ -1391,6 +1572,7 @@ export default function CohortsPage() {
                   {formadores.map((item) => (
                     <option key={item.user_id} value={item.user_id}>
                       {item.nome}
+                      {item.papel && item.papel !== "formador" ? ` (${item.papel.replace("formacao_", "")})` : ""}
                     </option>
                   ))}
                 </select>

@@ -1,0 +1,178 @@
+{
+  "timestamp_utc": "20260428T222852Z",
+  "empresa_id": "11a6aba6-3315-4732-a0b1-383202cf4f9d",
+  "base_url": "http://auth.lvh.me:3000",
+  "scenarios": [
+    {
+      "scenario": {
+        "code": "AGT_P06_DUAS_LINHAS_14_ISENTO",
+        "description": "Linha 14% + linha isenta Mxx",
+        "moeda": "AOA",
+        "lines": [
+          {
+            "lineNo": 1,
+            "productCode": "SERV-14",
+            "description": "Servico tributado",
+            "quantity": "1.0000",
+            "unitPrice": "100.0000",
+            "tax": {
+              "kind": "NORMAL_14",
+              "ratePct": "14.0000"
+            }
+          },
+          {
+            "lineNo": 2,
+            "productCode": "SERV-M01",
+            "description": "Servico isento M01",
+            "quantity": "1.0000",
+            "unitPrice": "50.0000",
+            "tax": {
+              "kind": "ISENTO",
+              "ratePct": "0.0000",
+              "exemptionCode": "M01",
+              "exemptionReason": "Operacao isenta"
+            }
+          }
+        ]
+      },
+      "idempotencyKey": "agt:agt_p06_duas_linhas_14_isento:1777415332709",
+      "httpStatus": 200,
+      "ok": false,
+      "response": null
+    },
+    {
+      "scenario": {
+        "code": "AGT_P07_SETTLEMENT_100x055",
+        "description": "100 x 0.55 com desconto linha 8.8% + global",
+        "moeda": "AOA",
+        "globalDiscountPct": "1.5000",
+        "lines": [
+          {
+            "lineNo": 1,
+            "productCode": "QTY100",
+            "description": "Cenario settlement",
+            "quantity": "100.0000",
+            "unitPrice": "0.5500",
+            "lineDiscountPct": "8.8000",
+            "tax": {
+              "kind": "NORMAL_14",
+              "ratePct": "14.0000"
+            }
+          }
+        ]
+      },
+      "idempotencyKey": "agt:agt_p07_settlement_100x055:1777415332866",
+      "httpStatus": 200,
+      "ok": false,
+      "response": null
+    },
+    {
+      "scenario": {
+        "code": "AGT_P08_FX_USD",
+        "description": "Documento em moeda estrangeira com cambio",
+        "moeda": "USD",
+        "exchangeRateToAoa": "920.0000",
+        "lines": [
+          {
+            "lineNo": 1,
+            "productCode": "FX-001",
+            "description": "Servico em USD",
+            "quantity": "1.0000",
+            "unitPrice": "10.0000",
+            "tax": {
+              "kind": "NORMAL_14",
+              "ratePct": "14.0000"
+            }
+          }
+        ]
+      },
+      "idempotencyKey": "agt:agt_p08_fx_usd:1777415332986",
+      "httpStatus": 200,
+      "ok": false,
+      "response": null
+    },
+    {
+      "scenario": {
+        "code": "AGT_P09_CONSUMIDOR_FINAL",
+        "description": "Consumidor final (sem NIF) total pequeno",
+        "moeda": "AOA",
+        "lines": [
+          {
+            "lineNo": 1,
+            "productCode": "CF-001",
+            "description": "Venda consumidor final",
+            "quantity": "1.0000",
+            "unitPrice": "49.0000",
+            "tax": {
+              "kind": "NORMAL_14",
+              "ratePct": "14.0000"
+            }
+          }
+        ]
+      },
+      "idempotencyKey": "agt:agt_p09_consumidor_final:1777415333090",
+      "httpStatus": 200,
+      "ok": false,
+      "response": null
+    },
+    {
+      "scenario": {
+        "code": "AGT_P11_GR_GT_MINIMO",
+        "description": "Cenario base para guias GR/GT (motor/oraculo)",
+        "moeda": "AOA",
+        "lines": [
+          {
+            "lineNo": 1,
+            "productCode": "GRGT-001",
+            "description": "Movimento de bens",
+            "quantity": "2.0000",
+            "unitPrice": "30.0000",
+            "tax": {
+              "kind": "REDUZIDA_5",
+              "ratePct": "5.0000"
+            }
+          }
+        ]
+      },
+      "idempotencyKey": "agt:agt_p11_gr_gt_minimo:1777415333182",
+      "httpStatus": 200,
+      "ok": false,
+      "response": null
+    },
+    {
+      "scenario": {
+        "code": "AGT_P14_FATURA_GLOBAL",
+        "description": "Fatura global consolidada",
+        "moeda": "AOA",
+        "lines": [
+          {
+            "lineNo": 1,
+            "productCode": "FG-001",
+            "description": "Servico A",
+            "quantity": "1.0000",
+            "unitPrice": "250.0000",
+            "tax": {
+              "kind": "NORMAL_14",
+              "ratePct": "14.0000"
+            }
+          },
+          {
+            "lineNo": 2,
+            "productCode": "FG-002",
+            "description": "Servico B",
+            "quantity": "1.0000",
+            "unitPrice": "125.0000",
+            "tax": {
+              "kind": "NORMAL_14",
+              "ratePct": "14.0000"
+            }
+          }
+        ]
+      },
+      "idempotencyKey": "agt:agt_p14_fatura_global:1777415333317",
+      "httpStatus": 200,
+      "ok": false,
+      "response": null
+    }
+  ]
+}

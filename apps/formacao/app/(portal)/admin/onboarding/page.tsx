@@ -40,12 +40,15 @@ export default async function FormacaoOnboardingPage() {
   const [
     cursosRes,
     cohortsRes,
+    cohortsAbertaRes,
     valoresRes,
     formadoresRes,
     cobrancasRes,
+    fiscalRes,
   ] = await Promise.all([
     s.from("formacao_cursos").select("id").eq("escola_id", escolaId).limit(1),
     s.from("formacao_cohorts").select("id").eq("escola_id", escolaId).limit(1),
+    s.from("formacao_cohorts").select("id").eq("escola_id", escolaId).eq("status", "aberta").limit(1),
     s
       .from("formacao_cohort_financeiro")
       .select("id")
@@ -54,13 +57,16 @@ export default async function FormacaoOnboardingPage() {
       .limit(1),
     s.from("formacao_cohort_formadores").select("id").eq("escola_id", escolaId).limit(1),
     s.from("formacao_faturas_lote_itens").select("id").eq("escola_id", escolaId).limit(1),
+    s.from("fiscal_escola_bindings").select("id").eq("escola_id", escolaId).limit(1),
   ]);
 
   const hasCurso = (cursosRes.data ?? []).length > 0;
   const hasCohort = (cohortsRes.data ?? []).length > 0;
+  const hasCohortAberta = (cohortsAbertaRes.data ?? []).length > 0;
   const hasValor = (valoresRes.data ?? []).length > 0;
   const hasFormador = (formadoresRes.data ?? []).length > 0;
   const hasCobranca = (cobrancasRes.data ?? []).length > 0;
+  const hasFiscal = (fiscalRes.data ?? []).length > 0;
 
   const steps: Step[] = [
     {
@@ -82,6 +88,15 @@ export default async function FormacaoOnboardingPage() {
       actionLabel: hasCohort ? "Ver turmas" : "Criar turma",
     },
     {
+      key: "status_aberta",
+      title: "Turma em estado Aberto",
+      hint: "Mudar o status de pelo menos uma turma para 'aberta' para permitir inscrições.",
+      status: hasCohortAberta ? "done" : "pending",
+      required: true,
+      href: "/admin/cohorts",
+      actionLabel: "Abrir turma",
+    },
+    {
       key: "valor",
       title: "Valor do curso definido para a turma",
       hint: "Definir valor de referência (> 0) para cobrança.",
@@ -98,6 +113,15 @@ export default async function FormacaoOnboardingPage() {
       required: true,
       href: "/admin/equipa",
       actionLabel: "Cadastrar formador",
+    },
+    {
+      key: "fiscal",
+      title: "Configuração Fiscal",
+      hint: "Vincular o centro a uma empresa fiscal e definir séries de faturamento.",
+      status: hasFiscal ? "done" : "pending",
+      required: true,
+      href: "/financeiro/dashboard",
+      actionLabel: "Configurar Fiscal",
     },
     {
       key: "cobranca",

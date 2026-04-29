@@ -20,6 +20,10 @@ type ApiCreateResponse = {
   item?: FormadorItem;
   created_new?: boolean;
   temporary_password?: string | null;
+  email_sent?: boolean;
+  email_error?: string | null;
+  recovery_link_generated?: boolean | null;
+  recovery_link_error?: string | null;
 };
 
 const inputClass =
@@ -81,7 +85,17 @@ export default function EquipaFormadoresClient() {
         throw new Error(json?.error || "Falha ao cadastrar formador");
       }
 
-      setSuccess(json.created_new ? "Formador criado e vinculado com sucesso." : "Utilizador existente vinculado como formador.");
+      const baseMessage = json.created_new
+        ? "Formador criado e vinculado com sucesso."
+        : "Utilizador existente vinculado como formador.";
+      const deliveryMessage = json.email_sent
+        ? "Email de acesso enviado automaticamente."
+        : `Email não enviado${json.email_error ? `: ${json.email_error}` : "."}`;
+      const recoveryMessage =
+        !json.created_new && json.recovery_link_generated
+          ? " Link de definição/recuperação de senha incluído no email."
+          : "";
+      setSuccess(`${baseMessage} ${deliveryMessage}${recoveryMessage}`);
       setGeneratedPassword(json.temporary_password ?? null);
       setForm({ nome: "", email: "", telefone: "" });
       await load();
@@ -138,7 +152,7 @@ export default function EquipaFormadoresClient() {
       {success ? <p className="m-0 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}
       {generatedPassword ? (
         <p className="m-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Senha temporária do novo utilizador: <strong>{generatedPassword}</strong>
+          Fallback manual: o email não foi entregue. Senha temporária do novo utilizador: <strong>{generatedPassword}</strong>
         </p>
       ) : null}
 

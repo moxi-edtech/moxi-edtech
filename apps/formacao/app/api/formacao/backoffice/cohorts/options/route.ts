@@ -15,25 +15,32 @@ type ProfileRow = {
   user_id: string;
   nome: string;
   email: string | null;
+  papel: string;
 };
 
-async function getProfilesByIds(client: FormacaoSupabaseClient, userIds: string[]) {
-  if (userIds.length === 0) return [] as ProfileRow[];
+type RpcClient = {
+  rpc(
+    fn: string,
+    args: Record<string, unknown>
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
 
-  const { data, error } = await client.rpc("tenant_profiles_by_ids", {
-    p_user_ids: userIds,
+async function getFormadoresByCentro(client: FormacaoSupabaseClient, escolaId: string) {
+  const { data, error } = await (client as unknown as RpcClient).rpc("formacao_formadores_por_centro", {
+    p_escola_id: escolaId,
   });
 
   if (error || !Array.isArray(data)) return [] as ProfileRow[];
 
   return data
     .map((row) => {
-      const parsed = row as { user_id?: string; nome?: string; email?: string | null };
+      const parsed = row as { user_id?: string; nome?: string; email?: string | null; papel?: string };
       if (!parsed.user_id || !parsed.nome) return null;
       return {
         user_id: String(parsed.user_id),
         nome: String(parsed.nome),
         email: parsed.email ? String(parsed.email) : null,
+        papel: String(parsed.papel ?? "formador"),
       };
     })
     .filter((row): row is ProfileRow => Boolean(row));
@@ -44,22 +51,7 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const s = auth.supabase as FormacaoSupabaseClient;
-
-  const { data: escolaUsers } = await s
-    .from("escola_users")
-    .select("user_id, papel")
-    .eq("escola_id", auth.escolaId)
-    .or("papel.eq.formador,papel.eq.formacao_formador,papel.eq.formacao_admin");
-
-  const userIds = Array.from(
-    new Set(
-      (escolaUsers ?? [])
-        .map((row) => String((row as { user_id: string | null }).user_id ?? ""))
-        .filter(Boolean)
-    )
-  );
-
-  const profiles = await getProfilesByIds(s, userIds);
+  const profiles = await getFormadoresByCentro(s, auth.escolaId as string);
 
   return NextResponse.json({
     ok: true,
@@ -68,7 +60,7 @@ export async function GET() {
         user_id: profile.user_id,
         nome: profile.nome,
         email: profile.email,
+        papel: profile.papel,
       }))
-      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
   });
 }

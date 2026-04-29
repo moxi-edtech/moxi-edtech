@@ -87,8 +87,9 @@ export async function POST(request: Request) {
     .from("escola_users")
     .select("user_id, papel")
     .eq("escola_id", auth.escolaId)
+    .eq("tenant_type", "formacao")
     .eq("user_id", formadorUserId)
-    .or("papel.eq.formador,papel.eq.formacao_formador")
+    .eq("papel", "formador")
     .limit(1)
     .maybeSingle();
 
