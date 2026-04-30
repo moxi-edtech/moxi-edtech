@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { BarChart3, CreditCard, Landmark, ReceiptText, Wallet } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getFormacaoAuthContext } from "@/lib/auth-context";
 import { resolveFormacaoSessionContext } from "@/lib/session-context";
@@ -166,15 +168,15 @@ export default async function FinanceiroDashboardPage() {
     }).format(val);
 
   return (
-    <div className="space-y-8 pb-12">
-      <header className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="space-y-6 pb-12">
+      <header className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="m-0 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">financeiro centro</p>
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            Operação Ativa
+          <span className="rounded-full border border-klasse-gold/25 bg-klasse-gold/10 px-3 py-1 text-xs font-semibold text-klasse-gold">
+            Operação ativa
           </span>
         </div>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900">Dashboard Financeira</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-klasse-green">Dashboard Financeira</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
           Visão consolidada de faturação, recebimentos e saúde financeira do centro de formação.
         </p>
@@ -208,7 +210,7 @@ export default async function FinanceiroDashboardPage() {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+        <article className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="m-0 text-xl font-semibold text-slate-900">Módulos de Gestão</h2>
           <p className="mt-1 text-sm text-slate-600">Acesse as ferramentas operacionais de faturação.</p>
 
@@ -217,30 +219,30 @@ export default async function FinanceiroDashboardPage() {
               title="Cohort Economics"
               description="Análise de rentabilidade, CAC, ROI e tempo de conversão por edição e curso."
               href="/financeiro/economics"
-              icon="📈"
+              icon={<BarChart3 size={16} className="text-slate-400 group-hover:text-klasse-gold" />}
             />
             <ModuleCard
               title="Faturação B2B"
               description="Gestão de clientes corporativos, contratos e faturas agregadas por cohort."
               href="/financeiro/faturacao-b2b"
-              icon="🏢"
+              icon={<Landmark size={16} className="text-slate-400 group-hover:text-klasse-gold" />}
             />
             <ModuleCard
               title="Faturação B2C"
               description="Cobranças individuais de formandos via balcão ou inscrições diretas."
               href="/financeiro/faturacao-b2c"
-              icon="👤"
+              icon={<ReceiptText size={16} className="text-slate-400 group-hover:text-klasse-gold" />}
             />
             <ModuleCard
               title="Recebimentos"
               description="IBAN, conta, Kwik e instruções exibidas no checkout público."
               href="/financeiro/recebimentos"
-              icon="💳"
+              icon={<CreditCard size={16} className="text-slate-400 group-hover:text-klasse-gold" />}
             />
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+        <article className="rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="m-0 text-xl font-semibold text-slate-900">Ações Rápidas</h2>
           <p className="mt-1 text-sm text-slate-600">Tarefas financeiras recorrentes do dia-a-dia.</p>
 
@@ -264,7 +266,7 @@ export default async function FinanceiroDashboardPage() {
         </article>
       </div>
 
-      <article className="rounded-2xl border border-slate-200 bg-white p-5">
+      <article className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="m-0 text-xl font-semibold text-slate-900">Copiloto de Cobrança</h2>
         <p className="mt-1 text-sm text-slate-600">Recomendações automáticas de follow-up por segmento de inadimplência.</p>
         <div className="mt-4 grid gap-3">
@@ -318,7 +320,7 @@ function MetricCard({
   };
 
   return (
-    <article className={`rounded-2xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md ${tones[tone]}`}>
+    <article className={`rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md ${tones[tone]}`}>
       <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">{title}</span>
       <div className="mt-2 text-xl font-black">{value}</div>
       <p className="mt-1 text-xs opacity-80">{subtitle}</p>
@@ -335,17 +337,17 @@ function ModuleCard({
   title: string;
   description: string;
   href: string;
-  icon: string;
+  icon: ReactNode;
 }) {
   return (
     <Link
       href={href}
       className="group flex flex-col rounded-xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-1 hover:border-klasse-gold hover:shadow-md"
     >
-      <span className="text-2xl">{icon}</span>
+      <span>{icon}</span>
       <h3 className="mt-3 text-sm font-bold text-slate-900 group-hover:text-klasse-gold">{title}</h3>
       <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
-      <span className="mt-4 text-[10px] font-bold uppercase text-klasse-gold">Acessar Módulo →</span>
+      <span className="mt-4 text-[10px] font-bold uppercase text-klasse-gold">Acessar módulo</span>
     </Link>
   );
 }
@@ -362,9 +364,9 @@ function QuickActionLink({
   return (
     <Link
       href={href}
-      className="block rounded-xl border border-slate-100 bg-slate-50 p-4 transition-all duration-200 hover:border-slate-200 hover:bg-white"
+      className="block rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all duration-200 hover:border-klasse-gold/30 hover:bg-white"
     >
-      <p className="m-0 text-sm font-bold text-slate-900">{title}</p>
+      <p className="m-0 text-sm font-semibold text-slate-900">{title}</p>
       <p className="mt-0.5 text-xs text-slate-500">{description}</p>
     </Link>
   );
