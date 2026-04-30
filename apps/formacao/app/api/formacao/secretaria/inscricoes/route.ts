@@ -26,6 +26,12 @@ type InscricaoPayload = {
   descricao_cobranca?: string;
   vencimento_em?: string;
   password_provisoria?: string;
+  parcelas?: Array<{
+    descricao?: string;
+    valor?: number;
+    vencimento_em?: string;
+  }>;
+  reenviar_acesso?: boolean;
 };
 
 function normalizeBi(value: string) {
@@ -186,9 +192,76 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
+  const purpose = url.searchParams.get("purpose")?.trim() ?? "";
   const cohortId = url.searchParams.get("cohort_id")?.trim() ?? "";
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 100), 200);
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  if (purpose === "options") {
+    const [cohortsRes, financeRes] = await Promise.all([
+      s
+        .from("formacao_cohorts")
+        .select("id, codigo, nome, curso_nome, vagas, data_inicio, data_fim, status")
+        .eq("escola_id", auth.escolaId)
+        .in("status", ["planeada", "aberta", "em_andamento"])
+        .order("data_inicio", { ascending: true })
+        .limit(300),
+      s
+        .from("formacao_cohort_financeiro")
+        .select("cohort_id, valor_referencia, moeda")
+        .eq("escola_id", auth.escolaId),
+    ]);
+
+    if (cohortsRes.error) {
+      return NextResponse.json({ ok: false, error: cohortsRes.error.message }, { status: 400 });
+    }
+    if (financeRes.error) {
+      return NextResponse.json({ ok: false, error: financeRes.error.message }, { status: 400 });
+    }
+
+    const financeByCohort = new Map(
+      (financeRes.data ?? []).map((row) => [
+        String((row as { cohort_id: string }).cohort_id),
+        row as { valor_referencia?: number | null; moeda?: string | null },
+      ])
+    );
+
+    const items = (cohortsRes.data ?? []).map((row) => {
+      const typed = row as {
+        id: string;
+        codigo: string | null;
+        nome: string | null;
+        curso_nome: string | null;
+        vagas: number | null;
+        data_inicio: string | null;
+        data_fim: string | null;
+        status: string | null;
+      };
+      const finance = financeByCohort.get(typed.id);
+      return {
+        ...typed,
+        valor_referencia: Number(finance?.valor_referencia ?? 0),
+        moeda: finance?.moeda ?? "AOA",
+      };
+    });
+
+    return NextResponse.json({ ok: true, items });
+  }
+
+  if (purpose === "lookup") {
+    const candidates = await findFormandoCandidates(s, String(auth.escolaId), {
+      email: url.searchParams.get("email") ?? undefined,
+      bi_numero: url.searchParams.get("bi_numero") ?? undefined,
+      telefone: url.searchParams.get("telefone") ?? undefined,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      candidates,
+      duplicate: candidates.length > 0,
+      ambiguous: candidates.length > 1,
+    });
+  }
 
   let query = s
     .from("formacao_inscricoes")
@@ -219,6 +292,8 @@ export async function POST(request: Request) {
   const criarCobranca = Boolean(body?.criar_cobranca);
   const vencimentoEm = String(body?.vencimento_em ?? "").trim();
   const descricaoCobranca = String(body?.descricao_cobranca ?? "Inscrição em cohort").trim();
+  const parcelas = Array.isArray(body?.parcelas) ? body.parcelas : [];
+  const reenviarAcesso = body?.reenviar_acesso !== false;
   const nome = String(body?.nome ?? "").trim();
   const email = String(body?.email ?? "").trim().toLowerCase();
   const biNumero = String(body?.bi_numero ?? "").trim();
@@ -403,58 +478,88 @@ export async function POST(request: Request) {
   }
 
   let cobranca: Record<string, unknown> | null = null;
+  const cobrancas: Array<Record<string, unknown>> = [];
   if (criarCobranca && valorCobrado > 0) {
-    if (!vencimentoEm) {
+    const parcelasNormalizadas =
+      parcelas.length > 0
+        ? parcelas.map((parcela, index) => ({
+            descricao: String(parcela.descricao ?? `Parcela ${index + 1}/${parcelas.length}`).trim(),
+            valor: Number(parcela.valor ?? 0),
+            vencimento_em: String(parcela.vencimento_em ?? "").trim(),
+          }))
+        : [
+            {
+              descricao: descricaoCobranca,
+              valor: valorCobrado,
+              vencimento_em: vencimentoEm,
+            },
+          ];
+
+    const invalidParcela = parcelasNormalizadas.find((parcela) => parcela.valor <= 0 || !parcela.vencimento_em);
+    if (invalidParcela) {
       return NextResponse.json(
-        { ok: false, error: "vencimento_em é obrigatório quando criar_cobranca=true" },
+        { ok: false, error: "Cada parcela precisa de valor positivo e vencimento_em" },
+        { status: 400 }
+      );
+    }
+    const totalParcelas = parcelasNormalizadas.reduce((acc, parcela) => acc + parcela.valor, 0);
+    if (Math.abs(totalParcelas - valorCobrado) > 0.01) {
+      return NextResponse.json(
+        { ok: false, error: "A soma das parcelas precisa ser igual ao valor_cobrado" },
         { status: 400 }
       );
     }
 
     try {
       const clienteId = await ensureConsumidorFinal(s, String(auth.escolaId));
-      const referencia = buildReference("B2C", String(auth.escolaId));
 
-      const { data: fatura, error: faturaErr } = await s
-        .from("formacao_faturas_lote")
-        .insert({
-          escola_id: auth.escolaId,
-          cliente_b2b_id: clienteId,
-          cohort_id: cohortId,
-          referencia,
-          vencimento_em: vencimentoEm,
-          total_bruto: valorCobrado,
-          total_desconto: 0,
-          status: "emitida",
-          created_by: auth.userId,
-        })
-        .select("id, referencia, total_liquido, status")
-        .single();
+      for (let index = 0; index < parcelasNormalizadas.length; index += 1) {
+        const parcela = parcelasNormalizadas[index];
+        const referencia = buildReference(`B2C${index + 1}`, String(auth.escolaId));
 
-      if (faturaErr) {
-        return NextResponse.json({ ok: false, error: faturaErr.message }, { status: 400 });
+        const { data: fatura, error: faturaErr } = await s
+          .from("formacao_faturas_lote")
+          .insert({
+            escola_id: auth.escolaId,
+            cliente_b2b_id: clienteId,
+            cohort_id: cohortId,
+            referencia,
+            vencimento_em: parcela.vencimento_em,
+            total_bruto: parcela.valor,
+            total_desconto: 0,
+            status: "emitida",
+            created_by: auth.userId,
+          })
+          .select("id, referencia, total_liquido, status, vencimento_em")
+          .single();
+
+        if (faturaErr) {
+          return NextResponse.json({ ok: false, error: faturaErr.message }, { status: 400 });
+        }
+
+        const { data: item, error: itemErr } = await s
+          .from("formacao_faturas_lote_itens")
+          .insert({
+            escola_id: auth.escolaId,
+            fatura_lote_id: fatura.id,
+            formando_user_id: formandoUserId,
+            descricao: parcela.descricao || descricaoCobranca,
+            quantidade: 1,
+            preco_unitario: parcela.valor,
+            desconto: 0,
+            status_pagamento: "pendente",
+          })
+          .select("id, valor_total, status_pagamento, descricao")
+          .single();
+
+        if (itemErr) {
+          return NextResponse.json({ ok: false, error: itemErr.message }, { status: 400 });
+        }
+
+        cobrancas.push({ fatura, item });
       }
 
-      const { data: item, error: itemErr } = await s
-        .from("formacao_faturas_lote_itens")
-        .insert({
-          escola_id: auth.escolaId,
-          fatura_lote_id: fatura.id,
-          formando_user_id: formandoUserId,
-          descricao: descricaoCobranca,
-          quantidade: 1,
-          preco_unitario: valorCobrado,
-          desconto: 0,
-          status_pagamento: "pendente",
-        })
-        .select("id, valor_total, status_pagamento")
-        .single();
-
-      if (itemErr) {
-        return NextResponse.json({ ok: false, error: itemErr.message }, { status: 400 });
-      }
-
-      cobranca = { fatura, item };
+      cobranca = cobrancas[0] ?? null;
     } catch (error) {
       return NextResponse.json(
         { ok: false, error: error instanceof Error ? error.message : "Falha ao gerar cobrança" },
@@ -464,7 +569,7 @@ export async function POST(request: Request) {
   }
 
   // Disparo de E-mail de Credenciais
-  if (createdNewUser && generatedPassword && email) {
+  if (reenviarAcesso && email) {
     try {
       const { data: cohortData } = await s
         .from("formacao_cohorts")
@@ -482,7 +587,7 @@ export async function POST(request: Request) {
         const emailContent = buildFormacaoCredentialsEmail({
           nome,
           email,
-          senha_temp: generatedPassword,
+          senha_temp: createdNewUser && generatedPassword ? generatedPassword : undefined,
           escolaNome: escolaData.nome,
           cursoNome: cohortData.curso_nome,
           cohortNome: cohortData.nome,
@@ -517,6 +622,18 @@ export async function POST(request: Request) {
     inscricao,
     perfil,
     cobranca,
+    cobrancas,
+    receipt: {
+      referencia: (cobrancas[0]?.fatura as { referencia?: string } | undefined)?.referencia ?? null,
+      parcelas: cobrancas.map((entry) => ({
+        referencia: (entry.fatura as { referencia?: string }).referencia,
+        vencimento_em: (entry.fatura as { vencimento_em?: string }).vencimento_em,
+        valor: Number((entry.item as { valor_total?: number }).valor_total ?? 0),
+        descricao: (entry.item as { descricao?: string }).descricao ?? descricaoCobranca,
+      })),
+      total: valorCobrado,
+      aluno: { nome, email, bi_numero: biNumero, telefone },
+    },
     credentials:
       createdNewUser && generatedPassword
         ? {

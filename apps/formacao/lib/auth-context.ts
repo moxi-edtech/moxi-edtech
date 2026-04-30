@@ -52,7 +52,7 @@ export function getDefaultFormacaoPath(
     case "global_admin":
       return "/admin/dashboard";
     case "formacao_secretaria":
-      return "/secretaria/turmas";
+      return "/secretaria/dashboard";
     case "formacao_financeiro":
       return "/financeiro/dashboard";
     case "formador":
