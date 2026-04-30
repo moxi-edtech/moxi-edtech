@@ -210,11 +210,11 @@ export default async function AdminCentroDashboardPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="m-0 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">admin centro</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Dashboard de Gestão</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-klasse-green">Dashboard de Gestão</h1>
           </div>
           <span
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${
@@ -263,7 +263,7 @@ export default async function AdminCentroDashboardPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="m-0 text-lg font-semibold text-slate-950">Fila operacional</h2>
@@ -271,7 +271,7 @@ export default async function AdminCentroDashboardPage() {
             </div>
             <Link
               href="/secretaria/inbox"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Abrir inbox <ArrowUpRight size={14} />
             </Link>
@@ -290,7 +290,7 @@ export default async function AdminCentroDashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="m-0 text-lg font-semibold text-slate-950">Prontidão do centro</h2>
           <p className="mt-1 text-sm text-slate-500">Checklist mínimo para operar sem bloqueios de secretaria e financeiro.</p>
           <div className="mt-4 grid gap-3">
@@ -303,7 +303,7 @@ export default async function AdminCentroDashboardPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="m-0 text-lg font-semibold text-slate-950">Saúde das turmas</h2>
             <p className="mt-1 text-sm text-slate-500">Lotação, pagamentos e arranque das próximas edições.</p>
@@ -324,7 +324,7 @@ export default async function AdminCentroDashboardPage() {
           )}
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="m-0 text-lg font-semibold text-slate-950">Validação recente</h2>
             <p className="mt-1 text-sm text-slate-500">Primeiros comprovativos na fila.</p>
@@ -485,10 +485,10 @@ function MetricCard({
   };
 
   return (
-    <article className={`rounded-2xl border p-4 shadow-sm ${tones[tone]}`}>
+    <article className={`rounded-xl border p-4 shadow-sm ${tones[tone]}`}>
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-semibold uppercase tracking-widest opacity-70">{title}</span>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/70">{icon}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/70">{icon}</span>
       </div>
       <div className="mt-3 text-2xl font-black tracking-tight">{value}</div>
       <p className="mt-1 text-xs leading-5 opacity-80">{subtitle}</p>
@@ -513,7 +513,7 @@ function OperationalAlertCard({ alert }: { alert: OperationalAlert }) {
         </div>
         <Link
           href={alert.href}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/80 px-3 py-2 text-xs font-semibold hover:bg-white"
+          className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold hover:bg-white"
         >
           {alert.label} <ArrowUpRight size={13} />
         </Link>
@@ -582,8 +582,8 @@ function QuickAction({
   icon: React.ReactNode;
 }) {
   return (
-    <Link href={href} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300 hover:shadow-md">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">{icon}</div>
+    <Link href={href} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300 hover:shadow-md">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">{icon}</div>
       <p className="mt-3 text-sm font-semibold text-slate-950">{title}</p>
       <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
     </Link>
@@ -610,7 +610,7 @@ function EmptyState({
       </div>
       <p className="mt-3 text-sm font-semibold text-slate-950">{title}</p>
       <p className="mx-auto mt-1 max-w-sm text-sm leading-5 text-slate-500">{description}</p>
-      <Link href={href} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+      <Link href={href} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
         {label} <ArrowUpRight size={13} />
       </Link>
     </div>
