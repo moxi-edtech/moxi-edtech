@@ -62,6 +62,14 @@ export const CENTER_NAV_CONFIG: NavItem[] = [
     group: "Gestão",
   },
   {
+    id: "dashboard-secretaria",
+    href: "/secretaria/dashboard",
+    icon: "LayoutDashboard",
+    label: { default: "Secretaria" },
+    allowedRoles: ["SECRETARIA", "ADMIN"],
+    group: "Académico",
+  },
+  {
     id: "nova-inscricao",
     href: "/secretaria/inscricoes",
     icon: "UserPlus",
@@ -150,8 +158,16 @@ export const CENTER_NAV_CONFIG: NavItem[] = [
     group: "Financeiro",
   },
   {
-    id: "infra",
+    id: "onboarding",
     href: "/admin/onboarding",
+    icon: "ClipboardCheck",
+    label: { default: "Onboarding" },
+    allowedRoles: ["ADMIN"],
+    group: "Gestão",
+  },
+  {
+    id: "infra",
+    href: "/admin/infraestrutura",
     icon: "Building2",
     label: { default: "Salas & Infraestrutura" },
     allowedRoles: ["ADMIN"],
