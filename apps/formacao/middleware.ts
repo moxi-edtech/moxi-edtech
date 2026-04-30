@@ -62,6 +62,7 @@ const PROTECTED_PREFIXES = [
 ];
 
 const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
+  { prefix: "/admin/publicacao", roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"] },
   { prefix: "/admin", roles: ["formacao_admin", "super_admin", "global_admin"] },
   {
     prefix: "/secretaria/inscricoes",

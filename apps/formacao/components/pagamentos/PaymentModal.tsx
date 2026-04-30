@@ -5,6 +5,14 @@ import { Upload, X, CheckCircle2, CreditCard, Loader2, ArrowRight } from "lucide
 import { toast } from "@/lib/toast";
 
 type Item = { id: string; descricao: string; valor_total: number };
+type PaymentDetails = {
+  iban?: string;
+  banco?: string;
+  titular_conta?: string;
+  numero_conta?: string;
+  kwik_chave?: string;
+  instrucoes_checkout?: string;
+};
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -14,13 +22,15 @@ export function PaymentModal({
   item, 
   onClose, 
   onUploaded,
-  iban
+  iban,
+  paymentDetails,
 }: { 
   open: boolean; 
   item: Item | null; 
   onClose: () => void; 
   onUploaded: (id: string) => void;
   iban?: string;
+  paymentDetails?: PaymentDetails;
 }) {
   const [sending, setSending] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -91,8 +101,23 @@ export function PaymentModal({
           <div className="rounded-2xl border-2 border-dashed border-[#E3B23C]/20 bg-[#E3B23C]/5 p-5 text-center">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#E3B23C]">Transferência Bancária</p>
             <h4 className="mt-2 text-lg font-black tracking-tight text-slate-900">{iban || "AO06 0000 0000 0000 0000 0000 0"}</h4>
-            <p className="mt-1 text-xs text-slate-500 italic">Destinatário: Centro de Formação</p>
+            <p className="mt-1 text-xs text-slate-500 italic">
+              Destinatário: {paymentDetails?.titular_conta || "Centro de Formação"}
+            </p>
+            {paymentDetails?.banco || paymentDetails?.numero_conta || paymentDetails?.kwik_chave ? (
+              <div className="mt-4 grid gap-2 text-left text-xs text-slate-600">
+                {paymentDetails?.banco ? <p><strong>Banco:</strong> {paymentDetails.banco}</p> : null}
+                {paymentDetails?.numero_conta ? <p><strong>Conta:</strong> {paymentDetails.numero_conta}</p> : null}
+                {paymentDetails?.kwik_chave ? <p><strong>Kwik:</strong> {paymentDetails.kwik_chave}</p> : null}
+              </div>
+            ) : null}
           </div>
+
+          {paymentDetails?.instrucoes_checkout ? (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
+              {paymentDetails.instrucoes_checkout}
+            </div>
+          ) : null}
 
           <div className="space-y-4">
             <div className="grid gap-1.5">

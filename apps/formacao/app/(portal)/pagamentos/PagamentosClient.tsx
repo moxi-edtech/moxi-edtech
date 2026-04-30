@@ -22,12 +22,22 @@ type PagamentoItem = {
   } | null;
 };
 
+type PaymentDetails = {
+  iban?: string;
+  banco?: string;
+  titular_conta?: string;
+  numero_conta?: string;
+  kwik_chave?: string;
+  instrucoes_checkout?: string;
+};
+
 export default function PagamentosClient() {
   const [items, setItems] = useState<PagamentoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<PagamentoItem | null>(null);
   const [iban, setIban] = useState<string>("");
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({});
 
   const totais = useMemo(() => {
     const total = items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
@@ -54,6 +64,14 @@ export default function PagamentosClient() {
         
         setItems(pagJson.items);
         setIban(ibanRes.iban || "");
+        setPaymentDetails({
+          iban: ibanRes.iban || "",
+          banco: ibanRes.banco || "",
+          titular_conta: ibanRes.titular_conta || "",
+          numero_conta: ibanRes.numero_conta || "",
+          kwik_chave: ibanRes.kwik_chave || "",
+          instrucoes_checkout: ibanRes.instrucoes_checkout || "",
+        });
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -175,6 +193,7 @@ export default function PagamentosClient() {
         open={Boolean(selectedItem)} 
         item={selectedItem}
         iban={iban}
+        paymentDetails={paymentDetails}
         onClose={() => setSelectedItem(null)}
         onUploaded={(id) => {
           setItems(prev => prev.map(item => item.id === id ? { ...item, status_pagamento: 'em_verificacao' } : item));
