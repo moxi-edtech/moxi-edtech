@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckoutSheet } from "@/components/publico/CheckoutSheet";
 import { CourseCard } from "@/components/shared/CourseCard";
+
+import { Star, Quote } from "lucide-react";
 
 type Cohort = {
   id: string;
@@ -28,22 +30,87 @@ type Props = {
     logo_url?: string | null;
   };
   fiscal: {
-    iban?: string;
+    iban?: string | null;
   } | null;
+  pagamento?: {
+    ativo?: boolean;
+    banco?: string | null;
+    titular_conta?: string | null;
+    iban?: string | null;
+    numero_conta?: string | null;
+    kwik_chave?: string | null;
+    instrucoes_checkout?: string | null;
+  } | null;
+  tracking?: {
+    google_analytics_id?: string;
+    meta_pixel_id?: string;
+  };
+  publicacao?: {
+    instrucoes?: string | null;
+  } | null;
+  testemunhos: Array<{
+    autor_nome: string;
+    autor_cargo?: string;
+    autor_avatar_url?: string;
+    conteudo: string;
+    estrelas: number;
+    curso_nome?: string;
+  }>;
   cohorts: Cohort[];
 };
 
 import { submeterLeadAction } from "@/app/actions/submeterLeadAction";
 
-export function LandingContent({ tenantType, centro, fiscal, cohorts }: Props) {
+export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking, publicacao, testemunhos, cohorts }: Props) {
   const [selectedCohort, setSelectedCohort] = useState<Cohort | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [targetCohort, setTargetCohort] = useState<Cohort | null>(null);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadSent, setLeadSent] = useState(false);
 
+  // Injeção de Scripts de Tracking (GA e Meta Pixel)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // 1. Google Analytics
+    if (tracking?.google_analytics_id) {
+      const script1 = document.createElement("script");
+      script1.async = true;
+      script1.src = `https://www.googletagmanager.com/gtag/js?id=${tracking.google_analytics_id}`;
+      document.head.appendChild(script1);
+
+      const script2 = document.createElement("script");
+      script2.innerHTML = `
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '${tracking.google_analytics_id}');
+      `;
+      document.head.appendChild(script2);
+    }
+
+    // 2. Meta Pixel
+    if (tracking?.meta_pixel_id) {
+      const scriptPixel = document.createElement("script");
+      scriptPixel.innerHTML = `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${tracking.meta_pixel_id}');
+        fbq('track', 'PageView');
+      `;
+      document.head.appendChild(scriptPixel);
+    }
+  }, [tracking]);
+
   const isSoloCreator = tenantType === "solo_creator";
   const ctaLabel = isSoloCreator ? "Reservar Lugar" : "Reservar Vaga";
+  const checkoutIban = pagamento?.ativo ? pagamento.iban ?? fiscal?.iban ?? null : fiscal?.iban ?? null;
 
   const handleActionClick = (cohort: Cohort) => {
     const isSoldOut = cohort.vagas > 0 && cohort.vagas_ocupadas >= cohort.vagas;
@@ -115,11 +182,73 @@ export function LandingContent({ tenantType, centro, fiscal, cohorts }: Props) {
               Novas turmas brevemente
             </p>
             <p className="mt-2 text-slate-400">
-              Não existem inscrições abertas no momento para este centro.
+              {publicacao?.instrucoes || "Não existem inscrições abertas no momento para este centro."}
             </p>
           </div>
         )}
       </div>
+
+      {testemunhos.length > 0 && (
+        <section className="mt-40">
+          <div className="flex flex-col items-center text-center">
+            <div className="inline-flex rounded-full bg-emerald-500/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">
+              Histórias de Sucesso
+            </div>
+            <h2 className="mt-6 text-3xl font-black text-white sm:text-4xl">
+              O que dizem os nossos alunos
+            </h2>
+            <p className="mt-4 max-w-2xl text-slate-400">
+              Resultados reais de quem já passou pelas nossas formações e transformou a sua carreira.
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {testemunhos.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="relative flex flex-col justify-between rounded-3xl border border-white/5 bg-white/[0.03] p-8 transition-colors hover:bg-white/[0.05]"
+              >
+                <Quote className="absolute right-8 top-8 h-10 w-10 text-white/5" />
+
+                <div>
+                  <div className="flex gap-1">
+                    {[...Array(t.estrelas)].map((_, j) => (
+                      <Star key={j} size={14} className="fill-klasse-gold text-klasse-gold" />
+                    ))}
+                  </div>
+                  <p className="mt-6 text-base italic leading-relaxed text-slate-300">
+                    "{t.conteudo}"
+                  </p>
+                </div>
+
+                <div className="mt-8 flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 font-bold text-slate-400 overflow-hidden">
+                    {t.autor_avatar_url ? (
+                      <img src={t.autor_avatar_url} alt={t.autor_nome} className="h-full w-full object-cover" />
+                    ) : (
+                      t.autor_nome.charAt(0)
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{t.autor_nome}</h4>
+                    <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
+                      {t.autor_cargo || "Aluno(a)"}
+                    </p>
+                    {t.curso_nome && (
+                      <p className="mt-1 text-[10px] font-bold text-klasse-gold uppercase">
+                        {t.curso_nome}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <AnimatePresence>
         {showLeadModal && (
@@ -188,7 +317,12 @@ export function LandingContent({ tenantType, centro, fiscal, cohorts }: Props) {
               id: centro.id,
               slug: centro.slug,
               nome: centro.nome,
-              iban: fiscal?.iban ?? null,
+              iban: checkoutIban,
+              banco: pagamento?.ativo ? pagamento.banco ?? null : null,
+              titular_conta: pagamento?.ativo ? pagamento.titular_conta ?? null : null,
+              numero_conta: pagamento?.ativo ? pagamento.numero_conta ?? null : null,
+              kwik_chave: pagamento?.ativo ? pagamento.kwik_chave ?? null : null,
+              instrucoes_checkout: pagamento?.ativo ? pagamento.instrucoes_checkout ?? null : null,
             }}
           />
         )}

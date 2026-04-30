@@ -23,6 +23,7 @@ import {
   CreditCard,
   Wallet,
   Mail,
+  Globe2,
   Home
 } from "lucide-react";
 
@@ -42,6 +43,7 @@ function NavIcon({ name }: { name: string }) {
     CreditCard: <CreditCard className={className} />,
     Calendar: <Calendar className={className} />,
     Wallet: <Wallet className={className} />,
+    Globe2: <Globe2 className={className} />,
   };
   return icons[name] || <Home className={className} />;
 }

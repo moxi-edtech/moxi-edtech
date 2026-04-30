@@ -15,6 +15,31 @@ export async function GET() {
 
   const s = auth.supabase as FormacaoSupabaseClient;
 
+  const { data: centro, error: centroError } = await s
+    .from("centros_formacao")
+    .select("dados_pagamento")
+    .eq("escola_id", auth.escolaId)
+    .maybeSingle();
+
+  if (centroError) return NextResponse.json({ ok: false, error: centroError.message }, { status: 400 });
+
+  const dadosPagamento = ((centro as { dados_pagamento?: unknown } | null)?.dados_pagamento ?? null) as
+    | Record<string, unknown>
+    | null;
+  const recebimentosAtivos = Boolean(dadosPagamento?.ativo);
+  if (recebimentosAtivos) {
+    return NextResponse.json({
+      ok: true,
+      iban: typeof dadosPagamento?.iban === "string" ? dadosPagamento.iban.trim() : "",
+      banco: typeof dadosPagamento?.banco === "string" ? dadosPagamento.banco : "",
+      titular_conta: typeof dadosPagamento?.titular_conta === "string" ? dadosPagamento.titular_conta : "",
+      numero_conta: typeof dadosPagamento?.numero_conta === "string" ? dadosPagamento.numero_conta : "",
+      kwik_chave: typeof dadosPagamento?.kwik_chave === "string" ? dadosPagamento.kwik_chave : "",
+      instrucoes_checkout:
+        typeof dadosPagamento?.instrucoes_checkout === "string" ? dadosPagamento.instrucoes_checkout : "",
+    });
+  }
+
   const { data: binding, error } = await s
     .from("fiscal_escola_bindings")
     .select("metadata, empresa_id")

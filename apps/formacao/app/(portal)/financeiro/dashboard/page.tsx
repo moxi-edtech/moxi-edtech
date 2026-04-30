@@ -231,6 +231,12 @@ export default async function FinanceiroDashboardPage() {
               href="/financeiro/faturacao-b2c"
               icon="👤"
             />
+            <ModuleCard
+              title="Recebimentos"
+              description="IBAN, conta, Kwik e instruções exibidas no checkout público."
+              href="/financeiro/recebimentos"
+              icon="💳"
+            />
           </div>
         </article>
 
@@ -248,6 +254,11 @@ export default async function FinanceiroDashboardPage() {
               href="/admin/onboarding"
               title="Configuração Fiscal"
               description="Gerir NIF, séries e parâmetros de faturamento."
+            />
+            <QuickActionLink
+              href="/financeiro/recebimentos"
+              title="Contas e Checkout"
+              description="Atualizar os dados de pagamento mostrados aos alunos."
             />
           </div>
         </article>

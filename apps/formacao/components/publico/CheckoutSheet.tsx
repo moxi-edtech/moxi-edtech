@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { CheckCircle2, Loader2, UploadCloud } from "lucide-react";
+import { CheckCircle2, Loader2, UploadCloud, X } from "lucide-react";
 import { checkoutSchema, type CheckoutSchemaInput } from "@/lib/validations/checkoutSchema";
 import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 import { submeterCheckoutAction } from "@/app/actions/submeterCheckoutAction";
+import { submeterLeadAction } from "@/app/actions/submeterLeadAction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form } from "@/components/ui/form";
@@ -27,6 +28,11 @@ type Props = {
     slug: string;
     nome: string;
     iban?: string | null;
+    banco?: string | null;
+    titular_conta?: string | null;
+    numero_conta?: string | null;
+    kwik_chave?: string | null;
+    instrucoes_checkout?: string | null;
   };
 };
 
@@ -43,6 +49,7 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
   const [successOpen, setSuccessOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(true);
+  const leadCaptured = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -62,6 +69,34 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
       comprovativo_url: "",
     },
   });
+
+  // Lead Recovery: Captura dados parciais antes da submissão final
+  const nomeCompleto = form.watch("nome_completo");
+  const telefone = form.watch("telefone");
+  const identificacao = form.watch("identificacao");
+
+  useEffect(() => {
+    if (leadCaptured.current || !open) return;
+
+    const timer = setTimeout(async () => {
+      const isNomeValid = nomeCompleto.trim().split(" ").length >= 2;
+      const isTelefoneValid = telefone.trim().length >= 9;
+
+      if (isNomeValid && isTelefoneValid) {
+        leadCaptured.current = true;
+        void submeterLeadAction({
+          escola_id: tenant.id,
+          cohort_id: curso.id,
+          nome: nomeCompleto,
+          telefone: telefone,
+          email: identificacao.includes("@") ? identificacao : undefined,
+          origem: "checkout_abandonment"
+        });
+      }
+    }, 2500); // Aguarda 2.5s de inatividade para capturar
+
+    return () => clearTimeout(timer);
+  }, [nomeCompleto, telefone, identificacao, tenant.id, curso.id, open]);
 
   const comprovativoUrl = form.watch("comprovativo_url");
   const submitDisabled = useMemo(
@@ -168,121 +203,139 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side={isMobile ? "bottom" : "right"}
-          className={isMobile ? "h-[90vh] rounded-t-2xl p-0" : "w-[400px] max-w-[400px] p-0"}
+          className={isMobile ? "h-[95dvh] rounded-t-3xl p-0" : "w-[400px] max-w-[400px] p-0"}
         >
-          <div className="flex h-full flex-col">
-            <SheetHeader className="border-b border-slate-200 p-5">
+          <div className="flex h-full flex-col bg-white overflow-hidden">
+            <SheetHeader className="relative border-b border-slate-200 p-5 shrink-0">
               <SheetTitle>Checkout</SheetTitle>
               <SheetDescription>Conclua a matrícula com o envio do comprovativo.</SheetDescription>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
             </SheetHeader>
 
-            <div className="border-b border-slate-100 bg-slate-50 p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Curso</p>
-              <h3 className="mt-1 text-base font-semibold text-slate-900">{curso.title}</h3>
-              <p className="mt-1 text-lg font-black text-slate-900 [font-family:var(--font-geist-mono)]">
-                {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(
-                  curso.price
-                )}
-              </p>
-            </div>
-
-            <div className="space-y-4 bg-slate-950 p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-klasse-gold">Dados para Pagamento</p>
-                  <h3 className="mt-1 text-sm font-bold text-white">{tenant.nome}</h3>
-                </div>
-                <div className="h-10 w-10 rounded-xl bg-klasse-gold/10 p-2 text-klasse-gold">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">IBAN para Transferência</p>
-                <p className="mt-1 select-all font-mono text-sm font-black tracking-wider text-klasse-gold">
-                  {tenant.iban || "IBAN indisponível. Contacte a secretaria."}
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              <div className="border-b border-slate-100 bg-slate-50 p-5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Curso</p>
+                <h3 className="mt-1 text-base font-semibold text-slate-900">{curso.title}</h3>
+                <p className="mt-1 text-lg font-black text-slate-900 [font-family:var(--font-geist-mono)]">
+                  {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(
+                    curso.price
+                  )}
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-[11px] font-medium text-slate-400">Instruções:</p>
-                <ul className="space-y-2 text-[11px] text-slate-400">
-                  <li className="flex gap-2">
-                    <span className="font-bold text-klasse-gold">1.</span>
-                    Efetue a transferência ou depósito do valor exato.
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-klasse-gold">2.</span>
-                    Tire uma foto ou guarde o comprovativo digital.
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-klasse-gold">3.</span>
-                    Anexe o ficheiro abaixo para validar a sua vaga.
-                  </li>
-                </ul>
+              <div className="space-y-4 bg-slate-950 p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-klasse-gold">Dados para Pagamento</p>
+                    <h3 className="mt-1 text-sm font-bold text-white">{tenant.nome}</h3>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl bg-klasse-gold/10 p-2 text-klasse-gold">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Dados bancários / Kwik</p>
+                  <p className="mt-1 select-all font-mono text-sm font-black tracking-wider text-klasse-gold break-all">
+                    {tenant.iban || "IBAN indisponível. Contacte a secretaria."}
+                  </p>
+                  <div className="mt-3 space-y-1 text-xs text-slate-300">
+                    {tenant.banco ? <p><span className="text-slate-500">Banco:</span> {tenant.banco}</p> : null}
+                    {tenant.titular_conta ? <p><span className="text-slate-500">Titular:</span> {tenant.titular_conta}</p> : null}
+                    {tenant.numero_conta ? <p><span className="text-slate-500">Conta:</span> {tenant.numero_conta}</p> : null}
+                    {tenant.kwik_chave ? <p><span className="text-slate-500">Kwik:</span> {tenant.kwik_chave}</p> : null}
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-[11px] text-slate-400">
+                  <p className="font-medium">Instruções:</p>
+                  {tenant.instrucoes_checkout ? (
+                    <p className="rounded-xl border border-white/10 bg-white/5 p-3 leading-5">{tenant.instrucoes_checkout}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      <li className="flex gap-2">
+                        <span className="font-bold text-klasse-gold">1.</span>
+                        Efetue a transferência ou depósito do valor exato.
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="font-bold text-klasse-gold">2.</span>
+                        Tire uma foto ou guarde o comprovativo digital.
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="font-bold text-klasse-gold">3.</span>
+                        Anexe o ficheiro abaixo para validar a sua vaga.
+                      </li>
+                    </ul>
+                  )}
+                </div>
               </div>
+
+              <Form form={form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Nome completo</label>
+                    <Input {...form.register("nome_completo")} placeholder="Ex: Maria Antónia Jorge" className="text-base sm:text-sm" />
+                    <p className="text-xs text-rose-600">{form.formState.errors.nome_completo?.message ?? ""}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Identificação (Email ou BI)</label>
+                    <Input {...form.register("identificacao")} placeholder="exemplo@email.com ou BI123456" className="text-base sm:text-sm" />
+                    <p className="text-xs text-rose-600">{form.formState.errors.identificacao?.message ?? ""}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Telefone</label>
+                    <Input {...form.register("telefone")} placeholder="9xx xxx xxx" className="text-base sm:text-sm" />
+                    <p className="text-xs text-rose-600">{form.formState.errors.telefone?.message ?? ""}</p>
+                  </div>
+
+                  <div className="space-y-2 pb-4">
+                    <label className="text-xs font-semibold text-slate-700">Comprovativo</label>
+                    <label className="relative flex min-h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center hover:border-klasse-gold">
+                      <input
+                        type="file"
+                        className="absolute inset-0 opacity-0"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void handleUpload(file);
+                        }}
+                      />
+                      {uploading ? (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Loader2 size={16} className="animate-spin" />
+                          A enviar comprovativo...
+                        </div>
+                      ) : comprovativoUrl ? (
+                        <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
+                          <CheckCircle2 size={16} />
+                          {uploadName || "Comprovativo anexado"}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                          <UploadCloud size={18} />
+                          Selecionar PDF/JPG/PNG
+                        </div>
+                      )}
+                    </label>
+                    {uploadError ? <p className="text-xs text-rose-600">{uploadError}</p> : null}
+                  </div>
+                </form>
+              </Form>
             </div>
 
-            <Form form={form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 space-y-4 overflow-y-auto p-5">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Nome completo</label>
-                  <Input {...form.register("nome_completo")} placeholder="Ex: Maria Antónia Jorge" />
-                  <p className="text-xs text-rose-600">{form.formState.errors.nome_completo?.message ?? ""}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Identificação (Email ou BI)</label>
-                  <Input {...form.register("identificacao")} placeholder="exemplo@email.com ou BI123456" />
-                  <p className="text-xs text-rose-600">{form.formState.errors.identificacao?.message ?? ""}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Telefone</label>
-                  <Input {...form.register("telefone")} placeholder="9xx xxx xxx" />
-                  <p className="text-xs text-rose-600">{form.formState.errors.telefone?.message ?? ""}</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-700">Comprovativo</label>
-                  <label className="relative flex min-h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center hover:border-klasse-gold">
-                    <input
-                      type="file"
-                      className="absolute inset-0 opacity-0"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) void handleUpload(file);
-                      }}
-                    />
-                    {uploading ? (
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Loader2 size={16} className="animate-spin" />
-                        A enviar comprovativo...
-                      </div>
-                    ) : comprovativoUrl ? (
-                      <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
-                        <CheckCircle2 size={16} />
-                        {uploadName || "Comprovativo anexado"}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <UploadCloud size={18} />
-                        Selecionar PDF/JPG/PNG
-                      </div>
-                    )}
-                  </label>
-                  {uploadError ? <p className="text-xs text-rose-600">{uploadError}</p> : null}
-                </div>
-              </form>
-            </Form>
-
-            <div className="border-t border-slate-200 p-5">
+            <div className="border-t border-slate-200 p-5 shrink-0 bg-white">
               <Button
                 type="button"
-                className="w-full bg-klasse-gold text-white hover:brightness-110"
+                className="w-full bg-klasse-gold text-white hover:brightness-110 h-12 text-sm font-bold uppercase tracking-wider"
                 disabled={submitDisabled}
                 onClick={form.handleSubmit(onSubmit)}
               >

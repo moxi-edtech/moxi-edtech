@@ -166,6 +166,14 @@ export const CENTER_NAV_CONFIG: NavItem[] = [
     group: "Gestão",
   },
   {
+    id: "publicacao",
+    href: "/admin/publicacao",
+    icon: "Globe2",
+    label: { default: "Landing Pública" },
+    allowedRoles: ["ADMIN", "SECRETARIA"],
+    group: "Gestão",
+  },
+  {
     id: "infra",
     href: "/admin/infraestrutura",
     icon: "Building2",

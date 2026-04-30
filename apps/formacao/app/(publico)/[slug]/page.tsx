@@ -44,16 +44,69 @@ type LandingPayload = {
     slug: string;
     logo_url: string | null;
     tenant_type: LandingTenantType;
+    municipio?: string | null;
+    provincia?: string | null;
   };
-  fiscal: null;
+  fiscal: { iban?: string | null } | null;
+  pagamento?: {
+    ativo?: boolean;
+    banco?: string | null;
+    titular_conta?: string | null;
+    iban?: string | null;
+    numero_conta?: string | null;
+    kwik_chave?: string | null;
+    instrucoes_checkout?: string | null;
+  } | null;
+  publicacao?: {
+    badge?: string;
+    headline?: string;
+    descricao?: string;
+    banner_url?: string;
+    instrucoes?: string;
+    contactos?: {
+      whatsapp?: string;
+      telefone?: string;
+      email?: string;
+      endereco?: string;
+    };
+    redes_sociais?: {
+      instagram?: string;
+      facebook?: string;
+      linkedin?: string;
+      website?: string;
+    };
+    faq?: Array<{
+      pergunta?: string;
+      resposta?: string;
+    }>;
+  } | null;
+  tracking?: {
+    google_analytics_id?: string;
+    meta_pixel_id?: string;
+  };
+  seo?: {
+    title?: string;
+    description?: string;
+    keywords?: string;
+  };
+  testemunhos: Array<{
+    autor_nome: string;
+    autor_cargo?: string;
+    autor_avatar_url?: string;
+    conteudo: string;
+    estrelas: number;
+    curso_nome?: string;
+  }>;
   cohorts: LandingCohort[];
 };
 
-function resolveLandingExperience(tenantType: LandingTenantType): LandingExperience {
+function resolveLandingExperience(tenantType: LandingTenantType, escola: LandingPayload["escola"]): LandingExperience {
+  const localSuffix = escola.municipio ? ` em ${escola.municipio}` : "";
+
   if (tenantType === "solo_creator") {
     return {
       badge: "Mentorias e Eventos",
-      title: "Transforme a sua carreira com mentorias práticas",
+      title: `Transforme a sua carreira${localSuffix}`,
       description:
         "Programas orientados por especialistas para acelerar resultados reais. Escolha a próxima edição e reserve o seu lugar.",
       footerLabel: "Mentor(a) parceiro(a) KLASSE",
@@ -62,7 +115,7 @@ function resolveLandingExperience(tenantType: LandingTenantType): LandingExperie
 
   return {
     badge: "Inscrições Abertas",
-    title: "Acelere a sua carreira com formação certificada",
+    title: `Formação Profissional Certificada${localSuffix}`,
     description:
       "Cursos práticos e certificados para transformar o seu futuro profissional. Escolha a sua área e garanta a sua vaga hoje mesmo.",
     footerLabel: "Centro de Formação parceiro KLASSE",
@@ -90,11 +143,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const data = await getCentroData(slug);
   if (!data) return { title: "Centro não encontrado" };
-  const experience = resolveLandingExperience(data.escola.tenant_type);
+
+  const experience = resolveLandingExperience(data.escola.tenant_type, data.escola);
+  const publicacao = data.publicacao ?? null;
+  const locationText = data.escola.municipio ? ` em ${data.escola.municipio}, ${data.escola.provincia}` : "";
 
   return {
-    title: `${data.escola.nome} · ${experience.badge}`,
-    description: experience.description,
+    title: data.seo?.title || `${data.escola.nome} · ${publicacao?.badge || experience.badge}${locationText}`,
+    description: data.seo?.description || publicacao?.descricao || experience.description,
+    keywords: data.seo?.keywords || `cursos, formação, ${data.escola.nome}, ${data.escola.municipio}, ${data.escola.provincia}`,
   };
 }
 
@@ -104,7 +161,26 @@ export default async function PublicCentroLandingPage({ params }: Props) {
   if (!data) notFound();
 
   const tenantType = data.escola.tenant_type;
-  const experience = resolveLandingExperience(tenantType);
+  const experience = resolveLandingExperience(tenantType, data.escola);
+  const publicacao = data.publicacao ?? null;
+  const badge = publicacao?.badge || experience.badge;
+  const headline = publicacao?.headline || experience.title;
+  const description = publicacao?.descricao || experience.description;
+  const faqItems = Array.isArray(publicacao?.faq)
+    ? publicacao.faq.filter((item) => item?.pergunta && item?.resposta)
+    : [];
+  const contactItems = [
+    { label: "WhatsApp", value: publicacao?.contactos?.whatsapp },
+    { label: "Telefone", value: publicacao?.contactos?.telefone },
+    { label: "E-mail", value: publicacao?.contactos?.email },
+    { label: "Endereço", value: publicacao?.contactos?.endereco },
+  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
+  const socialItems = [
+    { label: "Instagram", href: publicacao?.redes_sociais?.instagram },
+    { label: "Facebook", href: publicacao?.redes_sociais?.facebook },
+    { label: "LinkedIn", href: publicacao?.redes_sociais?.linkedin },
+    { label: "Website", href: publicacao?.redes_sociais?.website },
+  ].filter((item): item is { label: string; href: string } => Boolean(item.href));
 
   return (
     <div className={`${sora.variable} ${geistMono.variable} min-h-screen bg-slate-950 text-slate-100`}>
@@ -136,16 +212,32 @@ export default async function PublicCentroLandingPage({ params }: Props) {
         </div>
       </nav>
 
-      <section className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16 sm:py-24">
+      <section
+        className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16 sm:py-24"
+        style={
+          publicacao?.banner_url
+            ? {
+                backgroundImage: `linear-gradient(rgba(2,6,23,0.82), rgba(2,6,23,0.96)), url(${publicacao.banner_url})`,
+                backgroundPosition: "center",
+                backgroundSize: "cover",
+              }
+            : undefined
+        }
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="relative z-10 text-center">
             <div className="inline-flex rounded-full bg-klasse-gold/15 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-klasse-gold [font-family:var(--font-geist-mono)]">
-              {experience.badge}
+              {badge}
             </div>
             <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-black tracking-tight text-white sm:text-6xl [font-family:var(--font-sora)]">
-              {experience.title}
+              {headline}
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">{experience.description}</p>
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">{description}</p>
+            {publicacao?.instrucoes ? (
+              <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm leading-6 text-slate-300">
+                {publicacao.instrucoes}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="absolute left-1/2 top-0 -z-10 h-[520px] w-[880px] -translate-x-1/2 rounded-full bg-klasse-gold/10 blur-[120px]" />
@@ -154,8 +246,17 @@ export default async function PublicCentroLandingPage({ params }: Props) {
       <main className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
         <LandingContent
           tenantType={tenantType}
-          centro={{ id: data.escola.id, slug: data.escola.slug, nome: data.escola.nome, logo_url: data.escola.logo_url }}
+          centro={{
+            id: data.escola.id,
+            slug: data.escola.slug,
+            nome: data.escola.nome,
+            logo_url: data.escola.logo_url
+          }}
           fiscal={data.fiscal}
+          pagamento={data.pagamento ?? null}
+          tracking={data.tracking}
+          publicacao={data.publicacao ?? null}
+          testemunhos={data.testemunhos}
           cohorts={data.cohorts}
         />
 
@@ -195,20 +296,69 @@ export default async function PublicCentroLandingPage({ params }: Props) {
             <p className="mt-4 text-slate-400">Tudo o que precisa de saber para começar a sua jornada.</p>
           </div>
           <div className="mx-auto mt-16 max-w-3xl divide-y divide-white/5">
-            <div className="py-6">
-              <h4 className="text-lg font-bold text-white">Como recebo o acesso ao curso?</h4>
-              <p className="mt-3 leading-relaxed text-slate-400">Após o envio do comprovativo, a nossa secretaria validará o pagamento em até 24h úteis. Receberá as credenciais de acesso por e-mail ou SMS.</p>
-            </div>
-            <div className="py-6">
-              <h4 className="text-lg font-bold text-white">Os cursos têm suporte dos formadores?</h4>
-              <p className="mt-3 leading-relaxed text-slate-400">Sim, todos os nossos programas incluem canais de dúvida direto com os especialistas para garantir a sua aprendizagem.</p>
-            </div>
-            <div className="py-6">
-              <h4 className="text-lg font-bold text-white">Posso solicitar fatura da minha inscrição?</h4>
-              <p className="mt-3 leading-relaxed text-slate-400">Com certeza. Basta solicitar à secretaria através do portal do aluno após a confirmação da sua matrícula.</p>
-            </div>
+            {(faqItems.length > 0
+              ? faqItems
+              : [
+                  {
+                    pergunta: "Como recebo o acesso ao curso?",
+                    resposta:
+                      "Após o envio do comprovativo, a nossa secretaria validará o pagamento em até 24h úteis. Receberá as credenciais de acesso por e-mail ou SMS.",
+                  },
+                  {
+                    pergunta: "Os cursos têm suporte dos formadores?",
+                    resposta:
+                      "Sim, todos os nossos programas incluem canais de dúvida direto com os especialistas para garantir a sua aprendizagem.",
+                  },
+                  {
+                    pergunta: "Posso solicitar fatura da minha inscrição?",
+                    resposta:
+                      "Com certeza. Basta solicitar à secretaria através do portal do aluno após a confirmação da sua matrícula.",
+                  },
+                ]).map((item) => (
+              <div key={item.pergunta} className="py-6">
+                <h4 className="text-lg font-bold text-white">{item.pergunta}</h4>
+                <p className="mt-3 leading-relaxed text-slate-400">{item.resposta}</p>
+              </div>
+            ))}
           </div>
         </section>
+
+        {contactItems.length > 0 || socialItems.length > 0 ? (
+          <section className="mt-32 rounded-3xl border border-white/10 bg-white/[0.03] p-8">
+            <div className="grid gap-8 md:grid-cols-2">
+              {contactItems.length > 0 ? (
+                <div>
+                  <h2 className="text-xl font-black text-white">Fale com a secretaria</h2>
+                  <div className="mt-5 space-y-3">
+                    {contactItems.map((item) => (
+                      <p key={item.label} className="text-sm leading-6 text-slate-300">
+                        <span className="font-bold text-klasse-gold">{item.label}:</span> {item.value}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {socialItems.length > 0 ? (
+                <div>
+                  <h2 className="text-xl font-black text-white">Canais oficiais</h2>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    {socialItems.map((item) => (
+                      <a
+                        key={item.label}
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-200 hover:border-klasse-gold/50 hover:text-klasse-gold"
+                      >
+                        {item.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
       </main>
 
       <footer className="border-t border-white/10 bg-slate-950 py-12">
