@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getFormacaoAuthContext } from "@/lib/auth-context";
+import type { FormacaoSupabaseClient } from "@/lib/db-types";
 import { resolveFormacaoSessionContext } from "@/lib/session-context";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { TrendingUp, Users, Target, Clock, ArrowUpRight, ArrowDownRight, BarChart3, PieChart } from "lucide-react";
@@ -21,7 +22,7 @@ export default async function CohortEconomicsPage() {
   let courses: any[] = [];
 
   if (escolaId) {
-    const s = await supabaseServer();
+    const s = (await supabaseServer()) as FormacaoSupabaseClient;
     const [cohortsRes, coursesRes] = await Promise.all([
       s.from("vw_formacao_cohort_economics").select("*").order("margem_liquida", { ascending: false }),
       s.from("vw_formacao_course_economics").select("*").order("margem_liquida", { ascending: false })
