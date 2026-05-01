@@ -25,7 +25,9 @@ import {
   Wallet,
   Mail,
   Globe2,
-  Home
+  Home,
+  UserPlus,
+  FileText
 } from "lucide-react";
 import LockScreenButton from "@/components/session/LockScreenButton";
 
@@ -75,6 +77,8 @@ function NavIcon({ name }: { name: string }) {
     Calendar: <Calendar className={className} />,
     Wallet: <Wallet className={className} />,
     Globe2: <Globe2 className={className} />,
+    UserPlus: <UserPlus className={className} />,
+    FileText: <FileText className={className} />,
   };
   return icons[name] || <Home className={className} />;
 }
@@ -223,7 +227,7 @@ function TrialCountdownBanner({ subscription }: { subscription: SubscriptionInfo
   const supportHref =
     process.env.KLASSE_FORMACAO_SUPPORT_WHATSAPP_URL?.trim() ||
     process.env.NEXT_PUBLIC_KLASSE_FORMACAO_SUPPORT_WHATSAPP_URL?.trim() ||
-    "https://wa.me/244923000000";
+    "https://wa.me/244933349106";
   const daysLeft = subscription.days_left ?? 0;
   const message = subscription.is_expired
     ? "O período de teste terminou. Regularize a subscrição para voltar a operar o centro."

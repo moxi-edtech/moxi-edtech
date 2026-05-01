@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -247,6 +248,23 @@ export default function CobrancasListClient() {
         </div>
       )}
 
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Preços gerais</p>
+            <p className="mt-1 text-sm text-slate-700">
+              Configure os preços globais dos planos, promoções, descontos e períodos de trial antes de parametrizar instituições específicas.
+            </p>
+          </div>
+          <Link
+            href="/super-admin/planos"
+            className="inline-flex items-center rounded-lg bg-klasse-green px-3 py-2 text-xs font-bold uppercase text-white transition hover:bg-klasse-green/90"
+          >
+            Configurar preços gerais
+          </Link>
+        </div>
+      </div>
+
       {/* ── Dashboard Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
@@ -283,6 +301,12 @@ export default function CobrancasListClient() {
             <p className="text-[10px] text-slate-400">Gestão global de contratos e planos ativos</p>
           </div>
           <div className="flex gap-3">
+            <Link
+              href="/super-admin/planos"
+              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 text-[10px] font-bold uppercase hover:bg-slate-50 transition-all"
+            >
+              Preços Gerais
+            </Link>
             <button 
               onClick={handleSync} 
               disabled={syncing}

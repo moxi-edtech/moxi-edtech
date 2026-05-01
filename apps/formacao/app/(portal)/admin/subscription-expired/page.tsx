@@ -11,7 +11,7 @@ export default async function SubscriptionExpiredPage() {
   const supportHref =
     process.env.KLASSE_FORMACAO_SUPPORT_WHATSAPP_URL?.trim() ||
     process.env.NEXT_PUBLIC_KLASSE_FORMACAO_SUPPORT_WHATSAPP_URL?.trim() ||
-    "https://wa.me/244923000000";
+    "https://wa.me/244933349106";
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center">

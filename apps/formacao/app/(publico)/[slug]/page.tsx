@@ -35,6 +35,7 @@ type LandingCohort = {
   vagas_ocupadas: number;
   carga_horaria: number;
   data_inicio: string;
+  thumbnail_url?: string | null;
 };
 
 type LandingPayload = {

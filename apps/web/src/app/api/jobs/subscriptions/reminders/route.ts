@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildLifecycleReminderEmail, sendMail } from "@/lib/mailer";
+import { buildLifecycleReminderEmail, resolveEmailLoginUrl, sendMail } from "@/lib/mailer";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -106,12 +106,7 @@ function daysSince(value: string | null | undefined) {
 }
 
 function resolveLoginUrl() {
-  return (
-    process.env.KLASSE_AUTH_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_BASE_URL?.trim() ||
-    "https://app.klasse.ao/login"
-  ).replace(/\/$/, "");
+  return resolveEmailLoginUrl();
 }
 
 async function hasAuditForToday(admin: ReturnType<typeof getAdminClient>, escolaId: string, action: string, todayIso: string) {

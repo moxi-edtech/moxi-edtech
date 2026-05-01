@@ -43,10 +43,11 @@ export async function sendMail({ to, subject, html, text }: SendArgs): Promise<{
 export function buildOnboardingEmail(args: { escolaNome: string; onboardingUrl: string; adminEmail: string; adminNome?: string; plano?: string | null | undefined }) {
   const { onboardingUrl, adminNome, plano, escolaNome } = args
   const brand = getBranding()
+  const safeOnboardingUrl = sanitizeEmailUrl(onboardingUrl, resolveEmailLoginUrl())
   const subject = `Bem-vindo ao ${brand.name}${plano ? ` • Plano ${plano}` : ''} • Inicie o onboarding da escola`
   const element = createElement(KlasseWelcomeEmail, {
     nomeUsuario: adminNome || 'Gestor',
-    linkAcesso: onboardingUrl,
+    linkAcesso: safeOnboardingUrl ?? undefined,
     escolaNome,
     plano: plano ?? null,
   })
@@ -67,6 +68,7 @@ export function buildInviteEmail(args: {
   const brand = getBranding()
   const isFormacao = tenant_type === 'formacao'
   const guidance = getInviteGuidance(papel, isFormacao)
+  const safeOnboardingUrl = sanitizeEmailUrl(onboardingUrl, resolveEmailLoginUrl())
 
   const displayBrand = isFormacao ? `${brand.name} Formação` : brand.name
   const subject = `Convite ${displayBrand} • ${escolaNome}`
@@ -78,11 +80,11 @@ export function buildInviteEmail(args: {
     guidance.portal ? `Portal: ${guidance.portal}.` : '',
     guidance.tasks.length > 0 ? `Ao entrar, você deverá:` : '',
     ...guidance.tasks.map((task) => `- ${task}`),
-    onboardingUrl ? `Aceitar convite: ${onboardingUrl}` : '',
+    safeOnboardingUrl ? `Aceitar convite: ${safeOnboardingUrl}` : '',
   ].filter(Boolean).join('\n')
 
-  const buttonHtml = onboardingUrl
-    ? `<a href="${onboardingUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no KLASSE</a>`
+  const buttonHtml = safeOnboardingUrl
+    ? `<a href="${safeOnboardingUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no KLASSE</a>`
     : ''
 
   const html = `
@@ -242,10 +244,11 @@ function getInviteGuidance(papel?: string | null, isFormacao: boolean = false): 
 export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: string | null }) {
   const { resetUrl, expiresEm } = args
   const brand = getBranding()
+  const safeResetUrl = sanitizeEmailUrl(resetUrl, resolveEmailLoginUrl())
   const subject = `Redefinição de senha ${brand.name}`
   const text = [
     `Recebemos um pedido para redefinir sua senha no ${brand.name}.`,
-    resetUrl ? `Redefinir senha: ${resetUrl}` : '',
+    safeResetUrl ? `Redefinir senha: ${safeResetUrl}` : '',
     expiresEm ? `Este link expira em ${expiresEm}.` : '',
   ].filter(Boolean).join('\n')
 
@@ -258,7 +261,7 @@ export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: st
       </div>
       <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Redefinir senha</h2>
       <p style="margin:0 0 8px 0; color:#475569;">Recebemos um pedido para redefinir sua senha no ${escapeHtml(brand.name)}.</p>
-      ${resetUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${resetUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Redefinir senha</a></div>` : ''}
+      ${safeResetUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${safeResetUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Redefinir senha</a></div>` : ''}
       ${expiresEm ? `<p style="margin:0 0 8px 0; font-size:13px; color:#475569;">Este link expira em <strong>${escapeHtml(expiresEm)}</strong>.</p>` : ''}
       <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
       ${brand.supportEmail ? `<p style="margin:0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
@@ -279,11 +282,12 @@ export async function buildBillingRenewalEmail(args: {
   linkPagamento: string;
 }) {
   const brand = getBranding()
+  const safeLinkPagamento = sanitizeEmailUrl(args.linkPagamento, resolveEmailLoginUrl())
   const subject = args.diasRestantes === 1
     ? `⚠️ Último dia de subscrição ${brand.name} • ${args.escolaNome}`
     : `Aviso de renovação ${brand.name} • ${args.diasRestantes} dias restantes`;
 
-  const element = createElement(BillingRenewalEmail, args)
+  const element = createElement(BillingRenewalEmail, { ...args, linkPagamento: safeLinkPagamento ?? resolveEmailLoginUrl() })
   const html = await render(element)
   const text = await render(element, { plainText: true })
   return { subject, html, text }
@@ -300,12 +304,13 @@ export async function buildLifecycleReminderEmail(args: {
   contactEmail?: string | null
   contactWhatsapp?: string | null
 }) {
+  const safeActionUrl = sanitizeEmailUrl(args.actionUrl ?? null, resolveEmailLoginUrl())
   const element = createElement(KlasseLifecycleReminderEmail, {
     title: args.title,
     previewText: args.previewText,
     centroNome: args.centroNome,
     message: args.message,
-    actionUrl: args.actionUrl ?? null,
+    actionUrl: safeActionUrl,
     actionLabel: args.actionLabel ?? null,
     contactEmail: args.contactEmail ?? null,
     contactWhatsapp: args.contactWhatsapp ?? null,
@@ -358,6 +363,7 @@ export function buildBillingEmail(args: { escolaNome: string; destinatarioEmail:
 export function buildCredentialsEmail(args: { nome?: string | null; email: string; numero_processo_login?: string | null; senha_temp?: string | null; escolaNome?: string | null; loginUrl?: string | null }) {
   const { nome, email, numero_processo_login, senha_temp, escolaNome, loginUrl } = args
   const brand = getBranding()
+  const safeLoginUrl = sanitizeEmailUrl(loginUrl ?? null, resolveEmailLoginUrl())
   const subject = `${brand.name} • Seus dados de acesso${escolaNome ? ` • ${escolaNome}` : ''}`
   const text = [
     nome ? `Olá, ${nome}.` : `Olá,`,
@@ -365,7 +371,7 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
     `Login: ${email}`,
     numero_processo_login ? `Número de processo (login): ${numero_processo_login}` : '',
     senha_temp ? `Senha temporária: ${senha_temp}` : '',
-    loginUrl ? `Acesse: ${loginUrl}` : '',
+    safeLoginUrl ? `Acesse: ${safeLoginUrl}` : '',
     senha_temp ? `Por segurança, altere sua senha após o primeiro acesso.` : '',
   ].filter(Boolean).join('\n')
 
@@ -382,7 +388,7 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
       <p style="margin:0 0 8px 0; color:#475569;">Login: <strong>${escapeHtml(email)}</strong></p>
       ${numero_processo_login ? `<p style="margin:0 0 8px 0; color:#475569;">Número de processo (login): <strong>${escapeHtml(numero_processo_login)}</strong></p>` : ''}
       ${senha_temp ? `<p style="margin:0 0 8px 0; color:#475569;">Senha temporária: <strong>${escapeHtml(senha_temp)}</strong></p>` : ''}
-      ${loginUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${loginUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no KLASSE</a></div>` : ''}
+      ${safeLoginUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${safeLoginUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no KLASSE</a></div>` : ''}
       ${senha_temp ? `<p style="margin:0 0 8px 0; font-size:13px; color:#334155;">Por segurança, altere sua senha após o primeiro acesso.</p>` : ''}
       <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
       <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(email)}.</p>
@@ -404,7 +410,7 @@ function getResendConfig(): ResendConfig | null {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return null
   const rawFrom = process.env.RESEND_FROM_EMAIL || 'Klasse <suporte@klasse.ao>'
-  const from = rawFrom.replace(/\\n/g, '').replace(/\r?\n/g, '').trim()
+  const from = normalizeFromAddress(rawFrom.replace(/\\n/g, '').replace(/\r?\n/g, '').trim())
   return { apiKey, from }
 }
 
@@ -417,4 +423,44 @@ function getResendClient(apiKey: string) {
 
 function htmlToText(html: string) {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function normalizeFromAddress(value: string) {
+  if (!/no-?reply/i.test(value)) return value
+  const email = value.match(/<([^>]+)>/)?.[1] ?? value
+  const domain = email.includes('@') ? email.split('@').pop() : 'klasse.ao'
+  const safeDomain = domain || 'klasse.ao'
+  return `Klasse <suporte@${safeDomain}>`
+}
+
+export function resolveEmailLoginUrl() {
+  const candidates = [
+    process.env.KLASSE_EMAIL_LOGIN_URL,
+    process.env.KLASSE_PUBLIC_LOGIN_URL,
+    process.env.NEXT_PUBLIC_KLASSE_AUTH_URL,
+    process.env.KLASSE_AUTH_URL,
+    process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/login` : null,
+    process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '')}/login` : null,
+    'https://app.klasse.ao/login',
+  ]
+
+  for (const candidate of candidates) {
+    const sanitized = sanitizeEmailUrl(candidate ?? null, null)
+    if (sanitized) return sanitized
+  }
+
+  return 'https://app.klasse.ao/login'
+}
+
+function sanitizeEmailUrl(value: string | null | undefined, fallback: string | null): string | null {
+  if (!value) return fallback
+  try {
+    const url = new URL(value)
+    const hostname = url.hostname.toLowerCase()
+    const isLocal = hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.lvh.me') || hostname === 'lvh.me'
+    if (isLocal || url.protocol !== 'https:') return fallback
+    return url.toString()
+  } catch {
+    return fallback
+  }
 }

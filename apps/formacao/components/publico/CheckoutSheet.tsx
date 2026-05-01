@@ -64,7 +64,8 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
     mode: "onChange",
     defaultValues: {
       nome_completo: "",
-      identificacao: "",
+      email: "",
+      bi_passaporte: "",
       telefone: "",
       comprovativo_url: "",
     },
@@ -73,7 +74,8 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
   // Lead Recovery: Captura dados parciais antes da submissão final
   const nomeCompleto = form.watch("nome_completo");
   const telefone = form.watch("telefone");
-  const identificacao = form.watch("identificacao");
+  const email = form.watch("email");
+  const biPassaporte = form.watch("bi_passaporte");
 
   useEffect(() => {
     if (leadCaptured.current || !open) return;
@@ -89,14 +91,14 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
           cohort_id: curso.id,
           nome: nomeCompleto,
           telefone: telefone,
-          email: identificacao.includes("@") ? identificacao : undefined,
+          email: email,
           origem: "checkout_abandonment"
         });
       }
     }, 2500); // Aguarda 2.5s de inatividade para capturar
 
     return () => clearTimeout(timer);
-  }, [nomeCompleto, telefone, identificacao, tenant.id, curso.id, open]);
+  }, [nomeCompleto, telefone, email, tenant.id, curso.id, open]);
 
   const comprovativoUrl = form.watch("comprovativo_url");
   const submitDisabled = useMemo(
@@ -167,7 +169,8 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
         centro_slug: tenant.slug,
         cohort_ref: curso.cohortRef,
         nome_completo: validation.data.nome_completo,
-        identificacao: validation.data.identificacao,
+        email: validation.data.email,
+        bi_passaporte: validation.data.bi_passaporte,
         telefone: validation.data.telefone,
         comprovativo_url: validation.data.comprovativo_url,
       });
@@ -286,13 +289,23 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Identificação (Email ou BI)</label>
-                    <Input {...form.register("identificacao")} placeholder="exemplo@email.com ou BI123456" className="text-base sm:text-sm" />
-                    <p className="text-xs text-rose-600">{form.formState.errors.identificacao?.message ?? ""}</p>
+                    <label className="text-xs font-semibold text-slate-700">E-mail</label>
+                    <Input {...form.register("email")} placeholder="exemplo@email.com" type="email" className="text-base sm:text-sm" />
+                    <p className="text-xs text-rose-600">{form.formState.errors.email?.message ?? ""}</p>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Telefone</label>
+                    <label className="text-xs font-semibold text-slate-700">Nº do BI ou Passaporte</label>
+                    <Input 
+                      {...form.register("bi_passaporte")} 
+                      placeholder="001234567LA049" 
+                      className="text-base sm:text-sm uppercase tracking-widest font-mono" 
+                    />
+                    <p className="text-xs text-rose-600">{form.formState.errors.bi_passaporte?.message ?? ""}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Telefone / WhatsApp</label>
                     <Input {...form.register("telefone")} placeholder="9xx xxx xxx" className="text-base sm:text-sm" />
                     <p className="text-xs text-rose-600">{form.formState.errors.telefone?.message ?? ""}</p>
                   </div>

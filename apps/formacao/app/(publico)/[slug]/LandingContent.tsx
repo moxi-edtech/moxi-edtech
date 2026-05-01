@@ -19,6 +19,7 @@ type Cohort = {
   vagas_ocupadas: number;
   carga_horaria: number;
   data_inicio: string;
+  thumbnail_url?: string | null;
 };
 
 type Props = {
@@ -163,7 +164,7 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
                 durationHours={cohort.carga_horaria}
                 maxSeats={cohort.vagas}
                 occupiedSeats={cohort.vagas_ocupadas}
-                thumbnailUrl={centro.logo_url ?? undefined}
+                thumbnailUrl={cohort.thumbnail_url || centro.logo_url || undefined}
                 actionLabel={ctaLabel}
                 onActionClick={() => handleActionClick(cohort)}
               />

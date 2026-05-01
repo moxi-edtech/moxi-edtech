@@ -192,6 +192,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: escolaPatch.error.message }, { status: 400 });
     }
 
+    const trialDays = await resolveFormacaoTrialDays(supabaseUntyped, payload.perfil_formacao.plano);
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
+
     const centroUpsert = await supabaseUntyped
       .from("centros_formacao")
       .upsert(
@@ -213,6 +217,8 @@ export async function POST(request: Request) {
           capacidade_max: payload.perfil_formacao.capacidade_max ?? null,
           status: "ativo",
           plano: payload.perfil_formacao.plano,
+          subscription_status: "trial",
+          trial_ends_at: trialEndsAt.toISOString(),
           moeda: payload.fiscal.moeda,
           regime_iva: payload.fiscal.regime_iva,
           notas_admin: payload.notas_admin ?? null,
@@ -323,6 +329,18 @@ function mapCentroPlanToSchoolTier(plan: "basic" | "pro" | "enterprise") {
   if (plan === "enterprise") return "premium";
   if (plan === "pro") return "profissional";
   return "essencial";
+}
+
+async function resolveFormacaoTrialDays(supabaseUntyped: any, plan: "basic" | "pro" | "enterprise") {
+  const { data } = await supabaseUntyped
+    .from("formacao_plan_settings")
+    .select("trial_days")
+    .eq("plan", plan)
+    .maybeSingle();
+
+  const days = Number((data as { trial_days?: number } | null)?.trial_days ?? 7);
+  if (!Number.isFinite(days)) return 7;
+  return Math.min(365, Math.max(0, Math.round(days)));
 }
 
 function generateStrongPassword(length = 12): string {

@@ -78,6 +78,18 @@ export default function QuickActionsSection() {
         badge: "Crítico",
       },
       {
+        id: "op-planos-precos",
+        label: "Planos e Preços",
+        icon: Wallet,
+        href: "/super-admin/planos",
+        description: "Preços, descontos, promoções e trial dos planos SaaS.",
+        group: "Operação",
+        risk_level: "medium",
+        requires_confirm: false,
+        audit_tag: "super_admin.ops.plan_pricing",
+        badge: "Novo",
+      },
+      {
         id: "op-onboarding-pendente",
         label: "Onboarding Pendente",
         icon: Filter,

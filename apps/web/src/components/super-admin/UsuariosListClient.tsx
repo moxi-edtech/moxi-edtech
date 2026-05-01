@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Filter, Mail, Pencil, Plus, Search, Shield, Trash2, X } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -153,6 +153,7 @@ export function SuperAdminUsuariosListClient() {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 function ListaUsuarios() {
+  const { success, error: notifyError } = useToast();
   const [usuarios, setUsuarios]   = useState<Usuario[]>([]);
   const [escolas,  setEscolas]    = useState<Escola[]>([]);
   const [loading,  setLoading]    = useState(true);
@@ -298,11 +299,11 @@ function ListaUsuarios() {
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao reenviar convite.");
       }
-      toast.success(`Credenciais reenviadas para ${u.email}.`);
+      success(`Credenciais reenviadas para ${u.email}.`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Erro ao reenviar convite.";
       setErro(message);
-      toast.error(message);
+      notifyError(message);
     } finally {
       setSaving(null);
     }
