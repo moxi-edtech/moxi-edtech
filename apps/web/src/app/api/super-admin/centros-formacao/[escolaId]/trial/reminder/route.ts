@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
-import { sendMail } from "@/lib/mailer";
+import { buildLifecycleReminderEmail, sendMail } from "@/lib/mailer";
 import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -127,14 +127,19 @@ export async function POST(request: Request, context: { params: Promise<{ escola
     const subject = isExpired
       ? `KLASSE Formação · Trial expirado · ${typedCentro.nome}`
       : `KLASSE Formação · Trial termina em ${daysLeft} dia(s) · ${typedCentro.nome}`;
-    const html = `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-        <p>${message.replace(/\n/g, "<br />")}</p>
-        ${settings.email_comercial ? `<p>Contacto comercial: ${settings.email_comercial}</p>` : ""}
-        ${settings.whatsapp_comercial ? `<p>WhatsApp: ${settings.whatsapp_comercial}</p>` : ""}
-      </div>
-    `;
-    const sent = await sendMail({ to, subject, html, text: message });
+    const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.klasse.ao/login").replace(/\/$/, "");
+    const mail = await buildLifecycleReminderEmail({
+      subject,
+      title: isExpired ? "Trial expirado" : `Trial termina em ${daysLeft} dia(s)`,
+      previewText: message,
+      centroNome: String(typedCentro.nome ?? "Centro"),
+      message,
+      actionUrl: loginUrl,
+      actionLabel: "Entrar no KLASSE",
+      contactEmail: settings.email_comercial ?? null,
+      contactWhatsapp: settings.whatsapp_comercial ?? null,
+    });
+    const sent = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text });
     if (!sent.ok) return NextResponse.json({ ok: false, error: sent.error }, { status: 400 });
 
     await s

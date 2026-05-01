@@ -139,7 +139,7 @@ export const BillingRenewalEmail = ({
             </Text>
 
             <Text className="text-[#666666] text-[12px] leading-[24px] text-center mt-4">
-              © 2026 KLASSE EdTech. Luanda, Angola.
+              © 2026 Moxi Soluções. Todos os direitos reservados.
               <br />
               Suporte em Luanda: <strong>+244 9XX XXX XXX</strong>
             </Text>

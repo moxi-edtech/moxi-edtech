@@ -7,6 +7,7 @@ import { Resend } from 'resend'
 import { getBranding } from './branding'
 import { KlasseWelcomeEmail } from '@/emails/KlasseWelcomeEmail'
 import { BillingRenewalEmail } from '@/emails/BillingRenewalEmail'
+import { KlasseLifecycleReminderEmail } from '@/emails/KlasseLifecycleReminderEmail'
 
 type SendArgs = {
   to: string
@@ -108,7 +109,7 @@ export function buildInviteEmail(args: {
       <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
       <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(convidadoEmail)}.</p>
       ${brand.supportEmail ? `<p style="margin:8px 0 0 0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
-      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 KLASSE EdTech. Luanda, Angola.</p>
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 Moxi Soluções. Todos os direitos reservados.</p>
     </div>
   </div>
   `
@@ -261,7 +262,7 @@ export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: st
       ${expiresEm ? `<p style="margin:0 0 8px 0; font-size:13px; color:#475569;">Este link expira em <strong>${escapeHtml(expiresEm)}</strong>.</p>` : ''}
       <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
       ${brand.supportEmail ? `<p style="margin:0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
-      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 KLASSE EdTech. Luanda, Angola.</p>
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 Moxi Soluções. Todos os direitos reservados.</p>
     </div>
   </div>
   `
@@ -286,6 +287,32 @@ export async function buildBillingRenewalEmail(args: {
   const html = await render(element)
   const text = await render(element, { plainText: true })
   return { subject, html, text }
+}
+
+export async function buildLifecycleReminderEmail(args: {
+  subject: string
+  title: string
+  previewText: string
+  centroNome: string
+  message: string
+  actionUrl?: string | null
+  actionLabel?: string | null
+  contactEmail?: string | null
+  contactWhatsapp?: string | null
+}) {
+  const element = createElement(KlasseLifecycleReminderEmail, {
+    title: args.title,
+    previewText: args.previewText,
+    centroNome: args.centroNome,
+    message: args.message,
+    actionUrl: args.actionUrl ?? null,
+    actionLabel: args.actionLabel ?? null,
+    contactEmail: args.contactEmail ?? null,
+    contactWhatsapp: args.contactWhatsapp ?? null,
+  })
+  const html = await render(element)
+  const text = await render(element, { plainText: true })
+  return { subject: args.subject, html, text }
 }
 
 function escapeHtml(s: string) {
@@ -360,7 +387,7 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
       <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
       <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(email)}.</p>
       ${brand.supportEmail ? `<p style="margin:8px 0 0 0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
-      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 KLASSE EdTech. Luanda, Angola.</p>
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 Moxi Soluções. Todos os direitos reservados.</p>
     </div>
   </div>
   `

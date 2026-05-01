@@ -326,7 +326,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="flex-1 space-y-4">
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3">Coordenadas KLASSE EdTech</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3">Coordenadas Moxi Soluções</p>
                     <div className="space-y-2 font-geist text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-500">Banco:</span>

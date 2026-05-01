@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import type { Database } from '~types/supabase'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -15,9 +16,28 @@ type UsuarioItem = {
   escola_id: string | null
   escola_nome: string | null
   papel_escola: string | null
+  last_access: string | null
+  last_access_ip: string | null
+  last_access_location: string | null
 }
 
-export async function GET() {
+type AuthListResponse = {
+  users?: Array<{
+    id?: string | null
+    last_sign_in_at?: string | null
+  }>
+}
+
+function buildLocationLabel(row: any) {
+  const location = row?.details?.location ?? row?.meta?.geo ?? null
+  if (!location || typeof location !== 'object') return null
+  const parts = [location.city, location.region, location.country]
+    .map((part) => (part ? String(part).trim() : ''))
+    .filter(Boolean)
+  return parts.length > 0 ? Array.from(new Set(parts)).join(', ') : null
+}
+
+export async function GET(request: Request) {
   try {
     // AuthZ: somente super_admin via RPC segura (respeitando SERVICE_ROLE_INVENTORY.md)
     const s = await createRouteClient()
@@ -35,8 +55,20 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
-    // Papéis globais que podem aparecer na lista (sem alunos/professores)
-    const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria', 'secretaria_financeiro', 'admin_financeiro'])
+    // Papéis globais que podem aparecer na lista (sem alunos/formandos)
+    const allowedRoles = new Set([
+      'super_admin',
+      'global_admin',
+      'admin',
+      'financeiro',
+      'secretaria',
+      'secretaria_financeiro',
+      'admin_financeiro',
+      'formacao_admin',
+      'formacao_secretaria',
+      'formacao_financeiro',
+      'formador',
+    ])
 
     const isMissingColumn = (err: any) => {
       const msg = err?.message as string | undefined
@@ -63,6 +95,51 @@ export async function GET() {
       allowedRoles.has(String((p as any)?.role ?? ''))
     )
     const userIds = pRows.map((p: any) => String(p.user_id))
+
+    const authLastAccessByUser = new Map<string, string | null>()
+    try {
+      let page = 1
+      let keepGoing = true
+      while (keepGoing && page <= 5) {
+        const authList = (await callAuthAdminJob(request, 'listUsers', {
+          page,
+          perPage: 1000,
+        })) as AuthListResponse
+        const users = authList.users ?? []
+        for (const authUser of users) {
+          if (authUser.id) {
+            authLastAccessByUser.set(String(authUser.id), authUser.last_sign_in_at ?? null)
+          }
+        }
+        keepGoing = users.length === 1000
+        page += 1
+      }
+    } catch {
+      // A lista continua útil mesmo que o Auth Admin esteja indisponível.
+    }
+
+    const auditAccessByUser = new Map<
+      string,
+      { created_at: string | null; ip: string | null; location: string | null }
+    >()
+    if (userIds.length > 0) {
+      const { data: accessRows } = await (s as any)
+        .from('audit_logs' as any)
+        .select('user_id, created_at, ip, details, meta')
+        .in('user_id', userIds as any)
+        .or('action.eq.login,acao.eq.LOGIN')
+        .order('created_at', { ascending: false })
+        .limit(5000)
+      for (const row of accessRows ?? []) {
+        const uid = row?.user_id ? String(row.user_id) : null
+        if (!uid || auditAccessByUser.has(uid)) continue
+        auditAccessByUser.set(uid, {
+          created_at: row.created_at ?? null,
+          ip: row.ip ?? row.details?.ip ?? null,
+          location: buildLocationLabel(row),
+        })
+      }
+    }
 
     // 2) Vínculos escola_users
     let vRows: any[] = []
@@ -146,6 +223,20 @@ export async function GET() {
         return NextResponse.json({ ok: false, error: eErr.message }, { status: 400 })
       }
       escolasMap = new Map((escolas || []).map((e: any) => [String(e.id), e.nome ?? null]))
+
+      const { data: centros, error: centrosErr } = await (s as any)
+        .from('centros_formacao' as any)
+        .select('escola_id, nome')
+        .in('escola_id', escolaIds as any)
+        .limit(200000)
+      if (centrosErr) {
+        return NextResponse.json({ ok: false, error: centrosErr.message }, { status: 400 })
+      }
+      for (const centro of centros || []) {
+        if (centro?.escola_id) {
+          escolasMap.set(String(centro.escola_id), centro.nome ?? escolasMap.get(String(centro.escola_id)) ?? null)
+        }
+      }
     }
 
     const items: UsuarioItem[] = []
@@ -153,10 +244,12 @@ export async function GET() {
       const vinc = vinculosByUser.get(String(u.user_id))
       const escolaIdFromProfile = (u as any)?.current_escola_id ?? (u as any)?.escola_id ?? null
       const papelEscola = vinc?.papel ?? null
-      if (papelEscola === 'aluno' || String(u.role ?? '') === 'aluno') continue
+      if (papelEscola === 'aluno' || papelEscola === 'formando' || String(u.role ?? '') === 'aluno' || String(u.role ?? '') === 'formando') continue
 
       const escolaId = vinc?.escola_id ?? (escolaIdFromProfile ? String(escolaIdFromProfile) : null)
       const escolaNome = escolaId ? escolasMap.get(escolaId) ?? null : null
+      const authLastAccess = authLastAccessByUser.get(String(u.user_id)) ?? null
+      const auditAccess = auditAccessByUser.get(String(u.user_id)) ?? null
 
       items.push({
         id: String(u.user_id),
@@ -167,6 +260,9 @@ export async function GET() {
         escola_id: escolaId,
         escola_nome: escolaNome,
         papel_escola: papelEscola,
+        last_access: authLastAccess ?? auditAccess?.created_at ?? null,
+        last_access_ip: auditAccess?.ip ?? null,
+        last_access_location: auditAccess?.location ?? null,
       })
     }
 

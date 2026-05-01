@@ -19,6 +19,7 @@ type AdminAction =
   | "listUsers"
   | "generateLink"
   | "findUserByEmail"
+  | "recordUserAccess"
   | "resolveIdentifierToEmail"
   | "activateStudentAccess"
   | "resetStudentPassword"
@@ -77,6 +78,46 @@ export async function POST(req: Request) {
         if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
         const user = (data?.users || []).find((u) => (u.email || "").toLowerCase() === normalized) || null;
         return NextResponse.json({ ok: true, data: { user } });
+      }
+      case "recordUserAccess": {
+        const { userId, tenantId, tenantType, role, route, ip, userAgent, geo } = payload as any;
+        if (!userId) return NextResponse.json({ ok: false, error: "Missing userId" }, { status: 400 });
+
+        const safeGeo = geo && typeof geo === "object" ? geo : {};
+        const details = {
+          ip: ip ? String(ip) : null,
+          user_agent: userAgent ? String(userAgent) : null,
+          tenant_type: tenantType ? String(tenantType) : null,
+          role: role ? String(role) : null,
+          location: {
+            city: safeGeo.city ? String(safeGeo.city) : null,
+            region: safeGeo.region ? String(safeGeo.region) : null,
+            country: safeGeo.country ? String(safeGeo.country) : null,
+            latitude: safeGeo.latitude ? String(safeGeo.latitude) : null,
+            longitude: safeGeo.longitude ? String(safeGeo.longitude) : null,
+            timezone: safeGeo.timezone ? String(safeGeo.timezone) : null,
+          },
+        };
+
+        const { error } = await admin.from("audit_logs").insert({
+          user_id: userId,
+          actor_id: userId,
+          escola_id: tenantId || null,
+          portal: tenantType || "auth",
+          action: "login",
+          acao: "LOGIN",
+          entity: "auth_session",
+          tabela: "auth_session",
+          entity_id: userId,
+          registro_id: userId,
+          ip: ip ? String(ip) : null,
+          user_agent: userAgent ? String(userAgent) : null,
+          details,
+          meta: { route: route || "/login", geo: details.location },
+        });
+        if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+        return NextResponse.json({ ok: true, data: { recorded: true } });
       }
       case "resolveIdentifierToEmail": {
         const { identifier } = payload as any;

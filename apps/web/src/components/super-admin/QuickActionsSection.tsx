@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from "react";
-import { ArrowRight, Check, Eye, Filter, Plus, Settings, Shield, Users, Wallet } from "lucide-react";
+import { ArrowRight, Check, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 type RiskLevel = "low" | "medium" | "high";
 type ActionGroup = "Operação" | "Governança" | "Debug";
@@ -19,12 +20,19 @@ interface QuickAction {
   requires_confirm: boolean;
   audit_tag: string;
   disabledReason?: string;
+  badge?: string;
 }
 
-const RISK_STYLES: Record<RiskLevel, string> = {
-  low: "bg-slate-100 text-slate-600",
-  medium: "bg-klasse-gold/10 text-klasse-gold",
-  high: "bg-red-50 text-red-600",
+const RISK_CONFIG: Record<RiskLevel, { dot: string; bg: string; text: string }> = {
+  low: { dot: "bg-slate-400", bg: "bg-slate-50", text: "text-slate-600" },
+  medium: { dot: "bg-klasse-gold", bg: "bg-klasse-gold/5", text: "text-klasse-gold" },
+  high: { dot: "bg-rose-500", bg: "bg-rose-50", text: "text-rose-600" },
+};
+
+const GROUP_ICONS: Record<ActionGroup, ComponentType<{ className?: string }>> = {
+  "Operação": Zap,
+  "Governança": ShieldCheck,
+  "Debug": Settings,
 };
 
 const GROUP_ORDER: ActionGroup[] = ["Operação", "Governança", "Debug"];
@@ -62,18 +70,19 @@ export default function QuickActionsSection() {
         label: "Cobranças em Risco",
         icon: Wallet,
         href: "/super-admin/cobrancas?status=em_risco",
-        description: "Priorizar recuperação de receita em risco imediato.",
+        description: "Recuperação de receita em risco imediato.",
         group: "Operação",
         risk_level: "high",
         requires_confirm: false,
         audit_tag: "super_admin.ops.cobrancas_risco",
+        badge: "Crítico",
       },
       {
         id: "op-onboarding-pendente",
         label: "Onboarding Pendente",
         icon: Filter,
         href: "/super-admin/escolas?onboarding=in_progress",
-        description: "Atacar bloqueios de escolas sem onboarding concluído.",
+        description: "Desbloqueio de escolas sem onboarding concluído.",
         group: "Operação",
         risk_level: "medium",
         requires_confirm: false,
@@ -84,7 +93,7 @@ export default function QuickActionsSection() {
         label: "Admins sem Acesso",
         icon: Shield,
         href: "/super-admin/escolas?focus=admins_access",
-        description: "Corrigir admins inválidos e reduzir risco operacional.",
+        description: "Correção de acessos administrativos inválidos.",
         group: "Operação",
         risk_level: "high",
         requires_confirm: false,
@@ -95,7 +104,7 @@ export default function QuickActionsSection() {
         label: "Criar Escola",
         icon: Plus,
         href: "/super-admin/escolas/nova",
-        description: "Provisionar nova unidade no ecossistema.",
+        description: "Provisionar nova unidade no sistema.",
         group: "Governança",
         risk_level: "medium",
         requires_confirm: false,
@@ -106,7 +115,7 @@ export default function QuickActionsSection() {
         label: "Novo Utilizador",
         icon: Users,
         href: "/super-admin/usuarios/novo",
-        description: "Criar acesso institucional com rastreabilidade.",
+        description: "Criar acesso institucional rastreável.",
         group: "Governança",
         risk_level: "low",
         requires_confirm: false,
@@ -114,10 +123,10 @@ export default function QuickActionsSection() {
       },
       {
         id: "gov-auditoria",
-        label: "Auditar Configurações",
+        label: "Auditar Global",
         icon: Settings,
         href: "/super-admin/diagnostics",
-        description: "Validar políticas e integridade de configuração global.",
+        description: "Validar integridade de configuração global.",
         group: "Governança",
         risk_level: "medium",
         requires_confirm: true,
@@ -125,7 +134,7 @@ export default function QuickActionsSection() {
       },
       {
         id: "dbg-email-preview",
-        label: "Debug Email Preview",
+        label: "Debug Email",
         icon: Eye,
         href: "/super-admin/debug/email-preview",
         description: "Revisar payload de e-mails automáticos.",
@@ -136,10 +145,10 @@ export default function QuickActionsSection() {
       },
       {
         id: "dbg-admin-seed",
-        label: "Debug Seed Dados",
+        label: "Seed de Dados",
         icon: Check,
         href: "/admin-seed",
-        description: "Executar seed de QA para cenários de carga.",
+        description: "Executar carga de dados para QA.",
         group: "Debug",
         risk_level: "high",
         requires_confirm: true,
@@ -199,77 +208,138 @@ export default function QuickActionsSection() {
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-6">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Atalhos Prioritários</p>
-        <h2 className="text-2xl font-bold text-slate-950">Execução por domínio</h2>
-        <p className="mt-1 text-sm text-slate-500">Foco em impacto operacional imediato, governança e debug controlado.</p>
+    <section className="space-y-8">
+      <div>
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+          <Zap className="h-3 w-3 fill-current" />
+          <span>Central de Comando</span>
+        </div>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Atalhos Prioritários</h2>
+        <p className="mt-1 text-sm text-slate-500">Execução imediata baseada em domínios críticos.</p>
       </div>
 
-      <div className="space-y-6">
-        {groupedActions.map(({ group, items }) => (
-          <div key={group} className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-700">{group}</h3>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {items.map((action) => (
-                <button
+      <div className="grid grid-cols-1 gap-10">
+        {groupedActions.map(({ group, items }, gIdx) => (
+          <motion.div 
+            key={group}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: gIdx * 0.1 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-900">
+                {(() => {
+                  const Icon = GROUP_ICONS[group];
+                  return <Icon className="h-4 w-4" />;
+                })()}
+              </div>
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">{group}</h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {items.map((action, idx) => (
+                <motion.button
                   key={action.id}
+                  whileHover={{ y: -4 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => executeAction(action)}
                   disabled={Boolean(action.disabledReason)}
-                  className="flex w-full flex-col items-start rounded-xl border border-slate-200 p-4 text-left transition hover:ring-1 hover:ring-klasse-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="group relative flex w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 text-left transition-all hover:border-klasse-gold/30 hover:shadow-xl hover:shadow-klasse-gold/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <div className="mb-3 flex w-full items-start justify-between gap-2">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
-                      <action.icon className="h-4 w-4" />
-                      {action.label}
+                  {/* Background Accents */}
+                  <div className={`absolute -right-4 -top-4 h-16 w-16 rounded-full transition-all group-hover:scale-150 ${RISK_CONFIG[action.risk_level].bg}`} />
+
+                  <div className="relative z-10 flex w-full flex-col h-full justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${RISK_CONFIG[action.risk_level].bg} ${RISK_CONFIG[action.risk_level].text}`}>
+                          <action.icon className="h-5 w-5" />
+                        </div>
+                        {action.badge && (
+                          <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-white">
+                            {action.badge}
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="text-base font-bold text-slate-950 group-hover:text-klasse-green transition-colors">
+                        {action.label}
+                      </h4>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-2">
+                        {action.description}
+                      </p>
                     </div>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${RISK_STYLES[action.risk_level]}`}>
-                      {action.risk_level}
-                    </span>
+
+                    <div className="mt-6 flex items-center justify-between border-t border-slate-50 pt-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`h-1.5 w-1.5 rounded-full ${RISK_CONFIG[action.risk_level].dot}`} />
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${RISK_CONFIG[action.risk_level].text}`}>
+                          Risco {action.risk_level}
+                        </span>
+                      </div>
+                      <div className="rounded-full bg-slate-950 p-1.5 text-white opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                        <ArrowRight className="h-3 w-3" />
+                      </div>
+                    </div>
                   </div>
-
-                  <p className="mb-3 text-sm text-slate-500">{action.description}</p>
-                  <p className="text-sm text-slate-600">audit: {action.audit_tag}</p>
-
-                  <span className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    {action.disabledReason ? action.disabledReason : "Abrir ação"}
-                    <ArrowRight className="h-4 w-4" />
-                  </span>
-                </button>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      {pendingAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h4 className="text-lg font-bold text-slate-950">Confirmar ação sensível</h4>
-            <p className="mt-2 text-sm text-slate-600">
-              Esta ação possui risco <strong>{pendingAction.risk_level}</strong>.
-            </p>
-            <p className="mt-1 text-sm text-slate-500">{pendingAction.description}</p>
-            <p className="mt-1 text-sm text-slate-500">audit: {pendingAction.audit_tag}</p>
+      <AnimatePresence>
+        {pendingAction && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-md rounded-[2.5rem] border border-white/20 bg-white p-8 shadow-2xl"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mb-6">
+                <AlertCircle className="h-6 w-6" />
+              </div>
 
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setPendingAction(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
-              >
-                <Check className="h-4 w-4" />
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <h4 className="text-xl font-black text-slate-950">Confirmar ação sensível</h4>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Você está prestes a executar uma ação de <strong>risco {pendingAction.risk_level}</strong> no domínio de {pendingAction.group}.
+              </p>
+              
+              <div className="mt-6 rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                <p className="text-sm font-bold text-slate-900">{pendingAction.label}</p>
+                <p className="mt-1 text-xs text-slate-500">{pendingAction.description}</p>
+                <div className="mt-3 inline-flex rounded-lg bg-white px-2 py-1 text-[10px] font-mono text-slate-400 border border-slate-200">
+                  TAG: {pendingAction.audit_tag}
+                </div>
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3">
+                <button
+                  onClick={confirmPending}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-4 text-sm font-black text-white transition hover:bg-slate-800"
+                >
+                  <Check className="h-4 w-4" />
+                  Confirmar Execução
+                </button>
+                <button
+                  onClick={() => setPendingAction(null)}
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

@@ -17,6 +17,8 @@ type CommercialSettings = {
   link_pagamento: string;
   lembrete_trial_template: string;
   lembrete_expirado_template: string;
+  lembrete_onboarding_template: string;
+  lembrete_inatividade_template: string;
   auto_reminders_enabled: boolean;
 };
 
@@ -34,6 +36,10 @@ const defaults: CommercialSettings = {
     "Olá {{centro_nome}}, o período de teste do seu centro termina em {{dias_restantes}} dia(s). Para manter o acesso aos dados e à operação, regularize a subscrição. Dados de pagamento: {{dados_pagamento}}",
   lembrete_expirado_template:
     "Olá {{centro_nome}}, o período de teste terminou. Os dados estão preservados, mas o acesso operacional precisa de regularização. Dados de pagamento: {{dados_pagamento}}",
+  lembrete_onboarding_template:
+    "Olá {{centro_nome}}, vimos que o onboarding do seu centro ainda não foi concluído há {{dias_sem_onboarding}} dia(s). Progresso: {{progresso_onboarding}}. Etapas obrigatórias pendentes:\n{{etapas_pendentes}}\nAceda: {{login_url}}",
+  lembrete_inatividade_template:
+    "Olá {{centro_nome}}, notámos que o centro está há {{dias_sem_acesso}} dia(s) sem acesso operacional. Entre na plataforma para acompanhar inscrições, cobranças e configurações pendentes. Aceda: {{login_url}}",
   auto_reminders_enabled: false,
 };
 
@@ -75,6 +81,8 @@ function normalize(input: unknown): CommercialSettings {
     link_pagamento: cleanText(raw.link_pagamento, 500),
     lembrete_trial_template: cleanText(raw.lembrete_trial_template, 1500) || defaults.lembrete_trial_template,
     lembrete_expirado_template: cleanText(raw.lembrete_expirado_template, 1500) || defaults.lembrete_expirado_template,
+    lembrete_onboarding_template: cleanText(raw.lembrete_onboarding_template, 1500) || defaults.lembrete_onboarding_template,
+    lembrete_inatividade_template: cleanText(raw.lembrete_inatividade_template, 1500) || defaults.lembrete_inatividade_template,
     auto_reminders_enabled: Boolean(raw.auto_reminders_enabled),
   };
 }
