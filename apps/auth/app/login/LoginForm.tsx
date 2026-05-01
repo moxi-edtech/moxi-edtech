@@ -1,6 +1,7 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Eye, EyeOff } from "lucide-react";
 import { loginAction } from "./actions";
 
 type Props = { redirectTo: string };
@@ -20,6 +21,7 @@ function SubmitButton() {
 
 export default function LoginForm({ redirectTo }: Props) {
   const [state, formAction] = useActionState(loginAction, { ok: true, message: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div>
@@ -46,19 +48,37 @@ export default function LoginForm({ redirectTo }: Props) {
 
         <div>
           <label className="text-sm font-medium text-slate-700">Senha</label>
-          <input
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="••••••••"
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-          />
+          <div className="relative mt-1">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              placeholder="••••••••"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
 
         {state?.ok === false ? <p className="text-sm text-red-600">{state.message}</p> : null}
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              name="remember"
+              className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+            />
+            <span className="text-sm font-medium text-slate-600">Lembrar-me</span>
+          </label>
           <a href="/forgot-password" className="text-sm font-medium text-klasse-gold hover:underline">
             Recuperar acesso
           </a>

@@ -62,6 +62,10 @@ const PROTECTED_PREFIXES = [
 ];
 
 const ROLE_RULES: Array<{ prefix: string; roles: string[] }> = [
+  {
+    prefix: "/admin/subscription-expired",
+    roles: ["formacao_admin", "formacao_secretaria", "formacao_financeiro", "formador", "formando", "super_admin", "global_admin"],
+  },
   { prefix: "/admin/publicacao", roles: ["formacao_secretaria", "formacao_admin", "super_admin", "global_admin"] },
   { prefix: "/admin", roles: ["formacao_admin", "super_admin", "global_admin"] },
   {
@@ -330,6 +334,25 @@ async function isFormandoPortalBlocked(request: NextRequest, response: NextRespo
 
   if (error) return false;
   return (data ?? []).length > 0;
+}
+
+async function isFormacaoSubscriptionExpired(request: NextRequest, response: NextResponse, auth: AuthContext) {
+  if (!auth.hasSession || auth.tenantType !== "formacao" || !auth.tenantId) return false;
+  const role = String(auth.role ?? "").trim().toLowerCase();
+  if (role === "super_admin" || role === "global_admin") return false;
+
+  const supabase = createSupabaseClient(request, response);
+  if (!supabase) return false;
+
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: "formacao_get_subscription_info",
+      args: { p_escola_id: string }
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc("formacao_get_subscription_info", { p_escola_id: auth.tenantId });
+
+  if (error) return false;
+  return Boolean((data as { is_expired?: unknown } | null)?.is_expired);
 }
 
 function getDefaultPathByRole(role: string | null, tenantType: TenantType | null): string {
@@ -662,6 +685,21 @@ export async function middleware(request: NextRequest) {
       details: { reason: "portal_access_blocked_protected_path" },
     });
     return redirectWithCookies(response, NextResponse.redirect(redirectToBlocked(request)));
+  }
+
+  if (pathname !== "/admin/subscription-expired" && await isFormacaoSubscriptionExpired(request, response, auth)) {
+    logAuthEvent({
+      action: "deny",
+      route: pathname,
+      user_id: auth.userId,
+      tenant_id: auth.tenantId,
+      tenant_type: auth.tenantType,
+      details: { reason: "formacao_subscription_expired" },
+    });
+    const expiredUrl = request.nextUrl.clone();
+    expiredUrl.pathname = "/admin/subscription-expired";
+    expiredUrl.search = "";
+    return redirectWithCookies(response, NextResponse.redirect(expiredUrl));
   }
 
   const mappedTenantType = mapTenantTypeFromDb(auth.tenantType);
