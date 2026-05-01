@@ -94,7 +94,7 @@ export const KlasseWelcomeEmail = ({
           <Hr style={{ border: "0", borderTop: "1px solid #eaeaea", margin: "26px 0", width: "100%" }} />
 
           <Text style={{ color: "#666666", fontSize: "12px", lineHeight: "24px", textAlign: "center" }}>
-            © 2026 KLASSE EdTech. Luanda, Angola.
+            © 2026 Moxi Soluções. Todos os direitos reservados.
             <br />
             <Link href="https://klasse.ao" style={{ color: "#1F6B3B", textDecoration: "none", fontWeight: "600" }}>
               Termos de Uso

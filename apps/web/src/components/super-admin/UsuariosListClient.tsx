@@ -24,6 +24,9 @@ type Usuario = {
   escola_id: string | null;
   ativo?: boolean | null;
   status?: string | null;
+  last_access?: string | null;
+  last_access_ip?: string | null;
+  last_access_location?: string | null;
 };
 
 type Escola = { id: string; nome: string };
@@ -40,6 +43,10 @@ const ROLE_META: Record<string, { bg: string; border: string; text: string; dot:
   financeiro:   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500", label: "Financeiro" },
   secretaria_financeiro: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", dot: "bg-indigo-500", label: "Sec. + Fin" },
   admin_financeiro: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", dot: "bg-indigo-500", label: "Admin + Fin" },
+  formacao_admin: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500", label: "Centro Admin" },
+  formacao_secretaria: { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-700", dot: "bg-cyan-500", label: "Centro Sec." },
+  formacao_financeiro: { bg: "bg-teal-50", border: "border-teal-200", text: "text-teal-700", dot: "bg-teal-500", label: "Centro Fin." },
+  formador: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", dot: "bg-violet-500", label: "Formador" },
   user:         { bg: "bg-white",      border: "border-slate-200", text: "text-slate-500", dot: "bg-slate-300", label: "User"         },
 };
 
@@ -52,6 +59,10 @@ const PAPEL_LABEL: Record<string, string> = {
   secretaria_financeiro:  "Sec. + Financeiro",
   admin_financeiro:       "Admin + Financeiro",
   professor:              "Professor(a)",
+  formacao_admin:         "Administrador(a) do centro",
+  formacao_secretaria:    "Secretaria do centro",
+  formacao_financeiro:    "Financeiro do centro",
+  formador:               "Formador(a)",
 };
 
 const PAPEL_OPTIONS = [
@@ -63,6 +74,10 @@ const PAPEL_OPTIONS = [
   "secretaria_financeiro",
   "admin_financeiro",
   "professor",
+  "formacao_admin",
+  "formacao_secretaria",
+  "formacao_financeiro",
+  "formador",
 ];
 
 const mapPapelToRole = (papel?: string | null) => {
@@ -85,7 +100,7 @@ function RoleBadge({ role }: { role: string }) {
 function SkeletonRow() {
   return (
     <tr className="border-b border-slate-100">
-      {Array.from({ length: 4 }).map((_, j) => (
+      {Array.from({ length: 5 }).map((_, j) => (
         <td key={j} className="py-4 px-6">
           <div className="h-3 rounded-md bg-slate-200 animate-pulse" style={{ width: `${40 + (j * 15) % 40}%` }} />
         </td>
@@ -114,6 +129,19 @@ function generateStrongPassword(len = 16) {
   let pwd = "";
   for (let i = 0; i < len; i++) pwd += charset[Math.floor(Math.random() * charset.length)];
   return pwd;
+}
+
+function formatLastAccess(value?: string | null) {
+  if (!value) return "Nunca";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Nunca";
+  return new Intl.DateTimeFormat("pt-AO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────────
@@ -166,6 +194,7 @@ function ListaUsuarios() {
 
         const filtered = ((usersJson.items || []) as Usuario[])
           .filter(u => u.papel_escola !== "aluno" && u.status !== "excluido")
+          .filter(u => u.papel_escola !== "formando" && u.role !== "formando")
           .map(u => ({
             ...u,
             escola_nome: u.escola_nome ?? (u.escola_id ? nameMap.get(String(u.escola_id)) ?? null : null),
@@ -207,7 +236,8 @@ function ListaUsuarios() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: uid, updates }),
       });
-      if (!res.ok) throw new Error("Falha ao gravar.");
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) throw new Error(json?.error || "Falha ao gravar.");
       
       setUsuarios(prev => prev.map(u => {
         if (u.id !== uid) return u;
@@ -338,6 +368,7 @@ function ListaUsuarios() {
                   <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Identidade</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Acesso Global</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tenant (Escola)</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Último acesso</th>
                   <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Comandos</th>
                 </tr>
               </thead>
@@ -347,7 +378,7 @@ function ListaUsuarios() {
                 
                 {!loading && filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-16 text-center text-slate-500">
+                    <td colSpan={5} className="py-16 text-center text-slate-500">
                       Nenhum utilizador encontrado no ecossistema.
                     </td>
                   </tr>
@@ -440,6 +471,16 @@ function ListaUsuarios() {
                             <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{PAPEL_LABEL[u.papel_escola ?? ""] ?? "N/A"}</p>
                           </div>
                         )}
+                      </td>
+
+                      {/* Último Acesso */}
+                      <td className="py-4 px-6">
+                        <div>
+                          <p className="text-slate-700 font-medium">{formatLastAccess(u.last_access)}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
+                            {u.last_access_location || u.last_access_ip || "Sem localização"}
+                          </p>
+                        </div>
                       </td>
 
                       {/* Comandos */}

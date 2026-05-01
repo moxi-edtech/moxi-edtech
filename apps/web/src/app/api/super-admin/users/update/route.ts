@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { allowedPapeisSet } from '@/lib/roles'
 import { PayloadLimitError, readJsonWithLimit } from '@/lib/http/readJsonWithLimit'
 import { z } from 'zod'
@@ -23,6 +24,12 @@ const UpdateBodySchema = z.object({
 type EscolaUserPapel = Exclude<Database['public']['Tables']['escola_users']['Insert']['papel'], null | undefined>
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 type EscolaUserLink = { escola_id: string }
+type AuthUserLookup = { user?: { id?: string | null } | null }
+
+const normalizeEmail = (value: string | null | undefined) => {
+  const email = value?.toString().trim().toLowerCase() ?? ''
+  return email.length > 0 ? email : null
+}
 
 export async function POST(request: Request) {
   try {
@@ -46,10 +53,70 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
+    const { data: targetProfile, error: targetProfileErr } = await s
+      .from('profiles')
+      .select('user_id,email,email_real,email_auth,role,escola_id,current_escola_id')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (targetProfileErr) return NextResponse.json({ ok: false, error: targetProfileErr.message }, { status: 400 })
+    if (!targetProfile) {
+      return NextResponse.json({ ok: false, error: 'Usuário não encontrado.' }, { status: 404 })
+    }
+
+    const emailAudit: {
+      old_email: string | null
+      new_email: string | null
+      auth_email_updated: boolean
+    } = {
+      old_email: targetProfile.email_auth ?? targetProfile.email_real ?? targetProfile.email ?? null,
+      new_email: null,
+      auth_email_updated: false,
+    }
+
     // Campos do profile que podemos atualizar diretamente
     const profilePatch: ProfileUpdate = {}
     if (updates.nome !== undefined) profilePatch.nome = updates.nome ?? undefined
-    if (updates.email !== undefined) profilePatch.email = updates.email?.toString().trim().toLowerCase() ?? null
+    if (updates.email !== undefined) {
+      const nextEmail = normalizeEmail(updates.email)
+      if (!nextEmail) {
+        return NextResponse.json({ ok: false, error: 'E-mail é obrigatório para usuários com acesso ao sistema.' }, { status: 400 })
+      }
+
+      const currentEmail = normalizeEmail(emailAudit.old_email)
+      if (nextEmail !== currentEmail) {
+        const found = (await callAuthAdminJob(request, 'findUserByEmail', { email: nextEmail })) as AuthUserLookup
+        const foundUserId = found.user?.id ? String(found.user.id) : null
+        if (foundUserId && foundUserId !== userId) {
+          return NextResponse.json({ ok: false, error: 'Este e-mail já pertence a outro usuário.' }, { status: 409 })
+        }
+
+        const { data: profileEmailConflicts, error: profileEmailConflictErr } = await s
+          .from('profiles')
+          .select('user_id')
+          .or(`email.eq.${nextEmail},email_real.eq.${nextEmail},email_auth.eq.${nextEmail}`)
+          .neq('user_id', userId)
+          .limit(1)
+        if (profileEmailConflictErr) {
+          return NextResponse.json({ ok: false, error: profileEmailConflictErr.message }, { status: 400 })
+        }
+        if ((profileEmailConflicts ?? []).length > 0) {
+          return NextResponse.json({ ok: false, error: 'Este e-mail já está registado noutro perfil.' }, { status: 409 })
+        }
+
+        await callAuthAdminJob(request, 'updateUserById', {
+          userId,
+          attributes: { email: nextEmail, email_confirm: true },
+        })
+        emailAudit.auth_email_updated = true
+      }
+
+      profilePatch.email = nextEmail
+      profilePatch.email_real = nextEmail
+      profilePatch.email_auth = nextEmail
+      emailAudit.new_email = nextEmail
+    }
     if (updates.telefone !== undefined) profilePatch.telefone = updates.telefone
     if (updates.role !== undefined && updates.role !== null) profilePatch.role = updates.role as Database['public']['Enums']['user_role']
     if (updates.escola_id !== undefined) profilePatch.escola_id = updates.escola_id
@@ -162,13 +229,56 @@ export async function POST(request: Request) {
       if (upErr) return NextResponse.json({ ok: false, error: upErr.message }, { status: 400 })
     }
 
+    if (emailAudit.new_email) {
+      const { data: formacaoLinks, error: formacaoLinksErr } = await s
+        .from('escola_users')
+        .select('escola_id,papel')
+        .eq('user_id', userId)
+        .in('papel', ['formacao_admin'])
+      if (formacaoLinksErr) {
+        return NextResponse.json({ ok: false, error: formacaoLinksErr.message }, { status: 400 })
+      }
+
+      const linkedCentroIds = Array.from(
+        new Set((formacaoLinks ?? []).map((link) => link.escola_id).filter((id): id is string => Boolean(id)))
+      )
+
+      if (linkedCentroIds.length > 0) {
+        const { data: centros, error: centrosErr } = await s
+          .from('centros_formacao')
+          .select('escola_id,email')
+          .in('escola_id', linkedCentroIds)
+        if (centrosErr) return NextResponse.json({ ok: false, error: centrosErr.message }, { status: 400 })
+
+        const oldEmail = normalizeEmail(emailAudit.old_email)
+        const centroIdsToSync = (centros ?? [])
+          .filter((centro) => {
+            const currentCentroEmail = normalizeEmail(centro.email)
+            return !currentCentroEmail || currentCentroEmail === oldEmail
+          })
+          .map((centro) => centro.escola_id)
+          .filter((id): id is string => Boolean(id))
+
+        if (centroIdsToSync.length > 0) {
+          const { error: centroEmailErr } = await s
+            .from('centros_formacao')
+            .update({ email: emailAudit.new_email })
+            .in('escola_id', centroIdsToSync)
+          if (centroEmailErr) return NextResponse.json({ ok: false, error: centroEmailErr.message }, { status: 400 })
+        }
+      }
+    }
+
     recordAuditServer({
       escolaId: updates.escola_id ?? null,
       portal: 'super_admin',
       acao: 'USUARIO_ATUALIZADO',
       entity: 'usuario',
       entityId: userId,
-      details: { updates },
+      details: {
+        updates,
+        email_sync: emailAudit.new_email ? emailAudit : null,
+      },
     }).catch(() => null)
 
     return NextResponse.json({ ok: true })

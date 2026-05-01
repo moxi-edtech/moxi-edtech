@@ -256,5 +256,18 @@ export async function PUT(request: Request) {
   });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+  const { error: centroUpdateError } = await s
+    .from("centros_formacao")
+    .update({
+      email: item.contactos.email || null,
+      telefone: item.contactos.telefone || item.contactos.whatsapp || null,
+      morada: item.contactos.endereco || null,
+      website: item.redes_sociais.website || null,
+    })
+    .eq("escola_id", String(auth.escolaId));
+
+  if (centroUpdateError) return NextResponse.json({ ok: false, error: centroUpdateError.message }, { status: 400 });
+
   return NextResponse.json({ ok: true, item: normalizeConfig(data) });
 }

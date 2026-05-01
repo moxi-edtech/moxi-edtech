@@ -48,6 +48,8 @@ type CommercialSettings = {
   link_pagamento: string;
   lembrete_trial_template: string;
   lembrete_expirado_template: string;
+  lembrete_onboarding_template: string;
+  lembrete_inatividade_template: string;
   auto_reminders_enabled: boolean;
 };
 
@@ -63,6 +65,8 @@ const emptySettings: CommercialSettings = {
   link_pagamento: "",
   lembrete_trial_template: "",
   lembrete_expirado_template: "",
+  lembrete_onboarding_template: "",
+  lembrete_inatividade_template: "",
   auto_reminders_enabled: false,
 };
 
@@ -178,7 +182,12 @@ export default function SubscricoesCockpitClient() {
       .split("{{email_comercial}}").join(settings.email_comercial)
       .split("{{telefone_comercial}}").join(settings.telefone_comercial)
       .split("{{whatsapp_comercial}}").join(settings.whatsapp_comercial)
-      .split("{{link_pagamento}}").join(settings.link_pagamento);
+      .split("{{link_pagamento}}").join(settings.link_pagamento)
+      .split("{{dias_sem_onboarding}}").join("3")
+      .split("{{progresso_onboarding}}").join("3/6")
+      .split("{{etapas_pendentes}}").join("1. Turma em estado Aberto - Mudar o status de pelo menos uma turma para 'aberta'.\n2. Configuração Fiscal - Vincular o centro a uma empresa fiscal.")
+      .split("{{dias_sem_acesso}}").join("5")
+      .split("{{login_url}}").join("https://app.klasse.ao/login");
   }, [filteredItems, items, settings]);
 
   async function saveSettings() {
@@ -580,7 +589,7 @@ export default function SubscricoesCockpitClient() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-900">Automação de Lembretes</p>
-                  <p className="text-[10px] text-slate-500">Disparar emails automáticos (7, 3 e 1 dia).</p>
+                  <p className="text-[10px] text-slate-500">Trial, onboarding incompleto e centros sem acesso recente.</p>
                 </div>
                 <input 
                   type="checkbox" 
@@ -609,6 +618,8 @@ export default function SubscricoesCockpitClient() {
             <Field label="Link de pagamento"><input className={inputClass} value={settings.link_pagamento} onChange={(e) => setSettings((p) => ({ ...p, link_pagamento: e.target.value }))} /></Field>
             <Field label="Template trial"><textarea className={`${inputClass} min-h-24 resize-y`} value={settings.lembrete_trial_template} onChange={(e) => setSettings((p) => ({ ...p, lembrete_trial_template: e.target.value }))} /></Field>
             <Field label="Template expirado"><textarea className={`${inputClass} min-h-24 resize-y`} value={settings.lembrete_expirado_template} onChange={(e) => setSettings((p) => ({ ...p, lembrete_expirado_template: e.target.value }))} /></Field>
+            <Field label="Template onboarding pendente"><textarea className={`${inputClass} min-h-24 resize-y`} value={settings.lembrete_onboarding_template} onChange={(e) => setSettings((p) => ({ ...p, lembrete_onboarding_template: e.target.value }))} /></Field>
+            <Field label="Template inatividade"><textarea className={`${inputClass} min-h-24 resize-y`} value={settings.lembrete_inatividade_template} onChange={(e) => setSettings((p) => ({ ...p, lembrete_inatividade_template: e.target.value }))} /></Field>
           </div>
 
           <div className="mt-6 grid gap-2 sm:grid-cols-2">
