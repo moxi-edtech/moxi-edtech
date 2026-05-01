@@ -43,7 +43,7 @@ export async function GET() {
   const s = auth.supabase as FormacaoSupabaseClient;
   const { data: cursos, error: cursosError } = await s
     .from("formacao_cursos")
-    .select("id, codigo, nome, area, modalidade, carga_horaria, status, thumbnail_url, created_at")
+    .select("id, codigo, nome, area, modalidade, carga_horaria, status, thumbnail_url, certificado_template_id, objetivos, requisitos, created_at")
     .eq("escola_id", auth.escolaId)
     .order("created_at", { ascending: false })
     .limit(300);
@@ -53,23 +53,32 @@ export async function GET() {
   const cursoIds = (cursos ?? []).map((curso) => String(curso.id));
   if (cursoIds.length === 0) return NextResponse.json({ ok: true, items: [] });
 
-  const [{ data: comerciais, error: comerciaisError }, { data: modulos, error: modulosError }] =
-    await Promise.all([
-      s
-        .from("formacao_curso_comercial")
-        .select("curso_id, preco_tabela, desconto_ativo, desconto_percentual, parceria_b2b_ativa")
-        .eq("escola_id", auth.escolaId)
-        .in("curso_id", cursoIds),
-      s
-        .from("formacao_curso_modulos")
-        .select("curso_id, ordem, titulo, carga_horaria, descricao")
-        .eq("escola_id", auth.escolaId)
-        .in("curso_id", cursoIds)
-        .order("ordem", { ascending: true }),
-    ]);
+  const [
+    { data: comerciais, error: comerciaisError },
+    { data: modulos, error: modulosError },
+    { data: materiais, error: materiaisError },
+  ] = await Promise.all([
+    s
+      .from("formacao_curso_comercial")
+      .select("curso_id, preco_tabela, desconto_ativo, desconto_percentual, parceria_b2b_ativa, custo_hora_estimado")
+      .eq("escola_id", auth.escolaId)
+      .in("curso_id", cursoIds),
+    s
+      .from("formacao_curso_modulos")
+      .select("curso_id, ordem, titulo, carga_horaria, descricao")
+      .eq("escola_id", auth.escolaId)
+      .in("curso_id", cursoIds)
+      .order("ordem", { ascending: true }),
+    s
+      .from("formacao_curso_materiais")
+      .select("id, curso_id, titulo, url, tipo")
+      .eq("escola_id", auth.escolaId)
+      .in("curso_id", cursoIds),
+  ]);
 
   if (comerciaisError) return NextResponse.json({ ok: false, error: comerciaisError.message }, { status: 400 });
   if (modulosError) return NextResponse.json({ ok: false, error: modulosError.message }, { status: 400 });
+  if (materiaisError) return NextResponse.json({ ok: false, error: materiaisError.message }, { status: 400 });
 
   const comercialByCurso = new Map(
     (comerciais ?? []).map((item) => [
@@ -79,6 +88,7 @@ export async function GET() {
         desconto_ativo: Boolean(item.desconto_ativo),
         desconto_percentual: Number(item.desconto_percentual ?? 0),
         parceria_b2b_ativa: Boolean(item.parceria_b2b_ativa),
+        custo_hora_estimado: Number(item.custo_hora_estimado ?? 0),
       },
     ])
   );
@@ -96,6 +106,19 @@ export async function GET() {
     modulosByCurso.set(key, list);
   }
 
+  const materiaisByCurso = new Map<string, Array<{ id: string; titulo: string; url: string; tipo: string }>>();
+  for (const material of materiais ?? []) {
+    const key = String(material.curso_id);
+    const list = materiaisByCurso.get(key) ?? [];
+    list.push({
+      id: String(material.id),
+      titulo: String(material.titulo),
+      url: String(material.url),
+      tipo: String(material.tipo),
+    });
+    materiaisByCurso.set(key, list);
+  }
+
   const items = (cursos ?? []).map((curso) => {
     const key = String(curso.id);
     const comercial = comercialByCurso.get(key) ?? {
@@ -103,12 +126,14 @@ export async function GET() {
       desconto_ativo: false,
       desconto_percentual: 0,
       parceria_b2b_ativa: false,
+      custo_hora_estimado: 0,
     };
 
     return {
       ...curso,
       ...comercial,
       modulos: modulosByCurso.get(key) ?? [],
+      materiais: materiaisByCurso.get(key) ?? [],
     };
   });
 
@@ -126,11 +151,16 @@ export async function POST(request: Request) {
     modalidade?: "presencial" | "online" | "hibrido";
     carga_horaria?: number;
     thumbnail_url?: string | null;
+    certificado_template_id?: string | null;
     preco_tabela?: number;
     desconto_ativo?: boolean;
     desconto_percentual?: number;
     parceria_b2b_ativa?: boolean;
+    custo_hora_estimado?: number;
+    objetivos?: string[];
+    requisitos?: string[];
     modulos?: CursoModuloPayload[];
+    materiais?: Array<{ titulo: string; url: string; tipo: string }>;
   } | null;
 
   const codigo = String(body?.codigo ?? "").trim().toUpperCase();
@@ -142,6 +172,11 @@ export async function POST(request: Request) {
     : "presencial") as "presencial" | "online" | "hibrido";
   const cargaHoraria =
     body?.carga_horaria && Number(body.carga_horaria) > 0 ? Number(body.carga_horaria) : null;
+  const thumbnail_url = body?.thumbnail_url || null;
+  const certificado_template_id = body?.certificado_template_id || null;
+  const objetivos = Array.isArray(body?.objetivos) ? body.objetivos : [];
+  const requisitos = Array.isArray(body?.requisitos) ? body.requisitos : [];
+
   const precoTabelaRaw = Number(body?.preco_tabela ?? 0);
   const precoTabela = Number.isFinite(precoTabelaRaw) ? Math.max(0, precoTabelaRaw) : 0;
   const descontoAtivo = Boolean(body?.desconto_ativo);
@@ -150,7 +185,12 @@ export async function POST(request: Request) {
     ? Math.min(100, Math.max(0, descontoPercentualRaw))
     : 0;
   const parceriaB2BAtiva = Boolean(body?.parceria_b2b_ativa);
+  const custoHoraEstimado = Number.isFinite(Number(body?.custo_hora_estimado))
+    ? Math.max(0, Number(body?.custo_hora_estimado))
+    : 0;
+
   const modulos = sanitizeModulos(body?.modulos);
+  const materiais = Array.isArray(body?.materiais) ? body.materiais : [];
 
   if (!codigo || !nome) {
     return NextResponse.json({ ok: false, error: "codigo e nome são obrigatórios" }, { status: 400 });
@@ -166,10 +206,13 @@ export async function POST(request: Request) {
       area,
       modalidade,
       carga_horaria: cargaHoraria,
-      thumbnail_url: body?.thumbnail_url || null,
+      thumbnail_url,
+      certificado_template_id,
+      objetivos,
+      requisitos,
       status: "ativo",
     })
-    .select("id, codigo, nome, area, modalidade, carga_horaria, thumbnail_url, status")
+    .select("id, codigo, nome, area, modalidade, carga_horaria, thumbnail_url, certificado_template_id, objetivos, requisitos, status")
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -186,6 +229,7 @@ export async function POST(request: Request) {
       desconto_ativo: descontoAtivo,
       desconto_percentual: descontoPercentual,
       parceria_b2b_ativa: parceriaB2BAtiva,
+      custo_hora_estimado: custoHoraEstimado,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "curso_id" }
@@ -203,6 +247,19 @@ export async function POST(request: Request) {
     if (modulosError) return NextResponse.json({ ok: false, error: modulosError.message }, { status: 400 });
   }
 
+  if (materiais.length > 0) {
+    const { error: materiaisError } = await s.from("formacao_curso_materiais").insert(
+      materiais.map((m) => ({
+        escola_id: auth.escolaId,
+        curso_id: data.id,
+        titulo: String(m.titulo).trim(),
+        url: String(m.url).trim(),
+        tipo: String(m.tipo || "pdf").trim(),
+      }))
+    );
+    if (materiaisError) return NextResponse.json({ ok: false, error: materiaisError.message }, { status: 400 });
+  }
+
   return NextResponse.json({
     ok: true,
     item: {
@@ -211,7 +268,9 @@ export async function POST(request: Request) {
       desconto_ativo: descontoAtivo,
       desconto_percentual: descontoPercentual,
       parceria_b2b_ativa: parceriaB2BAtiva,
+      custo_hora_estimado: custoHoraEstimado,
       modulos,
+      materiais,
     },
   });
 }
@@ -228,12 +287,17 @@ export async function PATCH(request: Request) {
     modalidade?: "presencial" | "online" | "hibrido";
     carga_horaria?: number | null;
     thumbnail_url?: string | null;
+    certificado_template_id?: string | null;
     status?: "ativo" | "inativo";
     preco_tabela?: number;
     desconto_ativo?: boolean;
     desconto_percentual?: number;
     parceria_b2b_ativa?: boolean;
+    custo_hora_estimado?: number;
+    objetivos?: string[];
+    requisitos?: string[];
     modulos?: CursoModuloPayload[];
+    materiais?: Array<{ id?: string; titulo: string; url: string; tipo: string }>;
   } | null;
 
   const id = String(body?.id ?? "").trim();
@@ -260,13 +324,25 @@ export async function PATCH(request: Request) {
   if (body?.thumbnail_url !== undefined) {
     patch.thumbnail_url = body.thumbnail_url || null;
   }
+  if (body?.certificado_template_id !== undefined) {
+    patch.certificado_template_id = body.certificado_template_id || null;
+  }
+  if (body?.objetivos !== undefined) {
+    patch.objetivos = Array.isArray(body.objetivos) ? body.objetivos : [];
+  }
+  if (body?.requisitos !== undefined) {
+    patch.requisitos = Array.isArray(body.requisitos) ? body.requisitos : [];
+  }
 
   const modulos = body?.modulos ? sanitizeModulos(body.modulos) : null;
+  const materiais = Array.isArray(body?.materiais) ? body.materiais : null;
+
   const comercialPayload =
     body?.preco_tabela !== undefined ||
     body?.desconto_ativo !== undefined ||
     body?.desconto_percentual !== undefined ||
-    body?.parceria_b2b_ativa !== undefined
+    body?.parceria_b2b_ativa !== undefined ||
+    body?.custo_hora_estimado !== undefined
       ? {
           escola_id: auth.escolaId,
           curso_id: id,
@@ -278,6 +354,9 @@ export async function PATCH(request: Request) {
             ? Math.min(100, Math.max(0, Number(body?.desconto_percentual)))
             : 0,
           parceria_b2b_ativa: Boolean(body?.parceria_b2b_ativa),
+          custo_hora_estimado: Number.isFinite(Number(body?.custo_hora_estimado))
+            ? Math.max(0, Number(body?.custo_hora_estimado))
+            : 0,
           updated_at: new Date().toISOString(),
         }
       : null;
@@ -288,7 +367,7 @@ export async function PATCH(request: Request) {
     .update(patch)
     .eq("escola_id", auth.escolaId)
     .eq("id", id)
-    .select("id, codigo, nome, area, modalidade, carga_horaria, thumbnail_url, status")
+    .select("id, codigo, nome, area, modalidade, carga_horaria, thumbnail_url, certificado_template_id, objetivos, requisitos, status")
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -320,6 +399,32 @@ export async function PATCH(request: Request) {
       );
       if (insertModulosError) {
         return NextResponse.json({ ok: false, error: insertModulosError.message }, { status: 400 });
+      }
+    }
+  }
+
+  if (materiais) {
+    const { error: deleteMateriaisError } = await s
+      .from("formacao_curso_materiais")
+      .delete()
+      .eq("escola_id", auth.escolaId)
+      .eq("curso_id", id);
+    if (deleteMateriaisError) {
+      return NextResponse.json({ ok: false, error: deleteMateriaisError.message }, { status: 400 });
+    }
+
+    if (materiais.length > 0) {
+      const { error: insertMateriaisError } = await s.from("formacao_curso_materiais").insert(
+        materiais.map((m) => ({
+          escola_id: auth.escolaId,
+          curso_id: id,
+          titulo: String(m.titulo).trim(),
+          url: String(m.url).trim(),
+          tipo: String(m.tipo || "pdf").trim(),
+        }))
+      );
+      if (insertMateriaisError) {
+        return NextResponse.json({ ok: false, error: insertMateriaisError.message }, { status: 400 });
       }
     }
   }

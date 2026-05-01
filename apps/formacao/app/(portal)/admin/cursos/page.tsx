@@ -1,14 +1,22 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FileText, Plus, Trash2, Info, TrendingUp, Calculator, Image as ImageIcon, CheckCircle2, ListChecks, Loader2 } from "lucide-react";
 
-type TabKey = "basico" | "programa" | "comercial";
+type TabKey = "basico" | "programa" | "comercial" | "materiais" | "landing";
 
 type CursoModulo = {
   ordem: number;
   titulo: string;
   carga_horaria: number | null;
   descricao: string | null;
+};
+
+type CursoMaterial = {
+  id?: string;
+  titulo: string;
+  url: string;
+  tipo: string;
 };
 
 type Curso = {
@@ -19,11 +27,22 @@ type Curso = {
   modalidade: "presencial" | "online" | "hibrido";
   carga_horaria: number | null;
   status: string;
+  thumbnail_url: string | null;
+  certificado_template_id: string | null;
+  objetivos: string[];
+  requisitos: string[];
   preco_tabela: number;
   desconto_ativo: boolean;
   desconto_percentual: number;
   parceria_b2b_ativa: boolean;
+  custo_hora_estimado: number;
   modulos: CursoModulo[];
+  materiais: CursoMaterial[];
+};
+
+type Template = {
+  id: string;
+  nome: string;
 };
 
 type FormModulo = {
@@ -39,40 +58,57 @@ const emptyForm = {
   area: "",
   modalidade: "presencial" as "presencial" | "online" | "hibrido",
   carga_horaria: "",
+  thumbnail_url: "",
+  certificado_template_id: "",
   preco_tabela: "",
   desconto_ativo: false,
   desconto_percentual: "",
   parceria_b2b_ativa: false,
+  custo_hora_estimado: "",
 };
 
-function createModuloId() {
-  return `m-${Date.now()}-${Math.round(Math.random() * 100000)}`;
+function createId() {
+  return `id-${Date.now()}-${Math.round(Math.random() * 100000)}`;
 }
 
 export default function CursosPage() {
   const [items, setItems] = useState<Curso[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("basico");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [modulos, setModulos] = useState<FormModulo[]>([
-    { id: "m-1", titulo: "", carga_horaria: "", descricao: "" },
+    { id: createId(), titulo: "", carga_horaria: "", descricao: "" },
   ]);
+  const [materiais, setMateriais] = useState<CursoMaterial[]>([]);
+  const [objetivos, setObjetivos] = useState<string[]>([]);
+  const [requisitos, setRequisitos] = useState<string[]>([]);
 
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/formacao/backoffice/cursos", { cache: "no-store" });
-      const json = (await res.json().catch(() => null)) as
+      const [cursosRes, templatesRes] = await Promise.all([
+        fetch("/api/formacao/backoffice/cursos", { cache: "no-store" }),
+        fetch("/api/formacao/certificados/templates", { cache: "no-store" }),
+      ]);
+
+      const cursosJson = (await cursosRes.json().catch(() => null)) as
         | { ok: boolean; error?: string; items?: Curso[] }
         | null;
-      if (!res.ok || !json?.ok || !Array.isArray(json.items)) {
-        throw new Error(json?.error || "Falha ao carregar catálogo de cursos");
+      const templatesJson = (await templatesRes.json().catch(() => null)) as
+        | { ok: boolean; error?: string; items?: Template[] }
+        | null;
+
+      if (!cursosRes.ok || !cursosJson?.ok || !Array.isArray(cursosJson.items)) {
+        throw new Error(cursosJson?.error || "Falha ao carregar catálogo de cursos");
       }
-      setItems(json.items);
+      setItems(cursosJson.items);
+      setTemplates(templatesJson?.items ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -108,11 +144,17 @@ export default function CursosPage() {
         area: form.area,
         modalidade: form.modalidade,
         carga_horaria: form.carga_horaria ? Number(form.carga_horaria) : null,
+        thumbnail_url: form.thumbnail_url || null,
+        certificado_template_id: form.certificado_template_id || null,
+        objetivos: objetivos.filter((o) => o.trim().length > 0),
+        requisitos: requisitos.filter((r) => r.trim().length > 0),
         preco_tabela: form.preco_tabela ? Number(form.preco_tabela) : 0,
         desconto_ativo: form.desconto_ativo,
         desconto_percentual: form.desconto_percentual ? Number(form.desconto_percentual) : 0,
         parceria_b2b_ativa: form.parceria_b2b_ativa,
+        custo_hora_estimado: form.custo_hora_estimado ? Number(form.custo_hora_estimado) : 0,
         modulos: payloadModulos,
+        materiais: materiais.map(({ titulo, url, tipo }) => ({ titulo, url, tipo })),
       };
 
       const endpoint = "/api/formacao/backoffice/cursos";
@@ -140,7 +182,10 @@ export default function CursosPage() {
   const resetForm = () => {
     setEditingId(null);
     setForm({ ...emptyForm });
-    setModulos([{ id: createModuloId(), titulo: "", carga_horaria: "", descricao: "" }]);
+    setModulos([{ id: createId(), titulo: "", carga_horaria: "", descricao: "" }]);
+    setMateriais([]);
+    setObjetivos([]);
+    setRequisitos([]);
     setActiveTab("basico");
   };
 
@@ -152,22 +197,55 @@ export default function CursosPage() {
       area: item.area ?? "",
       modalidade: item.modalidade,
       carga_horaria: item.carga_horaria ? String(item.carga_horaria) : "",
+      thumbnail_url: item.thumbnail_url ?? "",
+      certificado_template_id: item.certificado_template_id ?? "",
       preco_tabela: String(item.preco_tabela ?? 0),
       desconto_ativo: Boolean(item.desconto_ativo),
       desconto_percentual: String(item.desconto_percentual ?? 0),
       parceria_b2b_ativa: Boolean(item.parceria_b2b_ativa),
+      custo_hora_estimado: String(item.custo_hora_estimado ?? 0),
     });
     setModulos(
       item.modulos.length > 0
         ? item.modulos.map((modulo) => ({
-            id: createModuloId(),
+            id: createId(),
             titulo: modulo.titulo,
             carga_horaria: modulo.carga_horaria ? String(modulo.carga_horaria) : "",
             descricao: modulo.descricao ?? "",
           }))
-        : [{ id: createModuloId(), titulo: "", carga_horaria: "", descricao: "" }]
+        : [{ id: createId(), titulo: "", carga_horaria: "", descricao: "" }]
     );
+    setMateriais(item.materiais ?? []);
+    setObjetivos(item.objetivos ?? []);
+    setRequisitos(item.requisitos ?? []);
     setActiveTab("basico");
+  };
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "thumbnail");
+
+      const res = await fetch("/api/formacao/backoffice/cursos/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Erro no upload");
+
+      setForm((prev) => ({ ...prev, thumbnail_url: json.url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro no upload");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const changeStatus = async (id: string, status: "ativo" | "inativo") => {
@@ -208,7 +286,7 @@ export default function CursosPage() {
             <strong className="text-[#111811]">{editingId ? "Editar curso" : "Novo curso"}</strong>
           </div>
           <div className="flex gap-2">
-            {(["basico", "programa", "comercial"] as TabKey[]).map((tab) => (
+            {(["basico", "programa", "comercial", "materiais", "landing"] as TabKey[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -219,14 +297,22 @@ export default function CursosPage() {
                     : "border-[#E4EBE6] text-[#4A6352] hover:bg-[#F7F9F7]"
                 }`}
               >
-                {tab === "basico" ? "Info Básica" : tab === "programa" ? "Programa Académico" : "Comercial"}
+                {tab === "basico"
+                  ? "Info Básica"
+                  : tab === "programa"
+                  ? "Programa"
+                  : tab === "comercial"
+                  ? "Comercial"
+                  : tab === "materiais"
+                  ? "Materiais"
+                  : "Visual & Landing"}
               </button>
             ))}
           </div>
         </div>
 
         {activeTab === "basico" ? (
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
             <Input label="Código" value={form.codigo} onChange={(value) => setForm((prev) => ({ ...prev, codigo: value }))} placeholder="CUR-EXCEL-01" required />
             <Input label="Nome" value={form.nome} onChange={(value) => setForm((prev) => ({ ...prev, nome: value }))} placeholder="Excel Profissional" required />
             <Input label="Categoria" value={form.area} onChange={(value) => setForm((prev) => ({ ...prev, area: value }))} placeholder="Tecnologia" />
@@ -242,7 +328,20 @@ export default function CursosPage() {
                 <option value="hibrido">Híbrido</option>
               </select>
             </label>
-            <Input label="Carga horária total" type="number" min={1} value={form.carga_horaria} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria: value }))} placeholder="40" />
+            <Input label="Carga horária (h)" type="number" min={1} value={form.carga_horaria} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria: value }))} placeholder="40" />
+            <label className="grid gap-1 text-sm text-[#4A6352]">
+              <span className="flex items-center gap-1">Certificado Padrão <Info size={12} title="Template usado para emissão automática em turmas deste curso." /></span>
+              <select
+                value={form.certificado_template_id}
+                onChange={(e) => setForm((prev) => ({ ...prev, certificado_template_id: e.target.value }))}
+                className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+              >
+                <option value="">Nenhum template</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
+            </label>
           </div>
         ) : null}
 
@@ -270,16 +369,27 @@ export default function CursosPage() {
                   }
                   placeholder="8"
                 />
-                <Input
-                  label="Descrição"
-                  value={modulo.descricao}
-                  onChange={(value) =>
-                    setModulos((prev) =>
-                      prev.map((item) => (item.id === modulo.id ? { ...item, descricao: value } : item))
-                    )
-                  }
-                  placeholder="Objetivos e conteúdos"
-                />
+                <label className="grid gap-1 text-sm text-[#4A6352]">
+                  <span className="flex items-center justify-between">
+                    Descrição (Rich Text)
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => {
+                        setModulos(prev => prev.map(m => m.id === modulo.id ? { ...m, descricao: m.descricao + '<b></b>' } : m))
+                      }} title="Negrito" className="px-1.5 border rounded bg-white text-[10px] font-bold">B</button>
+                      <button type="button" onClick={() => {
+                        setModulos(prev => prev.map(m => m.id === modulo.id ? { ...m, descricao: m.descricao + '<li></li>' } : m))
+                      }} title="Lista" className="px-1.5 border rounded bg-white text-[10px]">List</button>
+                    </div>
+                  </span>
+                  <textarea
+                    value={modulo.descricao}
+                    onChange={(e) => setModulos((prev) =>
+                      prev.map((item) => (item.id === modulo.id ? { ...item, descricao: e.target.value } : item))
+                    )}
+                    placeholder="Objetivos e conteúdos"
+                    className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold h-20"
+                  />
+                </label>
                 <div className="flex items-end">
                   <button
                     type="button"
@@ -287,7 +397,7 @@ export default function CursosPage() {
                     className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-40"
                     disabled={modulos.length === 1}
                   >
-                    Remover
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -295,51 +405,243 @@ export default function CursosPage() {
             <button
               type="button"
               onClick={() =>
-                setModulos((prev) => [...prev, { id: createModuloId(), titulo: "", carga_horaria: "", descricao: "" }])
+                setModulos((prev) => [...prev, { id: createId(), titulo: "", carga_horaria: "", descricao: "" }])
               }
-              className="w-fit rounded-lg border border-[#E4EBE6] bg-white px-3 py-2 text-sm font-semibold text-[#1F6B3B] hover:bg-[#F7F9F7]"
+              className="flex w-fit items-center gap-2 rounded-lg border border-[#E4EBE6] bg-white px-3 py-2 text-sm font-semibold text-[#1F6B3B] hover:bg-[#F7F9F7]"
             >
-              + Adicionar módulo
+              <Plus size={16} /> Adicionar módulo
             </button>
           </div>
         ) : null}
 
+        {activeTab === "landing" ? (
+          <div className="grid gap-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Thumbnail Section */}
+              <div className="grid gap-3 p-4 rounded-xl border border-[#E4EBE6] bg-[#F7F9F7]/50">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#111811]">
+                  <ImageIcon size={16} className="text-klasse-gold" />
+                  Capa do Curso (Thumbnail)
+                </div>
+                <div className="flex flex-col gap-4">
+                  {form.thumbnail_url ? (
+                    <div className="relative aspect-video w-full max-w-[300px] overflow-hidden rounded-lg border bg-white shadow-sm">
+                      <img src={form.thumbnail_url} alt="Preview" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, thumbnail_url: "" }))}
+                        className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-rose-600 shadow-sm hover:bg-white"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex aspect-video w-full max-w-[300px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-white">
+                      <ImageIcon size={32} className="text-slate-300 mb-2" />
+                      <span className="text-xs text-slate-400">Sem imagem de capa</span>
+                    </div>
+                  )}
+                  
+                  <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-klasse-gold px-4 py-2 text-xs font-bold text-klasse-gold hover:bg-klasse-gold/5 transition-colors">
+                    <Plus size={14} />
+                    {uploading ? <Loader2 size={14} className="animate-spin" /> : "Carregar Foto"}
+                    <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} disabled={uploading} />
+                  </label>
+                  <p className="text-[10px] text-slate-500 italic">Recomendado: 1280x720px (16:9). Máx: 5MB.</p>
+                </div>
+              </div>
+
+              {/* Outcomes & Requirements Aggregator */}
+              <div className="grid gap-4">
+                {/* Objetivos */}
+                <div className="grid gap-3 p-4 rounded-xl border border-[#E4EBE6]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#111811]">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                      Resultados de Aprendizagem
+                    </div>
+                    <button type="button" onClick={() => setObjetivos(p => [...p, ""])} className="text-[#1F6B3B] text-[10px] font-bold uppercase tracking-wider">+ Adicionar</button>
+                  </div>
+                  <div className="grid gap-2">
+                    {objetivos.map((obj, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          value={obj}
+                          onChange={e => setObjetivos(p => p.map((v, idx) => idx === i ? e.target.value : v))}
+                          placeholder="Ex: Dominar funções avançadas de Excel"
+                          className="flex-1 rounded-lg border border-[#E4EBE6] px-3 py-1.5 text-sm outline-none focus:border-klasse-gold"
+                        />
+                        <button type="button" onClick={() => setObjetivos(p => p.filter((_, idx) => idx !== i))} className="text-rose-600"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                    {objetivos.length === 0 && <p className="text-xs text-slate-400 italic">Adicione o que o aluno ganhará com este curso.</p>}
+                  </div>
+                </div>
+
+                {/* Requisitos */}
+                <div className="grid gap-3 p-4 rounded-xl border border-[#E4EBE6]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#111811]">
+                      <ListChecks size={16} className="text-amber-500" />
+                      Requisitos Prévios
+                    </div>
+                    <button type="button" onClick={() => setRequisitos(p => [...p, ""])} className="text-[#1F6B3B] text-[10px] font-bold uppercase tracking-wider">+ Adicionar</button>
+                  </div>
+                  <div className="grid gap-2">
+                    {requisitos.map((req, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          value={req}
+                          onChange={e => setRequisitos(p => p.map((v, idx) => idx === i ? e.target.value : v))}
+                          placeholder="Ex: Conhecimentos básicos de informática"
+                          className="flex-1 rounded-lg border border-[#E4EBE6] px-3 py-1.5 text-sm outline-none focus:border-klasse-gold"
+                        />
+                        <button type="button" onClick={() => setRequisitos(p => p.filter((_, idx) => idx !== i))} className="text-rose-600"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                    {requisitos.length === 0 && <p className="text-xs text-slate-400 italic">Adicione o que o aluno precisa saber antes.</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {activeTab === "comercial" ? (
-          <div className="grid gap-2 md:grid-cols-2">
-            <Input
-              label="Preço de tabela (Kz)"
-              type="number"
-              min={0}
-              value={form.preco_tabela}
-              onChange={(value) => setForm((prev) => ({ ...prev, preco_tabela: value }))}
-              placeholder="50000"
-            />
-            <Input
-              label="Desconto (%)"
-              type="number"
-              min={0}
-              max={100}
-              value={form.desconto_percentual}
-              onChange={(value) => setForm((prev) => ({ ...prev, desconto_percentual: value }))}
-              placeholder="10"
-              disabled={!form.desconto_ativo}
-            />
-            <label className="flex items-center gap-2 rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]">
-              <input
-                type="checkbox"
-                checked={form.desconto_ativo}
-                onChange={(e) => setForm((prev) => ({ ...prev, desconto_ativo: e.target.checked }))}
+          <div className="grid gap-4">
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+              <Input
+                label="Preço de tabela (Kz)"
+                type="number"
+                min={0}
+                value={form.preco_tabela}
+                onChange={(value) => setForm((prev) => ({ ...prev, preco_tabela: value }))}
+                placeholder="50000"
               />
-              Ativar desconto promocional
-            </label>
-            <label className="flex items-center gap-2 rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]">
-              <input
-                type="checkbox"
-                checked={form.parceria_b2b_ativa}
-                onChange={(e) => setForm((prev) => ({ ...prev, parceria_b2b_ativa: e.target.checked }))}
+              <Input
+                label="Custo Hora Formador (Kz)"
+                type="number"
+                min={0}
+                value={form.custo_hora_estimado}
+                onChange={(value) => setForm((prev) => ({ ...prev, custo_hora_estimado: value }))}
+                placeholder="5000"
               />
-              Aceita parceria B2B
-            </label>
+              <Input
+                label="Desconto (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={form.desconto_percentual}
+                onChange={(value) => setForm((prev) => ({ ...prev, desconto_percentual: value }))}
+                placeholder="10"
+                disabled={!form.desconto_ativo}
+              />
+              <div className="flex flex-col gap-2 justify-center">
+                <label className="flex items-center gap-2 text-sm text-[#4A6352]">
+                  <input
+                    type="checkbox"
+                    checked={form.desconto_ativo}
+                    onChange={(e) => setForm((prev) => ({ ...prev, desconto_ativo: e.target.checked }))}
+                  />
+                  Ativar desconto promocional
+                </label>
+                <label className="flex items-center gap-2 text-sm text-[#4A6352]">
+                  <input
+                    type="checkbox"
+                    checked={form.parceria_b2b_ativa}
+                    onChange={(e) => setForm((prev) => ({ ...prev, parceria_b2b_ativa: e.target.checked }))}
+                  />
+                  Aceita parceria B2B
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-klasse-gold/20 bg-amber-50/30 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Calculator size={16} className="text-klasse-gold" />
+                <strong className="text-sm text-[#111811]">Rentabilidade Teórica (por aluno)</strong>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-0.5">
+                  <span className="text-[10px] uppercase font-bold text-[#8A9E8F]">Receita Estimada</span>
+                  <span className="text-lg font-bold text-[#111811]">
+                    {formatMoney(Number(form.preco_tabela) * (form.desconto_ativo ? (1 - Number(form.desconto_percentual) / 100) : 1))}
+                  </span>
+                </div>
+                <div className="grid gap-0.5">
+                  <span className="text-[10px] uppercase font-bold text-[#8A9E8F]">Custo Pedagógico</span>
+                  <span className="text-lg font-bold text-rose-600">
+                    {formatMoney(Number(form.custo_hora_estimado) * Number(form.carga_horaria))}
+                    <small className="block text-[9px] font-normal text-slate-500">Custo total p/ centro (carga horária x valor hora)</small>
+                  </span>
+                </div>
+                <div className="grid gap-0.5">
+                  <span className="text-[10px] uppercase font-bold text-[#8A9E8F]">Ponto de Equilíbrio</span>
+                  <span className="text-lg font-bold text-emerald-600">
+                    {Math.ceil((Number(form.custo_hora_estimado) * Number(form.carga_horaria)) / (Number(form.preco_tabela) * (form.desconto_ativo ? (1 - Number(form.desconto_percentual) / 100) : 1) || 1))} Alunos
+                    <small className="block text-[9px] font-normal text-slate-500">Qtd. mínima para cobrir o custo do formador</small>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === "materiais" ? (
+          <div className="grid gap-3">
+            <div className="flex items-center gap-2 text-[#4A6352] text-sm bg-[#F7F9F7] p-3 rounded-lg border border-dashed border-[#E4EBE6]">
+              <Info size={16} className="shrink-0" />
+              <p>Estes materiais serão automaticamente vinculados a todas as <strong>novas turmas</strong> criadas para este curso.</p>
+            </div>
+            {materiais.map((material, index) => (
+              <div key={index} className="grid gap-2 rounded-xl border border-[#E4EBE6] p-3 md:grid-cols-[1fr_1.5fr_120px_auto]">
+                <Input
+                  label="Título"
+                  value={material.titulo}
+                  onChange={(value) =>
+                    setMateriais((prev) => prev.map((item, i) => (i === index ? { ...item, titulo: value } : item)))
+                  }
+                  placeholder="Manual do Aluno"
+                />
+                <Input
+                  label="URL / Link do Arquivo"
+                  value={material.url}
+                  onChange={(value) =>
+                    setMateriais((prev) => prev.map((item, i) => (i === index ? { ...item, url: value } : item)))
+                  }
+                  placeholder="https://storage.moxi.ao/manual.pdf"
+                />
+                <label className="grid gap-1 text-sm text-[#4A6352]">
+                  <span>Tipo</span>
+                  <select
+                    value={material.tipo}
+                    onChange={(e) => setMateriais((prev) => prev.map((item, i) => (i === index ? { ...item, tipo: e.target.value } : item)))}
+                    className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                  >
+                    <option value="pdf">PDF</option>
+                    <option value="video">Vídeo</option>
+                    <option value="link">Link Externo</option>
+                    <option value="zip">Arquivo ZIP</option>
+                  </select>
+                </label>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => setMateriais((prev) => prev.filter((_, i) => i !== index))}
+                    className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setMateriais((prev) => [...prev, { titulo: "", url: "", tipo: "pdf" }])}
+              className="flex w-fit items-center gap-2 rounded-lg border border-[#E4EBE6] bg-white px-3 py-2 text-sm font-semibold text-[#1F6B3B] hover:bg-[#F7F9F7]"
+            >
+              <Plus size={16} /> Adicionar Material Padrão
+            </button>
           </div>
         ) : null}
 
@@ -358,34 +660,58 @@ export default function CursosPage() {
 
       <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white md:block">
         <table className="min-w-[1100px] w-full border-collapse text-sm">
-          <thead className="bg-zinc-50/90">
-            <tr>
+          <thead>
+            <tr className="bg-zinc-50/90">
               <Th>Código</Th>
               <Th>Curso</Th>
               <Th>Modalidade</Th>
               <Th>Carga (h)</Th>
               <Th>Preço</Th>
-              <Th>Módulos</Th>
+              <Th>Recursos</Th>
               <Th>Status</Th>
               <Th>Ações</Th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id}>
-                <Td>{item.codigo}</Td>
+              <tr key={item.id} className="group hover:bg-[#F7F9F7]/50 transition-colors">
+                <Td>
+                  <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{item.codigo}</span>
+                </Td>
                 <Td>
                   <div>
                     <p className="font-semibold text-[#111811]">{item.nome}</p>
-                    <p className="text-xs text-[#4A6352]">{item.area || "-"}</p>
+                    <p className="text-[10px] text-[#8A9E8F] uppercase font-bold tracking-wider">{item.area || "Geral"}</p>
                   </div>
                 </Td>
-                <Td>{item.modalidade}</Td>
-                <Td>{item.carga_horaria ?? "-"}</Td>
-                <Td>{formatMoney(item.preco_tabela)}</Td>
-                <Td>{item.modulos.length}</Td>
                 <Td>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPill(item.status)}`}>{item.status}</span>
+                  <span className="capitalize text-xs text-[#4A6352]">{item.modalidade}</span>
+                </Td>
+                <Td>
+                  <span className="text-xs font-medium text-[#4A6352]">{item.carga_horaria ?? "-"}h</span>
+                </Td>
+                <Td>
+                  <div className="grid gap-0.5">
+                    <span className="font-bold text-[#111811]">{formatMoney(item.preco_tabela)}</span>
+                    {item.desconto_ativo && (
+                      <span className="text-[10px] text-emerald-600 font-bold">-{item.desconto_percentual}% OFF</span>
+                    )}
+                  </div>
+                </Td>
+                <Td>
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1 text-[11px] text-[#4A6352]">
+                      <FileText size={10} className={item.certificado_template_id ? "text-klasse-gold" : "text-slate-300"} />
+                      {item.certificado_template_id ? "Certificado Vinculado" : "Sem Certificado"}
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] text-[#4A6352]">
+                      <Plus size={10} className={item.materiais?.length > 0 ? "text-emerald-500" : "text-slate-300"} />
+                      {item.materiais?.length || 0} Materiais Base
+                    </span>
+                  </div>
+                </Td>
+                <Td>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusPill(item.status)}`}>{item.status}</span>
                 </Td>
                 <Td>
                   <div className="flex flex-wrap gap-1.5">
