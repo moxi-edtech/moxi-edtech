@@ -22,6 +22,7 @@ import {
   X,
   Zap,
 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 const K = {
   green: "#1F6B3B",
@@ -100,7 +101,7 @@ export function useToast() {
     success: (title: string, message?: string, action?: Toast["action"]) =>
       ctx.toast({ variant: "success", title, message, action }),
     error: (title: string, message?: string, action?: Toast["action"]) =>
-      ctx.toast({ variant: "error", title, message, action, duration: 0 }),
+      ctx.toast({ variant: "error", title, message, action, duration: 6000 }),
     warning: (title: string, message?: string, action?: Toast["action"]) =>
       ctx.toast({ variant: "warning", title, message, action }),
     offline: () =>
@@ -120,110 +121,128 @@ export function useToast() {
 
 const TOAST_CONFIG: Record<
   ToastVariant,
-  { bg: string; border: string; icon: React.ReactNode; textColor: string }
+  { bg: string; border: string; icon: React.ReactNode; textColor: string; iconColor: string; barColor: string }
 > = {
   success: {
-    bg: K.green,
-    border: K.green,
-    icon: <CheckCircle2 size={16} />,
-    textColor: "text-white",
+    bg: "bg-white/90",
+    border: "border-[#1F6B3B]/20",
+    icon: <CheckCircle2 size={18} />,
+    textColor: "text-slate-900",
+    iconColor: "text-[#1F6B3B]",
+    barColor: "bg-[#1F6B3B]",
   },
   error: {
-    bg: K.rose,
-    border: K.rose,
-    icon: <AlertCircle size={16} />,
-    textColor: "text-white",
+    bg: "bg-white/90",
+    border: "border-rose-200",
+    icon: <AlertCircle size={18} />,
+    textColor: "text-slate-900",
+    iconColor: "text-rose-600",
+    barColor: "bg-rose-600",
   },
   warning: {
-    bg: K.amber,
-    border: K.amber,
-    icon: <AlertTriangle size={16} />,
-    textColor: "text-white",
+    bg: "bg-white/90",
+    border: "border-[#E3B23C]/20",
+    icon: <AlertTriangle size={18} />,
+    textColor: "text-slate-900",
+    iconColor: "text-[#E3B23C]",
+    barColor: "bg-[#E3B23C]",
   },
   info: {
-    bg: K.slate9,
-    border: K.slate9,
-    icon: <Info size={16} />,
+    bg: "bg-white/90",
+    border: "border-slate-200",
+    icon: <Info size={18} />,
     textColor: "text-slate-900",
+    iconColor: "text-slate-500",
+    barColor: "bg-slate-500",
   },
   offline: {
-    bg: K.slate9,
-    border: K.slate9,
-    icon: <WifiOff size={16} />,
-    textColor: "text-slate-900",
+    bg: "bg-slate-900/90",
+    border: "border-white/10",
+    icon: <WifiOff size={18} />,
+    textColor: "text-white",
+    iconColor: "text-slate-300",
+    barColor: "bg-white/20",
   },
   syncing: {
-    bg: K.slate9,
-    border: K.slate9,
-    icon: <Loader2 size={16} className="animate-spin" />,
+    bg: "bg-white/90",
+    border: "border-slate-100",
+    icon: <Loader2 size={18} className="animate-spin" />,
     textColor: "text-slate-900",
+    iconColor: "text-slate-400",
+    barColor: "bg-slate-200",
   },
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const cfg = TOAST_CONFIG[toast.variant]
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const duration = toast.duration ?? 4000
 
   useEffect(() => {
-    const duration = toast.duration ?? 4000
     if (duration === 0) return
-    timerRef.current = setTimeout(onDismiss, duration)
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [toast.id, toast.duration, onDismiss])
+    const timer = setTimeout(onDismiss, duration)
+    return () => clearTimeout(timer)
+  }, [duration, onDismiss])
 
   return (
-    <div
-      role="alert"
-      aria-live="assertive"
-      className="flex items-start gap-3 rounded-xl px-4 py-3 shadow-xl
-        animate-in slide-in-from-bottom-2 duration-200 min-w-[280px] max-w-sm"
-      style={{ backgroundColor: cfg.bg }}
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 50, scale: 0.8 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+      className={`group relative flex items-start gap-4 rounded-[1.25rem] border ${cfg.border} ${cfg.bg} p-4 shadow-2xl backdrop-blur-xl min-w-[320px] max-w-md overflow-hidden`}
     >
-      <span className={`flex-shrink-0 mt-0.5 ${cfg.textColor}`}>
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.iconColor} bg-slate-50`}>
         {toast.icon ?? cfg.icon}
-      </span>
+      </div>
 
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-bold ${cfg.textColor}`}>{toast.title}</p>
+      <div className="flex-1 min-w-0 pr-4 pt-0.5">
+        <p className={`text-sm font-black tracking-tight ${cfg.textColor}`}>{toast.title}</p>
         {toast.message && (
-          <p className={`text-xs mt-0.5 opacity-80 ${cfg.textColor}`}>{toast.message}</p>
+          <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">{toast.message}</p>
         )}
         {toast.action && (
           <button
             onClick={toast.action.onClick}
-            className={`mt-2 text-xs font-bold underline underline-offset-2 ${cfg.textColor} opacity-90 hover:opacity-100`}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-900 hover:text-klasse-green transition-colors"
           >
-            {toast.action.label} →
+            {toast.action.label} <ArrowRight size={12} />
           </button>
         )}
       </div>
 
       <button
         onClick={onDismiss}
-        className={`flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ${cfg.textColor}`}
+        className="shrink-0 rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900"
         aria-label="Fechar"
       >
-        <X size={14} />
+        <X size={16} />
       </button>
-    </div>
+
+      {/* Progress Bar */}
+      {duration > 0 && (
+        <motion.div
+          initial={{ width: "100%" }}
+          animate={{ width: "0%" }}
+          transition={{ duration: duration / 1000, ease: "linear" }}
+          className={`absolute bottom-0 left-0 h-1 ${cfg.barColor} opacity-20`}
+        />
+      )}
+    </motion.div>
   )
 }
 
 function ToastStack() {
-  const { toasts, dismiss } = useContext(ToastCtx)!
-
-  if (toasts.length === 0) return null
+  const ctx = useContext(ToastCtx)
+  if (!ctx) return null
+  const { toasts, dismiss } = ctx
 
   return (
-    <div
-      className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end"
-      aria-label="Notificações"
-    >
-      {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
-      ))}
+    <div className="fixed bottom-8 right-8 z-[9999] flex flex-col gap-3 items-end" aria-label="Notificações">
+      <AnimatePresence mode="popLayout">
+        {toasts.map((t) => (
+          <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+        ))}
+      </AnimatePresence>
     </div>
   )
 }
