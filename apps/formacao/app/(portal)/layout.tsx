@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getDefaultFormacaoPath, getFormacaoAuthContext } from "@/lib/auth-context";
+import { supabaseServer } from "@/lib/supabaseServer";
 import PortalNavLink from "./_components/PortalNavLink";
 import { 
   getAuthorizedNavigation, 
@@ -26,8 +27,38 @@ import {
   Globe2,
   Home
 } from "lucide-react";
+import LockScreenButton from "@/components/session/LockScreenButton";
 
 export const dynamic = "force-dynamic";
+
+type SubscriptionInfo = {
+  status: string;
+  plano: string | null;
+  trial_ends_at: string | null;
+  days_left: number | null;
+  is_expired: boolean;
+};
+
+async function getSubscriptionInfo(escolaId: string | null | undefined): Promise<SubscriptionInfo | null> {
+  if (!escolaId) return null;
+  const supabase = await supabaseServer();
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: "formacao_get_subscription_info",
+      args: { p_escola_id: string }
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc("formacao_get_subscription_info", { p_escola_id: escolaId });
+
+  if (error || !data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    status: String(row.status ?? "trial"),
+    plano: typeof row.plano === "string" ? row.plano : null,
+    trial_ends_at: typeof row.trial_ends_at === "string" ? row.trial_ends_at : null,
+    days_left: typeof row.days_left === "number" ? row.days_left : null,
+    is_expired: Boolean(row.is_expired),
+  };
+}
 
 function NavIcon({ name }: { name: string }) {
   const className = "h-4 w-4 shrink-0";
@@ -104,6 +135,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const userName = auth.displayName ?? "Conta";
   const statusText = auth.tenantName ? "Activo" : "Em configuração";
   const statusClasses = auth.tenantName ? "text-emerald-600" : "text-amber-600";
+  const subscription = await getSubscriptionInfo(auth.tenantId);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -156,6 +188,10 @@ export default async function PortalLayout({ children }: { children: React.React
               </div>
 
               <div className="ml-auto flex items-center gap-2">
+                <LockScreenButton
+                  iconOnly
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                />
                 <details className="relative">
                   <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 h-10">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-klasse-green/15 ring-1 ring-klasse-green/25 text-xs font-semibold text-slate-700">
@@ -172,9 +208,42 @@ export default async function PortalLayout({ children }: { children: React.React
             </div>
           </header>
 
+          {subscription?.status === "trial" || subscription?.is_expired ? (
+            <TrialCountdownBanner subscription={subscription} />
+          ) : null}
+
           <section className="p-4 md:p-6">{children}</section>
         </div>
       </div>
     </main>
+  );
+}
+
+function TrialCountdownBanner({ subscription }: { subscription: SubscriptionInfo }) {
+  const supportHref =
+    process.env.KLASSE_FORMACAO_SUPPORT_WHATSAPP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_KLASSE_FORMACAO_SUPPORT_WHATSAPP_URL?.trim() ||
+    "https://wa.me/244923000000";
+  const daysLeft = subscription.days_left ?? 0;
+  const message = subscription.is_expired
+    ? "O período de teste terminou. Regularize a subscrição para voltar a operar o centro."
+    : daysLeft <= 0
+      ? "O seu período de teste termina hoje. Não perca o acesso aos seus dados."
+      : `Faltam ${daysLeft} dia${daysLeft === 1 ? "" : "s"} para o seu período de teste terminar. Não perca o acesso aos seus dados.`;
+
+  return (
+    <div className={`border-b px-4 py-3 ${subscription.is_expired ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className={`text-sm font-semibold ${subscription.is_expired ? "text-rose-800" : "text-amber-900"}`}>{message}</p>
+        <a
+          href={supportHref}
+          target="_blank"
+          rel="noreferrer"
+          className={`rounded-lg px-3 py-2 text-xs font-bold text-white ${subscription.is_expired ? "bg-rose-700 hover:bg-rose-800" : "bg-amber-700 hover:bg-amber-800"}`}
+        >
+          Contactar Suporte
+        </a>
+      </div>
+    </div>
   );
 }

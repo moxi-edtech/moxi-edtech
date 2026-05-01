@@ -3,6 +3,7 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
 import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
 import { ToastProvider } from "@/components/feedback/FeedbackSystem";
+import SessionLockProvider from "@/components/session/SessionLockProvider";
 
 const shouldLoadGoogleFonts = process.env.NEXT_FONT_GOOGLE_FONTS_DISABLE !== "1";
 
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="h-full" style={{ fontFamily: shouldLoadGoogleFonts ? "Sora, sans-serif" : "sans-serif" }}>
         <ServiceWorkerRegister />
         <OfflineSyncRegister />
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <SessionLockProvider>{children}</SessionLockProvider>
+        </ToastProvider>
       </body>
     </html>
   );

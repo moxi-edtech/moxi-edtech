@@ -6,6 +6,7 @@ import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import ModuleSwitcher from "@/components/layout/klasse/ModuleSwitcher";
+import LockScreenButton from "@/components/session/LockScreenButton";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -50,6 +51,10 @@ export default function Topbar({
         <div className="ml-auto flex items-center gap-2">
           <ModuleSwitcher />
           <NotificacoesDropdown />
+          <LockScreenButton
+            iconOnly
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+          />
 
           <div className="relative">
             <button
@@ -72,6 +77,7 @@ export default function Topbar({
 
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white shadow-lg p-2">
+                <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-50" />
                 <SignOutButton
                   label="Sair"
                   className="w-full justify-start gap-2 text-slate-700 hover:bg-slate-50"

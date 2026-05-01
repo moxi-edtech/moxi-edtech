@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import SignOutButton from "@/components/auth/SignOutButton";
+import LockScreenButton from "@/components/session/LockScreenButton";
 import BackButton from "@/components/navigation/BackButton";
 import Link from "next/link"; // Add this import
 import {
@@ -318,7 +319,12 @@ export default function PortalLayout({
                   <button className="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 shadow-sm border border-moxinexa-light/50 hover:shadow-md transition-shadow">
                     <UserAvatar initials={userInitials} name={userName || 'Administrador'} />
                   </button>
-    
+
+                  <LockScreenButton
+                    iconOnly
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200"
+                  />
+
                   <SignOutButton
                     label="Sair"
                     className="px-3 py-1.5 text-xs bg-slate-500 text-white rounded-md hover:bg-slate-600 transition-colors"

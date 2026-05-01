@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SessionLockProvider from "@/components/session/SessionLockProvider";
 
 export const metadata: Metadata = {
   title: "KLASSE Formação",
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-AO">
-      <body>{children}</body>
+      <body>
+        <SessionLockProvider>{children}</SessionLockProvider>
+      </body>
     </html>
   );
 }
