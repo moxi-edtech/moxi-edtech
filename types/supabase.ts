@@ -5722,6 +5722,7 @@ export type Database = {
         Row: {
           created_at: string
           curso_id: string
+          custo_hora_estimado: number | null
           desconto_ativo: boolean
           desconto_percentual: number
           escola_id: string
@@ -5733,6 +5734,7 @@ export type Database = {
         Insert: {
           created_at?: string
           curso_id: string
+          custo_hora_estimado?: number | null
           desconto_ativo?: boolean
           desconto_percentual?: number
           escola_id: string
@@ -5744,6 +5746,7 @@ export type Database = {
         Update: {
           created_at?: string
           curso_id?: string
+          custo_hora_estimado?: number | null
           desconto_ativo?: boolean
           desconto_percentual?: number
           escola_id?: string
@@ -5769,6 +5772,61 @@ export type Database = {
           },
           {
             foreignKeyName: "formacao_curso_comercial_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formacao_curso_materiais: {
+        Row: {
+          created_at: string
+          curso_id: string
+          escola_id: string
+          id: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          escola_id: string
+          id?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          escola_id?: string
+          id?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_curso_materiais_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_curso_materiais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_curso_materiais_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
@@ -5838,37 +5896,49 @@ export type Database = {
         Row: {
           area: string | null
           carga_horaria: number | null
+          certificado_template_id: string | null
           codigo: string
           created_at: string
           escola_id: string
           id: string
           modalidade: string
           nome: string
+          objetivos: Json | null
+          requisitos: Json | null
           status: string
+          thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
           area?: string | null
           carga_horaria?: number | null
+          certificado_template_id?: string | null
           codigo: string
           created_at?: string
           escola_id: string
           id?: string
           modalidade?: string
           nome: string
+          objetivos?: Json | null
+          requisitos?: Json | null
           status?: string
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
           area?: string | null
           carga_horaria?: number | null
+          certificado_template_id?: string | null
           codigo?: string
           created_at?: string
           escola_id?: string
           id?: string
           modalidade?: string
           nome?: string
+          objetivos?: Json | null
+          requisitos?: Json | null
           status?: string
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Relationships: [
