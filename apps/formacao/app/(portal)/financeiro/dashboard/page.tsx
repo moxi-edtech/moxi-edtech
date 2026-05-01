@@ -239,6 +239,12 @@ export default async function FinanceiroDashboardPage() {
               href="/financeiro/recebimentos"
               icon={<CreditCard size={16} className="text-slate-400 group-hover:text-klasse-gold" />}
             />
+            <ModuleCard
+              title="Assinatura KLASSE"
+              description="Plano do centro, estado da subscrição e envio de comprovativos para validação."
+              href="/financeiro/subscricao"
+              icon={<Wallet size={16} className="text-slate-400 group-hover:text-klasse-gold" />}
+            />
           </div>
         </article>
 

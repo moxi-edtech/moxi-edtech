@@ -4,6 +4,33 @@ import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess';
 import { parsePlanTier, type PlanTier } from '@/config/plans';
 import type { Database } from '~types/supabase';
 
+type PlanCommercialRow = {
+  plan: PlanTier;
+  price_mensal_kz: number | null;
+  price_anual_kz?: number | null;
+  trial_days?: number | null;
+  discount_percent?: number | null;
+  promo_ends_at?: string | null;
+};
+
+function resolveEffectivePrice(row: PlanCommercialRow | undefined, ciclo: 'mensal' | 'anual') {
+  const base = Number(ciclo === 'anual' ? row?.price_anual_kz ?? 0 : row?.price_mensal_kz ?? 0);
+  if (!Number.isFinite(base) || base <= 0) return null;
+
+  const promoEndsAt = row?.promo_ends_at ? new Date(row.promo_ends_at) : null;
+  const promoActive = !promoEndsAt || promoEndsAt.getTime() >= Date.now();
+  const discount = promoActive ? Number(row?.discount_percent ?? 0) : 0;
+  if (!Number.isFinite(discount) || discount <= 0) return Math.round(base);
+
+  return Math.max(0, Math.round(base * (1 - Math.min(100, discount) / 100)));
+}
+
+function resolveTrialDays(row: PlanCommercialRow | undefined) {
+  const days = Number(row?.trial_days ?? 30);
+  if (!Number.isFinite(days)) return 30;
+  return Math.min(365, Math.max(0, Math.round(days)));
+}
+
 export async function POST(_req: NextRequest) {
   try {
     const s = await supabaseServer();
@@ -41,26 +68,18 @@ export async function POST(_req: NextRequest) {
       return NextResponse.json({ ok: true, message: 'Todas as escolas já possuem assinaturas configuradas.' });
     }
 
-    // 4. Mapeamento de preços por plano/ciclo
-    const precosPorPlanoCiclo: Record<PlanTier, Record<'mensal' | 'anual', number | null>> = {
-      essencial: {
-        mensal: 60000,
-        anual: 720000,
-      },
-      profissional: {
-        mensal: 120000,
-        anual: 1440000,
-      },
-      premium: {
-        mensal: null,
-        anual: null,
-      },
-    };
+    // 4. Mapeamento comercial configurável por plano/ciclo
+    const { data: planRows, error: plansError } = await s
+      .from('app_plan_limits')
+      .select('plan, price_mensal_kz, price_anual_kz, trial_days, discount_percent, promo_ends_at');
+
+    if (plansError) throw plansError;
+
+    const commercialByPlan = new Map(
+      ((planRows ?? []) as unknown as PlanCommercialRow[]).map((row) => [row.plan, row])
+    );
 
     // 5. Preparar inserts e relatório
-    const dataRenovacao = new Date();
-    dataRenovacao.setDate(dataRenovacao.getDate() + 30); // 30 dias a partir de hoje
-
     const agoraIso = new Date().toISOString();
     const inserts: Database['public']['Tables']['assinaturas']['Insert'][] = [];
     const escolasCriadasViaSync: Array<Record<string, unknown>> = [];
@@ -69,25 +88,36 @@ export async function POST(_req: NextRequest) {
     for (const escola of escolasParaSync) {
       const plano = parsePlanTier(escola.plano_atual);
       const ciclo: 'mensal' | 'anual' = 'mensal';
-      const valorDefinido = precosPorPlanoCiclo[plano]?.[ciclo] ?? null;
-
-      if (plano === 'premium' && valorDefinido === null) {
-        escolasPendentesParametrizacao.push({
-          escola_id: escola.id,
-          escola_nome: escola.nome,
-          plano,
-          ciclo,
-          motivo: 'Plano premium exige valor_kz explícito (sem fallback automático).',
-        });
-      }
+      const commercial = commercialByPlan.get(plano);
+      const valorDefinido = resolveEffectivePrice(commercial, ciclo);
+      const trialDays = resolveTrialDays(commercial);
+      const dataRenovacao = new Date();
+      dataRenovacao.setDate(dataRenovacao.getDate() + trialDays);
 
       if (typeof valorDefinido !== 'number' || Number.isNaN(valorDefinido) || valorDefinido <= 0) {
+        const motivo = plano === 'premium'
+          ? 'Plano premium exige preço configurado no catálogo comercial.'
+          : 'Preço configurado inválido para o plano/ciclo.';
+
+        inserts.push({
+          escola_id: escola.id,
+          plano,
+          ciclo,
+          status: 'pendente',
+          metodo_pagamento: 'transferencia',
+          valor_kz: 0,
+          data_renovacao: dataRenovacao.toISOString(),
+          data_inicio: agoraIso,
+          origem_registo: 'sync_bootstrap',
+          motivo_origem: motivo,
+        });
+
         escolasPendentesParametrizacao.push({
           escola_id: escola.id,
           escola_nome: escola.nome,
           plano,
           ciclo,
-          motivo: 'Não foi criada assinatura: valor_kz inválido para o plano/ciclo.',
+          motivo,
         });
         continue;
       }

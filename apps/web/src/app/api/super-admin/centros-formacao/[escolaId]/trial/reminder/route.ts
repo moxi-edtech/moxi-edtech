@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
-import { buildLifecycleReminderEmail, sendMail } from "@/lib/mailer";
+import { buildLifecycleReminderEmail, resolveEmailLoginUrl, sendMail } from "@/lib/mailer";
 import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -127,7 +127,7 @@ export async function POST(request: Request, context: { params: Promise<{ escola
     const subject = isExpired
       ? `KLASSE Formação · Trial expirado · ${typedCentro.nome}`
       : `KLASSE Formação · Trial termina em ${daysLeft} dia(s) · ${typedCentro.nome}`;
-    const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://app.klasse.ao/login").replace(/\/$/, "");
+    const loginUrl = resolveEmailLoginUrl();
     const mail = await buildLifecycleReminderEmail({
       subject,
       title: isExpired ? "Trial expirado" : `Trial termina em ${daysLeft} dia(s)`,

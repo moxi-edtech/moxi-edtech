@@ -10,28 +10,89 @@ import { PLAN_NAMES, type PlanTier } from '@/config/plans';
  */
 
 
-function getExpectedValorKz(plano: PlanTier, ciclo: 'mensal' | 'anual'): number | null {
-  const tabela: Record<PlanTier, Record<'mensal' | 'anual', number | null>> = {
-    essencial: { mensal: 60000, anual: 720000 },
-    profissional: { mensal: 120000, anual: 1440000 },
-    premium: { mensal: null, anual: null },
-  };
+type PlanCommercialRow = {
+  price_mensal_kz?: number | null;
+  price_anual_kz?: number | null;
+  discount_percent?: number | null;
+  promo_ends_at?: string | null;
+};
 
-  return tabela[plano]?.[ciclo] ?? null;
+async function getExpectedValorKz(s: any, plano: PlanTier, ciclo: 'mensal' | 'anual'): Promise<number | null> {
+  const { data } = await s
+    .from('app_plan_limits')
+    .select('price_mensal_kz, price_anual_kz, discount_percent, promo_ends_at')
+    .eq('plan', plano)
+    .maybeSingle();
+
+  const row = data as PlanCommercialRow | null;
+  const base = Number(ciclo === 'anual' ? row?.price_anual_kz ?? 0 : row?.price_mensal_kz ?? 0);
+  if (!Number.isFinite(base) || base <= 0) return null;
+
+  const promoEndsAt = row?.promo_ends_at ? new Date(row.promo_ends_at) : null;
+  const promoActive = !promoEndsAt || promoEndsAt.getTime() >= Date.now();
+  const discount = promoActive ? Number(row?.discount_percent ?? 0) : 0;
+  if (!Number.isFinite(discount) || discount <= 0) return Math.round(base);
+
+  return Math.max(0, Math.round(base * (1 - Math.min(100, discount) / 100)));
 }
 
-function isValorKzValido({ plano, ciclo, valorKz }: { plano: PlanTier; ciclo: 'mensal' | 'anual'; valorKz: unknown }) {
+async function isValorKzValido(s: any, { plano, ciclo, valorKz }: { plano: PlanTier; ciclo: 'mensal' | 'anual'; valorKz: unknown }) {
   if (typeof valorKz !== 'number' || !Number.isFinite(valorKz) || valorKz <= 0) {
     return false;
   }
 
-  const esperado = getExpectedValorKz(plano, ciclo);
+  const esperado = await getExpectedValorKz(s, plano, ciclo);
 
-  if (plano === 'premium') {
+  if (esperado === null) {
     return esperado === null;
   }
 
   return valorKz === esperado;
+}
+
+async function syncFormacaoCenterSubscription(
+  s: any,
+  {
+    escolaId,
+    assinaturaStatus,
+    dataRenovacao,
+    timestamp,
+  }: { escolaId: string; assinaturaStatus: string; dataRenovacao?: string | null; timestamp: string },
+) {
+  const { data: centro } = await s
+    .from('centros_formacao')
+    .select('id')
+    .eq('escola_id', escolaId)
+    .maybeSingle();
+
+  if (!centro?.id) return false;
+
+  const nextStatus =
+    assinaturaStatus === 'activa'
+      ? 'active'
+      : assinaturaStatus === 'suspensa'
+        ? 'past_due'
+        : assinaturaStatus === 'cancelada'
+          ? 'expired'
+          : 'past_due';
+
+  const updates: Record<string, unknown> = {
+    subscription_status: nextStatus,
+    subscription_updated_at: timestamp,
+    updated_at: timestamp,
+  };
+
+  if (nextStatus === 'active' && dataRenovacao) {
+    updates.trial_ends_at = dataRenovacao;
+  }
+
+  const { error } = await s
+    .from('centros_formacao')
+    .update(updates)
+    .eq('escola_id', escolaId);
+
+  if (error) throw error;
+  return true;
 }
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -57,7 +118,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       const ciclo = (updates.ciclo ?? body.ciclo) as 'mensal' | 'anual' | undefined;
       const valorKz = updates.valor_kz;
 
-      if (!plano || !ciclo || !isValorKzValido({ plano, ciclo, valorKz: valorKz as unknown })) {
+      if (!plano || !ciclo || !(await isValorKzValido(s, { plano, ciclo, valorKz: valorKz as unknown }))) {
         return NextResponse.json(
           {
             ok: false,
@@ -172,6 +233,12 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       const changedFields = diff.filter((field) => field.changed).map((field) => field.field);
 
       await s.from('escolas').update({ status: assAfter.status }).eq('id', assBefore.escola_id);
+      const syncedFormacaoCenter = await syncFormacaoCenterSubscription(s, {
+        escolaId: assBefore.escola_id,
+        assinaturaStatus: assAfter.status,
+        dataRenovacao: assAfter.data_renovacao,
+        timestamp: nowIso,
+      });
 
       await recordAuditServer({
         escolaId: assBefore.escola_id,
@@ -189,6 +256,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
           pagamento_id: pagamentoBefore.id,
           pagamento_before_status: pagamentoBefore.status,
           pagamento_after_status: paymentStatus,
+          formacao_center_synced: syncedFormacaoCenter,
         },
       });
 

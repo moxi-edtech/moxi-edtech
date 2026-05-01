@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
-import { Eye, Mail, MessageCircle, RefreshCw, Save, Settings2, FileText, CheckCircle2 } from "lucide-react";
+import { Eye, Mail, MessageCircle, RefreshCw, Save, Settings2, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Button } from "@/components/ui/Button";
 
 type CentroItem = {
@@ -95,6 +95,7 @@ function statusLabel(item: CentroItem) {
 }
 
 export default function SubscricoesCockpitClient() {
+  const { toast } = useToast();
   const [items, setItems] = useState<CentroItem[]>([]);
   const [settings, setSettings] = useState<CommercialSettings>(emptySettings);
   const [loading, setLoading] = useState(true);
@@ -107,6 +108,14 @@ export default function SubscricoesCockpitClient() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [notesEditingId, setNotesEditingId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+
+  const notifySuccess = useCallback((title: string) => {
+    toast({ variant: "success", title });
+  }, [toast]);
+
+  const notifyError = useCallback((title: string) => {
+    toast({ variant: "error", title, duration: 6000 });
+  }, [toast]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,11 +131,11 @@ export default function SubscricoesCockpitClient() {
       setItems(Array.isArray(centrosJson.items) ? centrosJson.items : []);
       setSettings({ ...emptySettings, ...configJson.item });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notifyError]);
 
   useEffect(() => {
     load();
@@ -201,9 +210,9 @@ export default function SubscricoesCockpitClient() {
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao guardar configuração");
       setSettings({ ...emptySettings, ...json.item });
-      toast.success("Configuração comercial atualizada");
+      notifySuccess("Configuração comercial atualizada");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setSaving(false);
     }
@@ -219,10 +228,10 @@ export default function SubscricoesCockpitClient() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao prolongar trial");
-      toast.success(`Trial prolongado para ${item.nome}`);
+      notifySuccess(`Trial prolongado para ${item.nome}`);
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setBusyId(null);
     }
@@ -238,9 +247,9 @@ export default function SubscricoesCockpitClient() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao enviar lembrete");
-      toast.success(`Lembrete enviado para ${json.to || item.email}`);
+      notifySuccess(`Lembrete enviado para ${json.to || item.email}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setBusyId(null);
     }
@@ -248,7 +257,10 @@ export default function SubscricoesCockpitClient() {
 
   async function sendBulkReminders() {
     const targets = items.filter((item) => selectedIds.includes(item.escola_id));
-    if (targets.length === 0) return toast.info("Selecione pelo menos um centro.");
+    if (targets.length === 0) {
+      toast({ variant: "info", title: "Selecione pelo menos um centro." });
+      return;
+    }
     if (!confirm(`Enviar lembrete por e-mail para ${targets.length} centro(s)?`)) return;
 
     setBusyId("bulk");
@@ -263,7 +275,7 @@ export default function SubscricoesCockpitClient() {
         const json = await res.json().catch(() => null);
         if (res.ok && json?.ok) sent += 1;
       }
-      toast.success(`${sent}/${targets.length} lembrete(s) enviados.`);
+      notifySuccess(`${sent}/${targets.length} lembrete(s) enviados.`);
       setSelectedIds([]);
       await load();
     } finally {
@@ -281,12 +293,12 @@ export default function SubscricoesCockpitClient() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao guardar notas");
-      toast.success("Notas comerciais atualizadas");
+      notifySuccess("Notas comerciais atualizadas");
       setNotesEditingId(null);
       setNotesDraft("");
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setBusyId(null);
     }
@@ -303,9 +315,9 @@ export default function SubscricoesCockpitClient() {
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao preparar WhatsApp");
       if (json.url) window.open(json.url, "_blank", "noopener,noreferrer");
-      else toast.info("Mensagem preparada, mas o centro não tem telefone/WhatsApp válido.");
+      else toast({ variant: "info", title: "Mensagem preparada, mas o centro não tem telefone/WhatsApp válido." });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setBusyId(null);
     }
@@ -313,10 +325,10 @@ export default function SubscricoesCockpitClient() {
 
   async function handleConfirmPayment(item: CentroItem) {
     if (!item.billing?.id || !item.billing?.last_payment_id) {
-      toast.error("Dados de pagamento incompletos");
+      notifyError("Dados de pagamento incompletos");
       return;
     }
-    
+
     if (!confirm(`Deseja confirmar o pagamento de ${item.nome} e activar a subscrição?`)) return;
 
     setBusyId(item.escola_id);
@@ -333,10 +345,41 @@ export default function SubscricoesCockpitClient() {
       const json = await res.json();
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao confirmar pagamento");
 
-      toast.success(`Pagamento confirmado e subscrição activada para ${item.nome}`);
+      notifySuccess(`Pagamento confirmado e subscrição activada para ${item.nome}`);
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro inesperado");
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRejectPayment(item: CentroItem) {
+    if (!item.billing?.id || !item.billing?.last_payment_id) {
+      notifyError("Dados de pagamento incompletos");
+      return;
+    }
+
+    if (!confirm(`Deseja rejeitar o comprovativo de ${item.nome}?`)) return;
+
+    setBusyId(item.escola_id);
+    try {
+      const res = await fetch(`/api/super-admin/billing/assinaturas/${item.billing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reject_receipt",
+          pagamento_id: item.billing.last_payment_id
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao rejeitar comprovativo");
+
+      notifySuccess(`Comprovativo rejeitado para ${item.nome}`);
+      await load();
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Erro inesperado");
     } finally {
       setBusyId(null);
     }
@@ -516,9 +559,14 @@ export default function SubscricoesCockpitClient() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap justify-end gap-2">
                           {item.billing?.last_payment_status === 'pendente' && (
-                            <Button size="sm" onClick={() => handleConfirmPayment(item)} disabled={busyId === item.escola_id} className="bg-klasse-green hover:bg-klasse-green/90">
-                              <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
-                            </Button>
+                            <>
+                              <Button size="sm" onClick={() => handleConfirmPayment(item)} disabled={busyId === item.escola_id} className="bg-klasse-green hover:bg-klasse-green/90">
+                                <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
+                              </Button>
+                              <Button size="sm" variant="secondary" onClick={() => handleRejectPayment(item)} disabled={busyId === item.escola_id} className="border-rose-200 text-rose-700 hover:bg-rose-50">
+                                <XCircle className="h-3 w-3 mr-1" /> Rejeitar
+                              </Button>
+                            </>
                           )}
                           <Button size="sm" variant="secondary" onClick={() => sendReminder(item)} disabled={busyId === item.escola_id}>
                             <Mail className="h-3 w-3 sm:mr-1" />

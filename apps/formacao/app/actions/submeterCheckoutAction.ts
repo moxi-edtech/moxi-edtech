@@ -7,7 +7,8 @@ type SubmitCheckoutPayload = {
   centro_slug: string;
   cohort_ref: string;
   nome_completo: string;
-  identificacao: string;
+  email: string;
+  bi_passaporte: string;
   telefone: string;
   comprovativo_url: string;
 };
@@ -17,7 +18,8 @@ type SubmitCheckoutResult = { ok: true } | { ok: false; error: string };
 export async function submeterCheckoutAction(payload: SubmitCheckoutPayload): Promise<SubmitCheckoutResult> {
   const validation = checkoutSchema.safeParse({
     nome_completo: payload.nome_completo,
-    identificacao: payload.identificacao,
+    email: payload.email,
+    bi_passaporte: payload.bi_passaporte,
     telefone: payload.telefone,
     comprovativo_url: payload.comprovativo_url,
   });
@@ -71,16 +73,12 @@ export async function submeterCheckoutAction(payload: SubmitCheckoutPayload): Pr
     return { ok: false, error: "Turma não encontrada ou indisponível para inscrição pública." };
   }
 
-  const identificacao = validation.data.identificacao.trim();
-  const maybeEmail = identificacao.includes("@") ? identificacao : null;
-  const biPassaporte = identificacao.includes("@") ? "N/A" : identificacao;
-
   const { error } = await supabase.from("formacao_inscricoes_staging").insert({
     escola_id: escolaId,
     cohort_id: cohortId,
     nome_completo: validation.data.nome_completo,
-    bi_passaporte: biPassaporte,
-    email: maybeEmail,
+    bi_passaporte: validation.data.bi_passaporte,
+    email: validation.data.email,
     telefone: validation.data.telefone,
     comprovativo_url: validation.data.comprovativo_url,
     status: "PENDENTE",

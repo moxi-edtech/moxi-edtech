@@ -47,7 +47,7 @@ export default function EscolaSuspensaPage() {
             fullWidth 
             tone="green" 
             className="bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 font-bold"
-            onClick={() => window.open('https://wa.me/244923000000', '_blank')}
+            onClick={() => window.open('https://wa.me/244933349106', '_blank')}
           >
             <MessageCircle className="w-4 h-4 mr-2" /> Falar com Suporte
           </Button>

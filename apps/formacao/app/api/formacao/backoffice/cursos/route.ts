@@ -43,7 +43,7 @@ export async function GET() {
   const s = auth.supabase as FormacaoSupabaseClient;
   const { data: cursos, error: cursosError } = await s
     .from("formacao_cursos")
-    .select("id, codigo, nome, area, modalidade, carga_horaria, status, created_at")
+    .select("id, codigo, nome, area, modalidade, carga_horaria, status, thumbnail_url, created_at")
     .eq("escola_id", auth.escolaId)
     .order("created_at", { ascending: false })
     .limit(300);
@@ -125,6 +125,7 @@ export async function POST(request: Request) {
     area?: string;
     modalidade?: "presencial" | "online" | "hibrido";
     carga_horaria?: number;
+    thumbnail_url?: string | null;
     preco_tabela?: number;
     desconto_ativo?: boolean;
     desconto_percentual?: number;
@@ -165,9 +166,10 @@ export async function POST(request: Request) {
       area,
       modalidade,
       carga_horaria: cargaHoraria,
+      thumbnail_url: body?.thumbnail_url || null,
       status: "ativo",
     })
-    .select("id, codigo, nome, area, modalidade, carga_horaria, status")
+    .select("id, codigo, nome, area, modalidade, carga_horaria, thumbnail_url, status")
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -225,6 +227,7 @@ export async function PATCH(request: Request) {
     area?: string | null;
     modalidade?: "presencial" | "online" | "hibrido";
     carga_horaria?: number | null;
+    thumbnail_url?: string | null;
     status?: "ativo" | "inativo";
     preco_tabela?: number;
     desconto_ativo?: boolean;
@@ -254,6 +257,9 @@ export async function PATCH(request: Request) {
   if (body?.status && ["ativo", "inativo"].includes(body.status)) {
     patch.status = body.status;
   }
+  if (body?.thumbnail_url !== undefined) {
+    patch.thumbnail_url = body.thumbnail_url || null;
+  }
 
   const modulos = body?.modulos ? sanitizeModulos(body.modulos) : null;
   const comercialPayload =
@@ -282,7 +288,7 @@ export async function PATCH(request: Request) {
     .update(patch)
     .eq("escola_id", auth.escolaId)
     .eq("id", id)
-    .select("id, codigo, nome, area, modalidade, carga_horaria, status")
+    .select("id, codigo, nome, area, modalidade, carga_horaria, thumbnail_url, status")
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

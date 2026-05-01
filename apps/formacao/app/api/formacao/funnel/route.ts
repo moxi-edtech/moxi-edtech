@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       tenant_id: auth?.tenantId ?? body.tenant_id ?? null,
       user_id: auth?.userId ?? body.user_id ?? null,
       details: body.details ?? {},
-    });
+    } as any);
 
     logFunnelEvent({
       ...body,
