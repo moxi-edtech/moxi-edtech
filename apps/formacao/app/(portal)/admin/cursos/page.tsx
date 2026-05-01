@@ -330,7 +330,7 @@ export default function CursosPage() {
             </label>
             <Input label="Carga horária (h)" type="number" min={1} value={form.carga_horaria} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria: value }))} placeholder="40" />
             <label className="grid gap-1 text-sm text-[#4A6352]">
-              <span className="flex items-center gap-1">Certificado Padrão <Info size={12} title="Template usado para emissão automática em turmas deste curso." /></span>
+              <span className="flex items-center gap-1" title="Template usado para emissão automática em turmas deste curso.">Certificado Padrão <Info size={12} /></span>
               <select
                 value={form.certificado_template_id}
                 onChange={(e) => setForm((prev) => ({ ...prev, certificado_template_id: e.target.value }))}
