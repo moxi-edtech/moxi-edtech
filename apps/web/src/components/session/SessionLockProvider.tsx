@@ -138,13 +138,16 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
     };
   }, [supabase, pathname]);
 
+  const lockRef = useRef(lock);
+  lockRef.current = lock;
+
   useEffect(() => {
     const handleLockEvent = () => {
-      lock();
+      lockRef.current();
     };
     window.addEventListener(LOCK_EVENT, handleLockEvent);
     return () => window.removeEventListener(LOCK_EVENT, handleLockEvent);
-  }, [lock]);
+  }, []);
 
   useEffect(() => {
     if (excluded || !user || locked) return;

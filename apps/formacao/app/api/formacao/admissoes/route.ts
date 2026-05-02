@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as SelfServicePayload | null;
+  const body = (await request.json().catch(() => null)) as (SelfServicePayload & { captcha_token?: string }) | null;
   const via = body?.via;
   const centroSlug = normalizeString(body?.centro_slug);
   const cohortRef = normalizeString(body?.cohort_ref);
@@ -69,10 +69,30 @@ export async function POST(request: Request) {
   const biNumero = normalizeString(body?.bi_numero);
   const telefone = normalizeString(body?.telefone);
   const password = normalizeString(body?.password);
+  const captchaToken = body?.captcha_token;
 
   if (via !== "self_service") {
     return NextResponse.json({ ok: false, error: "via inválida" }, { status: 400 });
   }
+
+  // 1. Verificação de Captcha (Turnstile)
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA"; // Secret de teste
+  if (captchaToken) {
+    const formData = new FormData();
+    formData.append("secret", turnstileSecret);
+    formData.append("response", captchaToken);
+
+    const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      body: formData,
+      method: "POST",
+    });
+
+    const outcome = await result.json();
+    if (!outcome.success) {
+      return NextResponse.json({ ok: false, error: "Falha na verificação de segurança (Captcha)." }, { status: 403 });
+    }
+  }
+
   if (!centroSlug || !cohortRef || !nome || !biNumero) {
     return NextResponse.json(
       { ok: false, error: "centro_slug, cohort_ref, nome e bi_numero são obrigatórios" },
@@ -181,7 +201,7 @@ export async function POST(request: Request) {
     createdNewUser = true;
   }
 
-  const { data: inscricao, error: inscricaoError } = await rpcClient.rpc("formacao_self_service_create_inscricao", {
+  const { data: inscricaoData, error: inscricaoError } = await rpcClient.rpc("formacao_self_service_create_inscricao", {
     p_escola_slug: centroSlug,
     p_cohort_ref: cohortRef,
     p_formando_user_id: formingUserId,
@@ -208,6 +228,9 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: false, error: inscricaoError.message }, { status: 400 });
   }
+
+  const inscricao = Array.isArray(inscricaoData) ? inscricaoData[0] : (inscricaoData as { estado?: string } | null);
+  const isWaitlist = (inscricao?.estado === "lista_espera");
 
   // Disparo de E-mail de Confirmação (Self-Service)
   if (createdNewUser && email) {
@@ -238,9 +261,32 @@ export async function POST(request: Request) {
 
         await sendMail({
           to: email,
-          subject: emailContent.subject,
-          html: emailContent.html,
-          text: emailContent.text,
+          subject: isWaitlist ? `LISTA DE ESPERA: ${targetData.nome} - ${cohortData.curso_nome}` : emailContent.subject,
+          html: isWaitlist 
+            ? `
+              <div style="font-family: sans-serif; color: #334155; max-width: 600px;">
+                <h1 style="color: #92400e;">Olá ${nome},</h1>
+                <p style="font-size: 16px; line-height: 1.6;">
+                  Registramos o seu interesse no curso <strong>${cohortData.curso_nome}</strong>. 
+                  No momento, a turma <strong>${cohortData.nome}</strong> atingiu o limite máximo de ocupação.
+                </p>
+                <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 12px; margin: 24px 0;">
+                  <h2 style="margin-top: 0; color: #92400e; font-size: 18px;">⚠️ ATENÇÃO: NÃO REALIZE O PAGAMENTO</h2>
+                  <p style="margin-bottom: 0; font-size: 14px;">
+                    Como você está na <strong>Lista de Espera</strong>, pedimos que <strong>não faça nenhuma transferência bancária</strong> neste momento. 
+                    Caso ocorra alguma desistência ou abertura de nova turma, nossa secretaria entrará em contacto direto consigo para autorizar o pagamento e garantir a sua vaga.
+                  </p>
+                </div>
+                <p style="font-size: 14px; color: #64748b;">
+                  Obrigado pela compreensão,<br>
+                  Equipa ${targetData.nome}
+                </p>
+              </div>
+            `
+            : emailContent.html,
+          text: isWaitlist 
+            ? `Olá ${nome}, você está na lista de espera para o curso ${cohortData.curso_nome}. NÃO REALIZE O PAGAMENTO neste momento. Aguarde o contacto da nossa secretaria.`
+            : emailContent.text,
         });
       }
     } catch (mailErr) {
@@ -252,9 +298,12 @@ export async function POST(request: Request) {
     ok: true,
     created_new_user: createdNewUser,
     inscricao,
+    is_waitlist: isWaitlist,
     next: {
-      action: "login",
-      message: "Inscrição concluída. Faça login para continuar no portal do formando.",
+      action: isWaitlist ? "waitlist" : "login",
+      message: isWaitlist 
+        ? "Turma lotada! Você foi inserido na lista de espera. Entraremos em contacto em breve."
+        : "Inscrição concluída. Faça login para continuar no portal do formando.",
     },
   });
 }

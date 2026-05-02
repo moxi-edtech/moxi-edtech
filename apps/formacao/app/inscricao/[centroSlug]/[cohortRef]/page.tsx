@@ -29,6 +29,8 @@ export default async function SelfServiceInscricaoPage({ params }: { params: Par
         curso_nome?: string | null;
         data_inicio?: string | null;
         data_fim?: string | null;
+        vagas?: number | null;
+        vagas_ocupadas?: number | null;
       }
     | undefined;
 
@@ -41,6 +43,8 @@ export default async function SelfServiceInscricaoPage({ params }: { params: Par
   const cursoNome = String(target.curso_nome ?? "Curso");
   const dataInicio = String(target.data_inicio ?? "");
   const dataFim = String(target.data_fim ?? "");
+  const vagasTotal = Number(target.vagas ?? 0);
+  const vagasOcupadas = Number(target.vagas_ocupadas ?? 0);
 
   return (
     <main className="min-h-screen bg-[#F5F0E8] px-4 py-8 text-slate-900 md:px-8">
@@ -65,6 +69,8 @@ export default async function SelfServiceInscricaoPage({ params }: { params: Par
               centroNome={escolaNome}
               cohortNome={cohortNome}
               cursoNome={cursoNome}
+              vagasTotal={vagasTotal}
+              vagasOcupadas={vagasOcupadas}
             />
           </section>
 
