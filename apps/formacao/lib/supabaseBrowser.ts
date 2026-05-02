@@ -1,8 +1,34 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "~types/supabase";
 
-let browserClient: ReturnType<typeof createClient> | null = null;
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null;
+
+function resolveCookieOptions() {
+  const configuredDomain =
+    process.env.NEXT_PUBLIC_KLASSE_COOKIE_DOMAIN?.trim() ||
+    process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
+    (typeof window !== "undefined" && window.location.hostname.endsWith(".klasse.ao") ? ".klasse.ao" : "");
+
+  const sameSiteRaw = (
+    process.env.NEXT_PUBLIC_KLASSE_COOKIE_SAMESITE ??
+    process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_SAMESITE ??
+    "lax"
+  )
+    .trim()
+    .toLowerCase();
+  
+  const sameSite: "lax" | "strict" | "none" =
+    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
+
+  return {
+    ...(configuredDomain ? { domain: configuredDomain } : {}),
+    path: "/",
+    sameSite,
+    secure: typeof window !== "undefined" && window.location.protocol === "https:",
+  };
+}
 
 export function getSupabaseBrowserClient() {
   if (browserClient) return browserClient;
@@ -14,7 +40,9 @@ export function getSupabaseBrowserClient() {
     throw new Error("Supabase browser client não configurado.");
   }
 
-  browserClient = createClient(supabaseUrl, supabaseAnonKey);
+  browserClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: resolveCookieOptions(),
+  });
+  
   return browserClient;
 }
-

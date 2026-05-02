@@ -149,10 +149,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const publicacao = data.publicacao ?? null;
   const locationText = data.escola.municipio ? ` em ${data.escola.municipio}, ${data.escola.provincia}` : "";
 
+  const ogImage = `/api/formacao/publico/og?slug=${slug}`;
+
   return {
     title: data.seo?.title || `${data.escola.nome} · ${publicacao?.badge || experience.badge}${locationText}`,
     description: data.seo?.description || publicacao?.descricao || experience.description,
     keywords: data.seo?.keywords || `cursos, formação, ${data.escola.nome}, ${data.escola.municipio}, ${data.escola.provincia}`,
+    openGraph: {
+      title: data.seo?.title || data.escola.nome,
+      description: data.seo?.description || publicacao?.descricao || experience.description,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: data.escola.nome,
+        },
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: data.seo?.title || data.escola.nome,
+      description: data.seo?.description || publicacao?.descricao || experience.description,
+      images: [ogImage],
+    },
   };
 }
 
