@@ -205,7 +205,7 @@ export default async function PortalLayout({ children }: { children: React.React
                   </summary>
                   <div className="absolute right-0 top-11 z-40 w-44 rounded-xl border border-zinc-200 bg-white p-2 text-zinc-900 shadow-lg">
                     <Link href={defaultPath} className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-zinc-100">Perfil</Link>
-                    <Link href="/logout" className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-zinc-100">Sair</Link>
+                    <a href="/logout" className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-zinc-100">Sair</a>
                   </div>
                 </details>
               </div>
