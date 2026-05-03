@@ -12,6 +12,7 @@ type Cohort = {
   id: string;
   codigo: string;
   nome: string;
+  curso_nome?: string;
   turno?: string;
   vagas: number;
   vagas_ocupadas: number;
@@ -82,7 +83,7 @@ const TURNO_LABELS: Record<string, string> = {
   pos_laboral: "Pós-Laboral",
 };
 
-export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking, publicacao, testemunhos, courses }: Props) {
+export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking, publicacao, testemunhos = [], courses = [] }: Props) {
   const [selectedCohort, setSelectedCohort] = useState<Cohort | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [targetCourse, setTargetCourse] = useState<Course | null>(null);
@@ -120,8 +121,11 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
     setShowLeadModal(true);
   };
 
-  const handleEnrollClick = (cohort: Cohort) => {
-    setSelectedCohort(cohort);
+  const handleEnrollClick = (cohort: Cohort, course?: Course) => {
+    setSelectedCohort({
+      ...cohort,
+      curso_nome: cohort.curso_nome || course?.nome || "Curso",
+    });
   };
 
   const handleLeadSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -186,7 +190,7 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
                   } else if (isSoldOut) {
                     handleWaitlistClick(course, mainCohort);
                   } else {
-                    handleEnrollClick(mainCohort);
+                    handleEnrollClick(mainCohort, course);
                   }
                 }}
               />
@@ -205,7 +209,7 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
                       return (
                         <button
                           key={coh.id}
-                          onClick={() => cohSoldOut ? handleWaitlistClick(course, coh) : handleEnrollClick(coh)}
+                          onClick={() => cohSoldOut ? handleWaitlistClick(course, coh) : handleEnrollClick(coh, course)}
                           className="flex w-full items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
                         >
                           <div>
@@ -217,10 +221,10 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-slate-400">Início: {new Date(coh.data_inicio).toLocaleDateString("pt-AO")}</p>
+                            <p className="text-[10px] text-slate-400" suppressHydrationWarning>Início: {new Date(coh.data_inicio).toLocaleDateString("pt-AO")}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs font-black text-klasse-gold">{new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(coh.valor_referencia)}</p>
+                            <p className="text-xs font-black text-klasse-gold" suppressHydrationWarning>{new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(coh.valor_referencia)}</p>
                             <p className={`text-[9px] font-bold uppercase ${cohSoldOut ? "text-rose-500" : "text-emerald-500"}`}>
                               {cohSoldOut ? "Esgotado" : "Vagas Abertas"}
                             </p>
@@ -279,7 +283,7 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
 
                 <div>
                   <div className="flex gap-1">
-                    {[...Array(t.estrelas)].map((_, j) => (
+                    {[...Array(Math.max(0, Math.min(5, t.estrelas || 0)))].map((_, j) => (
                       <Star key={j} size={14} className="fill-klasse-gold text-klasse-gold" />
                     ))}
                   </div>
@@ -390,7 +394,7 @@ export function LandingContent({ tenantType, centro, fiscal, pagamento, tracking
             curso={{
               id: selectedCohort.id,
               cohortRef: selectedCohort.codigo,
-              title: selectedCohort.curso_nome,
+              title: selectedCohort.curso_nome || "Curso",
               price: selectedCohort.valor_referencia,
             }}
             tenant={{

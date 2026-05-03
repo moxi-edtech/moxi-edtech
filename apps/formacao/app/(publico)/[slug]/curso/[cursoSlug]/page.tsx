@@ -131,7 +131,7 @@ export default async function CourseDetailPage({ params }: Props) {
           <aside className="space-y-6">
             <div className="sticky top-24 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Investimento</p>
-              <p className="mt-2 text-3xl font-black text-klasse-gold">
+              <p className="mt-2 text-3xl font-black text-klasse-gold" suppressHydrationWarning>
                 {course.open_cohorts?.[0] ? new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(course.open_cohorts[0].valor_referencia) : "Sob consulta"}
               </p>
               

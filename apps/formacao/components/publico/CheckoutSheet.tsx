@@ -224,7 +224,7 @@ export function CheckoutSheet({ open, onOpenChange, curso, tenant }: Props) {
               <div className="border-b border-slate-100 bg-slate-50 p-5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Curso</p>
                 <h3 className="mt-1 text-base font-semibold text-slate-900">{curso.title}</h3>
-                <p className="mt-1 text-lg font-black text-slate-900 [font-family:var(--font-geist-mono)]">
+                <p className="mt-1 text-lg font-black text-slate-900 [font-family:var(--font-geist-mono)]" suppressHydrationWarning>
                   {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(
                     curso.price
                   )}

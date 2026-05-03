@@ -170,7 +170,7 @@ export default function AdmissoesWebPage() {
                 <div>
                   <h3 className="font-black text-slate-900">{item.nome_completo}</h3>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
-                    <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(item.created_at).toLocaleDateString("pt-AO")}</span>
+                    <span className="flex items-center gap-1" suppressHydrationWarning><Calendar size={12} /> {new Date(item.created_at).toLocaleDateString("pt-AO")}</span>
                     <span className="flex items-center gap-1 uppercase tracking-tight">BI: {item.bi_passaporte}</span>
                     <span className="flex items-center gap-1 uppercase tracking-tight text-klasse-gold">{item.cohort.curso_nome}</span>
                     <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest ${priorityPill(item.priority_level)}`}>

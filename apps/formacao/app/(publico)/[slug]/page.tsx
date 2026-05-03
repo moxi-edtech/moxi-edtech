@@ -292,8 +292,8 @@ export default async function PublicCentroLandingPage({ params }: Props) {
           pagamento={data.pagamento ?? null}
           tracking={data.tracking}
           publicacao={data.publicacao ?? null}
-          testemunhos={data.testemunhos}
-          courses={data.courses}
+          testemunhos={data.testemunhos || []}
+          courses={data.courses || []}
         />
 
         <section className="mt-32 grid gap-12 lg:grid-cols-3">

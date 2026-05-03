@@ -640,6 +640,7 @@ export type Database = {
         Row: {
           api_enabled: boolean
           app_whatsapp_auto: boolean
+          discount_percent: number
           doc_qr_code: boolean
           fin_recibo_pdf: boolean
           max_admin_users: number | null
@@ -647,16 +648,21 @@ export type Database = {
           max_storage_gb: number | null
           multi_campus: boolean
           plan: Database["public"]["Enums"]["app_plan_tier"]
+          price_anual_kz: number
           price_mensal_kz: number
           professores_ilimitados: boolean
+          promo_ends_at: string | null
+          promo_label: string | null
           sec_matricula_online: boolean
           sec_upload_docs: boolean
           suporte_prioritario: boolean
+          trial_days: number
           updated_at: string
         }
         Insert: {
           api_enabled?: boolean
           app_whatsapp_auto?: boolean
+          discount_percent?: number
           doc_qr_code?: boolean
           fin_recibo_pdf?: boolean
           max_admin_users?: number | null
@@ -664,16 +670,21 @@ export type Database = {
           max_storage_gb?: number | null
           multi_campus?: boolean
           plan: Database["public"]["Enums"]["app_plan_tier"]
+          price_anual_kz?: number
           price_mensal_kz: number
           professores_ilimitados?: boolean
+          promo_ends_at?: string | null
+          promo_label?: string | null
           sec_matricula_online?: boolean
           sec_upload_docs?: boolean
           suporte_prioritario?: boolean
+          trial_days?: number
           updated_at?: string
         }
         Update: {
           api_enabled?: boolean
           app_whatsapp_auto?: boolean
+          discount_percent?: number
           doc_qr_code?: boolean
           fin_recibo_pdf?: boolean
           max_admin_users?: number | null
@@ -681,11 +692,15 @@ export type Database = {
           max_storage_gb?: number | null
           multi_campus?: boolean
           plan?: Database["public"]["Enums"]["app_plan_tier"]
+          price_anual_kz?: number
           price_mensal_kz?: number
           professores_ilimitados?: boolean
+          promo_ends_at?: string | null
+          promo_label?: string | null
           sec_matricula_online?: boolean
           sec_upload_docs?: boolean
           suporte_prioritario?: boolean
+          trial_days?: number
           updated_at?: string
         }
         Relationships: []
@@ -5164,6 +5179,93 @@ export type Database = {
           },
         ]
       }
+      formacao_aulas: {
+        Row: {
+          cohort_id: string
+          conteudo_previsto: string | null
+          conteudo_realizado: string | null
+          created_at: string | null
+          data: string
+          escola_id: string
+          formador_user_id: string | null
+          hora_fim: string | null
+          hora_inicio: string | null
+          horas_ministradas: number | null
+          id: string
+          observacoes: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          cohort_id: string
+          conteudo_previsto?: string | null
+          conteudo_realizado?: string | null
+          created_at?: string | null
+          data: string
+          escola_id: string
+          formador_user_id?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          horas_ministradas?: number | null
+          id?: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          conteudo_previsto?: string | null
+          conteudo_realizado?: string | null
+          created_at?: string | null
+          data?: string
+          escola_id?: string
+          formador_user_id?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          horas_ministradas?: number | null
+          id?: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_aulas_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohort_economics"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohorts_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formacao_certificado_templates: {
         Row: {
           ativo: boolean
@@ -5492,6 +5594,92 @@ export type Database = {
           },
         ]
       }
+      formacao_cohort_materiais: {
+        Row: {
+          cohort_id: string
+          created_at: string | null
+          curso_id: string | null
+          escola_id: string
+          id: string
+          tipo: string
+          titulo: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string | null
+          curso_id?: string | null
+          escola_id: string
+          id?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string | null
+          curso_id?: string | null
+          escola_id?: string
+          id?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_cohort_materiais_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_materiais_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohort_economics"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_materiais_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohorts_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_materiais_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_materiais_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_materiais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_materiais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formacao_cohort_modulos: {
         Row: {
           carga_horaria: number | null
@@ -5559,6 +5747,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "formacao_cohort_modulos_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
+          },
+          {
             foreignKeyName: "formacao_cohort_modulos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -5579,6 +5774,7 @@ export type Database = {
           carga_horaria_total: number
           codigo: string
           created_at: string
+          curso_id: string | null
           curso_nome: string
           data_fim: string
           data_inicio: string
@@ -5586,13 +5782,16 @@ export type Database = {
           id: string
           nome: string
           status: string
+          turno: string | null
           updated_at: string
           vagas: number
+          visivel_na_landing: boolean | null
         }
         Insert: {
           carga_horaria_total: number
           codigo: string
           created_at?: string
+          curso_id?: string | null
           curso_nome: string
           data_fim: string
           data_inicio: string
@@ -5600,13 +5799,16 @@ export type Database = {
           id?: string
           nome: string
           status?: string
+          turno?: string | null
           updated_at?: string
           vagas: number
+          visivel_na_landing?: boolean | null
         }
         Update: {
           carga_horaria_total?: number
           codigo?: string
           created_at?: string
+          curso_id?: string | null
           curso_nome?: string
           data_fim?: string
           data_inicio?: string
@@ -5614,10 +5816,26 @@ export type Database = {
           id?: string
           nome?: string
           status?: string
+          turno?: string | null
           updated_at?: string
           vagas?: number
+          visivel_na_landing?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "formacao_cohorts_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cohorts_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
+          },
           {
             foreignKeyName: "formacao_cohorts_escola_id_fkey"
             columns: ["escola_id"]
@@ -5764,6 +5982,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "formacao_curso_comercial_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: true
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
+          },
+          {
             foreignKeyName: "formacao_curso_comercial_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -5781,33 +6006,33 @@ export type Database = {
       }
       formacao_curso_materiais: {
         Row: {
-          created_at: string
+          created_at: string | null
           curso_id: string
           escola_id: string
           id: string
           tipo: string
           titulo: string
-          updated_at: string
+          updated_at: string | null
           url: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           curso_id: string
           escola_id: string
           id?: string
           tipo?: string
           titulo: string
-          updated_at?: string
+          updated_at?: string | null
           url: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           curso_id?: string
           escola_id?: string
           id?: string
           tipo?: string
           titulo?: string
-          updated_at?: string
+          updated_at?: string | null
           url?: string
         }
         Relationships: [
@@ -5817,6 +6042,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "formacao_cursos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_curso_materiais_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "formacao_curso_materiais_escola_id_fkey"
@@ -5877,6 +6109,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "formacao_curso_modulos_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
+          },
+          {
             foreignKeyName: "formacao_curso_modulos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -5905,9 +6144,12 @@ export type Database = {
           nome: string
           objetivos: Json | null
           requisitos: Json | null
+          seo_config: Json | null
+          slug: string | null
           status: string
           thumbnail_url: string | null
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           area?: string | null
@@ -5921,9 +6163,12 @@ export type Database = {
           nome: string
           objetivos?: Json | null
           requisitos?: Json | null
+          seo_config?: Json | null
+          slug?: string | null
           status?: string
           thumbnail_url?: string | null
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           area?: string | null
@@ -5937,11 +6182,21 @@ export type Database = {
           nome?: string
           objetivos?: Json | null
           requisitos?: Json | null
+          seo_config?: Json | null
+          slug?: string | null
           status?: string
           thumbnail_url?: string | null
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "formacao_cursos_certificado_template_id_fkey"
+            columns: ["certificado_template_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_certificado_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "formacao_cursos_escola_id_fkey"
             columns: ["escola_id"]
@@ -6434,6 +6689,272 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      formacao_leads: {
+        Row: {
+          cohort_id: string | null
+          created_at: string | null
+          curso_id: string | null
+          email: string | null
+          escola_id: string
+          id: string
+          metadata: Json | null
+          nome: string
+          origem: string | null
+          telefone: string | null
+          turno_preferencia: string | null
+        }
+        Insert: {
+          cohort_id?: string | null
+          created_at?: string | null
+          curso_id?: string | null
+          email?: string | null
+          escola_id: string
+          id?: string
+          metadata?: Json | null
+          nome: string
+          origem?: string | null
+          telefone?: string | null
+          turno_preferencia?: string | null
+        }
+        Update: {
+          cohort_id?: string | null
+          created_at?: string | null
+          curso_id?: string | null
+          email?: string | null
+          escola_id?: string
+          id?: string
+          metadata?: Json | null
+          nome?: string
+          origem?: string | null
+          telefone?: string | null
+          turno_preferencia?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_leads_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_leads_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohort_economics"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "formacao_leads_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohorts_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_leads_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_leads_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_curso_cockpit_metrics"
+            referencedColumns: ["curso_id"]
+          },
+          {
+            foreignKeyName: "formacao_leads_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_leads_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formacao_modulo_avaliacoes: {
+        Row: {
+          conceito: string | null
+          created_at: string | null
+          escola_id: string
+          id: string
+          inscricao_id: string
+          modulo_id: string
+          nota: number | null
+          observacoes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          conceito?: string | null
+          created_at?: string | null
+          escola_id: string
+          id?: string
+          inscricao_id: string
+          modulo_id: string
+          nota?: number | null
+          observacoes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          conceito?: string | null
+          created_at?: string | null
+          escola_id?: string
+          id?: string
+          inscricao_id?: string
+          modulo_id?: string
+          nota?: number | null
+          observacoes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_modulo_avaliacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_modulo_avaliacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_modulo_avaliacoes_inscricao_id_fkey"
+            columns: ["inscricao_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_inscricoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_modulo_avaliacoes_inscricao_id_fkey"
+            columns: ["inscricao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_estudante_progresso"
+            referencedColumns: ["inscricao_id"]
+          },
+          {
+            foreignKeyName: "formacao_modulo_avaliacoes_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohort_modulos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formacao_plan_settings: {
+        Row: {
+          discount_percent: number
+          plan: string
+          price_anual_kz: number
+          price_mensal_kz: number
+          promo_ends_at: string | null
+          promo_label: string | null
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          discount_percent?: number
+          plan: string
+          price_anual_kz?: number
+          price_mensal_kz?: number
+          promo_ends_at?: string | null
+          promo_label?: string | null
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          discount_percent?: number
+          plan?: string
+          price_anual_kz?: number
+          price_mensal_kz?: number
+          promo_ends_at?: string | null
+          promo_label?: string | null
+          trial_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      formacao_presencas: {
+        Row: {
+          aula_id: string
+          created_at: string | null
+          escola_id: string
+          id: string
+          inscricao_id: string
+          justificativa: string | null
+          presente: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          aula_id: string
+          created_at?: string | null
+          escola_id: string
+          id?: string
+          inscricao_id: string
+          justificativa?: string | null
+          presente?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          aula_id?: string
+          created_at?: string | null
+          escola_id?: string
+          id?: string
+          inscricao_id?: string
+          justificativa?: string | null
+          presente?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_presencas_aula_id_fkey"
+            columns: ["aula_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_aulas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_presencas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_presencas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_presencas_inscricao_id_fkey"
+            columns: ["inscricao_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_inscricoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_presencas_inscricao_id_fkey"
+            columns: ["inscricao_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_estudante_progresso"
+            referencedColumns: ["inscricao_id"]
           },
         ]
       }
@@ -13383,6 +13904,82 @@ export type Database = {
           },
         ]
       }
+      vw_formacao_curso_cockpit_metrics: {
+        Row: {
+          curso_id: string | null
+          escola_id: string | null
+          ocupacao_media: number | null
+          receita_estimada: number | null
+          total_leads: number | null
+          total_turmas: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_cursos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cursos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_formacao_estudante_progresso: {
+        Row: {
+          cohort_id: string | null
+          elegivel_certificacao: boolean | null
+          escola_id: string | null
+          formando_user_id: string | null
+          inscricao_id: string | null
+          modulos_aprovados: number | null
+          percentual_presenca: number | null
+          total_aulas_realizadas: number | null
+          total_modulos: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_inscricoes_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_inscricoes_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohort_economics"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "formacao_inscricoes_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohorts_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_inscricoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_inscricoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_formacao_faturas_formando: {
         Row: {
           desconto: number | null
@@ -13500,6 +14097,53 @@ export type Database = {
           receita_total: number | null
         }
         Relationships: []
+      }
+      vw_formacao_relatorio_honorarios_aulas: {
+        Row: {
+          cohort_id: string | null
+          escola_id: string | null
+          formador_user_id: string | null
+          mes_referencia: string | null
+          total_aulas: number | null
+          total_horas: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_aulas_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohort_economics"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "vw_formacao_cohorts_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_aulas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_freq_por_turma_dia: {
         Row: {
@@ -15811,6 +16455,7 @@ export type Database = {
           escola_slug: string
           status: string
           vagas: number
+          vagas_ocupadas: number
         }[]
       }
       formacao_update_dados_pagamento: {
@@ -16704,6 +17349,7 @@ export type Database = {
         Args: { p_ano_data: Json; p_escola_id: string }
         Returns: Json
       }
+      slugify: { Args: { v_text: string }; Returns: string }
       slugify_escola_nome: { Args: { input: string }; Returns: string }
       soft_delete_aluno: {
         Args: { p_deleted_by: string; p_id: string; p_reason: string }
