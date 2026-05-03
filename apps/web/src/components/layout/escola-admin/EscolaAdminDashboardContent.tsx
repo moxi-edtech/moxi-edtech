@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
 import OperationalFeedSection from "./OperationalFeedSection";
@@ -52,9 +53,24 @@ type Props = {
 
 const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" });
 
+// ─── Animation Variants ───────────────────────────────────────────────────────
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
+
 // ─── Alert banners ────────────────────────────────────────────────────────────
-// One component covers both orange (turmas) and amber (currículo) banners,
-// keeping the visual language consistent while allowing colour variation.
 
 type AlertBannerProps = {
   href:    string;
@@ -68,7 +84,7 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
     : { wrap: "bg-klasse-gold-50  border-klasse-gold-200  hover:border-klasse-gold-300",  dot: "bg-klasse-gold-400",  bold: "text-klasse-gold-900",  sub: "text-klasse-gold-600",  icon: "bg-klasse-gold-100  text-klasse-gold-700  group-hover:bg-klasse-gold-200"  };
 
   return (
-    <div className="animate-in fade-in duration-500">
+    <motion.div variants={itemVariants}>
       <Link
         href={href}
         className={`group flex items-center justify-between gap-4 p-4 rounded-2xl border shadow-sm transition-all hover:shadow-md ${colors.wrap}`}
@@ -90,7 +106,7 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
           <ArrowRight className="h-4 w-4" />
         </div>
       </Link>
-    </div>
+    </motion.div>
   );
 }
 
@@ -106,23 +122,21 @@ function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, child
   children:   React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* Card header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col h-full">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/30">
         <div className="flex items-center gap-3">
           <div className={`rounded-xl p-2 ${iconBg}`}>{icon}</div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-            <p className="text-xs text-slate-400">{subtitle}</p>
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight">{title}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{subtitle}</p>
           </div>
         </div>
-        <Link href={linkHref} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+        <Link href={linkHref} className="text-[11px] font-bold uppercase tracking-wider text-[#1F6B3B] hover:underline">
           {linkLabel}
         </Link>
       </div>
-      {/* Card body */}
-      <div className="px-5 divide-y divide-slate-100">{children}</div>
-    </div>
+      <div className="px-5 divide-y divide-slate-100 flex-1">{children}</div>
+    </motion.div>
   );
 }
 
@@ -185,23 +199,6 @@ export default function EscolaAdminDashboardContent({
     return () => clearTimeout(timer);
   }, [percentualReceita]);
 
-  // Collect currículo alerts into a unified list
-  const curriculoAlerts: { bold: string; sub: string }[] = [];
-  if ((curriculoPendencias?.horario ?? 0) > 0) {
-    const n = curriculoPendencias!.horario;
-    curriculoAlerts.push({
-      bold: `Horários incompletos: ${n} disciplina${n > 1 ? "s" : ""}`,
-      sub:  "Ajuste a carga horária para liberar o quadro automático.",
-    });
-  }
-  if ((curriculoPendencias?.avaliacao ?? 0) > 0) {
-    const n = curriculoPendencias!.avaliacao;
-    curriculoAlerts.push({
-      bold: `Avaliação incompleta: ${n} disciplina${n > 1 ? "s" : ""}`,
-      sub:  "Configure avaliação para liberar lançamento de notas.",
-    });
-  }
-
   const radarAlerts: OperationalAlert[] = [];
   if (typeof pendingTurmasCount === "number" && pendingTurmasCount > 0) {
     radarAlerts.push({
@@ -213,30 +210,6 @@ export default function EscolaAdminDashboardContent({
       count: pendingTurmasCount,
       link: `/escola/${escolaParam}/admin/turmas?status=pendente`,
       link_label: "Ver turmas",
-    });
-  }
-  if ((curriculoPendencias?.horario ?? 0) > 0) {
-    radarAlerts.push({
-      id: "curriculo-horario",
-      severity: "warning",
-      categoria: "academico",
-      titulo: "Horários incompletos",
-      descricao: "Ajuste a carga horária para liberar o quadro automático.",
-      count: curriculoPendencias?.horario ?? 0,
-      link: `/escola/${escolaParam}/admin/configuracoes/academico-completo`,
-      link_label: "Ajustar currículo",
-    });
-  }
-  if ((curriculoPendencias?.avaliacao ?? 0) > 0) {
-    radarAlerts.push({
-      id: "curriculo-avaliacao",
-      severity: "warning",
-      categoria: "academico",
-      titulo: "Avaliação incompleta",
-      descricao: "Configure avaliação para liberar lançamento de notas.",
-      count: curriculoPendencias?.avaliacao ?? 0,
-      link: `/escola/${escolaParam}/admin/configuracoes/academico-completo`,
-      link_label: "Configurar avaliação",
     });
   }
   if (missingPricingCount > 0) {
@@ -253,210 +226,238 @@ export default function EscolaAdminDashboardContent({
   }
 
   return (
-    <div className="space-y-8 pb-12">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 pb-12"
+    >
 
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">
             Dashboard
           </h1>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2">
             <p className="text-sm font-medium text-slate-500">{saudacao}</p>
-            <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#4ade80] shadow-[0_0_8px_#4ade80] animate-pulse" />
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">Live</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
+              <div className="h-1.5 w-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981] animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#10b981]">Live</span>
             </div>
-            {escolaNome && <p className="text-sm font-medium text-slate-500">· {escolaNome}</p>}
+            {escolaNome && <p className="text-sm font-medium text-slate-400">· {escolaNome}</p>}
           </div>
         </div>
 
         {anoLetivo && (
-          <span className="hidden md:inline-flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 shadow-sm flex-shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#1F6B3B]" />
-            Ano Letivo {anoLetivo}
-          </span>
+          <div className="hidden md:flex flex-col items-end gap-1">
+            <span className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-2xl text-xs font-black text-slate-600 shadow-sm transition-all hover:border-slate-300">
+              <span className="w-2 h-2 rounded-full bg-[#1F6B3B]" />
+              ANO LETIVO {anoLetivo}
+            </span>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-2">Status do Período</p>
+          </div>
         )}
-      </div>
+      </motion.div>
 
       {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
-      <RadarOperacional alerts={radarAlerts} role="admin" />
+      <motion.div variants={itemVariants}>
+        <RadarOperacional alerts={radarAlerts} role="admin" />
+      </motion.div>
 
       {/* ── 3. KPIs ──────────────────────────────────────────────────────────── */}
-      <KpiSection
-        escolaId={escolaId}
-        stats={stats}
-        loading={loading}
-        error={error}
-        setupStatus={setupStatus}
-        financeiroHref={financeiroHref}
-      />
+      <motion.div variants={itemVariants}>
+        <KpiSection
+          escolaId={escolaId}
+          stats={stats}
+          loading={loading}
+          error={error}
+          setupStatus={setupStatus}
+          financeiroHref={financeiroHref}
+        />
+      </motion.div>
 
       {/* ── 4. PREVISÃO DE RECEITA ───────────────────────────────────────────── */}
       {(previstoReceita > 0 || realizadoReceita > 0) && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Previsão de receita</p>
-              <p className="mt-2 text-lg font-bold text-slate-900">
+        <motion.section variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4 mb-6 relative z-10">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Desempenho Financeiro</p>
+              <h2 className="text-2xl font-black text-slate-900 leading-tight">
                 {moeda.format(realizadoReceita)}
-                <span className="ml-1 text-sm font-medium text-slate-500">de {moeda.format(previstoReceita)}</span>
-              </p>
+                <span className="ml-2 text-sm font-medium text-slate-400">de {moeda.format(previstoReceita)} previstos</span>
+              </h2>
             </div>
-            <p className="text-2xl font-black text-[#1F6B3B]">{percentualReceita}%</p>
+            <div className="text-right">
+              <p className="text-3xl font-black text-[#1F6B3B] leading-none">{percentualReceita}%</p>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase mt-1">Realizado</p>
+            </div>
           </div>
 
-          <div className="mt-4">
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_16px_#4ade8044]"
-                style={{
-                  width: `${progress}%`,
-                  transition: "width 1.4s cubic-bezier(0.16,1,0.3,1)",
-                }}
+          <div className="relative mt-2">
+            <div className="h-4 overflow-hidden rounded-full bg-slate-50 border border-slate-100">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_20px_rgba(74,222,128,0.3)]"
               />
             </div>
-            <p className="mt-2 text-xs font-semibold text-slate-500">{percentualReceita}% cobrado no período actual</p>
+            
+            {/* Pacing marker (Target 70% for example) */}
+            <div 
+              className="absolute top-0 bottom-0 w-0.5 bg-slate-200 z-10 flex flex-col items-center"
+              style={{ left: '70%' }}
+            >
+              <div className="w-2 h-2 rounded-full bg-slate-300 -mt-0.5 shadow-sm" />
+              <div className="absolute top-5 bg-white border border-slate-100 px-1.5 py-0.5 rounded shadow-sm">
+                <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">META 70%</span>
+              </div>
+            </div>
           </div>
-        </section>
+          
+          <div className="mt-8 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <p>0% Iniciado</p>
+            <p className="text-slate-900">Actual: {percentualReceita}%</p>
+            <p>100% Meta Final</p>
+          </div>
+        </motion.section>
       )}
 
-      {/* ── 5. ALERT BANNERS ─────────────────────────────────────────────────── */}
-      {(typeof pendingTurmasCount === "number" && pendingTurmasCount > 0) || curriculoAlerts.length > 0 ? (
-        <div className="space-y-2">
-          {typeof pendingTurmasCount === "number" && pendingTurmasCount > 0 && (
-            <AlertBanner
-              tone="orange"
-              href={`/escola/${escolaParam}/admin/turmas?status=pendente`}
-              lines={[{
-                bold: `${pendingTurmasCount} turma${pendingTurmasCount > 1 ? "s" : ""} pendente${pendingTurmasCount > 1 ? "s" : ""} de validação`,
-                sub:  "Revise e aprove as turmas importadas/rascunho.",
-              }]}
-            />
-          )}
-          {curriculoAlerts.length > 0 && (
-            <AlertBanner
-              tone="amber"
-              href={`/escola/${escolaParam}/admin/configuracoes/estrutura?resolvePendencias=1`}
-              lines={curriculoAlerts}
-            />
-          )}
-        </div>
-      ) : null}
-
-      {/* ── 6. CHARTS ────────────────────────────────────────────────────────── */}
-      <div className="animate-in fade-in duration-500">
+      {/* ── 5. CHARTS ────────────────────────────────────────────────────────── */}
+      <motion.div variants={itemVariants}>
         <ChartsSection
           meses={charts?.meses}
           alunosPorMes={charts?.alunosPorMes}
           pagamentos={charts?.pagamentos}
         />
-      </div>
+      </motion.div>
 
-      {/* ── 7. FINANCE CARDS ─────────────────────────────────────────────────── */}
-      <section className="grid gap-5 lg:grid-cols-2 animate-in fade-in duration-500">
-
-        {/* Entradas de Hoje */}
+      {/* ── 6. FINANCE CARDS ─────────────────────────────────────────────────── */}
+      <section className="grid gap-6 lg:grid-cols-2">
         <FinanceCard
-          iconBg="bg-[#1F6B3B]/10 text-[#1F6B3B]"
+          iconBg="bg-emerald-50 text-emerald-700"
           icon={<Wallet className="h-4 w-4" />}
-          title="Entradas de Hoje"
-          subtitle="Acompanhamento de caixa ao vivo"
+          title="Fluxo de Caixa"
+          subtitle="Entradas confirmadas hoje"
           linkHref={`${financeBase}/pagamentos`}
           linkLabel="Ver histórico"
         >
-          {pagamentosRecentes.length === 0 ? (
-            <div className="py-4">
-              <EstadoVazio tipo="notificacoes.nenhuma" />
-            </div>
-          ) : (
-            pagamentosRecentes.map((p) => (
-              <div key={p.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
-                    {p.aluno_nome ?? (p.aluno_id ? `Aluno ${p.aluno_id.slice(0, 8)}…` : "—")}
-                  </p>
-                  <p className="text-xs text-slate-400">{p.metodo ?? "—"}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <StatusPill status={p.status} />
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-slate-900">
-                      {moeda.format(Number(p.valor_pago ?? 0))}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {p.created_at
-                        ? new Date(p.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
+          <AnimatePresence mode="popLayout">
+            {pagamentosRecentes.length === 0 ? (
+              <div className="py-8">
+                <EstadoVazio tipo="notificacoes.nenhuma" />
               </div>
-            ))
-          )}
+            ) : (
+              pagamentosRecentes.map((p, idx) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="flex items-center justify-between gap-3 py-4 group/row transition-colors hover:bg-slate-50/50"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate group-hover/row:text-klasse-green transition-colors">
+                      {p.aluno_nome ?? (p.aluno_id ? `Aluno ${p.aluno_id.slice(0, 8)}…` : "—")}
+                    </p>
+                    <p className="text-[11px] font-medium text-slate-400">{p.metodo ?? "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <StatusPill status={p.status} />
+                    <div className="text-right">
+                      <p className="text-sm font-black text-slate-900">
+                        {moeda.format(Number(p.valor_pago ?? 0))}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400">
+                        {p.created_at
+                          ? new Date(p.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
         </FinanceCard>
 
-        {/* Atenção Prioritária */}
         <FinanceCard
           iconBg="bg-rose-50 text-rose-600"
           icon={<AlertCircle className="h-4 w-4" />}
-          title="Atenção Prioritária"
-          subtitle="Casos que requerem acompanhamento"
+          title="Radar Financeiro"
+          subtitle="Alertas de inadimplência"
           linkHref={`${financeBase}/radar`}
-          linkLabel="Ver radar financeiro"
+          linkLabel="Ver todos"
         >
-          {inadimplenciaTop.length === 0 ? (
-            <div className="py-4">
-              <EstadoVazio tipo="atrasos.nenhum" />
-            </div>
-          ) : (
-            inadimplenciaTop.map((row) => {
-              const nome    = row.aluno_nome?.trim() || "Aluno";
-              const iniciais = nome.charAt(0).toUpperCase();
-              return (
-                <div key={row.aluno_id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
-                      {iniciais}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{nome}</p>
-                      <div className="flex items-center gap-1 text-xs text-slate-400">
-                        <DiasAtraso dias={row.dias_em_atraso} />
-                        <span>{row.dias_em_atraso ? `${row.dias_em_atraso} dias` : "—"}</span>
+          <AnimatePresence mode="popLayout">
+            {inadimplenciaTop.length === 0 ? (
+              <div className="py-8">
+                <EstadoVazio tipo="atrasos.nenhum" />
+              </div>
+            ) : (
+              inadimplenciaTop.map((row, idx) => {
+                const nome = row.aluno_nome?.trim() || "Aluno";
+                const iniciais = nome.charAt(0).toUpperCase();
+                return (
+                  <motion.div
+                    key={row.aluno_id}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex items-center justify-between gap-3 py-4 group/row transition-colors hover:bg-slate-50/50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-black flex-shrink-0 border border-slate-200">
+                        {iniciais}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate group-hover/row:text-rose-600 transition-colors">{nome}</p>
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-tighter">
+                          <DiasAtraso dias={row.dias_em_atraso} />
+                          <span>{row.dias_em_atraso ? `${row.dias_em_atraso} DIAS DE ATRASO` : "—"}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-rose-600">
-                      {moeda.format(Number(row.valor_em_atraso ?? 0))}
-                    </p>
-                    <p className="text-xs text-slate-400">em atraso</p>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-black text-rose-600">
+                        {moeda.format(Number(row.valor_em_atraso ?? 0))}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Dívida Total</p>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </AnimatePresence>
         </FinanceCard>
       </section>
 
-      {/* ── 8. BOTTOM GRID ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start animate-in fade-in duration-700">
-        <div className="lg:col-span-2 space-y-6">
-          <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} />
-          <NoticesSection notices={notices} />
+      {/* ── 7. BOTTOM GRID ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
+        <div className="lg:col-span-2 space-y-8">
+          <motion.div variants={itemVariants}>
+            <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NoticesSection notices={notices} />
+          </motion.div>
         </div>
-        <div className="space-y-6">
-          <AcademicSection
-            escolaId={escolaId}
-            setupStatus={setupStatus}
-            missingPricingCount={missingPricingCount}
-            financeiroHref={financeiroHref}
-          />
-          <OperationalFeedSection escolaId={escolaId} />
+        <div className="space-y-8">
+          <motion.div variants={itemVariants}>
+            <AcademicSection
+              escolaId={escolaId}
+              setupStatus={setupStatus}
+              missingPricingCount={missingPricingCount}
+              financeiroHref={financeiroHref}
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <OperationalFeedSection escolaId={escolaId} />
+          </motion.div>
         </div>
       </div>
 
-    </div>
+    </motion.div>
   );
 }

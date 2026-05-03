@@ -6,6 +6,35 @@ import { readEnv } from "@/lib/env";
 const LOGIN_PATH = "/login";
 const PUBLIC_ASSET_PATTERN = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map|txt|xml|json|woff2?)$/i;
 
+function resolveAllowedOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+
+  // Permite subdomínios klasse.ao e ambientes locais de desenvolvimento
+  if (
+    origin.endsWith(".klasse.ao") ||
+    origin.startsWith("http://app.lvh.me:") ||
+    origin.startsWith("http://formacao.lvh.me:") ||
+    origin.startsWith("http://auth.lvh.me:") ||
+    origin.startsWith("http://localhost:")
+  ) {
+    return origin;
+  }
+  return null;
+}
+
+function applyCorsHeaders(response: NextResponse, allowedOrigin: string | null) {
+  if (!allowedOrigin) return;
+  response.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-middleware-prefetch, x-nextjs-data, x-middleware-next"
+  );
+  response.headers.set("Access-Control-Allow-Credentials", "true");
+  response.headers.set("Vary", "Origin");
+}
+
 function applyResponseCookies(source: NextResponse, target: NextResponse) {
   source.cookies.getAll().forEach(({ name, value, ...options }) => {
     target.cookies.set(name, value, options);
@@ -39,6 +68,15 @@ export async function middleware(request: NextRequest) {
     .trim()
     .toLowerCase();
 
+  const allowedOrigin = resolveAllowedOrigin(request);
+
+  // Responde imediatamente a pedidos de preflight (OPTIONS)
+  if (request.method === "OPTIONS" && allowedOrigin) {
+    const response = new NextResponse(null, { status: 204 });
+    applyCorsHeaders(response, allowedOrigin);
+    return response;
+  }
+
   if (process.env.NODE_ENV !== "production" && (host.includes("localhost") || host.includes("127.0.0.1"))) {
     const canonicalHost = (process.env.KLASSE_AUTH_LOCAL_ORIGIN ?? "http://auth.lvh.me:3000")
       .trim()
@@ -50,7 +88,9 @@ export async function middleware(request: NextRequest) {
         next.protocol = canonical.protocol;
         next.hostname = canonical.hostname;
         next.port = canonical.port;
-        return NextResponse.redirect(next, 307);
+        const redirectResponse = NextResponse.redirect(next, 307);
+        applyCorsHeaders(redirectResponse, allowedOrigin);
+        return redirectResponse;
       }
     } catch {
       // ignore invalid canonical origin and continue normal flow
@@ -58,6 +98,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
+  applyCorsHeaders(response, allowedOrigin);
+
   let hasSession = false;
   try {
     const supabase = buildSupabaseClient(request, response);
@@ -95,6 +137,7 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set("redirect", request.nextUrl.href);
     const redirectResponse = NextResponse.redirect(loginUrl);
     applyResponseCookies(response, redirectResponse);
+    applyCorsHeaders(redirectResponse, allowedOrigin);
     return redirectResponse;
   }
 
@@ -116,6 +159,7 @@ export async function middleware(request: NextRequest) {
     redirectUrl.search = "";
     const redirectResponse = NextResponse.redirect(redirectUrl);
     applyResponseCookies(response, redirectResponse);
+    applyCorsHeaders(redirectResponse, allowedOrigin);
     return redirectResponse;
   }
 

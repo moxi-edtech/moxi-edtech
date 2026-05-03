@@ -1,21 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  AlertCircle,
-  ArrowUpRight,
-  BookOpen,
-  Building2,
-  CheckCircle2,
-  Clock,
-  CreditCard,
-  DoorOpen,
-  GraduationCap,
-  Users,
-} from "lucide-react";
 import { getFormacaoAuthContext } from "@/lib/auth-context";
 import { resolveFormacaoSessionContext } from "@/lib/session-context";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
+import { AdminDashboardClient } from "@/components/dashboard/AdminDashboardClient";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +58,7 @@ export default async function AdminCentroDashboardPage() {
 
   const session = await resolveFormacaoSessionContext();
   const escolaId = session?.tenantId ?? null;
+  const today = new Date();
 
   let onboardingDone = false;
   let cursosAtivosCount = 0;
@@ -83,6 +72,7 @@ export default async function AdminCentroDashboardPage() {
   let cohorts: CohortOverviewRow[] = [];
   let lotacao: LotacaoRow[] = [];
   let pendingAdmissions: StagingRow[] = [];
+  let forecastData = { v30: 0, v60: 0, v90: 0, total: 0 };
 
   if (escolaId) {
     const s = (await supabaseServer()) as FormacaoSupabaseClient;
@@ -99,6 +89,7 @@ export default async function AdminCentroDashboardPage() {
       inscricoesPendentesRes,
       salasRes,
       inadimplenciaRes,
+      faturasPendentesRes,
     ] = await Promise.all([
       s
         .from("formacao_cursos")
@@ -160,6 +151,12 @@ export default async function AdminCentroDashboardPage() {
         .eq("escola_id", escolaId)
         .eq("status", "ativa"),
       s.from("vw_formacao_inadimplencia_resumo").select("total_em_aberto").maybeSingle(),
+      s
+        .from("formacao_faturas_lote")
+        .select("total_liquido, vencimento_em")
+        .eq("escola_id", escolaId)
+        .in("status", ["emitida", "parcial"])
+        .lte("vencimento_em", new Date(today.getTime() + 90 * 86_400_000).toISOString()),
     ]);
 
     cohorts = (cohortsRes.data ?? []) as CohortOverviewRow[];
@@ -174,10 +171,20 @@ export default async function AdminCentroDashboardPage() {
     inscricoesPendentesCount = inscricoesPendentesRes.count ?? 0;
     salasAtivasCount = salasRes.count ?? 0;
     valorEmAberto = Number((inadimplenciaRes.data as { total_em_aberto?: number | null } | null)?.total_em_aberto ?? 0);
+
+    const faturasFuturas = (faturasPendentesRes.data ?? []) as Array<{ total_liquido: number; vencimento_em: string }>;
+    const em30 = new Date(today.getTime() + 30 * 86_400_000).toISOString();
+    const em60 = new Date(today.getTime() + 60 * 86_400_000).toISOString();
+    const em90 = new Date(today.getTime() + 90 * 86_400_000).toISOString();
+
+    const v30 = faturasFuturas.filter((f) => f.vencimento_em <= em30).reduce((acc, f) => acc + Number(f.total_liquido ?? 0), 0);
+    const v60 = faturasFuturas.filter((f) => f.vencimento_em > em30 && f.vencimento_em <= em60).reduce((acc, f) => acc + Number(f.total_liquido ?? 0), 0);
+    const v90 = faturasFuturas.filter((f) => f.vencimento_em > em60 && f.vencimento_em <= em90).reduce((acc, f) => acc + Number(f.total_liquido ?? 0), 0);
+
+    forecastData = { v30, v60, v90, total: v30 + v60 + v90 };
   }
 
   const lotacaoByCohort = new Map(lotacao.map((row) => [row.cohort_id, row]));
-  const today = new Date();
   const operationalCompleted = [onboardingDone, cursosAtivosCount > 0, cohortsAtivasCount > 0, salasAtivasCount > 0].filter(Boolean).length;
   const operationalReady = operationalCompleted === 4;
 
@@ -209,158 +216,25 @@ export default async function AdminCentroDashboardPage() {
     inscricoesAtivasCount > 0 ? Math.round((inscricoesPagasCount / inscricoesAtivasCount) * 100) : 0;
 
   return (
-    <div className="space-y-6 pb-12">
-      <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="m-0 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">admin centro</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-klasse-green">Dashboard de Gestão</h1>
-          </div>
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-              operationalReady
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-amber-200 bg-amber-50 text-amber-700"
-            }`}
-          >
-            {operationalReady ? "Centro operacional" : `Operacionalização ${operationalCompleted}/4`}
-          </span>
-        </div>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600">
-          Visão real da operação do centro: prontidão, admissões, turmas, cobrança e próximos bloqueios a resolver.
-        </p>
-      </header>
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="Admissões pendentes"
-          value={String(pagamentosPendentesCount)}
-          subtitle="Comprovativos aguardando validação"
-          tone={pagamentosPendentesCount > 0 ? "warning" : "positive"}
-          icon={<CreditCard size={18} />}
-        />
-        <MetricCard
-          title="Formandos ativos"
-          value={String(inscricoesAtivasCount)}
-          subtitle={`${conversionRate}% com pagamento confirmado`}
-          tone="neutral"
-          icon={<Users size={18} />}
-        />
-        <MetricCard
-          title="Turmas em operação"
-          value={String(cohortsAtivasCount)}
-          subtitle={`${cohorts.length} turmas no histórico`}
-          tone="neutral"
-          icon={<GraduationCap size={18} />}
-        />
-        <MetricCard
-          title="Em aberto"
-          value={formatCurrency(valorEmAberto)}
-          subtitle={`${inscricoesPendentesCount} inscrições com pagamento pendente/parcial`}
-          tone={valorEmAberto > 0 ? "danger" : "positive"}
-          icon={<AlertCircle size={18} />}
-        />
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="m-0 text-lg font-semibold text-slate-950">Fila operacional</h2>
-              <p className="mt-1 text-sm text-slate-500">Prioridades calculadas a partir dos dados do centro.</p>
-            </div>
-            <Link
-              href="/secretaria/inbox"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Abrir inbox <ArrowUpRight size={14} />
-            </Link>
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            {alerts.length === 0 ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                Sem bloqueios operacionais relevantes no momento.
-              </div>
-            ) : (
-              alerts.map((alert) => (
-                <OperationalAlertCard key={alert.title} alert={alert} />
-              ))
-            )}
-          </div>
-        </article>
-
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="m-0 text-lg font-semibold text-slate-950">Prontidão do centro</h2>
-          <p className="mt-1 text-sm text-slate-500">Checklist mínimo para operar sem bloqueios de secretaria e financeiro.</p>
-          <div className="mt-4 grid gap-3">
-            <ReadinessItem done={onboardingDone} title="Fiscal vinculado" href="/admin/onboarding" />
-            <ReadinessItem done={cursosAtivosCount > 0} title="Catálogo ativo" href="/admin/cursos" />
-            <ReadinessItem done={cohortsAtivasCount > 0} title="Turma aberta ou em andamento" href="/admin/cohorts" />
-            <ReadinessItem done={salasAtivasCount > 0} title="Sala ou infraestrutura ativa" href="/admin/infraestrutura" />
-          </div>
-        </article>
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <article className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="m-0 text-lg font-semibold text-slate-950">Saúde das turmas</h2>
-            <p className="mt-1 text-sm text-slate-500">Lotação, pagamentos e arranque das próximas edições.</p>
-          </div>
-          {upcomingCohorts.length === 0 ? (
-            <EmptyState
-              title="Sem turmas operacionais"
-              description="Abra uma turma para acompanhar lotação e admissões neste painel."
-              href="/admin/cohorts"
-              label="Gerir turmas"
-            />
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {upcomingCohorts.map((cohort) => (
-                <CohortRow key={cohort.id} cohort={cohort} />
-              ))}
-            </div>
-          )}
-        </article>
-
-        <article className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="m-0 text-lg font-semibold text-slate-950">Validação recente</h2>
-            <p className="mt-1 text-sm text-slate-500">Primeiros comprovativos na fila.</p>
-          </div>
-          {pendingAdmissions.length === 0 ? (
-            <EmptyState
-              compact
-              title="Nada pendente"
-              description="Novas inscrições públicas aparecem aqui assim que entrarem."
-              href="/secretaria/inbox"
-              label="Abrir inbox"
-            />
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {pendingAdmissions.map((item) => (
-                <div key={item.id} className="px-5 py-4">
-                  <p className="truncate text-sm font-semibold text-slate-950">{item.nome_completo}</p>
-                  <p className="mt-1 truncate text-xs text-slate-500">{item.email ?? "Sem email registado"}</p>
-                  <p className="mt-2 text-xs text-slate-600">
-                    {item.cohort?.curso_nome ?? "Curso sem nome"} · {item.cohort?.nome ?? "Turma sem nome"}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-amber-700">Desde {formatDate(item.created_at)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </article>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <QuickAction href="/secretaria/inbox" title="Inbox operacional" description="Validar comprovativos e reenviar acessos." icon={<Clock size={18} />} />
-        <QuickAction href="/admin/cohorts" title="Turmas" description="Abrir edições e ajustar capacidade." icon={<GraduationCap size={18} />} />
-        <QuickAction href="/admin/cursos" title="Catálogo" description="Gerir cursos publicados." icon={<BookOpen size={18} />} />
-        <QuickAction href="/admin/infraestrutura" title="Salas e infraestrutura" description="Organizar capacidade física e online." icon={<DoorOpen size={18} />} />
-      </section>
-    </div>
+    <AdminDashboardClient
+      onboardingDone={onboardingDone}
+      cursosAtivosCount={cursosAtivosCount}
+      cohortsAtivasCount={cohortsAtivasCount}
+      inscricoesAtivasCount={inscricoesAtivasCount}
+      inscricoesPagasCount={inscricoesPagasCount}
+      inscricoesPendentesCount={inscricoesPendentesCount}
+      pagamentosPendentesCount={pagamentosPendentesCount}
+      salasAtivasCount={salasAtivasCount}
+      valorEmAberto={valorEmAberto}
+      cohorts={cohorts as any}
+      upcomingCohorts={upcomingCohorts as any}
+      pendingAdmissions={pendingAdmissions as any}
+      forecastData={forecastData}
+      conversionRate={conversionRate}
+      operationalCompleted={operationalCompleted}
+      operationalReady={operationalReady}
+      alerts={alerts}
+    />
   );
 }
 
@@ -464,168 +338,10 @@ function buildOperationalAlerts({
   return alerts.slice(0, 6);
 }
 
-function MetricCard({
-  title,
-  value,
-  subtitle,
-  tone,
-  icon,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  tone: "warning" | "neutral" | "positive" | "danger";
-  icon: React.ReactNode;
-}) {
-  const tones = {
-    warning: "border-amber-200 bg-amber-50 text-amber-800",
-    neutral: "border-slate-200 bg-white text-slate-950",
-    positive: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    danger: "border-rose-200 bg-rose-50 text-rose-800",
-  };
-
-  return (
-    <article className={`rounded-xl border p-4 shadow-sm ${tones[tone]}`}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-semibold uppercase tracking-widest opacity-70">{title}</span>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/70">{icon}</span>
-      </div>
-      <div className="mt-3 text-2xl font-black tracking-tight">{value}</div>
-      <p className="mt-1 text-xs leading-5 opacity-80">{subtitle}</p>
-    </article>
-  );
-}
-
-function OperationalAlertCard({ alert }: { alert: OperationalAlert }) {
-  const styles = {
-    critical: "border-rose-200 bg-rose-50 text-rose-800",
-    warning: "border-amber-200 bg-amber-50 text-amber-800",
-    info: "border-blue-200 bg-blue-50 text-blue-800",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  };
-
-  return (
-    <div className={`rounded-xl border p-4 ${styles[alert.level]}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">{alert.title}</p>
-          <p className="mt-1 text-sm leading-5 opacity-80">{alert.description}</p>
-        </div>
-        <Link
-          href={alert.href}
-          className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold hover:bg-white"
-        >
-          {alert.label} <ArrowUpRight size={13} />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function ReadinessItem({ done, title, href }: { done: boolean; title: string; href: string }) {
-  return (
-    <Link href={href} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 hover:bg-white">
-      <span className="flex items-center gap-3 text-sm font-medium text-slate-800">
-        {done ? <CheckCircle2 className="text-emerald-600" size={18} /> : <AlertCircle className="text-amber-600" size={18} />}
-        {title}
-      </span>
-      <span className="text-xs font-semibold text-slate-500">{done ? "OK" : "Pendente"}</span>
-    </Link>
-  );
-}
-
-function CohortRow({
-  cohort,
-}: {
-  cohort: CohortOverviewRow & {
-    inscritosTotal: number;
-    inscritosPagos: number;
-    lotacaoPercentual: number;
-  };
-}) {
-  return (
-    <div className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_180px] md:items-center">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-semibold text-slate-950">{cohort.nome ?? "Turma sem nome"}</p>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-            {cohort.status ?? "sem status"}
-          </span>
-        </div>
-        <p className="mt-1 truncate text-sm text-slate-500">{cohort.curso_nome ?? "Curso sem nome"}</p>
-        <p className="mt-2 text-xs text-slate-500">
-          Início {formatDate(cohort.data_inicio)} · {cohort.inscritosTotal}/{cohort.vagas ?? 0} vagas · {cohort.inscritosPagos} pagos
-        </p>
-      </div>
-      <div>
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-          <span>Lotação</span>
-          <span>{cohort.lotacaoPercentual}%</span>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-klasse-green" style={{ width: `${Math.min(cohort.lotacaoPercentual, 100)}%` }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({
-  href,
-  title,
-  description,
-  icon,
-}: {
-  href: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Link href={href} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300 hover:shadow-md">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">{icon}</div>
-      <p className="mt-3 text-sm font-semibold text-slate-950">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
-    </Link>
-  );
-}
-
-function EmptyState({
-  title,
-  description,
-  href,
-  label,
-  compact = false,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  label: string;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`px-5 text-center ${compact ? "py-10" : "py-14"}`}>
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-        <Building2 size={20} />
-      </div>
-      <p className="mt-3 text-sm font-semibold text-slate-950">{title}</p>
-      <p className="mx-auto mt-1 max-w-sm text-sm leading-5 text-slate-500">{description}</p>
-      <Link href={href} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-        {label} <ArrowUpRight size={13} />
-      </Link>
-    </div>
-  );
-}
-
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-AO", {
     style: "currency",
     currency: "AOA",
     maximumFractionDigits: 0,
   }).format(Number(value ?? 0));
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "Sem data";
-  return new Intl.DateTimeFormat("pt-AO", { dateStyle: "medium" }).format(new Date(value));
 }

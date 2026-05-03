@@ -2,7 +2,7 @@
 "use client";
 
 import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
-import StatCard from "@/components/shared/StatCard";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 import type { SetupStatus } from "./setupStatus";
 import { useEscolaId } from "@/hooks/useEscolaId";
 
@@ -25,22 +25,24 @@ type Props = {
   financeiroHref?: string;
 };
 
-// ─── Skeleton card ────────────────────────────────────────────────────────────
-// Full-card skeleton — avoids the partial skeleton (value-only) that leaves
-// title and badge visible during loading, which looks broken.
+// ─── Mock Data for Sparklines ────────────────────────────────────────────────
+const mockChartData = [
+  { value: 400 }, { value: 300 }, { value: 500 }, { value: 450 },
+  { value: 600 }, { value: 550 }, { value: 700 }, { value: 680 }
+];
 
+// ─── Skeleton card ────────────────────────────────────────────────────────────
 function KpiSkeleton() {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-32">
       <div className="flex items-start justify-between">
         <div className="space-y-2 flex-1">
           <div className="h-2.5 w-16 bg-slate-100 animate-pulse rounded" />
           <div className="h-7 w-20 bg-slate-100 animate-pulse rounded-md" />
-          <div className="h-4 w-14 bg-slate-100 animate-pulse rounded-full" />
         </div>
-        <div className="h-9 w-9 bg-slate-100 animate-pulse rounded-xl" />
+        <div className="h-10 w-10 bg-slate-100 animate-pulse rounded-xl" />
       </div>
-      <div className="mt-4 h-3 w-16 bg-slate-100 animate-pulse rounded" />
+      <div className="h-8 w-full bg-slate-50/50 animate-pulse rounded-b-xl mt-4" />
     </div>
   );
 }
@@ -57,6 +59,7 @@ export default function KpiSection({
 }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+
   if (error) {
     return (
       <div className="flex items-center gap-2 p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 font-medium">
@@ -77,57 +80,65 @@ export default function KpiSection({
   const s = stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
   const { turmasOk } = setupStatus;
 
-  // financeiroHref comes scoped from the server — fallback mirrors that scope
-  const adminHref   = (path: string) => `/escola/${escolaParam}/admin/${path}`;
+  const adminHref = (path: string) => `/escola/${escolaParam}/admin/${path}`;
   const financeHref = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
 
   const kpis = [
     {
       label: "Turmas",
       value: s.turmas,
-      icon: <UsersRound size={16} />,
+      icon: UsersRound,
       href: adminHref("turmas"),
-      tone: "default" as const,
-      disabled: false,
+      variant: "default" as const,
+      trend: { value: 12, isPositive: true },
+      chartData: mockChartData,
+      description: "Em operação este ano",
     },
     {
       label: "Alunos",
       value: s.alunos,
-      icon: <Users size={16} />,
+      icon: Users,
       href: adminHref("alunos"),
-      tone: turmasOk ? ("default" as const) : ("warning" as const),
-      disabled: !turmasOk,
+      variant: turmasOk ? ("brand" as const) : ("warning" as const),
+      trend: { value: 8, isPositive: true },
+      chartData: mockChartData.map(d => ({ value: d.value * 1.2 })),
+      description: "Matrículas confirmadas",
     },
     {
       label: "Professores",
       value: s.professores,
-      icon: <UserCheck size={16} />,
+      icon: UserCheck,
       href: adminHref("professores"),
-      tone: turmasOk ? ("default" as const) : ("warning" as const),
-      disabled: !turmasOk,
+      variant: "default" as const,
+      trend: { value: 2, isPositive: false },
+      chartData: mockChartData.map(d => ({ value: 1000 - d.value })),
+      description: "Corpo docente ativo",
     },
     {
       label: "Financeiro",
       value: `${s.financeiro ?? 0}%`,
-      icon: <Wallet size={16} />,
+      icon: Wallet,
       href: financeHref,
-      tone: turmasOk ? ("default" as const) : ("warning" as const),
-      disabled: !turmasOk,
+      variant: s.financeiro && s.financeiro > 80 ? ("success" as const) : ("brand" as const),
+      trend: { value: 5, isPositive: true },
+      chartData: mockChartData.map(d => ({ value: d.value * 0.8 })),
+      description: "Receita realizada / prevista",
     },
   ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {kpis.map((kpi) => (
-        <StatCard
+        <KpiCard
           key={kpi.label}
           label={kpi.label}
           value={kpi.value}
           icon={kpi.icon}
-          href={kpi.disabled ? undefined : kpi.href}
-          tone={kpi.tone}
-          disabled={kpi.disabled}
-          animateValue
+          href={kpi.href}
+          variant={kpi.variant}
+          trend={kpi.trend}
+          chartData={kpi.chartData}
+          description={kpi.description}
         />
       ))}
     </div>

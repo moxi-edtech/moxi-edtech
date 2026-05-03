@@ -1,0 +1,116 @@
+264:    <div className="flex flex-wrap items-center gap-1.5">
+966:    <div className="grid gap-5">
+968:        <div className="flex flex-wrap items-start justify-between gap-3">
+969:          <div>
+990:          <div className="mt-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3">
+991:            <div className="flex items-center gap-3">
+997:              <div>
+1002:            <div className="flex gap-2">
+1019:        <div className="mt-4 flex flex-wrap gap-2">
+1042:      <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+1048:          <div className="grid max-h-[66vh] gap-2 overflow-auto pr-1">
+1064:                  <div className="flex items-center justify-between gap-2">
+1071:                  <div className="mt-2 flex flex-col gap-1">
+1099:              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E4EBE6] pb-3">
+1100:                <div>
+1102:                  <div className="flex items-center gap-2">
+1132:                <div className="flex flex-wrap gap-2">
+1140:              <div className="mt-3 flex flex-wrap items-center gap-2">
+1156:                <div className="ml-auto flex flex-wrap gap-1.5">
+1178:                <div className="mt-3 grid gap-3">
+1180:                    <div className="flex flex-wrap items-start justify-between gap-3">
+1181:                      <div>
+1258:                        <div className="flex items-start justify-between gap-3">
+1259:                          <div>
+1279:                      <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-8 text-sm text-[#4A6352]">
+1288:                <div className="mt-3 grid gap-3">
+1289:                  <div className="flex flex-wrap items-center justify-between gap-3">
+1290:                    <div>
+1294:                    <div className="inline-flex rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-1">
+1318:                      <div className="space-y-2 md:hidden">
+1322:                            <div className="mt-2 grid gap-2">
+1324:                                <div key={parcela.item_id} className="flex items-center justify-between gap-2">
+1334:                      <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+1390:                      <div className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-3">
+1391:                        <div className="mb-2">
+1396:                        <div className="mb-3 grid gap-2 rounded-xl border border-[#E4EBE6] bg-white p-3 md:grid-cols-[1fr_220px_auto]">
+1427:                        <div className="space-y-2 md:hidden">
+1432:                                <div className="flex items-start justify-between gap-2">
+1433:                                  <div>
+1442:                                <div className="mt-2 flex flex-wrap items-center gap-2">
+1476:                                    <div className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+1522:                                      <div className="my-1 h-px bg-[#E4EBE6]" />
+1558:                            <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+1564:                        <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white md:block">
+1580:                                      <div className="grid gap-0.5">
+1609:                                      <div className="flex items-center gap-2">
+1616:                                      <div className="flex items-center gap-2">
+1625:                                          <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+1671:                                            <div className="my-1 h-px bg-[#E4EBE6]" />
+1718:                    <div className="grid gap-3">
+1723:                        <div className="mt-3 flex flex-wrap items-center gap-2">
+1753:                <div className="mt-3 space-y-4">
+1754:                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1755:                    <div>
+1781:                  <div className="grid gap-3">
+1784:                        <div className="flex flex-wrap items-start justify-between gap-3">
+1785:                          <div className="flex items-start gap-4">
+1786:                            <div className="flex flex-col items-center rounded-xl bg-[#F7F9F7] px-3 py-2 text-center border border-[#E4EBE6]">
+1790:                            <div>
+1791:                              <div className="flex items-center gap-2">
+1812:                          <div className="flex gap-2">
+1846:                      <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-12 text-center text-sm text-[#4A6352]">
+1855:                <div className="mt-3 space-y-4">
+1856:                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1857:                    <div>
+1871:                  <div className="overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+1924:                  <div className="mt-3 space-y-2 md:hidden">
+1929:                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+1937:                      <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+1943:                  <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+1976:                <div className="mt-3 grid gap-2 md:grid-cols-2">
+1993:                <div className="mt-3 space-y-6">
+2000:                    <div className="mt-4 overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+2054:                  <div>
+2056:                    <div className="mt-3 space-y-2 md:hidden">
+2067:                    <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+2103:        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2104:          <div className="w-full max-w-3xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2105:            <div className="flex items-start justify-between gap-3">
+2106:              <div>
+2122:              <div className="mt-6">
+2124:                <div className="grid gap-3 max-h-[50vh] overflow-auto pr-1">
+2135:                      <div>
+2149:                <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+2150:                  <div className="md:col-span-2 xl:col-span-3 rounded-lg bg-emerald-50 border border-emerald-100 p-3 mb-2 flex items-center justify-between">
+2151:                    <div>
+2247:                <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+2269:        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2271:            <div className="flex items-start justify-between gap-3">
+2272:              <div>
+2288:            <div className="mt-4 grid gap-2">
+2325:            <div className="mt-4 flex justify-end gap-2">
+2345:        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2346:          <div className="w-full max-w-sm rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2347:            <div className="flex items-start justify-between gap-3">
+2348:              <div>
+2362:            <div className="mt-4 grid gap-2">
+2384:            <div className="mt-4 flex justify-end gap-2">
+2413:        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2415:            <div className="flex items-start justify-between gap-3">
+2416:              <div>
+2431:            <div className="mt-4 grid gap-3 md:grid-cols-2">
+2465:              <div className="md:col-span-2 space-y-3">
+2478:            <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+2498:        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2499:          <div className="w-full max-w-2xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2500:            <div className="flex items-start justify-between gap-3">
+2501:              <div>
+2515:            <div className="mt-6 max-h-[50vh] overflow-auto border rounded-xl border-[#E4EBE6]">
+2517:                <div className="p-8 text-center text-sm text-[#4A6352]">A carregar lista de formandos...</div>
+2555:            <div className="mt-6 flex justify-end gap-2">
+2577:        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2579:            <div className="flex items-start justify-between gap-3">
+2580:              <div>
+2594:            <div className="mt-4 grid gap-3">
+2635:            <div className="mt-6 flex justify-end gap-2">

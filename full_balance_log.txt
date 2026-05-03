@@ -1,0 +1,2742 @@
+1: 0 | "use client";
+2: 0 | 
+3: 0 | import { FormEvent, useEffect, useMemo, useState } from "react";
+4: 0 | import Link from "next/link";
+5: 0 | import { useSearchParams } from "next/navigation";
+6: 0 | 
+7: 0 | import { InscricaoBalcaoModal } from "./InscricaoBalcaoModal";
+8: 0 | 
+9: 0 | type Cohort = {
+10: 0 |   id: string;
+11: 0 |   codigo: string;
+12: 0 |   nome: string;
+13: 0 |   curso_nome: string;
+14: 0 |   carga_horaria_total: number;
+15: 0 |   vagas: number;
+16: 0 |   data_inicio: string;
+17: 0 |   data_fim: string;
+18: 0 |   status: string;
+19: 0 |   visivel_na_landing: boolean;
+20: 0 |   created_at: string;
+21: 0 |   valor_referencia?: number | null;
+22: 0 |   curso_id?: string | null;
+23: 0 |   turno?: string | null;
+24: 0 | };
+25: 0 | 
+26: 0 | type FormadorOption = {
+27: 0 |   user_id: string;
+28: 0 |   nome: string;
+29: 0 |   email: string | null;
+30: 0 |   papel?: string;
+31: 0 | };
+32: 0 | 
+33: 0 | type CursoCatalogo = {
+34: 0 |   id: string;
+35: 0 |   codigo: string;
+36: 0 |   nome: string;
+37: 0 |   area: string | null;
+38: 0 |   modalidade: "presencial" | "online" | "hibrido";
+39: 0 |   carga_horaria: number | null;
+40: 0 |   status: string;
+41: 0 |   preco_tabela: number;
+42: 0 |   desconto_ativo: boolean;
+43: 0 |   desconto_percentual: number;
+44: 0 |   parceria_b2b_ativa: boolean;
+45: 0 |   modulos: Array<{
+46: 0 |     ordem: number;
+47: 0 |     titulo: string;
+48: 0 |     carga_horaria: number | null;
+49: 0 |     descricao: string | null;
+50: 0 |   }>;
+51: 0 | };
+52: 0 | 
+53: 0 | type CohortDetail = {
+54: 0 |   cohort: Cohort;
+55: 0 |   summary: {
+56: 0 |     formandos: number;
+57: 0 |     sessoes: number;
+58: 0 |     materiais: number;
+59: 0 |     certificados: number;
+60: 0 |     modulos: number;
+61: 0 |   };
+62: 0 |   tabs: {
+63: 0 |     formandos: Array<{
+64: 0 |       user_id: string;
+65: 0 |       inscricao_id: string | null;
+66: 0 |       nome: string;
+67: 0 |       email: string | null;
+68: 0 |       telefone: string | null;
+69: 0 |       presenca_percentual: number | null;
+70: 0 |       status_pagamento: string;
+71: 0 |       academic_status: string;
+72: 0 |       access_blocked: boolean;
+73: 0 |       valor_total: number;
+74: 0 |       descricao: string;
+75: 0 |       parcelas: Array<{
+76: 0 |         item_id: string;
+77: 0 |         descricao: string;
+78: 0 |         status: "pago" | "pendente" | "atrasado";
+79: 0 |         valor: number;
+80: 0 |       }>;
+81: 0 |     }>;
+82: 0 |     sessoes: Array<{
+83: 0 |       id: string;
+84: 0 |       formador_user_id: string;
+85: 0 |       formador_nome: string;
+86: 0 |       competencia: string;
+87: 0 |       horas_ministradas: number;
+88: 0 |       valor_hora: number;
+89: 0 |       status: string;
+90: 0 |     }>;
+91: 0 |     materiais: Array<{
+92: 0 |       id: string;
+93: 0 |       titulo: string;
+94: 0 |       tipo: string;
+95: 0 |       status: string;
+96: 0 |       updated_at: string;
+97: 0 |     }>;
+98: 0 |     certificados: Array<{
+99: 0 |       id: string;
+100: 0 |       numero_documento: string;
+101: 0 |       emitido_em: string;
+102: 0 |       formando_user_id: string;
+103: 0 |       formando_nome: string;
+104: 0 |       template_id: string | null;
+105: 0 |     }>;
+106: 0 |     formadores: Array<{
+107: 0 |       id: string;
+108: 0 |       user_id: string;
+109: 0 |       nome: string;
+110: 0 |       email: string | null;
+111: 0 |       percentual_honorario: number;
+112: 0 |       created_at: string;
+113: 0 |     }>;
+114: 0 |     modulos: Array<{
+115: 0 |       id: string;
+116: 0 |       titulo: string;
+117: 0 |       ordem: number;
+118: 0 |       carga_horaria: number | null;
+119: 0 |     }>;
+120: 0 |   };
+121: 0 |   finance: {
+122: 0 |     mode: "b2b" | "b2c";
+123: 0 |     recebido: number;
+124: 0 |     pendente: number;
+125: 0 |     atualizado_em: string;
+126: 0 |     b2c: {
+127: 0 |       parcelas: string[];
+128: 0 |     };
+129: 0 |     b2b: {
+130: 0 |       cliente: {
+131: 0 |         id: string;
+132: 0 |         nome_fantasia: string;
+133: 0 |         razao_social: string | null;
+134: 0 |       };
+135: 0 |       fatura: {
+136: 0 |         id: string;
+137: 0 |         referencia: string;
+138: 0 |         vencimento_em: string;
+139: 0 |         total_liquido: number;
+140: 0 |         status: string;
+141: 0 |       };
+142: 0 |       colaboradores_cobertos: Array<{
+143: 0 |         user_id: string;
+144: 0 |         nome: string;
+145: 0 |         email: string | null;
+146: 0 |       }>;
+147: 0 |     } | null;
+148: 0 |   };
+149: 0 | };
+150: 0 | 
+151: 0 | type StatusFilter = "todos" | "rascunho" | "aberta" | "em curso" | "concluída" | "cancelada";
+152: 0 | type DetailTab = "formandos" | "formadores" | "sessoes" | "materiais" | "certificados" | "diario" | "avaliacoes";
+153: 0 | 
+154: 0 | type EvaluationRow = {
+155: 0 |   id?: string;
+156: 0 |   inscricao_id: string;
+157: 0 |   modulo_id: string;
+158: 0 |   nota?: number | null;
+159: 0 |   conceito: "apto" | "nao_apto" | "em_progresso" | "isento";
+160: 0 |   observacoes?: string | null;
+161: 0 | };
+162: 0 | 
+163: 0 | type ProgressRow = {
+164: 0 |   inscricao_id: string;
+165: 0 |   percentual_presenca: number;
+166: 0 |   total_aulas_realizadas: number;
+167: 0 |   total_modulos: number;
+168: 0 |   modulos_aprovados: number;
+169: 0 |   elegivel_certificacao: boolean;
+170: 0 | };
+171: 0 | 
+172: 0 | type Aula = {
+173: 0 |   id: string;
+174: 0 |   data: string;
+175: 0 |   hora_inicio: string | null;
+176: 0 |   hora_fim: string | null;
+177: 0 |   conteudo_previsto: string | null;
+178: 0 |   conteudo_realizado: string | null;
+179: 0 |   horas_ministradas: number;
+180: 0 |   status: "agendada" | "realizada" | "adiada" | "cancelada";
+181: 0 |   observacoes: string | null;
+182: 0 |   formador_user_id: string | null;
+183: 0 | };
+184: 0 | 
+185: 0 | type PresencaRow = {
+186: 0 |   id: string;
+187: 0 |   inscricao_id: string;
+188: 0 |   presente: boolean;
+189: 0 |   justificativa: string | null;
+190: 0 |   formacao_inscricoes: {
+191: 0 |     formando_user_id: string;
+192: 0 |     nome_snapshot: string;
+193: 0 |   };
+194: 0 | };
+195: 0 | type MetodoPagamento = "tpa" | "transferencia" | "numerario";
+196: 0 | 
+197: 0 | function normalizeStatus(raw: string): Exclude<StatusFilter, "todos"> {
+198: 0 |   const status = String(raw).trim().toLowerCase();
+199: 0 |   if (status === "planeada" || status === "rascunho") return "rascunho";
+200: 0 |   if (status === "aberta") return "aberta";
+201: 0 |   if (status === "em_andamento" || status === "em curso") return "em curso";
+202: 0 |   if (status === "concluida" || status === "concluída") return "concluída";
+203: 0 |   if (status === "cancelada") return "cancelada";
+204: 0 |   return "rascunho";
+205: 0 | }
+206: 0 | 
+207: 0 | function toApiStatus(status: Exclude<StatusFilter, "todos">) {
+208: 0 |   if (status === "rascunho") return "planeada";
+209: 0 |   if (status === "em curso") return "em_andamento";
+210: 0 |   if (status === "concluída") return "concluida";
+211: 0 |   return status;
+212: 0 | }
+213: 0 | 
+214: 0 | function statusPillClass(status: Exclude<StatusFilter, "todos">) {
+215: 0 |   if (status === "rascunho") return "bg-slate-100 text-slate-700 border-slate-200";
+216: 0 |   if (status === "aberta") return "bg-blue-100 text-blue-700 border-blue-200";
+217: 0 |   if (status === "em curso") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+218: 0 |   if (status === "concluída") return "bg-amber-100 text-amber-700 border-amber-200";
+219: 0 |   return "bg-rose-100 text-rose-700 border-rose-200";
+220: 0 | }
+221: 0 | 
+222: 0 | function paymentPillClass(status: string) {
+223: 0 |   const value = status.toLowerCase();
+224: 0 |   if (value.includes("pago")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
+225: 0 |   if (value.includes("atras")) return "bg-rose-100 text-rose-700 border-rose-200";
+226: 0 |   return "bg-amber-100 text-amber-700 border-amber-200";
+227: 0 | }
+228: 0 | 
+229: 0 | function academicStatusPillClass(status: string) {
+230: 0 |   const value = String(status ?? "").trim().toLowerCase();
+231: 0 |   if (value === "apto") return "bg-green-100 text-green-700 border-green-200";
+232: 0 |   if (value === "desistente" || value === "não apto" || value === "nao_apto") return "bg-red-100 text-red-700 border-red-200";
+233: 0 |   if (value === "cursando") return "bg-slate-100 text-slate-700 border-slate-200";
+234: 0 |   return "bg-slate-100 text-slate-700 border-slate-200";
+235: 0 | }
+236: 0 | 
+237: 0 | function normalizeAcademicStatus(status: string) {
+238: 0 |   const value = String(status ?? "").trim().toLowerCase();
+239: 0 |   if (value === "nao_apto" || value === "não apto") return "nao_apto";
+240: 0 |   if (value === "desistente") return "desistente";
+241: 0 |   if (value === "apto") return "apto";
+242: 0 |   return "cursando";
+243: 0 | }
+244: 0 | 
+245: 0 | function academicStatusLabel(status: string) {
+246: 0 |   const value = normalizeAcademicStatus(status);
+247: 0 |   if (value === "nao_apto") return "Não apto";
+248: 0 |   if (value === "desistente") return "Desistente";
+249: 0 |   if (value === "apto") return "Apto";
+250: 0 |   return "Cursando";
+251: 0 | }
+252: 0 | 
+253: 0 | function renderPaymentCell(
+254: 0 |   status: string,
+255: 0 |   itemId: string,
+256: 0 |   formandoNome: string,
+257: 0 |   parcela: string,
+258: 0 |   valor: number,
+259: 0 |   onRegister: (itemId: string, formingoNome: string, parcela: string, valor: number) => void
+260: 0 | ) {
+261: 0 |   const normalized = String(status ?? "").toLowerCase();
+262: 0 |   const isLateOrPending = normalized.includes("atras") || normalized.includes("pendente");
+263: 0 |   return (
+264: 1 |     <div className="flex flex-wrap items-center gap-1.5">
+265: 1 |       <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(status)}`}>
+266: 1 |         {status}
+267: 1 |       </span>
+268: 1 |       {isLateOrPending ? (
+269: 1 |         <button
+270: 1 |           type="button"
+271: 1 |           onClick={() => onRegister(itemId, formandoNome, parcela, valor)}
+272: 1 |           className="inline-flex items-center gap-1 rounded-md border border-[#E4EBE6] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
+273: 1 |         >
+274: 1 |           + Registar Pagamento
+275: 1 |         </button>
+276: 1 |       ) : null}
+277: 0 |     </div>
+278: 0 |   );
+279: 0 | }
+280: 0 | 
+281: 0 | export default function CohortsPage() {
+282: 0 |   const searchParams = useSearchParams();
+283: 0 |   const [items, setItems] = useState<Cohort[]>([]);
+284: 0 |   const [loading, setLoading] = useState(true);
+285: 0 |   const [error, setError] = useState<string | null>(null);
+286: 0 |   const [info, setInfo] = useState<string | null>(null);
+287: 0 |   const [formandoSearch, setFormandoSearch] = useState("");
+288: 0 |   const [formandoAcademicFilter, setFormandoAcademicFilter] = useState<"todos" | "cursando" | "desistente" | "apto" | "nao_apto">("todos");
+289: 0 | 
+290: 0 |   const [selectedId, setSelectedId] = useState<string | null>(null);
+291: 0 |   const [activeStatus, setActiveStatus] = useState<StatusFilter>("todos");
+292: 0 |   const [activeTab, setActiveTab] = useState<DetailTab>("formandos");
+293: 0 | 
+294: 0 |   const [detailLoading, setDetailLoading] = useState(false);
+295: 0 |   const [detail, setDetail] = useState<CohortDetail | null>(null);
+296: 0 |   const [financeView, setFinanceView] = useState<"b2c" | "b2b">("b2c");
+297: 0 |   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
+298: 0 |   const [showInscricaoModal, setShowInscricaoModal] = useState(false);
+299: 0 |   const [pagamentoTarget, setPagamentoTarget] = useState<{ itemId: string; formandoNome: string; parcela: string } | null>(null);
+300: 0 |   const [pagamentoForm, setPagamentoForm] = useState({
+301: 0 |     valor: "",
+302: 0 |     metodo: "transferencia" as MetodoPagamento,
+303: 0 |     comprovativo: "",
+304: 0 |   });
+305: 0 |   const [formandoBusy, setFormandoBusy] = useState<Record<string, boolean>>({});
+306: 0 |   const [statusEditorTarget, setStatusEditorTarget] = useState<{ user_id: string; nome: string; status: "cursando" | "desistente" | "apto" | "nao_apto" } | null>(null);
+307: 0 |   const [formadorBusy, setFormadorBusy] = useState(false);
+308: 0 |   const [formadorAssignmentForm, setFormadorAssignmentForm] = useState({
+309: 0 |     formador_user_id: "",
+310: 0 |     percentual_honorario: "100",
+311: 0 |     turno: "",
+312: 0 |   });
+313: 0 | 
+314: 0 |   const [showCreateModal, setShowCreateModal] = useState(false);
+315: 0 |   const [createStep, setCreateStep] = useState<"selector" | "form">("selector");
+316: 0 |   const [showRescueModal, setShowRescueModal] = useState(false);
+317: 0 |   const [rescueTarget, setRescueTarget] = useState<Cohort | null>(null);
+318: 0 | 
+319: 0 |   const [aulas, setAulas] = useState<Aula[]>([]);
+320: 0 |   const [loadingAulas, setLoadingAulas] = useState(false);
+321: 0 |   const [showAulaModal, setShowAulaModal] = useState(false);
+322: 0 |   const [aulaForm, setAulaForm] = useState({
+323: 0 |     id: "",
+324: 0 |     data: new Date().toISOString().split("T")[0],
+325: 0 |     hora_inicio: "08:00",
+326: 0 |     hora_fim: "12:00",
+327: 0 |     conteudo_previsto: "",
+328: 0 |     conteudo_realizado: "",
+329: 0 |     horas_ministradas: "4",
+330: 0 |     status: "agendada" as Aula["status"],
+331: 0 |     formador_user_id: "",
+332: 0 |   });
+333: 0 | 
+334: 0 |   const [showPresencaModal, setShowPresencaModal] = useState(false);
+335: 0 |   const [activeAula, setActiveAula] = useState<Aula | null>(null);
+336: 0 |   const [presencas, setPresencas] = useState<PresencaRow[]>([]);
+337: 0 |   const [loadingPresencas, setLoadingPresencas] = useState(false);
+338: 0 | 
+339: 0 |   const [evaluations, setEvaluations] = useState<EvaluationRow[]>([]);
+340: 0 |   const [progressData, setProgressData] = useState<ProgressRow[]>([]);
+341: 0 |   const [loadingEvaluations, setLoadingEvaluations] = useState(false);
+342: 0 |   const [savingEvaluations, setSavingEvaluations] = useState(false);
+343: 0 | 
+344: 0 |   const [formadores, setFormadores] = useState<FormadorOption[]>([]);
+345: 0 |   useEffect(() => {
+346: 0 |     if (selectedId && (activeTab === "avaliacoes" || activeTab === "certificados")) {
+347: 0 |       loadEvaluations();
+348: 0 |     }
+349: 0 |   }, [selectedId, activeTab]);
+350: 0 | 
+351: 0 |   const loadEvaluations = async () => {
+352: 0 |     if (!selectedId) return;
+353: 0 |     try {
+354: 0 |       setLoadingEvaluations(true);
+355: 0 |       
+356: 0 |       const [resGrid, resProgress] = await Promise.all([
+357: 0 |         fetch(`/api/formacao/backoffice/cohorts/${selectedId}/avaliacoes?type=grid`),
+358: 0 |         fetch(`/api/formacao/backoffice/cohorts/${selectedId}/avaliacoes?type=progress`)
+359: 0 |       ]);
+360: 0 | 
+361: 0 |       const jsonGrid = await resGrid.json();
+362: 0 |       const jsonProgress = await resProgress.json();
+363: 0 | 
+364: 0 |       if (jsonGrid.ok) setEvaluations(jsonGrid.items);
+365: 0 |       if (jsonProgress.ok) setProgressData(jsonProgress.items);
+366: 0 |     } catch (err) {
+367: 0 |       console.error("Erro ao carregar avaliações:", err);
+368: 0 |     } finally {
+369: 0 |       setLoadingEvaluations(false);
+370: 0 |     }
+371: 0 |   };
+372: 0 | 
+373: 0 |   const updateEvaluation = (inscricaoId: string, moduloId: string, conceito: EvaluationRow["conceito"]) => {
+374: 0 |     setEvaluations((prev) => {
+375: 0 |       const existing = prev.find(e => e.inscricao_id === inscricaoId && e.modulo_id === moduloId);
+376: 0 |       if (existing) {
+377: 0 |         return prev.map(e => (e.inscricao_id === inscricaoId && e.modulo_id === moduloId ? { ...e, conceito } : e));
+378: 0 |       }
+379: 0 |       return [...prev, { inscricao_id: inscricaoId, modulo_id: moduloId, conceito }];
+380: 0 |     });
+381: 0 |   };
+382: 0 | 
+383: 0 |   const saveEvaluations = async () => {
+384: 0 |     if (!selectedId) return;
+385: 0 |     setSavingEvaluations(true);
+386: 0 |     try {
+387: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/avaliacoes`, {
+388: 0 |         method: "POST",
+389: 0 |         headers: { "content-type": "application/json" },
+390: 0 |         body: JSON.stringify({ evaluations }),
+391: 0 |       });
+392: 0 |       const json = await res.json();
+393: 0 |       if (json.ok) {
+394: 0 |         setInfo("Avaliações guardadas com sucesso!");
+395: 0 |         loadEvaluations();
+396: 0 |       } else {
+397: 0 |         setError(json.error || "Erro ao guardar avaliações");
+398: 0 |       }
+399: 0 |     } catch (err) {
+400: 0 |       console.error("Erro ao guardar avaliações:", err);
+401: 0 |     } finally {
+402: 0 |       setSavingEvaluations(false);
+403: 0 |     }
+404: 0 |   };
+405: 0 |   const [catalogoCursos, setCatalogoCursos] = useState<CursoCatalogo[]>([]);
+406: 0 |   const [form, setForm] = useState({
+407: 0 |     codigo: "",
+408: 0 |     nome: "",
+409: 0 |     curso_id: "",
+410: 0 |     curso_nome: "",
+411: 0 |     carga_horaria_total: "",
+412: 0 |     vagas: "",
+413: 0 |     data_inicio: "",
+414: 0 |     data_fim: "",
+415: 0 |     status: "aberta" as Exclude<StatusFilter, "todos">,
+416: 0 |     visivel_na_landing: true,
+417: 0 |     formador_user_id: "",
+418: 0 |     percentual_honorario: "100",
+419: 0 |     valor_referencia: "",
+420: 0 |     turno: "",
+421: 0 |   });
+422: 0 | 
+423: 0 |   const loadCohorts = async () => {
+424: 0 |     try {
+425: 0 |       setLoading(true);
+426: 0 |       setError(null);
+427: 0 | 
+428: 0 |       const res = await fetch("/api/formacao/backoffice/cohorts", { cache: "no-store" });
+429: 0 |       const json = (await res.json().catch(() => null)) as
+430: 0 |         | { ok: boolean; error?: string; items?: Cohort[] }
+431: 0 |         | null;
+432: 0 | 
+433: 0 |       if (!res.ok || !json?.ok || !Array.isArray(json.items)) {
+434: 0 |         throw new Error(json?.error || "Falha ao carregar turmas");
+435: 0 |       }
+436: 0 | 
+437: 0 |       const nextItems = json.items;
+438: 0 |       setItems(nextItems);
+439: 0 |       if (nextItems.length > 0) {
+440: 0 |         setSelectedId((prev) => prev ?? nextItems[0].id);
+441: 0 |       } else {
+442: 0 |         setSelectedId(null);
+443: 0 |         setDetail(null);
+444: 0 |       }
+445: 0 |     } catch (err) {
+446: 0 |       setError(err instanceof Error ? err.message : "Erro inesperado");
+447: 0 |     } finally {
+448: 0 |       setLoading(false);
+449: 0 |     }
+450: 0 |   };
+451: 0 | 
+452: 0 |   const loadFormadores = async () => {
+453: 0 |     try {
+454: 0 |       const res = await fetch("/api/formacao/backoffice/cohorts/options", { cache: "no-store" });
+455: 0 |       const json = (await res.json().catch(() => null)) as
+456: 0 |         | { ok: boolean; formadores?: FormadorOption[] }
+457: 0 |         | null;
+458: 0 | 
+459: 0 |       if (!res.ok || !json?.ok || !Array.isArray(json.formadores)) return;
+460: 0 |       setFormadores(json.formadores);
+461: 0 |     } catch {
+462: 0 |       setFormadores([]);
+463: 0 |     }
+464: 0 |   };
+465: 0 | 
+466: 0 |   const loadCatalogoCursos = async () => {
+467: 0 |     try {
+468: 0 |       const res = await fetch("/api/formacao/backoffice/cursos", { cache: "no-store" });
+469: 0 |       const json = (await res.json().catch(() => null)) as
+470: 0 |         | { ok: boolean; items?: CursoCatalogo[] }
+471: 0 |         | null;
+472: 0 |       if (!res.ok || !json?.ok || !Array.isArray(json.items)) return;
+473: 0 |       setCatalogoCursos(json.items.filter((item) => String(item.status).toLowerCase().includes("ativo")));
+474: 0 |     } catch {
+475: 0 |       setCatalogoCursos([]);
+476: 0 |     }
+477: 0 |   };
+478: 0 | 
+479: 0 |   const loadDetail = async (id: string) => {
+480: 0 |     try {
+481: 0 |       setDetailLoading(true);
+482: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${id}`, { cache: "no-store" });
+483: 0 |       const json = (await res.json().catch(() => null)) as
+484: 0 |         | {
+485: 0 |             ok: boolean;
+486: 0 |             error?: string;
+487: 0 |             cohort?: Cohort;
+488: 0 |             summary?: CohortDetail["summary"];
+489: 0 |             tabs?: CohortDetail["tabs"];
+490: 0 |             finance?: CohortDetail["finance"];
+491: 0 |           }
+492: 0 |         | null;
+493: 0 | 
+494: 0 |       if (!res.ok || !json?.ok || !json?.cohort || !json.tabs || !json.summary || !json.finance) {
+495: 0 |         throw new Error(json?.error || "Falha ao carregar detalhe da turma");
+496: 0 |       }
+497: 0 | 
+498: 0 |       setDetail({ cohort: json.cohort, tabs: json.tabs, summary: json.summary, finance: json.finance });
+499: 0 |     } catch (err) {
+500: 0 |       setError(err instanceof Error ? err.message : "Erro inesperado");
+501: 0 |       setDetail(null);
+502: 0 |     } finally {
+503: 0 |       setDetailLoading(false);
+504: 0 |     }
+505: 0 |   };
+506: 0 | 
+507: 0 |   useEffect(() => {
+508: 0 |     loadCohorts();
+509: 0 |     loadFormadores();
+510: 0 |     loadCatalogoCursos();
+511: 0 |   }, []);
+512: 0 | 
+513: 0 |   useEffect(() => {
+514: 0 |     const shouldOpenCreate = searchParams.get("openCreate") === "1";
+515: 0 |     const focusTarget = searchParams.get("focus");
+516: 0 |     const prefillCursoId = searchParams.get("curso_id");
+517: 0 | 
+518: 0 |     if (shouldOpenCreate) {
+519: 0 |       setShowCreateModal(true);
+520: 0 |       if (prefillCursoId) {
+521: 0 |         onSelectCurso(prefillCursoId);
+522: 0 |         setCreateStep("form");
+523: 0 |       } else {
+524: 0 |         setCreateStep("selector");
+525: 0 |       }
+526: 0 |     }
+527: 0 | 
+528: 0 |     if (!shouldOpenCreate) return;
+529: 0 | 
+530: 0 |     if (focusTarget === "formador") {
+531: 0 |       const timer = setTimeout(() => {
+532: 0 |         const el = document.getElementById("cohort-formador-user-id");
+533: 0 |         el?.focus();
+534: 0 |       }, 60);
+535: 0 |       return () => clearTimeout(timer);
+536: 0 |     }
+537: 0 |   }, [searchParams, catalogoCursos]);
+538: 0 | 
+539: 0 |   useEffect(() => {
+540: 0 |     if (!selectedId) return;
+541: 0 |     loadDetail(selectedId);
+542: 0 |   }, [selectedId]);
+543: 0 | 
+544: 0 |   useEffect(() => {
+545: 0 |     if (selectedId && activeTab === "diario") {
+546: 0 |       loadAulas();
+547: 0 |     }
+548: 0 |   }, [selectedId, activeTab]);
+549: 0 | 
+550: 0 |   const loadAulas = async () => {
+551: 0 |     if (!selectedId) return;
+552: 0 |     try {
+553: 0 |       setLoadingAulas(true);
+554: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas`);
+555: 0 |       const json = await res.json();
+556: 0 |       if (json.ok) setAulas(json.items);
+557: 0 |     } catch (err) {
+558: 0 |       console.error("Erro ao carregar aulas:", err);
+559: 0 |     } finally {
+560: 0 |       setLoadingAulas(false);
+561: 0 |     }
+562: 0 |   };
+563: 0 | 
+564: 0 |   const saveAula = async (e: FormEvent) => {
+565: 0 |     e.preventDefault();
+566: 0 |     if (!selectedId) return;
+567: 0 |     setError(null);
+568: 0 | 
+569: 0 |     const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas`, {
+570: 0 |       method: "POST",
+571: 0 |       headers: { "content-type": "application/json" },
+572: 0 |       body: JSON.stringify(aulaForm),
+573: 0 |     });
+574: 0 | 
+575: 0 |     const json = await res.json();
+576: 0 |     if (!json.ok) {
+577: 0 |       setError(json.error || "Erro ao salvar aula");
+578: 0 |       return;
+579: 0 |     }
+580: 0 | 
+581: 0 |     setShowAulaModal(false);
+582: 0 |     loadAulas();
+583: 0 |     setInfo("Aula registada com sucesso!");
+584: 0 |   };
+585: 0 | 
+586: 0 |   const openPresencaModal = async (aula: Aula) => {
+587: 0 |     setActiveAula(aula);
+588: 0 |     setShowPresencaModal(true);
+589: 0 |     setLoadingPresencas(true);
+590: 0 |     try {
+591: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas/${aula.id}/presencas`);
+592: 0 |       const json = await res.json();
+593: 0 |       if (json.ok) setPresencas(json.items);
+594: 0 |     } catch (err) {
+595: 0 |       console.error("Erro ao carregar presenças:", err);
+596: 0 |     } finally {
+597: 0 |       setLoadingPresencas(false);
+598: 0 |     }
+599: 0 |   };
+600: 0 | 
+601: 0 |   const updatePresenca = (inscricaoId: string, presente: boolean) => {
+602: 0 |     setPresencas((prev) =>
+603: 0 |       prev.map((p) => (p.inscricao_id === inscricaoId ? { ...p, presente } : p))
+604: 0 |     );
+605: 0 |   };
+606: 0 | 
+607: 0 |   const savePresencas = async () => {
+608: 0 |     if (!selectedId || !activeAula) return;
+609: 0 |     setLoadingPresencas(true);
+610: 0 |     try {
+611: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas/${activeAula.id}/presencas`, {
+612: 0 |         method: "POST",
+613: 0 |         headers: { "content-type": "application/json" },
+614: 0 |         body: JSON.stringify({
+615: 0 |           presencas: presencas.map((p) => ({
+616: 0 |             inscricao_id: p.inscricao_id,
+617: 0 |             presente: p.presente,
+618: 0 |             justificativa: p.justificativa,
+619: 0 |           })),
+620: 0 |         }),
+621: 0 |       });
+622: 0 |       const json = await res.json();
+623: 0 |       if (json.ok) {
+624: 0 |         setShowPresencaModal(false);
+625: 0 |         setInfo("Presenças guardadas com sucesso!");
+626: 0 |       } else {
+627: 0 |         setError(json.error || "Erro ao guardar presenças");
+628: 0 |       }
+629: 0 |     } catch (err) {
+630: 0 |       console.error("Erro ao guardar presenças:", err);
+631: 0 |     } finally {
+632: 0 |       setLoadingPresencas(false);
+633: 0 |     }
+634: 0 |   };
+635: 0 | 
+636: 0 |   const statusCounts = useMemo(() => {
+637: 0 |     const base = {
+638: 0 |       todos: items.length,
+639: 0 |       rascunho: 0,
+640: 0 |       aberta: 0,
+641: 0 |       "em curso": 0,
+642: 0 |       concluída: 0,
+643: 0 |       cancelada: 0,
+644: 0 |     } as Record<StatusFilter, number>;
+645: 0 | 
+646: 0 |     for (const item of items) {
+647: 0 |       const normalized = normalizeStatus(item.status);
+648: 0 |       base[normalized] += 1;
+649: 0 |     }
+650: 0 | 
+651: 0 |     return base;
+652: 0 |   }, [items]);
+653: 0 | 
+654: 0 |   const visibleItems = useMemo(() => {
+655: 0 |     if (activeStatus === "todos") return items;
+656: 0 |     return items.filter((item) => normalizeStatus(item.status) === activeStatus);
+657: 0 |   }, [activeStatus, items]);
+658: 0 | 
+659: 0 |   const createCohort = async (event: FormEvent) => {
+660: 0 |     event.preventDefault();
+661: 0 |     setError(null);
+662: 0 | 
+663: 0 |     if (!form.curso_id) {
+664: 0 |       setError("A vinculação a um curso é obrigatória.");
+665: 0 |       return;
+666: 0 |     }
+667: 0 | 
+668: 0 |     const payload = {
+669: 0 |       codigo: form.codigo,
+670: 0 |       nome: form.nome,
+671: 0 |       curso_id: form.curso_id,
+672: 0 |       curso_nome: form.curso_nome,
+673: 0 |       carga_horaria_total: Number(form.carga_horaria_total),
+674: 0 |       vagas: Number(form.vagas),
+675: 0 |       data_inicio: form.data_inicio,
+676: 0 |       data_fim: form.data_fim,
+677: 0 |       status: toApiStatus(form.status),
+678: 0 |       visivel_na_landing: form.visivel_na_landing,
+679: 0 |       formador_user_id: form.formador_user_id || undefined,
+680: 0 |       percentual_honorario: form.formador_user_id ? Number(form.percentual_honorario) : undefined,
+681: 0 |       valor_referencia: form.valor_referencia ? Number(form.valor_referencia) : undefined,
+682: 0 |       turno: form.turno || undefined,
+683: 0 |     };
+684: 0 | 
+685: 0 |     const res = await fetch("/api/formacao/backoffice/cohorts", {
+686: 0 |       method: "POST",
+687: 0 |       headers: { "content-type": "application/json" },
+688: 0 |       body: JSON.stringify(payload),
+689: 0 |     });
+690: 0 | 
+691: 0 |     const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string; item?: Cohort } | null;
+692: 0 |     if (!res.ok || !json?.ok || !json.item) {
+693: 0 |       setError(json?.error || "Falha ao criar turma");
+694: 0 |       return;
+695: 0 |     }
+696: 0 | 
+697: 0 |     setShowCreateModal(false);
+698: 0 |     setCreateStep("selector");
+699: 0 |     setForm({
+700: 0 |       codigo: "",
+701: 0 |       nome: "",
+702: 0 |       curso_id: "",
+703: 0 |       curso_nome: "",
+704: 0 |       carga_horaria_total: "",
+705: 0 |       vagas: "",
+706: 0 |       data_inicio: "",
+707: 0 |       data_fim: "",
+708: 0 |       status: "aberta",
+709: 0 |       visivel_na_landing: true,
+710: 0 |       formador_user_id: "",
+711: 0 |       percentual_honorario: "100",
+712: 0 |       valor_referencia: "",
+713: 0 |       turno: "",
+714: 0 |     });
+715: 0 | 
+716: 0 |     await loadCohorts();
+717: 0 |     setSelectedId(json.item.id);
+718: 0 |   };
+719: 0 | 
+720: 0 |   const orphans = useMemo(() => items.filter((item) => !item.curso_id), [items]);
+721: 0 | 
+722: 0 |   const rescueCohort = async (event: FormEvent) => {
+723: 0 |     event.preventDefault();
+724: 0 |     if (!rescueTarget || !form.curso_id) return;
+725: 0 | 
+726: 0 |     setError(null);
+727: 0 |     const res = await fetch("/api/formacao/backoffice/cohorts", {
+728: 0 |       method: "PATCH",
+729: 0 |       headers: { "content-type": "application/json" },
+730: 0 |       body: JSON.stringify({
+731: 0 |         id: rescueTarget.id,
+732: 0 |         curso_id: form.curso_id,
+733: 0 |         turno: form.turno,
+734: 0 |       }),
+735: 0 |     });
+736: 0 | 
+737: 0 |     const json = await res.json().catch(() => null);
+738: 0 |     if (!res.ok || !json?.ok) {
+739: 0 |       setError(json?.error || "Falha ao vincular curso");
+740: 0 |       return;
+741: 0 |     }
+742: 0 | 
+743: 0 |     setShowRescueModal(false);
+744: 0 |     setRescueTarget(null);
+745: 0 |     setForm((prev) => ({ ...prev, curso_id: "", turno: "" }));
+746: 0 |     await loadCohorts();
+747: 0 |     setInfo("Turma vinculada com sucesso! Módulos e materiais foram herdados do catálogo.");
+748: 0 |   };
+749: 0 | 
+750: 0 |   const onSelectCurso = (cursoId: string) => {
+751: 0 |     const curso = catalogoCursos.find((item) => item.id === cursoId);
+752: 0 |     if (!curso) {
+753: 0 |       setForm((prev) => ({
+754: 0 |         ...prev,
+755: 0 |         curso_id: "",
+756: 0 |         curso_nome: "",
+757: 0 |         carga_horaria_total: "",
+758: 0 |         valor_referencia: "",
+759: 0 |       }));
+760: 0 |       return;
+761: 0 |     }
+762: 0 |     setForm((prev) => ({
+763: 0 |       ...prev,
+764: 0 |       curso_id: curso.id,
+765: 0 |       curso_nome: curso.nome,
+766: 0 |       carga_horaria_total: String(curso.carga_horaria ?? ""),
+767: 0 |       valor_referencia: String(curso.preco_tabela ?? 0),
+768: 0 |     }));
+769: 0 |   };
+770: 0 | 
+771: 0 |   const changeStatus = async (id: string, status: Exclude<StatusFilter, "todos">) => {
+772: 0 |     setError(null);
+773: 0 |     setInfo(null);
+774: 0 |     const res = await fetch("/api/formacao/backoffice/cohorts", {
+775: 0 |       method: "PATCH",
+776: 0 |       headers: { "content-type": "application/json" },
+777: 0 |       body: JSON.stringify({ id, status: toApiStatus(status) }),
+778: 0 |     });
+779: 0 | 
+780: 0 |     const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+781: 0 |     if (!res.ok || !json?.ok) {
+782: 0 |       setError(json?.error || "Falha ao atualizar status da turma");
+783: 0 |       return;
+784: 0 |     }
+785: 0 | 
+786: 0 |     await loadCohorts();
+787: 0 |     if (selectedId === id) await loadDetail(id);
+788: 0 |   };
+789: 0 | 
+790: 0 |   const removeItem = async (id: string) => {
+791: 0 |     setError(null);
+792: 0 |     setInfo(null);
+793: 0 | 
+794: 0 |     const res = await fetch(`/api/formacao/backoffice/cohorts?id=${id}`, {
+795: 0 |       method: "DELETE",
+796: 0 |     });
+797: 0 | 
+798: 0 |     const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+799: 0 |     if (!res.ok || !json?.ok) {
+800: 0 |       setError(json?.error || "Falha ao remover turma");
+801: 0 |       return;
+802: 0 |     }
+803: 0 | 
+804: 0 |     await loadCohorts();
+805: 0 |   };
+806: 0 | 
+807: 0 |   const toggleVisibility = async (id: string, current: boolean) => {
+808: 0 |     setError(null);
+809: 0 |     const res = await fetch("/api/formacao/backoffice/cohorts", {
+810: 0 |       method: "PATCH",
+811: 0 |       headers: { "content-type": "application/json" },
+812: 0 |       body: JSON.stringify({ id, visivel_na_landing: !current }),
+813: 0 |     });
+814: 0 |     const json = await res.json().catch(() => null);
+815: 0 |     if (!res.ok || !json?.ok) {
+816: 0 |       setError(json?.error || "Falha ao atualizar visibilidade");
+817: 0 |       return;
+818: 0 |     }
+819: 0 |     await loadCohorts();
+820: 0 |     if (selectedId === id) await loadDetail(id);
+821: 0 |   };
+822: 0 | 
+823: 0 |   const openPagamentoModal = (itemId: string, formandoNome: string, parcela: string, valor: number) => {
+824: 0 |     setPagamentoTarget({ itemId, formandoNome, parcela });
+825: 0 |     setPagamentoForm({
+826: 0 |       valor: String(Number(valor || 0)),
+827: 0 |       metodo: "transferencia",
+828: 0 |       comprovativo: "",
+829: 0 |     });
+830: 0 |     setShowPagamentoModal(true);
+831: 0 |   };
+832: 0 | 
+833: 0 |   const registrarPagamentoRapido = async (event: FormEvent) => {
+834: 0 |     event.preventDefault();
+835: 0 |     if (!pagamentoTarget) return;
+836: 0 | 
+837: 0 |     setError(null);
+838: 0 |     setInfo(null);
+839: 0 |     const res = await fetch("/api/formacao/financeiro/faturacao-b2c", {
+840: 0 |       method: "PATCH",
+841: 0 |       headers: { "content-type": "application/json" },
+842: 0 |       body: JSON.stringify({ id: pagamentoTarget.itemId, status_pagamento: "pago" }),
+843: 0 |     });
+844: 0 |     const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+845: 0 |     if (!res.ok || !json?.ok) {
+846: 0 |       setError(json?.error || "Falha ao registar pagamento");
+847: 0 |       return;
+848: 0 |     }
+849: 0 | 
+850: 0 |     setShowPagamentoModal(false);
+851: 0 |     setPagamentoTarget(null);
+852: 0 |     setPagamentoForm({ valor: "", metodo: "transferencia", comprovativo: "" });
+853: 0 |     if (selectedId) await loadDetail(selectedId);
+854: 0 |   };
+855: 0 | 
+856: 0 |   const runFormandoAction = async (
+857: 0 |     formandoUserId: string,
+858: 0 |     payload:
+859: 0 |       | { action: "resend_access" }
+860: 0 |       | { action: "set_access_block"; blocked: boolean }
+861: 0 |       | { action: "set_academic_status"; status: "cursando" | "desistente" | "apto" | "nao_apto" }
+862: 0 |   ) => {
+863: 0 |     if (!detail) return;
+864: 0 |     setError(null);
+865: 0 |     setInfo(null);
+866: 0 |     setFormandoBusy((prev) => ({ ...prev, [formandoUserId]: true }));
+867: 0 |     try {
+868: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${detail.cohort.id}/formandos/${formandoUserId}`, {
+869: 0 |         method: "PATCH",
+870: 0 |         headers: { "content-type": "application/json" },
+871: 0 |         body: JSON.stringify(payload),
+872: 0 |       });
+873: 0 |       const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string; message?: string } | null;
+874: 0 |       if (!res.ok || !json?.ok) {
+875: 0 |         throw new Error(json?.error || "Falha ao executar ação do formando");
+876: 0 |       }
+877: 0 |       await loadDetail(detail.cohort.id);
+878: 0 |       setInfo(json?.message || "Ação aplicada com sucesso.");
+879: 0 |     } catch (err) {
+880: 0 |       setError(err instanceof Error ? err.message : "Erro inesperado");
+881: 0 |     } finally {
+882: 0 |       setFormandoBusy((prev) => ({ ...prev, [formandoUserId]: false }));
+883: 0 |     }
+884: 0 |   };
+885: 0 | 
+886: 0 |   const assignFormadorToCohort = async (event: FormEvent) => {
+887: 0 |     event.preventDefault();
+888: 0 |     if (!detail) return;
+889: 0 | 
+890: 0 |     setError(null);
+891: 0 |     setInfo(null);
+892: 0 |     setFormadorBusy(true);
+893: 0 | 
+894: 0 |     try {
+895: 0 |       const res = await fetch(`/api/formacao/backoffice/cohorts/${detail.cohort.id}/formadores`, {
+896: 0 |         method: "POST",
+897: 0 |         headers: { "content-type": "application/json" },
+898: 0 |         body: JSON.stringify({
+899: 0 |           formador_user_id: formadorAssignmentForm.formador_user_id,
+900: 0 |           percentual_honorario: Number(formadorAssignmentForm.percentual_honorario || 100),
+901: 0 |         }),
+902: 0 |       });
+903: 0 |       const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+904: 0 | 
+905: 0 |       if (!res.ok || !json?.ok) {
+906: 0 |         throw new Error(json?.error || "Falha ao atribuir formador");
+907: 0 |       }
+908: 0 | 
+909: 0 |       setFormadorAssignmentForm({ formador_user_id: "", percentual_honorario: "100", turno: "" });
+910: 0 |       await loadDetail(detail.cohort.id);
+911: 0 |       setInfo("Formador atribuído à edição.");
+912: 0 |     } catch (err) {
+913: 0 |       setError(err instanceof Error ? err.message : "Erro inesperado");
+914: 0 |     } finally {
+915: 0 |       setFormadorBusy(false);
+916: 0 |     }
+917: 0 |   };
+918: 0 | 
+919: 0 |   const removeFormadorFromCohort = async (assignmentId: string) => {
+920: 0 |     if (!detail) return;
+921: 0 | 
+922: 0 |     setError(null);
+923: 0 |     setInfo(null);
+924: 0 |     setFormadorBusy(true);
+925: 0 | 
+926: 0 |     try {
+927: 0 |       const res = await fetch(
+928: 0 |         `/api/formacao/backoffice/cohorts/${detail.cohort.id}/formadores?assignment_id=${encodeURIComponent(assignmentId)}`,
+929: 0 |         { method: "DELETE" }
+930: 0 |       );
+931: 0 |       const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
+932: 0 | 
+933: 0 |       if (!res.ok || !json?.ok) {
+934: 0 |         throw new Error(json?.error || "Falha ao remover formador");
+935: 0 |       }
+936: 0 | 
+937: 0 |       await loadDetail(detail.cohort.id);
+938: 0 |       setInfo("Formador removido da edição.");
+939: 0 |     } catch (err) {
+940: 0 |       setError(err instanceof Error ? err.message : "Erro inesperado");
+941: 0 |     } finally {
+942: 0 |       setFormadorBusy(false);
+943: 0 |     }
+944: 0 |   };
+945: 0 | 
+946: 0 |   const visibleFormandos = useMemo(() => {
+947: 0 |     const all = detail?.tabs.formandos ?? [];
+948: 0 |     const query = formandoSearch.trim().toLowerCase();
+949: 0 |     return all.filter((formando) => {
+950: 0 |       const normalizedAcademic = normalizeAcademicStatus(formando.academic_status);
+951: 0 |       const academicMatch = formandoAcademicFilter === "todos" || normalizedAcademic === formandoAcademicFilter;
+952: 0 |       if (!academicMatch) return false;
+953: 0 |       if (!query) return true;
+954: 0 |       const name = String(formando.nome ?? "").toLowerCase();
+955: 0 |       const email = String(formando.email ?? "").toLowerCase();
+956: 0 |       return name.includes(query) || email.includes(query);
+957: 0 |     });
+958: 0 |   }, [detail?.tabs.formandos, formandoAcademicFilter, formandoSearch]);
+959: 0 | 
+960: 0 |   const availableFormadores = useMemo(() => {
+961: 0 |     const assigned = new Set((detail?.tabs.formadores ?? []).map((item) => item.user_id));
+962: 0 |     return formadores.filter((item) => !assigned.has(item.user_id));
+963: 0 |   }, [detail?.tabs.formadores, formadores]);
+964: 0 | 
+965: 0 |   return (
+966: 1 |     <div className="grid gap-5">
+967: 1 |       <header className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm">
+968: 2 |         <div className="flex flex-wrap items-start justify-between gap-3">
+969: 3 |           <div>
+970: 3 |             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8A9E8F]">académico</p>
+971: 3 |             <h1 className="mt-1 text-3xl font-semibold text-[#111811]">Turmas</h1>
+972: 3 |             <p className="mt-1 text-sm text-[#4A6352]">
+973: 3 |               Gestão de turmas com detalhe por formandos, sessões, materiais e certificados.
+974: 3 |             </p>
+975: 2 |           </div>
+976: 2 | 
+977: 2 |           <button
+978: 2 |             type="button"
+979: 2 |             onClick={() => {
+980: 2 |               setCreateStep("selector");
+981: 2 |               setShowCreateModal(true);
+982: 2 |             }}
+983: 2 |             className="rounded-xl border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+984: 2 |           >
+985: 2 |             + Nova turma
+986: 2 |           </button>
+987: 1 |         </div>
+988: 1 | 
+989: 1 |         {orphans.length > 0 ? (
+990: 2 |           <div className="mt-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3">
+991: 3 |             <div className="flex items-center gap-3">
+992: 3 |               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+993: 3 |                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+994: 3 |                   <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+995: 3 |                 </svg>
+996: 3 |               </span>
+997: 4 |               <div>
+998: 4 |                 <p className="text-sm font-bold text-amber-900">Detetor de Órfãos</p>
+999: 4 |                 <p className="text-xs text-amber-700">Existem {orphans.length} turmas sem vínculo ao catálogo de cursos.</p>
+1000: 3 |               </div>
+1001: 2 |             </div>
+1002: 3 |             <div className="flex gap-2">
+1003: 3 |               {orphans.slice(0, 2).map(o => (
+1004: 3 |                 <button
+1005: 3 |                   key={o.id}
+1006: 3 |                   onClick={() => {
+1007: 3 |                     setRescueTarget(o);
+1008: 3 |                     setShowRescueModal(true);
+1009: 3 |                   }}
+1010: 3 |                   className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+1011: 3 |                 >
+1012: 3 |                   Vincular {o.nome}
+1013: 3 |                 </button>
+1014: 3 |               ))}
+1015: 2 |             </div>
+1016: 1 |           </div>
+1017: 1 |         ) : null}
+1018: 1 | 
+1019: 2 |         <div className="mt-4 flex flex-wrap gap-2">
+1020: 2 |           {(["todos", "rascunho", "aberta", "em curso", "concluída", "cancelada"] as StatusFilter[]).map(
+1021: 2 |             (filter) => (
+1022: 2 |               <button
+1023: 2 |                 key={filter}
+1024: 2 |                 type="button"
+1025: 2 |                 onClick={() => setActiveStatus(filter)}
+1026: 2 |                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+1027: 2 |                   activeStatus === filter
+1028: 2 |                     ? "border-klasse-gold bg-klasse-gold/10 text-klasse-gold"
+1029: 2 |                     : "border-[#E4EBE6] bg-white text-[#4A6352] hover:bg-[#F7F9F7]"
+1030: 2 |                 }`}
+1031: 2 |               >
+1032: 2 |                 {filter} · {statusCounts[filter]}
+1033: 2 |               </button>
+1034: 2 |             )
+1035: 2 |           )}
+1036: 1 |         </div>
+1037: 1 |       </header>
+1038: 1 | 
+1039: 1 |       {error ? <p className="m-0 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+1040: 1 |       {info ? <p className="m-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{info}</p> : null}
+1041: 1 | 
+1042: 2 |       <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+1043: 2 |         <aside className="rounded-2xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+1044: 2 |           <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#8A9E8F]">lista de turmas</p>
+1045: 2 | 
+1046: 2 |           {loading ? <p className="px-2 py-4 text-sm text-[#4A6352]">Carregando turmas...</p> : null}
+1047: 2 | 
+1048: 3 |           <div className="grid max-h-[66vh] gap-2 overflow-auto pr-1">
+1049: 3 |             {visibleItems.map((item) => {
+1050: 3 |               const normalizedStatus = normalizeStatus(item.status);
+1051: 3 |               const active = selectedId === item.id;
+1052: 3 | 
+1053: 3 |               return (
+1054: 3 |                 <button
+1055: 3 |                   type="button"
+1056: 3 |                   key={item.id}
+1057: 3 |                   onClick={() => setSelectedId(item.id)}
+1058: 3 |                   className={`w-full rounded-xl border p-3 text-left transition ${
+1059: 3 |                     active
+1060: 3 |                       ? "border-klasse-gold bg-klasse-gold/5"
+1061: 3 |                       : "border-[#E4EBE6] bg-white hover:border-[#C9D8CF] hover:bg-[#FAFCFA]"
+1062: 3 |                   }`}
+1063: 3 |                 >
+1064: 4 |                   <div className="flex items-center justify-between gap-2">
+1065: 4 |                     <p className="text-sm font-bold text-[#111811]">{item.nome}</p>
+1066: 4 |                     <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusPillClass(normalizedStatus)}`}>
+1067: 4 |                       {normalizedStatus}
+1068: 4 |                     </span>
+1069: 3 |                   </div>
+1070: 3 | 
+1071: 4 |                   <div className="mt-2 flex flex-col gap-1">
+1072: 4 |                     <p className="text-[10px] font-black uppercase tracking-widest text-klasse-gold">
+1073: 4 |                       {item.curso_nome}
+1074: 4 |                     </p>
+1075: 4 |                     <p className="text-[11px] text-[#4A6352] font-medium">
+1076: 4 |                       Código: {item.codigo}
+1077: 4 |                     </p>
+1078: 3 |                   </div>
+1079: 3 |                   <p className="mt-2 text-[10px] text-[#8A9E8F] font-bold italic">{item.data_inicio} → {item.data_fim}</p>
+1080: 3 |                 </button>
+1081: 3 |               );
+1082: 3 |             })}
+1083: 3 | 
+1084: 3 |             {!loading && visibleItems.length === 0 ? (
+1085: 3 |               <p className="px-2 py-4 text-sm text-[#4A6352]">Nenhuma turma neste filtro.</p>
+1086: 3 |             ) : null}
+1087: 2 |           </div>
+1088: 2 |         </aside>
+1089: 2 | 
+1090: 2 |         <section className="rounded-2xl border border-[#E4EBE6] bg-white p-4 shadow-sm">
+1091: 2 |           {!selectedId ? (
+1092: 2 |             <p className="text-sm text-[#4A6352]">Selecione uma turma para ver detalhes.</p>
+1093: 2 |           ) : detailLoading ? (
+1094: 2 |             <p className="text-sm text-[#4A6352]">Carregando detalhe da turma...</p>
+1095: 2 |           ) : !detail ? (
+1096: 2 |             <p className="text-sm text-[#4A6352]">Não foi possível carregar o detalhe.</p>
+1097: 2 |           ) : (
+1098: 2 |             <>
+1099: 3 |               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E4EBE6] pb-3">
+1100: 4 |                 <div>
+1101: 4 |                   <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">{detail.cohort.codigo}</p>
+1102: 5 |                   <div className="flex items-center gap-2">
+1103: 5 |                     <h2 className="text-2xl font-semibold text-[#111811]">{detail.cohort.nome}</h2>
+1104: 5 |                     {!detail.cohort.curso_id && (
+1105: 5 |                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+1106: 5 |                         Não vinculada
+1107: 5 |                       </span>
+1108: 5 |                     )}
+1109: 5 |                     <button
+1110: 5 |                       type="button"
+1111: 5 |                       onClick={() => toggleVisibility(detail.cohort.id, detail.cohort.visivel_na_landing)}
+1112: 5 |                       title={detail.cohort.visivel_na_landing ? "Visível na Landing Page" : "Oculto na Landing Page"}
+1113: 5 |                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase transition ${
+1114: 5 |                         detail.cohort.visivel_na_landing
+1115: 5 |                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+1116: 5 |                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+1117: 5 |                       }`}
+1118: 5 |                     >
+1119: 5 |                       {detail.cohort.visivel_na_landing ? "Público" : "Privado"}
+1120: 5 |                     </button>
+1121: 4 |                   </div>
+1122: 4 |                   <p className="mt-2 text-sm text-[#4A6352] flex items-center gap-2">
+1123: 4 |                     <span className="font-bold text-[#111811]">Curso:</span> {detail.cohort.curso_nome}
+1124: 4 |                     <span className="text-slate-300">|</span>
+1125: 4 |                     <span className="font-bold text-[#111811]">Período:</span> {detail.cohort.data_inicio} → {detail.cohort.data_fim}
+1126: 4 |                   </p>
+1127: 4 |                   <p className="text-xs text-[#8A9E8F]">
+1128: 4 |                     Valor referência: {formatMoney(Number(detail.cohort.valor_referencia ?? 0))}
+1129: 4 |                   </p>
+1130: 3 |                 </div>
+1131: 3 | 
+1132: 4 |                 <div className="flex flex-wrap gap-2">
+1133: 4 |                   <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Formandos: {detail.summary.formandos}</span>
+1134: 4 |                   <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Sessões: {detail.summary.sessoes}</span>
+1135: 4 |                   <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Materiais: {detail.summary.materiais}</span>
+1136: 4 |                   <span className="rounded-lg border border-[#E4EBE6] bg-[#F7F9F7] px-3 py-2 text-xs text-[#4A6352]">Certificados: {detail.summary.certificados}</span>
+1137: 3 |                 </div>
+1138: 2 |               </div>
+1139: 2 | 
+1140: 3 |               <div className="mt-3 flex flex-wrap items-center gap-2">
+1141: 3 |                 {(["formandos", "formadores", "diario", "avaliacoes", "sessoes", "materiais", "certificados"] as DetailTab[]).map((tab) => (
+1142: 3 |                   <button
+1143: 3 |                     key={tab}
+1144: 3 |                     type="button"
+1145: 3 |                     onClick={() => setActiveTab(tab)}
+1146: 3 |                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition ${
+1147: 3 |                       activeTab === tab
+1148: 3 |                         ? "border-klasse-gold bg-klasse-gold/10 text-klasse-gold"
+1149: 3 |                         : "border-[#E4EBE6] bg-white text-[#4A6352] hover:bg-[#F7F9F7]"
+1150: 3 |                     }`}
+1151: 3 |                   >
+1152: 3 |                     {tab === "diario" ? "Diário de Classe" : tab === "avaliacoes" ? "Avaliações" : tab}
+1153: 3 |                   </button>
+1154: 3 |                 ))}
+1155: 3 | 
+1156: 4 |                 <div className="ml-auto flex flex-wrap gap-1.5">
+1157: 4 |                   {(["rascunho", "aberta", "em curso", "concluída", "cancelada"] as Exclude<StatusFilter, "todos">[]).map((status) => (
+1158: 4 |                     <button
+1159: 4 |                       key={status}
+1160: 4 |                       type="button"
+1161: 4 |                       onClick={() => changeStatus(detail.cohort.id, status)}
+1162: 4 |                       className="rounded-md border border-[#E4EBE6] px-2.5 py-1 text-xs text-[#4A6352] hover:bg-[#F7F9F7]"
+1163: 4 |                     >
+1164: 4 |                       {status}
+1165: 4 |                     </button>
+1166: 4 |                   ))}
+1167: 4 |                   <button
+1168: 4 |                     type="button"
+1169: 4 |                     onClick={() => removeItem(detail.cohort.id)}
+1170: 4 |                     className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50"
+1171: 4 |                   >
+1172: 4 |                     apagar
+1173: 4 |                   </button>
+1174: 3 |                 </div>
+1175: 2 |               </div>
+1176: 2 | 
+1177: 2 |               {activeTab === "formadores" ? (
+1178: 3 |                 <div className="mt-3 grid gap-3">
+1179: 3 |                   <article className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1180: 4 |                     <div className="flex flex-wrap items-start justify-between gap-3">
+1181: 5 |                       <div>
+1182: 5 |                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8A9E8F]">
+1183: 5 |                           equipa pedagógica
+1184: 5 |                         </p>
+1185: 5 |                         <h3 className="mt-1 text-xl font-semibold text-[#111811]">
+1186: 5 |                           Atribuir formador à edição
+1187: 5 |                         </h3>
+1188: 5 |                         <p className="mt-1 text-sm text-[#4A6352]">
+1189: 5 |                           Selecione um formador já cadastrado no centro e defina o percentual de honorário para esta turma.
+1190: 5 |                         </p>
+1191: 4 |                       </div>
+1192: 4 |                       <Link
+1193: 4 |                         href="/admin/equipa"
+1194: 4 |                         className="rounded-lg border border-klasse-gold bg-white px-3 py-2 text-xs font-semibold text-klasse-gold hover:bg-klasse-gold/10"
+1195: 4 |                       >
+1196: 4 |                         Cadastrar formador
+1197: 4 |                       </Link>
+1198: 3 |                     </div>
+1199: 3 | 
+1200: 3 |                     <form onSubmit={assignFormadorToCohort} className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_auto]">
+1201: 3 |                       <label className="grid gap-1 text-sm text-[#4A6352]">
+1202: 3 |                         <span>Formador</span>
+1203: 3 |                         <select
+1204: 3 |                           value={formadorAssignmentForm.formador_user_id}
+1205: 3 |                           onChange={(event) =>
+1206: 3 |                             setFormadorAssignmentForm((prev) => ({
+1207: 3 |                               ...prev,
+1208: 3 |                               formador_user_id: event.target.value,
+1209: 3 |                             }))
+1210: 3 |                           }
+1211: 3 |                           className="rounded-lg border border-[#E4EBE6] bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+1212: 3 |                           required
+1213: 3 |                         >
+1214: 3 |                           <option value="">Selecionar formador</option>
+1215: 3 |                           {availableFormadores.map((item) => (
+1216: 3 |                             <option key={item.user_id} value={item.user_id}>
+1217: 3 |                               {item.nome}
+1218: 3 |                               {item.papel && item.papel !== "formador" ? ` (${item.papel.replace("formacao_", "")})` : ""}
+1219: 3 |                               {item.email ? ` · ${item.email}` : ""}
+1220: 3 |                             </option>
+1221: 3 |                           ))}
+1222: 3 |                         </select>                      </label>
+1223: 3 | 
+1224: 3 |                       <Input
+1225: 3 |                         label="% honorário"
+1226: 3 |                         type="number"
+1227: 3 |                         min={1}
+1228: 3 |                         max={100}
+1229: 3 |                         value={formadorAssignmentForm.percentual_honorario}
+1230: 3 |                         onChange={(value) =>
+1231: 3 |                           setFormadorAssignmentForm((prev) => ({
+1232: 3 |                             ...prev,
+1233: 3 |                             percentual_honorario: value,
+1234: 3 |                           }))
+1235: 3 |                         }
+1236: 3 |                         required
+1237: 3 |                       />
+1238: 3 | 
+1239: 3 |                       <button
+1240: 3 |                         type="submit"
+1241: 3 |                         disabled={formadorBusy || availableFormadores.length === 0}
+1242: 3 |                         className="self-end rounded-lg border border-[#8A5A12] bg-[#A86F18] px-4 py-2 text-sm font-black text-white shadow-sm shadow-[#A86F18]/20 hover:bg-[#8A5A12] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+1243: 3 |                       >
+1244: 3 |                         {formadorBusy ? "Atribuindo..." : "Atribuir"}
+1245: 3 |                       </button>
+1246: 3 |                     </form>
+1247: 3 | 
+1248: 3 |                     {availableFormadores.length === 0 ? (
+1249: 3 |                       <p className="mt-3 text-xs text-[#8A9E8F]">
+1250: 3 |                         Todos os formadores cadastrados já estão atribuídos a esta edição ou ainda não há formadores no centro.
+1251: 3 |                       </p>
+1252: 3 |                     ) : null}
+1253: 3 |                   </article>
+1254: 3 | 
+1255: 3 |                   <section className="grid gap-2 md:grid-cols-2">
+1256: 3 |                     {detail.tabs.formadores.map((formador) => (
+1257: 3 |                       <article key={formador.id} className="rounded-2xl border border-[#E4EBE6] bg-white p-4 shadow-sm">
+1258: 4 |                         <div className="flex items-start justify-between gap-3">
+1259: 5 |                           <div>
+1260: 5 |                             <p className="text-sm font-semibold text-[#111811]">{formador.nome}</p>
+1261: 5 |                             <p className="mt-0.5 text-xs text-[#4A6352]">{formador.email ?? "sem email"}</p>
+1262: 5 |                             <p className="mt-2 text-xs font-semibold text-[#8A9E8F]">
+1263: 5 |                               Honorário: {Number(formador.percentual_honorario ?? 0)}%
+1264: 5 |                             </p>
+1265: 4 |                           </div>
+1266: 4 |                           <button
+1267: 4 |                             type="button"
+1268: 4 |                             disabled={formadorBusy}
+1269: 4 |                             onClick={() => removeFormadorFromCohort(formador.id)}
+1270: 4 |                             className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+1271: 4 |                           >
+1272: 4 |                             Remover
+1273: 4 |                           </button>
+1274: 3 |                         </div>
+1275: 3 |                       </article>
+1276: 3 |                     ))}
+1277: 3 | 
+1278: 3 |                     {detail.tabs.formadores.length === 0 ? (
+1279: 4 |                       <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-8 text-sm text-[#4A6352]">
+1280: 4 |                         Nenhum formador atribuído a esta edição.
+1281: 3 |                       </div>
+1282: 3 |                     ) : null}
+1283: 3 |                   </section>
+1284: 2 |                 </div>
+1285: 2 |               ) : null}
+1286: 2 | 
+1287: 2 |               {activeTab === "formandos" ? (
+1288: 3 |                 <div className="mt-3 grid gap-3">
+1289: 4 |                   <div className="flex flex-wrap items-center justify-between gap-3">
+1290: 5 |                     <div>
+1291: 5 |                       <p className="text-xs uppercase tracking-[0.16em] text-[#8A9E8F]">Gestão Financeira da Turma</p>
+1292: 5 |                       <h3 className="text-xl font-semibold text-[#111811]">Painel de pagamentos</h3>
+1293: 4 |                     </div>
+1294: 5 |                     <div className="inline-flex rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-1">
+1295: 5 |                       <button
+1296: 5 |                         type="button"
+1297: 5 |                         onClick={() => setFinanceView("b2c")}
+1298: 5 |                         className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+1299: 5 |                           financeView === "b2c" ? "bg-white text-[#1F6B3B] shadow-sm" : "text-[#4A6352] hover:bg-white/70"
+1300: 5 |                         }`}
+1301: 5 |                       >
+1302: 5 |                         Visão B2C (Particulares)
+1303: 5 |                       </button>
+1304: 5 |                       <button
+1305: 5 |                         type="button"
+1306: 5 |                         onClick={() => setFinanceView("b2b")}
+1307: 5 |                         className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+1308: 5 |                           financeView === "b2b" ? "bg-white text-[#1F6B3B] shadow-sm" : "text-[#4A6352] hover:bg-white/70"
+1309: 5 |                         }`}
+1310: 5 |                       >
+1311: 5 |                         Visão B2B (Corporativo)
+1312: 5 |                       </button>
+1313: 4 |                     </div>
+1314: 3 |                   </div>
+1315: 3 | 
+1316: 3 |                   {financeView === "b2c" ? (
+1317: 3 |                     <>
+1318: 4 |                       <div className="space-y-2 md:hidden">
+1319: 4 |                         {visibleFormandos.map((formando) => (
+1320: 4 |                           <article key={formando.user_id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+1321: 4 |                             <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+1322: 5 |                             <div className="mt-2 grid gap-2">
+1323: 5 |                               {(formando.parcelas ?? []).slice(0, 3).map((parcela) => (
+1324: 6 |                                 <div key={parcela.item_id} className="flex items-center justify-between gap-2">
+1325: 6 |                                   <span className="text-xs text-[#4A6352]">{parcela.descricao}</span>
+1326: 6 |                                   {renderPaymentCell(parcela.status, parcela.item_id, formando.nome, parcela.descricao, parcela.valor, openPagamentoModal)}
+1327: 5 |                                 </div>
+1328: 5 |                               ))}
+1329: 4 |                             </div>
+1330: 4 |                           </article>
+1331: 4 |                         ))}
+1332: 3 |                       </div>
+1333: 3 | 
+1334: 4 |                       <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+1335: 4 |                         <table className="min-w-[760px] w-full border-collapse text-sm">
+1336: 4 |                           <thead className="bg-[#F7F9F7] text-[#4A6352]">
+1337: 4 |                             <tr>
+1338: 4 |                               <Th>Nome do Formando</Th>
+1339: 4 |                               <Th>Inscrição</Th>
+1340: 4 |                               <Th>Módulo 1</Th>
+1341: 4 |                               <Th>Módulo 2</Th>
+1342: 4 |                             </tr>
+1343: 4 |                           </thead>
+1344: 4 |                           <tbody>
+1345: 4 |                             {visibleFormandos.map((formando) => (
+1346: 4 |                               <tr key={formando.user_id}>
+1347: 4 |                                 <Td>{formando.nome}</Td>
+1348: 4 |                                 <Td>
+1349: 4 |                                   {formando.parcelas?.[0]
+1350: 4 |                                     ? renderPaymentCell(
+1351: 4 |                                         formando.parcelas[0].status,
+1352: 4 |                                         formando.parcelas[0].item_id,
+1353: 4 |                                         formando.nome,
+1354: 4 |                                         formando.parcelas[0].descricao,
+1355: 4 |                                         formando.parcelas[0].valor,
+1356: 4 |                                         openPagamentoModal
+1357: 4 |                                       )
+1358: 4 |                                     : "—"}
+1359: 4 |                                 </Td>
+1360: 4 |                                 <Td>
+1361: 4 |                                   {formando.parcelas?.[1]
+1362: 4 |                                     ? renderPaymentCell(
+1363: 4 |                                         formando.parcelas[1].status,
+1364: 4 |                                         formando.parcelas[1].item_id,
+1365: 4 |                                         formando.nome,
+1366: 4 |                                         formando.parcelas[1].descricao,
+1367: 4 |                                         formando.parcelas[1].valor,
+1368: 4 |                                         openPagamentoModal
+1369: 4 |                                       )
+1370: 4 |                                     : "—"}
+1371: 4 |                                 </Td>
+1372: 4 |                                 <Td>
+1373: 4 |                                   {formando.parcelas?.[2]
+1374: 4 |                                     ? renderPaymentCell(
+1375: 4 |                                         formando.parcelas[2].status,
+1376: 4 |                                         formando.parcelas[2].item_id,
+1377: 4 |                                         formando.nome,
+1378: 4 |                                         formando.parcelas[2].descricao,
+1379: 4 |                                         formando.parcelas[2].valor,
+1380: 4 |                                         openPagamentoModal
+1381: 4 |                                       )
+1382: 4 |                                     : "—"}
+1383: 4 |                                 </Td>
+1384: 4 |                               </tr>
+1385: 4 |                             ))}
+1386: 4 |                           </tbody>
+1387: 4 |                         </table>
+1388: 3 |                       </div>
+1389: 3 | 
+1390: 4 |                       <div className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-3">
+1391: 5 |                         <div className="mb-2">
+1392: 5 |                           <p className="text-xs uppercase tracking-[0.16em] text-[#8A9E8F]">Operação de Acesso e Estado</p>
+1393: 5 |                           <h4 className="text-sm font-semibold text-[#111811]">Gestão de acessos e estado académico</h4>
+1394: 4 |                         </div>
+1395: 4 | 
+1396: 5 |                         <div className="mb-3 grid gap-2 rounded-xl border border-[#E4EBE6] bg-white p-3 md:grid-cols-[1fr_220px_auto]">
+1397: 5 |                           <input
+1398: 5 |                             value={formandoSearch}
+1399: 5 |                             onChange={(event) => setFormandoSearch(event.target.value)}
+1400: 5 |                             placeholder="Pesquisar por nome ou email..."
+1401: 5 |                             className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
+1402: 5 |                           />
+1403: 5 |                           <select
+1404: 5 |                             value={formandoAcademicFilter}
+1405: 5 |                             onChange={(event) =>
+1406: 5 |                               setFormandoAcademicFilter(
+1407: 5 |                                 event.target.value as "todos" | "cursando" | "desistente" | "apto" | "nao_apto"
+1408: 5 |                               )
+1409: 5 |                             }
+1410: 5 |                             className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
+1411: 5 |                           >
+1412: 5 |                             <option value="todos">Todos os estados</option>
+1413: 5 |                             <option value="cursando">Cursando</option>
+1414: 5 |                             <option value="desistente">Desistente</option>
+1415: 5 |                             <option value="apto">Apto</option>
+1416: 5 |                             <option value="nao_apto">Não apto</option>
+1417: 5 |                           </select>
+1418: 5 |                           <button
+1419: 5 |                             type="button"
+1420: 5 |                             onClick={() => setShowInscricaoModal(true)}
+1421: 5 |                             className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+1422: 5 |                           >
+1423: 5 |                             Adicionar Formando
+1424: 5 |                           </button>
+1425: 4 |                         </div>
+1426: 4 | 
+1427: 5 |                         <div className="space-y-2 md:hidden">
+1428: 5 |                           {visibleFormandos.map((formando) => {
+1429: 5 |                             const busy = Boolean(formandoBusy[formando.user_id]);
+1430: 5 |                             return (
+1431: 5 |                               <article key={formando.user_id} className="rounded-xl border border-[#E4EBE6] bg-white p-3">
+1432: 6 |                                 <div className="flex items-start justify-between gap-2">
+1433: 7 |                                   <div>
+1434: 7 |                                     <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+1435: 7 |                                     <p className="text-xs text-[#4A6352] underline underline-offset-2 decoration-dotted">{formando.email ?? "sem email"}</p>
+1436: 6 |                                   </div>
+1437: 6 |                                   <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${academicStatusPillClass(formando.academic_status)}`}>
+1438: 6 |                                     {academicStatusLabel(formando.academic_status)}
+1439: 6 |                                   </span>
+1440: 5 |                                 </div>
+1441: 5 | 
+1442: 6 |                                 <div className="mt-2 flex flex-wrap items-center gap-2">
+1443: 6 |                                   <button
+1444: 6 |                                     type="button"
+1445: 6 |                                     role="switch"
+1446: 6 |                                     aria-checked={!formando.access_blocked}
+1447: 6 |                                     disabled={busy}
+1448: 6 |                                     onClick={() =>
+1449: 6 |                                       runFormandoAction(formando.user_id, {
+1450: 6 |                                         action: "set_access_block",
+1451: 6 |                                         blocked: !formando.access_blocked,
+1452: 6 |                                       })
+1453: 6 |                                     }
+1454: 6 |                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+1455: 6 |                                       formando.access_blocked ? "bg-slate-300" : "bg-emerald-500"
+1456: 6 |                                     } disabled:opacity-60`}
+1457: 6 |                                   >
+1458: 6 |                                     <span
+1459: 6 |                                       className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+1460: 6 |                                         formando.access_blocked ? "translate-x-1" : "translate-x-5"
+1461: 6 |                                       }`}
+1462: 6 |                                     />
+1463: 6 |                                   </button>
+1464: 6 |                                   <span className="text-xs text-[#4A6352]">
+1465: 6 |                                     {formando.access_blocked ? "Acesso bloqueado" : "Acesso ativo"}
+1466: 6 |                                   </span>
+1467: 6 | 
+1468: 6 |                                   <details className="relative">
+1469: 6 |                                     <summary className="list-none cursor-pointer rounded-md border border-[#E4EBE6] bg-white p-1.5 text-xs text-[#4A6352]">
+1470: 6 |                                       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+1471: 6 |                                         <circle cx="5" cy="12" r="1.8" />
+1472: 6 |                                         <circle cx="12" cy="12" r="1.8" />
+1473: 6 |                                         <circle cx="19" cy="12" r="1.8" />
+1474: 6 |                                       </svg>
+1475: 6 |                                     </summary>
+1476: 7 |                                     <div className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+1477: 7 |                                       <button
+1478: 7 |                                         type="button"
+1479: 7 |                                         onClick={() =>
+1480: 7 |                                           setInfo(
+1481: 7 |                                             `Perfil: ${formando.nome} · ${formando.email ?? "sem email"} · ${formando.telefone ?? "sem telefone"}`
+1482: 7 |                                           )
+1483: 7 |                                         }
+1484: 7 |                                         className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+1485: 7 |                                       >
+1486: 7 |                                         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1487: 7 |                                           <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" strokeWidth="1.8" />
+1488: 7 |                                           <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+1489: 7 |                                         </svg>
+1490: 7 |                                         Visualizar Perfil
+1491: 7 |                                       </button>
+1492: 7 |                                       {formando.inscricao_id ? (
+1493: 7 |                                         <a
+1494: 7 |                                           href={`/api/formacao/inscricoes/${formando.inscricao_id}/comprovativo`}
+1495: 7 |                                           target="_blank"
+1496: 7 |                                           rel="noreferrer"
+1497: 7 |                                           className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+1498: 7 |                                         >
+1499: 7 |                                           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1500: 7 |                                             <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" stroke="currentColor" strokeWidth="1.8" />
+1501: 7 |                                           </svg>
+1502: 7 |                                           Descarregar Comprovativo
+1503: 7 |                                         </a>
+1504: 7 |                                       ) : null}
+1505: 7 |                                       <button
+1506: 7 |                                         type="button"
+1507: 7 |                                         onClick={() =>
+1508: 7 |                                           setStatusEditorTarget({
+1509: 7 |                                             user_id: formando.user_id,
+1510: 7 |                                             nome: formando.nome,
+1511: 7 |                                             status: normalizeAcademicStatus(formando.academic_status),
+1512: 7 |                                           })
+1513: 7 |                                         }
+1514: 7 |                                         className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+1515: 7 |                                       >
+1516: 7 |                                         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1517: 7 |                                           <path d="m4 20 4.5-1 9-9-3.5-3.5-9 9L4 20Z" stroke="currentColor" strokeWidth="1.8" />
+1518: 7 |                                           <path d="m12.8 7.2 3.5 3.5" stroke="currentColor" strokeWidth="1.8" />
+1519: 7 |                                         </svg>
+1520: 7 |                                         Editar Estado Académico
+1521: 7 |                                       </button>
+1522: 8 |                                       <div className="my-1 h-px bg-[#E4EBE6]" />
+1523: 8 |                                       <button
+1524: 8 |                                         type="button"
+1525: 8 |                                         disabled={busy}
+1526: 8 |                                         onClick={() => runFormandoAction(formando.user_id, { action: "resend_access" })}
+1527: 8 |                                         className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7] disabled:cursor-not-allowed disabled:opacity-60"
+1528: 8 |                                       >
+1529: 8 |                                         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1530: 8 |                                           <path d="M3 6h18v12H3V6Z" stroke="currentColor" strokeWidth="1.8" />
+1531: 8 |                                           <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="1.8" />
+1532: 8 |                                         </svg>
+1533: 8 |                                         Reenviar acesso
+1534: 8 |                                       </button>
+1535: 8 |                                       <button
+1536: 8 |                                         type="button"
+1537: 8 |                                         disabled={busy}
+1538: 8 |                                         onClick={() =>
+1539: 8 |                                           runFormandoAction(formando.user_id, {
+1540: 8 |                                             action: "set_academic_status",
+1541: 8 |                                             status: "desistente",
+1542: 8 |                                           })
+1543: 8 |                                         }
+1544: 8 |                                         className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+1545: 8 |                                       >
+1546: 8 |                                         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1547: 8 |                                           <path d="M4 7h16M9.5 7V5h5v2M8 7l.7 12h6.6L16 7" stroke="currentColor" strokeWidth="1.8" />
+1548: 8 |                                         </svg>
+1549: 8 |                                         Remover da Turma
+1550: 8 |                                       </button>
+1551: 7 |                                     </div>
+1552: 7 |                                   </details>
+1553: 6 |                                 </div>
+1554: 6 |                               </article>
+1555: 6 |                             );
+1556: 6 |                           })}
+1557: 6 |                           {visibleFormandos.length === 0 ? (
+1558: 7 |                             <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+1559: 7 |                               Nenhum formando encontrado para os filtros atuais.
+1560: 6 |                             </div>
+1561: 6 |                           ) : null}
+1562: 5 |                         </div>
+1563: 5 | 
+1564: 6 |                         <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white md:block">
+1565: 6 |                           <table className="min-w-[980px] w-full border-collapse text-sm">
+1566: 6 |                             <thead className="bg-[#FAFCFA] text-[#4A6352]">
+1567: 6 |                               <tr>
+1568: 6 |                                 <Th>Formando</Th>
+1569: 6 |                                 <Th>Acesso ao Portal</Th>
+1570: 6 |                                 <Th>Status Académico</Th>
+1571: 6 |                                 <Th>Ações</Th>
+1572: 6 |                               </tr>
+1573: 6 |                             </thead>
+1574: 6 |                             <tbody>
+1575: 6 |                               {visibleFormandos.map((formando) => {
+1576: 6 |                                 const busy = Boolean(formandoBusy[formando.user_id]);
+1577: 6 |                                 return (
+1578: 6 |                                   <tr key={formando.user_id}>
+1579: 6 |                                     <Td>
+1580: 7 |                                       <div className="grid gap-0.5">
+1581: 7 |                                         <span className="font-semibold">{formando.nome}</span>
+1582: 7 |                                         <span className="text-xs text-[#8A9E8F] underline underline-offset-2 decoration-dotted">{formando.email ?? "sem email"}</span>
+1583: 6 |                                       </div>
+1584: 6 |                                     </Td>
+1585: 6 |                                     <Td>
+1586: 6 |                                       <button
+1587: 6 |                                         type="button"
+1588: 6 |                                         role="switch"
+1589: 6 |                                         aria-checked={!formando.access_blocked}
+1590: 6 |                                         disabled={busy}
+1591: 6 |                                         onClick={() =>
+1592: 6 |                                           runFormandoAction(formando.user_id, {
+1593: 6 |                                             action: "set_access_block",
+1594: 6 |                                             blocked: !formando.access_blocked,
+1595: 6 |                                           })
+1596: 6 |                                         }
+1597: 6 |                                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+1598: 6 |                                           formando.access_blocked ? "bg-slate-300" : "bg-emerald-500"
+1599: 6 |                                         } disabled:opacity-60`}
+1600: 6 |                                       >
+1601: 6 |                                         <span
+1602: 6 |                                           className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+1603: 6 |                                             formando.access_blocked ? "translate-x-1" : "translate-x-5"
+1604: 6 |                                           }`}
+1605: 6 |                                         />
+1606: 6 |                                       </button>
+1607: 6 |                                     </Td>
+1608: 6 |                                     <Td>
+1609: 7 |                                       <div className="flex items-center gap-2">
+1610: 7 |                                         <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${academicStatusPillClass(formando.academic_status)}`}>
+1611: 7 |                                           {academicStatusLabel(formando.academic_status)}
+1612: 7 |                                         </span>
+1613: 6 |                                       </div>
+1614: 6 |                                     </Td>
+1615: 6 |                                     <Td>
+1616: 7 |                                       <div className="flex items-center gap-2">
+1617: 7 |                                         <details className="relative">
+1618: 7 |                                           <summary className="list-none cursor-pointer rounded-md border border-[#E4EBE6] bg-white p-1.5 text-xs text-[#4A6352]">
+1619: 7 |                                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+1620: 7 |                                               <circle cx="5" cy="12" r="1.8" />
+1621: 7 |                                               <circle cx="12" cy="12" r="1.8" />
+1622: 7 |                                               <circle cx="19" cy="12" r="1.8" />
+1623: 7 |                                             </svg>
+1624: 7 |                                           </summary>
+1625: 8 |                                           <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+1626: 8 |                                             <button
+1627: 8 |                                               type="button"
+1628: 8 |                                               onClick={() =>
+1629: 8 |                                                 setInfo(
+1630: 8 |                                                   `Perfil: ${formando.nome} · ${formando.email ?? "sem email"} · ${formando.telefone ?? "sem telefone"}`
+1631: 8 |                                                 )
+1632: 8 |                                               }
+1633: 8 |                                               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+1634: 8 |                                             >
+1635: 8 |                                               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1636: 8 |                                                 <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" strokeWidth="1.8" />
+1637: 8 |                                                 <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+1638: 8 |                                               </svg>
+1639: 8 |                                               Visualizar Perfil
+1640: 8 |                                             </button>
+1641: 8 |                                             {formando.inscricao_id ? (
+1642: 8 |                                               <a
+1643: 8 |                                                 href={`/api/formacao/inscricoes/${formando.inscricao_id}/comprovativo`}
+1644: 8 |                                                 target="_blank"
+1645: 8 |                                                 rel="noreferrer"
+1646: 8 |                                                 className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+1647: 8 |                                               >
+1648: 8 |                                                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1649: 8 |                                                   <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" stroke="currentColor" strokeWidth="1.8" />
+1650: 8 |                                                 </svg>
+1651: 8 |                                                 Descarregar Comprovativo
+1652: 8 |                                               </a>
+1653: 8 |                                             ) : null}
+1654: 8 |                                             <button
+1655: 8 |                                               type="button"
+1656: 8 |                                               onClick={() =>
+1657: 8 |                                                 setStatusEditorTarget({
+1658: 8 |                                                   user_id: formando.user_id,
+1659: 8 |                                                   nome: formando.nome,
+1660: 8 |                                                   status: normalizeAcademicStatus(formando.academic_status),
+1661: 8 |                                                 })
+1662: 8 |                                               }
+1663: 8 |                                               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7]"
+1664: 8 |                                             >
+1665: 8 |                                               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1666: 8 |                                                 <path d="m4 20 4.5-1 9-9-3.5-3.5-9 9L4 20Z" stroke="currentColor" strokeWidth="1.8" />
+1667: 8 |                                                 <path d="m12.8 7.2 3.5 3.5" stroke="currentColor" strokeWidth="1.8" />
+1668: 8 |                                               </svg>
+1669: 8 |                                               Editar Estado Académico
+1670: 8 |                                             </button>
+1671: 9 |                                             <div className="my-1 h-px bg-[#E4EBE6]" />
+1672: 9 |                                             <button
+1673: 9 |                                               type="button"
+1674: 9 |                                               disabled={busy}
+1675: 9 |                                               onClick={() => runFormandoAction(formando.user_id, { action: "resend_access" })}
+1676: 9 |                                               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-[#111811] hover:bg-[#F7F9F7] disabled:cursor-not-allowed disabled:opacity-60"
+1677: 9 |                                             >
+1678: 9 |                                               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1679: 9 |                                                 <path d="M3 6h18v12H3V6Z" stroke="currentColor" strokeWidth="1.8" />
+1680: 9 |                                                 <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="1.8" />
+1681: 9 |                                               </svg>
+1682: 9 |                                               Reenviar acesso
+1683: 9 |                                             </button>
+1684: 9 |                                             <button
+1685: 9 |                                               type="button"
+1686: 9 |                                               disabled={busy}
+1687: 9 |                                               onClick={() =>
+1688: 9 |                                                 runFormandoAction(formando.user_id, {
+1689: 9 |                                                   action: "set_academic_status",
+1690: 9 |                                                   status: "desistente",
+1691: 9 |                                                 })
+1692: 9 |                                               }
+1693: 9 |                                               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+1694: 9 |                                             >
+1695: 9 |                                               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1696: 9 |                                                 <path d="M4 7h16M9.5 7V5h5v2M8 7l.7 12h6.6L16 7" stroke="currentColor" strokeWidth="1.8" />
+1697: 9 |                                               </svg>
+1698: 9 |                                               Remover da Turma
+1699: 9 |                                             </button>
+1700: 8 |                                           </div>
+1701: 8 |                                         </details>
+1702: 7 |                                       </div>
+1703: 7 |                                     </Td>
+1704: 7 |                                   </tr>
+1705: 7 |                                 );
+1706: 7 |                               })}
+1707: 7 |                               {visibleFormandos.length === 0 ? (
+1708: 7 |                                 <tr>
+1709: 7 |                                   <Td colSpan={4}>Nenhum formando encontrado para os filtros atuais.</Td>
+1710: 7 |                                 </tr>
+1711: 7 |                               ) : null}
+1712: 7 |                             </tbody>
+1713: 7 |                           </table>
+1714: 6 |                         </div>
+1715: 5 |                       </div>
+1716: 5 |                     </>
+1717: 5 |                   ) : (
+1718: 6 |                     <div className="grid gap-3">
+1719: 6 |                       <article className="rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-sm">
+1720: 6 |                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A9E8F]">Cliente corporativo</p>
+1721: 6 |                         <h3 className="mt-1 text-2xl font-semibold text-[#111811]">{detail.finance.b2b?.cliente.nome_fantasia ?? "Sem cliente vinculado"}</h3>
+1722: 6 |                         <p className="mt-1 text-sm text-[#4A6352]">Valor total da faturação: {detail.finance.b2b ? formatMoney(detail.finance.b2b.fatura.total_liquido) : "—"}</p>
+1723: 7 |                         <div className="mt-3 flex flex-wrap items-center gap-2">
+1724: 7 |                           <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${paymentPillClass(detail.finance.b2b?.fatura.status ?? "pendente")}`}>
+1725: 7 |                             {detail.finance.b2b?.fatura.status ?? "pendente"}
+1726: 7 |                           </span>
+1727: 7 |                           <button
+1728: 7 |                             type="button"
+1729: 7 |                             className="inline-flex items-center gap-1 rounded-md border border-klasse-gold bg-klasse-gold px-2.5 py-1.5 text-xs font-semibold text-white hover:brightness-95"
+1730: 7 |                           >
+1731: 7 |                             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+1732: 7 |                               <path d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14" stroke="currentColor" strokeWidth="1.8" />
+1733: 7 |                             </svg>
+1734: 7 |                             Descarregar Fatura Proforma
+1735: 7 |                           </button>
+1736: 6 |                         </div>
+1737: 6 |                       </article>
+1738: 6 | 
+1739: 6 |                       <article className="rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1740: 6 |                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A9E8F]">Funcionários cobertos no contrato</p>
+1741: 6 |                         <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-[#111811]">
+1742: 6 |                           {(detail.finance.b2b?.colaboradores_cobertos ?? []).map((colaborador) => (
+1743: 6 |                             <li key={colaborador.user_id}>{colaborador.nome}</li>
+1744: 6 |                           ))}
+1745: 6 |                         </ul>
+1746: 6 |                       </article>
+1747: 5 |                     </div>
+1748: 5 |                   )}
+1749: 4 |                 </div>
+1750: 4 |               ) : null}
+1751: 4 | 
+1752: 4 |               {activeTab === "diario" ? (
+1753: 5 |                 <div className="mt-3 space-y-4">
+1754: 6 |                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1755: 7 |                     <div>
+1756: 7 |                       <h3 className="text-lg font-semibold text-[#111811]">Aulas e Frequência</h3>
+1757: 7 |                       <p className="text-sm text-[#4A6352]">Controle de aulas realizadas, conteúdo ministrado e presenças.</p>
+1758: 6 |                     </div>
+1759: 6 |                     <button
+1760: 6 |                       type="button"
+1761: 6 |                       onClick={() => {
+1762: 6 |                         setAulaForm({
+1763: 6 |                           id: "",
+1764: 6 |                           data: new Date().toISOString().split("T")[0],
+1765: 6 |                           hora_inicio: "08:00",
+1766: 6 |                           hora_fim: "12:00",
+1767: 6 |                           conteudo_previsto: "",
+1768: 6 |                           conteudo_realizado: "",
+1769: 6 |                           horas_ministradas: "4",
+1770: 6 |                           status: "agendada",
+1771: 6 |                           formador_user_id: detail.tabs.formadores[0]?.user_id || "",
+1772: 6 |                         });
+1773: 6 |                         setShowAulaModal(true);
+1774: 6 |                       }}
+1775: 6 |                       className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+1776: 6 |                     >
+1777: 6 |                       + Lançar Aula
+1778: 6 |                     </button>
+1779: 5 |                   </div>
+1780: 5 | 
+1781: 6 |                   <div className="grid gap-3">
+1782: 6 |                     {aulas.map((aula) => (
+1783: 6 |                       <article key={aula.id} className="rounded-2xl border border-[#E4EBE6] bg-white p-4 shadow-sm transition hover:shadow-md">
+1784: 7 |                         <div className="flex flex-wrap items-start justify-between gap-3">
+1785: 8 |                           <div className="flex items-start gap-4">
+1786: 9 |                             <div className="flex flex-col items-center rounded-xl bg-[#F7F9F7] px-3 py-2 text-center border border-[#E4EBE6]">
+1787: 9 |                               <span className="text-[10px] font-bold uppercase text-[#8A9E8F]">{new Date(aula.data).toLocaleDateString("pt-AO", { month: "short" })}</span>
+1788: 9 |                               <span className="text-xl font-black text-[#111811]">{new Date(aula.data).getDate()}</span>
+1789: 8 |                             </div>
+1790: 9 |                             <div>
+1791: 10 |                               <div className="flex items-center gap-2">
+1792: 10 |                                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
+1793: 10 |                                   aula.status === "realizada" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+1794: 10 |                                   aula.status === "cancelada" ? "bg-rose-100 text-rose-700 border-rose-200" :
+1795: 10 |                                   "bg-slate-100 text-slate-700 border-slate-200"
+1796: 10 |                                 }`}>
+1797: 10 |                                   {aula.status}
+1798: 10 |                                 </span>
+1799: 10 |                                 <span className="text-xs font-semibold text-[#4A6352]">
+1800: 10 |                                   {aula.hora_inicio?.slice(0, 5)} → {aula.hora_fim?.slice(0, 5)} · {aula.horas_ministradas}h
+1801: 10 |                                 </span>
+1802: 9 |                               </div>
+1803: 9 |                               <h4 className="mt-1 font-semibold text-[#111811]">
+1804: 9 |                                 {aula.conteudo_realizado || aula.conteudo_previsto || "Sem conteúdo registado"}
+1805: 9 |                               </h4>
+1806: 9 |                               <p className="mt-1 text-xs text-[#8A9E8F]">
+1807: 9 |                                 Formador: {detail.tabs.formadores.find(f => f.user_id === aula.formador_user_id)?.nome || "Não atribuído"}
+1808: 9 |                               </p>
+1809: 8 |                             </div>
+1810: 7 |                           </div>
+1811: 7 |                           
+1812: 8 |                           <div className="flex gap-2">
+1813: 8 |                             <button
+1814: 8 |                               type="button"
+1815: 8 |                               onClick={() => openPresencaModal(aula)}
+1816: 8 |                               className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-xs font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
+1817: 8 |                             >
+1818: 8 |                               Presenças
+1819: 8 |                             </button>
+1820: 8 |                             <button
+1821: 8 |                               type="button"
+1822: 8 |                               onClick={() => {
+1823: 8 |                                 setAulaForm({
+1824: 8 |                                   id: aula.id,
+1825: 8 |                                   data: aula.data,
+1826: 8 |                                   hora_inicio: aula.hora_inicio?.slice(0, 5) || "08:00",
+1827: 8 |                                   hora_fim: aula.hora_fim?.slice(0, 5) || "12:00",
+1828: 8 |                                   conteudo_previsto: aula.conteudo_previsto || "",
+1829: 8 |                                   conteudo_realizado: aula.conteudo_realizado || "",
+1830: 8 |                                   horas_ministradas: String(aula.horas_ministradas),
+1831: 8 |                                   status: aula.status,
+1832: 8 |                                   formador_user_id: aula.formador_user_id || "",
+1833: 8 |                                 });
+1834: 8 |                                 setShowAulaModal(true);
+1835: 8 |                               }}
+1836: 8 |                               className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-xs font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
+1837: 8 |                             >
+1838: 8 |                               Editar
+1839: 8 |                             </button>
+1840: 7 |                           </div>
+1841: 6 |                         </div>
+1842: 6 |                       </article>
+1843: 6 |                     ))}
+1844: 6 | 
+1845: 6 |                     {aulas.length === 0 && !loadingAulas ? (
+1846: 7 |                       <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-12 text-center text-sm text-[#4A6352]">
+1847: 7 |                         Nenhuma aula registada no diário desta turma.
+1848: 6 |                       </div>
+1849: 6 |                     ) : null}
+1850: 5 |                   </div>
+1851: 4 |                 </div>
+1852: 4 |               ) : null}
+1853: 4 | 
+1854: 4 |               {activeTab === "avaliacoes" ? (
+1855: 5 |                 <div className="mt-3 space-y-4">
+1856: 6 |                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1857: 7 |                     <div>
+1858: 7 |                       <h3 className="text-lg font-semibold text-[#111811]">Lançamento de Notas e Conceitos</h3>
+1859: 7 |                       <p className="text-sm text-[#4A6352]">Avaliação individual por competência em cada módulo do curso.</p>
+1860: 6 |                     </div>
+1861: 6 |                     <button
+1862: 6 |                       type="button"
+1863: 6 |                       onClick={saveEvaluations}
+1864: 6 |                       disabled={savingEvaluations}
+1865: 6 |                       className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+1866: 6 |                     >
+1867: 6 |                       {savingEvaluations ? "A guardar..." : "Guardar Avaliações"}
+1868: 6 |                     </button>
+1869: 5 |                   </div>
+1870: 5 | 
+1871: 6 |                   <div className="overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+1872: 6 |                     <table className="min-w-full border-collapse text-sm">
+1873: 6 |                       <thead className="bg-[#F7F9F7] text-[#4A6352]">
+1874: 6 |                         <tr>
+1875: 6 |                           <Th>Formando</Th>
+1876: 6 |                           {detail.tabs.modulos.map(m => (
+1877: 6 |                             <Th key={m.id} title={m.titulo}>M{m.ordem}</Th>
+1878: 6 |                           ))}
+1879: 6 |                           <Th>Presença</Th>
+1880: 6 |                         </tr>
+1881: 6 |                       </thead>
+1882: 6 |                       <tbody className="divide-y divide-[#E4EBE6]">
+1883: 6 |                         {detail.tabs.formandos.map((f) => {
+1884: 6 |                           const prog = progressData.find(p => p.inscricao_id === f.inscricao_id);
+1885: 6 |                           return (
+1886: 6 |                             <tr key={f.user_id}>
+1887: 6 |                               <Td className="font-medium whitespace-nowrap">{f.nome}</Td>
+1888: 6 |                               {detail.tabs.modulos.map(m => {
+1889: 6 |                                 const evalItem = evaluations.find(ev => ev.inscricao_id === f.inscricao_id && ev.modulo_id === m.id);
+1890: 6 |                                 return (
+1891: 6 |                                   <Td key={m.id}>
+1892: 6 |                                     <select
+1893: 6 |                                       value={evalItem?.conceito || "em_progresso"}
+1894: 6 |                                       onChange={(e) => updateEvaluation(f.inscricao_id!, m.id, e.target.value as any)}
+1895: 6 |                                       className={`rounded border border-[#E4EBE6] px-1 py-0.5 text-[10px] font-bold outline-none focus:border-klasse-gold ${
+1896: 6 |                                         evalItem?.conceito === 'apto' ? 'text-emerald-700 bg-emerald-50' : 
+1897: 6 |                                         evalItem?.conceito === 'nao_apto' ? 'text-rose-700 bg-rose-50' : ''
+1898: 6 |                                       }`}
+1899: 6 |                                     >
+1900: 6 |                                       <option value="em_progresso">—</option>
+1901: 6 |                                       <option value="apto">APTO</option>
+1902: 6 |                                       <option value="nao_apto">N. APTO</option>
+1903: 6 |                                       <option value="isento">ISENTO</option>
+1904: 6 |                                     </select>
+1905: 6 |                                   </Td>
+1906: 6 |                                 );
+1907: 6 |                               })}
+1908: 6 |                               <Td>
+1909: 6 |                                 <span className={`font-bold ${prog && prog.percentual_presenca < 75 ? "text-rose-600" : "text-emerald-600"}`}>
+1910: 6 |                                   {prog ? `${Math.round(prog.percentual_presenca)}%` : "—"}
+1911: 6 |                                 </span>
+1912: 6 |                               </Td>
+1913: 6 |                             </tr>
+1914: 6 |                           );
+1915: 6 |                         })}
+1916: 6 |                       </tbody>
+1917: 6 |                     </table>
+1918: 5 |                   </div>
+1919: 4 |                 </div>
+1920: 4 |               ) : null}
+1921: 4 | 
+1922: 4 |               {activeTab === "sessoes" ? (
+1923: 4 |                 <>
+1924: 5 |                   <div className="mt-3 space-y-2 md:hidden">
+1925: 5 |                     {detail.tabs.sessoes.map((row) => (
+1926: 5 |                       <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+1927: 5 |                         <p className="text-sm font-semibold text-[#111811]">{row.competencia}</p>
+1928: 5 |                         <p className="mt-0.5 text-xs text-[#4A6352]">Formador: {row.formador_nome}</p>
+1929: 6 |                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+1930: 6 |                           <span className="text-xs text-[#4A6352]">Horas: {row.horas_ministradas}</span>
+1931: 6 |                           <span className="text-xs font-semibold text-[#111811]">{formatMoney(row.valor_hora)}</span>
+1932: 5 |                         </div>
+1933: 5 |                         <p className="mt-1 text-xs text-[#8A9E8F]">Status: {row.status}</p>
+1934: 5 |                       </article>
+1935: 5 |                     ))}
+1936: 5 |                     {detail.tabs.sessoes.length === 0 ? (
+1937: 6 |                       <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+1938: 6 |                         Sem sessões lançadas para esta turma.
+1939: 5 |                       </div>
+1940: 5 |                     ) : null}
+1941: 4 |                   </div>
+1942: 4 | 
+1943: 5 |                   <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+1944: 5 |                     <table className="min-w-[760px] w-full border-collapse text-sm">
+1945: 5 |                       <thead className="bg-[#F7F9F7] text-[#4A6352]">
+1946: 5 |                         <tr>
+1947: 5 |                           <Th>Competência</Th>
+1948: 5 |                           <Th>Formador</Th>
+1949: 5 |                           <Th>Horas</Th>
+1950: 5 |                           <Th>Valor hora</Th>
+1951: 5 |                           <Th>Status</Th>
+1952: 5 |                         </tr>
+1953: 5 |                       </thead>
+1954: 5 |                       <tbody>
+1955: 5 |                         {detail.tabs.sessoes.map((row) => (
+1956: 5 |                           <tr key={row.id}>
+1957: 5 |                             <Td>{row.competencia}</Td>
+1958: 5 |                             <Td>{row.formador_nome}</Td>
+1959: 5 |                             <Td>{row.horas_ministradas}</Td>
+1960: 5 |                             <Td>{formatMoney(row.valor_hora)}</Td>
+1961: 5 |                             <Td>{row.status}</Td>
+1962: 5 |                           </tr>
+1963: 5 |                         ))}
+1964: 5 |                         {detail.tabs.sessoes.length === 0 ? (
+1965: 5 |                           <tr>
+1966: 5 |                             <Td colSpan={5}>Sem sessões lançadas para esta turma.</Td>
+1967: 5 |                           </tr>
+1968: 5 |                         ) : null}
+1969: 5 |                       </tbody>
+1970: 5 |                     </table>
+1971: 4 |                   </div>
+1972: 4 |                 </>
+1973: 4 |               ) : null}
+1974: 4 | 
+1975: 4 |               {activeTab === "materiais" ? (
+1976: 5 |                 <div className="mt-3 grid gap-2 md:grid-cols-2">
+1977: 5 |                   {detail.tabs.materiais.map((row) => (
+1978: 5 |                     <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-3">
+1979: 5 |                       <p className="text-sm font-semibold text-[#111811]">{row.titulo}</p>
+1980: 5 |                       <p className="mt-1 text-xs text-[#4A6352]">Tipo: {row.tipo}</p>
+1981: 5 |                       <p className="text-xs text-[#8A9E8F]">Atualizado em: {row.updated_at}</p>
+1982: 5 |                     </article>
+1983: 5 |                   ))}
+1984: 5 |                   {detail.tabs.materiais.length === 0 ? (
+1985: 5 |                     <p className="rounded-xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-3 py-6 text-sm text-[#4A6352]">
+1986: 5 |                       Sem materiais cadastrados para esta turma.
+1987: 5 |                     </p>
+1988: 5 |                   ) : null}
+1989: 4 |                 </div>
+1990: 4 |               ) : null}
+1991: 4 | 
+1992: 4 |               {activeTab === "certificados" ? (
+1993: 5 |                 <div className="mt-3 space-y-6">
+1994: 5 |                   <article className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1995: 5 |                     <h3 className="text-lg font-semibold text-[#111811]">Elegibilidade para Certificação</h3>
+1996: 5 |                     <p className="text-sm text-[#4A6352]">
+1997: 5 |                       Regra: Mínimo de 75% de presença e aproveitamento (APTO/ISENTO) em todos os {detail.summary.modulos} módulos.
+1998: 5 |                     </p>
+1999: 5 | 
+2000: 6 |                     <div className="mt-4 overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+2001: 6 |                       <table className="w-full text-sm">
+2002: 6 |                         <thead className="bg-[#F7F9F7] text-[#4A6352]">
+2003: 6 |                           <tr>
+2004: 6 |                             <Th>Formando</Th>
+2005: 6 |                             <Th>Presença</Th>
+2006: 6 |                             <Th>Módulos</Th>
+2007: 6 |                             <Th>Estado</Th>
+2008: 6 |                             <Th>Ação</Th>
+2009: 6 |                           </tr>
+2010: 6 |                         </thead>
+2011: 6 |                         <tbody className="divide-y divide-[#E4EBE6]">
+2012: 6 |                           {detail.tabs.formandos.map((f) => {
+2013: 6 |                             const prog = progressData.find(p => p.inscricao_id === f.inscricao_id);
+2014: 6 |                             const hasCert = detail.tabs.certificados.some(c => c.formando_user_id === f.user_id);
+2015: 6 |                             
+2016: 6 |                             return (
+2017: 6 |                               <tr key={f.user_id}>
+2018: 6 |                                 <Td className="font-medium">{f.nome}</Td>
+2019: 6 |                                 <Td>
+2020: 6 |                                   <span className={`font-bold ${prog && prog.percentual_presenca < 75 ? "text-rose-600" : "text-emerald-600"}`}>
+2021: 6 |                                     {prog ? `${Math.round(prog.percentual_presenca)}%` : "—"}
+2022: 6 |                                   </span>
+2023: 6 |                                 </Td>
+2024: 6 |                                 <Td>
+2025: 6 |                                   <span className="font-semibold text-[#111811]">
+2026: 6 |                                     {prog ? `${prog.modulos_aprovados} / ${prog.total_modulos}` : "—"}
+2027: 6 |                                   </span>
+2028: 6 |                                 </Td>
+2029: 6 |                                 <Td>
+2030: 6 |                                   {hasCert ? (
+2031: 6 |                                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Emitido</span>
+2032: 6 |                                   ) : prog?.elegivel_certificacao ? (
+2033: 6 |                                     <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-700">Elegível</span>
+2034: 6 |                                   ) : (
+2035: 6 |                                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Incompleto</span>
+2036: 6 |                                   )}
+2037: 6 |                                 </Td>
+2038: 6 |                                 <Td>
+2039: 6 |                                   {!hasCert && prog?.elegivel_certificacao && (
+2040: 6 |                                     <button className="text-xs font-bold text-klasse-gold underline underline-offset-2">Emitir Agora</button>
+2041: 6 |                                   )}
+2042: 6 |                                   {!hasCert && !prog?.elegivel_certificacao && (
+2043: 6 |                                     <span className="text-[10px] text-[#8A9E8F] italic">Pendente requisitos</span>
+2044: 6 |                                   )}
+2045: 6 |                                 </Td>
+2046: 6 |                               </tr>
+2047: 6 |                             );
+2048: 6 |                           })}
+2049: 6 |                         </tbody>
+2050: 6 |                       </table>
+2051: 5 |                     </div>
+2052: 5 |                   </article>
+2053: 5 | 
+2054: 6 |                   <div>
+2055: 6 |                     <h3 className="text-lg font-semibold text-[#111811]">Certificados Emitidos</h3>
+2056: 7 |                     <div className="mt-3 space-y-2 md:hidden">
+2057: 7 |                       {detail.tabs.certificados.map((row) => (
+2058: 7 |                         <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+2059: 7 |                           <p className="text-sm font-semibold text-[#111811]">{row.numero_documento}</p>
+2060: 7 |                           <p className="mt-0.5 text-xs text-[#4A6352]">Formando: {row.formando_nome}</p>
+2061: 7 |                           <p className="mt-0.5 text-xs text-[#4A6352]">Emitido em: {row.emitido_em}</p>
+2062: 7 |                           <p className="mt-0.5 text-xs text-[#8A9E8F]">Template: {row.template_id ?? "-"}</p>
+2063: 7 |                         </article>
+2064: 7 |                       ))}
+2065: 6 |                     </div>
+2066: 6 | 
+2067: 7 |                     <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+2068: 7 |                       <table className="min-w-[720px] w-full border-collapse text-sm">
+2069: 7 |                         <thead className="bg-[#F7F9F7] text-[#4A6352]">
+2070: 7 |                           <tr>
+2071: 7 |                             <Th>Número</Th>
+2072: 7 |                             <Th>Formando</Th>
+2073: 7 |                             <Th>Emitido em</Th>
+2074: 7 |                             <Th>Template</Th>
+2075: 7 |                           </tr>
+2076: 7 |                         </thead>
+2077: 7 |                         <tbody>
+2078: 7 |                           {detail.tabs.certificados.map((row) => (
+2079: 7 |                             <tr key={row.id}>
+2080: 7 |                               <Td>{row.numero_documento}</Td>
+2081: 7 |                               <Td>{row.formando_nome}</Td>
+2082: 7 |                               <Td>{row.emitido_em}</Td>
+2083: 7 |                               <Td>{row.template_id ?? "-"}</Td>
+2084: 7 |                             </tr>
+2085: 7 |                           ))}
+2086: 7 |                           {detail.tabs.certificados.length === 0 ? (
+2087: 7 |                             <tr>
+2088: 7 |                               <Td colSpan={4}>Sem certificados emitidos para esta turma.</Td>
+2089: 7 |                             </tr>
+2090: 7 |                           ) : null}
+2091: 7 |                         </tbody>
+2092: 7 |                       </table>
+2093: 6 |                     </div>
+2094: 5 |                   </div>
+2095: 4 |                 </div>
+2096: 4 |               ) : null}
+2097: 4 |             </>
+2098: 4 |           )}
+2099: 4 |         </section>
+2100: 3 |       </div>
+2101: 3 | 
+2102: 3 |       {showCreateModal && (
+2103: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2104: 5 |           <div className="w-full max-w-3xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2105: 6 |             <div className="flex items-start justify-between gap-3">
+2106: 7 |               <div>
+2107: 7 |                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">nova turma</p>
+2108: 7 |                 <h3 className="text-xl font-semibold text-[#111811]">
+2109: 7 |                   {createStep === "selector" ? "Para que curso deseja abrir esta turma?" : "Configuração da turma"}
+2110: 7 |                 </h3>
+2111: 6 |               </div>
+2112: 6 |               <button
+2113: 6 |                 type="button"
+2114: 6 |                 onClick={() => setShowCreateModal(false)}
+2115: 6 |                 className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+2116: 6 |               >
+2117: 6 |                 fechar
+2118: 6 |               </button>
+2119: 5 |             </div>
+2120: 5 | 
+2121: 5 |             {createStep === "selector" ? (
+2122: 6 |               <div className="mt-6">
+2123: 6 |                 <p className="text-sm text-[#4A6352] mb-4">Escolha um curso do catálogo para herdar automaticamente módulos, preços e materiais.</p>
+2124: 7 |                 <div className="grid gap-3 max-h-[50vh] overflow-auto pr-1">
+2125: 7 |                   {catalogoCursos.map((curso) => (
+2126: 7 |                     <button
+2127: 7 |                       key={curso.id}
+2128: 7 |                       type="button"
+2129: 7 |                       onClick={() => {
+2130: 7 |                         onSelectCurso(curso.id);
+2131: 7 |                         setCreateStep("form");
+2132: 7 |                       }}
+2133: 7 |                       className="flex items-center justify-between rounded-xl border border-[#E4EBE6] p-4 text-left transition hover:border-klasse-gold hover:bg-klasse-gold/5"
+2134: 7 |                     >
+2135: 8 |                       <div>
+2136: 8 |                         <p className="font-bold text-[#111811]">{curso.nome}</p>
+2137: 8 |                         <p className="text-xs text-[#8A9E8F]">{curso.codigo} · {curso.modalidade} · {curso.carga_horaria}h</p>
+2138: 7 |                       </div>
+2139: 7 |                       <span className="text-xs font-bold text-klasse-gold">Selecionar →</span>
+2140: 7 |                     </button>
+2141: 7 |                   ))}
+2142: 7 |                   {catalogoCursos.length === 0 && (
+2143: 7 |                     <p className="py-8 text-center text-sm text-[#8A9E8F]">Nenhum curso ativo no catálogo.</p>
+2144: 7 |                   )}
+2145: 6 |                 </div>
+2146: 5 |               </div>
+2147: 5 |             ) : (
+2148: 5 |               <form onSubmit={createCohort}>
+2149: 6 |                 <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+2150: 7 |                   <div className="md:col-span-2 xl:col-span-3 rounded-lg bg-emerald-50 border border-emerald-100 p-3 mb-2 flex items-center justify-between">
+2151: 8 |                     <div>
+2152: 8 |                       <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Curso Selecionado</p>
+2153: 8 |                       <p className="text-sm font-bold text-emerald-900">{form.curso_nome}</p>
+2154: 7 |                     </div>
+2155: 7 |                     <button
+2156: 7 |                       type="button"
+2157: 7 |                       onClick={() => setCreateStep("selector")}
+2158: 7 |                       className="text-xs font-bold text-emerald-700 underline underline-offset-4"
+2159: 7 |                     >
+2160: 7 |                       Alterar curso
+2161: 7 |                     </button>
+2162: 6 |                   </div>
+2163: 6 | 
+2164: 6 |                   <Input label="Código" value={form.codigo} onChange={(value) => setForm((prev) => ({ ...prev, codigo: value }))} placeholder="COH-2026-01" required />
+2165: 6 |                   <Input label="Nome" value={form.nome} onChange={(value) => setForm((prev) => ({ ...prev, nome: value }))} placeholder="Turma Manhã" required />
+2166: 6 | 
+2167: 6 |                   <Input label="Carga horária (herdada)" type="number" min={1} value={form.carga_horaria_total} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria_total: value }))} placeholder="120" required />
+2168: 6 |                   <Input label="Vagas" type="number" min={1} value={form.vagas} onChange={(value) => setForm((prev) => ({ ...prev, vagas: value }))} placeholder="30" required />
+2169: 6 |                   <Input label="Valor (herdado)" type="number" min={0} value={form.valor_referencia} onChange={(value) => setForm((prev) => ({ ...prev, valor_referencia: value }))} placeholder="50000" />
+2170: 6 | 
+2171: 6 |                   <label className="grid gap-1 text-sm text-[#4A6352]">
+2172: 6 |                     <span>Turno / Período</span>
+2173: 6 |                     <select
+2174: 6 |                       value={form.turno}
+2175: 6 |                       onChange={(e) => setForm((prev) => ({ ...prev, turno: e.target.value }))}
+2176: 6 |                       className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2177: 6 |                       required
+2178: 6 |                     >
+2179: 6 |                       <option value="">Selecionar turno</option>
+2180: 6 |                       <option value="manha">Manhã</option>
+2181: 6 |                       <option value="tarde">Tarde</option>
+2182: 6 |                       <option value="noite">Noite</option>
+2183: 6 |                       <option value="integral">Integral</option>
+2184: 6 |                       <option value="fim_de_semana">Fim de Semana</option>
+2185: 6 |                       <option value="pos_laboral">Pós-Laboral</option>
+2186: 6 |                     </select>
+2187: 6 |                   </label>
+2188: 6 | 
+2189: 6 |                   <Input label="Data início" type="date" value={form.data_inicio} onChange={(value) => setForm((prev) => ({ ...prev, data_inicio: value }))} required />
+2190: 6 |                   <Input label="Data fim" type="date" value={form.data_fim} onChange={(value) => setForm((prev) => ({ ...prev, data_fim: value }))} required />
+2191: 6 | 
+2192: 6 |                   <label className="grid gap-1 text-sm text-[#4A6352]">
+2193: 6 |                     <span>Status</span>
+2194: 6 |                     <select
+2195: 6 |                       value={form.status}
+2196: 6 |                       onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as Exclude<StatusFilter, "todos"> }))}
+2197: 6 |                       className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2198: 6 |                     >
+2199: 6 |                       <option value="rascunho">rascunho</option>
+2200: 6 |                       <option value="aberta">aberta</option>
+2201: 6 |                       <option value="em curso">em curso</option>
+2202: 6 |                       <option value="concluída">concluída</option>
+2203: 6 |                       <option value="cancelada">cancelada</option>
+2204: 6 |                     </select>
+2205: 6 |                   </label>
+2206: 6 | 
+2207: 6 |                   <label className="grid gap-1 text-sm text-[#4A6352]">
+2208: 6 |                     <span>Formador atribuído</span>
+2209: 6 |                     <select
+2210: 6 |                       id="cohort-formador-user-id"
+2211: 6 |                       value={form.formador_user_id}
+2212: 6 |                       onChange={(e) => setForm((prev) => ({ ...prev, formador_user_id: e.target.value }))}
+2213: 6 |                       className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2214: 6 |                     >
+2215: 6 |                       <option value="">Selecionar depois</option>
+2216: 6 |                       {formadores.map((item) => (
+2217: 6 |                         <option key={item.user_id} value={item.user_id}>
+2218: 6 |                           {item.nome}
+2219: 6 |                           {item.papel && item.papel !== "formador" ? ` (${item.papel.replace("formacao_", "")})` : ""}
+2220: 6 |                         </option>
+2221: 6 |                       ))}
+2222: 6 |                     </select>
+2223: 6 |                   </label>
+2224: 6 | 
+2225: 6 |                   <Input
+2226: 6 |                     label="% honorário"
+2227: 6 |                     type="number"
+2228: 6 |                     min={1}
+2229: 6 |                     max={100}
+2230: 6 |                     value={form.percentual_honorario}
+2231: 6 |                     onChange={(value) => setForm((prev) => ({ ...prev, percentual_honorario: value }))}
+2232: 6 |                     placeholder="100"
+2233: 6 |                     disabled={!form.formador_user_id}
+2234: 6 |                   />
+2235: 6 | 
+2236: 6 |                   <label className="flex items-center gap-2 text-sm text-[#4A6352] md:col-span-2 xl:col-span-3">
+2237: 6 |                     <input
+2238: 6 |                       type="checkbox"
+2239: 6 |                       checked={form.visivel_na_landing}
+2240: 6 |                       onChange={(e) => setForm((prev) => ({ ...prev, visivel_na_landing: e.target.checked }))}
+2241: 6 |                       className="rounded border-[#E4EBE6] text-klasse-gold focus:ring-klasse-gold"
+2242: 6 |                     />
+2243: 6 |                     <span>Exibir esta turma na Landing Page pública</span>
+2244: 6 |                   </label>
+2245: 5 |                 </div>
+2246: 5 | 
+2247: 6 |                 <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+2248: 6 |                   <button
+2249: 6 |                     type="button"
+2250: 6 |                     onClick={() => setCreateStep("selector")}
+2251: 6 |                     className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+2252: 6 |                   >
+2253: 6 |                     Voltar
+2254: 6 |                   </button>
+2255: 6 |                   <button
+2256: 6 |                     type="submit"
+2257: 6 |                     className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+2258: 6 |                   >
+2259: 6 |                     Confirmar e Abrir Turma
+2260: 6 |                   </button>
+2261: 5 |                 </div>
+2262: 5 |               </form>
+2263: 5 |             )}
+2264: 4 |           </div>
+2265: 3 |         </div>
+2266: 3 |       )}
+2267: 3 | 
+2268: 3 |       {showPagamentoModal && pagamentoTarget && (
+2269: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2270: 4 |           <form onSubmit={registrarPagamentoRapido} className="w-full max-w-md rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2271: 5 |             <div className="flex items-start justify-between gap-3">
+2272: 6 |               <div>
+2273: 6 |                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">registo rápido</p>
+2274: 6 |                 <h3 className="text-lg font-semibold text-[#111811]">Registar pagamento</h3>
+2275: 6 |                 <p className="text-xs text-[#4A6352]">
+2276: 6 |                   {pagamentoTarget.formandoNome} · {pagamentoTarget.parcela}
+2277: 6 |                 </p>
+2278: 5 |               </div>
+2279: 5 |               <button
+2280: 5 |                 type="button"
+2281: 5 |                 onClick={() => setShowPagamentoModal(false)}
+2282: 5 |                 className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+2283: 5 |               >
+2284: 5 |                 fechar
+2285: 5 |               </button>
+2286: 4 |             </div>
+2287: 4 | 
+2288: 5 |             <div className="mt-4 grid gap-2">
+2289: 5 |               <Input
+2290: 5 |                 label="Valor pago"
+2291: 5 |                 type="number"
+2292: 5 |                 min={0}
+2293: 5 |                 value={pagamentoForm.valor}
+2294: 5 |                 onChange={(value) => setPagamentoForm((prev) => ({ ...prev, valor: value }))}
+2295: 5 |                 required
+2296: 5 |               />
+2297: 5 | 
+2298: 5 |               <label className="grid gap-1 text-sm text-[#4A6352]">
+2299: 5 |                 <span>Método</span>
+2300: 5 |                 <select
+2301: 5 |                   value={pagamentoForm.metodo}
+2302: 5 |                   onChange={(event) =>
+2303: 5 |                     setPagamentoForm((prev) => ({ ...prev, metodo: event.target.value as MetodoPagamento }))
+2304: 5 |                   }
+2305: 5 |                   className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2306: 5 |                 >
+2307: 5 |                   <option value="tpa">TPA</option>
+2308: 5 |                   <option value="transferencia">Transferência</option>
+2309: 5 |                   <option value="numerario">Numerário</option>
+2310: 5 |                 </select>
+2311: 5 |               </label>
+2312: 5 | 
+2313: 5 |               <Input
+2314: 5 |                 label="Comprovativo (URL / referência)"
+2315: 5 |                 value={pagamentoForm.comprovativo}
+2316: 5 |                 onChange={(value) => setPagamentoForm((prev) => ({ ...prev, comprovativo: value }))}
+2317: 5 |                 placeholder="Opcional nesta versão"
+2318: 5 |               />
+2319: 4 |             </div>
+2320: 4 | 
+2321: 4 |             <p className="mt-3 text-xs text-[#8A9E8F]">
+2322: 4 |               Nesta versão o registo rápido muda o estado da parcela para pago e mantém os detalhes operacionais no fluxo financeiro.
+2323: 4 |             </p>
+2324: 4 | 
+2325: 5 |             <div className="mt-4 flex justify-end gap-2">
+2326: 5 |               <button
+2327: 5 |                 type="button"
+2328: 5 |                 onClick={() => setShowPagamentoModal(false)}
+2329: 5 |                 className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+2330: 5 |               >
+2331: 5 |                 Cancelar
+2332: 5 |               </button>
+2333: 5 |               <button
+2334: 5 |                 type="submit"
+2335: 5 |                 className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+2336: 5 |               >
+2337: 5 |                 Aprovar pagamento
+2338: 5 |               </button>
+2339: 4 |             </div>
+2340: 4 |           </form>
+2341: 3 |         </div>
+2342: 3 |       )}
+2343: 3 | 
+2344: 3 |       {statusEditorTarget && (
+2345: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2346: 5 |           <div className="w-full max-w-sm rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2347: 6 |             <div className="flex items-start justify-between gap-3">
+2348: 7 |               <div>
+2349: 7 |                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">estado académico</p>
+2350: 7 |                 <h3 className="text-lg font-semibold text-[#111811]">Editar estado</h3>
+2351: 7 |                 <p className="text-xs text-[#4A6352]">{statusEditorTarget.nome}</p>
+2352: 6 |               </div>
+2353: 6 |               <button
+2354: 6 |                 type="button"
+2355: 6 |                 onClick={() => setStatusEditorTarget(null)}
+2356: 6 |                 className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+2357: 6 |               >
+2358: 6 |                 fechar
+2359: 6 |               </button>
+2360: 5 |             </div>
+2361: 5 | 
+2362: 6 |             <div className="mt-4 grid gap-2">
+2363: 6 |               <select
+2364: 6 |                 value={statusEditorTarget.status}
+2365: 6 |                 onChange={(event) =>
+2366: 6 |                   setStatusEditorTarget((prev) =>
+2367: 6 |                     prev
+2368: 6 |                       ? {
+2369: 6 |                           ...prev,
+2370: 6 |                           status: event.target.value as "cursando" | "desistente" | "apto" | "nao_apto",
+2371: 6 |                         }
+2372: 6 |                       : null
+2373: 6 |                   )
+2374: 6 |                 }
+2375: 6 |                 className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
+2376: 6 |               >
+2377: 6 |                 <option value="cursando">Cursando</option>
+2378: 6 |                 <option value="desistente">Desistente</option>
+2379: 6 |                 <option value="apto">Apto</option>
+2380: 6 |                 <option value="nao_apto">Não apto</option>
+2381: 6 |               </select>
+2382: 5 |             </div>
+2383: 5 | 
+2384: 6 |             <div className="mt-4 flex justify-end gap-2">
+2385: 6 |               <button
+2386: 6 |                 type="button"
+2387: 6 |                 onClick={() => setStatusEditorTarget(null)}
+2388: 6 |                 className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+2389: 6 |               >
+2390: 6 |                 Cancelar
+2391: 6 |               </button>
+2392: 6 |               <button
+2393: 6 |                 type="button"
+2394: 6 |                 onClick={async () => {
+2395: 6 |                   const target = statusEditorTarget;
+2396: 6 |                   if (!target) return;
+2397: 6 |                   await runFormandoAction(target.user_id, {
+2398: 6 |                     action: "set_academic_status",
+2399: 6 |                     status: target.status,
+2400: 6 |                   });
+2401: 6 |                   setStatusEditorTarget(null);
+2402: 6 |                 }}
+2403: 6 |                 className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+2404: 6 |               >
+2405: 6 |                 Guardar
+2406: 6 |               </button>
+2407: 5 |             </div>
+2408: 4 |           </div>
+2409: 3 |         </div>
+2410: 3 |       )}
+2411: 3 | 
+2412: 3 |       {showAulaModal && (
+2413: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2414: 4 |           <form onSubmit={saveAula} className="w-full max-w-2xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2415: 5 |             <div className="flex items-start justify-between gap-3">
+2416: 6 |               <div>
+2417: 6 |                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">diário de classe</p>
+2418: 6 |                 <h3 className="text-xl font-semibold text-[#111811]">
+2419: 6 |                   {aulaForm.id ? "Editar Aula" : "Lançar Nova Aula"}
+2420: 6 |                 </h3>
+2421: 5 |               </div>
+2422: 5 |               <button
+2423: 5 |                 type="button"
+2424: 5 |                 onClick={() => setShowAulaModal(false)}
+2425: 5 |                 className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+2426: 5 |               >
+2427: 5 |                 fechar
+2428: 5 |               </button>
+2429: 4 |             </div>
+2430: 4 | 
+2431: 5 |             <div className="mt-4 grid gap-3 md:grid-cols-2">
+2432: 5 |               <Input label="Data" type="date" value={aulaForm.data} onChange={(v) => setAulaForm(p => ({ ...p, data: v }))} required />
+2433: 5 |               <label className="grid gap-1 text-sm text-[#4A6352]">
+2434: 5 |                 <span>Status da Aula</span>
+2435: 5 |                 <select
+2436: 5 |                   value={aulaForm.status}
+2437: 5 |                   onChange={(e) => setAulaForm(p => ({ ...p, status: e.target.value as Aula["status"] }))}
+2438: 5 |                   className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2439: 5 |                 >
+2440: 5 |                   <option value="agendada">Agendada</option>
+2441: 5 |                   <option value="realizada">Realizada</option>
+2442: 5 |                   <option value="adiada">Adiada</option>
+2443: 5 |                   <option value="cancelada">Cancelada</option>
+2444: 5 |                 </select>
+2445: 5 |               </label>
+2446: 5 | 
+2447: 5 |               <Input label="Início" type="time" value={aulaForm.hora_inicio} onChange={(v) => setAulaForm(p => ({ ...p, hora_inicio: v }))} />
+2448: 5 |               <Input label="Fim" type="time" value={aulaForm.hora_fim} onChange={(v) => setAulaForm(p => ({ ...p, hora_fim: v }))} />
+2449: 5 |               <Input label="Horas Ministradas" type="number" step="0.5" value={aulaForm.horas_ministradas} onChange={(v) => setAulaForm(p => ({ ...p, horas_ministradas: v }))} />
+2450: 5 | 
+2451: 5 |               <label className="grid gap-1 text-sm text-[#4A6352]">
+2452: 5 |                 <span>Formador Responsável</span>
+2453: 5 |                 <select
+2454: 5 |                   value={aulaForm.formador_user_id}
+2455: 5 |                   onChange={(e) => setAulaForm(p => ({ ...p, formador_user_id: e.target.value }))}
+2456: 5 |                   className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2457: 5 |                 >
+2458: 5 |                   <option value="">Selecionar formador</option>
+2459: 5 |                   {detail?.tabs.formadores.map(f => (
+2460: 5 |                     <option key={f.user_id} value={f.user_id}>{f.nome}</option>
+2461: 5 |                   ))}
+2462: 5 |                 </select>
+2463: 5 |               </label>
+2464: 5 | 
+2465: 6 |               <div className="md:col-span-2 space-y-3">
+2466: 6 |                 <label className="grid gap-1 text-sm text-[#4A6352]">
+2467: 6 |                   <span>Conteúdo Programático (Ministrado)</span>
+2468: 6 |                   <textarea
+2469: 6 |                     value={aulaForm.conteudo_realizado}
+2470: 6 |                     onChange={(e) => setAulaForm(p => ({ ...p, conteudo_realizado: e.target.value }))}
+2471: 6 |                     placeholder="Ex: Introdução ao Excel, Fórmulas Básicas..."
+2472: 6 |                     className="h-24 rounded-lg border border-[#E4EBE6] p-3 text-sm outline-none focus:border-klasse-gold"
+2473: 6 |                   />
+2474: 6 |                 </label>
+2475: 5 |               </div>
+2476: 4 |             </div>
+2477: 4 | 
+2478: 5 |             <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+2479: 5 |               <button
+2480: 5 |                 type="button"
+2481: 5 |                 onClick={() => setShowAulaModal(false)}
+2482: 5 |                 className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+2483: 5 |               >
+2484: 5 |                 Cancelar
+2485: 5 |               </button>
+2486: 5 |               <button
+2487: 5 |                 type="submit"
+2488: 5 |                 className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+2489: 5 |               >
+2490: 5 |                 Guardar Aula
+2491: 5 |               </button>
+2492: 4 |             </div>
+2493: 4 |           </form>
+2494: 3 |         </div>
+2495: 3 |       )}
+2496: 3 | 
+2497: 3 |       {showPresencaModal && activeAula && (
+2498: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2499: 5 |           <div className="w-full max-w-2xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2500: 6 |             <div className="flex items-start justify-between gap-3">
+2501: 7 |               <div>
+2502: 7 |                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">controlo de frequência</p>
+2503: 7 |                 <h3 className="text-xl font-semibold text-[#111811]">Presenças: {new Date(activeAula.data).toLocaleDateString("pt-AO")}</h3>
+2504: 7 |                 <p className="text-sm text-[#4A6352]">{activeAula.conteudo_realizado || "Sem conteúdo"}</p>
+2505: 6 |               </div>
+2506: 6 |               <button
+2507: 6 |                 type="button"
+2508: 6 |                 onClick={() => setShowPresencaModal(false)}
+2509: 6 |                 className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+2510: 6 |               >
+2511: 6 |                 fechar
+2512: 6 |               </button>
+2513: 5 |             </div>
+2514: 5 | 
+2515: 6 |             <div className="mt-6 max-h-[50vh] overflow-auto border rounded-xl border-[#E4EBE6]">
+2516: 6 |               {loadingPresencas ? (
+2517: 6 |                 <div className="p-8 text-center text-sm text-[#4A6352]">A carregar lista de formandos...</div>
+2518: 6 |               ) : (
+2519: 6 |                 <table className="w-full text-sm">
+2520: 6 |                   <thead className="sticky top-0 bg-[#F7F9F7] text-[#4A6352]">
+2521: 6 |                     <tr>
+2522: 6 |                       <th className="px-4 py-2 text-left">Formando</th>
+2523: 6 |                       <th className="px-4 py-2 text-center">Presente?</th>
+2524: 6 |                     </tr>
+2525: 6 |                   </thead>
+2526: 6 |                   <tbody className="divide-y divide-[#E4EBE6]">
+2527: 6 |                     {presencas.map((p) => (
+2528: 6 |                       <tr key={p.inscricao_id} className={p.presente ? "bg-white" : "bg-rose-50/30"}>
+2529: 6 |                         <td className="px-4 py-3 font-medium text-[#111811]">{p.formacao_inscricoes.nome_snapshot}</td>
+2530: 6 |                         <td className="px-4 py-3 text-center">
+2531: 6 |                           <button
+2532: 6 |                             type="button"
+2533: 6 |                             onClick={() => updatePresenca(p.inscricao_id, !p.presente)}
+2534: 6 |                             className={`rounded-lg px-3 py-1 text-[10px] font-black uppercase transition ${
+2535: 6 |                               p.presente ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+2536: 6 |                             }`}
+2537: 6 |                           >
+2538: 6 |                             {p.presente ? "SIM" : "FALTA"}
+2539: 6 |                           </button>
+2540: 6 |                         </td>
+2541: 6 |                       </tr>
+2542: 6 |                     ))}
+2543: 6 |                     {presencas.length === 0 && (
+2544: 6 |                       <tr>
+2545: 6 |                         <td colSpan={2} className="px-4 py-8 text-center text-slate-500 italic">
+2546: 6 |                           Nenhum formando inscrito nesta turma para registar presença.
+2547: 6 |                         </td>
+2548: 6 |                       </tr>
+2549: 6 |                     )}
+2550: 6 |                   </tbody>
+2551: 6 |                 </table>
+2552: 6 |               )}
+2553: 5 |             </div>
+2554: 5 | 
+2555: 6 |             <div className="mt-6 flex justify-end gap-2">
+2556: 6 |               <button
+2557: 6 |                 type="button"
+2558: 6 |                 onClick={() => setShowPresencaModal(false)}
+2559: 6 |                 className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+2560: 6 |               >
+2561: 6 |                 Cancelar
+2562: 6 |               </button>
+2563: 6 |               <button
+2564: 6 |                 type="button"
+2565: 6 |                 onClick={savePresencas}
+2566: 6 |                 disabled={loadingPresencas || presencas.length === 0}
+2567: 6 |                 className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+2568: 6 |               >
+2569: 6 |                 {loadingPresencas ? "A guardar..." : "Guardar Presenças"}
+2570: 6 |               </button>
+2571: 5 |             </div>
+2572: 4 |           </div>
+2573: 3 |         </div>
+2574: 3 |       )}
+2575: 3 | 
+2576: 3 |       {showRescueModal && rescueTarget && (
+2577: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2578: 4 |           <form onSubmit={rescueCohort} className="w-full max-w-md rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2579: 5 |             <div className="flex items-start justify-between gap-3">
+2580: 6 |               <div>
+2581: 6 |                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">Resgate de Turma</p>
+2582: 6 |                 <h3 className="text-lg font-semibold text-[#111811]">Vincular ao Catálogo</h3>
+2583: 6 |                 <p className="text-xs text-[#4A6352]">Turma: {rescueTarget.nome} ({rescueTarget.curso_nome})</p>
+2584: 5 |               </div>
+2585: 5 |               <button
+2586: 5 |                 type="button"
+2587: 5 |                 onClick={() => setShowRescueModal(false)}
+2588: 5 |                 className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+2589: 5 |               >
+2590: 5 |                 fechar
+2591: 5 |               </button>
+2592: 4 |             </div>
+2593: 4 | 
+2594: 5 |             <div className="mt-4 grid gap-3">
+2595: 5 |               <p className="text-sm text-[#4A6352]">
+2596: 5 |                 Ao vincular esta turma a um curso oficial, o sistema irá importar automaticamente o programa académico (módulos) e materiais de apoio.
+2597: 5 |               </p>
+2598: 5 | 
+2599: 5 |               <label className="grid gap-1 text-sm text-[#4A6352]">
+2600: 5 |                 <span>Escolher Curso Correspondente</span>
+2601: 5 |                 <select
+2602: 5 |                   value={form.curso_id}
+2603: 5 |                   onChange={(e) => setForm((prev) => ({ ...prev, curso_id: e.target.value }))}
+2604: 5 |                   className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2605: 5 |                   required
+2606: 5 |                 >
+2607: 5 |                   <option value="">Selecionar curso</option>
+2608: 5 |                   {catalogoCursos.map((curso) => (
+2609: 5 |                     <option key={curso.id} value={curso.id}>
+2610: 5 |                       {curso.nome}
+2611: 5 |                     </option>
+2612: 5 |                   ))}
+2613: 5 |                 </select>
+2614: 5 |               </label>
+2615: 5 | 
+2616: 5 |               <label className="grid gap-1 text-sm text-[#4A6352]">
+2617: 5 |                 <span>Turno / Período</span>
+2618: 5 |                 <select
+2619: 5 |                   value={form.turno}
+2620: 5 |                   onChange={(e) => setForm((prev) => ({ ...prev, turno: e.target.value }))}
+2621: 5 |                   className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+2622: 5 |                   required
+2623: 5 |                 >
+2624: 5 |                   <option value="">Selecionar turno</option>
+2625: 5 |                   <option value="manha">Manhã</option>
+2626: 5 |                   <option value="tarde">Tarde</option>
+2627: 5 |                   <option value="noite">Noite</option>
+2628: 5 |                   <option value="integral">Integral</option>
+2629: 5 |                   <option value="fim_de_semana">Fim de Semana</option>
+2630: 5 |                   <option value="pos_laboral">Pós-Laboral</option>
+2631: 5 |                 </select>
+2632: 5 |               </label>
+2633: 4 |             </div>
+2634: 4 | 
+2635: 5 |             <div className="mt-6 flex justify-end gap-2">
+2636: 5 |               <button
+2637: 5 |                 type="button"
+2638: 5 |                 onClick={() => setShowRescueModal(false)}
+2639: 5 |                 className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+2640: 5 |               >
+2641: 5 |                 Cancelar
+2642: 5 |               </button>
+2643: 5 |               <button
+2644: 5 |                 type="submit"
+2645: 5 |                 disabled={!form.curso_id}
+2646: 5 |                 className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+2647: 5 |               >
+2648: 5 |                 Vincular em um Clique
+2649: 5 |               </button>
+2650: 4 |             </div>
+2651: 4 |           </form>
+2652: 3 |         </div>
+2653: 3 |       )}
+2654: 3 | 
+2655: 3 |       {detail && (
+2656: 3 |         <InscricaoBalcaoModal
+2657: 3 |           open={showInscricaoModal}
+2658: 3 |           onClose={() => setShowInscricaoModal(false)}
+2659: 3 |           cohortId={detail.cohort.id}
+2660: 3 |           cohortNome={detail.cohort.nome}
+2661: 3 |           onSuccess={() => loadDetail(detail.cohort.id)}
+2662: 3 |         />
+2663: 3 |       )}
+2664: 2 |       </div>
+2665: 2 | 
+2666: 2 |   );
+2667: 2 | }
+2668: 2 | 
+2669: 2 | function Input({
+2670: 2 |   label,
+2671: 2 |   value,
+2672: 2 |   onChange,
+2673: 2 |   placeholder,
+2674: 2 |   required,
+2675: 2 |   type = "text",
+2676: 2 |   min,
+2677: 2 |   max,
+2678: 2 |   step,
+2679: 2 |   disabled,
+2680: 2 | }: {
+2681: 2 |   label: string;
+2682: 2 |   value: string;
+2683: 2 |   onChange: (value: string) => void;
+2684: 2 |   placeholder?: string;
+2685: 2 |   required?: boolean;
+2686: 2 |   type?: string;
+2687: 2 |   min?: number;
+2688: 2 |   max?: number;
+2689: 2 |   step?: string;
+2690: 2 |   disabled?: boolean;
+2691: 2 | }) {
+2692: 2 |   return (
+2693: 2 |     <label className="grid gap-1 text-sm text-[#4A6352]">
+2694: 2 |       <span>{label}</span>
+2695: 2 |       <input
+2696: 2 |         type={type}
+2697: 2 |         min={min}
+2698: 2 |         max={max}
+2699: 2 |         step={step}
+2700: 2 |         value={value}
+2701: 2 |         disabled={disabled}
+2702: 2 |         onChange={(e) => onChange(e.target.value)}
+2703: 2 |         placeholder={placeholder}
+2704: 2 |         required={required}
+2705: 2 |         className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold disabled:cursor-not-allowed disabled:bg-[#F7F9F7]"
+2706: 2 |       />
+2707: 2 |     </label>
+2708: 2 |   );
+2709: 2 | }
+2710: 2 | 
+2711: 2 | function Th({ children, title }: { children: React.ReactNode; title?: string }) {
+2712: 2 |   return (
+2713: 2 |     <th title={title} className="border-b border-[#E4EBE6] px-2.5 py-2 text-left font-medium">
+2714: 2 |       {children}
+2715: 2 |     </th>
+2716: 2 |   );
+2717: 2 | }
+2718: 2 | 
+2719: 2 | function Td({ children, colSpan, className }: { children: React.ReactNode; colSpan?: number; className?: string }) {
+2720: 2 |   return (
+2721: 2 |     <td colSpan={colSpan} className={`border-b border-[#E4EBE6] px-2.5 py-2 text-[#111811] ${className || ""}`}>
+2722: 2 |       {children}
+2723: 2 |     </td>
+2724: 2 |   );
+2725: 2 | }
+2726: 2 | 
+2727: 2 | function formatMoney(value: number) {
+2728: 2 |   return new Intl.NumberFormat("pt-AO", {
+2729: 2 |     style: "currency",
+2730: 2 |     currency: "AOA",
+2731: 2 |     maximumFractionDigits: 0,
+2732: 2 |   }).format(Number.isFinite(value) ? value : 0);
+2733: 2 | }
+2734: 2 | 
+2735: 2 | function formatDateTime(value: string) {
+2736: 2 |   const date = new Date(value);
+2737: 2 |   if (Number.isNaN(date.getTime())) return "-";
+2738: 2 |   return new Intl.DateTimeFormat("pt-AO", {
+2739: 2 |     dateStyle: "short",
+2740: 2 |     timeStyle: "short",
+2741: 2 |   }).format(date);
+2742: 2 | }
