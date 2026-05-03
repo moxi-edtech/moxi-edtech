@@ -1,0 +1,229 @@
+264: 1 |     <div className="flex flex-wrap items-center gap-1.5">
+277: 0 |     </div>
+966: 1 |     <div className="grid gap-5">
+968: 2 |         <div className="flex flex-wrap items-start justify-between gap-3">
+969: 3 |           <div>
+975: 2 |           </div>
+987: 1 |         </div>
+990: 2 |           <div className="mt-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3">
+991: 3 |             <div className="flex items-center gap-3">
+997: 4 |               <div>
+1000: 3 |               </div>
+1001: 2 |             </div>
+1002: 3 |             <div className="flex gap-2">
+1015: 2 |             </div>
+1016: 1 |           </div>
+1019: 2 |         <div className="mt-4 flex flex-wrap gap-2">
+1036: 1 |         </div>
+1042: 2 |       <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+1048: 3 |           <div className="grid max-h-[66vh] gap-2 overflow-auto pr-1">
+1064: 4 |                   <div className="flex items-center justify-between gap-2">
+1069: 3 |                   </div>
+1071: 4 |                   <div className="mt-2 flex flex-col gap-1">
+1078: 3 |                   </div>
+1087: 2 |           </div>
+1099: 3 |               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E4EBE6] pb-3">
+1100: 4 |                 <div>
+1102: 5 |                   <div className="flex items-center gap-2">
+1121: 4 |                   </div>
+1130: 3 |                 </div>
+1132: 4 |                 <div className="flex flex-wrap gap-2">
+1137: 3 |                 </div>
+1138: 2 |               </div>
+1140: 3 |               <div className="mt-3 flex flex-wrap items-center gap-2">
+1156: 4 |                 <div className="ml-auto flex flex-wrap gap-1.5">
+1174: 3 |                 </div>
+1175: 2 |               </div>
+1178: 3 |                 <div className="mt-3 grid gap-3">
+1180: 4 |                     <div className="flex flex-wrap items-start justify-between gap-3">
+1181: 5 |                       <div>
+1191: 4 |                       </div>
+1198: 3 |                     </div>
+1258: 4 |                         <div className="flex items-start justify-between gap-3">
+1259: 5 |                           <div>
+1265: 4 |                           </div>
+1274: 3 |                         </div>
+1279: 4 |                       <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-8 text-sm text-[#4A6352]">
+1281: 3 |                       </div>
+1284: 2 |                 </div>
+1288: 3 |                 <div className="mt-3 grid gap-3">
+1289: 4 |                   <div className="flex flex-wrap items-center justify-between gap-3">
+1290: 5 |                     <div>
+1293: 4 |                     </div>
+1294: 5 |                     <div className="inline-flex rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-1">
+1313: 4 |                     </div>
+1314: 3 |                   </div>
+1318: 4 |                       <div className="space-y-2 md:hidden">
+1322: 5 |                             <div className="mt-2 grid gap-2">
+1324: 6 |                                 <div key={parcela.item_id} className="flex items-center justify-between gap-2">
+1327: 5 |                                 </div>
+1329: 4 |                             </div>
+1332: 3 |                       </div>
+1334: 4 |                       <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+1388: 3 |                       </div>
+1390: 4 |                       <div className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-3">
+1391: 5 |                         <div className="mb-2">
+1394: 4 |                         </div>
+1396: 5 |                         <div className="mb-3 grid gap-2 rounded-xl border border-[#E4EBE6] bg-white p-3 md:grid-cols-[1fr_220px_auto]">
+1425: 4 |                         </div>
+1427: 5 |                         <div className="space-y-2 md:hidden">
+1432: 6 |                                 <div className="flex items-start justify-between gap-2">
+1433: 7 |                                   <div>
+1436: 6 |                                   </div>
+1440: 5 |                                 </div>
+1442: 6 |                                 <div className="mt-2 flex flex-wrap items-center gap-2">
+1476: 7 |                                     <div className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+1522: 8 |                                       <div className="my-1 h-px bg-[#E4EBE6]" />
+1551: 7 |                                     </div>
+1553: 6 |                                 </div>
+1558: 7 |                             <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+1560: 6 |                             </div>
+1562: 5 |                         </div>
+1564: 6 |                         <div className="hidden overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white md:block">
+1580: 7 |                                       <div className="grid gap-0.5">
+1583: 6 |                                       </div>
+1609: 7 |                                       <div className="flex items-center gap-2">
+1613: 6 |                                       </div>
+1616: 7 |                                       <div className="flex items-center gap-2">
+1625: 8 |                                           <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-[#E4EBE6] bg-white p-1 shadow-lg">
+1671: 9 |                                             <div className="my-1 h-px bg-[#E4EBE6]" />
+1700: 8 |                                           </div>
+1702: 7 |                                       </div>
+1714: 6 |                         </div>
+1715: 5 |                       </div>
+1718: 6 |                     <div className="grid gap-3">
+1723: 7 |                         <div className="mt-3 flex flex-wrap items-center gap-2">
+1736: 6 |                         </div>
+1747: 5 |                     </div>
+1749: 4 |                 </div>
+1753: 5 |                 <div className="mt-3 space-y-4">
+1754: 6 |                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1755: 7 |                     <div>
+1758: 6 |                     </div>
+1779: 5 |                   </div>
+1781: 6 |                   <div className="grid gap-3">
+1784: 7 |                         <div className="flex flex-wrap items-start justify-between gap-3">
+1785: 8 |                           <div className="flex items-start gap-4">
+1786: 9 |                             <div className="flex flex-col items-center rounded-xl bg-[#F7F9F7] px-3 py-2 text-center border border-[#E4EBE6]">
+1789: 8 |                             </div>
+1790: 9 |                             <div>
+1791: 10 |                               <div className="flex items-center gap-2">
+1802: 9 |                               </div>
+1809: 8 |                             </div>
+1810: 7 |                           </div>
+1812: 8 |                           <div className="flex gap-2">
+1840: 7 |                           </div>
+1841: 6 |                         </div>
+1846: 7 |                       <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-12 text-center text-sm text-[#4A6352]">
+1848: 6 |                       </div>
+1850: 5 |                   </div>
+1851: 4 |                 </div>
+1855: 5 |                 <div className="mt-3 space-y-4">
+1856: 6 |                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+1857: 7 |                     <div>
+1860: 6 |                     </div>
+1869: 5 |                   </div>
+1871: 6 |                   <div className="overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+1918: 5 |                   </div>
+1919: 4 |                 </div>
+1924: 5 |                   <div className="mt-3 space-y-2 md:hidden">
+1929: 6 |                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+1932: 5 |                         </div>
+1937: 6 |                       <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
+1939: 5 |                       </div>
+1941: 4 |                   </div>
+1943: 5 |                   <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+1971: 4 |                   </div>
+1976: 5 |                 <div className="mt-3 grid gap-2 md:grid-cols-2">
+1989: 4 |                 </div>
+1993: 5 |                 <div className="mt-3 space-y-6">
+2000: 6 |                     <div className="mt-4 overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+2051: 5 |                     </div>
+2054: 6 |                   <div>
+2056: 7 |                     <div className="mt-3 space-y-2 md:hidden">
+2065: 6 |                     </div>
+2067: 7 |                     <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+2093: 6 |                     </div>
+2094: 5 |                   </div>
+2095: 4 |                 </div>
+2100: 3 |       </div>
+2103: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2104: 5 |           <div className="w-full max-w-3xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2105: 6 |             <div className="flex items-start justify-between gap-3">
+2106: 7 |               <div>
+2111: 6 |               </div>
+2119: 5 |             </div>
+2122: 6 |               <div className="mt-6">
+2124: 7 |                 <div className="grid gap-3 max-h-[50vh] overflow-auto pr-1">
+2135: 8 |                       <div>
+2138: 7 |                       </div>
+2145: 6 |                 </div>
+2146: 5 |               </div>
+2149: 6 |                 <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+2150: 7 |                   <div className="md:col-span-2 xl:col-span-3 rounded-lg bg-emerald-50 border border-emerald-100 p-3 mb-2 flex items-center justify-between">
+2151: 8 |                     <div>
+2154: 7 |                     </div>
+2162: 6 |                   </div>
+2245: 5 |                 </div>
+2247: 6 |                 <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+2261: 5 |                 </div>
+2264: 4 |           </div>
+2265: 3 |         </div>
+2269: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2271: 5 |             <div className="flex items-start justify-between gap-3">
+2272: 6 |               <div>
+2278: 5 |               </div>
+2286: 4 |             </div>
+2288: 5 |             <div className="mt-4 grid gap-2">
+2319: 4 |             </div>
+2325: 5 |             <div className="mt-4 flex justify-end gap-2">
+2339: 4 |             </div>
+2341: 3 |         </div>
+2345: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2346: 5 |           <div className="w-full max-w-sm rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2347: 6 |             <div className="flex items-start justify-between gap-3">
+2348: 7 |               <div>
+2352: 6 |               </div>
+2360: 5 |             </div>
+2362: 6 |             <div className="mt-4 grid gap-2">
+2382: 5 |             </div>
+2384: 6 |             <div className="mt-4 flex justify-end gap-2">
+2407: 5 |             </div>
+2408: 4 |           </div>
+2409: 3 |         </div>
+2413: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2415: 5 |             <div className="flex items-start justify-between gap-3">
+2416: 6 |               <div>
+2421: 5 |               </div>
+2429: 4 |             </div>
+2431: 5 |             <div className="mt-4 grid gap-3 md:grid-cols-2">
+2465: 6 |               <div className="md:col-span-2 space-y-3">
+2475: 5 |               </div>
+2476: 4 |             </div>
+2478: 5 |             <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+2492: 4 |             </div>
+2494: 3 |         </div>
+2498: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2499: 5 |           <div className="w-full max-w-2xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+2500: 6 |             <div className="flex items-start justify-between gap-3">
+2501: 7 |               <div>
+2505: 6 |               </div>
+2513: 5 |             </div>
+2515: 6 |             <div className="mt-6 max-h-[50vh] overflow-auto border rounded-xl border-[#E4EBE6]">
+2517: 6 |                 <div className="p-8 text-center text-sm text-[#4A6352]">A carregar lista de formandos...</div>
+2553: 5 |             </div>
+2555: 6 |             <div className="mt-6 flex justify-end gap-2">
+2571: 5 |             </div>
+2572: 4 |           </div>
+2573: 3 |         </div>
+2577: 4 |         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+2579: 5 |             <div className="flex items-start justify-between gap-3">
+2580: 6 |               <div>
+2584: 5 |               </div>
+2592: 4 |             </div>
+2594: 5 |             <div className="mt-4 grid gap-3">
+2633: 4 |             </div>
+2635: 5 |             <div className="mt-6 flex justify-end gap-2">
+2650: 4 |             </div>
+2652: 3 |         </div>
+2664: 2 |       </div>
