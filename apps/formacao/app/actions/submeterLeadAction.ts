@@ -4,11 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 
 type LeadPayload = {
   escola_id: string;
-  cohort_id: string;
+  curso_id?: string;
+  cohort_id?: string;
   nome: string;
   telefone: string;
   email?: string;
   origem?: string;
+  turno_preferencia?: string;
 };
 
 export async function submeterLeadAction(payload: LeadPayload) {
@@ -25,12 +27,13 @@ export async function submeterLeadAction(payload: LeadPayload) {
 
   const { error } = await supabase.from("formacao_leads").insert({
     escola_id: payload.escola_id,
-    cohort_id: payload.cohort_id,
+    curso_id: payload.curso_id || null,
+    cohort_id: payload.cohort_id || null,
     nome: payload.nome,
     telefone: payload.telefone,
     email: payload.email || null,
-    origem: payload.origem || "landing_page_oportunidade",
-    status: "NOVO"
+    turno_preferencia: payload.turno_preferencia || null,
+    origem: payload.origem || "landing_page_oportunidade"
   });
 
   if (error) {

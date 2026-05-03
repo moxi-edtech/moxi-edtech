@@ -3,6 +3,7 @@ import "./globals.css";
 import SessionLockProvider from "@/components/session/SessionLockProvider";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://klasse.ao"),
   title: "KLASSE Formação",
   description: "Produto Formação da plataforma KLASSE",
 };

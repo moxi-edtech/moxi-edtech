@@ -106,7 +106,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { data: cohort, error: cohortError } = await s
     .from("formacao_cohorts")
-    .select("id, codigo, nome, curso_nome, carga_horaria_total, vagas, data_inicio, data_fim, status, created_at")
+    .select("id, codigo, nome, curso_nome, carga_horaria_total, vagas, data_inicio, data_fim, status, created_at, curso_id, turno, formacao_cursos(nome)")
     .eq("escola_id", auth.escolaId)
     .eq("id", cohortId)
     .single();
@@ -114,6 +114,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (cohortError || !cohort) {
     return NextResponse.json({ ok: false, error: cohortError?.message ?? "Cohort não encontrado" }, { status: 404 });
   }
+
+  // Use real course name if join succeeded
+  const actualCourseName = (cohort as any).formacao_cursos?.nome || cohort.curso_nome;
+  const enrichedCohort = {
+    ...cohort,
+    curso_nome: actualCourseName,
+    formacao_cursos: undefined
+  };
 
   const valorReferencia = await getCohortReferenceValue(
     s,
@@ -396,22 +404,40 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     formando_nome: profileMap.get(row.formando_user_id)?.nome ?? "Formando",
   }));
 
-  const materiais = [
-    {
-      id: `${cohortId}:plano`,
-      titulo: `Plano curricular · ${cohort.nome}`,
-      tipo: "plano",
-      status: "disponivel",
-      updated_at: cohort.created_at,
-    },
-    {
-      id: `${cohortId}:agenda`,
-      titulo: `Agenda de execução · ${cohort.data_inicio} → ${cohort.data_fim}`,
-      tipo: "agenda",
-      status: "disponivel",
-      updated_at: cohort.created_at,
-    },
-  ];
+  const { data: materiaisData } = await s
+    .from("formacao_cohort_materiais")
+    .select("id, titulo, tipo, updated_at")
+    .eq("escola_id", auth.escolaId)
+    .eq("cohort_id", cohortId)
+    .order("created_at", { ascending: true });
+
+  const materiais = (materiaisData ?? []).map((m) => ({
+    id: m.id,
+    titulo: m.titulo,
+    tipo: m.tipo,
+    status: "disponivel",
+    updated_at: m.updated_at,
+  }));
+
+  if (materiais.length === 0) {
+    // Add default placeholders if no materials are found (fallback)
+    materiais.push(
+      {
+        id: `${cohortId}:plano`,
+        titulo: `Plano curricular · ${cohort.nome}`,
+        tipo: "plano",
+        status: "disponivel",
+        updated_at: cohort.created_at,
+      },
+      {
+        id: `${cohortId}:agenda`,
+        titulo: `Agenda de execução · ${cohort.data_inicio} → ${cohort.data_fim}`,
+        tipo: "agenda",
+        status: "disponivel",
+        updated_at: cohort.created_at,
+      }
+    );
+  }
 
   const formadores = (formadoresRows ?? []).map((row) => {
     const typed = row as {
@@ -431,10 +457,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     };
   });
 
+  const { data: modulosData } = await s
+    .from("formacao_cohort_modulos")
+    .select("id, titulo, ordem, carga_horaria")
+    .eq("escola_id", auth.escolaId)
+    .eq("cohort_id", cohortId)
+    .order("ordem", { ascending: true });
+
+  const modulos = (modulosData ?? []).map((m) => ({
+    id: m.id,
+    titulo: m.titulo,
+    ordem: m.ordem,
+    carga_horaria: m.carga_horaria,
+  }));
+
   return NextResponse.json({
     ok: true,
     cohort: {
-      ...cohort,
+      ...enrichedCohort,
       valor_referencia: valorReferencia,
     },
     tabs: {
@@ -443,12 +483,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       materiais,
       certificados,
       formadores,
+      modulos,
     },
     summary: {
       formandos: formandos.length,
       sessoes: sessoes.length,
       materiais: materiais.length,
       certificados: certificados.length,
+      modulos: modulos.length,
     },
     finance: {
       mode: isB2BMode ? "b2b" : "b2c",
