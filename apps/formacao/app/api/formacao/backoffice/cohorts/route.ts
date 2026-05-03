@@ -321,6 +321,7 @@ export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     id?: string;
     nome?: string;
+    curso_id?: string;
     curso_nome?: string;
     vagas?: number;
     data_inicio?: string;

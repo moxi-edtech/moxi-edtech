@@ -267,6 +267,9 @@ export default function CourseCockpitClient({ courseId }: Props) {
         ...prev, 
         ...editForm, 
         carga_horaria: Number(editForm.carga_horaria),
+        preco_tabela: Number(editForm.preco_tabela),
+        custo_hora_estimado: Number(editForm.custo_hora_estimado),
+        desconto_percentual: Number(editForm.desconto_percentual),
         modulos,
         materiais
       } : null);
