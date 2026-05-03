@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
 import OperationalFeedSection from "./OperationalFeedSection";
@@ -55,7 +55,7 @@ const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -65,7 +65,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };

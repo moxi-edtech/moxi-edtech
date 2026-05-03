@@ -347,7 +347,7 @@ export type OperationalAlert = {
   desde?: string
 }
 
-function AlertCard({ alert }: { alert: OperationalAlert }) {
+function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (alert: OperationalAlert) => void }) {
   const cfg = {
     critical: {
       border: "border-rose-200",
@@ -373,28 +373,28 @@ function AlertCard({ alert }: { alert: OperationalAlert }) {
   }[alert.severity]
 
   return (
-    <div className={`flex items-start gap-3 rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3`}>
+    <div className={`flex items-start gap-3 rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3 group/alert transition-all hover:shadow-md`}>
       {cfg.icon}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-bold text-slate-900">{alert.titulo}</p>
+          <p className="text-sm font-bold text-slate-900 leading-tight">{alert.titulo}</p>
           {alert.count !== undefined && (
-            <span className={`text-xs font-black px-1.5 py-0.5 rounded-full ${cfg.badge}`}>
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${cfg.badge}`}>
               {alert.count}
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-500 mt-0.5">{alert.descricao}</p>
+        <p className="text-xs text-slate-500 mt-1 font-medium">{alert.descricao}</p>
       </div>
-      {alert.link && (
-        <a
-          href={alert.link}
-          className="flex items-center gap-1 flex-shrink-0 text-xs font-bold text-slate-700
-            hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-1.5 bg-white
-            hover:border-slate-300 transition-colors"
+      {(alert.link || onAction) && (
+        <button
+          onClick={() => onAction ? onAction(alert) : window.location.href = alert.link!}
+          className="flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
+            hover:text-klasse-green border border-slate-200 rounded-lg px-3 py-2 bg-white
+            hover:border-klasse-green/30 transition-all shadow-sm active:scale-95"
         >
-          {alert.link_label ?? "Ver"} <ArrowRight size={11} />
-        </a>
+          {alert.link_label ?? "Resolver"} <ArrowRight size={12} />
+        </button>
       )}
     </div>
   )
@@ -404,10 +404,12 @@ export function RadarOperacional({
   alerts,
   loading = false,
   role = "secretaria",
+  onAction,
 }: {
   alerts: OperationalAlert[]
   loading?: boolean
   role?: "secretaria" | "admin"
+  onAction?: (alert: OperationalAlert) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const critical = alerts.filter((a) => a.severity === "critical")
@@ -416,9 +418,9 @@ export function RadarOperacional({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Loader2 size={14} className="animate-spin" /> A verificar pendências…
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-3 text-sm font-bold text-slate-400 uppercase tracking-widest">
+          <Loader2 size={16} className="animate-spin text-klasse-green" /> Mapeando Cockpit…
         </div>
       </div>
     )
@@ -427,61 +429,75 @@ export function RadarOperacional({
   if (alerts.length === 0) {
     return (
       <div
-        className="flex items-center gap-3 rounded-2xl border border-[#1F6B3B]/20
-        bg-[#1F6B3B]/5 px-5 py-4"
+        className="flex items-center gap-4 rounded-2xl border border-emerald-100
+        bg-emerald-50/50 px-6 py-5 shadow-sm border-l-4 border-l-emerald-500"
       >
-        <CheckCircle2 size={18} className="text-[#1F6B3B] flex-shrink-0" />
+        <div className="bg-emerald-100 rounded-xl p-2 text-emerald-600">
+          <CheckCircle2 size={20} />
+        </div>
         <div>
-          <p className="text-sm font-bold text-[#1F6B3B]">Tudo em ordem</p>
-          <p className="text-xs text-slate-500 mt-0.5">Sem pendências que precisem de atenção.</p>
+          <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Céu Limpo</p>
+          <p className="text-xs text-emerald-600 font-bold uppercase mt-0.5 opacity-80">Zero pendências críticas no radar actual.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:border-slate-300">
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div className="relative">
-            <Zap size={16} className="text-[#E3B23C]" />
+            <div className="bg-amber-50 rounded-xl p-2.5">
+              <Zap size={20} className="text-amber-500" />
+            </div>
             {critical.length > 0 && (
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-rose-500 border-2 border-white animate-pulse" />
             )}
           </div>
-          <span className="text-sm font-bold text-slate-900">
-            {role === "admin" ? "Saúde do Sistema" : "Radar de Atenção"}
-          </span>
-          <div className="flex items-center gap-1.5">
-            {critical.length > 0 && (
-              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
-                {critical.length} crítico{critical.length !== 1 ? "s" : ""}
-              </span>
-            )}
-            {warnings.length > 0 && (
-              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#E3B23C]/20 text-[#E3B23C]">
-                {warnings.length} alerta{warnings.length !== 1 ? "s" : ""}
-              </span>
-            )}
+          <div className="text-left">
+            <span className="text-sm font-black text-slate-900 uppercase tracking-tight">
+              {role === "admin" ? "Cockpit de Gestão" : "Radar Operacional"}
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              {critical.length > 0 && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase">
+                  {critical.length} Crítico
+                </span>
+              )}
+              {warnings.length > 0 && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase">
+                  {warnings.length} Alerta
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <ChevronDown
-          size={16}
-          className={`text-slate-400 transition-transform ${collapsed ? "" : "rotate-180"}`}
-        />
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">Monitorização Live</span>
+          <ChevronDown
+            size={18}
+            className={`text-slate-400 transition-transform duration-300 ${collapsed ? "" : "rotate-180"}`}
+          />
+        </div>
       </button>
 
       {!collapsed && (
-        <div className="px-4 pb-4 space-y-2 border-t border-slate-100">
-          <div className="pt-3 space-y-2">
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="px-6 pb-6 space-y-3 border-t border-slate-100 bg-slate-50/30"
+        >
+          <div className="pt-4 space-y-3">
             {[...critical, ...warnings, ...infos].map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
+              <AlertCard key={alert.id} alert={alert} onAction={onAction} />
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   )

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
 
@@ -18,6 +19,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId: resolvedEscolaId,
+      roles: ["admin", "admin_escola", "staff_admin", "secretaria"],
+    });
+    if (roleError) return roleError;
 
     const url = new URL(req.url);
     const limitParam = Number(url.searchParams.get("limit") || 100);

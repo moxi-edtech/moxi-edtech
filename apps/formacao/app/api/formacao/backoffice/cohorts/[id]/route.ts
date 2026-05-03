@@ -281,7 +281,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const accessBlocked = Boolean(metadata.portal_access_blocked === true);
     if (!inscricaoByUser.has(row.formando_user_id)) {
       inscricaoByUser.set(row.formando_user_id, {
-        estado: String(row.estado ?? "").trim().toLowerCase() || "cursando",
+        estado: String(row.estado ?? "").trim().toLowerCase() || "pre_inscrito",
         accessBlocked,
         nomeSnapshot: row.nome_snapshot,
         emailSnapshot: row.email_snapshot,
@@ -319,7 +319,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       valor_total: group.valor,
       descricao: group.lastDescricao,
       parcelas: group.parcelas,
-      academic_status: inscricaoState?.estado ?? "cursando",
+      academic_status: inscricaoState?.estado || "pre_inscrito",
       access_blocked: Boolean(inscricaoState?.accessBlocked),
     };
   });
