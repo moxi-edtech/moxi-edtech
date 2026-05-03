@@ -194,6 +194,8 @@ type PresencaRow = {
 };
 type MetodoPagamento = "tpa" | "transferencia" | "numerario";
 
+type AcademicStatus = "cursando" | "desistente" | "apto" | "nao_apto" | "pre_inscrito" | "lista_espera";
+
 function normalizeStatus(raw: string): Exclude<StatusFilter, "todos"> {
   const status = String(raw).trim().toLowerCase();
   if (status === "planeada" || status === "rascunho") return "rascunho";
@@ -230,15 +232,19 @@ function academicStatusPillClass(status: string) {
   const value = String(status ?? "").trim().toLowerCase();
   if (value === "apto") return "bg-green-100 text-green-700 border-green-200";
   if (value === "desistente" || value === "não apto" || value === "nao_apto") return "bg-red-100 text-red-700 border-red-200";
-  if (value === "cursando") return "bg-slate-100 text-slate-700 border-slate-200";
+  if (value === "cursando" || value === "inscrito") return "bg-slate-100 text-slate-700 border-slate-200";
+  if (value === "pre_inscrito" || value === "lista_espera") return "bg-amber-100 text-amber-700 border-amber-200";
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
-function normalizeAcademicStatus(status: string) {
+function normalizeAcademicStatus(status: string): AcademicStatus {
   const value = String(status ?? "").trim().toLowerCase();
   if (value === "nao_apto" || value === "não apto") return "nao_apto";
   if (value === "desistente") return "desistente";
   if (value === "apto") return "apto";
+  if (value === "pre_inscrito") return "pre_inscrito";
+  if (value === "lista_espera") return "lista_espera";
+  if (value === "inscrito") return "cursando";
   return "cursando";
 }
 
@@ -247,6 +253,8 @@ function academicStatusLabel(status: string) {
   if (value === "nao_apto") return "Não apto";
   if (value === "desistente") return "Desistente";
   if (value === "apto") return "Apto";
+  if (value === "pre_inscrito") return "Pré-inscrito";
+  if (value === "lista_espera") return "Em espera (Lista)";
   return "Cursando";
 }
 
@@ -285,7 +293,7 @@ export default function CohortsPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [formandoSearch, setFormandoSearch] = useState("");
-  const [formandoAcademicFilter, setFormandoAcademicFilter] = useState<"todos" | "cursando" | "desistente" | "apto" | "nao_apto">("todos");
+  const [formandoAcademicFilter, setFormandoAcademicFilter] = useState<"todos" | "cursando" | "desistente" | "apto" | "nao_apto" | "pre_inscrito" | "lista_espera">("todos");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState<StatusFilter>("todos");
@@ -303,7 +311,7 @@ export default function CohortsPage() {
     comprovativo: "",
   });
   const [formandoBusy, setFormandoBusy] = useState<Record<string, boolean>>({});
-  const [statusEditorTarget, setStatusEditorTarget] = useState<{ user_id: string; nome: string; status: "cursando" | "desistente" | "apto" | "nao_apto" } | null>(null);
+  const [statusEditorTarget, setStatusEditorTarget] = useState<{ user_id: string; nome: string; status: AcademicStatus } | null>(null);
   const [formadorBusy, setFormadorBusy] = useState(false);
   const [formadorAssignmentForm, setFormadorAssignmentForm] = useState({
     formador_user_id: "",
@@ -343,7 +351,7 @@ export default function CohortsPage() {
 
   const [formadores, setFormadores] = useState<FormadorOption[]>([]);
   useEffect(() => {
-    if (selectedId && (activeTab === "avaliacoes" || activeTab === "certificados")) {
+    if (selectedId && (activeTab === "avaliacoes" || activeTab === "certificados" || activeTab === "formandos")) {
       loadEvaluations();
     }
   }, [selectedId, activeTab]);
@@ -858,7 +866,7 @@ export default function CohortsPage() {
     payload:
       | { action: "resend_access" }
       | { action: "set_access_block"; blocked: boolean }
-      | { action: "set_academic_status"; status: "cursando" | "desistente" | "apto" | "nao_apto" }
+      | { action: "set_academic_status"; status: AcademicStatus }
   ) => {
     if (!detail) return;
     setError(null);
@@ -943,6 +951,31 @@ export default function CohortsPage() {
     }
   };
 
+  const renderStatus360 = (inscricaoId: string | null, statusPagamento: string, academicStatus: string) => {
+    const prog = progressData.find((p) => p.inscricao_id === inscricaoId);
+    const academicPercent = prog ? Math.round(prog.percentual_presenca) : 0;
+
+    const statusNormalized = normalizeAcademicStatus(academicStatus);
+    const isPending = statusNormalized === "pre_inscrito" || statusNormalized === "lista_espera";
+    
+    const academicLabel = isPending ? academicStatusLabel(academicStatus) : `${academicPercent}%`;
+    const academicColor = isPending ? "text-amber-600" : (academicPercent < 75 ? "text-rose-600" : "text-emerald-600");
+
+    const isPaid = statusPagamento.toLowerCase() === "pago";
+    const financeStatus = isPaid ? "OK" : "Dívida";
+    const financeColor = isPaid ? "text-emerald-600" : "text-rose-600";
+
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-[#E4EBE6] bg-[#F7F9F7] px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight">
+        <span className="text-[#8A9E8F]">Académico:</span>
+        <span className={academicColor}>{academicLabel}</span>
+        <span className="h-2 w-px bg-[#E4EBE6]" />
+        <span className="text-[#8A9E8F]">Financeiro:</span>
+        <span className={financeColor}>{financeStatus}</span>
+      </span>
+    );
+  };
+
   const visibleFormandos = useMemo(() => {
     const all = detail?.tabs.formandos ?? [];
     const query = formandoSearch.trim().toLowerCase();
@@ -970,7 +1003,7 @@ export default function CohortsPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8A9E8F]">académico</p>
             <h1 className="mt-1 text-3xl font-semibold text-[#111811]">Turmas</h1>
             <p className="mt-1 text-sm text-[#4A6352]">
-              Gestão de turmas com detalhe por formandos, sessões, materiais e certificados.
+              
             </p>
           </div>
 
@@ -1318,7 +1351,10 @@ export default function CohortsPage() {
                       <div className="space-y-2 md:hidden">
                         {visibleFormandos.map((formando) => (
                           <article key={formando.user_id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
-                            <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+                              {renderStatus360(formando.inscricao_id, formando.status_pagamento, formando.academic_status)}
+                            </div>
                             <div className="mt-2 grid gap-2">
                               {(formando.parcelas ?? []).slice(0, 3).map((parcela) => (
                                 <div key={parcela.item_id} className="flex items-center justify-between gap-2">
@@ -1344,7 +1380,12 @@ export default function CohortsPage() {
                           <tbody>
                             {visibleFormandos.map((formando) => (
                               <tr key={formando.user_id}>
-                                <Td>{formando.nome}</Td>
+                                <Td>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-semibold">{formando.nome}</span>
+                                    {renderStatus360(formando.inscricao_id, formando.status_pagamento, formando.academic_status)}
+                                  </div>
+                                </Td>
                                 <Td>
                                   {formando.parcelas?.[0]
                                     ? renderPaymentCell(
@@ -1404,12 +1445,14 @@ export default function CohortsPage() {
                             value={formandoAcademicFilter}
                             onChange={(event) =>
                               setFormandoAcademicFilter(
-                                event.target.value as "todos" | "cursando" | "desistente" | "apto" | "nao_apto"
+                                event.target.value as any
                               )
                             }
                             className="rounded-xl border border-[#E4EBE6] px-3 py-2 text-sm text-[#111811] outline-none focus:border-klasse-gold"
                           >
                             <option value="todos">Todos os estados</option>
+                            <option value="pre_inscrito">Pré-inscrito</option>
+                            <option value="lista_espera">Em lista de espera</option>
                             <option value="cursando">Cursando</option>
                             <option value="desistente">Desistente</option>
                             <option value="apto">Apto</option>
@@ -1431,7 +1474,10 @@ export default function CohortsPage() {
                               <article key={formando.user_id} className="rounded-xl border border-[#E4EBE6] bg-white p-3">
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
-                                    <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="text-sm font-semibold text-[#111811]">{formando.nome}</p>
+                                      {renderStatus360(formando.inscricao_id, formando.status_pagamento, formando.academic_status)}
+                                    </div>
                                     <p className="text-xs text-[#4A6352] underline underline-offset-2 decoration-dotted">{formando.email ?? "sem email"}</p>
                                   </div>
                                   <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${academicStatusPillClass(formando.academic_status)}`}>
@@ -1577,8 +1623,11 @@ export default function CohortsPage() {
                                 return (
                                   <tr key={formando.user_id}>
                                     <Td>
-                                      <div className="grid gap-0.5">
-                                        <span className="font-semibold">{formando.nome}</span>
+                                      <div className="grid gap-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="font-semibold">{formando.nome}</span>
+                                          {renderStatus360(formando.inscricao_id, formando.status_pagamento, formando.academic_status)}
+                                        </div>
                                         <span className="text-xs text-[#8A9E8F] underline underline-offset-2 decoration-dotted">{formando.email ?? "sem email"}</span>
                                       </div>
                                     </Td>
@@ -1738,10 +1787,19 @@ export default function CohortsPage() {
 
                       <article className="rounded-xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A9E8F]">Funcionários cobertos no contrato</p>
-                        <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-[#111811]">
-                          {(detail.finance.b2b?.colaboradores_cobertos ?? []).map((colaborador) => (
-                            <li key={colaborador.user_id}>{colaborador.nome}</li>
-                          ))}
+                        <ul className="mt-3 grid gap-2">
+                          {(detail.finance.b2b?.colaboradores_cobertos ?? []).map((colaborador) => {
+                            const matchingFormando = detail.tabs.formandos.find(f => f.user_id === colaborador.user_id);
+                            return (
+                              <li key={colaborador.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E4EBE6] bg-white p-3 shadow-sm">
+                                <div className="grid gap-0.5">
+                                  <p className="text-sm font-semibold text-[#111811]">{colaborador.nome}</p>
+                                  <p className="text-xs text-[#8A9E8F]">{colaborador.email ?? "sem email"}</p>
+                                </div>
+                                {matchingFormando && renderStatus360(matchingFormando.inscricao_id, matchingFormando.status_pagamento, matchingFormando.academic_status)}
+                              </li>
+                            );
+                          })}
                         </ul>
                       </article>
                     </div>
@@ -1992,12 +2050,59 @@ export default function CohortsPage() {
               {activeTab === "certificados" ? (
                 <div className="mt-3 space-y-6">
                   <article className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
-                    <h3 className="text-lg font-semibold text-[#111811]">Elegibilidade para Certificação</h3>
-                    <p className="text-sm text-[#4A6352]">
-                      Regra: Mínimo de 75% de presença e aproveitamento (APTO/ISENTO) em todos os {detail.summary.modulos} módulos.
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-[#111811]">Elegibilidade para Certificação</h3>
+                        <p className="text-sm text-[#4A6352]">
+                          Regra: Mínimo de 75% de presença e aproveitamento (APTO/ISENTO) em todos os {detail.summary.modulos} módulos.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const elegiveis = detail.tabs.formandos.filter((f) => {
+                            const prog = progressData.find((p) => p.inscricao_id === f.inscricao_id);
+                            const hasCert = detail.tabs.certificados.some((c) => c.formando_user_id === f.user_id);
+                            return prog?.elegivel_certificacao && !hasCert;
+                          });
 
-                    <div className="mt-4 overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+                          if (elegiveis.length === 0) {
+                            setInfo("Não há novos formandos elegíveis para emissão em massa.");
+                            return;
+                          }
+
+                          if (!window.confirm(`Deseja emitir certificados para ${elegiveis.length} formandos elegíveis?`)) return;
+
+                          setInfo(`A processar emissão em massa para ${elegiveis.length} formandos...`);
+                          
+                          try {
+                            const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/certificados/batch`, {
+                              method: "POST",
+                              headers: { "content-type": "application/json" },
+                              body: JSON.stringify({ user_ids: elegiveis.map(e => e.user_id) }),
+                            });
+                            const json = await res.json();
+                            if (json.ok) {
+                              setInfo(`${json.count || elegiveis.length} certificados emitidos com sucesso!`);
+                              loadDetail(selectedId!);
+                            } else {
+                              setError(json.error || "Erro ao emitir certificados em massa");
+                            }
+                          } catch (err) {
+                            setError("Falha na comunicação com o servidor.");
+                          }
+                        }}
+                        className="rounded-lg border border-klasse-gold bg-white px-4 py-2 text-sm font-bold text-klasse-gold hover:bg-klasse-gold hover:text-white transition-colors"
+                      >
+                        Emitir Elegíveis ({detail.tabs.formandos.filter(f => {
+                          const prog = progressData.find(p => p.inscricao_id === f.inscricao_id);
+                          const hasCert = detail.tabs.certificados.some(c => c.formando_user_id === f.user_id);
+                          return prog?.elegivel_certificacao && !hasCert;
+                        }).length})
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
                       <table className="w-full text-sm">
                         <thead className="bg-[#F7F9F7] text-[#4A6352]">
                           <tr>
@@ -2015,7 +2120,12 @@ export default function CohortsPage() {
                             
                             return (
                               <tr key={f.user_id}>
-                                <Td className="font-medium">{f.nome}</Td>
+                                <Td>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-medium">{f.nome}</span>
+                                    {renderStatus360(f.inscricao_id, f.status_pagamento, f.academic_status)}
+                                  </div>
+                                </Td>
                                 <Td>
                                   <span className={`font-bold ${prog && prog.percentual_presenca < 75 ? "text-rose-600" : "text-emerald-600"}`}>
                                     {prog ? `${Math.round(prog.percentual_presenca)}%` : "—"}
@@ -2037,7 +2147,30 @@ export default function CohortsPage() {
                                 </Td>
                                 <Td>
                                   {!hasCert && prog?.elegivel_certificacao && (
-                                    <button className="text-xs font-bold text-klasse-gold underline underline-offset-2">Emitir Agora</button>
+                                    <button
+                                      onClick={async () => {
+                                        if (!window.confirm(`Deseja emitir o certificado para ${f.nome}?`)) return;
+                                        try {
+                                          const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/certificados/batch`, {
+                                            method: "POST",
+                                            headers: { "content-type": "application/json" },
+                                            body: JSON.stringify({ user_ids: [f.user_id] }),
+                                          });
+                                          const json = await res.json();
+                                          if (json.ok) {
+                                            setInfo(`Certificado de ${f.nome} emitido com sucesso!`);
+                                            loadDetail(selectedId!);
+                                          } else {
+                                            setError(json.error || "Erro ao emitir certificado");
+                                          }
+                                        } catch (err) {
+                                          setError("Falha na comunicação com o servidor.");
+                                        }
+                                      }}
+                                      className="text-xs font-bold text-klasse-gold underline underline-offset-2"
+                                    >
+                                      Emitir Agora
+                                    </button>
                                   )}
                                   {!hasCert && !prog?.elegivel_certificacao && (
                                     <span className="text-[10px] text-[#8A9E8F] italic">Pendente requisitos</span>
@@ -2367,7 +2500,7 @@ export default function CohortsPage() {
                     prev
                       ? {
                           ...prev,
-                          status: event.target.value as "cursando" | "desistente" | "apto" | "nao_apto",
+                          status: event.target.value as AcademicStatus,
                         }
                       : null
                   )
@@ -2378,6 +2511,8 @@ export default function CohortsPage() {
                 <option value="desistente">Desistente</option>
                 <option value="apto">Apto</option>
                 <option value="nao_apto">Não apto</option>
+                <option value="pre_inscrito">Pré-inscrito</option>
+                <option value="lista_espera">Lista de Espera</option>
               </select>
             </div>
 

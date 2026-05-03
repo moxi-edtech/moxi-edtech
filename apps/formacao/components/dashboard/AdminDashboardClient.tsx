@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { StagingValidationSheet } from "./StagingValidationSheet";
 
 type CohortOverviewRow = {
   id: string;
@@ -92,6 +93,9 @@ export function AdminDashboardClient({
   operationalReady,
   alerts,
 }: Props) {
+  const [isValidationOpen, setIsValidationOpen] = useState(false);
+  const [selectedStagingId, setSelectedStagingId] = useState<string | null>(null);
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -107,211 +111,243 @@ export function AdminDashboardClient({
     show: { opacity: 1, y: 0 },
   };
 
+  const handleOpenValidation = (id?: string) => {
+    if (id) setSelectedStagingId(id);
+    else setSelectedStagingId(null);
+    setIsValidationOpen(true);
+  };
+
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-6 pb-12"
-    >
-      <motion.header variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="m-0 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Command Center</p>
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" />
-            </div>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Dashboard de Gestão</h1>
-          </div>
-          <motion.span
-            whileHover={{ scale: 1.05 }}
-            className={`rounded-xl border px-4 py-2 text-xs font-bold shadow-sm transition-colors ${
-              operationalReady
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-amber-200 bg-amber-50 text-amber-700"
-            }`}
-          >
-            {operationalReady ? "Centro operacional" : `Operacionalização ${operationalCompleted}/4`}
-          </motion.span>
-        </div>
-        <p className="mt-4 max-w-3xl text-sm font-medium leading-relaxed text-slate-500">
-          Monitorização em tempo real da operação do centro. Resolva bloqueios, valide admissões e acompanhe o crescimento.
-        </p>
-      </motion.header>
-
-      <motion.section variants={item} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          title="Admissões pendentes"
-          value={String(pagamentosPendentesCount)}
-          subtitle="Comprovativos aguardando validação"
-          tone={pagamentosPendentesCount > 0 ? "warning" : "positive"}
-          icon={<CreditCard size={18} />}
-        />
-        <MetricCard
-          title="Formandos ativos"
-          value={String(inscricoesAtivasCount)}
-          subtitle={`${conversionRate}% com pagamento confirmado`}
-          tone="neutral"
-          icon={<Users size={18} />}
-        />
-        <MetricCard
-          title="Turmas em operação"
-          value={String(cohortsAtivasCount)}
-          subtitle={`${cohorts.length} turmas no histórico`}
-          tone="neutral"
-          icon={<GraduationCap size={18} />}
-        />
-        <MetricCard
-          title="Em aberto"
-          value={formatCurrency(valorEmAberto)}
-          subtitle={`${inscricoesPendentesCount} inscrições com pagamento pendente/parcial`}
-          tone={valorEmAberto > 0 ? "danger" : "positive"}
-          icon={<AlertCircle size={18} />}
-        />
-      </motion.section>
-
-      <motion.section variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-8 opacity-5">
-          <Wallet size={120} />
-        </div>
-        
-        <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
-          <div>
-            <h2 className="m-0 text-xl font-black text-slate-900">Saúde Financeira Preditiva</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">Projeção de recebíveis para os próximos 90 dias.</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total projetado</p>
-            <p className="text-3xl font-black text-slate-900 tracking-tighter">{formatCurrency(forecastData.total)}</p>
-          </div>
-        </div>
-
-        <div className="mt-10 grid gap-10 md:grid-cols-3 relative z-10">
-          <ForecastBar label="Próximos 30 dias" value={forecastData.v30} total={forecastData.total} color="bg-emerald-500" />
-          <ForecastBar label="31 a 60 dias" value={forecastData.v60} total={forecastData.total} color="bg-amber-500" />
-          <ForecastBar label="61 a 90 dias" value={forecastData.v90} total={forecastData.total} color="bg-rose-500" />
-        </div>
-      </motion.section>
-
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+    <>
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="space-y-6 pb-12"
+      >
+        <motion.header variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="m-0 text-xl font-black text-slate-900">Fila operacional</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">Tarefas prioritárias que requerem ação imediata.</p>
+              <div className="flex items-center gap-2">
+                <p className="m-0 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Command Center</p>
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" />
+              </div>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Dashboard de Gestão</h1>
             </div>
-            <Link
-              href="/secretaria/inbox"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              className={`rounded-xl border px-4 py-2 text-xs font-bold shadow-sm transition-colors ${
+                operationalReady
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
             >
-              Abrir inbox completo <ArrowUpRight size={14} />
-            </Link>
+              {operationalReady ? "Centro operacional" : `Operacionalização ${operationalCompleted}/4`}
+            </motion.span>
           </div>
+          <p className="mt-4 max-w-3xl text-sm font-medium leading-relaxed text-slate-500">
+            Monitorização em tempo real da operação do centro. Resolva bloqueios, valide admissões e acompanhe o crescimento.
+          </p>
+        </motion.header>
 
-          <div className="mt-6 grid gap-4">
-            <AnimatePresence mode="popLayout">
-              {alerts.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 text-center"
-                >
-                  <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500 mb-2" />
-                  <p className="text-sm font-bold text-emerald-800">
-                    Tudo em ordem. Sem bloqueios operacionais relevantes.
-                  </p>
-                </motion.div>
-              ) : (
-                alerts.map((alert) => (
-                  <OperationalAlertCard key={alert.title} alert={alert} />
-                ))
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.article>
+        <motion.section variants={item} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            title="Admissões pendentes"
+            value={String(pagamentosPendentesCount)}
+            subtitle="Comprovativos aguardando validação"
+            tone={pagamentosPendentesCount > 0 ? "warning" : "positive"}
+            icon={<CreditCard size={18} />}
+            onClick={() => handleOpenValidation()}
+          />
+          <MetricCard
+            title="Formandos ativos"
+            value={String(inscricoesAtivasCount)}
+            subtitle={`${conversionRate}% com pagamento confirmado`}
+            tone="neutral"
+            icon={<Users size={18} />}
+          />
+          <MetricCard
+            title="Turmas em operação"
+            value={String(cohortsAtivasCount)}
+            subtitle={`${cohorts.length} turmas no histórico`}
+            tone="neutral"
+            icon={<GraduationCap size={18} />}
+          />
+          <MetricCard
+            title="Em aberto"
+            value={formatCurrency(valorEmAberto)}
+            subtitle={`${inscricoesPendentesCount} inscrições com pagamento pendente/parcial`}
+            tone={valorEmAberto > 0 ? "danger" : "positive"}
+            icon={<AlertCircle size={18} />}
+          />
+        </motion.section>
 
-        <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="m-0 text-xl font-black text-slate-900">Prontidão</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Checklist vital para operação contínua.</p>
-          <div className="mt-6 grid gap-3">
-            <ReadinessItem done={onboardingDone} title="Fiscal vinculado" href="/admin/onboarding" />
-            <ReadinessItem done={cursosAtivosCount > 0} title="Catálogo ativo" href="/admin/cursos" />
-            <ReadinessItem done={cohortsAtivasCount > 0} title="Turmas em operação" href="/admin/cohorts" />
-            <ReadinessItem done={salasAtivasCount > 0} title="Salas e infraestrutura" href="/admin/infraestrutura" />
+        <motion.section variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <Wallet size={120} />
           </div>
-        </motion.article>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 px-6 py-5 bg-slate-50/50">
-            <h2 className="m-0 text-lg font-bold text-slate-900">Próximas Turmas</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">Lotação e ritmo de admissão.</p>
-          </div>
-          {upcomingCohorts.length === 0 ? (
-            <EmptyState
-              title="Sem turmas operacionais"
-              description="Abra uma turma para acompanhar lotação e admissões neste painel."
-              href="/admin/cohorts"
-              label="Gerir turmas"
-            />
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {upcomingCohorts.map((cohort) => (
-                <CohortRow key={cohort.id} cohort={cohort} />
-              ))}
+          
+          <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
+            <div>
+              <h2 className="m-0 text-xl font-black text-slate-900">Saúde Financeira Preditiva</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Projeção de recebíveis para os próximos 90 dias.</p>
             </div>
-          )}
-        </motion.article>
-
-        <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-100 px-6 py-5 bg-slate-50/50">
-            <h2 className="m-0 text-lg font-bold text-slate-900">Inscrições Recentes</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">Novos formandos na fila.</p>
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total projetado</p>
+              <p className="text-3xl font-black text-slate-900 tracking-tighter">{formatCurrency(forecastData.total)}</p>
+            </div>
           </div>
-          {pendingAdmissions.length === 0 ? (
-            <EmptyState
-              compact
-              title="Inbox limpo"
-              description="Novas inscrições aparecerão aqui."
-              href="/secretaria/inbox"
-              label="Abrir inbox"
-            />
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {pendingAdmissions.map((item) => (
-                <div key={item.id} className="group px-6 py-5 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-slate-900">{item.nome_completo}</p>
-                      <p className="mt-0.5 truncate text-xs font-medium text-slate-400">{item.email ?? "Sem email"}</p>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-3 relative z-10">
+            <ForecastBar label="Próximos 30 dias" value={forecastData.v30} total={forecastData.total} color="bg-emerald-500" />
+            <ForecastBar label="31 a 60 dias" value={forecastData.v60} total={forecastData.total} color="bg-amber-500" />
+            <ForecastBar label="61 a 90 dias" value={forecastData.v90} total={forecastData.total} color="bg-rose-500" />
+          </div>
+        </motion.section>
+
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="m-0 text-xl font-black text-slate-900">Alertas do Radar</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">Bloqueios e tarefas críticas detetadas.</p>
+              </div>
+              <Link
+                href="/secretaria/inbox"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                Abrir inbox completo <ArrowUpRight size={14} />
+              </Link>
+            </div>
+
+            <div className="mt-6 grid gap-4">
+              <AnimatePresence mode="popLayout">
+                {alerts.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 text-center"
+                  >
+                    <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500 mb-2" />
+                    <p className="text-sm font-bold text-emerald-800">
+                      Tudo em ordem. Sem bloqueios operacionais relevantes.
+                    </p>
+                  </motion.div>
+                ) : (
+                  alerts.map((alert) => (
+                    <OperationalAlertCard 
+                      key={alert.title} 
+                      alert={alert} 
+                      onAction={alert.href === "/secretaria/inbox" ? () => handleOpenValidation() : undefined}
+                    />
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.article>
+
+          <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="m-0 text-xl font-black text-slate-900">Prontidão</h2>
+            <p className="mt-1 text-sm font-medium text-slate-500">Checklist vital para operação contínua.</p>
+            <div className="mt-6 grid gap-3">
+              <ReadinessItem done={onboardingDone} title="Fiscal vinculado" href="/admin/onboarding" />
+              <ReadinessItem done={cursosAtivosCount > 0} title="Catálogo ativo" href="/admin/cursos" />
+              <ReadinessItem done={cohortsAtivasCount > 0} title="Turmas em operação" href="/admin/cohorts" />
+              <ReadinessItem done={salasAtivasCount > 0} title="Salas e infraestrutura" href="/admin/infraestrutura" />
+            </div>
+          </motion.article>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-slate-100 px-6 py-5 bg-slate-50/50">
+              <h2 className="m-0 text-lg font-bold text-slate-900">Próximas Turmas</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Lotação e ritmo de admissão.</p>
+            </div>
+            {upcomingCohorts.length === 0 ? (
+              <EmptyState
+                title="Sem turmas operacionais"
+                description="Abra uma turma para acompanhar lotação e admissões neste painel."
+                href="/admin/cohorts"
+                label="Gerir turmas"
+              />
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {upcomingCohorts.map((cohort) => (
+                  <CohortRow key={cohort.id} cohort={cohort} />
+                ))}
+              </div>
+            )}
+          </motion.article>
+
+          <motion.article variants={item} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-slate-100 px-6 py-5 bg-slate-50/50">
+              <h2 className="m-0 text-lg font-bold text-slate-900">Fila operacional</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Inscrições aguardando validação.</p>
+            </div>
+            {pendingAdmissions.length === 0 ? (
+              <EmptyState
+                compact
+                title="Inbox limpo"
+                description="Novas inscrições aparecerão aqui."
+                href="/secretaria/inbox"
+                label="Abrir inbox"
+              />
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {pendingAdmissions.map((item) => (
+                  <div key={item.id} className="group px-6 py-5 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900">{item.nome_completo}</p>
+                        <p className="mt-0.5 truncate text-xs font-medium text-slate-400">{item.email ?? "Sem email"}</p>
+                      </div>
                     </div>
-                    <Link href="/secretaria/inbox" className="p-1.5 rounded-lg text-slate-400 hover:bg-white hover:text-slate-900 transition-all shadow-sm border border-transparent hover:border-slate-200">
-                      <ArrowUpRight size={14} />
-                    </Link>
+                    <div className="mt-3 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 uppercase">
+                          {item.cohort?.curso_nome?.slice(0, 20)}...
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          {formatDate(item.created_at)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          href={`/secretaria/inbox?id=${item.id}`} 
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                        >
+                          Detalhes
+                        </Link>
+                        <button
+                          onClick={() => handleOpenValidation(item.id)}
+                          className="rounded-lg bg-slate-900 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-slate-800 transition-all shadow-sm"
+                        >
+                          Validar
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600 uppercase">
-                      {item.cohort?.curso_nome?.slice(0, 20)}...
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400">
-                      {formatDate(item.created_at)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </motion.article>
-      </div>
+                ))}
+              </div>
+            )}
+          </motion.article>
+        </div>
 
-      <motion.section variants={item} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <QuickAction href="/secretaria/inbox" title="Inbox operacional" description="Validar admissões e comprovativos." icon={<Clock size={18} />} />
-        <QuickAction href="/admin/cohorts" title="Gestão de Turmas" description="Abrir edições e ajustar capacidade." icon={<GraduationCap size={18} />} />
-        <QuickAction href="/admin/cursos" title="Gestão de Cursos" description="Gerir catálogo e conteúdos." icon={<BookOpen size={18} />} />
-        <QuickAction href="/admin/infraestrutura" title="Infraestrutura" description="Salas físicas e ambientes online." icon={<DoorOpen size={18} />} />
-      </motion.section>
-    </motion.div>
+        <motion.section variants={item} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <QuickAction href="/secretaria/inbox" title="Inbox operacional" description="Validar admissões e comprovativos." icon={<Clock size={18} />} />
+          <QuickAction href="/admin/cohorts" title="Gestão de Turmas" description="Abrir edições e ajustar capacidade." icon={<GraduationCap size={18} />} />
+          <QuickAction href="/admin/cursos" title="Gestão de Cursos" description="Gerir catálogo e conteúdos." icon={<BookOpen size={18} />} />
+          <QuickAction href="/admin/infraestrutura" title="Infraestrutura" description="Salas físicas e ambientes online." icon={<DoorOpen size={18} />} />
+        </motion.section>
+      </motion.div>
+
+      <StagingValidationSheet 
+        isOpen={isValidationOpen} 
+        onClose={() => setIsValidationOpen(false)}
+        initialId={selectedStagingId}
+      />
+    </>
   );
 }
 
@@ -321,12 +357,14 @@ function MetricCard({
   subtitle,
   tone,
   icon,
+  onClick,
 }: {
   title: string;
   value: string;
   subtitle: string;
   tone: "warning" | "neutral" | "positive" | "danger";
   icon: React.ReactNode;
+  onClick?: () => void;
 }) {
   const tones = {
     warning: "border-amber-200 bg-amber-50/30 text-amber-900",
@@ -335,10 +373,13 @@ function MetricCard({
     danger: "border-rose-200 bg-rose-50/30 text-rose-900",
   };
 
+  const Component = onClick ? motion.button : motion.article;
+
   return (
-    <motion.article
+    <Component
+      onClick={onClick}
       whileHover={{ y: -4, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
-      className={`rounded-2xl border p-5 transition-shadow ${tones[tone]}`}
+      className={`rounded-2xl border p-5 transition-shadow text-left w-full ${tones[tone]} ${onClick ? "cursor-pointer" : ""}`}
     >
       <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">{title}</span>
@@ -346,11 +387,17 @@ function MetricCard({
       </div>
       <div className="mt-4 text-3xl font-black tracking-tighter leading-none">{value}</div>
       <p className="mt-2 text-xs font-semibold leading-relaxed opacity-60">{subtitle}</p>
-    </motion.article>
+    </Component>
   );
 }
 
-function OperationalAlertCard({ alert }: { alert: OperationalAlert }) {
+function OperationalAlertCard({ 
+  alert, 
+  onAction 
+}: { 
+  alert: OperationalAlert; 
+  onAction?: () => void;
+}) {
   const styles = {
     critical: "border-rose-200 bg-rose-50 text-rose-900 shadow-rose-100/50",
     warning: "border-amber-200 bg-amber-50 text-amber-900 shadow-amber-100/50",
@@ -371,12 +418,21 @@ function OperationalAlertCard({ alert }: { alert: OperationalAlert }) {
           <p className="text-sm font-bold">{alert.title}</p>
           <p className="mt-1 text-sm font-medium leading-relaxed opacity-70">{alert.description}</p>
         </div>
-        <Link
-          href={alert.href}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white/90 px-4 py-2 text-xs font-bold hover:bg-white transition-all shadow-sm active:scale-95"
-        >
-          {alert.label} <ArrowUpRight size={14} />
-        </Link>
+        {onAction ? (
+          <button
+            onClick={onAction}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white/90 px-4 py-2 text-xs font-bold hover:bg-white transition-all shadow-sm active:scale-95"
+          >
+            {alert.label} <ArrowUpRight size={14} />
+          </button>
+        ) : (
+          <Link
+            href={alert.href}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white/90 px-4 py-2 text-xs font-bold hover:bg-white transition-all shadow-sm active:scale-95"
+          >
+            {alert.label} <ArrowUpRight size={14} />
+          </Link>
+        )}
       </div>
     </motion.div>
   );

@@ -9,13 +9,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { id: escolaId } = await ctx.params;
   try {
     const s = await supabaseServerTyped<Database>();
-    const { error: roleError } = await requireRoleInSchool({
-      supabase: s,
-      escolaId,
-      roles: ["admin", "admin_escola", "staff_admin"],
-    });
-    if (roleError) return roleError;
-
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -25,9 +18,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
+    const { error: roleError } = await requireRoleInSchool({
+      supabase: s,
+      escolaId: resolvedEscolaId,
+      roles: ["admin", "admin_escola", "staff_admin", "secretaria"],
+    });
+    if (roleError) return roleError;
+
     const url = new URL(req.url);
     const filters = parseAlunoListFilters(url);
-    const { items, page } = await listAlunos(s, escolaId, filters, {
+    const { items, page } = await listAlunos(s, resolvedEscolaId, filters, {
       includeFinanceiro: true,
       includeResumo: true,
     });

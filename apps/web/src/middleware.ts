@@ -493,9 +493,10 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
-  const escolaMatch = pathname.match(/^\/(api\/)?escola\/([^/]+)(\/.*)?$/);
+  const escolaMatch = pathname.match(/^\/(api\/)?escolas?\/([^/]+)(\/.*)?$/);
   if (escolaMatch) {
     const isApi = Boolean(escolaMatch[1]);
+    const isPlural = pathname.includes('/escolas/');
     const escolaParam = escolaMatch[2];
     const suffix = escolaMatch[3] ?? '';
 
@@ -526,6 +527,7 @@ export async function middleware(request: NextRequest) {
 
         if (isEscolaUuid(escolaParam) && !isApi && resolved.slug !== escolaParam) {
           const redirectUrl = request.nextUrl.clone();
+          // UI is always singular /escola
           redirectUrl.pathname = `/escola/${resolved.slug}${suffix}`;
           const redirectResponse = NextResponse.redirect(redirectUrl, 301);
           applyResponseCookies(response, redirectResponse);
@@ -534,7 +536,8 @@ export async function middleware(request: NextRequest) {
 
         if (!isEscolaUuid(escolaParam)) {
           const rewrittenUrl = request.nextUrl.clone();
-          const prefix = isApi ? '/api/escola' : '/escola';
+          const apiPrefix = isPlural ? '/api/escolas' : '/api/escola';
+          const prefix = isApi ? apiPrefix : '/escola';
           rewrittenUrl.pathname = `${prefix}/${resolved.id}${suffix}`;
           const rewriteResponse = NextResponse.rewrite(rewrittenUrl);
           applyResponseCookies(response, rewriteResponse);
@@ -702,6 +705,7 @@ export const config = {
   matcher: [
     '/escola/:path*',
     '/api/escola/:path*',
+    '/api/escolas/:path*',
     '/admin/:path*',
     '/secretaria/:path*',
     '/financeiro/:path*',

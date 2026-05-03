@@ -16371,6 +16371,12 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      formacao_emitir_certificados_batch: {
+        Args: { p_cohort_id: string; p_escola_id: string; p_user_ids: string[] }
+        Returns: {
+          count: number
+        }[]
+      }
       formacao_extend_trial: {
         Args: { p_days?: number; p_escola_id: string }
         Returns: Json

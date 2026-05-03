@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,13 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId: resolvedEscolaId,
+      roles: ["admin", "admin_escola", "staff_admin", "secretaria"],
+    });
+    if (roleError) return roleError;
 
     const now = new Date();
 
