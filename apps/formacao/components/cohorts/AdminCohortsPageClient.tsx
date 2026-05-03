@@ -16,8 +16,11 @@ type Cohort = {
   data_inicio: string;
   data_fim: string;
   status: string;
+  visivel_na_landing: boolean;
   created_at: string;
   valor_referencia?: number | null;
+  curso_id?: string | null;
+  turno?: string | null;
 };
 
 type FormadorOption = {
@@ -54,6 +57,7 @@ type CohortDetail = {
     sessoes: number;
     materiais: number;
     certificados: number;
+    modulos: number;
   };
   tabs: {
     formandos: Array<{
@@ -107,6 +111,12 @@ type CohortDetail = {
       percentual_honorario: number;
       created_at: string;
     }>;
+    modulos: Array<{
+      id: string;
+      titulo: string;
+      ordem: number;
+      carga_horaria: number | null;
+    }>;
   };
   finance: {
     mode: "b2b" | "b2c";
@@ -139,7 +149,49 @@ type CohortDetail = {
 };
 
 type StatusFilter = "todos" | "rascunho" | "aberta" | "em curso" | "concluída" | "cancelada";
-type DetailTab = "formandos" | "formadores" | "sessoes" | "materiais" | "certificados";
+type DetailTab = "formandos" | "formadores" | "sessoes" | "materiais" | "certificados" | "diario" | "avaliacoes";
+
+type EvaluationRow = {
+  id?: string;
+  inscricao_id: string;
+  modulo_id: string;
+  nota?: number | null;
+  conceito: "apto" | "nao_apto" | "em_progresso" | "isento";
+  observacoes?: string | null;
+};
+
+type ProgressRow = {
+  inscricao_id: string;
+  percentual_presenca: number;
+  total_aulas_realizadas: number;
+  total_modulos: number;
+  modulos_aprovados: number;
+  elegivel_certificacao: boolean;
+};
+
+type Aula = {
+  id: string;
+  data: string;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  conteudo_previsto: string | null;
+  conteudo_realizado: string | null;
+  horas_ministradas: number;
+  status: "agendada" | "realizada" | "adiada" | "cancelada";
+  observacoes: string | null;
+  formador_user_id: string | null;
+};
+
+type PresencaRow = {
+  id: string;
+  inscricao_id: string;
+  presente: boolean;
+  justificativa: string | null;
+  formacao_inscricoes: {
+    formando_user_id: string;
+    nome_snapshot: string;
+  };
+};
 type MetodoPagamento = "tpa" | "transferencia" | "numerario";
 
 function normalizeStatus(raw: string): Exclude<StatusFilter, "todos"> {
@@ -256,10 +308,100 @@ export default function CohortsPage() {
   const [formadorAssignmentForm, setFormadorAssignmentForm] = useState({
     formador_user_id: "",
     percentual_honorario: "100",
+    turno: "",
   });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createStep, setCreateStep] = useState<"selector" | "form">("selector");
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [rescueTarget, setRescueTarget] = useState<Cohort | null>(null);
+
+  const [aulas, setAulas] = useState<Aula[]>([]);
+  const [loadingAulas, setLoadingAulas] = useState(false);
+  const [showAulaModal, setShowAulaModal] = useState(false);
+  const [aulaForm, setAulaForm] = useState({
+    id: "",
+    data: new Date().toISOString().split("T")[0],
+    hora_inicio: "08:00",
+    hora_fim: "12:00",
+    conteudo_previsto: "",
+    conteudo_realizado: "",
+    horas_ministradas: "4",
+    status: "agendada" as Aula["status"],
+    formador_user_id: "",
+  });
+
+  const [showPresencaModal, setShowPresencaModal] = useState(false);
+  const [activeAula, setActiveAula] = useState<Aula | null>(null);
+  const [presencas, setPresencas] = useState<PresencaRow[]>([]);
+  const [loadingPresencas, setLoadingPresencas] = useState(false);
+
+  const [evaluations, setEvaluations] = useState<EvaluationRow[]>([]);
+  const [progressData, setProgressData] = useState<ProgressRow[]>([]);
+  const [loadingEvaluations, setLoadingEvaluations] = useState(false);
+  const [savingEvaluations, setSavingEvaluations] = useState(false);
+
   const [formadores, setFormadores] = useState<FormadorOption[]>([]);
+  useEffect(() => {
+    if (selectedId && (activeTab === "avaliacoes" || activeTab === "certificados")) {
+      loadEvaluations();
+    }
+  }, [selectedId, activeTab]);
+
+  const loadEvaluations = async () => {
+    if (!selectedId) return;
+    try {
+      setLoadingEvaluations(true);
+      
+      const [resGrid, resProgress] = await Promise.all([
+        fetch(`/api/formacao/backoffice/cohorts/${selectedId}/avaliacoes?type=grid`),
+        fetch(`/api/formacao/backoffice/cohorts/${selectedId}/avaliacoes?type=progress`)
+      ]);
+
+      const jsonGrid = await resGrid.json();
+      const jsonProgress = await resProgress.json();
+
+      if (jsonGrid.ok) setEvaluations(jsonGrid.items);
+      if (jsonProgress.ok) setProgressData(jsonProgress.items);
+    } catch (err) {
+      console.error("Erro ao carregar avaliações:", err);
+    } finally {
+      setLoadingEvaluations(false);
+    }
+  };
+
+  const updateEvaluation = (inscricaoId: string, moduloId: string, conceito: EvaluationRow["conceito"]) => {
+    setEvaluations((prev) => {
+      const existing = prev.find(e => e.inscricao_id === inscricaoId && e.modulo_id === moduloId);
+      if (existing) {
+        return prev.map(e => (e.inscricao_id === inscricaoId && e.modulo_id === moduloId ? { ...e, conceito } : e));
+      }
+      return [...prev, { inscricao_id: inscricaoId, modulo_id: moduloId, conceito }];
+    });
+  };
+
+  const saveEvaluations = async () => {
+    if (!selectedId) return;
+    setSavingEvaluations(true);
+    try {
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/avaliacoes`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ evaluations }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setInfo("Avaliações guardadas com sucesso!");
+        loadEvaluations();
+      } else {
+        setError(json.error || "Erro ao guardar avaliações");
+      }
+    } catch (err) {
+      console.error("Erro ao guardar avaliações:", err);
+    } finally {
+      setSavingEvaluations(false);
+    }
+  };
   const [catalogoCursos, setCatalogoCursos] = useState<CursoCatalogo[]>([]);
   const [form, setForm] = useState({
     codigo: "",
@@ -271,9 +413,11 @@ export default function CohortsPage() {
     data_inicio: "",
     data_fim: "",
     status: "aberta" as Exclude<StatusFilter, "todos">,
+    visivel_na_landing: true,
     formador_user_id: "",
     percentual_honorario: "100",
     valor_referencia: "",
+    turno: "",
   });
 
   const loadCohorts = async () => {
@@ -369,9 +513,19 @@ export default function CohortsPage() {
   useEffect(() => {
     const shouldOpenCreate = searchParams.get("openCreate") === "1";
     const focusTarget = searchParams.get("focus");
-    if (!shouldOpenCreate) return;
+    const prefillCursoId = searchParams.get("curso_id");
 
-    setShowCreateModal(true);
+    if (shouldOpenCreate) {
+      setShowCreateModal(true);
+      if (prefillCursoId) {
+        onSelectCurso(prefillCursoId);
+        setCreateStep("form");
+      } else {
+        setCreateStep("selector");
+      }
+    }
+
+    if (!shouldOpenCreate) return;
 
     if (focusTarget === "formador") {
       const timer = setTimeout(() => {
@@ -380,12 +534,104 @@ export default function CohortsPage() {
       }, 60);
       return () => clearTimeout(timer);
     }
-  }, [searchParams]);
+  }, [searchParams, catalogoCursos]);
 
   useEffect(() => {
     if (!selectedId) return;
     loadDetail(selectedId);
   }, [selectedId]);
+
+  useEffect(() => {
+    if (selectedId && activeTab === "diario") {
+      loadAulas();
+    }
+  }, [selectedId, activeTab]);
+
+  const loadAulas = async () => {
+    if (!selectedId) return;
+    try {
+      setLoadingAulas(true);
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas`);
+      const json = await res.json();
+      if (json.ok) setAulas(json.items);
+    } catch (err) {
+      console.error("Erro ao carregar aulas:", err);
+    } finally {
+      setLoadingAulas(false);
+    }
+  };
+
+  const saveAula = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedId) return;
+    setError(null);
+
+    const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(aulaForm),
+    });
+
+    const json = await res.json();
+    if (!json.ok) {
+      setError(json.error || "Erro ao salvar aula");
+      return;
+    }
+
+    setShowAulaModal(false);
+    loadAulas();
+    setInfo("Aula registada com sucesso!");
+  };
+
+  const openPresencaModal = async (aula: Aula) => {
+    setActiveAula(aula);
+    setShowPresencaModal(true);
+    setLoadingPresencas(true);
+    try {
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas/${aula.id}/presencas`);
+      const json = await res.json();
+      if (json.ok) setPresencas(json.items);
+    } catch (err) {
+      console.error("Erro ao carregar presenças:", err);
+    } finally {
+      setLoadingPresencas(false);
+    }
+  };
+
+  const updatePresenca = (inscricaoId: string, presente: boolean) => {
+    setPresencas((prev) =>
+      prev.map((p) => (p.inscricao_id === inscricaoId ? { ...p, presente } : p))
+    );
+  };
+
+  const savePresencas = async () => {
+    if (!selectedId || !activeAula) return;
+    setLoadingPresencas(true);
+    try {
+      const res = await fetch(`/api/formacao/backoffice/cohorts/${selectedId}/aulas/${activeAula.id}/presencas`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          presencas: presencas.map((p) => ({
+            inscricao_id: p.inscricao_id,
+            presente: p.presente,
+            justificativa: p.justificativa,
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setShowPresencaModal(false);
+        setInfo("Presenças guardadas com sucesso!");
+      } else {
+        setError(json.error || "Erro ao guardar presenças");
+      }
+    } catch (err) {
+      console.error("Erro ao guardar presenças:", err);
+    } finally {
+      setLoadingPresencas(false);
+    }
+  };
 
   const statusCounts = useMemo(() => {
     const base = {
@@ -414,6 +660,11 @@ export default function CohortsPage() {
     event.preventDefault();
     setError(null);
 
+    if (!form.curso_id) {
+      setError("A vinculação a um curso é obrigatória.");
+      return;
+    }
+
     const payload = {
       codigo: form.codigo,
       nome: form.nome,
@@ -424,9 +675,11 @@ export default function CohortsPage() {
       data_inicio: form.data_inicio,
       data_fim: form.data_fim,
       status: toApiStatus(form.status),
+      visivel_na_landing: form.visivel_na_landing,
       formador_user_id: form.formador_user_id || undefined,
       percentual_honorario: form.formador_user_id ? Number(form.percentual_honorario) : undefined,
       valor_referencia: form.valor_referencia ? Number(form.valor_referencia) : undefined,
+      turno: form.turno || undefined,
     };
 
     const res = await fetch("/api/formacao/backoffice/cohorts", {
@@ -442,6 +695,7 @@ export default function CohortsPage() {
     }
 
     setShowCreateModal(false);
+    setCreateStep("selector");
     setForm({
       codigo: "",
       nome: "",
@@ -452,13 +706,45 @@ export default function CohortsPage() {
       data_inicio: "",
       data_fim: "",
       status: "aberta",
+      visivel_na_landing: true,
       formador_user_id: "",
       percentual_honorario: "100",
       valor_referencia: "",
+      turno: "",
     });
 
     await loadCohorts();
     setSelectedId(json.item.id);
+  };
+
+  const orphans = useMemo(() => items.filter((item) => !item.curso_id), [items]);
+
+  const rescueCohort = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!rescueTarget || !form.curso_id) return;
+
+    setError(null);
+    const res = await fetch("/api/formacao/backoffice/cohorts", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: rescueTarget.id,
+        curso_id: form.curso_id,
+        turno: form.turno,
+      }),
+    });
+
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok) {
+      setError(json?.error || "Falha ao vincular curso");
+      return;
+    }
+
+    setShowRescueModal(false);
+    setRescueTarget(null);
+    setForm((prev) => ({ ...prev, curso_id: "", turno: "" }));
+    await loadCohorts();
+    setInfo("Turma vinculada com sucesso! Módulos e materiais foram herdados do catálogo.");
   };
 
   const onSelectCurso = (cursoId: string) => {
@@ -516,6 +802,22 @@ export default function CohortsPage() {
     }
 
     await loadCohorts();
+  };
+
+  const toggleVisibility = async (id: string, current: boolean) => {
+    setError(null);
+    const res = await fetch("/api/formacao/backoffice/cohorts", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, visivel_na_landing: !current }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok) {
+      setError(json?.error || "Falha ao atualizar visibilidade");
+      return;
+    }
+    await loadCohorts();
+    if (selectedId === id) await loadDetail(id);
   };
 
   const openPagamentoModal = (itemId: string, formandoNome: string, parcela: string, valor: number) => {
@@ -604,7 +906,7 @@ export default function CohortsPage() {
         throw new Error(json?.error || "Falha ao atribuir formador");
       }
 
-      setFormadorAssignmentForm({ formador_user_id: "", percentual_honorario: "100" });
+      setFormadorAssignmentForm({ formador_user_id: "", percentual_honorario: "100", turno: "" });
       await loadDetail(detail.cohort.id);
       setInfo("Formador atribuído à edição.");
     } catch (err) {
@@ -674,12 +976,45 @@ export default function CohortsPage() {
 
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setCreateStep("selector");
+              setShowCreateModal(true);
+            }}
             className="rounded-xl border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
           >
             + Nova turma
           </button>
         </div>
+
+        {orphans.length > 0 ? (
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </span>
+              <div>
+                <p className="text-sm font-bold text-amber-900">Detetor de Órfãos</p>
+                <p className="text-xs text-amber-700">Existem {orphans.length} turmas sem vínculo ao catálogo de cursos.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {orphans.slice(0, 2).map(o => (
+                <button
+                  key={o.id}
+                  onClick={() => {
+                    setRescueTarget(o);
+                    setShowRescueModal(true);
+                  }}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+                >
+                  Vincular {o.nome}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {(["todos", "rascunho", "aberta", "em curso", "concluída", "cancelada"] as StatusFilter[]).map(
@@ -727,14 +1062,21 @@ export default function CohortsPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-[#111811]">{item.nome}</p>
+                    <p className="text-sm font-bold text-[#111811]">{item.nome}</p>
                     <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusPillClass(normalizedStatus)}`}>
                       {normalizedStatus}
                     </span>
                   </div>
 
-                  <p className="mt-1 text-xs text-[#4A6352]">{item.codigo} · {item.curso_nome}</p>
-                  <p className="mt-1 text-xs text-[#8A9E8F]">{item.data_inicio} → {item.data_fim}</p>
+                  <div className="mt-2 flex flex-col gap-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-klasse-gold">
+                      {item.curso_nome}
+                    </p>
+                    <p className="text-[11px] text-[#4A6352] font-medium">
+                      Código: {item.codigo}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-[10px] text-[#8A9E8F] font-bold italic">{item.data_inicio} → {item.data_fim}</p>
                 </button>
               );
             })}
@@ -757,8 +1099,31 @@ export default function CohortsPage() {
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E4EBE6] pb-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">{detail.cohort.codigo}</p>
-                  <h2 className="text-2xl font-semibold text-[#111811]">{detail.cohort.nome}</h2>
-                  <p className="text-sm text-[#4A6352]">{detail.cohort.curso_nome} · {detail.cohort.data_inicio} → {detail.cohort.data_fim}</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-semibold text-[#111811]">{detail.cohort.nome}</h2>
+                    {!detail.cohort.curso_id && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                        Não vinculada
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleVisibility(detail.cohort.id, detail.cohort.visivel_na_landing)}
+                      title={detail.cohort.visivel_na_landing ? "Visível na Landing Page" : "Oculto na Landing Page"}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase transition ${
+                        detail.cohort.visivel_na_landing
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      {detail.cohort.visivel_na_landing ? "Público" : "Privado"}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm text-[#4A6352] flex items-center gap-2">
+                    <span className="font-bold text-[#111811]">Curso:</span> {detail.cohort.curso_nome}
+                    <span className="text-slate-300">|</span>
+                    <span className="font-bold text-[#111811]">Período:</span> {detail.cohort.data_inicio} → {detail.cohort.data_fim}
+                  </p>
                   <p className="text-xs text-[#8A9E8F]">
                     Valor referência: {formatMoney(Number(detail.cohort.valor_referencia ?? 0))}
                   </p>
@@ -773,7 +1138,7 @@ export default function CohortsPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {(["formandos", "formadores", "sessoes", "materiais", "certificados"] as DetailTab[]).map((tab) => (
+                {(["formandos", "formadores", "diario", "avaliacoes", "sessoes", "materiais", "certificados"] as DetailTab[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
@@ -784,7 +1149,7 @@ export default function CohortsPage() {
                         : "border-[#E4EBE6] bg-white text-[#4A6352] hover:bg-[#F7F9F7]"
                     }`}
                   >
-                    {tab}
+                    {tab === "diario" ? "Diário de Classe" : tab === "avaliacoes" ? "Avaliações" : tab}
                   </button>
                 ))}
 
@@ -1384,6 +1749,176 @@ export default function CohortsPage() {
                 </div>
               ) : null}
 
+              {activeTab === "diario" ? (
+                <div className="mt-3 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#111811]">Aulas e Frequência</h3>
+                      <p className="text-sm text-[#4A6352]">Controle de aulas realizadas, conteúdo ministrado e presenças.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAulaForm({
+                          id: "",
+                          data: new Date().toISOString().split("T")[0],
+                          hora_inicio: "08:00",
+                          hora_fim: "12:00",
+                          conteudo_previsto: "",
+                          conteudo_realizado: "",
+                          horas_ministradas: "4",
+                          status: "agendada",
+                          formador_user_id: detail.tabs.formadores[0]?.user_id || "",
+                        });
+                        setShowAulaModal(true);
+                      }}
+                      className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+                    >
+                      + Lançar Aula
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {aulas.map((aula) => (
+                      <article key={aula.id} className="rounded-2xl border border-[#E4EBE6] bg-white p-4 shadow-sm transition hover:shadow-md">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex items-start gap-4">
+                            <div className="flex flex-col items-center rounded-xl bg-[#F7F9F7] px-3 py-2 text-center border border-[#E4EBE6]">
+                              <span className="text-[10px] font-bold uppercase text-[#8A9E8F]">{new Date(aula.data).toLocaleDateString("pt-AO", { month: "short" })}</span>
+                              <span className="text-xl font-black text-[#111811]">{new Date(aula.data).getDate()}</span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                  aula.status === "realizada" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                                  aula.status === "cancelada" ? "bg-rose-100 text-rose-700 border-rose-200" :
+                                  "bg-slate-100 text-slate-700 border-slate-200"
+                                }`}>
+                                  {aula.status}
+                                </span>
+                                <span className="text-xs font-semibold text-[#4A6352]">
+                                  {aula.hora_inicio?.slice(0, 5)} → {aula.hora_fim?.slice(0, 5)} · {aula.horas_ministradas}h
+                                </span>
+                              </div>
+                              <h4 className="mt-1 font-semibold text-[#111811]">
+                                {aula.conteudo_realizado || aula.conteudo_previsto || "Sem conteúdo registado"}
+                              </h4>
+                              <p className="mt-1 text-xs text-[#8A9E8F]">
+                                Formador: {detail.tabs.formadores.find(f => f.user_id === aula.formador_user_id)?.nome || "Não atribuído"}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openPresencaModal(aula)}
+                              className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-xs font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
+                            >
+                              Presenças
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAulaForm({
+                                  id: aula.id,
+                                  data: aula.data,
+                                  hora_inicio: aula.hora_inicio?.slice(0, 5) || "08:00",
+                                  hora_fim: aula.hora_fim?.slice(0, 5) || "12:00",
+                                  conteudo_previsto: aula.conteudo_previsto || "",
+                                  conteudo_realizado: aula.conteudo_realizado || "",
+                                  horas_ministradas: String(aula.horas_ministradas),
+                                  status: aula.status,
+                                  formador_user_id: aula.formador_user_id || "",
+                                });
+                                setShowAulaModal(true);
+                              }}
+                              className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-xs font-semibold text-[#4A6352] hover:bg-[#F7F9F7]"
+                            >
+                              Editar
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+
+                    {aulas.length === 0 && !loadingAulas ? (
+                      <div className="rounded-2xl border border-dashed border-[#C9D8CF] bg-[#FAFCFA] px-4 py-12 text-center text-sm text-[#4A6352]">
+                        Nenhuma aula registada no diário desta turma.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {activeTab === "avaliacoes" ? (
+                <div className="mt-3 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#111811]">Lançamento de Notas e Conceitos</h3>
+                      <p className="text-sm text-[#4A6352]">Avaliação individual por competência em cada módulo do curso.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={saveEvaluations}
+                      disabled={savingEvaluations}
+                      className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+                    >
+                      {savingEvaluations ? "A guardar..." : "Guardar Avaliações"}
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+                    <table className="min-w-full border-collapse text-sm">
+                      <thead className="bg-[#F7F9F7] text-[#4A6352]">
+                        <tr>
+                          <Th>Formando</Th>
+                          {detail.tabs.modulos.map(m => (
+                            <Th key={m.id} title={m.titulo}>M{m.ordem}</Th>
+                          ))}
+                          <Th>Presença</Th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E4EBE6]">
+                        {detail.tabs.formandos.map((f) => {
+                          const prog = progressData.find(p => p.inscricao_id === f.inscricao_id);
+                          return (
+                            <tr key={f.user_id}>
+                              <Td className="font-medium whitespace-nowrap">{f.nome}</Td>
+                              {detail.tabs.modulos.map(m => {
+                                const evalItem = evaluations.find(ev => ev.inscricao_id === f.inscricao_id && ev.modulo_id === m.id);
+                                return (
+                                  <Td key={m.id}>
+                                    <select
+                                      value={evalItem?.conceito || "em_progresso"}
+                                      onChange={(e) => updateEvaluation(f.inscricao_id!, m.id, e.target.value as any)}
+                                      className={`rounded border border-[#E4EBE6] px-1 py-0.5 text-[10px] font-bold outline-none focus:border-klasse-gold ${
+                                        evalItem?.conceito === 'apto' ? 'text-emerald-700 bg-emerald-50' : 
+                                        evalItem?.conceito === 'nao_apto' ? 'text-rose-700 bg-rose-50' : ''
+                                      }`}
+                                    >
+                                      <option value="em_progresso">—</option>
+                                      <option value="apto">APTO</option>
+                                      <option value="nao_apto">N. APTO</option>
+                                      <option value="isento">ISENTO</option>
+                                    </select>
+                                  </Td>
+                                );
+                              })}
+                              <Td>
+                                <span className={`font-bold ${prog && prog.percentual_presenca < 75 ? "text-rose-600" : "text-emerald-600"}`}>
+                                  {prog ? `${Math.round(prog.percentual_presenca)}%` : "—"}
+                                </span>
+                              </Td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
               {activeTab === "sessoes" ? (
                 <>
                   <div className="mt-3 space-y-2 md:hidden">
@@ -1455,161 +1990,282 @@ export default function CohortsPage() {
               ) : null}
 
               {activeTab === "certificados" ? (
-                <>
-                  <div className="mt-3 space-y-2 md:hidden">
-                    {detail.tabs.certificados.map((row) => (
-                      <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
-                        <p className="text-sm font-semibold text-[#111811]">{row.numero_documento}</p>
-                        <p className="mt-0.5 text-xs text-[#4A6352]">Formando: {row.formando_nome}</p>
-                        <p className="mt-0.5 text-xs text-[#4A6352]">Emitido em: {row.emitido_em}</p>
-                        <p className="mt-0.5 text-xs text-[#8A9E8F]">Template: {row.template_id ?? "-"}</p>
-                      </article>
-                    ))}
-                    {detail.tabs.certificados.length === 0 ? (
-                      <div className="rounded-xl border border-[#E4EBE6] bg-white px-3 py-4 text-sm text-[#4A6352]">
-                        Sem certificados emitidos para esta turma.
-                      </div>
-                    ) : null}
-                  </div>
+                <div className="mt-3 space-y-6">
+                  <article className="rounded-2xl border border-[#E4EBE6] bg-[#F7F9F7] p-4">
+                    <h3 className="text-lg font-semibold text-[#111811]">Elegibilidade para Certificação</h3>
+                    <p className="text-sm text-[#4A6352]">
+                      Regra: Mínimo de 75% de presença e aproveitamento (APTO/ISENTO) em todos os {detail.summary.modulos} módulos.
+                    </p>
 
-                  <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
-                    <table className="min-w-[720px] w-full border-collapse text-sm">
-                      <thead className="bg-[#F7F9F7] text-[#4A6352]">
-                        <tr>
-                          <Th>Número</Th>
-                          <Th>Formando</Th>
-                          <Th>Emitido em</Th>
-                          <Th>Template</Th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detail.tabs.certificados.map((row) => (
-                          <tr key={row.id}>
-                            <Td>{row.numero_documento}</Td>
-                            <Td>{row.formando_nome}</Td>
-                            <Td>{row.emitido_em}</Td>
-                            <Td>{row.template_id ?? "-"}</Td>
-                          </tr>
-                        ))}
-                        {detail.tabs.certificados.length === 0 ? (
+                    <div className="mt-4 overflow-x-auto rounded-xl border border-[#E4EBE6] bg-white">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#F7F9F7] text-[#4A6352]">
                           <tr>
-                            <Td colSpan={4}>Sem certificados emitidos para esta turma.</Td>
+                            <Th>Formando</Th>
+                            <Th>Presença</Th>
+                            <Th>Módulos</Th>
+                            <Th>Estado</Th>
+                            <Th>Ação</Th>
                           </tr>
-                        ) : null}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-[#E4EBE6]">
+                          {detail.tabs.formandos.map((f) => {
+                            const prog = progressData.find(p => p.inscricao_id === f.inscricao_id);
+                            const hasCert = detail.tabs.certificados.some(c => c.formando_user_id === f.user_id);
+                            
+                            return (
+                              <tr key={f.user_id}>
+                                <Td className="font-medium">{f.nome}</Td>
+                                <Td>
+                                  <span className={`font-bold ${prog && prog.percentual_presenca < 75 ? "text-rose-600" : "text-emerald-600"}`}>
+                                    {prog ? `${Math.round(prog.percentual_presenca)}%` : "—"}
+                                  </span>
+                                </Td>
+                                <Td>
+                                  <span className="font-semibold text-[#111811]">
+                                    {prog ? `${prog.modulos_aprovados} / ${prog.total_modulos}` : "—"}
+                                  </span>
+                                </Td>
+                                <Td>
+                                  {hasCert ? (
+                                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Emitido</span>
+                                  ) : prog?.elegivel_certificacao ? (
+                                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-700">Elegível</span>
+                                  ) : (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Incompleto</span>
+                                  )}
+                                </Td>
+                                <Td>
+                                  {!hasCert && prog?.elegivel_certificacao && (
+                                    <button className="text-xs font-bold text-klasse-gold underline underline-offset-2">Emitir Agora</button>
+                                  )}
+                                  {!hasCert && !prog?.elegivel_certificacao && (
+                                    <span className="text-[10px] text-[#8A9E8F] italic">Pendente requisitos</span>
+                                  )}
+                                </Td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#111811]">Certificados Emitidos</h3>
+                    <div className="mt-3 space-y-2 md:hidden">
+                      {detail.tabs.certificados.map((row) => (
+                        <article key={row.id} className="rounded-xl border border-[#E4EBE6] bg-white p-3 shadow-sm">
+                          <p className="text-sm font-semibold text-[#111811]">{row.numero_documento}</p>
+                          <p className="mt-0.5 text-xs text-[#4A6352]">Formando: {row.formando_nome}</p>
+                          <p className="mt-0.5 text-xs text-[#4A6352]">Emitido em: {row.emitido_em}</p>
+                          <p className="mt-0.5 text-xs text-[#8A9E8F]">Template: {row.template_id ?? "-"}</p>
+                        </article>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 hidden overflow-x-auto rounded-xl border border-[#E4EBE6] md:block">
+                      <table className="min-w-[720px] w-full border-collapse text-sm">
+                        <thead className="bg-[#F7F9F7] text-[#4A6352]">
+                          <tr>
+                            <Th>Número</Th>
+                            <Th>Formando</Th>
+                            <Th>Emitido em</Th>
+                            <Th>Template</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detail.tabs.certificados.map((row) => (
+                            <tr key={row.id}>
+                              <Td>{row.numero_documento}</Td>
+                              <Td>{row.formando_nome}</Td>
+                              <Td>{row.emitido_em}</Td>
+                              <Td>{row.template_id ?? "-"}</Td>
+                            </tr>
+                          ))}
+                          {detail.tabs.certificados.length === 0 ? (
+                            <tr>
+                              <Td colSpan={4}>Sem certificados emitidos para esta turma.</Td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </>
+                </div>
               ) : null}
             </>
           )}
         </section>
       </div>
 
-      {showCreateModal ? (
+      {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <form onSubmit={createCohort} className="w-full max-w-3xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+          <div className="w-full max-w-3xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">nova turma</p>
-                <h3 className="text-xl font-semibold text-[#111811]">Criar turma operacional</h3>
+                <h3 className="text-xl font-semibold text-[#111811]">
+                  {createStep === "selector" ? "Para que curso deseja abrir esta turma?" : "Configuração da turma"}
+                </h3>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+              >
                 fechar
               </button>
             </div>
 
-            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              <Input label="Código" value={form.codigo} onChange={(value) => setForm((prev) => ({ ...prev, codigo: value }))} placeholder="COH-2026-01" required />
-              <Input label="Nome" value={form.nome} onChange={(value) => setForm((prev) => ({ ...prev, nome: value }))} placeholder="Turma Manhã" required />
-              <label className="grid gap-1 text-sm text-[#4A6352]">
-                <span>Curso (Catálogo)</span>
-                <select
-                  value={form.curso_id}
-                  onChange={(e) => onSelectCurso(e.target.value)}
-                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
-                  required
-                >
-                  <option value="">Selecionar curso</option>
+            {createStep === "selector" ? (
+              <div className="mt-6">
+                <p className="text-sm text-[#4A6352] mb-4">Escolha um curso do catálogo para herdar automaticamente módulos, preços e materiais.</p>
+                <div className="grid gap-3 max-h-[50vh] overflow-auto pr-1">
                   {catalogoCursos.map((curso) => (
-                    <option key={curso.id} value={curso.id}>
-                      {curso.nome}
-                    </option>
+                    <button
+                      key={curso.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectCurso(curso.id);
+                        setCreateStep("form");
+                      }}
+                      className="flex items-center justify-between rounded-xl border border-[#E4EBE6] p-4 text-left transition hover:border-klasse-gold hover:bg-klasse-gold/5"
+                    >
+                      <div>
+                        <p className="font-bold text-[#111811]">{curso.nome}</p>
+                        <p className="text-xs text-[#8A9E8F]">{curso.codigo} · {curso.modalidade} · {curso.carga_horaria}h</p>
+                      </div>
+                      <span className="text-xs font-bold text-klasse-gold">Selecionar →</span>
+                    </button>
                   ))}
-                </select>
-              </label>
-              <Input label="Curso (nome)" value={form.curso_nome} onChange={(value) => setForm((prev) => ({ ...prev, curso_nome: value }))} placeholder="Informática" required />
-              <Input label="Carga horária" type="number" min={1} value={form.carga_horaria_total} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria_total: value }))} placeholder="120" required />
-              <Input label="Vagas" type="number" min={1} value={form.vagas} onChange={(value) => setForm((prev) => ({ ...prev, vagas: value }))} placeholder="30" required />
-              <Input label="Valor (referência)" type="number" min={0} value={form.valor_referencia} onChange={(value) => setForm((prev) => ({ ...prev, valor_referencia: value }))} placeholder="50000" />
-              <Input label="Data início" type="date" value={form.data_inicio} onChange={(value) => setForm((prev) => ({ ...prev, data_inicio: value }))} required />
-              <Input label="Data fim" type="date" value={form.data_fim} onChange={(value) => setForm((prev) => ({ ...prev, data_fim: value }))} required />
+                  {catalogoCursos.length === 0 && (
+                    <p className="py-8 text-center text-sm text-[#8A9E8F]">Nenhum curso ativo no catálogo.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={createCohort}>
+                <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="md:col-span-2 xl:col-span-3 rounded-lg bg-emerald-50 border border-emerald-100 p-3 mb-2 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Curso Selecionado</p>
+                      <p className="text-sm font-bold text-emerald-900">{form.curso_nome}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCreateStep("selector")}
+                      className="text-xs font-bold text-emerald-700 underline underline-offset-4"
+                    >
+                      Alterar curso
+                    </button>
+                  </div>
 
-              <label className="grid gap-1 text-sm text-[#4A6352]">
-                <span>Status</span>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as Exclude<StatusFilter, "todos"> }))}
-                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
-                >
-                  <option value="rascunho">rascunho</option>
-                  <option value="aberta">aberta</option>
-                  <option value="em curso">em curso</option>
-                  <option value="concluída">concluída</option>
-                  <option value="cancelada">cancelada</option>
-                </select>
-              </label>
+                  <Input label="Código" value={form.codigo} onChange={(value) => setForm((prev) => ({ ...prev, codigo: value }))} placeholder="COH-2026-01" required />
+                  <Input label="Nome" value={form.nome} onChange={(value) => setForm((prev) => ({ ...prev, nome: value }))} placeholder="Turma Manhã" required />
 
-              <label className="grid gap-1 text-sm text-[#4A6352]">
-                <span>Formador atribuído</span>
-                <select
-                  id="cohort-formador-user-id"
-                  value={form.formador_user_id}
-                  onChange={(e) => setForm((prev) => ({ ...prev, formador_user_id: e.target.value }))}
-                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
-                >
-                  <option value="">Selecionar depois</option>
-                  {formadores.map((item) => (
-                    <option key={item.user_id} value={item.user_id}>
-                      {item.nome}
-                      {item.papel && item.papel !== "formador" ? ` (${item.papel.replace("formacao_", "")})` : ""}
-                    </option>
-                  ))}
-                </select>
-                <Link href="/admin/equipa" className="text-xs font-semibold text-klasse-gold hover:brightness-95">
-                  Cadastrar novo formador →
-                </Link>
-              </label>
+                  <Input label="Carga horária (herdada)" type="number" min={1} value={form.carga_horaria_total} onChange={(value) => setForm((prev) => ({ ...prev, carga_horaria_total: value }))} placeholder="120" required />
+                  <Input label="Vagas" type="number" min={1} value={form.vagas} onChange={(value) => setForm((prev) => ({ ...prev, vagas: value }))} placeholder="30" required />
+                  <Input label="Valor (herdado)" type="number" min={0} value={form.valor_referencia} onChange={(value) => setForm((prev) => ({ ...prev, valor_referencia: value }))} placeholder="50000" />
 
-              <Input
-                label="% honorário do formador"
-                type="number"
-                min={1}
-                max={100}
-                value={form.percentual_honorario}
-                onChange={(value) => setForm((prev) => ({ ...prev, percentual_honorario: value }))}
-                placeholder="100"
-                disabled={!form.formador_user_id}
-              />
-            </div>
+                  <label className="grid gap-1 text-sm text-[#4A6352]">
+                    <span>Turno / Período</span>
+                    <select
+                      value={form.turno}
+                      onChange={(e) => setForm((prev) => ({ ...prev, turno: e.target.value }))}
+                      className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                      required
+                    >
+                      <option value="">Selecionar turno</option>
+                      <option value="manha">Manhã</option>
+                      <option value="tarde">Tarde</option>
+                      <option value="noite">Noite</option>
+                      <option value="integral">Integral</option>
+                      <option value="fim_de_semana">Fim de Semana</option>
+                      <option value="pos_laboral">Pós-Laboral</option>
+                    </select>
+                  </label>
 
-            <p className="mt-3 text-xs text-[#8A9E8F]">
-              Ao selecionar um curso, o sistema puxa automaticamente carga horária e valor de referência do catálogo.
-            </p>
+                  <Input label="Data início" type="date" value={form.data_inicio} onChange={(value) => setForm((prev) => ({ ...prev, data_inicio: value }))} required />
+                  <Input label="Data fim" type="date" value={form.data_fim} onChange={(value) => setForm((prev) => ({ ...prev, data_fim: value }))} required />
 
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]">
-                Cancelar
-              </button>
-              <button type="submit" className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
-                Criar turma
-              </button>
-            </div>
-          </form>
+                  <label className="grid gap-1 text-sm text-[#4A6352]">
+                    <span>Status</span>
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value as Exclude<StatusFilter, "todos"> }))}
+                      className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                    >
+                      <option value="rascunho">rascunho</option>
+                      <option value="aberta">aberta</option>
+                      <option value="em curso">em curso</option>
+                      <option value="concluída">concluída</option>
+                      <option value="cancelada">cancelada</option>
+                    </select>
+                  </label>
+
+                  <label className="grid gap-1 text-sm text-[#4A6352]">
+                    <span>Formador atribuído</span>
+                    <select
+                      id="cohort-formador-user-id"
+                      value={form.formador_user_id}
+                      onChange={(e) => setForm((prev) => ({ ...prev, formador_user_id: e.target.value }))}
+                      className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                    >
+                      <option value="">Selecionar depois</option>
+                      {formadores.map((item) => (
+                        <option key={item.user_id} value={item.user_id}>
+                          {item.nome}
+                          {item.papel && item.papel !== "formador" ? ` (${item.papel.replace("formacao_", "")})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <Input
+                    label="% honorário"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={form.percentual_honorario}
+                    onChange={(value) => setForm((prev) => ({ ...prev, percentual_honorario: value }))}
+                    placeholder="100"
+                    disabled={!form.formador_user_id}
+                  />
+
+                  <label className="flex items-center gap-2 text-sm text-[#4A6352] md:col-span-2 xl:col-span-3">
+                    <input
+                      type="checkbox"
+                      checked={form.visivel_na_landing}
+                      onChange={(e) => setForm((prev) => ({ ...prev, visivel_na_landing: e.target.checked }))}
+                      className="rounded border-[#E4EBE6] text-klasse-gold focus:ring-klasse-gold"
+                    />
+                    <span>Exibir esta turma na Landing Page pública</span>
+                  </label>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCreateStep("selector")}
+                    className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+                  >
+                    Confirmar e Abrir Turma
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
-      ) : null}
+      )}
 
-      {showPagamentoModal && pagamentoTarget ? (
+      {showPagamentoModal && pagamentoTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <form onSubmit={registrarPagamentoRapido} className="w-full max-w-md rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
@@ -1683,9 +2339,9 @@ export default function CohortsPage() {
             </div>
           </form>
         </div>
-      ) : null}
+      )}
 
-      {statusEditorTarget ? (
+      {statusEditorTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
@@ -1751,7 +2407,250 @@ export default function CohortsPage() {
             </div>
           </div>
         </div>
-      ) : null}
+      )}
+
+      {showAulaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <form onSubmit={saveAula} className="w-full max-w-2xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">diário de classe</p>
+                <h3 className="text-xl font-semibold text-[#111811]">
+                  {aulaForm.id ? "Editar Aula" : "Lançar Nova Aula"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAulaModal(false)}
+                className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+              >
+                fechar
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <Input label="Data" type="date" value={aulaForm.data} onChange={(v) => setAulaForm(p => ({ ...p, data: v }))} required />
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Status da Aula</span>
+                <select
+                  value={aulaForm.status}
+                  onChange={(e) => setAulaForm(p => ({ ...p, status: e.target.value as Aula["status"] }))}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                >
+                  <option value="agendada">Agendada</option>
+                  <option value="realizada">Realizada</option>
+                  <option value="adiada">Adiada</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+              </label>
+
+              <Input label="Início" type="time" value={aulaForm.hora_inicio} onChange={(v) => setAulaForm(p => ({ ...p, hora_inicio: v }))} />
+              <Input label="Fim" type="time" value={aulaForm.hora_fim} onChange={(v) => setAulaForm(p => ({ ...p, hora_fim: v }))} />
+              <Input label="Horas Ministradas" type="number" step="0.5" value={aulaForm.horas_ministradas} onChange={(v) => setAulaForm(p => ({ ...p, horas_ministradas: v }))} />
+
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Formador Responsável</span>
+                <select
+                  value={aulaForm.formador_user_id}
+                  onChange={(e) => setAulaForm(p => ({ ...p, formador_user_id: e.target.value }))}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                >
+                  <option value="">Selecionar formador</option>
+                  {detail?.tabs.formadores.map(f => (
+                    <option key={f.user_id} value={f.user_id}>{f.nome}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="md:col-span-2 space-y-3">
+                <label className="grid gap-1 text-sm text-[#4A6352]">
+                  <span>Conteúdo Programático (Ministrado)</span>
+                  <textarea
+                    value={aulaForm.conteudo_realizado}
+                    onChange={(e) => setAulaForm(p => ({ ...p, conteudo_realizado: e.target.value }))}
+                    placeholder="Ex: Introdução ao Excel, Fórmulas Básicas..."
+                    className="h-24 rounded-lg border border-[#E4EBE6] p-3 text-sm outline-none focus:border-klasse-gold"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2 border-t border-[#E4EBE6] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAulaModal(false)}
+                className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+              >
+                Guardar Aula
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showPresencaModal && activeAula && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">controlo de frequência</p>
+                <h3 className="text-xl font-semibold text-[#111811]">Presenças: {new Date(activeAula.data).toLocaleDateString("pt-AO")}</h3>
+                <p className="text-sm text-[#4A6352]">{activeAula.conteudo_realizado || "Sem conteúdo"}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPresencaModal(false)}
+                className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+              >
+                fechar
+              </button>
+            </div>
+
+            <div className="mt-6 max-h-[50vh] overflow-auto border rounded-xl border-[#E4EBE6]">
+              {loadingPresencas ? (
+                <div className="p-8 text-center text-sm text-[#4A6352]">A carregar lista de formandos...</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-[#F7F9F7] text-[#4A6352]">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Formando</th>
+                      <th className="px-4 py-2 text-center">Presente?</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E4EBE6]">
+                    {presencas.map((p) => (
+                      <tr key={p.inscricao_id} className={p.presente ? "bg-white" : "bg-rose-50/30"}>
+                        <td className="px-4 py-3 font-medium text-[#111811]">{p.formacao_inscricoes.nome_snapshot}</td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => updatePresenca(p.inscricao_id, !p.presente)}
+                            className={`rounded-lg px-3 py-1 text-[10px] font-black uppercase transition ${
+                              p.presente ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                            }`}
+                          >
+                            {p.presente ? "SIM" : "FALTA"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {presencas.length === 0 && (
+                      <tr>
+                        <td colSpan={2} className="px-4 py-8 text-center text-slate-500 italic">
+                          Nenhum formando inscrito nesta turma para registar presença.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPresencaModal(false)}
+                className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={savePresencas}
+                disabled={loadingPresencas || presencas.length === 0}
+                className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+              >
+                {loadingPresencas ? "A guardar..." : "Guardar Presenças"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRescueModal && rescueTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <form onSubmit={rescueCohort} className="w-full max-w-md rounded-2xl border border-[#E4EBE6] bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#8A9E8F]">Resgate de Turma</p>
+                <h3 className="text-lg font-semibold text-[#111811]">Vincular ao Catálogo</h3>
+                <p className="text-xs text-[#4A6352]">Turma: {rescueTarget.nome} ({rescueTarget.curso_nome})</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRescueModal(false)}
+                className="rounded-md border border-[#E4EBE6] px-2 py-1 text-xs text-[#4A6352]"
+              >
+                fechar
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              <p className="text-sm text-[#4A6352]">
+                Ao vincular esta turma a um curso oficial, o sistema irá importar automaticamente o programa académico (módulos) e materiais de apoio.
+              </p>
+
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Escolher Curso Correspondente</span>
+                <select
+                  value={form.curso_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, curso_id: e.target.value }))}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                  required
+                >
+                  <option value="">Selecionar curso</option>
+                  {catalogoCursos.map((curso) => (
+                    <option key={curso.id} value={curso.id}>
+                      {curso.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-1 text-sm text-[#4A6352]">
+                <span>Turno / Período</span>
+                <select
+                  value={form.turno}
+                  onChange={(e) => setForm((prev) => ({ ...prev, turno: e.target.value }))}
+                  className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm outline-none focus:border-klasse-gold"
+                  required
+                >
+                  <option value="">Selecionar turno</option>
+                  <option value="manha">Manhã</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noite">Noite</option>
+                  <option value="integral">Integral</option>
+                  <option value="fim_de_semana">Fim de Semana</option>
+                  <option value="pos_laboral">Pós-Laboral</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRescueModal(false)}
+                className="rounded-lg border border-[#E4EBE6] px-3 py-2 text-sm text-[#4A6352]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!form.curso_id}
+                className="rounded-lg border border-klasse-gold bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+              >
+                Vincular em um Clique
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {detail && (
         <InscricaoBalcaoModal
@@ -1775,6 +2674,7 @@ function Input({
   type = "text",
   min,
   max,
+  step,
   disabled,
 }: {
   label: string;
@@ -1785,6 +2685,7 @@ function Input({
   type?: string;
   min?: number;
   max?: number;
+  step?: string;
   disabled?: boolean;
 }) {
   return (
@@ -1794,6 +2695,7 @@ function Input({
         type={type}
         min={min}
         max={max}
+        step={step}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -1805,12 +2707,20 @@ function Input({
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="border-b border-[#E4EBE6] px-2.5 py-2 text-left font-medium">{children}</th>;
+function Th({ children, title }: { children: React.ReactNode; title?: string }) {
+  return (
+    <th title={title} className="border-b border-[#E4EBE6] px-2.5 py-2 text-left font-medium">
+      {children}
+    </th>
+  );
 }
 
-function Td({ children, colSpan }: { children: React.ReactNode; colSpan?: number }) {
-  return <td colSpan={colSpan} className="border-b border-[#E4EBE6] px-2.5 py-2 text-[#111811]">{children}</td>;
+function Td({ children, colSpan, className }: { children: React.ReactNode; colSpan?: number; className?: string }) {
+  return (
+    <td colSpan={colSpan} className={`border-b border-[#E4EBE6] px-2.5 py-2 text-[#111811] ${className || ""}`}>
+      {children}
+    </td>
+  );
 }
 
 function formatMoney(value: number) {

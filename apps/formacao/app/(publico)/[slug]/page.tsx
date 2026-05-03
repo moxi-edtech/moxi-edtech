@@ -28,14 +28,28 @@ type LandingCohort = {
   id: string;
   codigo: string;
   nome: string;
-  curso_nome: string;
-  format: "PRESENCIAL" | "ONLINE" | "GRAVADO";
-  valor_referencia: number;
   vagas: number;
   vagas_ocupadas: number;
-  carga_horaria: number;
   data_inicio: string;
-  thumbnail_url?: string | null;
+  valor_referencia: number;
+};
+
+type LandingCourse = {
+  id: string;
+  nome: string;
+  slug: string | null;
+  area: string | null;
+  modalidade: "presencial" | "online" | "hibrido";
+  carga_horaria: number | null;
+  thumbnail_url: string | null;
+  video_url: string | null;
+  objetivos: string[];
+  requisitos: string[];
+  seo_config: {
+    title?: string;
+    description?: string;
+  };
+  open_cohorts: LandingCohort[];
 };
 
 type LandingPayload = {
@@ -98,7 +112,7 @@ type LandingPayload = {
     estrelas: number;
     curso_nome?: string;
   }>;
-  cohorts: LandingCohort[];
+  courses: LandingCourse[];
 };
 
 function resolveLandingExperience(tenantType: LandingTenantType, escola: LandingPayload["escola"]): LandingExperience {
@@ -279,7 +293,7 @@ export default async function PublicCentroLandingPage({ params }: Props) {
           tracking={data.tracking}
           publicacao={data.publicacao ?? null}
           testemunhos={data.testemunhos}
-          cohorts={data.cohorts}
+          courses={data.courses}
         />
 
         <section className="mt-32 grid gap-12 lg:grid-cols-3">

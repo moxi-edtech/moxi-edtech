@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import { Users, Zap, Clock } from "lucide-react";
 
@@ -8,19 +9,22 @@ export interface CourseCardProps {
   id: string;
   title: string;
   price: number;
-  format: "PRESENCIAL" | "ONLINE" | "GRAVADO";
+  format: "PRESENCIAL" | "ONLINE" | "GRAVADO" | "HIBRIDO";
   durationHours?: number;
   maxSeats?: number;
   occupiedSeats?: number;
   thumbnailUrl?: string;
+  courseSlug?: string;
+  schoolSlug?: string;
   onActionClick: (id: string) => void;
   actionLabel?: string;
 }
 
-const formatLabel: Record<CourseCardProps["format"], string> = {
+const formatLabel: Record<string, string> = {
   PRESENCIAL: "Presencial",
   ONLINE: "Online",
   GRAVADO: "Gravado",
+  HIBRIDO: "Híbrido",
 };
 
 function formatPrice(value: number) {
@@ -46,6 +50,8 @@ export function CourseCard({
   maxSeats,
   occupiedSeats,
   thumbnailUrl,
+  courseSlug,
+  schoolSlug,
   onActionClick,
   actionLabel = "Inscrever",
 }: CourseCardProps) {
@@ -56,9 +62,11 @@ export function CourseCard({
   const isEarlyBird = !isSoldOut && occupiedSeats !== undefined && occupiedSeats < 5;
   const viewers = getSimulatedViewers(id);
 
+  const courseUrl = schoolSlug && courseSlug ? `/${schoolSlug}/curso/${courseSlug}` : null;
+
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-sm transition-all hover:border-klasse-gold/50 hover:shadow-2xl hover:shadow-klasse-gold/10">
-      <div className={`aspect-video w-full relative overflow-hidden ${isSoldOut ? "opacity-40 grayscale" : ""}`}>
+      <Link href={courseUrl || "#"} className={`aspect-video w-full relative overflow-hidden ${isSoldOut ? "opacity-40 grayscale" : ""} ${!courseUrl ? "pointer-events-none" : ""}`}>
         {thumbnailUrl ? (
           <Image
             src={thumbnailUrl}
@@ -102,12 +110,14 @@ export function CourseCard({
             </div>
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="flex flex-1 flex-col p-6">
-        <h3 className={`text-xl font-bold text-white line-clamp-2 min-h-[3.5rem] leading-tight ${isSoldOut ? "opacity-60" : ""}`}>
-          {title}
-        </h3>
+        <Link href={courseUrl || "#"} className={!courseUrl ? "pointer-events-none" : ""}>
+          <h3 className={`text-xl font-bold text-white line-clamp-2 min-h-[3.5rem] leading-tight group-hover:text-klasse-gold transition-colors ${isSoldOut ? "opacity-60" : ""}`}>
+            {title}
+          </h3>
+        </Link>
 
         <div className="mt-4 flex items-baseline justify-between">
           <div className="space-y-1">
