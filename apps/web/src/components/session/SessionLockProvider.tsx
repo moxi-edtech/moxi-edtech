@@ -27,7 +27,8 @@ function isLockExcludedPath(pathname: string | null) {
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||
     path.startsWith("/mudar-senha") ||
-    path.includes("/print")
+    path.includes("/print") ||
+    path.startsWith("/admissoes")
   );
 }
 

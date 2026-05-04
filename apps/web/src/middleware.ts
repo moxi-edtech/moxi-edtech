@@ -464,8 +464,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // 2. Rate Limiting para Acesso Público (PUBLIC)
-  if (pathname.startsWith('/api/public/documentos')) {
-    if (await isRateLimited(ip, 'PUBLIC')) {
+  if (
+    pathname.startsWith('/api/public/documentos') ||
+    pathname.startsWith('/api/public/admissoes')
+  ) {
+    const isSubmission = pathname.endsWith('/candidatar');
+    const limitTier = isSubmission ? 'STRICT' : 'PUBLIC';
+
+    if (await isRateLimited(ip, limitTier)) {
       return finalizeResponse(
         request,
         new NextResponse(
@@ -724,6 +730,7 @@ export const config = {
     '/api/auth/login/:path*',
     '/api/alunos/ativar-acesso/:path*',
     '/api/public/documentos/:path*',
+    '/api/public/admissoes/:path*',
     '/api/financeiro/:path*',
     '/api/secretaria/:path*',
     '/api/professor/:path*',

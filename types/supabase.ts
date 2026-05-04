@@ -2494,6 +2494,7 @@ export type Database = {
           public_id: string
           revoked_at: string | null
           revoked_by: string | null
+          storage_path: string | null
           tipo: Database["public"]["Enums"]["tipo_documento"]
         }
         Insert: {
@@ -2509,6 +2510,7 @@ export type Database = {
           public_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          storage_path?: string | null
           tipo: Database["public"]["Enums"]["tipo_documento"]
         }
         Update: {
@@ -2524,6 +2526,7 @@ export type Database = {
           public_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          storage_path?: string | null
           tipo?: Database["public"]["Enums"]["tipo_documento"]
         }
         Relationships: [
@@ -2908,6 +2911,7 @@ export type Database = {
       escolas: {
         Row: {
           aluno_portal_enabled: boolean
+          config_portal_admissao: Json | null
           cor_primaria: string | null
           created_at: string | null
           endereco: string | null
@@ -2925,6 +2929,7 @@ export type Database = {
         }
         Insert: {
           aluno_portal_enabled?: boolean
+          config_portal_admissao?: Json | null
           cor_primaria?: string | null
           created_at?: string | null
           endereco?: string | null
@@ -2942,6 +2947,7 @@ export type Database = {
         }
         Update: {
           aluno_portal_enabled?: boolean
+          config_portal_admissao?: Json | null
           cor_primaria?: string | null
           created_at?: string | null
           endereco?: string | null

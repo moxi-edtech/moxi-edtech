@@ -34,86 +34,73 @@ export function AlunoHeader({
   const hasMultiple = educandos.length > 1;
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md shadow-sm font-sora">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 py-4">
+    <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-sm font-sora">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         
-        {/* --- LINHA SUPERIOR: Marca e Ações Globais --- */}
-        <div className="flex items-center justify-between">
-          
-          {/* Identidade da Escola */}
-          <Link href="/aluno/dashboard" className="flex items-center gap-3" aria-label="Ir para a home do aluno">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F6B3B] text-white shadow-sm ring-4 ring-[#1F6B3B]/10">
-              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
+        {/* --- Lado Esquerdo: Marca e Contexto --- */}
+        <div className="flex items-center gap-3">
+          <Link href="/aluno/dashboard" className="flex items-center gap-2" aria-label="Ir para a home do aluno">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1F6B3B] text-white shadow-sm ring-4 ring-[#1F6B3B]/10">
+              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={18} height={18} className="h-4.5 w-4.5 object-contain" />
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-geist">
+            <div className="hidden min-[400px]:block">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 font-geist leading-none mb-0.5">
                 Portal do Aluno
               </p>
-              <h1 className="text-sm font-bold text-slate-900 leading-tight">
+              <h1 className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[120px] sm:max-w-[200px]">
                 {shortSchoolName(escolaNome)}
               </h1>
             </div>
           </Link>
 
-          {/* Ações (Notificações, etc.) e SignOut */}
-          <div className="flex items-center gap-3">
-            {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
-            
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-            
-            <SignOutButton
-              label="Terminar Sessão"
-              title="Sair"
-              variant="ghost"
-              className="px-3 py-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors text-xs font-semibold"
-            />
-          </div>
-        </div>
+          <div className="h-6 w-px bg-slate-200 hidden sm:block mx-1" />
 
-        {/* --- LINHA INFERIOR: Contexto do Aluno Atual --- */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-slate-50 border border-slate-100 p-3">
-          
-          {/* Aluno Ativo */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 shadow-sm">
-              <UserCircle2 className="h-5 w-5" />
+          {/* Contexto do Aluno Selecionado */}
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full px-2 py-1 pr-1 sm:pr-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 shadow-sm">
+              <UserCircle2 className="h-3.5 w-3.5" />
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] font-geist">
+            <div className="max-w-[100px] sm:max-w-none">
+              <p className="hidden sm:block text-[8px] font-bold uppercase tracking-widest text-[#1F6B3B] font-geist leading-none">
                 A Visualizar
               </p>
-              <p className="text-sm font-bold text-slate-900">
+              <p className="text-[11px] font-bold text-slate-900 truncate">
                 {alunoSelecionadoNome || "—"}
               </p>
             </div>
-          </div>
 
-          {/* Seletor de Educandos (Parental Control) */}
-          <div className="flex items-center">
-            {hasMultiple ? (
-              <div className="relative group w-full sm:w-auto">
+            {hasMultiple && (
+              <div className="relative group ml-1">
                 <select
                   value={alunoSelecionadoId ?? ""}
                   onChange={(e) => onSelectAluno(e.target.value)}
-                  className="w-full sm:w-auto appearance-none rounded-xl border border-slate-200 bg-white px-4 py-2 pr-10 text-xs font-bold text-slate-700 shadow-sm focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 transition-all cursor-pointer hover:bg-slate-50"
+                  className="appearance-none rounded-full border-none bg-transparent pl-1 pr-6 py-0.5 text-[10px] font-bold text-[#1F6B3B] focus:ring-0 cursor-pointer hover:underline"
                 >
-                  <option value="" disabled className="text-slate-400">Trocar perfil...</option>
+                  <option value="" disabled>Trocar...</option>
                   {educandos.map((aluno) => (
-                    <option key={aluno.id} value={aluno.id} className="font-semibold text-slate-900">
+                    <option key={aluno.id} value={aluno.id} className="font-semibold text-slate-900 bg-white">
                       {aluno.nome}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-[#1F6B3B]" />
               </div>
-            ) : (
-              <span className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 shadow-sm">
-                Conta Única
-              </span>
             )}
           </div>
-          
         </div>
+
+        {/* --- Lado Direito: Ações --- */}
+        <div className="flex items-center gap-2">
+          {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
+          
+          <SignOutButton
+            label="Sair"
+            title="Sair"
+            variant="ghost"
+            className="h-8 px-2 sm:px-3 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors text-[10px] sm:text-xs font-semibold"
+          />
+        </div>
+
       </div>
     </header>
   );

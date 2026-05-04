@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
+import { RematriculaBanner } from "@/components/aluno/home/RematriculaBanner";
 
 type StatusResponse = { nome: string; classe: string | null; turma: string | null; estadoAcademico: string } | null;
 type FinanceResponse = { id: string; valor: number; mes: string | null } | null;
@@ -77,6 +78,7 @@ export function TabHome() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <RematriculaBanner />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Resumo</p>
         <button
