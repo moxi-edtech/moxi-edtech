@@ -9,6 +9,9 @@
       "default": "./src/index.ts"
     }
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "peerDependencies": {
     "@supabase/supabase-js": "^2.81.0"
   },

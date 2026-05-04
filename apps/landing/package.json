@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "dev": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next dev",
     "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
     "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
