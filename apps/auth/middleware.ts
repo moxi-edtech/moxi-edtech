@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createMiddlewareSupabaseClient } from "@moxi/auth-middleware";
 import type { Database } from "~types/supabase";
 import { readEnv } from "@/lib/env";
 
@@ -42,21 +42,14 @@ function applyResponseCookies(source: NextResponse, target: NextResponse) {
 }
 
 function buildSupabaseClient(request: NextRequest, response: NextResponse) {
-  const supabaseUrl = readEnv(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const supabaseAnonKey = readEnv(process.env.SUPABASE_ANON_KEY, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll().map(({ name, value }) => ({ name, value }));
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
+  return createMiddlewareSupabaseClient({
+    request,
+    response,
+    supabaseUrl: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    cookieDomain: process.env.KLASSE_COOKIE_DOMAIN || process.env.KLASSE_AUTH_COOKIE_DOMAIN,
+    cookieSameSite: process.env.KLASSE_AUTH_COOKIE_SAMESITE || "lax",
+    nodeEnv: process.env.NODE_ENV,
   });
 }
 

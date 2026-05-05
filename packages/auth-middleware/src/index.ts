@@ -44,14 +44,17 @@ export function resolveSharedCookieOptions(params: {
   domainEnv?: string | null;
   sameSiteEnv?: string | null;
   browserHostname?: string | null;
+  isHttps?: boolean;
 }) {
   const nodeEnv = String(params.nodeEnv ?? "").trim().toLowerCase();
   const isProduction = nodeEnv === "production";
   const browserHost = String(params.browserHostname ?? "").trim().toLowerCase();
+  
+  // Se estivermos em qualquer subdomínio do klasse.ao, forçamos o uso do domínio wildcard
   const isBrowserHostKlasse = browserHost.endsWith(".klasse.ao") || browserHost === "klasse.ao";
 
   const configuredDomain = String(params.domainEnv ?? "").trim();
-  const domain = configuredDomain || (isProduction ? ".klasse.ao" : isBrowserHostKlasse ? ".klasse.ao" : "");
+  const domain = configuredDomain || (isBrowserHostKlasse ? ".klasse.ao" : isProduction ? ".klasse.ao" : "");
 
   const sameSiteRaw = String(params.sameSiteEnv ?? "lax")
     .trim()
@@ -59,11 +62,14 @@ export function resolveSharedCookieOptions(params: {
   const sameSite: "lax" | "strict" | "none" =
     sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
 
+  // Se estivermos no klasse.ao, forçamos secure true pois usamos HTTPS sempre lá
+  const secure = params.isHttps || isProduction || isBrowserHostKlasse;
+
   return {
     ...(domain ? { domain } : {}),
     path: "/",
     sameSite,
-    secure: isProduction,
+    secure,
     httpOnly: true,
   };
 }
@@ -85,6 +91,8 @@ export function createMiddlewareSupabaseClient(params: {
     nodeEnv: params.nodeEnv,
     domainEnv: params.cookieDomain,
     sameSiteEnv: params.cookieSameSite,
+    browserHostname: params.request.nextUrl.hostname,
+    isHttps: params.request.nextUrl.protocol === "https:",
   });
 
   return createServerClient<Database>(url, key, {
