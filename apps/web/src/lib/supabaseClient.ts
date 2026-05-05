@@ -2,6 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
+import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
 
 const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
@@ -14,27 +15,16 @@ if (!url || !anonKey) {
 }
 
 function resolveCookieOptions() {
-  const domain =
-    process.env.NEXT_PUBLIC_KLASSE_COOKIE_DOMAIN?.trim() ||
-    process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith(".klasse.ao") ? ".klasse.ao" : "");
+  const hostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
 
-  const sameSiteRaw = (
-    process.env.NEXT_PUBLIC_KLASSE_COOKIE_SAMESITE ??
-    process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_SAMESITE ??
-    "lax"
-  )
-    .trim()
-    .toLowerCase();
-  const sameSite: "lax" | "strict" | "none" =
-    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
-
-  return {
-    ...(domain ? { domain } : {}),
-    path: "/",
-    sameSite,
-    secure: typeof window !== "undefined" && window.location.protocol === "https:",
-  };
+  return resolveSharedCookieOptions({
+    nodeEnv: process.env.NODE_ENV,
+    domainEnv: process.env.NEXT_PUBLIC_KLASSE_COOKIE_DOMAIN || process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_DOMAIN,
+    sameSiteEnv: process.env.NEXT_PUBLIC_KLASSE_COOKIE_SAMESITE || process.env.NEXT_PUBLIC_KLASSE_AUTH_COOKIE_SAMESITE,
+    browserHostname: hostname,
+    isHttps,
+  });
 }
 
 export const createClient = () => {

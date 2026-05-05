@@ -53,8 +53,19 @@ export function resolveSharedCookieOptions(params: {
   // Se estivermos em qualquer subdomínio do klasse.ao, forçamos o uso do domínio wildcard
   const isBrowserHostKlasse = browserHost.endsWith(".klasse.ao") || browserHost === "klasse.ao";
 
+  // Em desenvolvimento, suportamos wildcard para lvh.me e localhost se o host os contiver
+  const isLocalWildcard = browserHost.endsWith(".lvh.me") || browserHost.endsWith(".localhost");
+
   const configuredDomain = String(params.domainEnv ?? "").trim();
-  const domain = configuredDomain || (isBrowserHostKlasse ? ".klasse.ao" : isProduction ? ".klasse.ao" : "");
+  let domain = configuredDomain;
+  
+  if (!domain) {
+    if (isBrowserHostKlasse || isProduction) {
+      domain = ".klasse.ao";
+    } else if (isLocalWildcard) {
+      domain = browserHost.endsWith(".lvh.me") ? ".lvh.me" : ".localhost";
+    }
+  }
 
   const sameSiteRaw = String(params.sameSiteEnv ?? "lax")
     .trim()
@@ -70,7 +81,7 @@ export function resolveSharedCookieOptions(params: {
     path: "/",
     sameSite,
     secure,
-    httpOnly: true,
+    // httpOnly deve ser controlado pelo chamador (middleware vs client)
   };
 }
 
@@ -96,7 +107,7 @@ export function createMiddlewareSupabaseClient(params: {
   });
 
   return createServerClient<Database>(url, key, {
-    cookieOptions,
+    cookieOptions: { ...cookieOptions, httpOnly: true },
     cookies: {
       getAll() {
         return params.request.cookies.getAll();
