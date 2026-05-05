@@ -83,6 +83,18 @@ const draftPayloadSchema = z
       .max(120)
       .optional(),
 
+    pai_nome: z
+      .string()
+      .trim()
+      .max(160)
+      .optional(),
+
+    mae_nome: z
+      .string()
+      .trim()
+      .max(160)
+      .optional(),
+
     encarregado_relacao: z
       .string()
       .trim()

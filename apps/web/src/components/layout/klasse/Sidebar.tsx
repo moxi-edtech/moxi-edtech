@@ -94,7 +94,7 @@ export default function Sidebar({
       return { ...it, active, childActive, children };
     });
   }, [pathname, items]);
-  const homeHref = sidebarItems[0]?.href || "/app";
+  const homeHref = sidebarItems[0]?.href || "/";
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};

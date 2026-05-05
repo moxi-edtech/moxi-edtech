@@ -140,7 +140,7 @@ export function Dashboard({
               title="Secretaria"
               description="Resumo operacional do dia"
               breadcrumbs={[
-                { label: "Início", href: "/app" },
+                { label: "Início", href: "/secretaria" },
                 { label: "Secretaria" },
               ]}
               actions={

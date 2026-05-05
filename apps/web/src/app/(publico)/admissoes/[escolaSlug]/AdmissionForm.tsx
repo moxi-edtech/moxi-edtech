@@ -65,6 +65,8 @@ export function AdmissionForm({ config }: { config: Config }) {
     telefone: "",
     data_nascimento: "",
     sexo: "" as "M" | "F" | "O" | "N" | "",
+    pai_nome: "",
+    mae_nome: "",
     responsavel_nome: "",
     responsavel_contato: "",
     curso_id: "",
@@ -287,6 +289,30 @@ export function AdmissionForm({ config }: { config: Config }) {
                   onChange={handleInputChange}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
                   placeholder="9xx xxx xxx"
+                />
+              </label>
+
+              <label>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome do Pai</span>
+                <input
+                  type="text"
+                  name="pai_nome"
+                  value={formData.pai_nome}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                  placeholder="Nome completo do pai"
+                />
+              </label>
+
+              <label>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome da Mãe</span>
+                <input
+                  type="text"
+                  name="mae_nome"
+                  value={formData.mae_nome}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                  placeholder="Nome completo da mãe"
                 />
               </label>
 
@@ -540,6 +566,11 @@ export function AdmissionForm({ config }: { config: Config }) {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Responsável</p>
                   <p className="text-sm font-black text-slate-900">{formData.responsavel_nome}</p>
                   <p className="text-xs text-slate-500">{formData.responsavel_contato}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Filiação</p>
+                  <p className="text-sm font-black text-slate-900">{formData.pai_nome || "Pai não informado"}</p>
+                  <p className="text-xs text-slate-500">{formData.mae_nome || "Mãe não informada"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Curso</p>

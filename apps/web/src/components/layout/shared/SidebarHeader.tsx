@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSidebarContext } from "./SidebarContext";
 
-export function SidebarHeader({ title, subtitle, href = "/app" }: { title: string; subtitle: string; href?: string }) {
+export function SidebarHeader({ title, subtitle, href = "/" }: { title: string; subtitle: string; href?: string }) {
   const { collapsed } = useSidebarContext();
 
   return (

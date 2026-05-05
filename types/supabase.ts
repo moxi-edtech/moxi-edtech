@@ -386,6 +386,8 @@ export type Database = {
           id: string
           import_id: string | null
           naturalidade: string | null
+          pai_nome: string | null
+          mae_nome: string | null
           nif: string | null
           nome: string
           nome_busca: string | null
@@ -426,6 +428,8 @@ export type Database = {
           id?: string
           import_id?: string | null
           naturalidade?: string | null
+          pai_nome?: string | null
+          mae_nome?: string | null
           nif?: string | null
           nome: string
           nome_busca?: string | null
@@ -466,6 +470,8 @@ export type Database = {
           id?: string
           import_id?: string | null
           naturalidade?: string | null
+          pai_nome?: string | null
+          mae_nome?: string | null
           nif?: string | null
           nome?: string
           nome_busca?: string | null

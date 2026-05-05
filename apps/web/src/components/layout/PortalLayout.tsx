@@ -43,7 +43,7 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
 );
 
 // Componente de Logo
-const Logo = ({ collapsed = false, href = "/app" }: { collapsed?: boolean; href?: string }) => (
+const Logo = ({ collapsed = false, href = "/" }: { collapsed?: boolean; href?: string }) => (
   <Link href={href} className="px-3 py-3 flex items-center gap-3 overflow-hidden" aria-label="Ir para a home do portal">
     <div className="h-10 w-10 shrink-0 rounded-xl bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center">
       <Image src="/logo-klasse-ui.png" alt="KLASSE" width={22} height={22} className="h-5 w-5 object-contain" />
@@ -96,7 +96,7 @@ export default function PortalLayout({
     });
     return replaced.filter((item) => !item.href.includes("["));
   }, [userRole, isLoadingRole, escolaIdState]);
-  const homeHref = navItems[0]?.href || "/app";
+  const homeHref = navItems[0]?.href || "/";
 
   useEffect(() => {
     try {

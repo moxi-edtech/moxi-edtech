@@ -32,7 +32,7 @@ export function DashboardSkeleton() {
               title="Secretaria"
               description="Resumo operacional do dia"
               breadcrumbs={[
-                { label: "Início", href: "/app" },
+                { label: "Início", href: "/secretaria" },
                 { label: "Secretaria" },
               ]}
               actions={
@@ -64,8 +64,8 @@ export function DashboardSkeleton() {
               <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/admissoes?nova=1" />
                 <ActionCard title="Emitir Declaração" sub="Com ou sem notas" icon={FileText} href="/secretaria/documentos" />
-                <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/financeiro" />
-                <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/faltas" />
+                <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/balcao" />
+                <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/calendario" />
                 <ActionCard title="Lançar Nota" sub="Pauta Rápida" icon={FileEdit} href="/secretaria/notas" />
               </div>
             </div>
