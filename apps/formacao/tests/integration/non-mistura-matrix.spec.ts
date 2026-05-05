@@ -87,11 +87,11 @@ test("Matriz integração: formador CENTER sem acesso admin e sem mistura SOLO",
 });
 
 test("Matriz integração: SOLO_CREATOR com redirect legado e bloqueio financeiro CENTER", () => {
-  const allow = evaluateProtectedPath("solo_creator", "mentor", "/mentor/dashboard");
-  assert.equal(allow.outcome, "allow");
+  const denySolo = evaluateProtectedPath("solo_creator", "mentor", "/mentor/dashboard");
+  assert.deepEqual(denySolo, { outcome: "deny", reason: "product_mismatch" });
 
-  const redirectLegacy = evaluateProtectedPath("solo_creator", "mentor", "/admin/dashboard");
-  assert.deepEqual(redirectLegacy, { outcome: "redirect", target: "/mentor/dashboard" });
+  const denyAdmin = evaluateProtectedPath("solo_creator", "mentor", "/admin/dashboard");
+  assert.deepEqual(denyAdmin, { outcome: "deny", reason: "product_mismatch" });
 
   const denyFinanceiro = evaluateProtectedPath("solo_creator", "mentor", "/financeiro/dashboard");
   assert.deepEqual(denyFinanceiro, { outcome: "deny", reason: "product_mismatch" });
