@@ -12,7 +12,7 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
 
   if (!user) {
     // Not logged in, redirect to login page
-    return redirect('/login');
+    return redirect('/redirect');
   }
 
   const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, id);

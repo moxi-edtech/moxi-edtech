@@ -22,6 +22,20 @@ function getFormacaoBaseUrl() {
   return "https://formacao.klasse.ao";
 }
 
+function getCentralLoginUrl() {
+  if (typeof window === "undefined") return "https://auth.klasse.ao/login";
+  const host = window.location.host.toLowerCase();
+  if (
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".lvh.me")
+  ) {
+    return "http://auth.lvh.me:3000/login";
+  }
+  return "https://auth.klasse.ao/login";
+}
+
 export default function RedirectPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -31,8 +45,9 @@ export default function RedirectPage() {
     let timeout: NodeJS.Timeout | null = null;
 
     const goLogin = () => {
-      console.warn("[Redirect] Auth timeout or failed resolution. Returning to /login");
-      window.location.replace("/login");
+      console.warn("[Redirect] Auth timeout or failed resolution. Redirecting to Central Auth...");
+      const returnTo = window.location.origin + "/redirect";
+      window.location.replace(`${getCentralLoginUrl()}?redirect=${encodeURIComponent(returnTo)}`);
     };
 
     const resolve = async () => {

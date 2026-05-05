@@ -27,7 +27,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
       const { data: userRes } = await s.auth.getUser();
       const user = userRes?.user;
       if (!user) {
-        router.replace("/login");
+        router.replace("/redirect");
         return;
       }
 

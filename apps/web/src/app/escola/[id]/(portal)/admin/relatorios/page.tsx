@@ -415,10 +415,10 @@ export default async function Page(props: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/redirect");
 
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
-  if (!resolvedEscolaId) redirect("/login");
+  if (!resolvedEscolaId) redirect("/redirect");
 
   const { data: escolaInfo } = await supabase
     .from("escolas")

@@ -7,9 +7,9 @@ const ALLOWED_FORMADOR_ROLES = new Set(['formador'])
 
 export default async function FormacaoFormadorLayout({ children }: { children: ReactNode }) {
   const context = await getFormacaoContext()
-  if (!context?.role) redirect('/login')
-  if (String(context.modeloEnsino ?? '').toLowerCase() !== 'formacao') redirect('/login')
-  if (!ALLOWED_FORMADOR_ROLES.has(context.role)) redirect('/login')
+  if (!context?.role) redirect('/redirect')
+  if (String(context.modeloEnsino ?? '').toLowerCase() !== 'formacao') redirect('/redirect')
+  if (!ALLOWED_FORMADOR_ROLES.has(context.role)) redirect('/redirect')
 
   return (
     <FormacaoRoleShell title="KLASSE Formação — Formador" items={FORMACAO_FORMADOR_NAV}>

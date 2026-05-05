@@ -13,16 +13,16 @@ const ALLOWED_BACKOFFICE_ROLES = new Set([
 
 export default async function FormacaoBackofficeLayout({ children }: { children: ReactNode }) {
   const context = await getFormacaoContext()
-  if (!context?.role) redirect('/login')
-  if (String(context.modeloEnsino ?? '').toLowerCase() !== 'formacao') redirect('/login')
-  if (!ALLOWED_BACKOFFICE_ROLES.has(context.role)) redirect('/login')
+  if (!context?.role) redirect('/redirect')
+  if (String(context.modeloEnsino ?? '').toLowerCase() !== 'formacao') redirect('/redirect')
+  if (!ALLOWED_BACKOFFICE_ROLES.has(context.role)) redirect('/redirect')
 
-  if (!context.escolaId) redirect('/login')
+  if (!context.escolaId) redirect('/redirect')
   const supabase = await supabaseServer()
 
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
-  if (!user) redirect('/login')
+  if (!user) redirect('/redirect')
 
   const { data: vinculo } = await supabase
     .from('escola_users')

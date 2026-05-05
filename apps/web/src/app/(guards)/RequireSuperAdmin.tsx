@@ -17,7 +17,7 @@ export default function RequireSuperAdmin({ children }: { children: React.ReactN
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        router.replace("/login");
+        router.replace("/redirect");
         return;
       }
 

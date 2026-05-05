@@ -17,7 +17,7 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       const user = userRes?.user;
       if (userErr || !user) {
-        router.replace("/login");
+        router.replace("/redirect");
         return;
       }
 

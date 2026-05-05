@@ -14,12 +14,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const user = session?.user;
 
   if (!user) {
-    redirect("/login");
+    redirect("/redirect");
   }
 
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
   if (!resolvedEscolaId) {
-    redirect("/login");
+    redirect("/redirect");
   }
 
   return (

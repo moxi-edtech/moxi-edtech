@@ -85,7 +85,7 @@ async function resolveIdentifierToEmail(identifier: string): Promise<string | nu
 
   const baseUrl = readEnv(
     process.env.AUTH_ADMIN_BASE_URL,
-    process.env.NODE_ENV === "development" ? "http://auth.lvh.me:3000" : "https://app.klasse.ao"
+    process.env.NODE_ENV === "development" ? "http://app.lvh.me:3001" : "https://app.klasse.ao"
   );
 
   try {
@@ -122,7 +122,7 @@ async function recordUserAccess(params: {
 
   const baseUrl = readEnv(
     process.env.AUTH_ADMIN_BASE_URL,
-    process.env.NODE_ENV === "development" ? "http://auth.lvh.me:3000" : "https://app.klasse.ao"
+    process.env.NODE_ENV === "development" ? "http://app.lvh.me:3001" : "https://app.klasse.ao"
   );
 
   try {

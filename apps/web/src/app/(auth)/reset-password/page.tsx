@@ -139,7 +139,7 @@ export default function ResetPasswordPage() {
               <p className="text-sm text-slate-600">
                 O link de redefinição expirou ou já foi utilizado. Solicite um novo envio.
               </p>
-              <Button onClick={() => router.replace("/login")} className="w-full">
+              <Button onClick={() => router.replace("/redirect")} className="w-full">
                 Voltar ao login
               </Button>
             </div>
