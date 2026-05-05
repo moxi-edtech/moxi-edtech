@@ -20,6 +20,8 @@ export default function AcademicStep1({
   schoolNif,
   schoolPlan,
   setSchoolDisplayName,
+  logoUrl,
+  onLogoUrlChange,
   anoLetivo,
   setAnoLetivo,
   dataInicio,
@@ -30,6 +32,8 @@ export default function AcademicStep1({
   onPeriodoChange,
   turnos,
   onTurnoToggle,
+  iban,
+  onIbanChange,
   sessaoAtiva,
   periodos,
   creatingSession,
@@ -70,14 +74,20 @@ export default function AcademicStep1({
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-8 md:flex-row">
           
-          {/* Logo Upload (Visual) */}
-          <div className="group relative flex h-36 w-36 shrink-0 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-[#E3B23C] hover:bg-[#E3B23C]/5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100 transition-colors group-hover:text-[#E3B23C]">
-              <ImagePlus className="h-5 w-5 text-slate-400 group-hover:text-[#E3B23C]" />
-            </div>
-            <span className="mt-3 text-[10px] font-bold uppercase tracking-wide text-slate-400 group-hover:text-[#E3B23C]">
-              Carregar Logo
-            </span>
+          {/* Logo Upload (Visual Engagement) */}
+          <div className="group relative flex h-36 w-36 shrink-0 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-[#E3B23C] hover:bg-[#E3B23C]/5 overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-2" />
+            ) : (
+              <>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100 transition-colors group-hover:text-[#E3B23C]">
+                  <ImagePlus className="h-5 w-5 text-slate-400 group-hover:text-[#E3B23C]" />
+                </div>
+                <span className="mt-3 text-[10px] font-bold uppercase tracking-wide text-slate-400 group-hover:text-[#E3B23C]">
+                  Carregar Logo
+                </span>
+              </>
+            )}
           </div>
 
           {/* Form Fields */}
@@ -97,6 +107,18 @@ export default function AcademicStep1({
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               
+              {/* IBAN Principal */}
+              <div className="md:col-span-2">
+                <label className={labelClass}>IBAN Principal para Pagamentos</label>
+                <input
+                  value={iban}
+                  onChange={(e) => onIbanChange(e.target.value.toUpperCase())}
+                  className={inputClass}
+                  placeholder="Ex: AO06 0000 0000 0000 0000 0000 0"
+                />
+                <p className="mt-1 text-[10px] text-slate-400">Este IBAN aparecerá nas fichas de inscrição e recibos.</p>
+              </div>
+
               {/* Ano Letivo */}
               <div>
                 <label className={labelClass}>Ano Letivo</label>

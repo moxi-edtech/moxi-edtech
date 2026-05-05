@@ -36,6 +36,8 @@ export interface AcademicStep1Props {
   schoolNif?: string | null;
   schoolPlan?: string | null;
   setSchoolDisplayName: (val: string) => void;
+  logoUrl?: string | null;
+  onLogoUrlChange: (val: string | null) => void;
   anoLetivo: number;
   setAnoLetivo: (val: number) => void;
   dataInicio: string;
@@ -51,10 +53,23 @@ export interface AcademicStep1Props {
   onPeriodoChange: (numero: number, field: "data_inicio" | "data_fim" | "trava_notas_em", value: string) => void;
   turnos: TurnosState;
   onTurnoToggle: (turno: keyof TurnosState) => void;
+  // Novos campos financeiros no Step 1
+  iban: string;
+  onIbanChange: (val: string) => void;
   sessaoAtiva: AcademicSession | null;
   periodos: Periodo[];
   creatingSession: boolean;
   onCreateSession: () => void;
+}
+
+export interface AcademicStepFinancialProps {
+  valorMatricula: number;
+  onValorMatriculaChange: (val: number) => void;
+  valorMensalidade: number;
+  onValorMensalidadeChange: (val: number) => void;
+  diaVencimento: number;
+  onDiaVencimentoChange: (val: number) => void;
+  isLoading?: boolean;
 }
 
 export interface AcademicStep2ConfigProps {

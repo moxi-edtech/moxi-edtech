@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { supabaseRouteClient } from '@/lib/supabaseServer'
 import type { Database } from "~types/supabase"
 import type { DBWithRPC } from '@/types/supabase-augment'
 import { buildCredentialsEmail, buildInviteEmail, buildOnboardingEmail, sendMail } from '@/lib/mailer'
@@ -18,12 +18,6 @@ type CreateEscolaPayload = {
   mensagemAdmin?: string
   [key: string]: unknown
 }
-
-type AuthUserData = {
-  user?: {
-    app_metadata?: { role?: string | null } | null
-  } | null
-} | null
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Nome da escola é obrigatório'),
@@ -43,19 +37,31 @@ const BodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // 1) Check caller role via session-bound client
-    const supabase = await supabaseServerTyped<DBWithRPC>()
-    // Early auth/role guard to provide clearer errors than raw RLS violations
+    // 1) Check caller role via session-bound client (allowing cookie refresh)
+    const supabase = await supabaseRouteClient<DBWithRPC>()
+    
     try {
-      const { data: u } = await supabase.auth.getUser()
-      const authData = u as AuthUserData
-      const role = authData?.user?.app_metadata?.role || null
-      if (role !== 'super_admin') {
+      const { data: { user } } = await supabase.auth.getUser()
+      let role = user?.app_metadata?.role || null
+      
+      // Fallback: Check profiles table if role is missing from metadata
+      if (!role && user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        role = profile?.role || null
+      }
+      
+      if (role !== 'super_admin' && role !== 'global_admin') {
+        console.warn(`[API Escolas Create] Forbidden access attempt by user ${user?.id} with role ${role}`);
         return NextResponse.json({ ok: false, error: 'Somente Super Admin pode criar escolas.' }, { status: 403 })
       }
     } catch (_) {
       // ignore and fall through; RLS will still protect
     }
+
     const json = await request.json()
     const parsed = BodySchema.safeParse(json)
     if (!parsed.success) {
@@ -91,7 +97,6 @@ export async function POST(request: Request) {
     }
 
     // A função retorna um JSON com { ok, escolaId, escolaNome, mensagemAdmin }
-    // Supabase tipa como Json; garantir objeto
     const payload = (typeof data === 'string' ? safeParseJSON(data) : data) as CreateEscolaPayload
 
     const origin = new URL(request.url).origin
@@ -209,7 +214,7 @@ function generateStrongPassword(len = 12) {
 
 async function ensureAdminUser(
   req: Request,
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<DBWithRPC>>>,
+  supabase: Awaited<ReturnType<typeof supabaseRouteClient<DBWithRPC>>>,
   params: { email: string; nome?: string | null; telefone?: string | null; escolaId: string; papel: PapelEscola }
 ) {
   const email = params.email.toLowerCase()

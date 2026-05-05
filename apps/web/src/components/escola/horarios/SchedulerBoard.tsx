@@ -10,9 +10,9 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { AlertOctagon, Check, GripVertical, Save, Wand2, Trash2 } from "lucide-react"; // Adicionei Trash se precisar limpar
-import { getAllocationStatus } from "@/lib/rules/scheduler-rules";
+import { getAllocationStatus, validateAssignment } from "@/lib/rules/scheduler-rules";
 
-// --- TYPES (Mantive os seus, estão ótimos) ---
+// --- TYPES ---
 export type SchedulerSlot = {
   id: string;
   labelDefault: string;
@@ -28,7 +28,7 @@ export type SchedulerAula = {
   professor: string;
   professorId?: string | null;
   salaId?: string | null;
-  cor: string; // Ex: "bg-slate-50 border-slate-200 text-slate-700" (Cores funcionais suaves)
+  cor: string;
   temposTotal: number;
   temposAlocados: number;
   conflito?: boolean;
@@ -64,12 +64,10 @@ type SchedulerBoardProps = {
   publishing?: boolean;
 };
 
-// ... (Tipos de Props mantidos igual ao seu)
-
 // --- COMPONENT ---
 export function SchedulerBoard({
   diasSemana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"],
-  tempos, // Assumindo defaults externos ou passados via prop
+  tempos,
   aulas,
   grid: controlledGrid,
   onGridChange,
@@ -77,8 +75,8 @@ export function SchedulerBoard({
   onAutoCompletar,
   autoCompleting,
   slotLookup,
-  existingAssignments,
-  conflictSlots,
+  existingAssignments = [],
+  conflictSlots: externalConflictSlots,
   salas,
   professores,
   onAssignProfessor,
@@ -96,25 +94,18 @@ export function SchedulerBoard({
   const [estoque, setEstoque] = useState(aulas || []);
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
   const [assigningTurmaSala, setAssigningTurmaSala] = useState(false);
-  const missingLoadCount = useMemo(
-    () => (estoque || []).filter((a) => a.missingLoad).length,
-    [estoque]
-  );
-  const conflictCount = useMemo(
-    () => Object.keys(conflictSlots || {}).length,
-    [conflictSlots]
-  );
 
   // Sincroniza grid externo
   useEffect(() => {
     if (controlledGrid) setGrid(controlledGrid);
   }, [controlledGrid]);
 
-  // Atualiza estoque local quando props mudam
+  // Atualiza estoque local quando aulas mudam
   useEffect(() => {
-    if(aulas) setEstoque(aulas);
+    if (aulas) setEstoque(aulas);
   }, [aulas]);
 
+  // Recalcula contagens do estoque
   useEffect(() => {
     const currentGrid = controlledGrid ?? grid;
     const counts: Record<string, number> = {};
@@ -122,56 +113,82 @@ export function SchedulerBoard({
       if (!value) continue;
       counts[value] = (counts[value] || 0) + 1;
     }
-    setEstoque((prev) => prev.map((a) => ({
-      ...a,
-      temposAlocados: counts[a.id] ?? 0,
-    })));
-  }, [controlledGrid, grid]);
+    setEstoque((prev) =>
+      prev.map((a) => ({
+        ...a,
+        temposAlocados: counts[a.id] ?? 0,
+      }))
+    );
+  }, [controlledGrid, grid, aulas]);
 
-  // --- DND HANDLERS ---
-  const handleDragStart = (event: DragStartEvent) => {
+  // Detecção de Conflitos em Tempo Real (Local)
+  const conflictSlots = useMemo(() => {
+    const merged: Record<string, boolean> = { ...(externalConflictSlots || {}) };
+    const currentGrid = controlledGrid ?? grid;
+
+    for (const [slotKey, disciplinaId] of Object.entries(currentGrid)) {
+      if (!disciplinaId) continue;
+      const slotId = slotLookup?.[slotKey];
+      if (!slotId) continue;
+
+      const aula = estoque.find((a) => a.id === disciplinaId);
+      if (!aula) continue;
+
+      const results = validateAssignment(
+        slotId,
+        disciplinaId,
+        aula.professorId ?? null,
+        aula.salaId ?? null,
+        existingAssignments
+      );
+
+      if (results.some((r) => r.severity === "hard")) {
+        merged[slotKey] = true;
+      }
+    }
+    return merged;
+  }, [controlledGrid, grid, slotLookup, estoque, existingAssignments, externalConflictSlots]);
+
+  const missingLoadCount = useMemo(
+    () => (estoque || []).filter((a) => a.missingLoad).length,
+    [estoque]
+  );
+  const conflictCount = useMemo(() => Object.keys(conflictSlots).length, [conflictSlots]);
+
+  // --- DND HANDLERS (Otimizados) ---
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     const baseId = event.active.data.current?.baseId as string | undefined;
     setActiveId(baseId ?? (event.active.id as string));
-  };
+  }, []);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
     const slotId = over?.id as string | undefined;
-    // Hackzinho para pegar dados do draggable. O active.id no draggable source é "aulaId-unique", mas passamos dados
     const baseId = active.data.current?.baseId;
     const sourceSlot = active.data.current?.sourceSlot as string | undefined;
-    
+
     if (!baseId) return;
     if (sourceSlot && slotId && sourceSlot === slotId) return;
 
     const shouldRemove = !slotId || slotId === "trash";
-    const currentGrid = controlledGrid ?? grid;
-    const nextGrid = { ...currentGrid };
-    const targetPrevious = slotId ? currentGrid[slotId] || null : null;
-    if (sourceSlot) {
-      nextGrid[sourceSlot] = shouldRemove ? null : targetPrevious;
-    }
-    if (!shouldRemove && slotId) {
-      nextGrid[slotId] = baseId;
-    }
-    setGrid(nextGrid);
-    onGridChange?.(nextGrid);
+    setGrid((prev) => {
+      const nextGrid = { ...prev };
+      const targetPrevious = slotId ? prev[slotId] || null : null;
+      if (sourceSlot) {
+        nextGrid[sourceSlot] = shouldRemove ? null : targetPrevious;
+      }
+      if (!shouldRemove && slotId) {
+        nextGrid[slotId] = baseId;
+      }
+      if (onGridChange) onGridChange(nextGrid);
+      return nextGrid;
+    });
+  }, [onGridChange]);
 
-    const counts: Record<string, number> = {};
-    for (const value of Object.values(nextGrid)) {
-      if (!value) continue;
-      counts[value] = (counts[value] || 0) + 1;
-    }
-    setEstoque((prev) => prev.map((a) => ({
-      ...a,
-      temposAlocados: counts[a.id] ?? 0,
-    })));
-  };
-
-  // Helper
   const getAulaById = useCallback((id: string) => estoque.find((a) => a.id === id), [estoque]);
+
   const effectiveTurmaSala = useMemo(() => {
     if (turmaSala) return turmaSala;
     const salaId = existingAssignments?.find((item) => item.sala_id)?.sala_id ?? null;
@@ -179,43 +196,23 @@ export function SchedulerBoard({
     const sala = (salas || []).find((item) => item.id === salaId);
     return sala?.nome ?? null;
   }, [turmaSala, existingAssignments, salas]);
-  const getSalaLabel = useCallback(
-    () => {
-      if (!effectiveTurmaSala) return null;
-      const sala = (salas || []).find((item) => item.nome === effectiveTurmaSala);
-      return sala?.nome ?? effectiveTurmaSala;
-    },
-    [salas, effectiveTurmaSala]
-  );
+
   const shouldShowTurmaSalaWarning = useMemo(() => {
     if (effectiveTurmaSala || !onAssignTurmaSala) return false;
     const currentGrid = controlledGrid ?? grid;
-    const hasAllocatedItems = Object.values(currentGrid).some((value) => Boolean(value));
-    return hasAllocatedItems;
+    return Object.values(currentGrid).some((value) => Boolean(value));
   }, [effectiveTurmaSala, onAssignTurmaSala, controlledGrid, grid]);
 
-  // Conflitos (Mantive sua lógica, apenas formatação)
-  const detectedConflicts = useMemo(() => {
-    // ... (Sua lógica de conflito aqui)
-    return new Set<string>(); // Placeholder para brevidade, use sua lógica original
-  }, [controlledGrid, grid]); // Dependências simplificadas
-
-  // --- UI COMPONENTS ---
-  
-  // Overlay (O Card que "voa")
+  // --- RENDERING ---
   const overlayItem = useMemo(() => {
     if (!activeId) return null;
-    // Tenta achar a aula baseada no ID ativo (que pode ter sufixo)
-    const aula = estoque.find(a => activeId.startsWith(a.id)); 
-    if(!aula) return null;
+    const aula = estoque.find((a) => activeId.startsWith(a.id));
+    if (!aula) return null;
 
     return (
-      <div className={`
-        w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing 
-        bg-slate-900 text-white border border-klasse-gold/50 flex flex-col justify-center items-center
-      `}>
-         <span className="font-sora font-bold text-lg">{aula.sigla}</span>
-         <span className="text-xs text-slate-400">Alocando...</span>
+      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-slate-900 text-white border border-klasse-gold/50 flex flex-col justify-center items-center">
+        <span className="font-sora font-bold text-lg">{aula.sigla}</span>
+        <span className="text-xs text-slate-400">Alocando...</span>
       </div>
     );
   }, [activeId, estoque]);
@@ -223,217 +220,73 @@ export function SchedulerBoard({
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex h-full min-h-[600px] bg-slate-50 font-sora">
-        
-        {/* SIDEBAR (Estoque) */}
+        {/* SIDEBAR */}
         <div className="w-80 bg-white border-r border-slate-200 p-5 flex flex-col shadow-sm z-10">
           <div className="mb-6">
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Disciplinas</h2>
             <p className="text-xs text-slate-400">Arraste para o quadro</p>
           </div>
 
-          {missingLoadCount > 0 && (
-            <div className="mb-4 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-xs text-klasse-gold-800">
-              <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
-              <div className="mt-1">Defina a carga para publicar o quadro.</div>
-              {onAutoConfigurarCargas && (
-                <button
-                  type="button"
-                  onClick={onAutoConfigurarCargas}
-                  disabled={autoConfiguring}
-                  className="mt-2 w-full rounded-lg bg-klasse-gold-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
-                </button>
-              )}
-            </div>
-          )}
-          {conflictCount > 0 && (
-            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-              <div className="font-semibold">{conflictCount} conflito(s) no quadro.</div>
-              <div className="mt-1">Revise os slots destacados antes de publicar.</div>
-            </div>
-          )}
-          {shouldShowTurmaSalaWarning && (
-            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-              <div className="font-semibold">Turma sem sala definida.</div>
-              <div className="mt-1">Defina uma sala padrão para concluir o horário da turma.</div>
-              <button
-                type="button"
-                onClick={() => setAssigningTurmaSala(true)}
-                className="mt-2 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
-              >
-                Definir sala
-              </button>
-            </div>
-          )}
+          <StatusAlerts
+            missingLoadCount={missingLoadCount}
+            onAutoConfigurarCargas={onAutoConfigurarCargas}
+            autoConfiguring={autoConfiguring}
+            conflictCount={conflictCount}
+            shouldShowTurmaSalaWarning={shouldShowTurmaSalaWarning}
+            onSetAssigningTurmaSala={() => setAssigningTurmaSala(true)}
+          />
 
           <div className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
             {estoque.map((aula) => (
-              <DraggableSource
-                key={aula.id}
-                aula={aula}
-              />
+              <DraggableSource key={aula.id} aula={aula} />
             ))}
           </div>
 
           <TrashDropzone active={Boolean(activeId)} />
 
-          <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
-            <button
-              type="button"
-              onClick={onAutoCompletar}
-              disabled={autoCompleting}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              <Wand2 className="w-4 h-4" />
-              {autoCompleting ? "Auto-Completar..." : "Auto-Completar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => onSalvar?.(grid)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all"
-            >
-              <Save className="w-4 h-4" />
-              Salvar Alterações
-            </button>
-            {onPublicar && (
-              <button
-                type="button"
-                onClick={() => onPublicar(grid)}
-                disabled={!canPublicar || publishing}
-                title={!canPublicar ? publishDisabledReason : undefined}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <Check className="w-4 h-4" />
-                {publishing ? "Publicando..." : "Publicar"}
-              </button>
-            )}
-          </div>
+          <ActionButtons
+            onAutoCompletar={onAutoCompletar}
+            autoCompleting={autoCompleting}
+            onSalvar={() => onSalvar?.(controlledGrid ?? grid)}
+            onPublicar={onPublicar}
+            canPublicar={canPublicar}
+            publishDisabledReason={publishDisabledReason}
+            publishing={publishing}
+            grid={controlledGrid ?? grid}
+          />
         </div>
 
-        {/* GRID (Quadro) */}
+        {/* GRID */}
         <div className="flex-1 p-6 overflow-auto bg-slate-50/50">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-w-[800px]">
-            {/* Header Dias */}
-            <div className="grid grid-cols-6 border-b border-slate-200 bg-slate-50">
-              <div className="p-3 border-r border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex items-center justify-center">
-                Horário
-              </div>
-              {diasSemana.map((dia) => (
-                <div key={dia} className="p-3 text-sm font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
-                  {dia}
-                </div>
-              ))}
-            </div>
-
-            {/* Slots */}
-            {tempos?.map((tempo) => {
-              const defaultRange = tempo.labelDefault.split(" - ");
-              const horarios = tempo.horariosPorDia || {};
-              const uniqueRanges = Array.from(new Set(Object.values(horarios)));
-              const hasDifferentTimes = uniqueRanges.length > 1;
-
-              return (
-                <div key={tempo.id} className="grid grid-cols-6 border-b border-slate-200 last:border-b-0 min-h-[110px]">
-                  {/* Coluna Horário */}
-                  <div className="p-2 border-r border-slate-200 bg-slate-50/30 flex flex-col justify-center items-center text-xs">
-                    <span className="font-bold text-slate-900 mb-1">{defaultRange[0] || "—"}</span>
-                    <span className="text-slate-400 text-[10px]">{defaultRange[1] || ""}</span>
-                    {hasDifferentTimes && (
-                      <span className="mt-1 text-[9px] font-semibold text-klasse-gold-600">Horário varia</span>
-                    )}
-                    {tempo.tipo === "intervalo" && (
-                      <span className="mt-2 px-2 py-0.5 bg-klasse-gold-100 text-klasse-gold-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
-                        Intervalo
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Intervalo Row */}
-                  {tempo.tipo === "intervalo" ? (
-                    <div className="col-span-5 bg-stripes-gray flex items-center justify-center">
-                      <span className="text-slate-200 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
-                        Recreio
-                      </span>
-                    </div>
-                  ) : (
-                    // Aula Cells
-                    diasSemana.map((dia) => {
-                      const slotId = `${dia}-${tempo.id}`;
-                      const aulaId = grid[slotId];
-                      const aula = aulaId ? getAulaById(aulaId) : null;
-                      const hasConflict = Boolean(conflictSlots?.[slotId]);
-                      const horarioDia = horarios[dia] || tempo.labelDefault;
-
-                      return (
-                        <DroppableSlot key={slotId} id={slotId} hasConflict={hasConflict} isFilled={!!aula}>
-                          {aula ? (
-                            <DraggableGridItem slotId={slotId} aula={aula}>
-                              <div className={`
-                                group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
-                                flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
-                                ${aula.cor}
-                              `}>
-                                <div className="flex justify-between items-start">
-                                  <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
-                                  {(hasConflict || aula.conflito) && (
-                                    <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
-                                  )}
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="text-[10px] text-slate-500">{horarioDia}</div>
-                                  {aula.professorId ? (
-                                    <div className="text-[10px] font-medium opacity-80 truncate leading-tight">
-                                      {aula.professor.split(" ")[0]}
-                                    </div>
-                                  ) : (
-                                    <div className="text-[10px] font-medium opacity-70 truncate leading-tight">
-                                      A definir
-                                    </div>
-                                  )}
-                                  {!aula.professorId && onAssignProfessor ? (
-                                    <button
-                                      type="button"
-                                      onPointerDown={(event) => event.stopPropagation()}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        setAssigningProfessor(aula);
-                                      }}
-                                      className="text-[10px] font-semibold text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                      Atribuir professor
-                                    </button>
-                                  ) : null}
-                                  {effectiveTurmaSala ? (
-                                    <div className="inline-block px-1.5 py-0.5 bg-white/50 rounded text-[9px] font-bold">
-                                      {getSalaLabel()}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </DraggableGridItem>
-                          ) : null}
-                        </DroppableSlot>
-                      );
-                    })
-                  )}
-                </div>
-              );
-            })}
+            <GridHeader diasSemana={diasSemana} />
+            {tempos?.map((tempo) => (
+              <GridRow
+                key={tempo.id}
+                tempo={tempo}
+                diasSemana={diasSemana}
+                grid={controlledGrid ?? grid}
+                conflictSlots={conflictSlots}
+                getAulaById={getAulaById}
+                onAssignProfessor={onAssignProfessor}
+                setAssigningProfessor={setAssigningProfessor}
+                effectiveTurmaSala={effectiveTurmaSala}
+                salas={salas}
+              />
+            ))}
           </div>
         </div>
 
         <DragOverlay>{overlayItem}</DragOverlay>
       </div>
+
       {assigningProfessor && (
         <AssignProfessorModal
           aula={assigningProfessor}
           professores={professores || []}
           onClose={() => setAssigningProfessor(null)}
           onAssign={async (professorId) => {
-            if (onAssignProfessor) {
-              await onAssignProfessor(assigningProfessor, professorId);
-            }
+            if (onAssignProfessor) await onAssignProfessor(assigningProfessor, professorId);
             setAssigningProfessor(null);
           }}
         />
@@ -443,9 +296,7 @@ export function SchedulerBoard({
           salas={salas || []}
           onClose={() => setAssigningTurmaSala(false)}
           onAssign={async (salaId) => {
-            if (onAssignTurmaSala) {
-              await onAssignTurmaSala(salaId);
-            }
+            if (onAssignTurmaSala) await onAssignTurmaSala(salaId);
             setAssigningTurmaSala(false);
           }}
         />
@@ -454,11 +305,273 @@ export function SchedulerBoard({
   );
 }
 
-// --- SUB-COMPONENTS (Refatorados) ---
+// --- OPTIMIZED SUB-COMPONENTS ---
 
-const DraggableSource = ({ aula }: any) => {
-  // Gera ID único para o draggable source, para não conflitar com o item solto no grid
-  // Passamos o 'baseId' via data para saber quem é quem
+const StatusAlerts = React.memo(({
+  missingLoadCount,
+  onAutoConfigurarCargas,
+  autoConfiguring,
+  conflictCount,
+  shouldShowTurmaSalaWarning,
+  onSetAssigningTurmaSala
+}: any) => (
+  <>
+    {missingLoadCount > 0 && (
+      <div className="mb-4 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-xs text-klasse-gold-800">
+        <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
+        <div className="mt-1">Defina a carga para publicar o quadro.</div>
+        {onAutoConfigurarCargas && (
+          <button
+            type="button"
+            onClick={onAutoConfigurarCargas}
+            disabled={autoConfiguring}
+            className="mt-2 w-full rounded-lg bg-klasse-gold-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
+          </button>
+        )}
+      </div>
+    )}
+    {conflictCount > 0 && (
+      <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+        <div className="font-semibold">{conflictCount} conflito(s) no quadro.</div>
+        <div className="mt-1">Revise os slots destacados antes de publicar.</div>
+      </div>
+    )}
+    {shouldShowTurmaSalaWarning && (
+      <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+        <div className="font-semibold">Turma sem sala definida.</div>
+        <div className="mt-1">Defina uma sala padrão para concluir o horário da turma.</div>
+        <button
+          type="button"
+          onClick={onSetAssigningTurmaSala}
+          className="mt-2 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
+        >
+          Definir sala
+        </button>
+      </div>
+    )}
+  </>
+));
+StatusAlerts.displayName = "StatusAlerts";
+
+const ActionButtons = React.memo(({
+  onAutoCompletar,
+  autoCompleting,
+  onSalvar,
+  onPublicar,
+  canPublicar,
+  publishDisabledReason,
+  publishing,
+  grid
+}: any) => (
+  <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
+    <button
+      type="button"
+      onClick={onAutoCompletar}
+      disabled={autoCompleting}
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      <Wand2 className="w-4 h-4" />
+      {autoCompleting ? "Auto-Completar..." : "Auto-Completar"}
+    </button>
+    <button
+      type="button"
+      onClick={onSalvar}
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all"
+    >
+      <Save className="w-4 h-4" />
+      Salvar Alterações
+    </button>
+    {onPublicar && (
+      <button
+        type="button"
+        onClick={() => onPublicar(grid)}
+        disabled={!canPublicar || publishing}
+        title={!canPublicar ? publishDisabledReason : undefined}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        <Check className="w-4 h-4" />
+        {publishing ? "Publicando..." : "Publicar"}
+      </button>
+    )}
+  </div>
+));
+ActionButtons.displayName = "ActionButtons";
+
+const GridHeader = React.memo(({ diasSemana }: { diasSemana: string[] }) => (
+  <div className="grid grid-cols-6 border-b border-slate-200 bg-slate-50">
+    <div className="p-3 border-r border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex items-center justify-center">
+      Horário
+    </div>
+    {diasSemana.map((dia) => (
+      <div key={dia} className="p-3 text-sm font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+        {dia}
+      </div>
+    ))}
+  </div>
+));
+GridHeader.displayName = "GridHeader";
+
+const GridRow = React.memo(({
+  tempo,
+  diasSemana,
+  grid,
+  conflictSlots,
+  getAulaById,
+  onAssignProfessor,
+  setAssigningProfessor,
+  effectiveTurmaSala,
+  salas,
+}: any) => {
+  const defaultRange = tempo.labelDefault.split(" - ");
+  const horarios = tempo.horariosPorDia || {};
+  const uniqueRanges = Array.from(new Set(Object.values(horarios)));
+  const hasDifferentTimes = uniqueRanges.length > 1;
+
+  return (
+    <div className="grid grid-cols-6 border-b border-slate-200 last:border-b-0 min-h-[110px]">
+      <div className="p-2 border-r border-slate-200 bg-slate-50/30 flex flex-col justify-center items-center text-xs">
+        <span className="font-bold text-slate-900 mb-1">{defaultRange[0] || "—"}</span>
+        <span className="text-slate-400 text-[10px]">{defaultRange[1] || ""}</span>
+        {hasDifferentTimes && (
+          <span className="mt-1 text-[9px] font-semibold text-klasse-gold-600">Horário varia</span>
+        )}
+        {tempo.tipo === "intervalo" && (
+          <span className="mt-2 px-2 py-0.5 bg-klasse-gold-100 text-klasse-gold-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
+            Intervalo
+          </span>
+        )}
+      </div>
+
+      {tempo.tipo === "intervalo" ? (
+        <div className="col-span-5 bg-stripes-gray flex items-center justify-center">
+          <span className="text-slate-200 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
+            Recreio
+          </span>
+        </div>
+      ) : (
+        diasSemana.map((dia: string) => (
+          <GridCell
+            key={`${dia}-${tempo.id}`}
+            dia={dia}
+            tempoId={tempo.id}
+            horarioDia={horarios[dia] || tempo.labelDefault}
+            aulaId={grid[`${dia}-${tempo.id}`]}
+            hasConflict={Boolean(conflictSlots?.[`${dia}-${tempo.id}`])}
+            getAulaById={getAulaById}
+            onAssignProfessor={onAssignProfessor}
+            setAssigningProfessor={setAssigningProfessor}
+            effectiveTurmaSala={effectiveTurmaSala}
+            salas={salas}
+          />
+        ))
+      )}
+    </div>
+  );
+});
+GridRow.displayName = "GridRow";
+
+const GridCell = React.memo(({
+  dia,
+  tempoId,
+  horarioDia,
+  aulaId,
+  hasConflict,
+  getAulaById,
+  onAssignProfessor,
+  setAssigningProfessor,
+  effectiveTurmaSala,
+  salas
+}: any) => {
+  const slotId = `${dia}-${tempoId}`;
+  const aula = aulaId ? getAulaById(aulaId) : null;
+
+  return (
+    <DroppableSlot id={slotId} hasConflict={hasConflict} isFilled={!!aula}>
+      {aula ? (
+        <DraggableGridItem slotId={slotId} aula={aula}>
+          <AulaCard
+            aula={aula}
+            hasConflict={hasConflict}
+            horarioDia={horarioDia}
+            onAssignProfessor={onAssignProfessor}
+            setAssigningProfessor={setAssigningProfessor}
+            effectiveTurmaSala={effectiveTurmaSala}
+            salas={salas}
+          />
+        </DraggableGridItem>
+      ) : null}
+    </DroppableSlot>
+  );
+});
+GridCell.displayName = "GridCell";
+
+const AulaCard = React.memo(({
+  aula,
+  hasConflict,
+  horarioDia,
+  onAssignProfessor,
+  setAssigningProfessor,
+  effectiveTurmaSala,
+  salas
+}: any) => {
+  const getSalaLabel = () => {
+    if (!effectiveTurmaSala) return null;
+    const sala = (salas || []).find((item: any) => item.nome === effectiveTurmaSala);
+    return sala?.nome ?? effectiveTurmaSala;
+  };
+
+  return (
+    <div className={`
+      group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
+      flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
+      ${aula.cor}
+    `}>
+      <div className="flex justify-between items-start">
+        <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
+        {(hasConflict || aula.conflito) && (
+          <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
+        )}
+      </div>
+      <div className="space-y-1">
+        <div className="text-[10px] text-slate-500">{horarioDia}</div>
+        {aula.professorId ? (
+          <div className="text-[10px] font-medium opacity-80 truncate leading-tight">
+            {aula.professor.split(" ")[0]}
+          </div>
+        ) : (
+          <div className="text-[10px] font-medium opacity-70 truncate leading-tight">
+            A definir
+          </div>
+        )}
+        {!aula.professorId && onAssignProfessor ? (
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              setAssigningProfessor(aula);
+            }}
+            className="text-[10px] font-semibold text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            Atribuir professor
+          </button>
+        ) : null}
+        {effectiveTurmaSala ? (
+          <div className="inline-block px-1.5 py-0.5 bg-white/50 rounded text-[9px] font-bold">
+            {getSalaLabel()}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+});
+AulaCard.displayName = "AulaCard";
+
+// --- DnD & MODAL COMPONENTS ---
+
+const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `source-${aula.id}`,
     data: { baseId: aula.id },
@@ -484,8 +597,7 @@ const DraggableSource = ({ aula }: any) => {
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          {/* Badge de Cor */}
-          <div className={`w-2 h-2 rounded-full ring-2 ring-white shadow-sm ${aula.cor.replace("bg-", "bg-").split(" ")[0].replace("100", "500")}`} />
+          <div className={`w-2 h-2 rounded-full ring-2 ring-white shadow-sm ${aula.cor.split(" ")[0]}`} />
           <span className={`font-bold text-xs ${isComplete ? "text-slate-400" : "text-slate-700"}`}>
             {aula.disciplina}
           </span>
@@ -501,7 +613,6 @@ const DraggableSource = ({ aula }: any) => {
          <span className="text-[10px] text-slate-400 font-mono">
             {aula.temposAlocados}/{totalLabel} aulas
          </span>
-         {/* Barra de Progresso Micro */}
          <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
             <div
               className={`h-full ${isComplete ? "bg-klasse-green-500" : "bg-klasse-gold"}`}
@@ -509,14 +620,10 @@ const DraggableSource = ({ aula }: any) => {
             />
          </div>
       </div>
-      {aula.missingLoad && (
-        <div className="mt-2 inline-flex items-center rounded-full bg-klasse-gold-100 px-2 py-0.5 text-[9px] font-bold uppercase text-klasse-gold-700">
-          Definir carga
-        </div>
-      )}
     </div>
   );
-};
+});
+DraggableSource.displayName = "DraggableSource";
 
 const DraggableGridItem = ({ slotId, aula, children }: any) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -529,9 +636,35 @@ const DraggableGridItem = ({ slotId, aula, children }: any) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={isDragging ? "opacity-40" : undefined}
+      className={isDragging ? "opacity-40" : "h-full w-full"}
     >
       {children}
+    </div>
+  );
+};
+
+const DroppableSlot = ({ id, children, hasConflict, isFilled }: any) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+        p-1 border-r border-slate-200 transition-all h-full min-h-[110px] flex flex-col
+        ${isOver && !isFilled ? "bg-klasse-gold/5 ring-2 ring-inset ring-klasse-gold/30" : ""}
+        ${hasConflict ? "bg-rose-50 ring-2 ring-inset ring-rose-200" : ""}
+        ${!children && !isOver ? "hover:bg-slate-50" : ""}
+      `}
+    >
+      {children || (
+        <div className={`
+            h-full w-full rounded-lg border-2 border-dashed flex items-center justify-center transition-all
+            ${isOver ? "border-klasse-gold/40 bg-white" : "border-transparent opacity-0 hover:opacity-100 hover:border-slate-200"}
+        `}>
+          {isOver && <span className="text-[10px] font-bold text-klasse-gold uppercase">Soltar</span>}
+          {!isOver && <span className="text-[10px] font-bold text-slate-300 uppercase">Vazio</span>}
+        </div>
+      )}
     </div>
   );
 };
@@ -571,7 +704,7 @@ const AssignProfessorModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900">Atribuir professor</h3>
           <button
@@ -637,7 +770,7 @@ const AssignTurmaSalaModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900">Definir sala da turma</h3>
           <button
@@ -687,28 +820,3 @@ const AssignTurmaSalaModal = ({
   );
 };
 
-const DroppableSlot = ({ id, children, hasConflict, isFilled }: any) => {
-  const { setNodeRef, isOver } = useDroppable({ id });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`
-        p-1 border-r border-slate-200 transition-all h-full min-h-[110px] flex flex-col
-        ${isOver && !isFilled ? "bg-klasse-gold/5 ring-2 ring-inset ring-klasse-gold/30" : ""}
-        ${hasConflict ? "bg-rose-50 ring-2 ring-inset ring-rose-200" : ""}
-        ${!children && !isOver ? "hover:bg-slate-50" : ""}
-      `}
-    >
-      {children || (
-        <div className={`
-            h-full w-full rounded-lg border-2 border-dashed flex items-center justify-center transition-all
-            ${isOver ? "border-klasse-gold/40 bg-white" : "border-transparent opacity-0 hover:opacity-100 hover:border-slate-200"}
-        `}>
-          {isOver && <span className="text-[10px] font-bold text-klasse-gold uppercase">Soltar</span>}
-          {!isOver && <span className="text-[10px] font-bold text-slate-300 uppercase">Vazio</span>}
-        </div>
-      )}
-    </div>
-  );
-};

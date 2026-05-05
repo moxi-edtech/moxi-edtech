@@ -12,14 +12,21 @@ type ComprovativoStatus = {
   pendentes: number;
   ultimo_envio_em: string | null;
 };
+type DadosPagamento = {
+  iban?: string;
+  banco?: string;
+  titular?: string;
+};
 type ApiResponse = {
   ok: boolean;
   mensalidades: Array<Omit<Item, "status"> & { status: string }>;
   comprovativo_status?: ComprovativoStatus;
+  dados_pagamento?: DadosPagamento | null;
 };
 type ParsedFinanceiroPayload = {
   rows: Item[];
   comprovativoStatus: ComprovativoStatus | null;
+  dadosPagamento: DadosPagamento | null;
 };
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
@@ -39,6 +46,7 @@ export function TabFinanceiro() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
   const [comprovativoStatus, setComprovativoStatus] = useState<ComprovativoStatus | null>(null);
+  const [dadosPagamento, setDadosPagamento] = useState<DadosPagamento | null>(null);
   const [selected, setSelected] = useState<Item | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [fromAno, setFromAno] = useState(currentYear - 4);
@@ -68,11 +76,13 @@ export function TabFinanceiro() {
       return {
         rows: mapped,
         comprovativoStatus: json.comprovativo_status ?? null,
+        dadosPagamento: json.dados_pagamento ?? null,
       } satisfies ParsedFinanceiroPayload;
     },
     onData: (data) => {
       setRows(data.rows);
       setComprovativoStatus(data.comprovativoStatus);
+      setDadosPagamento(data.dadosPagamento);
       setLoading(false);
     },
   });
@@ -202,6 +212,7 @@ export function TabFinanceiro() {
       <PaymentDrawer
         open={Boolean(selected)}
         mensalidade={selected}
+        dadosPagamento={dadosPagamento}
         onClose={() => setSelected(null)}
         onUploaded={(id) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "em_verificacao" } : r)))}
         studentId={studentId}

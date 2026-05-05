@@ -41,6 +41,12 @@ type MensalidadeRow = { status: string | null };
 type StatusFinanceiro = { emDia: boolean; pendentes: number; error?: string };
 type AvisoRow = { id: string; titulo: string | null; resumo: string | null; origem: string | null; created_at: string | null };
 
+type DadosPagamento = {
+  iban?: string;
+  banco?: string;
+  titular?: string;
+};
+
 type DatabaseWithHorarioVersoes = Database & {
   public: Database["public"] & {
     Tables: Database["public"]["Tables"] & {
@@ -195,7 +201,35 @@ export async function GET() {
       }
     } catch {}
 
-    return NextResponse.json({ ok: true, proxima_aula, ultima_nota, status_financeiro, avisos_recentes });
+    return NextResponse.json({
+      ok: true,
+      proxima_aula,
+      ultima_nota,
+      status_financeiro,
+      avisos_recentes,
+      dados_pagamento: await (async () => {
+        try {
+          if (!escolaId) return null;
+          const { data: escola } = await supabase
+            .from("escolas")
+            .select("dados_pagamento")
+            .eq("id", escolaId)
+            .maybeSingle();
+
+          if (escola?.dados_pagamento) {
+            const raw = escola.dados_pagamento as Record<string, unknown>;
+            return {
+              iban: typeof raw.iban === "string" ? raw.iban : undefined,
+              banco: typeof raw.banco === "string" ? raw.banco : undefined,
+              titular: typeof raw.titular === "string" ? raw.titular : undefined,
+            } as DadosPagamento;
+          }
+        } catch (e) {
+          console.error("Erro ao buscar dados de pagamento:", e);
+        }
+        return null;
+      })(),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

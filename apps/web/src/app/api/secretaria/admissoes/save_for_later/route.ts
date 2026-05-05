@@ -121,10 +121,36 @@ export async function POST(request: Request) {
     }
 
     if (claimed) {
+        // Fetch school banking and pricing info
+        const { data: escola } = await supabase
+          .from("escolas")
+          .select("dados_pagamento")
+          .eq("id", cand.escola_id)
+          .maybeSingle();
+        
+        const rawPagamento = escola?.dados_pagamento as Record<string, unknown> | null;
+        const dadosPagamento = rawPagamento ? {
+          iban: typeof rawPagamento.iban === 'string' ? rawPagamento.iban : undefined,
+          banco: typeof rawPagamento.banco === 'string' ? rawPagamento.banco : undefined,
+        } : null;
+
+        const { data: preco } = await supabase
+          .from("financeiro_tabelas")
+          .select("valor_matricula")
+          .eq("escola_id", cand.escola_id)
+          .eq("ano_letivo", new Date().getFullYear())
+          .is("curso_id", null)
+          .is("classe_id", null)
+          .maybeSingle();
+
         // This request won the race. Generate and upload the PDF.
         const pdfComponent = createElement(
           FichaInscricaoPDF,
-          { candidatura: cand as any }
+          { 
+            candidatura: cand as any,
+            dadosPagamento,
+            valorMatricula: preco?.valor_matricula ?? null
+          }
         ) as unknown as ReactElement<DocumentProps>;
         const pdfStream = await ReactPDF.renderToStream(pdfComponent);
 

@@ -52,6 +52,9 @@ test("Matriz integração: CENTER admin sem mistura com SOLO", () => {
   const allow = evaluateProtectedPath("formacao", "formacao_admin", "/admin/dashboard");
   assert.equal(allow.outcome, "allow");
 
+  const allowLegacyAdmin = evaluateProtectedPath("formacao", "admin", "/admin/dashboard");
+  assert.equal(allowLegacyAdmin.outcome, "allow");
+
   const denySolo = evaluateProtectedPath("formacao", "formacao_admin", "/mentor/dashboard");
   assert.deepEqual(denySolo, { outcome: "deny", reason: "product_mismatch" });
 });

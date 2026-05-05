@@ -12,8 +12,18 @@ test("center: mentor legado mapeia para formador", () => {
   assert.equal(normalizeRoleForTenant("mentor", "formacao"), "formador");
 });
 
+test("center: roles legadas K12 mapeiam para equivalentes formacao", () => {
+  assert.equal(normalizeRoleForTenant("admin", "formacao"), "formacao_admin");
+  assert.equal(normalizeRoleForTenant("admin_escola", "formacao"), "formacao_admin");
+  assert.equal(normalizeRoleForTenant("staff_admin", "formacao"), "formacao_admin");
+  assert.equal(normalizeRoleForTenant("secretaria", "formacao"), "formacao_secretaria");
+  assert.equal(normalizeRoleForTenant("financeiro", "formacao"), "formacao_financeiro");
+  assert.equal(normalizeRoleForTenant("admin_financeiro", "formacao"), "formacao_financeiro");
+  assert.equal(normalizeRoleForTenant("professor", "formacao"), "formador");
+  assert.equal(normalizeRoleForTenant("aluno", "formacao"), "formando");
+});
+
 test("roles inválidas retornam null", () => {
   assert.equal(normalizeRoleForTenant("foobar", "formacao"), null);
   assert.equal(normalizeRoleForTenant("", "solo_creator"), null);
 });
-
