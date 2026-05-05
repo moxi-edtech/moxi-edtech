@@ -8,7 +8,7 @@ export default async function AcessoAlunosPage() {
   const supabase = await supabaseServer();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
-  if (!user) return redirect("/conta/login");
+  if (!user) return redirect("/redirect");
 
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
   if (!escolaId) return redirect("/secretaria");

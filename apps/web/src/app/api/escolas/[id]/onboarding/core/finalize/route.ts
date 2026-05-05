@@ -354,7 +354,7 @@ export async function POST(
         try {
           const { data: esc2 } = await sserver.from('escolas').select('nome').eq('id', escolaIdResolved).maybeSingle()
           const escolaNome = esc2?.nome ?? null
-          const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
+          const loginUrl = resolveUniversalLoginUrl().replace(/\/$/, "");
           const mail = buildCredentialsEmail({
             nome: inv.nome ?? papel,
             email: inv.email,
