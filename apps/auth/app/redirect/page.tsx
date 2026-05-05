@@ -23,16 +23,14 @@ function isLocalOrigin(value: string) {
 }
 
 function resolveProductBases(host: string, redirectHint?: string) {
-  const isLocalHost =
-    isLocalOrigin(host) ||
-    isLocalOrigin(redirectHint ?? "") ||
-    process.env.NODE_ENV !== "production";
+  const hostIsLocal = isLocalOrigin(host) || isLocalOrigin(redirectHint ?? "");
+  const isLocalHost = hostIsLocal && process.env.NODE_ENV !== "production";
 
   if (isLocalHost) {
     const prefersLocalhost =
       host.includes("localhost") ||
       host.includes(".localhost") ||
-      isLocalOrigin(redirectHint ?? "") && (redirectHint ?? "").toLowerCase().includes("localhost");
+      (isLocalOrigin(redirectHint ?? "") && (redirectHint ?? "").toLowerCase().includes("localhost"));
 
     return {
       k12:
@@ -126,13 +124,24 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     redirect(`/login${loginSuffix}`);
   }
 
+  const headerStore = await headers();
+  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+
+  const isLoopback = (url: string | null) => {
+    if (!url) return false;
+    try {
+      const p = new URL(url);
+      return p.host === host && (p.pathname === "/redirect" || p.pathname === "/login");
+    } catch {
+      return false;
+    }
+  };
+
   const cachedContext = await getTenantContextCookieForUser(user.id);
   if (cachedContext) {
-    const headerStore = await headers();
-    const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
-      .split(",")[0]
-      .trim()
-      .toLowerCase();
     const bases = resolveProductBases(host, params.redirect);
     const destinationConfig = resolveTenantRoute({
       tenantId: cachedContext.tenant_id,
@@ -142,7 +151,9 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     });
     const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
-    const destination = preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
+    const destination = preferred && !isLoopback(preferred)
+      ? preferred
+      : `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
 
     logAuthEvent({
       action: "redirect",
@@ -159,20 +170,12 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const globalRole = await resolveGlobalRole(supabase, user.id, user.user_metadata, user.app_metadata);
 
   if (tenants.length === 0 && globalRole) {
-    const headerStore = await headers();
-    const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
-      .split(",")[0]
-      .trim()
-      .toLowerCase();
     const bases = resolveProductBases(host, params.redirect);
     const productBase = bases.k12;
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
-    const preferredPath = preferred ? new URL(preferred).pathname : "";
-    const blockedPreferred = preferredPath === "/redirect" || preferredPath === "/login";
-    const destination =
-      preferred && !blockedPreferred
-        ? preferred
-        : `${productBase.replace(/\/$/, "")}/super-admin`;
+    const destination = preferred && !isLoopback(preferred)
+      ? preferred
+      : `${productBase.replace(/\/$/, "")}/super-admin`;
 
     logAuthEvent({
       action: "redirect",
@@ -208,15 +211,12 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const selected = tenants[0];
   const destinationConfig = resolveTenantRoute(selected);
 
-  const headerStore = await headers();
-  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
-    .split(",")[0]
-    .trim()
-    .toLowerCase();
   const bases = resolveProductBases(host, params.redirect);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
   const preferred = normalizeRedirectTarget(params.redirect, productBase);
-  const destination = preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
+  const destination = preferred && !isLoopback(preferred)
+    ? preferred
+    : `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
 
   logAuthEvent({
     action: "redirect",
