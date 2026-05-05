@@ -13,13 +13,13 @@ export default async function Page() {
   const user = session?.user;
 
   if (!user) {
-    redirect("/login");
+    redirect("/redirect");
   }
 
   const escolaId = await resolveEscolaIdForUser(supabase, user.id);
 
   if (!escolaId) {
-    redirect("/login");
+    redirect("/redirect");
   }
 
   return (

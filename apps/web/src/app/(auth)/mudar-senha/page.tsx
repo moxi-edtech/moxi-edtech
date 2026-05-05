@@ -21,7 +21,7 @@ export default function Page() {
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user
       if (!user) {
-        router.replace('/login')
+        router.replace('/redirect')
         return
       }
       setEmail(user.email || '')

@@ -120,7 +120,7 @@ function QuickActionButton({ label, route, icon: Icon }: QuickAction) {
 export default async function Page() {
   const session = await getSession();
   if (!session || !['super_admin', 'admin'].includes(session.user.role)) {
-    redirect('/login');
+    redirect('/redirect');
   }
 
   const supabase = await supabaseServer()

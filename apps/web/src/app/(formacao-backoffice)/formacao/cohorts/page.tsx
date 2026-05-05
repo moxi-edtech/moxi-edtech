@@ -56,7 +56,7 @@ function formatMoney(value: number) {
 
 export default async function FormacaoCohortsPage() {
   const context = await getFormacaoContext();
-  if (!context?.escolaId) redirect("/login");
+  if (!context?.escolaId) redirect("/redirect");
 
   const supabase = await supabaseServer();
   const escolaId = String(context.escolaId);

@@ -68,7 +68,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   const user = auth?.user;
 
   if (!user) {
-    redirect("/login");
+    redirect("/redirect");
   }
 
   const { data: vinculos } = await supabase

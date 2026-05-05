@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
 
           <button
             type="button"
-            onClick={() => router.replace("/login")}
+            onClick={() => router.replace("/redirect")}
             className="w-full text-sm font-medium text-klasse-gold-600 hover:underline"
           >
             Voltar ao login

@@ -43,7 +43,7 @@ export function AlunoHeader({
     try {
       setSigningOut(true);
       await supabase.auth.signOut();
-      router.replace("/login");
+      router.replace("/redirect");
     } finally {
       setSigningOut(false);
     }

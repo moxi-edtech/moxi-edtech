@@ -221,7 +221,7 @@ function safeAbsoluteUrl(
   return fallback;
 }
 
-function resolveUniversalLoginUrl(): string {
+export function resolveUniversalLoginUrl(): string {
   if (process.env.NODE_ENV !== "production") {
     return safeAbsoluteUrl(
       process.env.KLASSE_AUTH_LOCAL_URL,
@@ -393,10 +393,16 @@ async function resolveEscolaSlugMapping(
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const host = (request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '')
     .split(',')[0]
     .trim()
     .toLowerCase();
+
+  if (pathname === '/login' || pathname === '/login/') {
+    console.info(`[Middleware:Web] Intercepted ${pathname} for host ${host}. Redirecting to Central Auth.`);
+  }
+
   if (
     process.env.NODE_ENV !== 'production' &&
     (host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.endsWith('.localhost'))
@@ -418,8 +424,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (pathname === '/login') {
-    return finalizeResponse(request, redirectToCentralAuth(request, response), allowedOrigin);
+  // Força redirecionamento imediato para Central Auth se acessar /login local
+  if (pathname === '/login' || pathname === '/login/') {
+    const centralLogin = new URL(resolveUniversalLoginUrl());
+    centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
+    return NextResponse.redirect(centralLogin);
   }
 
   const productContext = detectProductContextFromHostname(request.headers.get('host'));
@@ -715,10 +724,13 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/login',
+    '/redirect',
+    '/mudar-senha',
     '/escola/:path*',
     '/api/escola/:path*',
     '/api/escolas/:path*',
     '/admin/:path*',
+    '/super-admin/:path*',
     '/secretaria/:path*',
     '/financeiro/:path*',
     '/professor/:path*',
@@ -741,5 +753,6 @@ export const config = {
     '/api/secretaria/:path*',
     '/api/professor/:path*',
     '/api/aluno/:path*',
+    '/api/jobs/auth-admin',
   ],
 };

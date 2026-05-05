@@ -27,7 +27,7 @@ export default function RequireSecretaria({
     (async () => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser();
       const user = userRes?.user;
-      if (userErr || !user) { router.replace("/login"); return; }
+      if (userErr || !user) { router.replace("/redirect"); return; }
 
       const vinculoQuery = supabase
         .from("escola_users")

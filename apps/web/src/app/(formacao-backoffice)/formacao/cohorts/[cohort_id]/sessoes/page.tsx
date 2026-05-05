@@ -32,7 +32,7 @@ export default async function CohortSessoesPage({
   params: Promise<{ cohort_id: string }>;
 }) {
   const context = await getFormacaoContext();
-  if (!context?.escolaId) redirect("/login");
+  if (!context?.escolaId) redirect("/redirect");
   const { cohort_id: cohortId } = await params;
 
   const supabase = await supabaseServer();

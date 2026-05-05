@@ -60,7 +60,7 @@ export default function PortalAlunoLayout({ children }: { children?: React.React
     (async () => {
       const { data: userRes } = await s.auth.getUser();
       const user = userRes?.user;
-      if (!user) { router.replace("/login"); return; }
+      if (!user) { router.replace("/redirect"); return; }
 
       // Vínculo à escola
       const { data: vinc } = await s
