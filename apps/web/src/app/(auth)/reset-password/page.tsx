@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
-import BrandPanel from "../login/BrandPanel";
+import BrandPanel from "../BrandPanel";
 
 type Status = "loading" | "ready" | "invalid";
 
