@@ -81,7 +81,7 @@ export function resolveSharedCookieOptions(params: {
     path: "/",
     sameSite,
     secure,
-    // httpOnly deve ser controlado pelo chamador (middleware vs client)
+    httpOnly: false,
   };
 }
 
@@ -107,7 +107,7 @@ export function createMiddlewareSupabaseClient(params: {
   });
 
   return createServerClient<Database>(url, key, {
-    cookieOptions: { ...cookieOptions, httpOnly: true },
+    cookieOptions,
     cookies: {
       getAll() {
         return params.request.cookies.getAll();
