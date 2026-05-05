@@ -88,6 +88,7 @@ async function resolveIdentifierToEmail(identifier: string): Promise<string | nu
     process.env.NODE_ENV === "development" ? "http://app.lvh.me:3001" : "https://app.klasse.ao"
   );
 
+
   try {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/jobs/auth-admin`, {
       method: "POST",
@@ -124,6 +125,7 @@ async function recordUserAccess(params: {
     process.env.AUTH_ADMIN_BASE_URL,
     process.env.NODE_ENV === "development" ? "http://app.lvh.me:3001" : "https://app.klasse.ao"
   );
+
 
   try {
     await fetch(`${baseUrl.replace(/\/$/, "")}/api/jobs/auth-admin`, {
