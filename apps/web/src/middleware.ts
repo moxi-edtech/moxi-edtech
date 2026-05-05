@@ -399,8 +399,12 @@ export async function middleware(request: NextRequest) {
     .trim()
     .toLowerCase();
 
+  // Força redirecionamento imediato para Central Auth se acessar /login local
   if (pathname === '/login' || pathname === '/login/') {
     console.info(`[Middleware:Web] Intercepted ${pathname} for host ${host}. Redirecting to Central Auth.`);
+    const centralLogin = new URL(resolveUniversalLoginUrl());
+    centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
+    return NextResponse.redirect(centralLogin);
   }
 
   if (
@@ -420,15 +424,6 @@ export async function middleware(request: NextRequest) {
     } catch {
       // ignore invalid canonical origin and continue normal flow
     }
-  }
-
-  const { pathname } = request.nextUrl;
-
-  // Força redirecionamento imediato para Central Auth se acessar /login local
-  if (pathname === '/login' || pathname === '/login/') {
-    const centralLogin = new URL(resolveUniversalLoginUrl());
-    centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
-    return NextResponse.redirect(centralLogin);
   }
 
   const productContext = detectProductContextFromHostname(request.headers.get('host'));
