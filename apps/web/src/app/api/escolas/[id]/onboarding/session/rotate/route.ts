@@ -80,7 +80,7 @@ export async function POST(
         .eq('escola_id', resolvedEscolaId)
         .eq('user_id', user.id)
         .maybeSingle()
-      const papel = (vinc as any)?.papel as string | undefined
+      const papel = vinc?.papel
       if (!allowed) allowed = !!papel && hasPermission(papel as any, 'configurar_escola')
     } catch {}
     if (!allowed) {
@@ -91,7 +91,7 @@ export async function POST(
           .eq('escola_id', resolvedEscolaId)
           .eq('user_id', user.id)
           .limit(1)
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0)
+        allowed = Boolean(adminLink && adminLink.length > 0)
       } catch {}
     }
     if (!allowed) {
@@ -103,37 +103,37 @@ export async function POST(
           .eq('user_id', user.id)
           .eq('escola_id', resolvedEscolaId)
           .limit(1)
-        allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin')
+        allowed = Boolean(prof && prof.length > 0 && prof[0].role === 'admin')
       } catch {}
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     // 1) Desativar anos letivos atuais
-    await (s as any)
+    await s
       .from('anos_letivos')
-      .update({ ativo: false } as any)
+      .update({ ativo: false })
       .eq('escola_id', resolvedEscolaId)
 
     const anoLetivoNumero = Number(String(data_inicio).slice(0, 4))
 
     // 2) Upsert do novo ano letivo ativo
-    const { data: anoLetivoRow, error: anoErr } = await (s as any)
+    const { data: anoLetivoRow, error: anoErr } = await s
       .from('anos_letivos')
       .upsert({
-        escola_id: escolaId,
+        escola_id: resolvedEscolaId,
         ano: anoLetivoNumero,
         data_inicio,
         data_fim,
         ativo: true,
-      } as any, { onConflict: 'escola_id,ano' } as any)
+      }, { onConflict: 'escola_id,ano' })
       .select('id')
       .single()
     if (anoErr) return NextResponse.json({ ok: false, error: anoErr.message }, { status: 400 })
 
-    const anoLetivoId = (anoLetivoRow as any)?.id as string | null
+    const anoLetivoId = anoLetivoRow?.id as string | null
 
     // 3) Gerar periodos_letivos conforme preferências
-    const { data: cfg } = await (s as any)
+    const { data: cfg } = await s
       .from('configuracoes_escola')
       .select('periodo_tipo')
       .eq('escola_id', resolvedEscolaId)
@@ -166,52 +166,49 @@ export async function POST(
 
     if (anoLetivoId) {
       try {
-        await (s as any).from('periodos_letivos').delete().eq('ano_letivo_id', anoLetivoId)
+        await s.from('periodos_letivos').delete().eq('ano_letivo_id', anoLetivoId)
         const ranges = splitRanges(data_inicio, data_fim, parts)
         const rows = ranges.map((r, idx) => ({
-          escola_id: escolaId,
+          escola_id: resolvedEscolaId,
           ano_letivo_id: anoLetivoId,
-          tipo: tipoUpper,
+          tipo: tipoUpper as any,
           numero: idx + 1,
           data_inicio: r.start,
           data_fim: r.end,
         }))
-        await (s as any).from('periodos_letivos').insert(rows)
+        await s.from('periodos_letivos').insert(rows as any)
       } catch (_) {}
     }
 
     // Reset onboarding drafts; NÃO desmarca conclusão do onboarding.
     try {
-      await (s as any)
+      await s
         .from('onboarding_drafts')
         .delete()
         .eq('escola_id', resolvedEscolaId)
     } catch (_) {}
 
     // Sinaliza que ajustes acadêmicos são necessários após rotacionar sessão
-    try {
-      const { error: flagErr } = await (s as any)
-        .from('escolas')
-        .update({ needs_academic_setup: true } as any)
-        .eq('id', escolaId)
-      if (flagErr) {
-        const msg = String(flagErr.message || '').toLowerCase()
-        if (msg.includes('needs_academic_setup') || msg.includes('schema cache') || msg.includes('column')) {
-          // ignora
-        }
-      }
-    } catch (_) {}
+    const { error: flagErr } = await s
+      .from('escolas')
+      .update({ needs_academic_setup: true })
+      .eq('id', resolvedEscolaId)
+
+    if (flagErr) {
+      console.warn("Falha ao sinalizar needs_academic_setup:", flagErr.message)
+    }
+
 
     // Carrega anos letivos após rotação para retornar nova sessão ativa e histórico
     let active: any = null
     let all: any[] = []
     try {
-      const { data: sessList } = await (s as any)
+      const { data: sessList } = await s
         .from('anos_letivos')
         .select('id, ano, data_inicio, data_fim, ativo')
         .eq('escola_id', resolvedEscolaId)
         .order('ano', { ascending: false })
-      all = (sessList || []).map((row: any) => ({
+      all = (sessList || []).map((row) => ({
         id: row.id,
         nome: `${row.ano}/${row.ano + 1}`,
         data_inicio: row.data_inicio,
@@ -219,7 +216,7 @@ export async function POST(
         status: row.ativo ? 'ativa' : 'arquivada',
         ano_letivo: String(row.ano),
       }))
-      active = (all || []).find((s: any) => s.status === 'ativa') || null
+      active = (all || []).find((s) => s.status === 'ativa') || null
     } catch {}
 
     recordAuditServer({

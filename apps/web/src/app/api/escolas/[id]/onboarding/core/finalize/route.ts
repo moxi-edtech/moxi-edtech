@@ -53,8 +53,8 @@ export async function POST(
         .limit(1)
 
       if (vinc && vinc.length > 0) {
-        const papel = (vinc[0] as any).papel as any
-        if (hasPermission(papel, 'configurar_escola')) {
+        const papel = vinc[0].papel
+        if (hasPermission(papel as any, 'configurar_escola')) {
           authorized = true
           nextPath = `/escola/${escolaParam}/admin/dashboard`
         }
@@ -90,7 +90,7 @@ export async function POST(
           .eq("escola_id", escolaIdResolved)
           .limit(1)
 
-        authorized = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin')
+        authorized = Boolean(prof && prof.length > 0 && prof[0].role === 'admin')
         if (authorized) nextPath = `/escola/${escolaParam}/admin/dashboard`
       } catch (_) {
         // keep false
@@ -129,6 +129,13 @@ export async function POST(
       tipo: z.enum(["academico"]).optional(),
       sessionId: z.string().uuid().optional(),
 
+      // Novos campos financeiros (Onboarding Acadêmico)
+      iban: z.string().optional(),
+      valorMatricula: z.number().optional(),
+      valorMensalidade: z.number().optional(),
+      diaVencimento: z.number().int().min(1).max(31).optional(),
+      anoLetivo: z.number().optional(),
+
       // 🔹 Campos antigos (modo “onboarding geral”)
       schoolName: z.string().trim().min(1).optional(),
       primaryColor: z
@@ -152,6 +159,11 @@ export async function POST(
     const {
       tipo,
       sessionId,
+      iban,
+      valorMatricula,
+      valorMensalidade,
+      diaVencimento,
+      anoLetivo,
       schoolName,
       primaryColor,
       logoUrl,
@@ -162,61 +174,66 @@ export async function POST(
     } = payload;
 
     // 3) Bloqueia onboarding para escolas suspensas/excluídas
-    const { data: esc } = await sserver.from('escolas').select('status').eq('id', escolaIdResolved).limit(1)
-    const status = (esc?.[0] as any)?.status as string | undefined
+    const { data: esc } = await sserver.from('escolas').select('status, dados_pagamento').eq('id', escolaIdResolved).limit(1)
+    const status = esc?.[0]?.status
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite finalizar onboarding.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para finalizar onboarding.' }, { status: 400 })
 
-    // 4) Atualizações via RLS (sem service role)
+    // --- LOGICA FINANCEIRA (Novo) ---
+    if (tipo === 'academico') {
+      const currentDados = (esc?.[0]?.dados_pagamento as Record<string, any>) || {}
+      const newDados = { ...currentDados, iban: iban || currentDados.iban }
+      
+      // Salva IBAN na escola
+      await sserver.from('escolas').update({ dados_pagamento: newDados }).eq('id', escolaIdResolved)
+
+      // Salva Configurações Financeiras e Tabela de Preços Base
+      if (diaVencimento || valorMatricula || valorMensalidade) {
+        const anoParaTabela = anoLetivo || new Date().getFullYear()
+
+        // 1. Tabela de Preços Geral
+        await sserver.from('financeiro_tabelas').upsert({
+          escola_id: escolaIdResolved,
+          ano_letivo: anoParaTabela,
+          curso_id: null,
+          classe_id: null,
+          dia_vencimento: diaVencimento || 10,
+          valor_matricula: valorMatricula || 0,
+          valor_mensalidade: valorMensalidade || 0,
+          multa_atraso_percentual: 0,
+          multa_diaria: 0,
+        }, { onConflict: 'escola_id,ano_letivo,curso_id,classe_id' })
+
+        // 2. Configurações Globais
+        await sserver.from('configuracoes_financeiro').upsert({
+          escola_id: escolaIdResolved,
+          dia_vencimento_padrao: diaVencimento || 10,
+          moeda: 'AOA',
+          multa_atraso_percent: 0,
+          juros_diarios_percent: 0,
+        }, { onConflict: 'escola_id' })
+      }
+    }
+
+    // 4) Atualizações via RLS (user context)
 
     // 3.1) Update escola basics
-    const escolaUpdateBase: any = {
+    const escolaUpdate = {
       ...(schoolName ? { nome: schoolName } : {}),
       ...(primaryColor ? { cor_primaria: primaryColor } : {}),
-      // Atualiza logo_url somente quando houver URL válida
       ...((typeof logoUrl === 'string' && logoUrl.length > 0) ? { logo_url: logoUrl } : {}),
+      onboarding_finalizado: true,
+      onboarding_completed_at: new Date().toISOString(),
+      onboarding_completed_by: user.id,
+      needs_academic_setup: false,
     }
 
-    const updateEscolaWithFallback = async (patch: any) => {
-      const { data, error } = await sserver.from('escolas').update(patch).eq('id', escolaIdResolved)
-      if (error && Object.prototype.hasOwnProperty.call(patch, 'needs_academic_setup')) {
-        const msg = error.message || ''
-        if (
-          msg.includes('needs_academic_setup') ||
-          msg.toLowerCase().includes('schema cache') ||
-          msg.toLowerCase().includes('column')
-        ) {
-          const clone: any = { ...patch }
-          delete clone.needs_academic_setup
-          const { error: err2 } = await sserver.from('escolas').update(clone).eq('id', escolaIdResolved)
-          return { error: err2 }
-        }
-      }
-      return { error }
-    }
-
-    let finalizadoOk = false
-    {
-      const escolaUpdate1 = {
-        ...escolaUpdateBase,
-        onboarding_finalizado: true,
-        onboarding_completed_at: new Date().toISOString(),
-        onboarding_completed_by: user.id,
-        needs_academic_setup: false,
-      } as any
-      const { error: err1 } = await updateEscolaWithFallback(escolaUpdate1)
-      if (!err1) finalizadoOk = true
-    }
-
-    if (!finalizadoOk) {
-      const patch = { ...escolaUpdateBase, onboarding_finalizado: true, needs_academic_setup: false } as any
-      const { error: err2 } = await updateEscolaWithFallback(patch)
-      if (err2) {
-        return NextResponse.json(
-          { ok: false, error: err2.message || 'Falha ao atualizar escola' },
-          { status: 400 }
-        )
-      }
+    const { error: errUpdate } = await sserver.from('escolas').update(escolaUpdate).eq('id', escolaIdResolved)
+    if (errUpdate) {
+      return NextResponse.json(
+        { ok: false, error: errUpdate.message || 'Falha ao atualizar escola' },
+        { status: 400 }
+      )
     }
 
     const { data: escolaAfter } = await sserver
@@ -243,18 +260,22 @@ export async function POST(
       ))
 
       if (list.length) {
-        const { data: existing } = await (sserver as any)
+        const { data: existing } = await sserver
           .from('cursos')
           .select('nome')
           .eq('escola_id', escolaIdResolved)
           .in('nome', list)
 
-        const existingNames = new Set<string>((existing || []).map((r: any) => r.nome as string))
+        const existingNames = new Set<string>((existing || []).map((r) => r.nome))
         const toCreate = list.filter((nome) => !existingNames.has(nome))
 
         if (toCreate.length) {
-          const cursoRows = toCreate.map((nome) => ({ nome, escola_id: escolaIdResolved })) as any[]
-          const { error: subjectsError } = await (sserver as any).from('cursos').insert(cursoRows)
+          const cursoRows = toCreate.map((nome) => ({
+            nome,
+            escola_id: escolaIdResolved,
+            codigo: nome.substring(0, 10).toUpperCase() // Cursos require codigo
+          }))
+          const { error: subjectsError } = await sserver.from('cursos').insert(cursoRows)
           if (subjectsError) {
             return NextResponse.json({ ok: true, warning: subjectsError.message })
           }
@@ -271,18 +292,18 @@ export async function POST(
 
     for (const inv of invites) {
       try {
-        const roleEnum = mapPapelToGlobalRole(inv.papel)
+        const papel = inv.papel === 'professor' ? 'professor' : 'secretaria'
+        const roleEnum = mapPapelToGlobalRole(papel)
         // Check if exists
         const { data: prof } = await sserver.from('profiles').select('user_id').eq('email', inv.email).limit(1)
-        const userId = (prof?.[0] as any)?.user_id as string | undefined
-        const invited = false
+        const userId = prof?.[0]?.user_id
 
         if (!userId) {
           inviteResult.failed.push(inv.email)
           continue
         }
 
-        if (!userId) continue
+        const invited = false
 
         // Generate temp password for newly invited users
         let tempPassword: string | null = null
@@ -294,8 +315,8 @@ export async function POST(
         const profilePayload: any = {
           user_id: userId,
           email: inv.email,
-          nome: inv.nome ?? inv.papel,
-          role: roleEnum as any,
+          nome: inv.nome ?? papel,
+          role: roleEnum,
           escola_id: escolaIdResolved,
           current_escola_id: escolaIdResolved,
         }
@@ -304,13 +325,10 @@ export async function POST(
           await sserver.from('profiles').upsert(profilePayload)
         } catch {}
 
-        // Ensure app_metadata
-        // Atualização de auth metadata requer service role; mantemos apenas dados locais
-
         // Link papel
         try {
           await sserver.from('escola_users').upsert(
-            { escola_id: escolaIdResolved, user_id: userId, papel: inv.papel } as any,
+            { escola_id: escolaIdResolved, user_id: userId, papel: papel, tenant_type: 'k12' },
             { onConflict: 'escola_id,user_id' }
           )
         } catch {}
@@ -325,7 +343,7 @@ export async function POST(
             entityId: userId,
             details: {
               email: inv.email,
-              papel: inv.papel,
+              papel: papel,
               role: roleEnum,
               via: 'onboarding',
             },
@@ -334,11 +352,11 @@ export async function POST(
 
         // Envia email de credenciais
         try {
-          const { data: esc2 } = await sserver.from('escolas' as any).select('nome').eq('id', escolaIdResolved).maybeSingle()
-          const escolaNome = (esc2 as any)?.nome ?? null
+          const { data: esc2 } = await sserver.from('escolas').select('nome').eq('id', escolaIdResolved).maybeSingle()
+          const escolaNome = esc2?.nome ?? null
           const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
           const mail = buildCredentialsEmail({
-            nome: inv.nome ?? inv.papel,
+            nome: inv.nome ?? papel,
             email: inv.email,
             numero_processo_login: undefined,
             senha_temp: tempPassword ?? undefined,
