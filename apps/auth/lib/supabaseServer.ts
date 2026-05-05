@@ -1,8 +1,9 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 import { readEnv } from "@/lib/env";
+import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
 
 function getSupabaseEnv() {
   const url = readEnv(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -15,7 +16,7 @@ function getSupabaseEnv() {
     throw new Error("Invalid Supabase env placeholder values for apps/auth");
   }
   try {
-    // Validate malformed envs early (for example quoted strings with escapes).
+    // Validate malformed envs early
     // eslint-disable-next-line no-new
     new URL(url);
   } catch {
@@ -25,27 +26,18 @@ function getSupabaseEnv() {
   return { url, anonKey };
 }
 
-function resolveCookieOptions() {
-  const localOrigin = readEnv(process.env.KLASSE_AUTH_LOCAL_ORIGIN, "").toLowerCase();
-  const inferredDevDomain = localOrigin.includes(".localhost")
-    ? ".localhost"
-    : localOrigin.includes(".lvh.me")
-      ? ".lvh.me"
-      : ".lvh.me";
-  const domain =
-    readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN) ||
-    (process.env.NODE_ENV === "production" ? ".klasse.ao" : inferredDevDomain);
-  const sameSiteRaw = readEnv(process.env.KLASSE_AUTH_COOKIE_SAMESITE, "lax").toLowerCase();
-  const sameSite: "lax" | "strict" | "none" =
-    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
-  const secure = process.env.NODE_ENV === "production";
+async function resolveCookieOptions() {
+  const head = await headers();
+  const hostname = head.get("host")?.split(":")[0] || "";
+  const isHttps = head.get("x-forwarded-proto") === "https";
 
-  return {
-    ...(domain ? { domain } : {}),
-    path: "/",
-    sameSite,
-    secure,
-  };
+  return resolveSharedCookieOptions({
+    nodeEnv: process.env.NODE_ENV,
+    domainEnv: readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN),
+    sameSiteEnv: readEnv(process.env.KLASSE_AUTH_COOKIE_SAMESITE, "lax"),
+    browserHostname: hostname,
+    isHttps,
+  });
 }
 
 export async function supabaseServer() {
@@ -53,7 +45,7 @@ export async function supabaseServer() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
-    cookieOptions: resolveCookieOptions(),
+    cookieOptions: await resolveCookieOptions(),
     cookies: {
       getAll() {
         return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
@@ -68,7 +60,7 @@ export async function supabaseRouteClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
-    cookieOptions: resolveCookieOptions(),
+    cookieOptions: await resolveCookieOptions(),
     cookies: {
       getAll() {
         return cookieStore.getAll().map(({ name, value }) => ({ name, value }));

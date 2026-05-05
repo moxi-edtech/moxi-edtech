@@ -12,6 +12,7 @@
     "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000"
   },
   "dependencies": {
+    "@moxi/auth-middleware": "workspace:*",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.81.0",
     "framer-motion": "12.38.0",

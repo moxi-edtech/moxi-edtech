@@ -72,6 +72,9 @@ importers:
 
   apps/auth:
     dependencies:
+      '@moxi/auth-middleware':
+        specifier: workspace:*
+        version: link:../../packages/auth-middleware
       '@supabase/ssr':
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.93.3)

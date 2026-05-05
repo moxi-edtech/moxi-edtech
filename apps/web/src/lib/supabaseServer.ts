@@ -1,8 +1,9 @@
 // apps/web/src/lib/supabaseServer.ts
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
+import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
 
 function getSupabaseEnv() {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -22,28 +23,18 @@ function getSupabaseEnv() {
   return { url, anonKey };
 }
 
-function resolveCookieOptions() {
-  const configuredDomain =
-    process.env.KLASSE_COOKIE_DOMAIN?.trim() ||
-    process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim() ||
-    (process.env.NODE_ENV === "production" ? ".klasse.ao" : "");
+async function resolveCookieOptions() {
+  const head = await headers();
+  const hostname = head.get("host")?.split(":")[0] || "";
+  const isHttps = head.get("x-forwarded-proto") === "https";
 
-  const sameSiteRaw = (
-    process.env.KLASSE_COOKIE_SAMESITE ??
-    process.env.KLASSE_AUTH_COOKIE_SAMESITE ??
-    "lax"
-  )
-    .trim()
-    .toLowerCase();
-  const sameSite: "lax" | "strict" | "none" =
-    sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
-
-  return {
-    ...(configuredDomain ? { domain: configuredDomain } : {}),
-    path: "/",
-    sameSite,
-    secure: process.env.NODE_ENV === "production",
-  };
+  return resolveSharedCookieOptions({
+    nodeEnv: process.env.NODE_ENV,
+    domainEnv: process.env.KLASSE_COOKIE_DOMAIN || process.env.KLASSE_AUTH_COOKIE_DOMAIN,
+    sameSiteEnv: process.env.KLASSE_COOKIE_SAMESITE || process.env.KLASSE_AUTH_COOKIE_SAMESITE,
+    browserHostname: hostname,
+    isHttps,
+  });
 }
 
 /**
@@ -59,7 +50,7 @@ export async function supabaseServer() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
-    cookieOptions: resolveCookieOptions(),
+    cookieOptions: await resolveCookieOptions(),
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -76,7 +67,7 @@ export async function supabaseServerTyped<TDatabase = Database>() {
   const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
-    cookieOptions: resolveCookieOptions(),
+    cookieOptions: await resolveCookieOptions(),
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -90,7 +81,7 @@ export async function supabaseRouteClient<TDatabase = Database>() {
   const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
-    cookieOptions: resolveCookieOptions(),
+    cookieOptions: await resolveCookieOptions(),
     cookies: buildMutableCookieAdapter(cookieStore),
   });
 }
