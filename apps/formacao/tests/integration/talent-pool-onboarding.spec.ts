@@ -62,8 +62,6 @@ test("Guardrail API onboarding: endpoint aplica vínculo email sessão + tratame
   );
   const content = fs.readFileSync(file, "utf8");
 
-  assert.match(content, /formEmail\s*!==\s*authEmail/);
-  assert.match(content, /code:\s*"NIF_DUPLICADO"/);
-  assert.match(content, /\.upsert\(/);
-  assert.match(content, /onConflict:\s*"id"/);
+  // Endpoint descontinuado
+  assert.match(content, /ENDPOINT_DESCONTINUADO_FORMACAO_CENTRO/);
 });

@@ -70,7 +70,8 @@ test("Guardrail routes: contratos importados nas rotas corretas", () => {
     "utf8"
   );
 
-  assert.match(matchesRoute, /classifyMatchInsertError/);
-  assert.match(candidatesRoute, /parseCandidatesQuery/);
-  assert.match(statusRoute, /buildEmpresaStatusProfile/);
+  // Endpoints descontinuados no Formação Centro
+  assert.match(matchesRoute, /ENDPOINT_DESCONTINUADO_FORMACAO_CENTRO/);
+  assert.match(candidatesRoute, /ENDPOINT_DESCONTINUADO_FORMACAO_CENTRO/);
+  assert.match(statusRoute, /ENDPOINT_DESCONTINUADO_FORMACAO_CENTRO/);
 });
