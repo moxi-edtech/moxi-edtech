@@ -40,14 +40,21 @@ async function getCandidaturaData(id: string) {
 
   const { data: escola } = await supabase
     .from("escolas")
-    .select("nome")
+    .select("nome, dados_pagamento")
     .eq("id", candidatura.escola_id)
     .maybeSingle();
+
+  const rawPagamento = escola?.dados_pagamento as Record<string, unknown> | null;
+  const dadosPagamento = rawPagamento ? {
+    iban: typeof rawPagamento.iban === 'string' ? rawPagamento.iban : undefined,
+    banco: typeof rawPagamento.banco === 'string' ? rawPagamento.banco : undefined,
+  } : null;
 
   return {
     candidatura: candidatura as CandidaturaRow,
     aluno,
     escolaNome: escola?.nome ?? "Escola",
+    dadosPagamento,
   };
 }
 
@@ -71,7 +78,7 @@ export default async function FichaPreInscricaoPrintPage({
     return <div className="p-8">Candidatura não encontrada.</div>;
   }
 
-  const { candidatura, aluno, escolaNome } = data;
+  const { candidatura, aluno, escolaNome, dadosPagamento } = data;
   const dados = candidatura.dados_candidato as Record<string, any> | null;
   const nome = candidatura.nome_candidato || aluno?.nome || "—";
   const biNumero = dados?.bi_numero || aluno?.bi_numero || "—";
@@ -127,8 +134,8 @@ export default async function FichaPreInscricaoPrintPage({
           <section className="space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">Dados Bancários</h2>
             <div className="rounded-lg border border-slate-200 px-5 py-4 text-sm">
-              <p className="text-slate-700">IBAN: AO06 0000 0000 0000 0000 0000 0</p>
-              <p className="text-slate-700">Banco: Banco Parceiro</p>
+              <p className="text-slate-700">IBAN: {dadosPagamento?.iban || "AO06 0000 0000 0000 0000 0000 0"}</p>
+              <p className="text-slate-700">Banco: {dadosPagamento?.banco || "Banco Parceiro"}</p>
               <p className="text-slate-700">Referência: Pré-inscrição</p>
             </div>
           </section>

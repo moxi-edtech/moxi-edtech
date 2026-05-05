@@ -26,6 +26,23 @@ export function normalizeRoleForTenant(
     }
   }
 
+  // Legacy K12 roles can still exist on older formacao memberships.
+  // Normalize them at the product boundary so stale cookies/rows do not
+  // collapse to role=null and send valid users to /forbidden.
+  if (normalizedTenant === "formacao") {
+    if (["admin", "admin_escola", "staff_admin"].includes(normalizedRole)) {
+      return "formacao_admin";
+    }
+    if (["secretaria", "secretaria_financeiro"].includes(normalizedRole)) {
+      return "formacao_secretaria";
+    }
+    if (["financeiro", "admin_financeiro"].includes(normalizedRole)) {
+      return "formacao_financeiro";
+    }
+    if (normalizedRole === "professor") return "formador";
+    if (normalizedRole === "aluno" || normalizedRole === "encarregado") return "formando";
+  }
+
   // Mentor/Formador mapping
   if (normalizedRole === "mentor" || normalizedRole === "formador") return "formador";
 
@@ -48,4 +65,3 @@ export function normalizeRoleForTenant(
 
   return null;
 }
-

@@ -36,7 +36,16 @@ const styles = StyleSheet.create({
     }
 });
 
-export const FichaInscricaoPDF = ({ candidatura }: { candidatura: any }) => (
+interface FichaInscricaoPDFProps {
+  candidatura: any;
+  dadosPagamento?: {
+    iban?: string;
+    banco?: string;
+  } | null;
+  valorMatricula?: number | null;
+}
+
+export const FichaInscricaoPDF = ({ candidatura, dadosPagamento, valorMatricula }: FichaInscricaoPDFProps) => (
     <Document>
         <Page size="A4" style={styles.page}>
             <View>
@@ -60,9 +69,11 @@ export const FichaInscricaoPDF = ({ candidatura }: { candidatura: any }) => (
             <View style={styles.paymentInfo}>
                 <Text style={styles.sectionTitle}>Instruções de Pagamento</Text>
                 <Text style={styles.text}>Por favor, efectue o pagamento da taxa de matrícula para a seguinte conta:</Text>
-                <Text style={styles.text}><Text style={styles.bold}>Banco:</Text> Exemplo Bank</Text>
-                <Text style={styles.text}><Text style={styles.bold}>IBAN:</Text> AO06 0000 0000 0000 0000 0000 0</Text>
-                <Text style={styles.text}><Text style={styles.bold}>Valor:</Text> [Valor da Matrícula] Kz</Text>
+                <Text style={styles.text}><Text style={styles.bold}>Banco:</Text> {dadosPagamento?.banco || "Banco Parceiro"}</Text>
+                <Text style={styles.text}><Text style={styles.bold}>IBAN:</Text> {dadosPagamento?.iban || "AO06 0000 0000 0000 0000 0000 0"}</Text>
+                <Text style={styles.text}>
+                  <Text style={styles.bold}>Valor:</Text> {valorMatricula != null ? `${new Intl.NumberFormat('pt-AO').format(valorMatricula)} Kz` : "Consultar Secretaria"}
+                </Text>
                 <Text style={{...styles.text, marginTop: 10, fontSize: 10}}>
                     Esta pré-inscrição é válida por 48 horas (expira em: {new Date(candidatura.expires_at).toLocaleString()}).
                 </Text>

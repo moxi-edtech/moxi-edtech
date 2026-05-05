@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
+type DadosPagamento = {
+  iban?: string;
+  banco?: string;
+  titular?: string;
+};
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -48,7 +53,21 @@ function uploadWithProgress(url: string, formData: FormData, onProgress: (pct: n
   });
 }
 
-export function PaymentDrawer({ open, mensalidade, onClose, onUploaded, studentId }: { open: boolean; mensalidade: Mensalidade | null; onClose: () => void; onUploaded: (mensalidadeId: string) => void; studentId?: string | null; }) {
+export function PaymentDrawer({
+  open,
+  mensalidade,
+  dadosPagamento,
+  onClose,
+  onUploaded,
+  studentId,
+}: {
+  open: boolean;
+  mensalidade: Mensalidade | null;
+  dadosPagamento: DadosPagamento | null;
+  onClose: () => void;
+  onUploaded: (mensalidadeId: string) => void;
+  studentId?: string | null;
+}) {
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
@@ -116,8 +135,9 @@ export function PaymentDrawer({ open, mensalidade, onClose, onUploaded, studentI
         <p className="text-xs text-slate-500">Valor: {money.format(mensalidade.valor)}</p>
         <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
           <p className="font-medium text-slate-900">Coordenadas bancárias</p>
-          <p>Banco: BFA</p>
-          <p>IBAN: AO06 0000 0000 0000 0000 0000 0</p>
+          <p>Banco: {dadosPagamento?.banco || "Consultar secretaria"}</p>
+          <p>IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
+          {dadosPagamento?.titular && <p>Titular: {dadosPagamento.titular}</p>}
           <p>Referência: MENS-{mensalidade.id.slice(0, 8).toUpperCase()}</p>
         </div>
         <label className="mt-4 block">

@@ -111,6 +111,31 @@ export async function GET(request: Request) {
       return { id: m.id, competencia, valor: Number(m.valor_previsto ?? 0), vencimento, status, pago_em };
     });
 
+    // Dados de pagamento da escola
+    let dados_pagamento: {
+      iban?: string;
+      banco?: string;
+      titular?: string;
+    } | null = null;
+    try {
+      const { data: escola } = await supabase
+        .from('escolas')
+        .select('dados_pagamento')
+        .eq('id', ctx.escolaId)
+        .maybeSingle();
+
+      if (escola?.dados_pagamento) {
+        const raw = escola.dados_pagamento as Record<string, unknown>;
+        dados_pagamento = {
+          iban: typeof raw.iban === 'string' ? raw.iban : undefined,
+          banco: typeof raw.banco === 'string' ? raw.banco : undefined,
+          titular: typeof raw.titular === 'string' ? raw.titular : undefined,
+        };
+      }
+    } catch (e) {
+      console.error('Erro ao buscar dados de pagamento:', e);
+    }
+
     return NextResponse.json({
       ok: true,
       mensalidades: rows,
@@ -119,8 +144,10 @@ export async function GET(request: Request) {
         pendentes: totalComprovativosPendentes,
         ultimo_envio_em: ultimoComprovativoEnviadoEm,
       },
+      dados_pagamento,
     });
-  } catch (e) {
+    } catch (e) {
+
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

@@ -9,6 +9,7 @@ import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
 import OperationalFeedSection from "./OperationalFeedSection";
 import AcademicSection from "./AcademicSection";
+import PostWizardChecklist from "./PostWizardChecklist";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
@@ -445,11 +446,10 @@ export default function EscolaAdminDashboardContent({
         </div>
         <div className="space-y-8">
           <motion.div variants={itemVariants}>
-            <AcademicSection
-              escolaId={escolaId}
+            <PostWizardChecklist
               setupStatus={setupStatus}
+              stats={stats}
               missingPricingCount={missingPricingCount}
-              financeiroHref={financeiroHref}
             />
           </motion.div>
           <motion.div variants={itemVariants}>

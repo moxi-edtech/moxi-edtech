@@ -117,7 +117,13 @@ type TenantContextCookiePayload = {
   tenant_id: string;
   tenant_type: TenantType;
   role: string;
+  iat?: number;
   exp: number;
+};
+
+type TenantContextCookieCandidate = AuthContext & {
+  issuedAt: number;
+  expiresAt: number;
 };
 
 function resolveTenantContextCookieSecret() {
@@ -173,10 +179,21 @@ function hasLikelySupabaseSessionCookie(request: NextRequest): boolean {
     );
 }
 
-async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise<AuthContext | null> {
-  const raw = request.cookies.get(TENANT_CONTEXT_COOKIE)?.value;
-  if (!raw || !hasLikelySupabaseSessionCookie(request)) return null;
+function getCookieValues(request: NextRequest, name: string): string[] {
+  const values = request.cookies.getAll(name).map((cookie) => cookie.value);
+  const rawCookieHeader = request.headers.get("cookie") ?? "";
 
+  for (const part of rawCookieHeader.split(";")) {
+    const [rawName, ...rawValueParts] = part.trim().split("=");
+    if (rawName === name && rawValueParts.length > 0) {
+      values.push(rawValueParts.join("="));
+    }
+  }
+
+  return values.filter((value, index, all) => value && all.indexOf(value) === index);
+}
+
+async function decodeTenantContextCookie(raw: string): Promise<TenantContextCookieCandidate | null> {
   const [payloadEncoded, signature] = raw.split(".");
   if (!payloadEncoded || !signature) return null;
 
@@ -204,10 +221,28 @@ async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise
       role: normalizedRole,
       tenantType: normalizedTenantType,
       hasSession: true,
+      issuedAt: Number(payload.iat ?? 0),
+      expiresAt: Number(payload.exp ?? 0),
     };
   } catch {
     return null;
   }
+}
+
+async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise<AuthContext | null> {
+  if (!hasLikelySupabaseSessionCookie(request)) return null;
+
+  const rawCookies = getCookieValues(request, TENANT_CONTEXT_COOKIE);
+  if (rawCookies.length === 0) return null;
+
+  const candidates = (
+    await Promise.all(rawCookies.map((raw) => decodeTenantContextCookie(raw)))
+  ).filter((candidate): candidate is TenantContextCookieCandidate => candidate !== null);
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.issuedAt - a.issuedAt || b.expiresAt - a.expiresAt);
+  const { issuedAt: _issuedAt, expiresAt: _expiresAt, ...authContext } = candidates[0];
+  return authContext;
 }
 
 function createSupabaseClient(request: NextRequest, response: NextResponse) {

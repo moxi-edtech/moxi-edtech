@@ -49,12 +49,11 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         metaEscolaId ? String(metaEscolaId) : null
       )
     : null;
-  const scopedEscolaId = resolvedEscolaId ?? escolaId;
-
-  // Scoped to this escola — fixes the "/financeiro" global fallback bug
+  const scopedEscolaId = resolvedEscolaId ?? (escolaId !== "null" ? (escolaId || null) : null);
+  const isValidId = Boolean(scopedEscolaId && scopedEscolaId !== "null");
 
   const fetchJson = async <T,>(path: string, fallback: T): Promise<T> => {
-    if (!baseUrl) return fallback;
+    if (!baseUrl || !isValidId) return fallback;
     try {
       const res  = await fetch(`${baseUrl}${path}`, {
         cache: "no-store",
@@ -84,6 +83,9 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
   let financeiroHref = `/escola/${escolaId}/financeiro`;
 
   try {
+    if (!isValidId) throw new Error("ID de escola inválido ou ausente.");
+    const validId = scopedEscolaId as string;
+
     const todayKey = new Date().toISOString().slice(0, 10);
     const now = new Date();
     const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -91,7 +93,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     let missingPricingQuery = s
       .from("vw_financeiro_missing_pricing_count")
       .select("ano_letivo, missing_count")
-      .eq("escola_id", scopedEscolaId);
+      .eq("escola_id", validId);
     missingPricingQuery = applyKf2ListInvariants(missingPricingQuery, {
       defaultLimit: 1,
       order: [{ column: "ano_letivo", ascending: false }],
@@ -101,7 +103,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     let financeiroKpiQuery = s
       .from("vw_financeiro_kpis_mes")
       .select("mes_ref, previsto_total, realizado_total")
-      .eq("escola_id", scopedEscolaId)
+      .eq("escola_id", validId)
       .eq("mes_ref", currentMonthStart);
     financeiroKpiQuery = applyKf2ListInvariants(financeiroKpiQuery, {
       defaultLimit: 1,
@@ -125,40 +127,40 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     ] = await Promise.all([
       s.from("vw_admin_dashboard_counts")
         .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
-        .eq("escola_id", scopedEscolaId)
+        .eq("escola_id", validId)
         .maybeSingle(),
 
       s.from("vw_admin_pending_turmas_count")
         .select("pendentes_total")
-        .eq("escola_id", scopedEscolaId)
+        .eq("escola_id", validId)
         .maybeSingle(),
 
       s.from("curso_curriculos")
         .select("id")
-        .eq("escola_id", scopedEscolaId)
+        .eq("escola_id", validId)
         .eq("status", "draft"),
 
       s.from("vw_escola_setup_status")
         .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
-        .eq("escola_id", scopedEscolaId)
+        .eq("escola_id", validId)
         .maybeSingle(),
 
       s.from("configuracoes_escola")
         .select("frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config")
-        .eq("escola_id", scopedEscolaId)
+        .eq("escola_id", validId)
         .maybeSingle(),
 
       // Fetch active ano_letivo year for the header badge
       s.from("anos_letivos")
         .select("ano")
-        .eq("escola_id", scopedEscolaId)
+        .eq("escola_id", validId)
         .eq("status", "ativo")
         .maybeSingle(),
 
       missingPricingQuery,
       financeiroKpiQuery,
 
-      s.from("escolas").select("nome, slug").eq("id", scopedEscolaId).maybeSingle(),
+      s.from("escolas").select("nome, slug").eq("id", validId).maybeSingle(),
 
       fetchJson(`/api/escolas/${escolaId}/admin/dashboard`, { ok: false, charts: null }),
 
@@ -230,12 +232,12 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       const [horarioRes, avaliacaoRes] = await Promise.all([
         s.from("curso_matriz")
           .select("disciplina_id")
-          .eq("escola_id", scopedEscolaId)
+          .eq("escola_id", validId)
           .eq("status_horario", "incompleto")
           .in("curso_curriculo_id", draftIds),
         s.from("curso_matriz")
           .select("disciplina_id")
-          .eq("escola_id", scopedEscolaId)
+          .eq("escola_id", validId)
           .eq("status_avaliacao", "incompleto")
           .in("curso_curriculo_id", draftIds),
       ]);

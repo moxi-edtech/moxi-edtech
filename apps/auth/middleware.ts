@@ -120,7 +120,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const isPublicAsset = PUBLIC_ASSET_PATTERN.test(pathname) || pathname.startsWith("/_next/");
-  const publicWhenNoSession = pathname === LOGIN_PATH || pathname.startsWith("/api/auth/") || isPublicAsset;
+  const publicWhenNoSession =
+    pathname === LOGIN_PATH ||
+    pathname.startsWith("/api/auth/") ||
+    pathname.startsWith("/api/jobs/auth-admin") ||
+    isPublicAsset;
 
   if (!hasSession && !publicWhenNoSession) {
     console.info(
