@@ -30,57 +30,83 @@ export default function RedirectPage() {
     let unsub: (() => void) | null = null;
     let timeout: NodeJS.Timeout | null = null;
 
-    const goLogin = () => router.replace("/login");
+    const goLogin = () => {
+      console.warn("[Redirect] Auth timeout or failed resolution. Returning to /login");
+      window.location.replace("/login");
+    };
 
     const resolve = async () => {
+      console.info("[Redirect] Initializing auth resolution...");
       try {
         const shouldRouteToAdmin = async (escolaId: string) => {
           return shouldRouteToEscolaAdmin(supabase as any, escolaId);
         };
 
         // 🔑 sempre tenta pegar o usuário validado
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("[Redirect] Supabase getUser error:", userError);
+        }
 
         if (!user) {
-          // Espera onAuthStateChange em caso de fresh redirect (magic link ou primeiro login)
-          const { data } = supabase.auth.onAuthStateChange(async () => {
+          console.info("[Redirect] No user session found, waiting for auth state change...");
+          const { data } = supabase.auth.onAuthStateChange(async (event) => {
+            console.info(`[Redirect] Auth state changed: ${event}`);
             const { data: { user: u } } = await supabase.auth.getUser();
             if (u) {
+              console.info("[Redirect] User detected after state change. Refreshing and continuing...");
               await router.refresh(); // 🔑 força sincronizar cookies no server
               await next(u);
             }
           });
-          unsub = () => { try { data.subscription.unsubscribe(); } catch {} };
+          unsub = () => { 
+            try { 
+              console.info("[Redirect] Unsubscribing from auth state changes");
+              data.subscription.unsubscribe(); 
+            } catch {} 
+          };
 
-          // fallback em 3s → login
-          timeout = setTimeout(goLogin, 3000);
+          // fallback em 5s → login (aumentado para dar mais fôlego em conexões lentas)
+          timeout = setTimeout(goLogin, 5000);
         } else {
+          console.info("[Redirect] Active session found for user:", user.id);
           await router.refresh(); // 🔑 força sincronizar cookies no server
           await next(user);
         }
 
         async function next(user: User) {
+          console.info("[Redirect] Processing user routing...");
           // se tiver timeout/unsub → cancela
           if (timeout) clearTimeout(timeout);
           if (unsub) unsub();
 
           // Force password change flow
           if (user?.user_metadata?.must_change_password) {
-            router.replace("/mudar-senha");
+            console.info("[Redirect] Forced password change required");
+            window.location.replace("/mudar-senha");
             return;
           }
 
           // Perfil
-          const { data: rows } = await supabase
+          console.info("[Redirect] Fetching user profile...");
+          const { data: rows, error: profileError } = await supabase
             .from("profiles")
             .select("role, escola_id, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
             .limit(1);
 
+          if (profileError) {
+            console.error("[Redirect] Profile fetch error:", profileError);
+          }
+
           const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
           const role: string = profile?.role ?? "guest";
           const escola_id: string | null = profile?.escola_id ?? null;
+          
+          console.info(`[Redirect] Resolved role: ${role}, profile_escola_id: ${escola_id}`);
+
           const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
           const tenantType = String(
             appMetadata.tenant_type ??
@@ -89,10 +115,16 @@ export default function RedirectPage() {
           )
             .trim()
             .toLowerCase();
+
+          console.info(`[Redirect] Tenant type: ${tenantType}`);
+
           const resolvedEscolaId = escola_id || (await resolveEscolaIdForUser(supabase, user.id));
           const baseEscolaId = escola_id || resolvedEscolaId;
           const resolvedParam = baseEscolaId ? await resolveEscolaParam(supabase, baseEscolaId) : null;
           const escolaParam = resolvedParam?.slug ? resolvedParam.slug : baseEscolaId;
+          
+          console.info(`[Redirect] Resolved tenant context - ID: ${baseEscolaId}, Param: ${escolaParam}`);
+
           const isK12AdminRole =
             role === "admin" ||
             role === "admin_escola" ||
@@ -104,58 +136,59 @@ export default function RedirectPage() {
             role === "formacao_financeiro" ||
             role === "formador" ||
             role === "formando";
+
           if (tenantType === "formacao" || isFormacaoRole) {
             const formacaoBaseUrl = getFormacaoBaseUrl();
+            let target = `${formacaoBaseUrl}/meus-cursos`;
+
             if (
               role === "formacao_admin" ||
               role === "admin" ||
               role === "admin_escola" ||
               role === "staff_admin"
             ) {
-              window.location.replace(`${formacaoBaseUrl}/admin/dashboard`);
+              target = `${formacaoBaseUrl}/admin/dashboard`;
             } else if (role === "formacao_secretaria") {
-              window.location.replace(`${formacaoBaseUrl}/secretaria/catalogo-cursos`);
+              target = `${formacaoBaseUrl}/secretaria/catalogo-cursos`;
             } else if (role === "formacao_financeiro") {
-              window.location.replace(`${formacaoBaseUrl}/financeiro/dashboard`);
+              target = `${formacaoBaseUrl}/financeiro/dashboard`;
             } else if (role === "formador") {
-              window.location.replace(`${formacaoBaseUrl}/agenda`);
-            } else {
-              window.location.replace(`${formacaoBaseUrl}/meus-cursos`);
+              target = `${formacaoBaseUrl}/agenda`;
             }
+
+            console.info(`[Redirect] Redirecting to Formacao Product: ${target}`);
+            window.location.replace(target);
             return;
           }
 
           // Roteamento por role
           if (baseEscolaId && isK12AdminRole) {
             const done = await shouldRouteToAdmin(baseEscolaId);
-            if (escolaParam) {
-              router.replace(done ? `/escola/${escolaParam}/admin` : `/escola/${escolaParam}/onboarding`);
-            } else {
-              router.replace(done ? `/escola/${baseEscolaId}/admin` : `/escola/${baseEscolaId}/onboarding`);
-            }
+            const path = done ? "admin" : "onboarding";
+            const dest = escolaParam ? `/escola/${escolaParam}/${path}` : `/escola/${baseEscolaId}/${path}`;
+            console.info(`[Redirect] K12 Admin routing to: ${dest}`);
+            window.location.replace(dest);
             return;
           }
 
+          let finalDest = "/";
           switch (role) {
             case "super_admin":
-              router.replace("/super-admin");
+              finalDest = "/super-admin";
               break;
             case "admin":
             case "admin_escola":
             case "staff_admin":
               if (baseEscolaId) {
                 const done = await shouldRouteToAdmin(baseEscolaId);
-                if (escolaParam) {
-                  router.replace(done ? `/escola/${escolaParam}/admin` : `/escola/${escolaParam}/onboarding`);
-                } else {
-                  router.replace(done ? `/escola/${baseEscolaId}/admin` : `/escola/${baseEscolaId}/onboarding`);
-                }
+                const path = done ? "admin" : "onboarding";
+                finalDest = escolaParam ? `/escola/${escolaParam}/${path}` : `/escola/${baseEscolaId}/${path}`;
               } else {
-                router.replace("/admin");
+                finalDest = "/admin";
               }
               break;
             case "professor":
-              router.replace("/professor");
+              finalDest = "/professor";
               break;
             case "aluno": {
               const { data: prof2 } = await supabase
@@ -172,43 +205,33 @@ export default function RedirectPage() {
                   .eq("id", escolaId)
                   .limit(1);
                 const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
-                router.replace(enabled ? "/aluno" : "/aluno/desabilitado");
+                finalDest = enabled ? "/aluno" : "/aluno/desabilitado";
               } else {
-                router.replace("/aluno");
+                finalDest = "/aluno";
               }
               break;
             }
             case "secretaria":
-              if (escolaParam) {
-                router.replace(`/escola/${escolaParam}/secretaria`);
-              } else {
-                router.replace("/secretaria");
-              }
+              finalDest = escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
               break;
             case "financeiro":
-              router.replace("/financeiro");
+              finalDest = "/financeiro";
               break;
-            case "secretaria_financeiro": {
-              if (escolaParam) {
-                router.replace(`/escola/${escolaParam}/secretaria`)
-              } else {
-                router.replace('/secretaria')
-              }
+            case "secretaria_financeiro":
+              finalDest = escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
               break;
-            }
             case "admin_financeiro":
-              if (escolaParam) {
-                router.replace(`/escola/${escolaParam}/admin/dashboard`)
-              } else {
-                router.replace('/admin')
-              }
+              finalDest = escolaParam ? `/escola/${escolaParam}/admin/dashboard` : "/admin";
               break;
             default:
-              router.replace("/");
+              finalDest = "/";
               break;
           }
+          console.info(`[Redirect] Final routing destination: ${finalDest}`);
+          window.location.replace(finalDest);
         }
-      } catch {
+      } catch (err) {
+        console.error("[Redirect] Critical error during resolution:", err);
         goLogin();
       }
     };
