@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { hasPermission } from "@/lib/permissions"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { invalidateEscolaSlugCache } from "@/lib/tenant/resolveEscolaParam"
+import { resolveUniversalLoginUrl } from "@/middleware"
 
 // POST /api/escolas/[id]/onboarding
 // Authorizes current user against the target escola, then performs updates/inserts
