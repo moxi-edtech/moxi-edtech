@@ -417,6 +417,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  if (pathname === '/login') {
+    return finalizeResponse(request, redirectToCentralAuth(request, response), allowedOrigin);
+  }
+
   const productContext = detectProductContextFromHostname(request.headers.get('host'));
   const apiPath = isApiPath(pathname);
   const origin = request.headers.get('origin');
@@ -709,6 +714,7 @@ export async function middleware(request: NextRequest) {
 // Configuração para aplicar o middleware apenas em rotas de API sensíveis
 export const config = {
   matcher: [
+    '/login',
     '/escola/:path*',
     '/api/escola/:path*',
     '/api/escolas/:path*',
