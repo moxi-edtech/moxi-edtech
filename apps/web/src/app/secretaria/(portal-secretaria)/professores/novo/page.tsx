@@ -9,7 +9,7 @@ export default async function Page() {
   const user = sess?.user;
 
   if (!user) {
-    return redirect("/conta/login");
+    return redirect("/redirect");
   }
 
   const { data: prof } = await s
