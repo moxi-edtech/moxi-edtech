@@ -11,6 +11,8 @@ const CandidaturaSchema = z.object({
   telefone: z.string().trim().min(7, "Telefone inválido").optional().nullable(),
   data_nascimento: z.string().optional().nullable(),
   sexo: z.enum(["M", "F", "O", "N"]).optional().nullable(),
+  pai_nome: z.string().trim().max(160).optional().nullable(),
+  mae_nome: z.string().trim().max(160).optional().nullable(),
   
   // Dados do Encarregado
   responsavel_nome: z.string().trim().min(5, "Nome do responsável deve ter pelo menos 5 caracteres"),
@@ -113,6 +115,8 @@ export async function POST(
       telefone: data.telefone || null,
       data_nascimento: data.data_nascimento || null,
       sexo: data.sexo || null,
+      pai_nome: data.pai_nome || null,
+      mae_nome: data.mae_nome || null,
       responsavel_nome: data.responsavel_nome,
       responsavel_contato: data.responsavel_contato,
       documentos: body.documentos || {}, // Usamos do body original para garantir flexibilidade se o Zod for estrito demais

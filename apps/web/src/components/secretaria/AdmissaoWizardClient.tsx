@@ -108,6 +108,8 @@ type CandidaturaDraft = {
     endereco?: string | null;
     naturalidade?: string | null;
     provincia?: string | null;
+    pai_nome?: string | null;
+    mae_nome?: string | null;
     encarregado_relacao?: string | null;
     responsavel_nome?: string | null;
     responsavel_contato?: string | null;
@@ -188,6 +190,8 @@ type DraftIdentificacao = {
   endereco?: string;
   naturalidade?: string;
   provincia?: string;
+  pai_nome?: string;
+  mae_nome?: string;
   encarregado_relacao?: string;
   responsavel_nome?: string;
   responsavel_contato?: string;
@@ -221,6 +225,8 @@ function Step1Identificacao(props: {
     endereco: "",
     naturalidade: "",
     provincia: "",
+    pai_nome: "",
+    mae_nome: "",
     encarregado_relacao: "",
     responsavel_nome: "",
     responsavel_contato: "",
@@ -257,6 +263,8 @@ function Step1Identificacao(props: {
       endereco: initialData.dados_candidato?.endereco ?? "",
       naturalidade: initialData.dados_candidato?.naturalidade ?? "",
       provincia: initialData.dados_candidato?.provincia ?? "",
+      pai_nome: initialData.dados_candidato?.pai_nome ?? "",
+      mae_nome: initialData.dados_candidato?.mae_nome ?? "",
       encarregado_relacao: initialData.dados_candidato?.encarregado_relacao ?? "",
       responsavel_nome: initialData.dados_candidato?.responsavel_nome ?? "",
       responsavel_contato: initialData.dados_candidato?.responsavel_contato ?? "",
@@ -297,6 +305,8 @@ function Step1Identificacao(props: {
       form.endereco,
       form.naturalidade,
       form.provincia,
+      form.pai_nome,
+      form.mae_nome,
       form.encarregado_relacao,
       form.responsavel_nome,
       form.responsavel_contato,
@@ -309,6 +319,8 @@ function Step1Identificacao(props: {
     form.endereco,
     form.naturalidade,
     form.provincia,
+    form.pai_nome,
+    form.mae_nome,
     form.encarregado_relacao,
     form.responsavel_nome,
     form.responsavel_contato,
@@ -698,6 +710,24 @@ function Step1Identificacao(props: {
               value={form.provincia ?? ""}
               onChange={onChange}
               placeholder="Província"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="pai_nome"
+              value={form.pai_nome ?? ""}
+              onChange={onChange}
+              placeholder="Nome do pai"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="mae_nome"
+              value={form.mae_nome ?? ""}
+              onChange={onChange}
+              placeholder="Nome da mãe"
               disabled={!canEditDraft}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
             />

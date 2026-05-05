@@ -15,10 +15,25 @@ type RealtimeState = "live" | "polling";
 const POLLING_MS = 15_000;
 const WS_TIMEOUT_MS = 12_000;
 const REALTIME_THROTTLE_MS = 2_000;
+const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED === "true";
 
 const parseEnvMs = (value: string | undefined, fallback: number) => {
   const parsed = Number.parseInt((value ?? "").trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const isAbortLikeError = (error: unknown) => {
+  const record = error as { message?: unknown; details?: unknown; name?: unknown } | null;
+  const text = [
+    record?.name,
+    record?.message,
+    record?.details,
+    error instanceof Error ? error.message : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return /AbortError|aborted/i.test(text);
 };
 
 export function useAdminActivityFeed(escolaId: string, limit = 20) {
@@ -78,6 +93,11 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
   }, [fetchBootstrap]);
 
   useEffect(() => {
+    if (!REALTIME_ENABLED) {
+      setRealtimeState("polling");
+      return;
+    }
+
     const channel = supabase
       .channel(`admin-activity-${escolaId}`)
       .on(
@@ -109,7 +129,11 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
 
     return () => {
       if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel).catch((error) => {
+        if (!isAbortLikeError(error)) {
+          console.warn("[useAdminActivityFeed] removeChannel error:", error);
+        }
+      });
     };
   }, [escolaId, handleRealtimeUpdate, supabase, wsTimeoutMs]);
 

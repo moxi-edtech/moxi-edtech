@@ -23,7 +23,10 @@ export function ServiceWorkerRegister() {
     if (!("serviceWorker" in navigator)) return;
 
     const onLoad = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch(() => undefined);
     };
 
     window.addEventListener("load", onLoad);

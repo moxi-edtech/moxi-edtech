@@ -44,6 +44,8 @@ export type Database = {
           escola_id: string
           id: string
           naturalidade: string | null
+          pai_nome: string | null
+          mae_nome: string | null
           nome: string | null
           nome_responsavel: string | null
           profile_id: string
@@ -62,6 +64,8 @@ export type Database = {
           escola_id: string
           id?: string
           naturalidade?: string | null
+          pai_nome?: string | null
+          mae_nome?: string | null
           nome?: string | null
           nome_responsavel?: string | null
           profile_id: string
@@ -80,6 +84,8 @@ export type Database = {
           escola_id?: string
           id?: string
           naturalidade?: string | null
+          pai_nome?: string | null
+          mae_nome?: string | null
           nome?: string | null
           nome_responsavel?: string | null
           profile_id?: string

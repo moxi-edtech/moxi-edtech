@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type Prioridade = "info" | "aviso" | "urgente";
@@ -35,8 +35,25 @@ type UseNotificacoesReturn = {
   refresh: () => Promise<void>;
 };
 
+const NOTIFICACOES_POLL_MS = 30_000;
+const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED === "true";
+
+const isAbortLikeError = (error: unknown) => {
+  const record = error as { message?: unknown; details?: unknown; name?: unknown } | null;
+  const text = [
+    record?.name,
+    record?.message,
+    record?.details,
+    error instanceof Error ? error.message : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return /AbortError|aborted/i.test(text);
+};
+
 export function useNotificacoes(): UseNotificacoesReturn {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +84,7 @@ export function useNotificacoes(): UseNotificacoesReturn {
       const { data } = await supabase.auth.getUser();
       if (!active) return;
       setUserId(data?.user?.id ?? null);
+      if (!data?.user) setLoading(false);
     };
 
     loadUser();
@@ -82,6 +100,14 @@ export function useNotificacoes(): UseNotificacoesReturn {
     // Fix: Avoiding synchronous setState inside effect to satisfy lint/react rules
     // eslint-disable-next-line react-hooks/set-state-in-effect
     Promise.resolve().then(() => fetchNotificacoes());
+
+    if (!REALTIME_ENABLED) {
+      const interval = window.setInterval(() => {
+        void fetchNotificacoes();
+      }, NOTIFICACOES_POLL_MS);
+
+      return () => window.clearInterval(interval);
+    }
 
     const channel = supabase
       .channel("notificacoes-realtime")
@@ -118,7 +144,11 @@ export function useNotificacoes(): UseNotificacoesReturn {
     channelRef.current = channel;
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel).catch((error) => {
+        if (!isAbortLikeError(error)) {
+          console.warn("[useNotificacoes] removeChannel error:", error);
+        }
+      });
       channelRef.current = null;
     };
   }, [fetchNotificacoes, supabase, userId]);

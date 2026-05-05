@@ -58,6 +58,8 @@ export const FichaInscricaoPDF = ({ candidatura, dadosPagamento, valorMatricula 
                 <Text style={styles.text}><Text style={styles.bold}>Email:</Text> {candidatura.dados_candidato.email}</Text>
                 <Text style={styles.text}><Text style={styles.bold}>Telefone:</Text> {candidatura.dados_candidato.telefone}</Text>
                 <Text style={styles.text}><Text style={styles.bold}>Nº do BI:</Text> {candidatura.dados_candidato.bi_numero}</Text>
+                <Text style={styles.text}><Text style={styles.bold}>Nome do pai:</Text> {candidatura.dados_candidato.pai_nome || '—'}</Text>
+                <Text style={styles.text}><Text style={styles.bold}>Nome da mãe:</Text> {candidatura.dados_candidato.mae_nome || '—'}</Text>
             </View>
             
             <View style={styles.section}>
