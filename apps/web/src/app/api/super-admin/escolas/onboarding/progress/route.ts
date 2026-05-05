@@ -23,10 +23,10 @@ export async function GET() {
     }
 
     // Fetch basic schools
-    let escolas: any[] | null = null
+    let escolas: { id: string; nome: string; onboarding_finalizado: boolean; needs_academic_setup: boolean }[] | null = null
     {
       const sel = 'id, nome, onboarding_finalizado, needs_academic_setup'
-      let escolasQuery = (s as any)
+      let escolasQuery = s
         .from('escolas')
         .select(sel)
         .order('nome', { ascending: true })
@@ -35,30 +35,13 @@ export async function GET() {
 
       const { data, error } = await escolasQuery
       if (error) {
-        const msg = String(error.message || '')
-        if (msg.includes('needs_academic_setup') || msg.toLowerCase().includes('schema cache')) {
-          let fallbackQuery = (s as any)
-            .from('escolas')
-            .select('id, nome, onboarding_finalizado')
-            .order('nome', { ascending: true })
-
-          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 1000 })
-
-          const { data: data2, error: err2 } = await fallbackQuery
-          if (err2) {
-            return NextResponse.json({ ok: false, error: err2.message }, { status: 400 })
-          }
-          escolas = data2 as any[]
-        } else {
-          return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-        }
-      } else {
-        escolas = data as any[]
+        return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
       }
+      escolas = data
     }
 
     // Fetch all drafts (limited) ordered by updated_at desc to pick the latest per escola
-    let draftsQuery = (s as any)
+    let draftsQuery = s
       .from('onboarding_drafts')
       .select('escola_id, step, updated_at')
       .order('updated_at', { ascending: false })
@@ -68,24 +51,24 @@ export async function GET() {
     const { data: drafts } = await draftsQuery
 
     const latestByEscola = new Map<string, { step: number | null, updated_at: string | null }>()
-    for (const d of (drafts || []) as any[]) {
-      const eid = String((d as any).escola_id)
+    for (const d of drafts || []) {
+      const eid = String(d.escola_id)
       if (!latestByEscola.has(eid)) {
-        latestByEscola.set(eid, { step: (d as any).step ?? null, updated_at: (d as any).updated_at ?? null })
+        latestByEscola.set(eid, { step: d.step ?? null, updated_at: d.updated_at ?? null })
       }
     }
 
-    const result = (escolas || []).map((e: any) => {
+    const result = (escolas || []).map((e) => {
       const id = String(e.id)
       const latest = latestByEscola.get(id) || { step: null, updated_at: null }
       const done = Boolean(e.onboarding_finalizado)
       return {
         escola_id: id,
-        nome: e.nome as string | null,
+        nome: e.nome,
         onboarding_finalizado: done,
         last_step: latest.step,
         last_updated_at: latest.updated_at,
-        needs_academic_setup: Boolean((e as any).needs_academic_setup),
+        needs_academic_setup: Boolean(e.needs_academic_setup),
       }
     })
 

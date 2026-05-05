@@ -2923,6 +2923,10 @@ export type Database = {
           plano_atual: Database["public"]["Enums"]["app_plan_tier"]
           slug: string
           status: string | null
+          dados_pagamento: Json | null
+          needs_academic_setup: boolean
+          onboarding_completed_at: string | null
+          onboarding_completed_by: string | null
           tenant_type: string
           updated_at: string | null
           use_mv_dashboards: boolean
@@ -2941,6 +2945,10 @@ export type Database = {
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
           slug: string
           status?: string | null
+          dados_pagamento?: Json | null
+          needs_academic_setup?: boolean
+          onboarding_completed_at?: string | null
+          onboarding_completed_by?: string | null
           tenant_type?: string
           updated_at?: string | null
           use_mv_dashboards?: boolean
@@ -2959,6 +2967,10 @@ export type Database = {
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
           slug?: string
           status?: string | null
+          dados_pagamento?: Json | null
+          needs_academic_setup?: boolean
+          onboarding_completed_at?: string | null
+          onboarding_completed_by?: string | null
           tenant_type?: string
           updated_at?: string | null
           use_mv_dashboards?: boolean
