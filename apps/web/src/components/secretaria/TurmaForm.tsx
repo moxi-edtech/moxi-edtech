@@ -64,7 +64,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
   const [turno, setTurno] = useState(initialData?.turno || "");
   const [sessionId, setSessionId] = useState(initialData?.session_id || "");
   const [sala, setSala] = useState(initialData?.sala || "");
-  const [capacidade, setCapacidade] = useState(initialData?.capacidade_maxima || 35);
+  const [capacidade, setCapacidade] = useState(initialData?.capacidade_maxima || 60);
   const [cursoId, setCursoId] = useState(initialData?.curso_id || "");
   const [classeId, setClasseId] = useState(initialData?.classe_id || "");
   const [skipMatricula, setSkipMatricula] = useState(false);
@@ -114,7 +114,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     setTurno(initialData?.turno || "");
     setSessionId(initialData?.session_id || "");
     setSala(initialData?.sala || "");
-    setCapacidade(initialData?.capacidade_maxima || 35);
+    setCapacidade(initialData?.capacidade_maxima || 60);
     setCursoId(initialData?.curso_id || "");
     setClasseId(initialData?.classe_id || "");
     if (initialData?.metadata?.importacao_config) {
