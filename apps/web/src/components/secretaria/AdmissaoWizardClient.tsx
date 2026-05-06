@@ -1350,6 +1350,7 @@ function Step2FitAcademico(props: {
 
 function Step3Pagamento(props: {
   onBack: () => void;
+  onReset: () => void;
   candidaturaId: string | null;
   turmaId: string | null;
   escolaId: string;
@@ -1367,6 +1368,7 @@ function Step3Pagamento(props: {
 }) {
   const {
     onBack,
+    onReset,
     candidaturaId,
     turmaId,
     escolaId,
@@ -1581,7 +1583,7 @@ function Step3Pagamento(props: {
               } else if (passo.id === "registar_propina") {
                 router.push(`/escola/${escolaParam}/secretaria/balcao?alunoId=${candidaturaId}`);
               } else if (passo.id === "nova_matricula") {
-                window.location.href = `/escola/${escolaParam}/secretaria/admissoes/nova`;
+                onReset();
               }
             }}
             onDismiss={() => router.push(`/escola/${escolaParam}/secretaria/matriculas`)}
@@ -1808,9 +1810,15 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
 
   const searchParams = useSearchParams();
 
+  const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     if (!searchParams) return;
     const candId = searchParams.get("candidaturaId");
+    
+    if (candId === lastCandidaturaIdRef.current) return;
+    lastCandidaturaIdRef.current = candId;
+
     if (candId && isUuid(candId)) {
       setCandidaturaId(candId);
 
@@ -1836,6 +1844,11 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
         setHydrated(true);
       })();
     } else {
+      setCandidaturaId(null);
+      setInitialData(null);
+      setCursoId(null);
+      setClasseId(null);
+      setTurmaId(null);
       setBaseCanEditDraft(true);
       setResumeMode(false);
       setEditOverride(false);
@@ -1933,6 +1946,28 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
       setDraftsError(err.message || "Falha ao excluir rascunhos.");
     }
   };
+
+  const handleReset = useCallback(() => {
+    setStep(1);
+    setCandidaturaId(null);
+    setTurmaId(null);
+    setCursoId(null);
+    setClasseId(null);
+    setInitialData(null);
+    setBaseCanEditDraft(true);
+    setResumeMode(false);
+    setEditOverride(false);
+    setWizardError(null);
+    
+    // Clear URL query parameters without triggering a hard reload or RSC re-fetch
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("candidaturaId");
+      url.searchParams.delete("alunoId");
+      url.searchParams.delete("alunoExistenteId");
+      window.history.replaceState(null, "", url.pathname);
+    }
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -2042,6 +2077,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
         ) : (
           <Step3Pagamento
             onBack={() => setStep(2)}
+            onReset={handleReset}
             candidaturaId={candidaturaId}
             turmaId={turmaId}
             escolaId={escolaId}
