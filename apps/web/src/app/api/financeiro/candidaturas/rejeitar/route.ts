@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { requireRoleInSchool } from '@/lib/authz'
 import type { Database } from '~types/supabase'
 
 const BodySchema = z.object({
@@ -16,34 +17,44 @@ export async function POST(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
-    if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
-
     const parsed = BodySchema.safeParse(await req.json().catch(() => ({})))
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
     const { id, motivo } = parsed.data
 
-    // Recupera dados para preservar o JSON
     const { data: cand } = await supabase
       .from('candidaturas')
-      .select('dados_candidato, escola_id')
+      .select('id, escola_id')
       .eq('id', id)
       .maybeSingle()
 
-    if (!cand || cand.escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Candidatura não encontrada' }, { status: 404 })
+    if (!cand) return NextResponse.json({ ok: false, error: 'Candidatura não encontrada' }, { status: 404 })
 
-    const dados = (cand as any)?.dados_candidato || {}
-    const dadosAtualizados = { ...dados, rejeicao: { motivo: motivo || 'Pagamento não localizado', data: new Date().toISOString() } }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, cand.escola_id)
+    if (!escolaId || escolaId !== cand.escola_id) {
+      return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+    }
 
-    const { error: updateErr } = await supabase
-      .from('candidaturas')
-      .update({ status: 'rejeitada', dados_candidato: dadosAtualizados })
-      .eq('id', id)
-      .eq('escola_id', escolaId)
+    const { error: authError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: ['financeiro', 'admin', 'admin_escola', 'staff_admin'],
+    })
+    if (authError) return authError
 
-    if (updateErr) return NextResponse.json({ ok: false, error: updateErr.message }, { status: 400 })
+    const motivoFinal = motivo || 'Pagamento não localizado'
+    const { error: rejectErr } = await supabase.rpc('admissao_reject', {
+      p_escola_id: escolaId,
+      p_candidatura_id: id,
+      p_motivo: motivoFinal,
+      p_metadata: {
+        origem: 'financeiro_candidaturas_rejeitar',
+        rejeicao: { motivo: motivoFinal, data: new Date().toISOString() },
+      },
+    })
+
+    if (rejectErr) return NextResponse.json({ ok: false, error: rejectErr.message }, { status: 400 })
 
     // Notifica secretaria
     await supabase
