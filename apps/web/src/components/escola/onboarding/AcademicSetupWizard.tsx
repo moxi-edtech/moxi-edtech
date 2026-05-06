@@ -46,6 +46,18 @@ type PeriodoConfig = {
   trava_notas_em: string;
 };
 
+const toDateInput = (value?: string | null) => {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+};
+
+const toDateTimeLocalInput = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+  return date.toISOString().slice(0, 16);
+};
+
 // --- HELPERS ---
 async function fetchAllPaginated<T>(endpoint: string, limit = 50): Promise<T[]> {
   const items: T[] = [];
@@ -212,6 +224,58 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       } catch (e) { console.error(e); }
     }
     fn();
+  }, [isContextReady, escolaContextId]);
+
+  useEffect(() => {
+    async function loadActiveSession() {
+      try {
+        if (!isContextReady) return;
+        const res = await fetch(`/api/escolas/${escolaContextId}/onboarding/core/session`, { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || json?.ok === false) {
+          throw new Error(json?.error || "Falha ao carregar sessão acadêmica.");
+        }
+
+        const sessions = Array.isArray(json?.data) ? (json.data as AcademicSession[]) : [];
+        const activeSession = sessions.find((session) => session.status === "ativa") ?? sessions[0] ?? null;
+        const loadedPeriods = Array.isArray(json?.periodos)
+          ? (json.periodos as Array<Periodo & { trava_notas_em?: string | null }>)
+          : [];
+
+        setPeriodos(loadedPeriods);
+
+        if (activeSession) {
+          setSessaoAtiva(activeSession);
+          setAnoLetivoId(activeSession.id);
+          const parsedAno = Number(activeSession.ano_letivo);
+          if (Number.isFinite(parsedAno)) setAnoLetivo(parsedAno);
+          setDataInicio(toDateInput(activeSession.data_inicio));
+          setDataFim(toDateInput(activeSession.data_fim));
+        } else {
+          setSessaoAtiva(null);
+          setAnoLetivoId(null);
+        }
+
+        if (loadedPeriods.length > 0) {
+          setPeriodosConfig(
+            loadedPeriods
+              .filter((periodo) => Number.isFinite(Number(periodo.numero)))
+              .sort((a, b) => Number(a.numero) - Number(b.numero))
+              .map((periodo) => ({
+                numero: Number(periodo.numero),
+                data_inicio: toDateInput(periodo.data_inicio),
+                data_fim: toDateInput(periodo.data_fim),
+                trava_notas_em: toDateTimeLocalInput(periodo.trava_notas_em),
+              })),
+          );
+        }
+      } catch (e) {
+        console.error(e);
+        warning(e instanceof Error ? e.message : "Falha ao carregar sessão acadêmica.");
+      }
+    }
+
+    loadActiveSession();
   }, [isContextReady, escolaContextId]);
 
   const handleCreateSession = async () => {
