@@ -151,10 +151,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const { toast, dismiss, success, error, warning } = useToast();
   const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
   
-  // Defensive logic for escolaId
-  const escolaParam = (escolaSlug && escolaSlug !== "null") ? escolaSlug : (escolaId !== "null" ? escolaId : null);
+  // Prefer the explicit page/route escola parameter. Falling back to the
+  // profile-level escola can load another school's academic session here.
+  const explicitEscolaParam = escolaId && escolaId !== "null" ? escolaId : null;
   const escolaUuidResolved = escolaUuid && escolaUuid !== "null" ? escolaUuid : null;
-  const escolaContextId = escolaUuidResolved || (escolaParam !== "null" ? escolaParam : null);
+  const escolaParam = explicitEscolaParam || escolaSlug || escolaUuidResolved;
+  const escolaContextId = escolaParam;
   const isContextReady = Boolean(escolaContextId && escolaContextId !== "null");
 
   const [step, setStep] = useState(1);

@@ -46,9 +46,9 @@ const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ s
 // Securely creates the Academic Year and its Periods using RPCs.
 export async function POST(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: requestedEscolaId } = context.params;
+  const { id: requestedEscolaId } = await context.params;
   const supabase = await supabaseServerTyped<Database>();
 
   try {
@@ -160,9 +160,9 @@ export async function POST(
 // Securely lists all sessions for the escola using user's permissions via RLS.
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: requestedEscolaId } = context.params;
+  const { id: requestedEscolaId } = await context.params;
   const supabase = await supabaseServerTyped<Database>();
 
   try {

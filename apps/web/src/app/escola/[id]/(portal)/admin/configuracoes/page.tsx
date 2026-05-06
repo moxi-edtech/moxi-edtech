@@ -19,7 +19,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   const resolvedParams = use(params);
   const escolaId = resolvedParams.id;
   const { escolaSlug } = useEscolaId();
-  const escolaParam = escolaSlug || escolaId;
+  const escolaParam = escolaId && escolaId !== "null" ? escolaId : (escolaSlug ?? escolaId);
 
   const [statusLoading, setStatusLoading] = useState(false);
   const [forceWizard, setForceWizard] = useState(false);
