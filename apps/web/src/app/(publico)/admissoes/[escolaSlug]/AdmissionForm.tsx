@@ -523,6 +523,20 @@ export function AdmissionForm({ config }: { config: Config }) {
                 candidaturaId={draftId}
                 onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, notas: path } }))}
               />
+              <DocumentUpload
+                label="Folha de 25 linhas"
+                description="Documento complementar solicitado pela secretaria."
+                escolaId={config.escola.id}
+                candidaturaId={draftId}
+                onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, folha_25_linhas: path } }))}
+              />
+              <DocumentUpload
+                label="Outro documento"
+                description="Anexe qualquer outro documento exigido pela escola."
+                escolaId={config.escola.id}
+                candidaturaId={draftId}
+                onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, outro_documento: path } }))}
+              />
             </div>
 
             <div className="pt-4 flex justify-between">
