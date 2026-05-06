@@ -615,6 +615,8 @@ function Step1Identificacao(props: {
           <option value="BI">BI</option>
           <option value="Cédula Pessoal">Cédula Pessoal</option>
           <option value="Passaporte">Passaporte</option>
+          <option value="Folha de 25 linhas">Folha de 25 linhas</option>
+          <option value="Outro documento">Outro documento</option>
         </select>
         {fieldErrors.tipo_documento && (
           <p className="text-xs text-red-600">{fieldErrors.tipo_documento}</p>
