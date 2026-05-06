@@ -60,6 +60,8 @@ export default function RequireSecretaria({
         return (
           papel === "secretaria" ||
           papel === "admin" ||
+          papel === "admin_escola" ||
+          papel === "staff_admin" ||
           papel === "secretaria_financeiro" ||
           papel === "admin_financeiro" ||
           papel === "financeiro" ||
