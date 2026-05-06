@@ -355,7 +355,13 @@ function DocCard({ icon: Icon, title, desc, onClick, highlight, locked }: {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
+export default function TurmaDetailClient({
+  turmaId,
+  escolaParam: explicitEscolaParam,
+}: {
+  turmaId: string;
+  escolaParam?: string | null;
+}) {
   const [activeTab,     setActiveTab]     = useState<Tab>("alunos");
   const [data,          setData]          = useState<TurmaData | null>(null);
   const [loading,       setLoading]       = useState(true);
@@ -397,7 +403,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const alunos                        = data?.alunos ?? [];
   const { escolaSlug } = useEscolaId();
   const escolaId = data?.turma.escola_id;
-  const escolaParam = escolaSlug || escolaId;
+  const escolaParam = explicitEscolaParam || escolaSlug || escolaId;
 
   const alunosVirtualizer = useVirtualizer({
     count:            alunos.length,
