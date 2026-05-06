@@ -20,9 +20,19 @@ type AlunoDetails = {
   data_nascimento: string | null;
   sexo: string | null;
   bi_numero: string | null;
+  tipo_documento: string | null;
+  numero_documento: string | null;
   naturalidade: string | null;
   provincia: string | null;
+  pai_nome: string | null;
+  mae_nome: string | null;
+  nif: string | null;
+  endereco: string | null;
+  encarregado_email: string | null;
   encarregado_relacao: string | null;
+  responsavel_financeiro_nome: string | null;
+  responsavel_financeiro_nif: string | null;
+  mesmo_que_encarregado: boolean | null;
 };
 
 export default function EditarAlunoPage() {
@@ -90,9 +100,19 @@ export default function EditarAlunoPage() {
         data_nascimento: form.data_nascimento,
         sexo: form.sexo,
         bi_numero: form.bi_numero,
+        tipo_documento: form.tipo_documento,
+        numero_documento: form.numero_documento,
         naturalidade: form.naturalidade,
         provincia: form.provincia,
+        pai_nome: form.pai_nome,
+        mae_nome: form.mae_nome,
+        nif: form.nif,
+        endereco: form.endereco,
+        encarregado_email: form.encarregado_email || undefined,
         encarregado_relacao: form.encarregado_relacao,
+        responsavel_financeiro_nome: form.responsavel_financeiro_nome,
+        responsavel_financeiro_nif: form.responsavel_financeiro_nif,
+        mesmo_que_encarregado: form.mesmo_que_encarregado,
       };
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -231,7 +251,40 @@ export default function EditarAlunoPage() {
 
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">BI</label>
+                  <label className="block text-sm font-medium text-moxinexa-dark">Tipo de documento</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.tipo_documento ?? ''}
+                    onChange={(e) => updateField('tipo_documento', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">Número do documento</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.numero_documento ?? form.bi_numero ?? ''}
+                    onChange={(e) => {
+                      updateField('numero_documento', e.target.value);
+                      if ((form.tipo_documento ?? '').toUpperCase() === 'BI') updateField('bi_numero', e.target.value);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">NIF</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.nif ?? ''}
+                    onChange={(e) => updateField('nif', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">BI legado</label>
                   <input
                     type="text"
                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
@@ -255,6 +308,36 @@ export default function EditarAlunoPage() {
                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.provincia ?? ''}
                     onChange={(e) => updateField('provincia', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">Nome do pai</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.pai_nome ?? ''}
+                    onChange={(e) => updateField('pai_nome', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">Nome da mãe</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.mae_nome ?? ''}
+                    onChange={(e) => updateField('mae_nome', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">Endereço</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.endereco ?? ''}
+                    onChange={(e) => updateField('endereco', e.target.value)}
                   />
                 </div>
               </div>
@@ -285,6 +368,36 @@ export default function EditarAlunoPage() {
                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.telefone_responsavel ?? ''}
                     onChange={(e) => updateField('telefone_responsavel', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="space-y-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-moxinexa-dark">Email do encarregado</label>
+                  <input
+                    type="email"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.encarregado_email ?? ''}
+                    onChange={(e) => updateField('encarregado_email', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-moxinexa-dark">Responsável financeiro</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.responsavel_financeiro_nome ?? ''}
+                    onChange={(e) => updateField('responsavel_financeiro_nome', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-moxinexa-dark">NIF financeiro</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    value={form.responsavel_financeiro_nif ?? ''}
+                    onChange={(e) => updateField('responsavel_financeiro_nif', e.target.value)}
                   />
                 </div>
               </div>

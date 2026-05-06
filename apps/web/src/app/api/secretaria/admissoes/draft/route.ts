@@ -134,6 +134,9 @@ const draftPayloadSchema = z
 
     mesmo_que_encarregado: z.boolean().optional(),
 
+    documentos: z.record(z.string()).optional(),
+    campos_extras: z.record(z.unknown()).optional(),
+
     percentagem_desconto: z.number().min(0).max(100).optional(),
     motivo_desconto: z.string().trim().max(200).optional(),
 

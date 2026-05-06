@@ -30,6 +30,7 @@ const CandidaturaSchema = z.object({
   // Documentos e Metadados
   draftId: z.string().uuid().optional(),
   documentos: z.record(z.string()).optional(),
+  campos_extras: z.record(z.unknown()).optional(),
 });
 
 export async function POST(
@@ -119,7 +120,8 @@ export async function POST(
       mae_nome: data.mae_nome || null,
       responsavel_nome: data.responsavel_nome,
       responsavel_contato: data.responsavel_contato,
-      documentos: body.documentos || {}, // Usamos do body original para garantir flexibilidade se o Zod for estrito demais
+      documentos: data.documentos || {},
+      campos_extras: data.campos_extras || {},
       draft_id: data.draftId || null,
     };
 
