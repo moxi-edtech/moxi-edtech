@@ -29,16 +29,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos.' }, { status: 400 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
-
-    if (userEscolaId && userEscolaId !== requestedEscolaId) {
+    const effectiveEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
+    if (!effectiveEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
 
     const { data: hasRole, error: rolesError } = await supabase
       .rpc('user_has_role_in_school', {
-        p_escola_id: requestedEscolaId,
+        p_escola_id: effectiveEscolaId,
         p_roles: ['admin_escola', 'secretaria', 'admin'],
       });
 
@@ -53,7 +51,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const { data: turma } = await supabase
       .from('turmas')
-      .select('id, ano_letivo')
+      .select('id, ano_letivo, ano_letivo_id')
       .eq('escola_id', effectiveEscolaId)
       .eq('id', parsed.data.turma_id)
       .maybeSingle();
@@ -62,18 +60,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Turma não encontrada.' }, { status: 404 });
     }
 
-    if (turma.ano_letivo == null) {
-      return NextResponse.json({ ok: true, items: [] });
+    const anoLetivoId = turma.ano_letivo_id ?? null;
+    let resolvedAnoLetivoId = anoLetivoId;
+
+    if (!resolvedAnoLetivoId && turma.ano_letivo != null) {
+      const { data: anoLetivo } = await supabase
+        .from('anos_letivos')
+        .select('id')
+        .eq('escola_id', effectiveEscolaId)
+        .eq('ano', Number(turma.ano_letivo))
+        .maybeSingle();
+
+      resolvedAnoLetivoId = anoLetivo?.id ?? null;
     }
 
-    const { data: anoLetivo } = await supabase
-      .from('anos_letivos')
-      .select('id')
-      .eq('escola_id', effectiveEscolaId)
-      .eq('ano', Number(turma.ano_letivo))
-      .maybeSingle();
-
-    if (!anoLetivo?.id) {
+    if (!resolvedAnoLetivoId) {
       return NextResponse.json({ ok: true, items: [] });
     }
 
@@ -81,7 +82,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .from('periodos_letivos')
       .select('id, numero, tipo, data_inicio, data_fim')
       .eq('escola_id', effectiveEscolaId)
-      .eq('ano_letivo_id', anoLetivo.id)
+      .eq('ano_letivo_id', resolvedAnoLetivoId)
       .eq('tipo', 'TRIMESTRE')
       .order('numero', { ascending: true })
       .order('id', { ascending: true })

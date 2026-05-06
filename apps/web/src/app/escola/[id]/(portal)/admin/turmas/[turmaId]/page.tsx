@@ -17,7 +17,7 @@ export default async function Page({
         entityId={turmaId}
         escolaId={escolaId}
       />
-      <TurmaDetailClient turmaId={turmaId} />
+      <TurmaDetailClient turmaId={turmaId} escolaParam={escolaId} />
     </>
   );
 }

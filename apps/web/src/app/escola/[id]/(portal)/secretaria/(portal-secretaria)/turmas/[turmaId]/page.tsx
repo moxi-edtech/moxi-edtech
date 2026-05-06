@@ -1,4 +1,5 @@
-import TurmaDetailPage from "@/app/secretaria/(portal-secretaria)/turmas/[id]/page";
+import AuditPageView from "@/components/audit/AuditPageView";
+import TurmaDetailClient from "@/components/secretaria/TurmaDetailClient";
 
 type Params = {
   id: string;
@@ -10,7 +11,12 @@ export default async function TurmaDetailEscolaPage({
 }: {
   params: Promise<Params>;
 }) {
-  const { turmaId } = await params;
+  const { id: escolaId, turmaId } = await params;
 
-  return TurmaDetailPage({ params: Promise.resolve({ id: turmaId }) });
+  return (
+    <>
+      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="turma_detail" entityId={turmaId} escolaId={escolaId} />
+      <TurmaDetailClient turmaId={turmaId} escolaParam={escolaId} />
+    </>
+  );
 }
