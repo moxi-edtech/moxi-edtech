@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireFormacaoRoles } from "@/lib/route-auth";
+import { requireFormacaoRoles, assertCohortAccess } from "@/lib/route-auth";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 const allowedRoles = [
   "formacao_admin",
   "formacao_secretaria",
+  "formador",
   "super_admin",
   "global_admin",
 ];
@@ -25,6 +26,10 @@ export async function GET(
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  // Verify cohort access
+  const access = await assertCohortAccess(s, auth.userId, auth.escolaId, auth.role, cohortId);
+  if (!access.ok) return access.response;
 
   const { data, error } = await s
     .from("formacao_aulas")
@@ -65,6 +70,10 @@ export async function POST(
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  // Verify cohort access
+  const access = await assertCohortAccess(s, auth.userId, auth.escolaId, auth.role, cohortId);
+  if (!access.ok) return access.response;
 
   const payload = {
     escola_id: auth.escolaId,

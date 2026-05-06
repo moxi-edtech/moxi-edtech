@@ -316,7 +316,7 @@ export default function CohortsPage() {
   const [formadorAssignmentForm, setFormadorAssignmentForm] = useState({
     formador_user_id: "",
     percentual_honorario: "100",
-    turno: "",
+    valor_hora: "0",
   });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -905,8 +905,10 @@ export default function CohortsPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           formador_user_id: formadorAssignmentForm.formador_user_id,
-          percentual_honorario: Number(formadorAssignmentForm.percentual_honorario || 100),
+          percentual_honorario: Number(formadorAssignmentForm.percentual_honorario),
+          valor_hora: Number(formadorAssignmentForm.valor_hora),
         }),
+
       });
       const json = (await res.json().catch(() => null)) as { ok: boolean; error?: string } | null;
 
@@ -914,7 +916,7 @@ export default function CohortsPage() {
         throw new Error(json?.error || "Falha ao atribuir formador");
       }
 
-      setFormadorAssignmentForm({ formador_user_id: "", percentual_honorario: "100", turno: "" });
+      setFormadorAssignmentForm({ formador_user_id: "", percentual_honorario: "100", valor_hora: "0" });
       await loadDetail(detail.cohort.id);
       setInfo("Formador atribuído à edição.");
     } catch (err) {
@@ -1269,6 +1271,20 @@ export default function CohortsPage() {
                         required
                       />
 
+                      <Input
+                        label="Valor/Hora (AOA)"
+                        type="number"
+                        min={0}
+                        value={formadorAssignmentForm.valor_hora}
+                        onChange={(value) =>
+                          setFormadorAssignmentForm((prev) => ({
+                            ...prev,
+                            valor_hora: value,
+                          }))
+                        }
+                        required
+                      />
+
                       <button
                         type="submit"
                         disabled={formadorBusy || availableFormadores.length === 0}
@@ -1293,7 +1309,7 @@ export default function CohortsPage() {
                             <p className="text-sm font-semibold text-[#111811]">{formador.nome}</p>
                             <p className="mt-0.5 text-xs text-[#4A6352]">{formador.email ?? "sem email"}</p>
                             <p className="mt-2 text-xs font-semibold text-[#8A9E8F]">
-                              Honorário: {Number(formador.percentual_honorario ?? 0)}%
+                              Honorário: {Number(formador.percentual_honorario ?? 0)}% · {formatMoney(Number((formador as any).valor_hora ?? 0))}/h
                             </p>
                           </div>
                           <button

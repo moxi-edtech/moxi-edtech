@@ -57,12 +57,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     | {
         formador_user_id?: string;
         percentual_honorario?: number;
+        valor_hora?: number;
       }
     | null;
 
   const formadorUserId = String(body?.formador_user_id ?? "").trim();
   const percentualRaw = Number(body?.percentual_honorario ?? 100);
   const percentualHonorario = Number.isFinite(percentualRaw) ? percentualRaw : 100;
+  const valorHora = Number(body?.valor_hora ?? 0);
 
   if (!formadorUserId) {
     return NextResponse.json({ ok: false, error: "formador_user_id é obrigatório" }, { status: 400 });
@@ -94,10 +96,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         cohort_id: cohortId,
         formador_user_id: formadorUserId,
         percentual_honorario: percentualHonorario,
+        valor_hora: valorHora,
       },
       { onConflict: "escola_id,cohort_id,formador_user_id" }
     )
-    .select("id, cohort_id, formador_user_id, percentual_honorario, created_at")
+    .select("id, cohort_id, formador_user_id, percentual_honorario, valor_hora, created_at")
     .single();
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

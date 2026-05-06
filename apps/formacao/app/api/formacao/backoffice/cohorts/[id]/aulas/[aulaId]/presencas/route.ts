@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireFormacaoRoles } from "@/lib/route-auth";
+import { requireFormacaoRoles, assertCohortAccess } from "@/lib/route-auth";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 const allowedRoles = [
   "formacao_admin",
   "formacao_secretaria",
+  "formador",
   "super_admin",
   "global_admin",
 ];
@@ -19,12 +20,17 @@ export async function GET(
   if (!auth.ok) return auth.response;
 
   const p = await params;
+  const cohortId = String(p.id ?? "").trim();
   const aulaId = String(p.aulaId ?? "").trim();
   if (!aulaId) {
     return NextResponse.json({ ok: false, error: "id da aula é obrigatório" }, { status: 400 });
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  // Verify cohort access
+  const access = await assertCohortAccess(s, auth.userId, auth.escolaId, auth.role, cohortId);
+  if (!access.ok) return access.response;
 
   const { data, error } = await s
     .from("formacao_presencas")
@@ -59,6 +65,11 @@ export async function POST(
   }
 
   const s = auth.supabase as FormacaoSupabaseClient;
+
+  const cohortId = String(p.id ?? "").trim();
+  // Verify cohort access
+  const access = await assertCohortAccess(s, auth.userId, auth.escolaId, auth.role, cohortId);
+  if (!access.ok) return access.response;
 
   // Perform an upsert for all presences
   const { error } = await s.from("formacao_presencas").upsert(

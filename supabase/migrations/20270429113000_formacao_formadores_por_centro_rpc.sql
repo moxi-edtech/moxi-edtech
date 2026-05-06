@@ -6,7 +6,8 @@ CREATE OR REPLACE FUNCTION public.formacao_formadores_por_centro(
 RETURNS TABLE(
   user_id uuid,
   nome text,
-  email text
+  email text,
+  telefone text
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -31,7 +32,8 @@ BEGIN
   SELECT
     eu.user_id,
     COALESCE(NULLIF(btrim(p.nome), ''), NULLIF(btrim(p.email), ''), 'Formador') AS nome,
-    p.email
+    p.email,
+    p.telefone
   FROM public.escola_users eu
   LEFT JOIN public.profiles p ON p.user_id = eu.user_id
   WHERE eu.escola_id = p_escola_id

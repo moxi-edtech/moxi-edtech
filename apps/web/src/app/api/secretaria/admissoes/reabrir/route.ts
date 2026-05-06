@@ -45,13 +45,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Status não pode ser reaberto" }, { status: 400 });
   }
 
-  const { error: updateErr } = await supabase
-    .from("candidaturas")
-    .update({ status: "rascunho", updated_at: new Date().toISOString() })
-    .eq("id", candidatura_id);
+  const { error: rpcErr } = await supabase.rpc("admissao_unsubmit", {
+    p_escola_id: cand.escola_id,
+    p_candidatura_id: candidatura_id,
+    p_motivo: "Reaberto via portal secretaria",
+  });
 
-  if (updateErr) {
-    return NextResponse.json({ ok: false, error: updateErr.message }, { status: 400 });
+  if (rpcErr) {
+    return NextResponse.json({ ok: false, error: rpcErr.message }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true });
