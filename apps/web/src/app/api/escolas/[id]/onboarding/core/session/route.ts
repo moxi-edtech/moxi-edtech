@@ -209,7 +209,7 @@ export async function GET(
       // RLS policy on 'periodos_letivos' will also enforce tenant isolation
       let periodosQuery = supabase
         .from('periodos_letivos')
-        .select('id, tipo, numero, data_inicio, data_fim')
+        .select('id, tipo, numero, data_inicio, data_fim, trava_notas_em')
         .eq('ano_letivo_id', ativo.id)
 
       periodosQuery = applyKf2ListInvariants(periodosQuery, {
@@ -230,6 +230,7 @@ export async function GET(
         nome: `${p.numero}º ${p.tipo === 'SEMESTRE' ? 'Semestre' : p.tipo === 'BIMESTRE' ? 'Bimestre' : 'Trimestre'}`,
         data_inicio: p.data_inicio,
         data_fim: p.data_fim,
+        trava_notas_em: p.trava_notas_em,
         sessao_id: ativo.id,
       }));
     }
