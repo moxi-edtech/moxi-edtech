@@ -197,7 +197,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       nome: t.turma_nome ?? 'Sem Nome',
       turno: t.turno ?? 'sem_turno',
       sala: t.sala ?? '',
-      capacidade_maxima: t.capacidade_maxima ?? 35,
+      capacidade_maxima: t.capacidade_maxima ?? 60,
       curso_nome: t.curso_nome ?? '',
       classe_nome: t.classe_nome ?? '',
       status_validacao: t.status_validacao ?? 'ativo',
@@ -338,7 +338,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         turno,
         ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
         sala: sala || null,
-        capacidade_maxima: capacidade_maxima || 35,
+        capacidade_maxima: capacidade_maxima || 60,
         curso_id: curso_id || null,
         classe_id: classe_id || null,
         letra: letra || null,

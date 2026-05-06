@@ -124,7 +124,7 @@ export async function GET(req: Request) {
         turno: t.turno ?? "N/D",
         sala: t.sala ?? "",
         session_id: t.session_id,
-        capacidade_maxima: t.capacidade_maxima || 35,
+        capacidade_maxima: t.capacidade_maxima || 60,
         curso_nome: t.curso_nome ?? "",
         classe_nome: t.classe_nome ?? "",
         status_validacao: t.status_validacao ?? 'rascunho',
@@ -205,7 +205,7 @@ export async function POST(req: Request) {
 
     // Sanitização de Inteiros
     const anoLetivoInt = typeof ano_letivo === 'string' ? parseInt(ano_letivo.replace(/\D/g, ''), 10) : ano_letivo;
-    const capacidadeInt = capacidade_maxima ? parseInt(String(capacidade_maxima), 10) : 35;
+    const capacidadeInt = capacidade_maxima ? parseInt(String(capacidade_maxima), 10) : 60;
     
     // Define status (Ativo por padrão se for criação manual)
     const statusFinal = status_validacao || 'ativo';
