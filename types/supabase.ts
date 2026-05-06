@@ -5563,6 +5563,7 @@ export type Database = {
           formador_user_id: string
           id: string
           percentual_honorario: number
+          valor_hora: number
         }
         Insert: {
           cohort_id: string
@@ -5571,6 +5572,7 @@ export type Database = {
           formador_user_id: string
           id?: string
           percentual_honorario?: number
+          valor_hora?: number
         }
         Update: {
           cohort_id?: string
@@ -5579,6 +5581,7 @@ export type Database = {
           formador_user_id?: string
           id?: string
           percentual_honorario?: number
+          valor_hora?: number
         }
         Relationships: [
           {
@@ -5793,6 +5796,54 @@ export type Database = {
           },
         ]
       }
+      formacao_cohort_avisos: {
+        Row: {
+          id: string
+          escola_id: string
+          cohort_id: string
+          formador_user_id: string | null
+          titulo: string
+          conteudo: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          escola_id: string
+          cohort_id: string
+          formador_user_id?: string | null
+          titulo: string
+          conteudo: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          escola_id?: string
+          cohort_id?: string
+          formador_user_id?: string | null
+          titulo?: string
+          conteudo?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formacao_cohort_avisos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formacao_cohort_avisos_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "formacao_cohorts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       formacao_cohorts: {
         Row: {
           carga_horaria_total: number
@@ -5805,6 +5856,7 @@ export type Database = {
           escola_id: string
           id: string
           nome: string
+          relatorio_pedagogico: string | null
           status: string
           turno: string | null
           updated_at: string
@@ -5822,6 +5874,7 @@ export type Database = {
           escola_id: string
           id?: string
           nome: string
+          relatorio_pedagogico?: string | null
           status?: string
           turno?: string | null
           updated_at?: string
@@ -5839,6 +5892,7 @@ export type Database = {
           escola_id?: string
           id?: string
           nome?: string
+          relatorio_pedagogico?: string | null
           status?: string
           turno?: string | null
           updated_at?: string
@@ -6558,6 +6612,7 @@ export type Database = {
           modalidade: string
           nome_snapshot: string | null
           origem: string
+          recomendado_certificacao: boolean | null
           status_pagamento: string
           telefone_snapshot: string | null
           updated_at: string
@@ -6578,6 +6633,7 @@ export type Database = {
           modalidade?: string
           nome_snapshot?: string | null
           origem?: string
+          recomendado_certificacao?: boolean | null
           status_pagamento?: string
           telefone_snapshot?: string | null
           updated_at?: string
@@ -6598,6 +6654,7 @@ export type Database = {
           modalidade?: string
           nome_snapshot?: string | null
           origem?: string
+          recomendado_certificacao?: boolean | null
           status_pagamento?: string
           telefone_snapshot?: string | null
           updated_at?: string

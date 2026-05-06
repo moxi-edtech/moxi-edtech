@@ -1077,9 +1077,11 @@ function Step2FitAcademico(props: {
     const classeId = turma?.classe_id || null;
     setCursoId(cursoId);
     setClasseId(classeId);
+    
+    // Explicitly update local state and DB with IDs to ensure sync
     await updateDraft({ 
-      curso_id: cursoId ?? undefined, 
-      classe_id: classeId ?? undefined, 
+      curso_id: cursoId || undefined, 
+      classe_id: classeId || undefined, 
       turma_preferencial_id: turmaId,
       percentagem_desconto: sel.percentagemDesconto,
       motivo_desconto: sel.motivoDesconto,

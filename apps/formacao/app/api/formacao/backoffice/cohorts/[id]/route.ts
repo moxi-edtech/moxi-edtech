@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireFormacaoRoles } from "@/lib/route-auth";
+import { requireFormacaoRoles, assertCohortAccess } from "@/lib/route-auth";
 import type { FormacaoSupabaseClient } from "@/lib/db-types";
 import { getCohortReferenceValue } from "@/lib/cohort-finance";
 
@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 const allowedRoles = [
   "formacao_admin",
   "formacao_secretaria",
+  "formador",
   "super_admin",
   "global_admin",
 ];
@@ -104,9 +105,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const s = auth.supabase as FormacaoSupabaseClient;
 
+  // Verify cohort access
+  const access = await assertCohortAccess(s, auth.userId, auth.escolaId, auth.role, cohortId);
+  if (!access.ok) return access.response;
+
   const { data: cohort, error: cohortError } = await s
     .from("formacao_cohorts")
-    .select("id, codigo, nome, curso_nome, carga_horaria_total, vagas, data_inicio, data_fim, status, created_at, curso_id, turno, formacao_cursos(nome)")
+    .select("id, codigo, nome, curso_nome, carga_horaria_total, vagas, data_inicio, data_fim, status, created_at, curso_id, turno, relatorio_pedagogico, formacao_cursos(nome)")
     .eq("escola_id", auth.escolaId)
     .eq("id", cohortId)
     .single();
@@ -131,7 +136,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { data: formadoresRows } = await s
     .from("formacao_cohort_formadores")
-    .select("id, formador_user_id, percentual_honorario, created_at")
+    .select("id, formador_user_id, percentual_honorario, valor_hora, created_at")
     .eq("escola_id", auth.escolaId)
     .eq("cohort_id", cohortId)
     .order("created_at", { ascending: false });
@@ -202,7 +207,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { data: inscricoesData } = await s
     .from("formacao_inscricoes")
-    .select("id, formando_user_id, estado, metadata, created_at, nome_snapshot, email_snapshot, telefone_snapshot")
+    .select("id, formando_user_id, estado, metadata, created_at, nome_snapshot, email_snapshot, telefone_snapshot, recomendado_certificacao")
     .eq("escola_id", auth.escolaId)
     .eq("cohort_id", cohortId)
     .is("cancelled_at", null)
@@ -321,6 +326,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       parcelas: group.parcelas,
       academic_status: inscricaoState?.estado || "pre_inscrito",
       access_blocked: Boolean(inscricaoState?.accessBlocked),
+      recomendado_certificacao: Boolean((inscricaoOriginal as any)?.recomendado_certificacao),
     };
   });
 
@@ -444,6 +450,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       id: string;
       formador_user_id: string;
       percentual_honorario: number;
+      valor_hora: number;
       created_at: string;
     };
 
@@ -451,6 +458,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       id: typed.id,
       user_id: typed.formador_user_id,
       percentual_honorario: typed.percentual_honorario,
+      valor_hora: typed.valor_hora,
       created_at: typed.created_at,
       nome: profileMap.get(typed.formador_user_id)?.nome ?? "Formador",
       email: profileMap.get(typed.formador_user_id)?.email ?? null,
@@ -471,11 +479,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     carga_horaria: m.carga_horaria,
   }));
 
+  const isFormador = auth.role === "formador";
+
   return NextResponse.json({
     ok: true,
     cohort: {
       ...enrichedCohort,
-      valor_referencia: valorReferencia,
+      valor_referencia: isFormador ? null : valorReferencia,
     },
     tabs: {
       formandos,
@@ -492,7 +502,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       certificados: certificados.length,
       modulos: modulos.length,
     },
-    finance: {
+    finance: isFormador ? null : {
       mode: isB2BMode ? "b2b" : "b2c",
       recebido: isB2BMode ? b2bReceived : receivedB2C,
       pendente: isB2BMode ? b2bPending : pendingB2C,
@@ -520,3 +530,45 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     },
   });
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireFormacaoRoles(allowedRoles);
+  if (!auth.ok) return auth.response;
+
+  const p = await params;
+  const cohortId = p.id;
+  const body = (await request.json().catch(() => null)) as {
+    relatorio_pedagogico?: string;
+  } | null;
+
+  if (!body) {
+    return NextResponse.json({ ok: false, error: "Corpo inválido" }, { status: 400 });
+  }
+
+  const s = auth.supabase as FormacaoSupabaseClient;
+
+  // Verify cohort access
+  const access = await assertCohortAccess(s, auth.userId, auth.escolaId, auth.role, cohortId);
+  if (!access.ok) return access.response;
+
+  const updateData: any = {};
+  if (typeof body.relatorio_pedagogico === "string") {
+    updateData.relatorio_pedagogico = body.relatorio_pedagogico;
+  }
+
+  const { error } = await s
+    .from("formacao_cohorts")
+    .update(updateData)
+    .eq("escola_id", auth.escolaId)
+    .eq("id", cohortId);
+
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+

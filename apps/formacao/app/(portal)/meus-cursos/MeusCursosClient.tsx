@@ -88,8 +88,8 @@ export default function MeusCursosClient() {
               title={item.cohort?.curso_nome ?? item.descricao}
               price={item.valor_total}
               format="PRESENCIAL"
-              actionLabel="Ver Pagamento"
-              onActionClick={(_id) => router.push("/pagamentos")}
+              actionLabel="Ver Detalhes"
+              onActionClick={(_id) => item.cohort?.id && router.push(`/meus-cursos/${item.cohort.id}`)}
             />
           ))}
 
