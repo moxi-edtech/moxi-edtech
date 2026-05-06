@@ -1,21 +1,26 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
+import { resolveSecretariaEscolaIdForPage } from "@/lib/secretaria/resolveSecretariaEscolaIdForPage";
 
 export const dynamic = 'force-dynamic'
 
-export default async function Page() {
+type PageProps = {
+  params?: Promise<{ id?: string }>;
+};
+
+export default async function Page({ params }: PageProps = {}) {
+  const routeParams = params ? await params : null;
   const s = await supabaseServer()
   const { data: sess } = await s.auth.getUser()
   const user = sess?.user
   let escolaId: string | null = null
   if (user) {
-    const { data: prof } = await s
-      .from('profiles')
-      .select('escola_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    escolaId = (prof as any)?.escola_id ?? null
+    escolaId = await resolveSecretariaEscolaIdForPage(
+      s as any,
+      user.id,
+      routeParams?.id ?? null
+    )
   }
 
   if (!escolaId) {

@@ -14,6 +14,7 @@ import {
   Activity,
   Building2,
   Users,
+  UserPlus,
   User,
   GraduationCap,
   Megaphone,

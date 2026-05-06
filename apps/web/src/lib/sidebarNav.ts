@@ -37,6 +37,15 @@ export const sidebarConfig: SidebarConfig = {
   admin: [
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/admin/alunos", label: "Alunos", icon: "Users" },
+    {
+      href: "/escola/[escolaId]/secretaria/admissoes",
+      label: "Matrículas",
+      icon: "UserPlus",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/admissoes", label: "Todas" },
+        { href: "/escola/[escolaId]/secretaria/admissoes/nova", label: "Nova matrícula" },
+      ],
+    },
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
     { href: "/escola/[escolaId]/admin/operacoes-academicas", label: "Operações Académicas", icon: "Activity" },
     {
