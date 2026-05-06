@@ -14,6 +14,19 @@ import {
   SheetDescription 
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/Button";
+import { 
+  User, 
+  Users, 
+  Calendar, 
+  CreditCard, 
+  FileCheck, 
+  Info, 
+  ChevronDown, 
+  ChevronUp,
+  Hash,
+  FileText as FileIcon,
+  Banknote
+} from "lucide-react";
 
 type Props = {
   escolaId: string;
@@ -23,6 +36,63 @@ function formatTime(iso: string): string {
   const dt = new Date(iso);
   if (Number.isNaN(dt.getTime())) return "--:--";
   return dt.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function ActivityPayloadDetails({ item }: { item: ActivityFeedItem }) {
+  const [showRaw, setShowRaw] = useState(false);
+  const p = (item.payload || {}) as Record<string, any>;
+
+  const details = [
+    { label: "Aluno", value: item.aluno_nome || p.aluno_nome || p.nome_aluno, icon: User },
+    { label: "Turma", value: item.turma_nome || p.turma_nome || p.nome_turma, icon: Users },
+    { label: "Valor", value: item.amount_kz ? `${item.amount_kz.toLocaleString("pt-PT")} KZ` : p.valor_formatado || p.valor, icon: Banknote },
+    { label: "Referência", value: p.mes_referencia || p.referencia || p.periodo_nome, icon: Calendar },
+    { label: "Documento", value: p.tipo_documento || p.documento_nome || p.documento, icon: FileIcon },
+    { label: "Método", value: p.metodo_pagamento || p.pago_via || p.forma_pagamento, icon: CreditCard },
+    { label: "Cód. Referência", value: p.referencia_pagamento || p.codigo || p.id_externo, icon: Hash },
+    { label: "Disciplina", value: p.disciplina_nome || p.materia, icon: FileCheck },
+  ].filter(d => !!d.value);
+
+  return (
+    <div className="space-y-6">
+      {details.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3">
+          {details.map((d, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+                <d.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{d.label}</p>
+                <p className="truncate text-sm font-bold text-slate-900">{d.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+          <Info className="mx-auto h-6 w-6 text-slate-300 mb-2" />
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sem detalhes adicionais</p>
+        </div>
+      )}
+
+      <div className="pt-4 border-t border-slate-100">
+        <button 
+          onClick={() => setShowRaw(!showRaw)}
+          className="flex items-center justify-between w-full text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <span>Metadados Técnicos</span>
+          {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        
+        {showRaw && (
+          <pre className="mt-3 rounded-xl bg-slate-900 p-4 text-[10px] text-emerald-400 overflow-auto font-mono max-h-60">
+            {JSON.stringify(p, null, 2)}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function OperationalFeedSection({ escolaId }: Props) {
@@ -182,12 +252,7 @@ export default function OperationalFeedSection({ escolaId }: Props) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metadados do Evento</p>
-                    <pre className="rounded-xl bg-slate-900 p-4 text-[10px] text-emerald-400 overflow-auto font-mono">
-                      {JSON.stringify(selectedItem.payload, null, 2)}
-                    </pre>
-                  </div>
+                  <ActivityPayloadDetails item={selectedItem} />
                   
                   <Button variant="outline" className="w-full h-11 border-slate-200 text-slate-900 font-bold uppercase tracking-widest gap-2">
                     Ver Contexto Completo <ExternalLink className="h-4 w-4" />
