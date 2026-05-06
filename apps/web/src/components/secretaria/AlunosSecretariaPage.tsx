@@ -77,11 +77,23 @@ type AlunoDetail = {
   data_nascimento?: string | null;
   sexo?: string | null;
   bi_numero?: string | null;
+  tipo_documento?: string | null;
+  numero_documento?: string | null;
   naturalidade?: string | null;
   provincia?: string | null;
+  pai_nome?: string | null;
+  mae_nome?: string | null;
+  nif?: string | null;
+  endereco?: string | null;
   responsavel?: string | null;
   telefone_responsavel?: string | null;
+  encarregado_email?: string | null;
   encarregado_relacao?: string | null;
+  responsavel_financeiro_nome?: string | null;
+  responsavel_financeiro_nif?: string | null;
+  mesmo_que_encarregado?: boolean | null;
+  documentos?: Record<string, string> | null;
+  campos_extras?: Record<string, unknown> | null;
 };
 
 type OfflineMeta = { fromCache: boolean; updatedAt: string | null };
@@ -476,6 +488,24 @@ function ProfileDrawer({
                     <p className="text-[11px] text-slate-400 font-semibold">Telefone</p>
                     <p className="font-semibold text-slate-700 mt-1">{detail?.telefone ?? "—"}</p>
                   </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Endereço</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.endereco ?? "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Filiação</p>
+                <div className="grid grid-cols-1 gap-3 text-sm">
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Nome do pai</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.pai_nome ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Nome da mãe</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.mae_nome ?? "—"}</p>
+                  </div>
                 </div>
               </div>
 
@@ -491,8 +521,20 @@ function ProfileDrawer({
                     <p className="font-semibold text-slate-700 mt-1">{detail?.telefone_responsavel ?? "—"}</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Email</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.encarregado_email ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
                     <p className="text-[11px] text-slate-400 font-semibold">Relação</p>
                     <p className="font-semibold text-slate-700 mt-1">{detail?.encarregado_relacao ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Responsável financeiro</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.responsavel_financeiro_nome ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">NIF financeiro</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.responsavel_financeiro_nif ?? "—"}</p>
                   </div>
                 </div>
               </div>
@@ -501,8 +543,16 @@ function ProfileDrawer({
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Documentos</p>
                 <div className="grid grid-cols-1 gap-3 text-sm">
                   <div className="rounded-xl border border-slate-200 px-4 py-3">
-                    <p className="text-[11px] text-slate-400 font-semibold">BI</p>
-                    <p className="font-semibold text-slate-700 mt-1">{detail?.bi_numero ?? "—"}</p>
+                    <p className="text-[11px] text-slate-400 font-semibold">Tipo</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.tipo_documento ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Número</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.numero_documento ?? detail?.bi_numero ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">NIF</p>
+                    <p className="font-semibold text-slate-700 mt-1">{detail?.nif ?? "—"}</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 px-4 py-3">
                     <p className="text-[11px] text-slate-400 font-semibold">Data de nascimento</p>
@@ -523,6 +573,24 @@ function ProfileDrawer({
                   <div className="rounded-xl border border-slate-200 px-4 py-3">
                     <p className="text-[11px] text-slate-400 font-semibold">Província</p>
                     <p className="font-semibold text-slate-700 mt-1">{detail?.provincia ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Anexos</p>
+                    <p className="font-semibold text-slate-700 mt-1">
+                      {Object.keys(detail?.documentos ?? {}).length > 0
+                        ? Object.keys(detail?.documentos ?? {}).join(", ")
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-4 py-3">
+                    <p className="text-[11px] text-slate-400 font-semibold">Campos extras</p>
+                    <p className="font-semibold text-slate-700 mt-1">
+                      {Object.entries(detail?.campos_extras ?? {}).length > 0
+                        ? Object.entries(detail?.campos_extras ?? {})
+                            .map(([key, value]) => `${key}: ${String(value ?? "—")}`)
+                            .join(", ")
+                        : "—"}
+                    </p>
                   </div>
                 </div>
               </div>
