@@ -32,6 +32,19 @@ export async function GET(request: Request) {
   if (authError) return authError;
 
   try {
+    let effectiveAno = ano ?? null;
+    if (!effectiveAno) {
+      const { data: activeAno } = await supabase
+        .from('anos_letivos')
+        .select('ano')
+        .eq('escola_id', escolaId)
+        .eq('ativo', true)
+        .maybeSingle();
+
+      const anoNumber = Number(activeAno?.ano);
+      effectiveAno = Number.isFinite(anoNumber) ? anoNumber : null;
+    }
+
     let query = supabase
       .from('vw_turmas_para_matricula')
       .select('id, turma_nome, turma_codigo, turno, capacidade_maxima, ocupacao_atual, curso_id, classe_id, curso_nome, classe_nome, ano_letivo')
@@ -39,7 +52,7 @@ export async function GET(request: Request) {
 
     if (cursoId) query = query.eq('curso_id', cursoId)
     if (classeId) query = query.eq('classe_id', classeId)
-    if (ano) query = query.eq('ano_letivo', ano)
+    if (effectiveAno) query = query.eq('ano_letivo', effectiveAno)
 
     query = applyKf2ListInvariants(query, {
       defaultLimit: 50,
@@ -64,6 +77,8 @@ export async function GET(request: Request) {
             .select('curso_id, classe_id, valor_matricula, ano_letivo')
             .eq('escola_id', escolaId)
             .in('curso_id', cursoIds)
+
+          if (effectiveAno) tabelasQuery = tabelasQuery.eq('ano_letivo', effectiveAno)
 
           tabelasQuery = applyKf2ListInvariants(tabelasQuery, {
             defaultLimit: 50,

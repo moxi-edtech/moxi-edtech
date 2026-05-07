@@ -103,8 +103,44 @@ export async function POST(req: Request) {
       return NextResponse.json(buildPlanLimitError(escolaParam, limitCheck), { status: 403 })
     }
     
+    let turmaRow: { ano_letivo: number | string | null; curso_id: string | null; classe_id: string | null } | null = null
+    if (body.turma_preferencial_id) {
+      const { data: turmaData, error: turmaErr } = await s
+        .from('turmas')
+        .select('ano_letivo, curso_id, classe_id')
+        .eq('id', body.turma_preferencial_id)
+        .eq('escola_id', escolaId)
+        .maybeSingle()
+
+      if (turmaErr) throw turmaErr
+      if (!turmaData) {
+        return NextResponse.json({ ok: false, error: 'Turma preferencial inválida para esta escola.' }, { status: 400 })
+      }
+      if (turmaData.curso_id && turmaData.curso_id !== body.curso_id) {
+        return NextResponse.json({ ok: false, error: 'Turma preferencial pertence a outro curso.' }, { status: 400 })
+      }
+      if (body.classe_id && turmaData.classe_id && turmaData.classe_id !== body.classe_id) {
+        return NextResponse.json({ ok: false, error: 'Turma preferencial pertence a outra classe.' }, { status: 400 })
+      }
+      turmaRow = turmaData
+    }
+
+    const { data: activeAno } = await s
+      .from('anos_letivos')
+      .select('ano')
+      .eq('escola_id', escolaId)
+      .eq('ativo', true)
+      .maybeSingle()
+
+    const turmaAnoLetivo = Number(turmaRow?.ano_letivo)
+    const activeAnoLetivo = Number(activeAno?.ano)
     const nomeCompleto = `${body.primeiro_nome || ''} ${body.sobrenome || ''}`.replace(/\s+/g, ' ').trim() || body.nome.trim()
-    const anoLetivo = body.ano_letivo ?? new Date().getFullYear()
+    const anoLetivo = Number.isFinite(turmaAnoLetivo)
+      ? turmaAnoLetivo
+      : Number.isFinite(activeAnoLetivo)
+      ? activeAnoLetivo
+      : body.ano_letivo ?? new Date().getFullYear()
+    const classeId = body.classe_id ?? turmaRow?.classe_id ?? null
 
     const dadosCandidato = {
       nome: nomeCompleto,
@@ -122,7 +158,7 @@ export async function POST(req: Request) {
       responsavel_contato: body.responsavel_contato ?? null,
       encarregado_email: body.encarregado_email ?? null,
       curso_id: body.curso_id,
-      classe_id: body.classe_id ?? null,
+      classe_id: classeId,
       ano_letivo: anoLetivo,
       turno: body.turno ?? null,
       turma_preferencial_id: body.turma_preferencial_id ?? null,
@@ -148,7 +184,7 @@ export async function POST(req: Request) {
         turma_preferencial_id: body.turma_preferencial_id ?? null,
         dados_candidato: dadosCandidato as any,
         nome_candidato: nomeCompleto,
-        classe_id: body.classe_id ?? null,
+        classe_id: classeId,
         turno: body.turno ?? null,
       })
       .select('id')

@@ -136,6 +136,7 @@ const draftPayloadSchema = z
 
     documentos: z.record(z.string()).optional(),
     campos_extras: z.record(z.unknown()).optional(),
+    ano_letivo: z.coerce.number().int().optional(),
 
     percentagem_desconto: z.number().min(0).max(100).optional(),
     motivo_desconto: z.string().trim().max(200).optional(),
@@ -252,7 +253,7 @@ export async function POST(request: Request) {
     if (candidateData.turma_preferencial_id && (!candidateData.curso_id || !candidateData.classe_id)) {
       const { data: turmaRow } = await supabase
         .from("turmas")
-        .select("curso_id, classe_id")
+        .select("curso_id, classe_id, ano_letivo")
         .eq("id", candidateData.turma_preferencial_id)
         .eq("escola_id", escolaId)
         .maybeSingle();
@@ -261,6 +262,9 @@ export async function POST(request: Request) {
       }
       if (turmaRow?.classe_id && !candidateData.classe_id) {
         candidateData.classe_id = turmaRow.classe_id;
+      }
+      if (turmaRow?.ano_letivo && !candidateData.ano_letivo) {
+        candidateData.ano_letivo = turmaRow.ano_letivo;
       }
       rpcArgs.p_dados_candidato = candidateData;
     }

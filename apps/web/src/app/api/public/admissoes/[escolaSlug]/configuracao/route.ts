@@ -40,7 +40,7 @@ export async function GET(
         .order("nome", { ascending: true }),
       supabase
         .from("turmas")
-        .select("id, nome, turno, curso_id, capacidade_maxima, status_validacao")
+        .select("id, nome, turno, curso_id, capacidade_maxima, status_validacao, ano_letivo")
         .eq("escola_id", escolaId)
         .eq("status_validacao", "ativo"),
     ]);
@@ -52,6 +52,12 @@ export async function GET(
     if (escolaRes.data.status !== "ativa") {
       return NextResponse.json({ ok: false, error: "Escola não está aceitando novas inscrições no momento" }, { status: 403 });
     }
+
+    const activeAno = Number(anosRes.data?.ano);
+    const turmasAtivas = (turmasRes.data || []).filter((turma) => {
+      if (!Number.isFinite(activeAno)) return true;
+      return Number(turma.ano_letivo) === activeAno;
+    });
 
     return NextResponse.json({
       ok: true,
@@ -65,7 +71,7 @@ export async function GET(
         },
         ano_letivo: anosRes.data || null,
         cursos: cursosRes.data || [],
-        turmas: (turmasRes.data || []).map(t => ({
+        turmas: turmasAtivas.map(t => ({
           id: t.id,
           nome: t.nome,
           turno: t.turno,
