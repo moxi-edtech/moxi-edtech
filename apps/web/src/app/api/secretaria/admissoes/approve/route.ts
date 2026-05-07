@@ -7,6 +7,7 @@ import { recordAuditServer } from '@/lib/audit'
 
 const payloadSchema = z.object({
   candidatura_id: z.string().uuid(),
+  turma_id: z.string().uuid().optional(),
   observacao: z.string().trim().min(3).max(500).optional(),
   metodo_pagamento: z.enum(['TPA', 'CASH', 'TRANSFERENCIA']).optional(),
   comprovativo_url: z.string().url().optional(),
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.format() }, { status: 400 })
   }
 
-  const { candidatura_id, observacao, metodo_pagamento, comprovativo_url, amount, referencia } = parsed.data
+  const { candidatura_id, turma_id, observacao, metodo_pagamento, comprovativo_url, amount, referencia } = parsed.data
 
   try {
   const { data: head, error: headErr } = await supabase
@@ -81,8 +82,9 @@ export async function POST(request: Request) {
       if (updateErr) throw updateErr
     }
 
-    if (head.status === 'rascunho' && !head.curso_id) {
-      if (!head.turma_preferencial_id) {
+    if (head.status === 'rascunho') {
+      const turmaId = turma_id ?? head.turma_preferencial_id
+      if (!turmaId) {
         return NextResponse.json(
           { error: 'Defina curso e turma preferencial antes de aprovar/finalizar esta candidatura.' },
           { status: 400 }
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
       const { data: turma, error: turmaErr } = await supabase
         .from('turmas')
         .select('id, curso_id, classe_id, ano_letivo, turno')
-        .eq('id', head.turma_preferencial_id)
+        .eq('id', turmaId)
         .eq('escola_id', head.escola_id)
         .maybeSingle()
 
@@ -119,6 +121,7 @@ export async function POST(request: Request) {
         .update({
           curso_id: turma.curso_id,
           classe_id: turma.classe_id ?? head.classe_id ?? null,
+          turma_preferencial_id: turma.id,
           ano_letivo: turma.ano_letivo,
           turno: turma.turno ?? null,
           dados_candidato: merged,

@@ -1396,20 +1396,33 @@ function Step3Pagamento(props: {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SimpleResult | null>(null);
   const [priceHint, setPriceHint] = useState<string | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUuid(escolaId) || !isUuid(cursoId) || !isUuid(classeId)) return;
+    const canResolveByTurma = isUuid(turmaId);
+    const canResolveByCursoClasse = isUuid(cursoId) && isUuid(classeId);
+    if (!isUuid(escolaId) || (!canResolveByTurma && !canResolveByCursoClasse)) {
+      setPriceHint(null);
+      setPriceLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
 
     (async () => {
       try {
-        const params = new URLSearchParams({
-          escola_id: escolaId,
-          curso_id: cursoId,
-          classe_id: classeId,
-        });
+        setPriceLoading(true);
+        setPriceHint(null);
+        if (!payment.parcial) {
+          setPayment((p) => ({ ...p, amount: "" }));
+        }
+
+        const params = new URLSearchParams({ escola_id: escolaId });
+
+        if (isUuid(turmaId)) params.set("turma_id", turmaId);
+        if (isUuid(cursoId)) params.set("curso_id", cursoId);
+        if (isUuid(classeId)) params.set("classe_id", classeId);
 
         if (anoLetivo) {
           params.set("ano", String(anoLetivo));
@@ -1417,6 +1430,7 @@ function Step3Pagamento(props: {
 
         const res = await fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, {
           signal: controller.signal,
+          cache: "no-store",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -1437,11 +1451,15 @@ function Step3Pagamento(props: {
       } catch (err: unknown) {
         if (typeof err === "object" && err && "name" in err && err.name === "AbortError") return;
         setPriceHint(null);
+      } finally {
+        if (!controller.signal.aborted) {
+          setPriceLoading(false);
+        }
       }
     })();
 
     return () => controller.abort();
-  }, [escolaId, cursoId, classeId, anoLetivo, payment.amount]);
+  }, [escolaId, turmaId, cursoId, classeId, anoLetivo, payment.parcial]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -1472,6 +1490,10 @@ function Step3Pagamento(props: {
       setResult({ ok: false, error: "Candidatura ou turma inválida." });
       return;
     }
+    if (priceLoading) {
+      setResult({ ok: false, error: "A carregar o valor da matrícula. Tente novamente em instantes." });
+      return;
+    }
 
     const amountValue = payment.amount ? Number(payment.amount) : null;
     if (payment.parcial) {
@@ -1491,7 +1513,7 @@ function Step3Pagamento(props: {
     setLoading(true);
     const approveResp = await postJson<SimpleResult>(
       "/api/secretaria/admissoes/approve",
-      { candidatura_id: candidaturaId }
+      { candidatura_id: candidaturaId, turma_id: turmaId }
     );
 
     if (!approveResp.ok) {
@@ -1763,10 +1785,10 @@ function Step3Pagamento(props: {
         <button
           type="button"
           onClick={() => void handleFinalizarMatricula()}
-          disabled={loading || !canFinalize}
+          disabled={loading || priceLoading || !canFinalize}
           className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
-          {loading ? "Processando…" : "Finalizar matrícula"}
+          {loading ? "Processando…" : priceLoading ? "Carregando valor…" : "Finalizar matrícula"}
         </button>
 
         <button
