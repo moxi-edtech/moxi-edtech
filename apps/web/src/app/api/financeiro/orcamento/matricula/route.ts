@@ -84,6 +84,7 @@ function parseAnoLetivoStrict(value: number | string | null | undefined): number
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get("session_id"); // compat: agora mapeado para anos_letivos.id
+  const turmaId = (searchParams.get("turma_id") || "").trim() || undefined;
   const cursoId = (searchParams.get("curso_id") || "").trim() || undefined;
   const classeId = (searchParams.get("classe_id") || "").trim() || undefined;
   // O ano letivo idealmente vem da sessão ativa, mas aceitamos parâmetro manual
@@ -133,6 +134,8 @@ export async function GET(req: NextRequest) {
       (session?.data_fim ? new Date(session.data_fim).getFullYear() : null);
 
     let anoLetivo = anoParam || anoDerivadoDaSessao || null;
+    let resolvedCursoId = cursoId ?? null;
+    let resolvedClasseId = classeId ?? null;
 
     if (!anoLetivo && escolaId) {
       try {
@@ -149,11 +152,30 @@ export async function GET(req: NextRequest) {
 
     anoLetivo = anoLetivo || normalizeAnoLetivo(null);
 
+    if (turmaId && isUUID(turmaId)) {
+      const { data: turma, error: turmaError } = await supabase
+        .from("turmas")
+        .select("curso_id, classe_id, ano_letivo")
+        .eq("id", turmaId)
+        .eq("escola_id", escolaId)
+        .maybeSingle();
+
+      if (turmaError) throw turmaError;
+      if (!turma) {
+        return NextResponse.json({ ok: false, error: "Turma inválida para esta escola." }, { status: 400 });
+      }
+
+      resolvedCursoId = turma.curso_id ?? resolvedCursoId;
+      resolvedClasseId = turma.classe_id ?? resolvedClasseId;
+      const turmaAno = parseAnoLetivoStrict(turma.ano_letivo);
+      if (turmaAno) anoLetivo = turmaAno;
+    }
+
     const pricingParams = {
       escolaId,
       anoLetivo,
-      cursoId,
-      classeId,
+      cursoId: resolvedCursoId,
+      classeId: resolvedClasseId,
       allowMensalidadeFallback: true, // permite usar regras legadas de mensalidade se não houver tabela específica
     } as const;
 
