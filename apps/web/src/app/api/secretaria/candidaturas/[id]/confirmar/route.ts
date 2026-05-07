@@ -34,7 +34,7 @@ export async function POST(
 
     const { data: candidatura, error: candErr } = await supabase
       .from("candidaturas")
-      .select("id, escola_id, status")
+      .select("id, escola_id, status, dados_candidato")
       .eq("id", id)
       .maybeSingle();
 
@@ -59,7 +59,7 @@ export async function POST(
 
     const { data: turma, error: turmaErr } = await supabase
       .from("turmas")
-      .select("id, escola_id")
+      .select("id, escola_id, curso_id, classe_id, ano_letivo, turno")
       .eq("id", turma_id)
       .eq("escola_id", candidatura.escola_id)
       .maybeSingle();
@@ -73,9 +73,68 @@ export async function POST(
         { status: 400 }
       );
     }
+    if (!turma.curso_id || !turma.ano_letivo) {
+      return NextResponse.json(
+        { ok: false, error: "Turma incompleta: curso ou ano letivo não configurado." },
+        { status: 400 }
+      );
+    }
 
     const status = String(candidatura.status ?? "").toLowerCase();
+    const rawDados = (candidatura as any)?.dados_candidato;
+    const currentDados =
+      rawDados && typeof rawDados === "object" && !Array.isArray(rawDados) ? rawDados : {};
+    const mergedDados = {
+      ...currentDados,
+      curso_id: turma.curso_id,
+      classe_id: turma.classe_id ?? null,
+      turma_preferencial_id: turma.id,
+      ano_letivo: turma.ano_letivo,
+      turno: turma.turno ?? currentDados?.turno ?? null,
+    };
+
+    const { error: syncErr } = await supabase
+      .from("candidaturas")
+      .update({
+        curso_id: turma.curso_id,
+        classe_id: turma.classe_id ?? null,
+        turma_preferencial_id: turma.id,
+        ano_letivo: turma.ano_letivo,
+        turno: turma.turno ?? null,
+        dados_candidato: mergedDados,
+      } as any)
+      .eq("id", id)
+      .eq("escola_id", candidatura.escola_id);
+
+    if (syncErr) {
+      return NextResponse.json({ ok: false, error: syncErr.message }, { status: 400 });
+    }
+
+    if (status === "rascunho") {
+      const { error: submitErr } = await supabase.rpc("admissao_submit", {
+        p_escola_id: candidatura.escola_id,
+        p_candidatura_id: id,
+        p_source: "walkin",
+      });
+
+      if (submitErr) {
+        return NextResponse.json({ ok: false, error: submitErr.message }, { status: 400 });
+      }
+    }
+
     if (["pendente", "submetida", "em_analise"].includes(status)) {
+      const { error: approveErr } = await supabase.rpc("admissao_approve", {
+        p_escola_id: candidatura.escola_id,
+        p_candidatura_id: id,
+        p_observacao: "Aprovação automática via rota legada de confirmação",
+      });
+
+      if (approveErr) {
+        return NextResponse.json({ ok: false, error: approveErr.message }, { status: 400 });
+      }
+    }
+
+    if (status === "rascunho") {
       const { error: approveErr } = await supabase.rpc("admissao_approve", {
         p_escola_id: candidatura.escola_id,
         p_candidatura_id: id,
