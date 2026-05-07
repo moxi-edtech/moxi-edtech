@@ -105,24 +105,9 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
 
   const approve = useCallback(
     async (item: RadarItem) => {
-      const observacao = window.prompt("Observação (opcional):")?.trim() || undefined
-      setActionLoadingId(item.id)
-      try {
-        const res = await fetch('/api/secretaria/admissoes/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidatura_id: item.id, observacao }),
-        })
-        const json = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(json?.details || json?.error || 'Falha ao aprovar')
-        reload()
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Falha ao aprovar')
-      } finally {
-        setActionLoadingId(null)
-      }
+      router.push(`/secretaria/admissoes/nova?candidaturaId=${item.id}`)
     },
-    [reload]
+    [router]
   )
 
   const archive = useCallback(
@@ -379,7 +364,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 disabled={busy}
                                 className="rounded-lg bg-klasse-gold px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95 disabled:opacity-60"
                               >
-                                Aprovar
+                                Continuar
                               </button>
                             <button
                               type="button"

@@ -20,6 +20,7 @@ type PagamentoPayload = {
   metodo?: string | null
   referencia?: string | null
   comprovativo_url?: string | null
+  parcial?: boolean | string | null
   valor?: number | string | null
   amount?: number | string | null
 }
@@ -47,6 +48,15 @@ const parseAmount = (value: unknown) => {
     return Number.isFinite(parsed) ? parsed : undefined
   }
   return undefined
+}
+
+const parseBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    return ['true', '1', 'sim', 'yes'].includes(normalized)
+  }
+  return false
 }
 
 export function FinanceiroCandidaturasInbox({
@@ -95,6 +105,7 @@ export function FinanceiroCandidaturasInbox({
         metodo_pagamento: normalizeMetodoPagamento(pagamento.metodo),
         comprovativo_url: pagamento.comprovativo_url || undefined,
         amount: parseAmount(pagamento.valor ?? pagamento.amount),
+        parcial: parseBoolean(pagamento.parcial) || undefined,
       }
 
       if (typeof navigator !== 'undefined' && !navigator.onLine) {

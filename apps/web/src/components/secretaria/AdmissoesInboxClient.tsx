@@ -218,33 +218,7 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
 
   const handleApprove = async () => {
     if (!selectedId) return
-    const observacao = window.prompt('Observação opcional para esta aprovação:')?.trim() || undefined
-    const ok = window.confirm('Deseja aprovar esta candidatura e avançar para matrícula?')
-    if (!ok) return
-
-    setLoadingAction('approving')
-    try {
-      const res = await fetch('/api/secretaria/admissoes/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidatura_id: selectedId, observacao }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Falha ao aprovar')
-      
-      // Update local state status
-      setItems(prev => prev.map(item => item.id === selectedId ? { ...item, status: 'aprovada' } : item))
-      if (selectedData) setSelectedData({ ...selectedData, status: 'aprovada' })
-      
-      // Option to go directly to wizard or stay in inbox
-      if (window.confirm('Candidatura aprovada! Deseja finalizar a matrícula agora?')) {
-        router.push(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`)
-      }
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setLoadingAction(null)
-    }
+    router.push(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`)
   }
 
   const handleReject = async () => {
@@ -621,8 +595,8 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
                         disabled={!!loadingAction}
                         className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
                       >
-                        {loadingAction === 'approving' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                        Aprovar Matrícula
+                        <Check className="h-5 w-5" />
+                        Continuar Matrícula
                       </button>
                     )}
 

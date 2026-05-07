@@ -1515,6 +1515,7 @@ function Step3Pagamento(props: {
       comprovativo_url: payment.comprovativo_url,
       referencia: payment.referencia,
       amount: payment.parcial && payment.amount ? Number(payment.amount) : undefined,
+      parcial: payment.parcial || undefined,
     });
 
     const convertResp = await postJson<SimpleResult>(
