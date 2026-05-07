@@ -1,10 +1,83 @@
 # Plano de Ajuste - Ano Letivo Curtume
 
-data: 2026-05-06
-status: aplicado em producao
+data: 2026-05-07
+status: aplicado em producao; acompanhamento ativo
 escola_slug: complexo-escolar-privado-advetista-de-curtume
 escola_id: 3744879f-2e19-4671-8995-78604302d8c5
 ano_letivo_id_atual: a587cee1-1985-47ab-8986-2eefb11b0c61
+
+## Acompanhamento Operacional
+
+### 2026-05-07 - Admissoes com turma preferencial fora do ano letivo
+
+Sintoma reportado:
+
+- Erro em producao: `Internal Server Error Incoerencia: Turma preferencial pertence a outro ano letivo`.
+- O erro foi disparado por RPC oficial de admissao, nao por `UPDATE candidaturas.status` direto.
+
+Causa raiz encontrada:
+
+- A correcao do Curtume colocou turmas e ano ativo em `2025`.
+- A funcao `public.admissao_upsert_draft` ainda criava novos rascunhos com `extract(year from current_date)`, que em `2026-05-07` resulta em `2026`.
+- Resultado: candidatura nova ficava com `candidaturas.ano_letivo = 2026`, enquanto `turma_preferencial_id` apontava para turma real de `2025`.
+- A RPC de submit/approve bloqueou corretamente a incoerencia.
+
+Dados afetados encontrados em producao:
+
+| Candidatura | Nome | Status | Ano antes | Turma | Ano turma |
+|---|---|---|---:|---|---:|
+| `c20812db-b28c-49ae-8c7d-b89be023d362` | Isabel Antonio de Sousa | rascunho | 2026 | EP-3a Classe-M-A | 2025 |
+| `d9ab6d12-bffc-4b31-8f20-2fdeb3f0e805` | Isabel Antonio de Sousa | rascunho | 2026 | EP-3a Classe-M-A | 2025 |
+
+Correcoes aplicadas no banco:
+
+- Migration aplicada: `20270507010000_fix_admissao_draft_active_ano_letivo.sql`.
+- A RPC `public.admissao_upsert_draft` agora resolve `ano_letivo` nesta ordem:
+  - ano da `turma_preferencial_id`, se houver;
+  - ano informado no payload;
+  - ano letivo ativo da escola;
+  - ano civil apenas como ultimo fallback.
+- A migration realinhou as duas candidaturas acima para `2025`.
+- Migration registrada em `supabase_migrations.schema_migrations`.
+
+Validacao pos-apply:
+
+| Verificacao | Resultado |
+|---|---:|
+| Candidaturas ativas com `turma_preferencial_id` em outro ano letivo | 0 |
+| `c20812db-b28c-49ae-8c7d-b89be023d362` | `ano_letivo = 2025` |
+| `d9ab6d12-bffc-4b31-8f20-2fdeb3f0e805` | `ano_letivo = 2025` |
+
+Correcoes de aplicacao preparadas:
+
+- `apps/web/src/app/api/secretaria/admissoes/draft/route.ts`
+  - aceita `ano_letivo` no payload;
+  - quando ha turma preferencial, injeta curso, classe e ano da turma antes de chamar a RPC.
+- `apps/web/src/app/api/secretaria/admissoes/vagas/route.ts`
+  - quando o ano nao vem no request, filtra pelo ano letivo ativo da escola;
+  - tambem filtra `financeiro_tabelas` pelo ano efetivo.
+- `apps/web/src/app/api/secretaria/alunos/novo/route.ts`
+  - valida que a turma pertence a escola, curso e classe;
+  - grava a candidatura usando o ano da turma ou o ano ativo da escola.
+- `apps/web/src/app/api/public/admissoes/[escolaSlug]/configuracao/route.ts`
+  - lista apenas turmas do ano letivo ativo no formulario publico.
+- `apps/web/src/app/api/public/admissoes/[escolaSlug]/candidatar/route.ts`
+  - grava a candidatura com ano da turma/ano ativo, nao com valor stale do browser.
+
+Commit local:
+
+- `18709c00 Fix admission draft academic year`
+
+Deploy:
+
+- Vercel production deploy iniciado em `2026-05-07`.
+- URL de deploy: `https://moxi-edtech-qgf0h8wa9-moxinexas-projects.vercel.app`.
+- Status: `READY`.
+- Alias confirmado: `app.klasse.ao`.
+
+Pendencias de acompanhamento:
+
+- Sincronizar GitHub quando o acesso SSH a `github.com:22` estiver disponivel.
 
 ## Resultado do Apply
 
