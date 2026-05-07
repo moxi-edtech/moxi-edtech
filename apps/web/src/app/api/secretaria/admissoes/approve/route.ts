@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   try {
   const { data: head, error: headErr } = await supabase
       .from('candidaturas')
-      .select('id, escola_id, status, dados_candidato')
+      .select('id, escola_id, status, dados_candidato, curso_id, classe_id, turma_preferencial_id')
       .eq('id', candidatura_id)
       .single()
 
@@ -79,6 +79,54 @@ export async function POST(request: Request) {
         .eq('escola_id', head.escola_id)
 
       if (updateErr) throw updateErr
+    }
+
+    if (head.status === 'rascunho' && !head.curso_id) {
+      if (!head.turma_preferencial_id) {
+        return NextResponse.json(
+          { error: 'Defina curso e turma preferencial antes de aprovar/finalizar esta candidatura.' },
+          { status: 400 }
+        )
+      }
+
+      const { data: turma, error: turmaErr } = await supabase
+        .from('turmas')
+        .select('id, curso_id, classe_id, ano_letivo, turno')
+        .eq('id', head.turma_preferencial_id)
+        .eq('escola_id', head.escola_id)
+        .maybeSingle()
+
+      if (turmaErr) throw turmaErr
+      if (!turma?.curso_id || !turma?.ano_letivo) {
+        return NextResponse.json(
+          { error: 'Turma preferencial incompleta: curso ou ano letivo não configurado.' },
+          { status: 400 }
+        )
+      }
+
+      const current = (head as any)?.dados_candidato ?? {}
+      const merged = {
+        ...(current && typeof current === 'object' && !Array.isArray(current) ? current : {}),
+        curso_id: turma.curso_id,
+        classe_id: turma.classe_id ?? head.classe_id ?? null,
+        turma_preferencial_id: turma.id,
+        ano_letivo: turma.ano_letivo,
+        turno: turma.turno ?? null,
+      }
+
+      const { error: syncErr } = await supabase
+        .from('candidaturas')
+        .update({
+          curso_id: turma.curso_id,
+          classe_id: turma.classe_id ?? head.classe_id ?? null,
+          ano_letivo: turma.ano_letivo,
+          turno: turma.turno ?? null,
+          dados_candidato: merged,
+        } as any)
+        .eq('id', candidatura_id)
+        .eq('escola_id', head.escola_id)
+
+      if (syncErr) throw syncErr
     }
 
     if (head.status === 'rascunho') {
@@ -139,10 +187,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   } catch (error: any) {
     console.error('admissao approve error:', error)
+    const message = error?.message ?? null
+    if (error?.code === 'P0001') {
+      return NextResponse.json(
+        { error: message ?? 'Falha de validação da candidatura.', code: error.code },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       {
         error: 'Internal Server Error',
-        details: error?.message ?? null,
+        details: message,
         code: error?.code ?? null,
       },
       { status: 500 }
