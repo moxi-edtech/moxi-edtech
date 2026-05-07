@@ -1490,11 +1490,6 @@ function Step3Pagamento(props: {
       setResult({ ok: false, error: "Candidatura ou turma inválida." });
       return;
     }
-    if (priceLoading) {
-      setResult({ ok: false, error: "A carregar o valor da matrícula. Tente novamente em instantes." });
-      return;
-    }
-
     const amountValue = payment.amount ? Number(payment.amount) : null;
     if (payment.parcial) {
       if (!amountValue || amountValue <= 0) {
@@ -1505,22 +1500,9 @@ function Step3Pagamento(props: {
         setResult({ ok: false, error: "Pagamento parcial deve ser menor que o valor total." });
         return;
       }
-    } else if (!priceHint && (!amountValue || amountValue <= 0)) {
-      setResult({ ok: false, error: "Informe o valor da matrícula." });
-      return;
     }
 
     setLoading(true);
-    const approveResp = await postJson<SimpleResult>(
-      "/api/secretaria/admissoes/approve",
-      { candidatura_id: candidaturaId, turma_id: turmaId }
-    );
-
-    if (!approveResp.ok) {
-      setLoading(false);
-      return setResult({ ok: false, error: approveResp.error });
-    }
-
     const idempotencyKey =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
@@ -1532,7 +1514,7 @@ function Step3Pagamento(props: {
       metodo_pagamento: payment.metodo_pagamento,
       comprovativo_url: payment.comprovativo_url,
       referencia: payment.referencia,
-      amount: payment.amount ? Number(payment.amount) : undefined,
+      amount: payment.parcial && payment.amount ? Number(payment.amount) : undefined,
     });
 
     const convertResp = await postJson<SimpleResult>(
@@ -1729,25 +1711,23 @@ function Step3Pagamento(props: {
           Pagamento parcial
         </label>
 
-        {payment.parcial || !priceHint ? (
+        {payment.parcial ? (
           <input
             type="number"
             name="amount"
             value={payment.amount}
             onChange={onChange}
-            placeholder={priceHint ? "Valor pago" : "Valor da matrícula"}
+            placeholder="Valor pago"
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
           />
-        ) : (
+        ) : priceHint ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
             Valor da matrícula: <span className="font-semibold">{priceHint}</span>
           </div>
-        )}
-
-        {!priceHint && !payment.parcial && (
-          <p className="text-xs text-klasse-gold-700">
-            Sem tabela de preço configurada. Informe o valor da matrícula.
-          </p>
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            Valor da matrícula será confirmado pelo sistema ao finalizar.
+          </div>
         )}
 
         {(payment.metodo_pagamento === "TPA" || payment.metodo_pagamento === "TRANSFERENCIA") && (
@@ -1785,10 +1765,10 @@ function Step3Pagamento(props: {
         <button
           type="button"
           onClick={() => void handleFinalizarMatricula()}
-          disabled={loading || priceLoading || !canFinalize}
+          disabled={loading || !canFinalize}
           className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
-          {loading ? "Processando…" : priceLoading ? "Carregando valor…" : "Finalizar matrícula"}
+          {loading ? "Processando…" : "Finalizar matrícula"}
         </button>
 
         <button

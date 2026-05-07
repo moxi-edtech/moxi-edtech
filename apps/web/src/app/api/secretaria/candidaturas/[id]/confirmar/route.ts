@@ -57,123 +57,42 @@ export async function POST(
     });
     if (authError) return authError;
 
-    const { data: turma, error: turmaErr } = await supabase
-      .from("turmas")
-      .select("id, escola_id, curso_id, classe_id, ano_letivo, turno")
-      .eq("id", turma_id)
-      .eq("escola_id", candidatura.escola_id)
-      .maybeSingle();
-
-    if (turmaErr) {
-      return NextResponse.json({ ok: false, error: turmaErr.message }, { status: 400 });
-    }
-    if (!turma) {
-      return NextResponse.json(
-        { ok: false, error: "Turma não pertence à escola" },
-        { status: 400 }
-      );
-    }
-    if (!turma.curso_id || !turma.ano_letivo) {
-      return NextResponse.json(
-        { ok: false, error: "Turma incompleta: curso ou ano letivo não configurado." },
-        { status: 400 }
-      );
-    }
-
-    const status = String(candidatura.status ?? "").toLowerCase();
-    const rawDados = (candidatura as any)?.dados_candidato;
-    const currentDados =
-      rawDados && typeof rawDados === "object" && !Array.isArray(rawDados) ? rawDados : {};
-    const mergedDados = {
-      ...currentDados,
-      curso_id: turma.curso_id,
-      classe_id: turma.classe_id ?? null,
-      turma_preferencial_id: turma.id,
-      ano_letivo: turma.ano_letivo,
-      turno: turma.turno ?? currentDados?.turno ?? null,
-    };
-
-    const { error: syncErr } = await supabase
-      .from("candidaturas")
-      .update({
-        curso_id: turma.curso_id,
-        classe_id: turma.classe_id ?? null,
-        turma_preferencial_id: turma.id,
-        ano_letivo: turma.ano_letivo,
-        turno: turma.turno ?? null,
-        dados_candidato: mergedDados,
-      } as any)
-      .eq("id", id)
-      .eq("escola_id", candidatura.escola_id);
-
-    if (syncErr) {
-      return NextResponse.json({ ok: false, error: syncErr.message }, { status: 400 });
-    }
-
-    if (status === "rascunho") {
-      const { error: submitErr } = await supabase.rpc("admissao_submit", {
-        p_escola_id: candidatura.escola_id,
-        p_candidatura_id: id,
-        p_source: "walkin",
-      });
-
-      if (submitErr) {
-        return NextResponse.json({ ok: false, error: submitErr.message }, { status: 400 });
-      }
-    }
-
-    if (["pendente", "submetida", "em_analise"].includes(status)) {
-      const { error: approveErr } = await supabase.rpc("admissao_approve", {
-        p_escola_id: candidatura.escola_id,
-        p_candidatura_id: id,
-        p_observacao: "Aprovação automática via rota legada de confirmação",
-      });
-
-      if (approveErr) {
-        return NextResponse.json({ ok: false, error: approveErr.message }, { status: 400 });
-      }
-    }
-
-    if (status === "rascunho") {
-      const { error: approveErr } = await supabase.rpc("admissao_approve", {
-        p_escola_id: candidatura.escola_id,
-        p_candidatura_id: id,
-        p_observacao: "Aprovação automática via rota legada de confirmação",
-      });
-
-      if (approveErr) {
-        return NextResponse.json({ ok: false, error: approveErr.message }, { status: 400 });
-      }
-    }
-
-    const { data: matriculaId, error: convertErr } = await supabase.rpc(
-      "admissao_convert_to_matricula",
+    const { data: result, error: finalizarErr } = await (supabase as any).rpc(
+      "admissao_finalizar_matricula",
       {
         p_escola_id: candidatura.escola_id,
         p_candidatura_id: id,
-        p_metadata: {
-          turma_id,
-          origem: "legacy_confirmar_route",
-        },
+        p_turma_id: turma_id,
+        p_pagamento: { origem: "legacy_confirmar_route" },
+        p_idempotency_key: `legacy-confirmar:${id}:${turma_id}`,
+        p_observacao: "Finalização via rota legada de confirmação",
       }
     );
 
-    if (convertErr) {
-      return NextResponse.json({ ok: false, error: convertErr.message }, { status: 400 });
+    if (finalizarErr) {
+      return NextResponse.json({ ok: false, error: finalizarErr.message }, { status: 400 });
     }
 
-    const { data: matricula } = await supabase
-      .from("matriculas")
-      .select("id, numero_matricula")
-      .eq("id", matriculaId)
-      .eq("escola_id", candidatura.escola_id)
-      .maybeSingle();
+    const data = (result && typeof result === "object" ? result : {}) as {
+      matricula_id?: string | null;
+      numero_matricula?: string | null;
+    };
+    const matriculaId = data.matricula_id ?? null;
+
+    const { data: matricula } = matriculaId
+      ? await supabase
+          .from("matriculas")
+          .select("id, numero_matricula")
+          .eq("id", matriculaId)
+          .eq("escola_id", candidatura.escola_id)
+          .maybeSingle()
+      : { data: null };
 
     return NextResponse.json(
       {
         ok: true,
         matricula_id: matriculaId,
-        numero_matricula: matricula?.numero_matricula ?? null,
+        numero_matricula: matricula?.numero_matricula ?? data.numero_matricula ?? null,
       },
       { status: 200 }
     );

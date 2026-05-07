@@ -80,32 +80,41 @@ export async function POST(request: Request) {
       }
     } catch {}
 
-    // 3. Chamada do RPC Blindado
-    const { data, error } = await supabase.rpc('admissao_convert_to_matricula', {
+    // 3. Chamada canónica: valida turma/preço e faz rascunho -> submetida -> aprovada -> matriculado numa transação.
+    const { data, error } = await (supabase as any).rpc('admissao_finalizar_matricula', {
       p_escola_id: candidatura.escola_id,
       p_candidatura_id: candidatura_id,
-      p_metadata: {
+      p_turma_id: turma_id,
+      p_pagamento: {
         metodo_pagamento,
         comprovativo_url,
         amount,
         referencia,
-        idempotency_key: idempotencyKey,
-        turma_id,
-      }
+      },
+      p_idempotency_key: idempotencyKey,
+      p_observacao: 'Finalização via Nova Admissão',
     })
 
     if (error) throw error
+
+    const result = (data && typeof data === 'object' ? data : {}) as {
+      matricula_id?: string | null
+      numero_matricula?: string | null
+      valor_matricula?: number | null
+      valor_pago?: number | null
+      status?: string | null
+    }
+    const matriculaId = typeof result.matricula_id === 'string' ? result.matricula_id : null
 
     recordAuditServer({
       escolaId: candidatura.escola_id,
       portal: 'secretaria',
       acao: 'ADMISSAO_CONVERTIDA_MATRICULA',
       entity: 'matriculas',
-      entityId: data ?? null,
+      entityId: matriculaId,
       details: { candidatura_id, turma_id, metodo_pagamento, referencia: referencia ?? null },
     }).catch(() => null)
 
-    const matriculaId = typeof data === 'string' ? data : null
     try {
       await (supabase as any).rpc('refresh_mv_turmas_para_matricula')
     } catch (refreshError) {
@@ -132,7 +141,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, matricula_id: data, comprovante })
+    return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, comprovante })
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
     if (typeof error === 'object' && error && 'code' in error && error.code === '23505') { // unique_violation
