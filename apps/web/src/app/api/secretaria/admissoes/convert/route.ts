@@ -14,6 +14,7 @@ const convertPayloadSchema = z.object({
   metodo_pagamento: z.enum(['TPA', 'CASH', 'TRANSFERENCIA']),
   comprovativo_url: z.string().url().optional(),
   amount: z.number().positive().optional(),
+  parcial: z.boolean().optional(),
   referencia: z.string().trim().optional(),
   // ... other payment details
 })
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validation.error.format() }, { status: 400 })
   }
   
-  const { candidatura_id, turma_id, metodo_pagamento, comprovativo_url, amount, referencia } = validation.data
+  const { candidatura_id, turma_id, metodo_pagamento, comprovativo_url, amount, parcial, referencia } = validation.data
 
   try {
     const { data: candidatura, error: candError } = await supabase
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
         metodo_pagamento,
         comprovativo_url,
         amount,
+        parcial,
         referencia,
       },
       p_idempotency_key: idempotencyKey,

@@ -316,11 +316,12 @@ export function useMatriculaLogic() {
 
     const params = new URLSearchParams();
     params.append("ano", String(anoLetivoAtivo));
+    if (selecao.turmaId) params.append("turma_id", selecao.turmaId);
     if (cursoId) params.append("curso_id", cursoId);
     if (classeId) params.append("classe_id", classeId);
     if (selecao.sessionId) params.append("session_id", selecao.sessionId);
 
-    fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`)
+    fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((json) => {
         if (json.ok) setOrcamento(json.data);
@@ -328,7 +329,7 @@ export function useMatriculaLogic() {
       })
       .catch(() => setOrcamento(null))
       .finally(() => setLoadingOrcamento(false));
-  }, [turmaSelecionada, anoLetivoAtivo, selecao.sessionId, candidaturaAtiva, selecao.cursoFiltro, selecao.classeFiltro]);
+  }, [turmaSelecionada, anoLetivoAtivo, selecao.sessionId, selecao.turmaId, candidaturaAtiva, selecao.cursoFiltro, selecao.classeFiltro]);
 
   // --- ACTIONS ---
   const submitMatricula = async () => {
