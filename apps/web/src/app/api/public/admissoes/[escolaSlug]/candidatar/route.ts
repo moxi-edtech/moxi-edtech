@@ -65,41 +65,28 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 404 });
     }
 
-    // 3. Deduplication Check (Same student/contact for same school/year/course)
-    const { data: existing } = await supabase
-      .from("candidaturas")
-      .select("id")
-      .eq("escola_id", escolaId)
-      .eq("nome_candidato", data.nome_completo)
-      .eq("ano_letivo", data.ano_letivo)
-      .eq("curso_id", data.curso_id)
-      .contains("dados_candidato", { responsavel_contato: data.responsavel_contato })
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ 
-        ok: true, 
-        message: "Já recebemos uma inscrição com estes dados. Nossa secretaria entrará em contato em breve.",
-        protocolo: existing.id.split("-")[0].toUpperCase(),
-      }, { status: 200 });
-    }
-
-    // 4. Security & Integrity Checks (Verify if course/turma belong to this school)
-    const [courseCheck, turmaCheck] = await Promise.all([
+    // 3. Security & Integrity Checks (Verify if course/turma belong to this school)
+    const [activeAnoRes, courseCheck, turmaCheck] = await Promise.all([
+      supabase
+        .from("anos_letivos")
+        .select("ano")
+        .eq("escola_id", escolaId)
+        .eq("ativo", true)
+        .maybeSingle(),
       supabase
         .from("cursos")
         .select("id")
         .eq("id", data.curso_id)
         .eq("escola_id", escolaId)
         .maybeSingle(),
-      data.turma_preferencial_id 
+      data.turma_preferencial_id
         ? supabase
             .from("turmas")
-            .select("id")
+            .select("id, curso_id, ano_letivo")
             .eq("id", data.turma_preferencial_id)
             .eq("escola_id", escolaId)
             .maybeSingle()
-        : Promise.resolve({ data: { id: "ok" }, error: null }),
+        : Promise.resolve({ data: { id: "ok", curso_id: data.curso_id, ano_letivo: null }, error: null }),
     ]);
 
     if (!courseCheck.data) {
@@ -107,6 +94,36 @@ export async function POST(
     }
     if (!turmaCheck.data) {
       return NextResponse.json({ ok: false, error: "Turma inválida para esta escola" }, { status: 400 });
+    }
+    if (data.turma_preferencial_id && turmaCheck.data.curso_id !== data.curso_id) {
+      return NextResponse.json({ ok: false, error: "Turma inválida para o curso selecionado" }, { status: 400 });
+    }
+
+    const turmaAnoLetivo = Number(turmaCheck.data.ano_letivo);
+    const activeAnoLetivo = Number(activeAnoRes.data?.ano);
+    const anoLetivo = Number.isFinite(turmaAnoLetivo)
+      ? turmaAnoLetivo
+      : Number.isFinite(activeAnoLetivo)
+      ? activeAnoLetivo
+      : data.ano_letivo;
+
+    // 4. Deduplication Check (Same student/contact for same school/year/course)
+    const { data: existing } = await supabase
+      .from("candidaturas")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .eq("nome_candidato", data.nome_completo)
+      .eq("ano_letivo", anoLetivo)
+      .eq("curso_id", data.curso_id)
+      .contains("dados_candidato", { responsavel_contato: data.responsavel_contato })
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json({
+        ok: true,
+        message: "Já recebemos uma inscrição com estes dados. Nossa secretaria entrará em contato em breve.",
+        protocolo: existing.id.split("-")[0].toUpperCase(),
+      }, { status: 200 });
     }
 
     // 5. Prepare Candidacy Data (Strict Mapping)
@@ -120,6 +137,7 @@ export async function POST(
       mae_nome: data.mae_nome || null,
       responsavel_nome: data.responsavel_nome,
       responsavel_contato: data.responsavel_contato,
+      ano_letivo: anoLetivo,
       documentos: data.documentos || {},
       campos_extras: data.campos_extras || {},
       draft_id: data.draftId || null,
@@ -131,7 +149,7 @@ export async function POST(
       .insert({
         escola_id: escolaId,
         curso_id: data.curso_id,
-        ano_letivo: data.ano_letivo,
+        ano_letivo: anoLetivo,
         status: "pendente",
         turma_preferencial_id: data.turma_preferencial_id || null,
         dados_candidato: dadosCandidato as any,
