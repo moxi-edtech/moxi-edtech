@@ -717,15 +717,21 @@ function TurmaRow({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function TurmasListClient({ adminMode = false }: { adminMode?: boolean }) {
+export default function TurmasListClient({ 
+  adminMode = false,
+  initialData = null
+}: { 
+  adminMode?: boolean;
+  initialData?: TurmasResponse | null;
+}) {
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
 
-  const [data,            setData]            = useState<TurmasResponse | null>(null);
-  const [items,           setItems]           = useState<TurmaItem[]>([]);
-  const [nextCursor,      setNextCursor]      = useState<string | null>(null);
+  const [data,            setData]            = useState<TurmasResponse | null>(initialData);
+  const [items,           setItems]           = useState<TurmaItem[]>(initialData?.items || []);
+  const [nextCursor,      setNextCursor]      = useState<string | null>(initialData?.next_cursor ?? null);
   const [loadingMore,     setLoadingMore]     = useState(false);
-  const [loading,         setLoading]         = useState(true);
+  const [loading,         setLoading]         = useState(!initialData);
   const [busca,           setBusca]           = useState("");
   const [filters,         setFilters]         = useState<ActiveFilters>(DEFAULT_FILTERS);
   const [financeiroStats, setFinanceiroStats] = useState<Record<string, FinanceiroTurmaStat>>({});
@@ -956,11 +962,20 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
     }
   }, [escolaId, filters, busca]);
 
+  const initialRender = useRef(true);
+
   useEffect(() => {
     if (escolaLoading || !escolaId) { if (!escolaLoading) setLoading(false); return; }
+    
+    // Skip first fetch if we have initialData
+    if (initialRender.current && initialData) {
+      initialRender.current = false;
+      return;
+    }
+
     const t = setTimeout(() => { setNextCursor(null); fetchData({ append: false }); }, 300);
     return () => clearTimeout(t);
-  }, [fetchData, escolaId, escolaLoading]);
+  }, [fetchData, escolaId, escolaLoading, initialData]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;

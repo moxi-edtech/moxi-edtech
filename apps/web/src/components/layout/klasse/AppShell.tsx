@@ -2,7 +2,8 @@
 
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
-import { useUserRole, type UserRole } from "@/hooks/useUserRole";
+import { type UserRole } from "@/hooks/useUserRole";
+import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { sidebarConfig, type NavItem } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
@@ -32,7 +33,7 @@ export default function AppShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { userRole, isLoading: isLoadingRole } = useUserRole();
+  const { userRole, isLoading: isLoadingRole } = useUserRoleContext();
   const { escolaId: escolaIdFromSession, escolaSlug } = useEscolaId();
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export default function AppShell({
   const displayedPlanoNome = navEscolaId ? planoNome : null;
 
   const navItems = useMemo(() => {
-    if (isLoadingRole || !inferredRole) return [];
+    if (!inferredRole) return [];
     
     let items = sidebarConfig[inferredRole] || [];
     
@@ -218,10 +219,6 @@ export default function AppShell({
     };
   }, [inferredRole]);
 
-
-  if (isLoadingRole) {
-    return <div>Loading...</div>; // Or a more sophisticated loader
-  }
 
   const topbarLabels = inferredRole ? TOPBAR_LABELS[inferredRole] : null;
   const isPrintView = safePathname.includes("/print");
