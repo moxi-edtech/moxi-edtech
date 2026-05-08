@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function Page() {
-  redirect("/secretaria/admissoes/nova");
-}
+export { dynamic, default } from "@/app/secretaria/(portal-secretaria)/admissoes/nova/page";
