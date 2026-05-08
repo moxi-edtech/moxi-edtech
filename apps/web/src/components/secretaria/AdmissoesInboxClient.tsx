@@ -98,11 +98,15 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
   const [error, setError] = useState<string | null>(null)
   
   const [selectedId, setSelectedId] = useState<string | null>(searchParams?.get('id') || null)
+  const turmaId = searchParams?.get('turmaId')
+  const initialSearch = searchParams?.get('search')
+
   const [selectedData, setSelectedData] = useState<CandidaturaDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch || '')
   const [statusFilter, setStatusFilter] = useState<'novas' | 'pendentes' | 'concluidas'>('novas')
+
   
   const [viewingDoc, setViewingDoc] = useState<{ name: string; url: string } | null>(null)
 
@@ -160,6 +164,8 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
     setError(null)
     try {
       const params = new URLSearchParams({ escolaId, limit: '100' })
+      if (turmaId) params.set('turmaId', turmaId)
+      
       const res = await fetch(`/api/secretaria/admissoes/radar?${params.toString()}`)
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao carregar admissões')
@@ -169,7 +175,7 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
     } finally {
       setLoading(false)
     }
-  }, [escolaId])
+  }, [escolaId, turmaId])
 
   const fetchDetail = useCallback(async (id: string) => {
     setLoadingDetail(true)
@@ -300,6 +306,22 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-800">Inbox</h2>
             <div className="flex items-center gap-2">
+              {turmaId && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-8 text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2"
+                  onClick={() => {
+                    const url = new URL(window.location.href)
+                    url.searchParams.delete('turmaId')
+                    url.searchParams.delete('search')
+                    router.push(url.pathname)
+                  }}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Limpar Filtro
+                </Button>
+              )}
               <Button 
                 size="sm" 
                 variant="outline" 

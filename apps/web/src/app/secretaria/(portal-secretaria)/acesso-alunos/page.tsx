@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { LiberarAcessoAlunos } from "@/components/secretaria/LiberarAcessoAlunos";
+import { AcessoPortalManager } from "@/components/secretaria/AcessoPortalManager";
 import { MetricasAcessoAlunos } from "@/components/secretaria/MetricasAcessoAlunos";
 
 export default async function AcessoAlunosPage() {
@@ -18,14 +18,14 @@ export default async function AcessoAlunosPage() {
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-teal-700 uppercase">Portal Secretaria</p>
-          <h1 className="text-2xl font-bold text-slate-900">Liberação de acesso de alunos</h1>
-          <p className="text-sm text-slate-600">Gere credenciais e envie códigos de ativação em lote.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Gestão de Acessos ao Portal</h1>
+          <p className="text-sm text-slate-600">Gerencie o ciclo de vida dos alunos (Pendentes, Ativos e Bloqueados).</p>
         </div>
       </header>
 
       <MetricasAcessoAlunos escolaId={escolaId} />
 
-      <LiberarAcessoAlunos escolaId={escolaId} />
+      <AcessoPortalManager escolaId={escolaId} />
     </div>
   );
 }
