@@ -59,3 +59,5 @@ Este documento detalha a estratégia para eliminar os recarregamentos totais de 
 5.  [x] Implementar `initialData` na página de Admissões (SSR ready).
 6.  [x] Instalar e configurar SWR (Fase 3).
 7.  [x] Refatorar hooks de fetch para usar SWR com `initialData`.
+8.  [x] Aplicar skeleton de hidratação no fluxo de Nova Matrícula (UX profissional sem “saltos secos”).
+9.  [x] Padronizar skeleton profissional nas listas de Matrículas, Alunos e Turmas.
