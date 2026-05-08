@@ -1094,6 +1094,7 @@ export default function TurmasListClient({
   }, [filteredItems, expandedId]);
 
   const hasRows = !loading && displayRows.length > 0;
+  const isInitialLoading = loading && items.length === 0;
 
   const rowVirtualizer = useVirtualizer({
     count:            displayRows.length,
@@ -1150,7 +1151,26 @@ export default function TurmasListClient({
           onSearch={setBusca}
         />
 
-        {viewMode === "cards" ? (
+        {isInitialLoading ? (
+          <div className="p-5 space-y-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={`turma-skeleton-${i}`} className="rounded-xl border border-slate-100 bg-white p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                    <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
+                  </div>
+                  <div className="h-6 w-20 animate-pulse rounded-full bg-slate-100" />
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : viewMode === "cards" ? (
           <SecretaryCardView
             items={filteredItems}
             detailHrefBase={detailHrefBase}

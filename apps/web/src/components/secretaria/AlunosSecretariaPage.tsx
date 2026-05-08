@@ -1142,6 +1142,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [tabCounts, setTabCounts] = useState<Partial<Record<TabStatus, number>>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
+  const isInitialLoading = loading && items.length === 0;
 
   const isInadimplentesTab = (value: TabStatus) => value === "inadimplentes";
 
@@ -1578,6 +1579,11 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                   {hasMore ? "+" : ""} {total === 1 ? "registo" : "registos"}
                 </span>
               )}
+              {isInitialLoading && (
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-3 w-20 animate-pulse rounded bg-slate-200" />
+                </span>
+              )}
 
               <div className="relative">
                 <button
@@ -1647,7 +1653,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
-                  Array.from({ length: 5 }).map((_, index) => <SkeletonRow key={index} />)
+                  Array.from({ length: isInitialLoading ? 8 : 5 }).map((_, index) => <SkeletonRow key={index} />)
                 ) : items.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-16 text-center">

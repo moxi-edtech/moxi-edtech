@@ -197,6 +197,7 @@ export default function MatriculasListClient() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
   const hasRows = !loading && items.length > 0;
+  const isInitialLoading = loading && items.length === 0;
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollParentRef.current,
@@ -675,14 +676,43 @@ export default function MatriculasListClient() {
               }
             >
               {loading ? (
-                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                  <td colSpan={5} className="p-12 text-center text-slate-500">
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-40 mx-auto" />
-                      <Skeleton className="h-3 w-56 mx-auto" />
-                    </div>
-                  </td>
-                </tr>
+                Array.from({ length: isInitialLoading ? 8 : 4 }).map((_, idx) => (
+                  <tr
+                    key={`skeleton-matricula-${idx}`}
+                    style={{ display: "table", width: "100%", tableLayout: "fixed" }}
+                  >
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-6 w-28 rounded-xl" />
+                      <div className="mt-2 flex gap-2">
+                        <Skeleton className="h-4 w-14 rounded-full" />
+                        <Skeleton className="h-4 w-20 rounded-full" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-40" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="mt-2 h-3 w-24" />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Skeleton className="mx-auto h-6 w-24 rounded-full" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-12 text-center text-slate-500">

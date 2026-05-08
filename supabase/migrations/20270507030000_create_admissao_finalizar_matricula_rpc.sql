@@ -46,6 +46,7 @@ DECLARE
   v_is_parcial boolean := false;
   v_status text;
   v_matricula_id uuid;
+  v_aluno_id uuid;
   v_numero_matricula text;
   v_idempotency_key text := nullif(trim(coalesce(p_idempotency_key, '')), '');
   v_existing jsonb;
@@ -431,8 +432,8 @@ BEGIN
   )
   INTO v_matricula_id;
 
-  SELECT m.numero_matricula::text
-  INTO v_numero_matricula
+  SELECT m.numero_matricula::text, m.aluno_id
+  INTO v_numero_matricula, v_aluno_id
   FROM public.matriculas m
   WHERE m.id = v_matricula_id
     AND m.escola_id = p_escola_id;
@@ -441,6 +442,7 @@ BEGIN
     'ok', true,
     'candidatura_id', p_candidatura_id,
     'matricula_id', v_matricula_id,
+    'aluno_id', v_aluno_id,
     'numero_matricula', v_numero_matricula,
     'turma_id', p_turma_id,
     'curso_id', v_turma.curso_id,

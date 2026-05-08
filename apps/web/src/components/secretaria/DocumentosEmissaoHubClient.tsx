@@ -8,7 +8,8 @@ type DocumentoTipo =
   | "declaracao_frequencia"
   | "boletim_trimestral"
   | "cartao_estudante"
-  | "ficha_inscricao";
+  | "ficha_inscricao"
+  | "comprovante_matricula";
 
 type DocumentoResponse = {
   ok: boolean;
@@ -57,6 +58,12 @@ const TIPOS: Array<{
     title: "Ficha de Inscrição",
     description: "Dados básicos para inscrição.",
     icon: FileText,
+  },
+  {
+    id: "comprovante_matricula",
+    title: "Boletim de Matrícula",
+    description: "Comprovativo oficial de vinculação.",
+    icon: BookOpen,
   },
 ];
 
@@ -392,6 +399,8 @@ export default function DocumentosEmissaoHubClient({
           ? `/secretaria/documentos/${json.docId}/boletim-trimestral/print`
           : tipo === "cartao_estudante"
           ? `/secretaria/documentos/${json.docId}/cartao/print`
+          : tipo === "comprovante_matricula"
+          ? `/secretaria/documentos/${json.docId}/comprovante-matricula/print`
           : `/secretaria/documentos/${json.docId}/ficha/print`;
 
       const popup = window.open(destino, "_blank", "noopener,noreferrer");

@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import BalcaoAtendimento from "./BalcaoAtendimento";
 
 /**
  * KLASSE Standard:
@@ -129,7 +131,15 @@ type CandidaturaDraft = {
   classes?: { nome?: string | null } | null;
 };
 
-type SimpleResult = { ok: boolean; message?: string; error?: string };
+type SimpleResult = {
+  ok: boolean;
+  message?: string;
+  error?: string;
+  aluno_id?: string;
+  matricula_id?: string;
+  numero_matricula?: string;
+  comprovante?: { ok: boolean; printUrl?: string; error?: string };
+};
 
 async function postJson<TResp>(
   url: string,
@@ -1542,7 +1552,10 @@ function Step3Pagamento(props: {
       }
       return setResult({ ok: false, error: convertResp.error });
     }
-    setResult({ ok: true, message: "Matrícula concluída pela secretaria." });
+    setResult({
+      ...convertResp.data,
+      message: convertResp.data.message ?? "Matrícula concluída pela secretaria.",
+    });
   };
 
   const handleSaveForLater = async () => {
@@ -1582,17 +1595,65 @@ function Step3Pagamento(props: {
               turma: initialData?.classes?.nome || "Turma",
               anoLetivo: anoLetivo || "2025/2026",
             }}
-            onEscolher={(passo: Passo) => {
+            onEscolher={async (passo: Passo) => {
+              const targetAlunoId = result.aluno_id || candidaturaId;
+              const targetEscolaId = escolaId;
+
               if (passo.id === "emitir_boletim") {
-                router.push(`/escola/${escolaParam}/secretaria/documentos?matriculaId=${candidaturaId}`);
+                if (result.comprovante?.printUrl) {
+                  window.open(result.comprovante.printUrl, "_blank");
+                } else if (targetEscolaId) {
+                  // Fallback: emitir manualmente se a auto-emissão falhou
+                  try {
+                    const res = await fetch("/api/secretaria/documentos/emitir", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        alunoId: targetAlunoId,
+                        tipoDocumento: "comprovante_matricula",
+                        escolaId: targetEscolaId,
+                      }),
+                    });
+                    const json = await res.json();
+                    if (json.ok && json.docId) {
+                      window.open(`/secretaria/documentos/${json.docId}/comprovante-matricula/print`, "_blank");
+                    } else {
+                      console.error("Erro ao emitir documento:", json.error);
+                      // Se falhar o atalho, vai para o hub como fallback seguro
+                      router.push(`/escola/${escolaParam}/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                    }
+                  } catch (err) {
+                    router.push(`/escola/${escolaParam}/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                  }
+                } else {
+                  router.push(`/escola/${escolaParam}/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                }
               } else if (passo.id === "registar_propina") {
-                router.push(`/escola/${escolaParam}/secretaria/balcao?alunoId=${candidaturaId}`);
+                setShowPaymentModal(true);
               } else if (passo.id === "nova_matricula") {
                 onReset();
               }
             }}
             onDismiss={() => router.push(`/escola/${escolaParam}/secretaria/matriculas`)}
           />
+
+          <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
+              <DialogHeader className="p-6 bg-slate-50 border-b border-slate-200">
+                <DialogTitle className="text-xl font-bold text-slate-900">Registar Pagamento de Matrícula</DialogTitle>
+              </DialogHeader>
+              <div className="p-0 min-h-[500px]">
+                {result.aluno_id && (
+                  <BalcaoAtendimento 
+                    escolaId={escolaId} 
+                    selectedAlunoId={result.aluno_id}
+                    showSearch={false}
+                    embedded
+                  />
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       );
     }
@@ -1800,6 +1861,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const [classeId, setClasseId] = useState<string | null>(null);
   const [initialData, setInitialData] = useState<CandidaturaDraft | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [hydratingLead, setHydratingLead] = useState(false);
   const [baseCanEditDraft, setBaseCanEditDraft] = useState(true);
   const [resumeMode, setResumeMode] = useState(false);
   const [editOverride, setEditOverride] = useState(false);
@@ -1808,6 +1870,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const [draftsError, setDraftsError] = useState<string | null>(null);
   const [wizardError, setWizardError] = useState<string | null>(null);
   const [draftItems, setDraftItems] = useState<Array<{ id: string; nome_candidato: string | null; status: string | null; updated_at?: string | null }>>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const canEditDraft = baseCanEditDraft || editOverride;
 
@@ -1824,27 +1887,32 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
 
     if (candId && isUuid(candId)) {
       setCandidaturaId(candId);
+      setHydratingLead(true);
 
       (async () => {
-        const res = await fetch(`/api/secretaria/admissoes/lead?id=${encodeURIComponent(candId)}`);
-        const json = await res.json().catch(() => ({}));
-        if (res.ok && json?.ok) {
-          setInitialData(json.item ?? null);
-          setCursoId(json.item?.curso_id ?? null);
-          setClasseId(json.item?.classe_id ?? null);
-          setTurmaId(json.item?.turma_preferencial_id ?? null);
-          const status = String(json.item?.status ?? '').toLowerCase();
-          const canEdit = status === 'rascunho' || status === '';
-          const resumeStatuses = ['matriculado', 'aprovada', 'aguardando_pagamento'];
-          const paymentStatuses = ['matriculado', 'aprovada', 'aguardando_pagamento'];
-          setBaseCanEditDraft(canEdit);
-          setResumeMode(resumeStatuses.includes(status));
-          setEditOverride(false);
-          if (paymentStatuses.includes(status)) {
-            setStep(3);
+        try {
+          const res = await fetch(`/api/secretaria/admissoes/lead?id=${encodeURIComponent(candId)}`);
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json?.ok) {
+            setInitialData(json.item ?? null);
+            setCursoId(json.item?.curso_id ?? null);
+            setClasseId(json.item?.classe_id ?? null);
+            setTurmaId(json.item?.turma_preferencial_id ?? null);
+            const status = String(json.item?.status ?? '').toLowerCase();
+            const canEdit = status === 'rascunho' || status === '';
+            const resumeStatuses = ['matriculado', 'aprovada', 'aguardando_pagamento'];
+            const paymentStatuses = ['matriculado', 'aprovada', 'aguardando_pagamento'];
+            setBaseCanEditDraft(canEdit);
+            setResumeMode(resumeStatuses.includes(status));
+            setEditOverride(false);
+            if (paymentStatuses.includes(status)) {
+              setStep(3);
+            }
           }
+        } finally {
+          setHydrated(true);
+          setHydratingLead(false);
         }
-        setHydrated(true);
       })();
     } else {
       setCandidaturaId(null);
@@ -1856,8 +1924,34 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
       setResumeMode(false);
       setEditOverride(false);
       setHydrated(true);
+      setHydratingLead(false);
     }
   }, [searchParams]);
+
+  if (!hydrated || hydratingLead) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="h-7 w-44 animate-pulse rounded-lg bg-slate-200" />
+          <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200" />
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 h-4 w-40 animate-pulse rounded bg-slate-200" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+          </div>
+          <div className="mt-5 flex items-center justify-end gap-3">
+            <div className="h-9 w-24 animate-pulse rounded-xl bg-slate-200" />
+            <div className="h-9 w-28 animate-pulse rounded-xl bg-slate-200" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleEditDados = async () => {
     setWizardError(null);

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
-const FINAL_STATUSES = ["concluido", "transferido", "desistente", "trancado", "inativo"] as const;
+const FINAL_STATUSES = ["concluido", "transferido", "desistente", "trancado", "inativo", "ativa", "ativo", "matriculado"] as const;
 
 type EmitParams = {
   supabase: SupabaseClient<Database>;
@@ -57,8 +57,17 @@ export async function emitirComprovanteMatricula({
       created_at,
       updated_at,
       data_matricula,
-      alunos ( id, nome, nome_completo, bi_numero ),
-      turmas ( id, nome, turno )
+      alunos ( 
+        id, nome, nome_completo, bi_numero, 
+        pai_nome, mae_nome, data_nascimento, 
+        naturalidade, provincia, endereco,
+        encarregado_nome, encarregado_telefone
+      ),
+      turmas ( 
+        id, nome, turno,
+        classes ( nome ),
+        cursos ( nome )
+      )
     `)
     .eq("escola_id", escolaId)
     .eq("id", matriculaId)
@@ -67,6 +76,13 @@ export async function emitirComprovanteMatricula({
   if (matriculaError || !matricula) {
     return { ok: false, status: 404, error: "Matrícula não encontrada." };
   }
+
+  // Fetch mensalidades
+  const { data: mensalidades } = await supabase
+    .from("mensalidades")
+    .select("mes_referencia, ano_referencia, valor, data_vencimento, status")
+    .eq("matricula_id", matriculaId)
+    .order("data_vencimento", { ascending: true });
 
   const statusMatricula = String(matricula.status ?? "").toLowerCase();
   if (!FINAL_STATUSES.includes(statusMatricula as (typeof FINAL_STATUSES)[number])) {
@@ -129,18 +145,28 @@ export async function emitirComprovanteMatricula({
 
   const hashBase = `${randomUUID()}-${matriculaId}-${Date.now()}`;
   const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
-  const aluno = (matricula as { alunos?: Record<string, unknown> }).alunos ?? {};
-  const turma = (matricula as { turmas?: Record<string, unknown> }).turmas ?? {};
+  const aluno = (matricula as any).alunos ?? {};
+  const turma = (matricula as any).turmas ?? {};
 
   const snapshot = {
     tipo_documento: "comprovante_matricula",
     matricula_id: matriculaId,
     aluno_id: String(matricula.aluno_id),
-    aluno_nome: (aluno.nome_completo as string) || (aluno.nome as string) || "",
-    aluno_bi: (aluno.bi_numero as string) || null,
+    aluno_nome: aluno.nome_completo || aluno.nome || "",
+    aluno_bi: aluno.bi_numero || null,
+    aluno_pai: aluno.pai_nome || null,
+    aluno_mae: aluno.mae_nome || null,
+    aluno_nascimento: aluno.data_nascimento || null,
+    aluno_naturalidade: aluno.naturalidade || null,
+    aluno_provincia: aluno.provincia || null,
+    aluno_endereco: aluno.endereco || null,
+    encarregado_nome: aluno.encarregado_nome || null,
+    encarregado_telefone: aluno.encarregado_telefone || null,
     turma_id: matricula.turma_id ?? null,
-    turma_nome: (turma.nome as string) || null,
-    turma_turno: (turma.turno as string) || null,
+    turma_nome: turma.nome || null,
+    turma_turno: turma.turno || null,
+    classe_nome: turma.classes?.nome || null,
+    curso_nome: turma.cursos?.nome || null,
     ano_letivo: matricula.ano_letivo ?? null,
     status_final_matricula: statusMatricula,
     data_hora_efetivacao: dataHoraEfetivacao,
@@ -148,6 +174,14 @@ export async function emitirComprovanteMatricula({
     emitido_em: new Date().toISOString(),
     numero_sequencial: numeroSequencial ?? null,
     hash_validacao: hashValidacao,
+    mensalidades: (mensalidades || []).map(m => ({
+      mes: m.mes_referencia,
+      ano: m.ano_referencia,
+      valor: m.valor,
+      vencimento: m.data_vencimento,
+      status: m.status
+    })),
+    valor_total_anual: (mensalidades || []).reduce((acc, m) => acc + Number(m.valor), 0)
   };
 
   const { data: doc, error: docError } = await supabase

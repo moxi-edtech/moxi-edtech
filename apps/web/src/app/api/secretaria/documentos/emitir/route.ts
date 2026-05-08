@@ -123,12 +123,21 @@ export async function POST(request: Request) {
       .from("matriculas")
       .select(`
         id, aluno_id, turma_id, ano_letivo, status,
-        alunos ( id, nome, nome_completo, bi_numero ),
-        turmas ( id, nome, turno, classes ( nome ), cursos ( nome ) )
+        alunos ( 
+          id, nome, nome_completo, bi_numero,
+          pai_nome, mae_nome, data_nascimento,
+          naturalidade, provincia, endereco,
+          encarregado_nome, encarregado_telefone
+        ),
+        turmas ( 
+          id, nome, turno, 
+          classes ( nome ), 
+          cursos ( nome ) 
+        )
       `)
       .eq("escola_id", escolaId)
       .eq("aluno_id", alunoId)
-      .in("status", ["ativa", "ativo"])
+      .in("status", ["ativa", "ativo", "matriculado"])
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -145,6 +154,13 @@ export async function POST(request: Request) {
     const aluno = (matricula as any).alunos || {};
     const turma = (matricula as any).turmas || {};
 
+    // Fetch mensalidades for financial schedule
+    const { data: mensalidades } = await supabase
+      .from("mensalidades")
+      .select("mes_referencia, ano_referencia, valor, data_vencimento, status")
+      .eq("matricula_id", matricula.id)
+      .order("data_vencimento", { ascending: true });
+
     const hashBase = `${randomUUID()}-${matricula.id}-${Date.now()}`;
     const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
 
@@ -158,6 +174,14 @@ export async function POST(request: Request) {
       aluno_id: alunoId,
       aluno_nome: aluno.nome_completo || aluno.nome || "",
       aluno_bi: aluno.bi_numero || null,
+      aluno_pai: aluno.pai_nome || null,
+      aluno_mae: aluno.mae_nome || null,
+      aluno_nascimento: aluno.data_nascimento || null,
+      aluno_naturalidade: aluno.naturalidade || null,
+      aluno_provincia: aluno.provincia || null,
+      aluno_endereco: aluno.endereco || null,
+      encarregado_nome: aluno.encarregado_nome || null,
+      encarregado_telefone: aluno.encarregado_telefone || null,
       matricula_id: matricula.id,
       turma_id: turma.id || null,
       turma_nome: turma.nome || null,
@@ -168,6 +192,14 @@ export async function POST(request: Request) {
       tipo_documento: tipoDocumento,
       numero_sequencial: numeroSequencial ?? null,
       hash_validacao: hashValidacao,
+      mensalidades: (mensalidades || []).map(m => ({
+        mes: m.mes_referencia,
+        ano: m.ano_referencia,
+        valor: m.valor,
+        vencimento: m.data_vencimento,
+        status: m.status
+      })),
+      valor_total_anual: (mensalidades || []).reduce((acc, m) => acc + Number(m.valor), 0)
     };
 
     const insertPayload: any = {
