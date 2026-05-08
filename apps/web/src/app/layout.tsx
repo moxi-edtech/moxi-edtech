@@ -4,6 +4,8 @@ import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister
 import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
 import { ToastProvider } from "@/components/feedback/FeedbackSystem";
 import SessionLockProvider from "@/components/session/SessionLockProvider";
+import { UserRoleProvider } from "@/components/auth/UserRoleProvider";
+import SWRProvider from "@/components/providers/SWRProvider";
 
 const shouldLoadGoogleFonts = process.env.NEXT_FONT_GOOGLE_FONTS_DISABLE !== "1";
 
@@ -40,7 +42,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorkerRegister />
         <OfflineSyncRegister />
         <ToastProvider>
-          <SessionLockProvider>{children}</SessionLockProvider>
+          <SWRProvider>
+            <UserRoleProvider>
+              <SessionLockProvider>{children}</SessionLockProvider>
+            </UserRoleProvider>
+          </SWRProvider>
         </ToastProvider>
       </body>
     </html>
