@@ -2,10 +2,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
-import { useEscolaId } from "@/hooks/useEscolaId";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
 
@@ -1364,7 +1363,6 @@ function Step3Pagamento(props: {
   candidaturaId: string | null;
   turmaId: string | null;
   escolaId: string;
-  escolaParam: string;
   cursoId: string | null;
   classeId: string | null;
   anoLetivo?: number | null;
@@ -1382,7 +1380,6 @@ function Step3Pagamento(props: {
     candidaturaId,
     turmaId,
     escolaId,
-    escolaParam,
     cursoId,
     classeId,
     anoLetivo,
@@ -1404,6 +1401,7 @@ function Step3Pagamento(props: {
   });
 
   const [loading, setLoading] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [result, setResult] = useState<SimpleResult | null>(null);
   const [priceHint, setPriceHint] = useState<string | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
@@ -1620,13 +1618,13 @@ function Step3Pagamento(props: {
                     } else {
                       console.error("Erro ao emitir documento:", json.error);
                       // Se falhar o atalho, vai para o hub como fallback seguro
-                      router.push(`/escola/${escolaParam}/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                      router.push(`/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                     }
                   } catch (err) {
-                    router.push(`/escola/${escolaParam}/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                    router.push(`/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                   }
                 } else {
-                  router.push(`/escola/${escolaParam}/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                  router.push(`/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                 }
               } else if (passo.id === "registar_propina") {
                 setShowPaymentModal(true);
@@ -1634,7 +1632,7 @@ function Step3Pagamento(props: {
                 onReset();
               }
             }}
-            onDismiss={() => router.push(`/escola/${escolaParam}/secretaria/matriculas`)}
+            onDismiss={() => router.push("/secretaria/matriculas")}
           />
 
           <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
@@ -1675,7 +1673,7 @@ function Step3Pagamento(props: {
           </button>
           <button
             type="button"
-            onClick={() => router.push(`/escola/${escolaParam}/secretaria/admissoes`)}
+            onClick={() => router.push("/secretaria/admissoes")}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
           >
             Voltar ao radar
@@ -1850,10 +1848,15 @@ function Step3Pagamento(props: {
  * Wizard shell
  * ========================= */
 
-export default function AdmissaoWizardClient({ escolaId }: { escolaId: string }) {
+export default function AdmissaoWizardClient({
+  escolaId,
+  escolaSlug,
+}: {
+  escolaId: string;
+  escolaSlug?: string | null;
+}) {
   const router = useRouter();
-  const { escolaSlug } = useEscolaId();
-  const escolaParam = escolaSlug || escolaId;
+  const pathname = usePathname();
   const [step, setStep] = useState(1);
   const [candidaturaId, setCandidaturaId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
@@ -1870,11 +1873,19 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const [draftsError, setDraftsError] = useState<string | null>(null);
   const [wizardError, setWizardError] = useState<string | null>(null);
   const [draftItems, setDraftItems] = useState<Array<{ id: string; nome_candidato: string | null; status: string | null; updated_at?: string | null }>>([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const canEditDraft = baseCanEditDraft || editOverride;
 
   const searchParams = useSearchParams();
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const resolvedSlug = escolaSlug ?? slugFromPath;
+  const withSlug = useCallback(
+    (suffix: string) => (resolvedSlug ? `/escola/${resolvedSlug}${suffix}` : suffix),
+    [resolvedSlug]
+  );
 
   const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);
 
@@ -1928,31 +1939,6 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
     }
   }, [searchParams]);
 
-  if (!hydrated || hydratingLead) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="h-7 w-44 animate-pulse rounded-lg bg-slate-200" />
-          <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200" />
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 h-4 w-40 animate-pulse rounded bg-slate-200" />
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-          </div>
-          <div className="mt-5 flex items-center justify-end gap-3">
-            <div className="h-9 w-24 animate-pulse rounded-xl bg-slate-200" />
-            <div className="h-9 w-28 animate-pulse rounded-xl bg-slate-200" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const handleEditDados = async () => {
     setWizardError(null);
     if (candidaturaId && initialData?.status) {
@@ -1994,7 +1980,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
 
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
-    const next = `/escola/${escolaParam}/secretaria/admissoes/nova?candidaturaId=${id}`;
+    const next = withSlug(`/secretaria/admissoes/nova?candidaturaId=${id}`);
     router.push(next);
   };
 
@@ -2065,6 +2051,31 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
       window.history.replaceState(null, "", url.pathname);
     }
   }, []);
+
+  if (!hydrated || hydratingLead) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="h-7 w-44 animate-pulse rounded-lg bg-slate-200" />
+          <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-200" />
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 h-4 w-40 animate-pulse rounded bg-slate-200" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+          </div>
+          <div className="mt-5 flex items-center justify-end gap-3">
+            <div className="h-9 w-24 animate-pulse rounded-xl bg-slate-200" />
+            <div className="h-9 w-28 animate-pulse rounded-xl bg-slate-200" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -2178,7 +2189,6 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
             candidaturaId={candidaturaId}
             turmaId={turmaId}
             escolaId={escolaId}
-            escolaParam={escolaParam}
             cursoId={cursoId}
             classeId={classeId}
             anoLetivo={initialData?.ano_letivo ?? null}

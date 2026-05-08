@@ -11,6 +11,7 @@ type PageProps = {
 
 export default async function Page({ params }: PageProps = {}) {
   const routeParams = params ? await params : null;
+  const escolaSlug = routeParams?.id ?? null;
   const s = await supabaseServer()
   const { data: sess } = await s.auth.getUser()
   const user = sess?.user
@@ -35,7 +36,7 @@ export default async function Page({ params }: PageProps = {}) {
   return (
     <div className="p-6">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_wizard" />
-      <AdmissaoWizardClient escolaId={escolaId} />
+      <AdmissaoWizardClient escolaId={escolaId} escolaSlug={escolaSlug} />
     </div>
   )
 }

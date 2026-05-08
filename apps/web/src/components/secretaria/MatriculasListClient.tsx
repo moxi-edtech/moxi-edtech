@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
-import { useEscolaId } from "@/hooks/useEscolaId";
 
 import StatusForm from "./StatusForm";
 import TransferForm from "./TransferForm";
@@ -150,11 +149,17 @@ function ToolbarButton({
 
 // --- COMPONENTE PRINCIPAL ---
 export default function MatriculasListClient() {
-  const { escolaId, escolaSlug } = useEscolaId();
-  const escolaParam = escolaSlug || escolaId;
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const resolvedSlug = slugFromPath;
+  const novaMatriculaHref = resolvedSlug
+    ? `/escola/${resolvedSlug}/secretaria/admissoes/nova`
+    : "#";
 
   // Filtros URL
   const turmaIdFromQuery = searchParams?.get("turma_id");
@@ -447,11 +452,11 @@ export default function MatriculasListClient() {
         </div>
 
         <Link
-          href={`/escola/${escolaParam}/secretaria/admissoes/nova`}
+          href={novaMatriculaHref}
+          aria-disabled={!resolvedSlug}
           className={cn(
-
             "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold",
-            "bg-klasse-gold text-white hover:brightness-95",
+            resolvedSlug ? "bg-klasse-gold text-white hover:brightness-95" : "bg-slate-300 text-white pointer-events-none cursor-not-allowed",
             "focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
           )}
         >
