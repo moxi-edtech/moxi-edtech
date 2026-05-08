@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import useSWR from 'swr'
 import { 
   Search, 
   MessageCircle, 
@@ -87,16 +88,25 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
   matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
 }
 
-export default function AdmissoesInboxClient({ escolaId }: { escolaId: string }) {
+async function fetchAdmissoes(url: string): Promise<CandidaturaListItem[]> {
+  const res = await fetch(url)
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error || 'Falha ao carregar admissões')
+  return json.items || []
+}
+
+export default function AdmissoesInboxClient({ 
+  escolaId,
+  initialItems = []
+}: { 
+  escolaId: string;
+  initialItems?: CandidaturaListItem[];
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { escolaSlug } = useEscolaId()
   const escolaParam = escolaSlug || escolaId
 
-  const [items, setItems] = useState<CandidaturaListItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
   const [selectedId, setSelectedId] = useState<string | null>(searchParams?.get('id') || null)
   const turmaId = searchParams?.get('turmaId')
   const initialSearch = searchParams?.get('search')
@@ -111,6 +121,26 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
   const [viewingDoc, setViewingDoc] = useState<{ name: string; url: string } | null>(null)
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
+
+  const listUrl = useMemo(() => {
+    const params = new URLSearchParams({ escolaId, limit: '100' })
+    if (turmaId) params.set('turmaId', turmaId)
+    return `/api/secretaria/admissoes/radar?${params.toString()}`
+  }, [escolaId, turmaId])
+
+  const {
+    data: itemsData,
+    isLoading,
+    error: swrError,
+    mutate,
+  } = useSWR<CandidaturaListItem[]>(listUrl, fetchAdmissoes, {
+    fallbackData: initialItems,
+    keepPreviousData: true,
+  })
+
+  const items = itemsData || []
+  const loading = isLoading && items.length === 0
+  const error = swrError instanceof Error ? swrError.message : null
 
   const publicLink = typeof window !== 'undefined' 
     ? `${window.location.origin}/admissoes/${escolaParam}` 
@@ -160,22 +190,8 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
   }
 
   const fetchList = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({ escolaId, limit: '100' })
-      if (turmaId) params.set('turmaId', turmaId)
-      
-      const res = await fetch(`/api/secretaria/admissoes/radar?${params.toString()}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Falha ao carregar admissões')
-      setItems(json.items || [])
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [escolaId, turmaId])
+    await mutate()
+  }, [mutate])
 
   const fetchDetail = useCallback(async (id: string) => {
     setLoadingDetail(true)
@@ -190,10 +206,6 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
       setLoadingDetail(false)
     }
   }, [])
-
-  useEffect(() => {
-    fetchList()
-  }, [fetchList])
 
   useEffect(() => {
     if (selectedId) {
@@ -244,7 +256,10 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao rejeitar')
       
-      setItems(prev => prev.map(item => item.id === selectedId ? { ...item, status: 'rejeitada' } : item))
+      mutate(
+        (prev) => (prev || []).map((item) => (item.id === selectedId ? { ...item, status: 'rejeitada' } : item)),
+        false
+      )
       if (selectedData) setSelectedData({ ...selectedData, status: 'rejeitada' })
       alert('Candidatura rejeitada.')
     } catch (err: any) {
@@ -272,7 +287,7 @@ export default function AdmissoesInboxClient({ escolaId }: { escolaId: string })
       
       // Remove from list or move to concluded depending on business logic
       // In this UI, concluded means matriculado or rejeitada. Let's just refresh.
-      fetchList()
+      await mutate()
       setSelectedId(null)
       setSelectedData(null)
       alert('Candidatura arquivada.')
