@@ -368,8 +368,11 @@ export type Database = {
       }
       alunos: {
         Row: {
+          acesso_bloqueado: boolean
           acesso_liberado: boolean
           bi_numero: string | null
+          bloqueado_em: string | null
+          bloqueado_por: string | null
           codigo_ativacao: string | null
           created_at: string
           data_ativacao: string | null
@@ -385,6 +388,7 @@ export type Database = {
           escola_id: string
           id: string
           import_id: string | null
+          motivo_bloqueio: string | null
           naturalidade: string | null
           pai_nome: string | null
           mae_nome: string | null
@@ -410,8 +414,11 @@ export type Database = {
           usuario_auth_id: string | null
         }
         Insert: {
+          acesso_bloqueado?: boolean
           acesso_liberado?: boolean
           bi_numero?: string | null
+          bloqueado_em?: string | null
+          bloqueado_por?: string | null
           codigo_ativacao?: string | null
           created_at?: string
           data_ativacao?: string | null
@@ -427,6 +434,7 @@ export type Database = {
           escola_id: string
           id?: string
           import_id?: string | null
+          motivo_bloqueio?: string | null
           naturalidade?: string | null
           pai_nome?: string | null
           mae_nome?: string | null
@@ -452,8 +460,11 @@ export type Database = {
           usuario_auth_id?: string | null
         }
         Update: {
+          acesso_bloqueado?: boolean
           acesso_liberado?: boolean
           bi_numero?: string | null
+          bloqueado_em?: string | null
+          bloqueado_por?: string | null
           codigo_ativacao?: string | null
           created_at?: string
           data_ativacao?: string | null
@@ -469,6 +480,7 @@ export type Database = {
           escola_id?: string
           id?: string
           import_id?: string | null
+          motivo_bloqueio?: string | null
           naturalidade?: string | null
           pai_nome?: string | null
           mae_nome?: string | null

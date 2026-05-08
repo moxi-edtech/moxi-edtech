@@ -2,7 +2,7 @@
 
 import { Loader2, KeyRound } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { LiberarAcessoAlunos } from "@/components/secretaria/LiberarAcessoAlunos";
+import { AcessoPortalManager } from "@/components/secretaria/AcessoPortalManager";
 
 export default function SecretariaAcessoPage() {
   const { escolaId, isLoading, error } = useEscolaId();
@@ -27,14 +27,14 @@ export default function SecretariaAcessoPage() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-600 gap-2">
         <KeyRound className="w-6 h-6" />
-        Vincule-se a uma escola para liberar acessos.
+        Vincule-se a uma escola para gerir acessos.
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <LiberarAcessoAlunos escolaId={escolaId} />
+      <AcessoPortalManager escolaId={escolaId} />
     </div>
   );
 }

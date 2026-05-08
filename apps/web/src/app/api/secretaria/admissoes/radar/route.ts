@@ -13,6 +13,7 @@ const searchParamsSchema = z
     limit: z.string().regex(/^\d+$/).optional(),
     cursor_open: z.string().optional(),
     cursor_mat: z.string().optional(),
+    turmaId: z.string().uuid().optional(),
   })
   .strict()
 
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: parsed.error.format() }, { status: 400 })
   }
 
-  const { escolaId } = parsed.data
+  const { escolaId, turmaId } = parsed.data
   const supabase = await createClient()
 
   const { error: authError } = await requireRoleInSchool({
@@ -73,11 +74,18 @@ export async function GET(request: Request) {
 
   try {
     // 1) Counts (canônico por status)
-    const { data: countsRow, error: countsError } = await supabase
+    let countsQuery = supabase
       .from('vw_admissoes_counts_por_status')
       .select('submetida_total, em_analise_total, aprovada_total, matriculado_7d_total')
       .eq('escola_id', escolaId)
-      .maybeSingle()
+
+    if (turmaId) {
+      // If filtering by turma, we should ideally filter counts too, 
+      // but the view is per school. For now, we'll return school-wide counts 
+      // or we could add a new view/query for counts per turma if needed.
+    }
+
+    const { data: countsRow, error: countsError } = await countsQuery.maybeSingle()
 
     if (countsError) throw countsError
 
@@ -104,6 +112,8 @@ export async function GET(request: Request) {
           .order('created_at', { ascending: false })
           .order('id', { ascending: false })
 
+        if (turmaId) query = query.eq('turma_preferencial_id', turmaId)
+
         if (cursorOpen) {
           const [cursorCreatedAt, cursorId] = cursorOpen.split(',')
           if (cursorCreatedAt && cursorId) {
@@ -124,6 +134,8 @@ export async function GET(request: Request) {
           .gte('matriculado_em', sinceIso)
           .order('matriculado_em', { ascending: false })
           .order('id', { ascending: false })
+
+        if (turmaId) query = query.eq('turma_preferencial_id', turmaId)
 
         if (cursorMat) {
           const [cursorCreatedAt, cursorId] = cursorMat.split(',')
