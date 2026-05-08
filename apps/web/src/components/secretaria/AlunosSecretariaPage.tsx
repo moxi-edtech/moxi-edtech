@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   AlertCircle,
   Archive,
@@ -275,11 +276,13 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
 
 function RowActions({
   aluno,
+  secretariaBase,
   onArchive,
   onView,
   onPagamento,
 }: {
   aluno: Aluno;
+  secretariaBase: string;
   onArchive: (a: Aluno) => void;
   onView: (a: Aluno) => void;
   onPagamento: (a: Aluno) => void;
@@ -287,9 +290,9 @@ function RowActions({
   const isLead = aluno.origem === "candidatura";
   const matriculaHref =
     isLead && aluno.candidatura_id
-      ? `/secretaria/admissoes/nova?candidaturaId=${aluno.candidatura_id}`
+      ? `${secretariaBase}/admissoes/nova?candidaturaId=${aluno.candidatura_id}`
       : !isLead
-        ? `/secretaria/admissoes/nova?alunoId=${aluno.id}`
+        ? `${secretariaBase}/admissoes/nova?alunoId=${aluno.id}`
         : null;
 
   return (
@@ -307,7 +310,7 @@ function RowActions({
 
       {!isLead && (
         <Link
-          href={`/secretaria/alunos/${aluno.id}/editar`}
+          href={`${secretariaBase}/alunos/${aluno.id}/editar`}
           title="Editar"
           className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
         >
@@ -352,10 +355,12 @@ function RowActions({
 
 function ProfileDrawer({
   aluno,
+  secretariaBase,
   onClose,
   onPagamento,
 }: {
   aluno: Aluno | null;
+  secretariaBase: string;
   onClose: () => void;
   onPagamento: (aluno: Aluno) => void;
 }) {
@@ -598,13 +603,13 @@ function ProfileDrawer({
               <div className="grid gap-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Link
-                    href={`/secretaria/alunos/${detail?.id ?? aluno?.id ?? ""}`}
+                    href={`${secretariaBase}/alunos/${detail?.id ?? aluno?.id ?? ""}`}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     Perfil completo
                   </Link>
                   <Link
-                    href={`/secretaria/alunos/${detail?.id ?? aluno?.id ?? ""}/editar`}
+                    href={`${secretariaBase}/alunos/${detail?.id ?? aluno?.id ?? ""}/editar`}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     Editar
@@ -621,7 +626,7 @@ function ProfileDrawer({
                   </button>
                   {turmaId ? (
                     <Link
-                      href={`/secretaria/turmas/${turmaId}`}
+                      href={`${secretariaBase}/turmas/${turmaId}`}
                       className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                     >
                       Ver turma
@@ -1109,6 +1114,13 @@ const TAB_TO_STATUS: Record<TabStatus, string> = {
 };
 
 export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string | null }) {
+  const pathname = usePathname();
+  const slugFromPath = React.useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const secretariaBase = slugFromPath ? `/escola/${slugFromPath}/secretaria` : "/secretaria";
+
   const [tab, setTab] = useState<TabStatus>("ativos");
   const [q, setQ] = useState("");
   const debouncedQ = useDebounce(q, 300);
@@ -1418,6 +1430,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
       <ProfileDrawer
         aluno={profileTarget}
+        secretariaBase={secretariaBase}
         onClose={() => setProfileTarget(null)}
         onPagamento={(aluno) => {
           setProfileTarget(null);
@@ -1436,7 +1449,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       <div className="w-full max-w-6xl mx-auto px-6 py-8 space-y-6">
         <Breadcrumb
           items={[
-            { label: "Secretaria", href: "/secretaria" },
+            { label: "Secretaria", href: secretariaBase },
             { label: "Alunos" },
           ]}
         />
@@ -1450,7 +1463,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
           </div>
 
           <Link
-            href="/secretaria/admissoes/nova"
+            href={`${secretariaBase}/admissoes/nova`}
             className="flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#185830] transition-colors shadow-sm flex-shrink-0"
           >
             <Plus size={14} />
@@ -1748,6 +1761,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                         <td className="px-5 py-3.5">
                           <RowActions
                             aluno={aluno}
+                            secretariaBase={secretariaBase}
                             onArchive={setArchiveTarget}
                             onView={setProfileTarget}
                             onPagamento={setDrawerAluno}

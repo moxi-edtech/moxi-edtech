@@ -1363,6 +1363,7 @@ function Step3Pagamento(props: {
   candidaturaId: string | null;
   turmaId: string | null;
   escolaId: string;
+  secretariaBase: string;
   cursoId: string | null;
   classeId: string | null;
   anoLetivo?: number | null;
@@ -1380,6 +1381,7 @@ function Step3Pagamento(props: {
     candidaturaId,
     turmaId,
     escolaId,
+    secretariaBase,
     cursoId,
     classeId,
     anoLetivo,
@@ -1618,13 +1620,13 @@ function Step3Pagamento(props: {
                     } else {
                       console.error("Erro ao emitir documento:", json.error);
                       // Se falhar o atalho, vai para o hub como fallback seguro
-                      router.push(`/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                      router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                     }
                   } catch (err) {
-                    router.push(`/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                    router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                   }
                 } else {
-                  router.push(`/secretaria/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
+                  router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
                 }
               } else if (passo.id === "registar_propina") {
                 setShowPaymentModal(true);
@@ -1632,7 +1634,7 @@ function Step3Pagamento(props: {
                 onReset();
               }
             }}
-            onDismiss={() => router.push("/secretaria/matriculas")}
+            onDismiss={() => router.push(`${secretariaBase}/matriculas`)}
           />
 
           <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
@@ -1673,7 +1675,7 @@ function Step3Pagamento(props: {
           </button>
           <button
             type="button"
-            onClick={() => router.push("/secretaria/admissoes")}
+            onClick={() => router.push(`${secretariaBase}/admissoes`)}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
           >
             Voltar ao radar
@@ -1882,6 +1884,7 @@ export default function AdmissaoWizardClient({
     return match?.[1] ?? null;
   }, [pathname]);
   const resolvedSlug = escolaSlug ?? slugFromPath;
+  const secretariaBase = resolvedSlug ? `/escola/${resolvedSlug}/secretaria` : "/secretaria";
   const withSlug = useCallback(
     (suffix: string) => (resolvedSlug ? `/escola/${resolvedSlug}${suffix}` : suffix),
     [resolvedSlug]
@@ -2189,6 +2192,7 @@ export default function AdmissaoWizardClient({
             candidaturaId={candidaturaId}
             turmaId={turmaId}
             escolaId={escolaId}
+            secretariaBase={secretariaBase}
             cursoId={cursoId}
             classeId={classeId}
             anoLetivo={initialData?.ano_letivo ?? null}
