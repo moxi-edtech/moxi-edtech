@@ -13,6 +13,11 @@ import {
   Settings,
   GraduationCap,
   LayoutDashboard,
+  Zap,
+  Bookmark,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Command } from "cmdk";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
@@ -23,19 +28,10 @@ type Props = {
   portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
-const INTENT_KEYWORDS = ["pagamento", "pagar", "cobrar", "propina", "nota", "pauta"];
-
-function stripIntentKeywords(value: string) {
-  const tokens = value.trim().split(/\s+/).filter(Boolean);
-  const filtered = tokens.filter((token) => !INTENT_KEYWORDS.includes(token.toLowerCase()));
-  return filtered.join(" ");
-}
-
 export function CommandPalette({ escolaId, portal }: Props) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const { query, setQuery, results, loading } = useGlobalSearch(escolaId, {
-    transformQuery: stripIntentKeywords,
+  const { query, setQuery, results, loading, detectedIntent } = useGlobalSearch(escolaId, {
     portal,
   });
 
@@ -56,6 +52,15 @@ export function CommandPalette({ escolaId, portal }: Props) {
     setOpen(false);
     command();
   }, []);
+
+  const getStatusColor = (status: string | null) => {
+    if (!status) return "bg-slate-100 text-slate-500";
+    const s = status.toLowerCase();
+    if (s.includes("ativo") || s.includes("aprovada") || s.includes("pago")) return "bg-emerald-50 text-emerald-700 border-emerald-100";
+    if (s.includes("pendente") || s.includes("aguardando") || s.includes("atraso")) return "bg-amber-50 text-amber-700 border-amber-100";
+    if (s.includes("cancelado") || s.includes("inativo")) return "bg-rose-50 text-rose-700 border-rose-100";
+    return "bg-slate-50 text-slate-600 border-slate-100";
+  };
 
   const staticActions = React.useMemo(() => {
     const actions = [
@@ -146,6 +151,14 @@ export function CommandPalette({ escolaId, portal }: Props) {
           </div>
 
           <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
+            {detectedIntent && (
+              <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-klasse-green/5 border border-klasse-green/10">
+                <Zap className="h-3 w-3 text-klasse-green" />
+                <span className="text-[10px] font-bold text-klasse-green uppercase tracking-wider">
+                  Modo: {detectedIntent === 'financeiro' ? 'Financeiro' : detectedIntent === 'academico' ? 'Acadêmico' : detectedIntent === 'documentos' ? 'Documentos' : 'Ação Rápida'}
+                </span>
+              </div>
+            )}
             <Command.Empty className="flex flex-col items-center justify-center py-12 text-center">
               <div className="rounded-full bg-slate-50 p-4 mb-4">
                 <Search className="h-8 w-8 text-slate-300" />
@@ -178,28 +191,49 @@ export function CommandPalette({ escolaId, portal }: Props) {
                   <Command.Item
                     key={item.id}
                     onSelect={() => runCommand(() => router.push(item.href))}
-                    className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
+                    className="flex items-center justify-between rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-klasse-green/10 transition-colors">
-                        {item.type === "aluno" ? (
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 group-aria-selected:bg-klasse-green/10 transition-colors">
+                        {item.intent === "financeiro" ? (
+                          <CreditCard className="h-4 w-4" />
+                        ) : item.type === "aluno" ? (
                           <User className="h-4 w-4" />
                         ) : item.type === "turma" ? (
                           <GraduationCap className="h-4 w-4" />
+                        ) : item.type === "candidatura" ? (
+                          <Bookmark className="h-4 w-4" />
                         ) : (
                           <FileText className="h-4 w-4" />
                         )}
                       </div>
-                      <div>
-                        <div className="text-sm font-bold text-slate-900 group-aria-selected:text-klasse-green transition-colors">
-                          {item.label}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-klasse-green transition-colors">
+                            {item.label}
+                          </span>
+                          {item.highlight && (
+                            <span className={cn(
+                              "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                              getStatusColor(item.highlight)
+                            )}>
+                              {item.highlight}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-slate-500 uppercase tracking-tighter">
-                          {item.type}
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">
+                          {item.type} {item.intent && `• ${item.intent}`}
                         </div>
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-slate-300 opacity-0 group-aria-selected:opacity-100 -translate-x-2 group-aria-selected:translate-x-0 transition-all" />
+                    <div className="flex items-center gap-3">
+                      {item.intent && (
+                        <span className="text-[10px] font-bold text-klasse-green bg-klasse-green/10 px-2 py-1 rounded-lg">
+                          {item.intent === 'financeiro' ? 'Lançar' : 'Ver'}
+                        </span>
+                      )}
+                      <ArrowRight className="h-4 w-4 text-slate-300 opacity-0 group-aria-selected:opacity-100 -translate-x-2 group-aria-selected:translate-x-0 transition-all" />
+                    </div>
                   </Command.Item>
                 ))}
               </Command.Group>
