@@ -5,6 +5,7 @@ import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
 import type { AlunoNormalizado, DossierMensalidade } from "@/lib/aluno/types";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHistoricoTimelineSection";
+import { QuickEditField } from "@/components/aluno/QuickEditField";
 
 export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   const p = aluno.perfil;
@@ -52,15 +53,31 @@ export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
         <div className="grid gap-3 md:grid-cols-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Responsável</p>
-            {renderValue(p.responsavel_nome)}
+            <QuickEditField
+              label="Nome do Responsável"
+              value={p.responsavel_nome}
+              fieldName="responsavel"
+              alunoId={aluno.id}
+            />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Contacto</p>
-            {renderValue(p.responsavel_tel)}
+            <QuickEditField
+              label="Telefone do Responsável"
+              value={p.responsavel_tel}
+              fieldName="telefone_responsavel"
+              alunoId={aluno.id}
+              type="tel"
+            />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Endereço</p>
-            {renderValue(p.endereco)}
+            <QuickEditField
+              label="Endereço"
+              value={p.endereco}
+              fieldName="endereco"
+              alunoId={aluno.id}
+            />
           </div>
         </div>
       </div>

@@ -8,8 +8,8 @@ import { applyKf2ListInvariants } from '@/lib/kf2'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
-  email: z.string().email('Email inválido').optional(),
-  telefone: z.string().trim().optional(),
+  email: z.string().email('Email inválido').nullable().or(z.string().length(0)).optional(),
+  telefone: z.string().trim().nullable().optional(),
   data_nascimento: z.string().nullable().optional(),
   sexo: z.enum(['M','F','O','N']).nullable().optional(),
   bi_numero: z.string().trim().nullable().optional(),
@@ -22,12 +22,13 @@ const UpdateSchema = z.object({
   nif: z.string().trim().nullable().optional(),
   endereco: z.string().trim().nullable().optional(),
   encarregado_relacao: z.string().trim().nullable().optional(),
-  encarregado_email: z.string().trim().email().nullable().optional(),
+  encarregado_email: z.string().trim().email().nullable().or(z.string().length(0)).optional(),
   responsavel: z.string().trim().nullable().optional(),
   telefone_responsavel: z.string().trim().nullable().optional(),
   responsavel_financeiro_nome: z.string().trim().nullable().optional(),
   responsavel_financeiro_nif: z.string().trim().nullable().optional(),
   mesmo_que_encarregado: z.boolean().nullable().optional(),
+  status: z.enum(['ativo', 'inativo', 'suspenso', 'pendente', 'trancado', 'concluido', 'transferido', 'desistente']).optional(),
   documentos: z.record(z.unknown()).nullable().optional(),
   campos_extras: z.record(z.unknown()).nullable().optional(),
 })
@@ -262,6 +263,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.responsavel_financeiro_nome !== undefined) toUpdateAluno.responsavel_financeiro_nome = body.responsavel_financeiro_nome
     if (body.responsavel_financeiro_nif !== undefined) toUpdateAluno.responsavel_financeiro_nif = body.responsavel_financeiro_nif
     if (body.mesmo_que_encarregado !== undefined) toUpdateAluno.mesmo_que_encarregado = body.mesmo_que_encarregado
+    if (body.status !== undefined) toUpdateAluno.status = body.status
     if (body.documentos !== undefined) toUpdateAluno.documentos = body.documentos ?? {}
     if (body.campos_extras !== undefined) toUpdateAluno.campos_extras = body.campos_extras ?? {}
 
