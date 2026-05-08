@@ -14,13 +14,52 @@ type SearchResult = {
   created_at: string;
 };
 
+type SearchIntent = "financeiro" | "academico" | "perfil" | "documentos" | null;
+
 type MinimalResult = {
   id: string;
   label: string;
   type: string;
   highlight: string | null;
   href: string;
+  intent?: SearchIntent;
 };
+
+const INTENT_MAP: Record<string, SearchIntent> = {
+  pagar: "financeiro",
+  cobrar: "financeiro",
+  fatura: "financeiro",
+  recibo: "financeiro",
+  mensalidade: "financeiro",
+  propina: "financeiro",
+  nota: "academico",
+  pauta: "academico",
+  boletim: "academico",
+  historico: "academico",
+  ver: "perfil",
+  perfil: "perfil",
+  detalhe: "perfil",
+  documento: "documentos",
+  doc: "documentos",
+  arquivo: "documentos",
+};
+
+function detectIntent(query: string): { intent: SearchIntent; cleanedQuery: string } {
+  const tokens = query.trim().split(/\s+/);
+  if (tokens.length < 2) return { intent: null, cleanedQuery: query };
+
+  const firstToken = tokens[0].toLowerCase();
+  const intent = INTENT_MAP[firstToken];
+
+  if (intent) {
+    return {
+      intent,
+      cleanedQuery: tokens.slice(1).join(" "),
+    };
+  }
+
+  return { intent: null, cleanedQuery: query };
+}
 
 type Cursor = {
   score: number;
@@ -45,7 +84,7 @@ type GlobalSearchOptions = {
 };
 
 const PORTAL_TYPES: Record<PortalKey, string[]> = {
-  secretaria: ["aluno", "matricula", "turma", "documento"],
+  secretaria: ["aluno", "matricula", "turma", "documento", "candidatura"],
   financeiro: ["aluno", "mensalidade", "pagamento", "recibo"],
   admin: ["turma", "professor", "classe", "curso", "usuario"],
   professor: ["aluno"],
@@ -57,10 +96,25 @@ const PORTAL_TYPES: Record<PortalKey, string[]> = {
 function resolveHref(
   portal: PortalKey | undefined,
   escolaId: string | null | undefined,
-  item: { id: string; label: string; type: string }
+  item: { id: string; label: string; type: string },
+  intent?: SearchIntent
 ) {
   const basePortal = portal || "secretaria";
   const escolaParam = escolaId ?? null;
+
+  // Prioridade para intenção detectada
+  if (intent === "financeiro") {
+    if (item.type === "aluno" || item.type === "matricula") {
+      return escolaParam
+        ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
+        : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
+    }
+  }
+
+  if (intent === "documentos" && item.type === "aluno") {
+    return `/secretaria/documentos?alunoId=${item.id}`;
+  }
+
   if (basePortal === "professor") {
     return `/professor/notas?alunoId=${item.id}`;
   }
@@ -98,6 +152,8 @@ function resolveHref(
       return `/secretaria/admissoes?matricula=${item.id}`;
     case "documento":
       return `/secretaria/documentos`;
+    case "candidatura":
+      return `/secretaria/admissoes?candidatura=${item.id}`;
     case "mensalidade":
     case "pagamento":
     case "recibo":
@@ -120,7 +176,9 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   const portal = options?.portal;
   const types = options?.types;
 
-  const normalizedQuery = useMemo(() => query.trim().replace(/\s+/g, " "), [query]);
+  const { intent, cleanedQuery } = useMemo(() => detectIntent(query), [query]);
+
+  const normalizedQuery = useMemo(() => cleanedQuery.trim().replace(/\s+/g, " "), [cleanedQuery]);
   const effectiveQuery = useMemo(() => {
     const next = transformQuery ? transformQuery(normalizedQuery) : normalizedQuery;
     return next.trim().replace(/\s+/g, " ");
@@ -161,7 +219,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: resolveHref(options?.portal, escolaId, a),
+        href: resolveHref(options?.portal, escolaId, a, intent),
+        intent,
       }));
 
       setResults(items);
@@ -209,7 +268,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: resolveHref(options?.portal, escolaId, a),
+        href: resolveHref(options?.portal, escolaId, a, intent),
+        intent,
       }));
 
       setResults(items);
@@ -258,7 +318,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: resolveHref(options?.portal, escolaId, a),
+        href: resolveHref(options?.portal, escolaId, a, intent),
+        intent,
       }));
 
       setResults((prev) => (append ? [...prev, ...items] : items));
@@ -292,7 +353,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     })();
 
     return () => ac.abort();
-  }, [debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal]);
+  }, [debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent]);
 
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
@@ -329,7 +390,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: resolveHref(options?.portal, escolaId, a),
+        href: resolveHref(options?.portal, escolaId, a, intent),
+        intent,
       }));
 
       setResults((prev) => [...prev, ...items]);
@@ -344,5 +406,6 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
     }
   };
 
-  return { query, setQuery, results, loading, hasMore, loadMore };
+  return { query, setQuery, results, loading, hasMore, loadMore, detectedIntent: intent };
 }
+
