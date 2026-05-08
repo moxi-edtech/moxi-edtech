@@ -38,12 +38,32 @@ export async function POST(request: Request) {
   try {
     const { data: candidatura, error: candError } = await supabase
         .from('candidaturas')
-        .select('escola_id')
+        .select('escola_id, status, matricula_id, aluno_id')
         .eq('id', candidatura_id)
         .single();
 
     if (candError || !candidatura) {
         return NextResponse.json({ error: 'Candidatura not found' }, { status: 404 });
+    }
+
+    const statusAtual = String(candidatura.status ?? "").toLowerCase();
+    if (statusAtual === "matriculado" && candidatura.matricula_id) {
+      let numeroMatricula: string | null = null;
+      const { data: matricula } = await supabase
+        .from("matriculas")
+        .select("numero_matricula")
+        .eq("id", candidatura.matricula_id)
+        .maybeSingle();
+      numeroMatricula = (matricula?.numero_matricula as string | null) ?? null;
+
+      return NextResponse.json({
+        ok: true,
+        idempotent: true,
+        message: "Matrícula já havia sido finalizada.",
+        matricula_id: candidatura.matricula_id,
+        aluno_id: candidatura.aluno_id,
+        numero_matricula: numeroMatricula,
+      });
     }
 
   // 2. Authorize
@@ -147,7 +167,29 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
     if (typeof error === 'object' && error && 'code' in error && error.code === '23505') { // unique_violation
-        return NextResponse.json({ error: 'This request has already been processed.' }, { status: 409 });
+      const { data: candAfter } = await supabase
+        .from("candidaturas")
+        .select("status, matricula_id, aluno_id")
+        .eq("id", candidatura_id)
+        .maybeSingle();
+      const statusAfter = String(candAfter?.status ?? "").toLowerCase();
+      if (statusAfter === "matriculado" && candAfter?.matricula_id) {
+        const { data: matricula } = await supabase
+          .from("matriculas")
+          .select("numero_matricula")
+          .eq("id", candAfter.matricula_id)
+          .maybeSingle();
+
+        return NextResponse.json({
+          ok: true,
+          idempotent: true,
+          message: "Matrícula já havia sido finalizada.",
+          matricula_id: candAfter.matricula_id,
+          aluno_id: candAfter.aluno_id,
+          numero_matricula: (matricula?.numero_matricula as string | null) ?? null,
+        });
+      }
+      return NextResponse.json({ error: 'This request has already been processed.' }, { status: 409 });
     }
     if (typeof error === 'object' && error && 'code' in error && error.code === '42883') {
       const message = String((error as { message?: string }).message ?? '')
