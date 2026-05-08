@@ -4,6 +4,7 @@ import {
   useEffect, useMemo, useState, useCallback, useRef, type CSSProperties,
 } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Search, X, UsersRound, CalendarCheck, Eye, Pencil, Plus,
   AlertTriangle, CheckCircle2, GraduationCap, UserCheck, UserX,
@@ -308,11 +309,12 @@ function HealthBadge({ signal }: { signal: HealthSignal }) {
 // ─── Health detail breakdown (shown in health column) ────────────────────────
 
 function HealthDetail({ 
-  turma, financeiro, pedagogico 
+  turma, financeiro, pedagogico, secretariaBase 
 }: { 
   turma: TurmaItem; 
   financeiro?: FinanceiroTurmaStat | null;
   pedagogico?: PedagogicoTurmaStat | null;
+  secretariaBase: string;
 }) {
   const pct           = Math.min(Math.round(((turma.ocupacao_atual || 0) / (turma.capacidade_maxima || 30)) * 100), 100);
   const inadimplencia = Number(financeiro?.inadimplenciaPct ?? 0);
@@ -378,7 +380,7 @@ function HealthDetail({
         {/* Candidatos em Espera (Fase 4) */}
         {pedagogico && pedagogico.candidatos_espera > 0 && (
           <Link 
-            href={`/secretaria/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
+            href={`${secretariaBase}/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
             className="flex items-center gap-1.5 text-[10px] text-klasse-gold-600 font-bold hover:underline"
           >
             <UsersRound size={10} />
@@ -394,11 +396,12 @@ function HealthDetail({
 // Cards grouped by turno — less dense, more scannable for secretaries.
 
 function SecretaryCardView({
-  items, detailHrefBase, onEdit, pedagogicoStats,
+  items, detailHrefBase, secretariaBase, onEdit, pedagogicoStats,
   selectedIds, onToggleSelect,
 }: {
   items:           TurmaItem[];
   detailHrefBase:  string;
+  secretariaBase:  string;
   onEdit:          (t: TurmaItem) => void;
   pedagogicoStats: Record<string, PedagogicoTurmaStat>;
   selectedIds:     Set<string>;
@@ -502,7 +505,7 @@ function SecretaryCardView({
                     <div className="flex items-center gap-3">
                       {ped && ped.candidatos_espera > 0 && (
                         <Link 
-                          href={`/secretaria/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
+                          href={`${secretariaBase}/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
                           className="flex items-center gap-1 px-1.5 py-0.5 bg-klasse-gold-50 text-klasse-gold-700 rounded-lg text-[10px] font-bold border border-klasse-gold-200 hover:bg-klasse-gold-100 transition-colors"
                           title={`${ped.candidatos_espera} candidato(s) em espera`}
                         >
@@ -539,7 +542,7 @@ function SecretaryCardView({
 
 function TurmaRow({
   turma, isExpanded, onToggleExpand, onEdit, style,
-  detailHrefBase, financeiro, pedagogico,
+  detailHrefBase, secretariaBase, financeiro, pedagogico,
   editingCell, onStartEdit, onCancelEdit, onSaveEdit, loadingCell,
   isSelected, onToggleSelect,
 }: {
@@ -549,6 +552,7 @@ function TurmaRow({
   onEdit:         (t: TurmaItem) => void;
   style?:         CSSProperties;
   detailHrefBase: string;
+  secretariaBase: string;
   financeiro?:    FinanceiroTurmaStat | null;
   pedagogico?:    PedagogicoTurmaStat | null;
   editingCell:    { id: string; field: "sala" | "capacidade_maxima" } | null;
@@ -681,7 +685,7 @@ function TurmaRow({
 
       {/* Health (consolidated) */}
       <td className="px-5 py-4">
-        <HealthDetail turma={turma} financeiro={financeiro} pedagogico={pedagogico} />
+        <HealthDetail turma={turma} financeiro={financeiro} pedagogico={pedagogico} secretariaBase={secretariaBase} />
       </td>
 
       {/* Ações */}
@@ -725,7 +729,13 @@ export default function TurmasListClient({
   initialData?: TurmasResponse | null;
 }) {
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
-  const escolaParam = escolaSlug || escolaId;
+  const pathname = usePathname();
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const escolaParam = slugFromPath || escolaSlug || escolaId;
+  const secretariaBase = escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
 
   const [data,            setData]            = useState<TurmasResponse | null>(initialData);
   const [items,           setItems]           = useState<TurmaItem[]>(initialData?.items || []);
@@ -1127,7 +1137,7 @@ export default function TurmasListClient({
 
   const detailHrefBase = adminMode && escolaParam
     ? `/escola/${escolaParam}/admin/turmas`
-    : `/secretaria/turmas`;
+    : `${secretariaBase}/turmas`;
 
   const handleFilterChange = useCallback((next: Partial<ActiveFilters>) => {
     setFilters((prev) => ({ ...prev, ...next }));
@@ -1174,6 +1184,7 @@ export default function TurmasListClient({
           <SecretaryCardView
             items={filteredItems}
             detailHrefBase={detailHrefBase}
+            secretariaBase={secretariaBase}
             pedagogicoStats={pedagogicoStats}
             onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
             selectedIds={selectedIds}
@@ -1381,6 +1392,7 @@ export default function TurmasListClient({
                           onToggleExpand={() => toggleExpand(row.turma.id)}
                           onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
                           detailHrefBase={detailHrefBase}
+                          secretariaBase={secretariaBase}
                           financeiro={financeiroStats[row.turma.id]}
                           pedagogico={pedagogicoStats[row.turma.id]}
                           style={vs}

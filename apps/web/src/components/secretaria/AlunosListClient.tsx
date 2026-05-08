@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Loader2,
   Search,
@@ -159,6 +159,12 @@ function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
 // -----------------------------
 export default function AlunosListClient() {
   const router = useRouter();
+  const pathname = usePathname();
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const secretariaBase = slugFromPath ? `/escola/${slugFromPath}/secretaria` : "/secretaria";
 
   // Filters
   const [q, setQ] = useState("");
@@ -335,7 +341,7 @@ export default function AlunosListClient() {
         </div>
 
         <Link
-          href="/secretaria/matriculas/nova"
+          href={`${secretariaBase}/matriculas/nova`}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-klasse-gold text-white hover:brightness-95 shadow-sm"
         >
           <Plus size={16} />
@@ -456,9 +462,9 @@ export default function AlunosListClient() {
 
                     const matriculaHref =
                       isLead && aluno.candidatura_id
-                        ? `/secretaria/matriculas/nova?candidaturaId=${aluno.candidatura_id}`
+                        ? `${secretariaBase}/matriculas/nova?candidaturaId=${aluno.candidatura_id}`
                         : !isLead
-                          ? `/secretaria/matriculas/nova?alunoId=${aluno.id}`
+                          ? `${secretariaBase}/matriculas/nova?alunoId=${aluno.id}`
                           : null;
 
                     const initials = (aluno.nome || "—")
@@ -553,7 +559,7 @@ export default function AlunosListClient() {
                             {!isLead ? (
                               <>
                                 <Link
-                                  href={`/secretaria/alunos/${aluno.id}`}
+                                  href={`${secretariaBase}/alunos/${aluno.id}`}
                                   className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                                   title="Ver"
                                 >
@@ -561,7 +567,7 @@ export default function AlunosListClient() {
                                 </Link>
 
                                 <Link
-                                  href={`/secretaria/alunos/${aluno.id}/editar`}
+                                  href={`${secretariaBase}/alunos/${aluno.id}/editar`}
                                   className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 transition"
                                   title="Editar"
                                 >

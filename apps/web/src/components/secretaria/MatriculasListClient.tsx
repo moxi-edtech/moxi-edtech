@@ -157,6 +157,7 @@ export default function MatriculasListClient() {
     return match?.[1] ?? null;
   }, [pathname]);
   const resolvedSlug = slugFromPath;
+  const secretariaBase = resolvedSlug ? `/escola/${resolvedSlug}/secretaria` : "/secretaria";
   const novaMatriculaHref = resolvedSlug
     ? `/escola/${resolvedSlug}/secretaria/admissoes/nova`
     : "#";
@@ -521,11 +522,11 @@ export default function MatriculasListClient() {
           {/* Exports */}
           <div className="flex gap-2">
             <ToolbarButton
-              href={`/secretaria/admissoes/matriculas/export?format=csv&ano=${anoLetivoAtivo}&q=${q}`}
+              href={`${secretariaBase}/admissoes/matriculas/export?format=csv&ano=${anoLetivoAtivo}&q=${q}`}
               label="CSV"
             />
             <ToolbarButton
-              href={`/secretaria/admissoes/matriculas/export?format=json&ano=${anoLetivoAtivo}&q=${q}`}
+              href={`${secretariaBase}/admissoes/matriculas/export?format=json&ano=${anoLetivoAtivo}&q=${q}`}
               label="JSON"
             />
           </div>
@@ -734,7 +735,7 @@ export default function MatriculasListClient() {
                     return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("pt-BR");
                   })();
 
-                  const fichaHref = m.aluno_id ? `/secretaria/alunos/${m.aluno_id}` : null;
+                  const fichaHref = m.aluno_id ? `${secretariaBase}/alunos/${m.aluno_id}` : null;
                   const statusKey = (m.status || "").toLowerCase();
                   const numeroMatriculaVisivel =
                     statusKey === "ativa" && m.numero_matricula

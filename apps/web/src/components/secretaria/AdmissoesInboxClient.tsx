@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { 
   Search, 
@@ -103,9 +103,18 @@ export default function AdmissoesInboxClient({
   initialItems?: CandidaturaListItem[];
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const { escolaSlug } = useEscolaId()
-  const escolaParam = escolaSlug || escolaId
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/)
+    return match?.[1] ?? null
+  }, [pathname])
+  const escolaParam = escolaSlug || slugFromPath || escolaId
+  const withSlug = useCallback(
+    (suffix: string) => ((escolaSlug || slugFromPath) ? `/escola/${escolaSlug || slugFromPath}${suffix}` : suffix),
+    [escolaSlug, slugFromPath]
+  )
 
   const [selectedId, setSelectedId] = useState<string | null>(searchParams?.get('id') || null)
   const turmaId = searchParams?.get('turmaId')
@@ -236,7 +245,7 @@ export default function AdmissoesInboxClient({
 
   const handleApprove = async () => {
     if (!selectedId) return
-    router.push(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`)
+    router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`))
   }
 
   const handleReject = async () => {
@@ -348,7 +357,7 @@ export default function AdmissoesInboxClient({
               <Button 
                 size="sm" 
                 className="h-8 bg-klasse-green hover:bg-klasse-green-600 text-white gap-1"
-                onClick={() => router.push(`/secretaria/admissoes/nova`)}
+                onClick={() => router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Novo</span>
@@ -515,7 +524,7 @@ export default function AdmissoesInboxClient({
                           variant="outline" 
                           size="lg"
                           className="rounded-2xl h-12"
-                          onClick={() => router.push(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`)}
+                          onClick={() => router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`))}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
                           Editar
@@ -639,7 +648,7 @@ export default function AdmissoesInboxClient({
 
                     {selectedData.status === 'aprovada' && (
                       <button 
-                        onClick={() => router.push(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`)}
+                        onClick={() => router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`))}
                         className="flex items-center gap-3 px-10 py-4 bg-klasse-green text-white rounded-2xl font-bold shadow-xl shadow-klasse-green/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
                       >
                         <Check className="h-5 w-5" />

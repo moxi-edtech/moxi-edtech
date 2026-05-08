@@ -2,7 +2,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Archive, Plus } from 'lucide-react'
 
 type AdmissaoStatus =
@@ -89,6 +89,15 @@ function pickCount(data: RadarData | null, status: AdmissaoStatus, fallback: num
 
 export default function AdmissoesRadarClient({ escolaId }: { escolaId: string }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/)
+    return match?.[1] ?? null
+  }, [pathname])
+  const withSlug = useCallback(
+    (suffix: string) => (slugFromPath ? `/escola/${slugFromPath}${suffix}` : suffix),
+    [slugFromPath]
+  )
 
   const [data, setData] = useState<RadarData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -105,9 +114,9 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
 
   const approve = useCallback(
     async (item: RadarItem) => {
-      router.push(`/secretaria/admissoes/nova?candidaturaId=${item.id}`)
+      router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
     },
-    [router]
+    [router, withSlug]
   )
 
   const archive = useCallback(
@@ -293,7 +302,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
 
         <button
           type="button"
-          onClick={() => router.push('/secretaria/admissoes/nova')}
+          onClick={() => router.push(withSlug('/secretaria/admissoes/nova'))}
           className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-white hover:brightness-95"
         >
           <Plus className="h-4 w-4" />
@@ -334,11 +343,11 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                       key={item.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => router.push(`/secretaria/admissoes/nova?candidaturaId=${item.id}`)}
+                      onClick={() => router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault()
-                          router.push(`/secretaria/admissoes/nova?candidaturaId=${item.id}`)
+                          router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
                         }
                       }}
                       className="w-full rounded-xl bg-slate-900 p-3 text-left ring-1 ring-white/5 hover:ring-klasse-gold/25"
@@ -384,7 +393,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation()
-                                router.push(`/secretaria/admissoes/nova?candidaturaId=${item.id}`)
+                                router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
                               }}
                               className="rounded-lg bg-klasse-green px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95"
                             >
