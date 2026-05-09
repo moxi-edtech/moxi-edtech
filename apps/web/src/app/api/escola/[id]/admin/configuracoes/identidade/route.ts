@@ -49,14 +49,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     }
 
     const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
-
-    if (userEscolaId && userEscolaId !== requestedEscolaId) {
+    if (!userEscolaId) {
       return withNoStore(
         NextResponse.json({ ok: false, error: "Acesso negado a esta escola." }, { status: 403 }),
         start
       );
     }
+    const effectiveEscolaId = userEscolaId;
 
     const { data, error } = await supabase
       .from("escolas")

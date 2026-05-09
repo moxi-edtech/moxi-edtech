@@ -13,7 +13,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return notFound();
 
-  const resolvedEscolaId = escolaId ?? (await resolveEscolaIdForUser(supabase, user.id));
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
   if (!resolvedEscolaId) return notFound();
 
   const { data: raw, error } = await supabase.rpc("get_aluno_dossier", {

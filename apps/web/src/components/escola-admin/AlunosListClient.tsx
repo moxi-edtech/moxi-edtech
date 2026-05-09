@@ -72,7 +72,7 @@ type AlunosResponse = {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function formatKz(valor?: number) {
-  if (!valor) return null;
+  if (valor === undefined || valor === null) return null;
   return new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })
     .format(valor);
 }
@@ -82,6 +82,9 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
   meses?:   number;
   valor?:   number;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   if (situacao === "em_dia") return (
     <span className="inline-flex items-center gap-1 rounded-full bg-[#1F6B3B]/10
       px-2.5 py-1 text-[11px] font-bold text-[#1F6B3B]">
@@ -96,7 +99,7 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
         <AlertCircle size={10} />
         {meses ? `${meses} ${meses === 1 ? "mês" : "meses"}` : "Em atraso"}
       </span>
-      {valor && (
+      {valor && mounted && (
         <p className="text-[10px] text-rose-500 mt-0.5 font-semibold">{formatKz(valor)}</p>
       )}
     </div>
