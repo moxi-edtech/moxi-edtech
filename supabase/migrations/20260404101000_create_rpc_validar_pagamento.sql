@@ -81,6 +81,12 @@ BEGIN
     RAISE EXCEPTION 'AUTH: mensalidade fora do tenant';
   END IF;
 
+  IF NOT p_aprovado THEN
+    IF COALESCE(NULLIF(trim(p_mensagem_secretaria), ''), '') = '' THEN
+      RAISE EXCEPTION 'DATA: mensagem de rejeição obrigatória';
+    END IF;
+  END IF;
+
   IF v_pagamento.status <> 'pending' THEN
     RETURN jsonb_build_object(
       'ok', true,
@@ -101,7 +107,21 @@ BEGIN
     v_novo_valor_pago := v_valor_pago_atual + COALESCE(v_pagamento.valor_pago, 0);
 
     IF v_novo_valor_pago > v_valor_esperado + 0.01 THEN
-      RAISE EXCEPTION 'DATA: pagamento excede saldo pendente';
+      DECLARE
+        v_outros_pendentes int;
+      BEGIN
+        SELECT count(*) INTO v_outros_pendentes
+        FROM public.pagamentos
+        WHERE mensalidade_id = v_pagamento.mensalidade_id
+          AND status = 'pending'
+          AND id <> p_pagamento_id;
+        
+        IF v_outros_pendentes > 0 THEN
+          RAISE EXCEPTION 'DATA: pagamento excede saldo pendente (% outros pendentes)', v_outros_pendentes;
+        ELSE
+          RAISE EXCEPTION 'DATA: pagamento excede saldo pendente';
+        END IF;
+      END;
     END IF;
 
     UPDATE public.pagamentos
@@ -169,10 +189,6 @@ BEGIN
       )
   WHERE id = v_pagamento.id
   RETURNING * INTO v_pagamento;
-
-  IF COALESCE(NULLIF(trim(p_mensagem_secretaria), ''), '') = '' THEN
-    RAISE EXCEPTION 'DATA: mensagem de rejeição obrigatória';
-  END IF;
 
   RETURN jsonb_build_object(
     'ok', true,

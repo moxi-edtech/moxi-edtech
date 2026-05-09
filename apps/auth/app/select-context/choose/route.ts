@@ -105,7 +105,7 @@ export async function POST(req: Request) {
   await setTenantContextCookie({
     uid: user.id,
     tenant_id: tenant.tenantId,
-    tenant_slug: null,
+    tenant_slug: tenant.tenantSlug,
     tenant_type: tenant.tenantType,
     role: tenant.role,
   });

@@ -21,6 +21,7 @@ Eliminar remount/reload perceptível ao navegar por cliques internos no portal a
 - [x] **Onda 2 — Financeiro:** Concluída (2026-05-08).
 - [x] **Onda 3 — Admin Escola:** Concluída (2026-05-09).
 - [x] **Onda 4 — Professor/Aluno:** Concluída (2026-05-09).
+- [x] **Middleware Edge:** Hot path sem DB via contexto assinado `klasse_ctx` (2026-05-09).
 - [/] Aplicar guardrails de navegação (script local aplicado; CI pendente).
 - [ ] Cobrir E2E de navegação crítica.
 - [ ] Publicar métricas de navegação no monitoramento.
@@ -78,10 +79,24 @@ Eliminar remount/reload perceptível ao navegar por cliques internos no portal a
 - `pnpm -C apps/web typecheck` ✅
 - `pnpm -C apps/web lint` ⚠️ (0 erros, 1028 warnings residuais - projeto necessita de limpeza de tipos e Storybook).
 
+### Otimização — Middleware Edge (Concluída em 2026-05-09)
+**Problema:** O middleware usava Supabase para resolver contexto de autenticação e escola em rotas de portal, criando risco de latência/custo por requisição.
+**Decisão:** Roteamento inicial deve usar contexto assinado no Edge. O cookie `klasse_ctx` contém `uid`, `tenant_id`, `tenant_slug`, `tenant_type`, `role`, `iat` e `exp`, assinado por HMAC com `KLASSE_CONTEXT_COOKIE_SECRET`/fallback operacional.
+**Implementação:** `apps/web/src/middleware.ts` agora valida `klasse_ctx` localmente com WebCrypto antes de qualquer fallback DB. `apps/auth` passa a gravar `tenant_slug` no cookie ao login de tenant único e na seleção explícita de contexto.
+**Fallback permitido:** Supabase continua apenas para sessões antigas sem `klasse_ctx`, cookie expirado/inválido, ou acesso cross-tenant que exige resolução segura.
+
+**Validação técnica:**
+- `pnpm -C apps/web typecheck` ✅
+- `pnpm -C apps/auth typecheck` ✅
+- `bash scripts/validate-navigation.sh` ✅
+- `pnpm -C apps/web lint` ⚠️ (0 erros, 1023 warnings residuais).
+- `pnpm -C apps/auth lint` ⚠️ não executa: app Auth ainda não possui `eslint.config.*` compatível com ESLint 9.
+
 ## Próximos Passos
 1. Ligar `scripts/validate-navigation.sh` ao pipeline de CI.
 2. Cobrir E2E dos fluxos críticos Admin/Secretaria/Financeiro/Professor/Aluno para medir remount/reload perceptível.
-3. Publicar métrica de reload indevido no monitoramento.
+3. Adicionar métrica de middleware para contar `auth_context_source=cookie|db_fallback`.
+4. Publicar métrica de reload indevido no monitoramento.
 
 ## Definição de Pronto (DoD)
 - Sem remount perceptível em cliques internos dos fluxos críticos.

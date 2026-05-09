@@ -103,6 +103,16 @@ BEGIN
     RAISE EXCEPTION 'DATA: valor_informado excede saldo pendente';
   END IF;
 
+  -- Bloquear se já existe um pagamento pendente de OUTRO utilizador para esta mensalidade
+  IF EXISTS (
+    SELECT 1 FROM public.pagamentos 
+    WHERE mensalidade_id = v_mensalidade.id 
+      AND status = 'pending'
+      AND created_by IS DISTINCT FROM v_actor_id
+  ) THEN
+    RAISE EXCEPTION 'DATA: Já existe um comprovativo pendente de validação para esta mensalidade enviado por outro utilizador.';
+  END IF;
+
   SELECT *
     INTO v_pagamento
   FROM public.pagamentos
