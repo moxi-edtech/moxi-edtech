@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, BookOpen, FileText, Home, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
 import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 
 type Educando = { id: string; nome: string; escola_id: string | null };
 
 export default function AlunoLayoutClient({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
+  const [escolaParam, setEscolaParam] = useState<string | null>(null);
   const [educandos, setEducandos] = useState<Educando[]>([]);
 
   const router = useRouter();
@@ -51,7 +53,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
 
       const { data: esc } = await s
         .from("escolas")
-        .select("nome, plano_atual, aluno_portal_enabled, status")
+        .select("nome, slug, plano_atual, aluno_portal_enabled, status")
         .eq("id", escolaId)
         .maybeSingle();
 
@@ -105,10 +107,25 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
       if (!active) return;
 
       setEscolaNome(esc?.nome ?? null);
+      const resolvedEscolaParam = esc?.slug ? String(esc.slug) : String(escolaId);
+      setEscolaParam(resolvedEscolaParam);
       setEducandos(merged);
 
-      if (!acessoPortal && pathname !== "/aluno/desabilitado") {
-        router.replace("/aluno/desabilitado");
+      const safePath = pathname ?? "";
+      const query = searchValue ? `?${searchValue}` : "";
+      const disabledPath = buildPortalHref(resolvedEscolaParam, "/aluno/desabilitado");
+
+      if (!acessoPortal) {
+        if (safePath !== disabledPath) {
+          router.replace(disabledPath);
+          return;
+        }
+        setReady(true);
+        return;
+      }
+
+      if (acessoPortal && safePath.startsWith("/aluno")) {
+        router.replace(`${buildPortalHref(resolvedEscolaParam, safePath)}${query}`);
         return;
       }
 
@@ -118,7 +135,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
     return () => {
       active = false;
     };
-  }, [pathname, router]);
+  }, [pathname, router, searchValue]);
 
   const alunoSelecionado = useMemo(() => searchParams?.get("aluno") ?? educandos[0]?.id ?? null, [searchParams, educandos]);
   const alunoSelecionadoNome = useMemo(
@@ -127,20 +144,29 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
   );
 
   const safePathname = pathname ?? "";
-  const navItems = [
-    { href: "/aluno/dashboard", label: "Início", icon: Home },
-    { href: "/aluno/academico", label: "Académico", icon: BookOpen },
-    { href: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
-    { href: "/aluno/documentos", label: "Documentos", icon: FileText },
-    { href: "/aluno/avisos", label: "Avisos", icon: Bell },
-  ];
+  const escolaParamFromPath = getEscolaParamFromPath(safePathname);
+  const navEscolaParam = escolaParamFromPath ?? escolaParam;
+  const navItems = useMemo(
+    () =>
+      [
+        { path: "/aluno/dashboard", label: "Início", icon: Home },
+        { path: "/aluno/academico", label: "Académico", icon: BookOpen },
+        { path: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
+        { path: "/aluno/documentos", label: "Documentos", icon: FileText },
+        { path: "/aluno/avisos", label: "Avisos", icon: Bell },
+      ].map((item) => ({
+        ...item,
+        href: buildPortalHref(navEscolaParam, item.path),
+      })),
+    [navEscolaParam],
+  );
 
-  const withAlunoParam = (href: string) => {
+  const withAlunoParam = useCallback((href: string) => {
     if (!alunoSelecionado) return href;
     const params = new URLSearchParams(searchValue);
     params.set("aluno", alunoSelecionado);
     return `${href}?${params.toString()}`;
-  };
+  }, [alunoSelecionado, searchValue]);
 
   const handleTrocarAluno = (id: string) => {
     const params = new URLSearchParams(searchValue);
@@ -152,7 +178,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
     navItems.forEach((item) => {
       router.prefetch(withAlunoParam(item.href));
     });
-  }, [alunoSelecionado, searchValue, router]);
+  }, [navItems, router, withAlunoParam]);
 
   if (!ready) {
     return <div className="p-6">🔒 Verificando acesso do aluno…</div>;
@@ -166,6 +192,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
         educandos={educandos}
         alunoSelecionadoId={alunoSelecionado}
         onSelectAluno={handleTrocarAluno}
+        homeHref={withAlunoParam(navItems[0]?.href ?? buildPortalHref(navEscolaParam, "/aluno/dashboard"))}
       />
 
       <main className="mx-auto w-full max-w-5xl px-4 py-4 pb-[calc(96px+env(safe-area-inset-bottom))]">

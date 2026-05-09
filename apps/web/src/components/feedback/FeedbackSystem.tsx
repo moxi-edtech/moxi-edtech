@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
 
 const K = {
   green: "#1F6B3B",
@@ -348,6 +349,7 @@ export type OperationalAlert = {
 }
 
 function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (alert: OperationalAlert) => void }) {
+  const router = useRouter()
   const cfg = {
     critical: {
       border: "border-rose-200",
@@ -388,7 +390,13 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
       </div>
       {(alert.link || onAction) && (
         <button
-          onClick={() => onAction ? onAction(alert) : window.location.href = alert.link!}
+          onClick={() => {
+            if (onAction) {
+              onAction(alert)
+              return
+            }
+            if (alert.link) router.push(alert.link)
+          }}
           className="flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
             hover:text-klasse-green border border-slate-200 rounded-lg px-3 py-2 bg-white
             hover:border-klasse-green/30 transition-all shadow-sm active:scale-95"

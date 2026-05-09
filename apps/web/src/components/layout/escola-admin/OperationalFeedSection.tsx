@@ -6,6 +6,7 @@ import { Activity, ArrowRight, AlertTriangle, CheckCircle2, Eye, ExternalLink } 
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { familyBadgeClasses, familyLabel, toFeedSubline, type ActivityFeedItem } from "@/lib/admin/activityFeed";
 import { useAdminActivityFeed } from "./useAdminActivityFeed";
+import { buildPortalHref } from "@/lib/navigation";
 import { 
   Sheet, 
   SheetContent, 
@@ -121,7 +122,7 @@ export default function OperationalFeedSection({ escolaId }: Props) {
         </div>
 
         <Link
-          href={`/escola/${escolaParam}/admin/relatorios`}
+          href={buildPortalHref(escolaParam, "/admin/relatorios")}
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider text-klasse-green hover:bg-emerald-50 transition-colors"
         >
           Histórico <ArrowRight className="h-3 w-3" />

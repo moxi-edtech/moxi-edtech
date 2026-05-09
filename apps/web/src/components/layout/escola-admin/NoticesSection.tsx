@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Megaphone, ArrowRight, BellOff } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 export type Aviso = {
   id: string;
@@ -25,7 +26,7 @@ function formatDateShort(iso: string) {
 export default function NoticesSection({ escolaId, notices = [] }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const hrefAll = escolaParam ? `/escola/${escolaParam}/admin/avisos/novo` : "#";
+  const hrefAll = escolaParam ? buildPortalHref(escolaParam, "/admin/avisos/novo") : "#";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

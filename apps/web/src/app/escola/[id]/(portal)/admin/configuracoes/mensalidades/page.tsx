@@ -8,6 +8,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type ServicoItem = {
   id: string;
@@ -34,7 +35,7 @@ export default function MensalidadesEmolumentosPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
   const { error, success } = useToast();
   const pathname = usePathname();
   const isStandalone = pathname?.includes("/admin/configuracoes/mensalidades");
@@ -130,7 +131,7 @@ export default function MensalidadesEmolumentosPage() {
       title="Mensalidades & Emolumentos"
       subtitle="Configure valores de mensalidades, matrículas e catálogo de serviços."
       menuItems={buildConfigMenuItems(base)}
-      backHref={`/escola/${escolaParam}/admin`}
+      backHref={buildPortalHref(escolaParam, "/admin")}
       embedded={!isStandalone}
       showInternalMenu={false}
     >

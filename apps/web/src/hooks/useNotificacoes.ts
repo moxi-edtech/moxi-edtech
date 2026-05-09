@@ -55,28 +55,53 @@ const isAbortLikeError = (error: unknown) => {
 export function useNotificacoes(): UseNotificacoesReturn {
   const supabase = useMemo(() => createClient(), []);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const failuresRef = useRef(0);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
   const fetchNotificacoes = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("notificacoes")
-      .select(
-        "id, evento_id, titulo, corpo, prioridade, action_label, action_url, gatilho, tipo, modal_id, agrupamento_chave, arquivada, arquivada_em, lida, lida_em, created_at"
-      )
-      .eq("arquivada", false)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error("[useNotificacoes] fetch error:", error.message);
+    if (!userId) {
+      setLoading(false);
       return;
     }
 
-    setNotificacoes((data ?? []) as Notificacao[]);
-    setLoading(false);
-  }, [supabase]);
+    if (retryTimerRef.current) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("notificacoes")
+        .select(
+          "id, evento_id, titulo, corpo, prioridade, action_label, action_url, gatilho, tipo, modal_id, agrupamento_chave, arquivada, arquivada_em, lida, lida_em, created_at"
+        )
+        .eq("destinatario_id", userId)
+        .eq("arquivada", false)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        throw error;
+      }
+
+      failuresRef.current = 0;
+      setNotificacoes((data ?? []) as Notificacao[]);
+      setLoading(false);
+    } catch (error) {
+      failuresRef.current += 1;
+      setLoading(false);
+
+      const retryMs = Math.min(30_000, 1_000 * 2 ** Math.min(failuresRef.current, 5));
+      console.warn("[useNotificacoes] fetch error; retrying", { retryMs, error });
+
+      retryTimerRef.current = window.setTimeout(() => {
+        void fetchNotificacoes();
+      }, retryMs);
+    }
+  }, [supabase, userId]);
 
   useEffect(() => {
     let active = true;
@@ -150,6 +175,10 @@ export function useNotificacoes(): UseNotificacoesReturn {
         }
       });
       channelRef.current = null;
+      if (retryTimerRef.current) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
     };
   }, [fetchNotificacoes, supabase, userId]);
 

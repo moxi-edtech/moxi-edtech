@@ -24,12 +24,17 @@ type Ref = { id: string; nome: string };
 type Curso = { id: string; nome: string; tipo: string; classes: Ref[] };
 type CursoResponse = { id: string; nome: string; tipo?: string | null; classes?: Ref[] };
 
-export default function TabelasMensalidadeClient() {
+export default function TabelasMensalidadeClient({
+  escolaId: escolaIdProp,
+}: {
+  escolaId?: string;
+}) {
   // --- ESTADOS ---
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Item[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
-  const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
+  const { escolaId: resolvedEscolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
+  const escolaId = escolaIdProp || resolvedEscolaId;
   void escolaLoading
   void escolaError
   const { toast, dismiss, success, error } = useToast();

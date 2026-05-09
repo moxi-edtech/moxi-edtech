@@ -1,36 +1,23 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const dynamic = 'force-dynamic';
 
-const RelatoriosPage = () => {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-moxinexa-navy">Relatórios Financeiros</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link href="/financeiro/relatorios/propinas" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
-          <div className="text-lg font-semibold mb-1">Propinas</div>
-          <div className="text-sm text-gray-600">Resumo mensal e ranking por turma</div>
-        </Link>
-        <Link href="/financeiro/relatorios/fluxo-caixa" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
-          <div className="text-lg font-semibold mb-1">Fluxo de Caixa</div>
-          <div className="text-sm text-gray-600">Pagamentos por dia (progresso)</div>
-        </Link>
-        <Link href="/financeiro/relatorios/pagamentos-status" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
-          <div className="text-lg font-semibold mb-1">Pagamentos por Status</div>
-          <div className="text-sm text-gray-600">Distribuição entre pago, pendente, atrasado</div>
-        </Link>
-        <Link href="/financeiro/relatorios/extratos-alunos" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
-          <div className="text-lg font-semibold mb-1">Extratos de Alunos</div>
-          <div className="text-sm text-gray-600">Gerar extrato (JSON/PDF) por aluno</div>
-        </Link>
-        <Link href="/financeiro/relatorios/detalhados" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
-          <div className="text-lg font-semibold mb-1">Relatórios Detalhados</div>
-          <div className="text-sm text-gray-600">Auditoria por período e exportação</div>
-        </Link>
-      </div>
-    </div>
-  );
-};
+export default async function RelatoriosRedirectPage() {
+  const supabase = await supabaseServer();
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  
+  let escolaId: string | null = null;
+  if (user) {
+    const metaEscolaId = (user.app_metadata as any)?.escola_id ?? null;
+    escolaId = await resolveEscolaIdForUser(supabase as any, user.id, null, metaEscolaId);
+  }
 
-export default RelatoriosPage;
+  if (escolaId) {
+    redirect(`/escola/${escolaId}/financeiro/relatorios`);
+  }
+
+  redirect("/");
+}

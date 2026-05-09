@@ -6,6 +6,7 @@ import { useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -167,9 +168,9 @@ export function PagamentoModal({
                 }}
                 onEscolher={(passo: Passo) => {
                   if (passo.id === "emitir_recibo" && escolaParam) {
-                    router.push(`/escola/${escolaParam}/financeiro/pagamentos`);
+                    router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos"));
                   } else if (passo.id === "ver_atrasos" && escolaParam) {
-                    router.push(`/financeiro/cobrancas`);
+                    router.push(buildPortalHref(escolaParam, "/financeiro/radar"));
                   } else if (passo.id === "novo_pagamento") {
                     handleClose();
                   }

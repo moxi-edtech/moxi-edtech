@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import { 
   UsersRound, 
   ArrowRight, 
@@ -39,6 +41,13 @@ interface AlunoTriagem {
 
 export default function RematriculaPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const { escolaId, escolaSlug } = useEscolaId();
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const escolaParam = escolaSlug || slugFromPath || escolaId;
   
   // States de Seleção
   const [originTurmaId, setOriginTurmaId] = useState("");
@@ -201,7 +210,7 @@ export default function RematriculaPage() {
       if (!res.ok || !json.ok) throw new Error(json.error || "A transação falhou num dos Gates do servidor.");
 
       alert(`Sucesso! ${json.sucesso} alunos transitados, ${json.falhas} falhas.`);
-      router.push("/secretaria/turmas");
+      router.push(buildPortalHref(escolaParam, "/secretaria/turmas"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

@@ -20,6 +20,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type Curso = { id: string; nome: string };
 type Classe = { id: string; curso_id?: string; nome: string; turno?: string | null };
@@ -129,7 +130,8 @@ export default function TurmasConfiguracoesPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const baseRaw = "/admin/configuracoes";
+  const base = buildPortalHref(escolaParam, baseRaw);
   const { success, error, warning, toast: rawToast, dismiss } = useToast();
   const menuItems = buildConfigMenuItems(base);
 
@@ -404,11 +406,11 @@ export default function TurmasConfiguracoesPage() {
     const existingSyncExecuted = Boolean(existingSync?.executed);
     const existingSyncInserted = Number(existingSync?.inserted ?? 0);
 
-    const base = syncInfo
+    const baseMessage = syncInfo
       ? `Sincronização: ${syncInfo?.rebuild_executado ? "rebuild executado" : "sem rebuild"} · turmas afetadas: ${turmasAfetadas}.`
       : "";
-    if (!existingSyncExecuted) return base || undefined;
-    return `${base}${base ? " " : ""}Turmas existentes sincronizadas: ${existingSyncInserted} vínculo(s) atualizado(s).`;
+    if (!existingSyncExecuted) return baseMessage || undefined;
+    return `${baseMessage}${baseMessage ? " " : ""}Turmas existentes sincronizadas: ${existingSyncInserted} vínculo(s) atualizado(s).`;
   };
 
   const resolvePublishNetworkIssue = (err: unknown) => {
@@ -805,14 +807,14 @@ export default function TurmasConfiguracoesPage() {
         showInternalMenu={false}
         embedded
         backHref={base}
-        prevHref={`${base}/avaliacao`}
-        nextHref={`${base}/financeiro`}
-        testHref={`${base}/sandbox`}
+        prevHref={buildPortalHref(escolaParam, `${baseRaw}/avaliacao`)}
+        nextHref={buildPortalHref(escolaParam, `${baseRaw}/financeiro`)}
+        testHref={buildPortalHref(escolaParam, `${baseRaw}/sandbox`)}
         onSave={handleConfirmSetup}
         saveDisabled={modalActionLoading}
       >
         <AuthRequiredNotice
-          nextPath={`/escola/${escolaParam}/admin/configuracoes/turmas`}
+          nextPath={buildPortalHref(escolaParam, "/admin/configuracoes/turmas")}
           compact
           description="Faça login novamente para continuar a gestão de turmas e currículo."
         />
@@ -829,9 +831,9 @@ export default function TurmasConfiguracoesPage() {
       showInternalMenu={false}
       embedded
       backHref={base}
-      prevHref={`${base}/avaliacao`}
-      nextHref={`${base}/financeiro`}
-      testHref={`${base}/sandbox`}
+      prevHref={buildPortalHref(escolaParam, `${baseRaw}/avaliacao`)}
+      nextHref={buildPortalHref(escolaParam, `${baseRaw}/financeiro`)}
+      testHref={buildPortalHref(escolaParam, `${baseRaw}/sandbox`)}
       impact={impact}
       onSave={handleConfirmSetup}
       saveDisabled={modalActionLoading}
@@ -1041,7 +1043,7 @@ export default function TurmasConfiguracoesPage() {
         )}
 
         <Link
-          href={escolaParam ? `/escola/${escolaParam}/admin/turmas` : "#"}
+          href={buildPortalHref(escolaParam, "/admin/turmas")}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
         >
           <span>Gerenciar turmas manualmente</span>

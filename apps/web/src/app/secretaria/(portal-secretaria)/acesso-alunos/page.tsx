@@ -11,7 +11,7 @@ export default async function AcessoAlunosPage() {
   if (!user) return redirect("/redirect");
 
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-  if (!escolaId) return redirect("/secretaria");
+  if (!escolaId) return redirect("/redirect");
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">

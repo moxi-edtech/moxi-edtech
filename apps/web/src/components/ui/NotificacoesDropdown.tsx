@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AlertTriangle, Bell, CheckCheck, Info, X, Zap } from "lucide-react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import {
@@ -9,6 +9,8 @@ import {
   type Notificacao,
   type Prioridade,
 } from "@/hooks/useNotificacoes";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 
 const PRIORIDADE_CONFIG: Record<
   Prioridade,
@@ -112,11 +114,20 @@ function NotificacaoItem({
 
 export function NotificacoesDropdown() {
   const router = useRouter();
+  const pathname = usePathname();
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [modalNotificacao, setModalNotificacao] = useState<Notificacao | null>(null);
 
   const { notificacoes, naoLidas, loading, marcarLida, marcarTodasLidas } = useNotificacoes();
+  const resolveActionUrl = (actionUrl: string) => {
+    if (/^\/(aluno|professor)(\/|$)/.test(actionUrl)) {
+      return buildPortalHref(escolaParam, actionUrl);
+    }
+    return actionUrl;
+  };
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -139,7 +150,7 @@ export function NotificacoesDropdown() {
     if (notificacao.action_url) {
       marcarLida(notificacao.id);
       setOpen(false);
-      router.push(notificacao.action_url);
+      router.push(resolveActionUrl(notificacao.action_url));
       return;
     }
 
@@ -153,7 +164,7 @@ export function NotificacoesDropdown() {
     const actionUrl = modalNotificacao.action_url;
     setModalNotificacao(null);
     if (actionUrl) {
-      router.push(actionUrl);
+      router.push(resolveActionUrl(actionUrl));
     }
   };
 

@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type SetupStatus = {
   anoLetivoOk: boolean;
@@ -48,7 +49,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Ano letivo, períodos e currículo base.",
         completed: setupStatus.setupComplete,
         current: !setupStatus.setupComplete,
-        href: `/escola/${escolaParam}/configuracoes/onboarding`,
+        href: buildPortalHref(escolaParam, "/configuracoes/onboarding"),
         icon: School,
       },
       {
@@ -57,7 +58,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Definir valores de propinas e coordenadas.",
         completed: missingPricingCount === 0 && setupStatus.setupComplete,
         current: setupStatus.setupComplete && missingPricingCount > 0,
-        href: `/escola/${escolaParam}/admin/configuracoes/mensalidades`,
+        href: buildPortalHref(escolaParam, "/admin/configuracoes/mensalidades"),
         icon: Banknote,
       },
       {
@@ -66,7 +67,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Convidar professores para o portal.",
         completed: stats.professores > 0,
         current: setupStatus.setupComplete && stats.professores === 0,
-        href: `/escola/${escolaParam}/admin/usuarios`,
+        href: buildPortalHref(escolaParam, "/admin/usuarios"),
         icon: ShieldCheck,
       },
       {
@@ -75,7 +76,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Importar lista ou abrir inscrições.",
         completed: stats.alunos > 0,
         current: setupStatus.setupComplete && stats.professores > 0 && stats.alunos === 0,
-        href: `/escola/${escolaParam}/admin/alunos`,
+        href: buildPortalHref(escolaParam, "/admin/alunos"),
         icon: Users,
       },
       {
@@ -84,7 +85,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Regime de IVA e dados para facturação.",
         completed: false, 
         current: stats.alunos > 0,
-        href: `/escola/${escolaParam}/admin/configuracoes/identidade`,
+        href: buildPortalHref(escolaParam, "/admin/configuracoes/identidade"),
         icon: FileText,
       }
     ];

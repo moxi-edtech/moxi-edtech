@@ -8,6 +8,7 @@ import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice"
 import SettingsHub from "@/components/escola/settings/SettingsHub";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
+import { buildPortalHref } from "@/lib/navigation";
 
 // Definição de Props para Next.js 15
 type Props = {
@@ -92,7 +93,7 @@ export default function ConfiguracoesPage({ params }: Props) {
 
   // 3. Estado de Carregamento
   if (authRequired) {
-    const nextPath = `/escola/${escolaParam}/admin/configuracoes`;
+    const nextPath = buildPortalHref(escolaParam, "/admin/configuracoes");
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
         <AuthRequiredNotice

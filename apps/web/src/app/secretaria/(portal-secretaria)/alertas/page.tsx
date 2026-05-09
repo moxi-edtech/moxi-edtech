@@ -108,7 +108,7 @@ export default async function Page() {
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-slate-400">últimos 8</span>
                 <a
-                  href="/secretaria/fechamento-academico"
+                  href="fechamento-academico"
                   className="text-[10px] font-semibold text-klasse-green hover:underline"
                 >
                   Abrir monitor
@@ -151,7 +151,7 @@ export default async function Page() {
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-slate-400">últimos 8</span>
                 <a
-                  href="/secretaria/documentos-oficiais"
+                  href="documentos-oficiais"
                   className="text-[10px] font-semibold text-klasse-green hover:underline"
                 >
                   Abrir monitor

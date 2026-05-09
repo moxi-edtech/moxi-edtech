@@ -12,6 +12,7 @@ import FuncionariosPage from "@/app/escola/[id]/(portal)/funcionarios/page";
 import ProfessoresPage from "@/app/escola/[id]/(portal)/professores/page";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import {
   Sheet,
   SheetContent,
@@ -53,14 +54,14 @@ export default function QuickActionsSection({
       key: "funcionario",
       label: "Novo Funcionário",
       icon:  UserPlus,
-      href:  `/escola/${escolaParam}/admin/funcionarios/novo`,
+      href:  buildPortalHref(escolaParam, "/admin/funcionarios/novo"),
       opensModal: true,
     },
     {
       key: "nota",
       label:    "Lançar Nota",
       icon:     FileText,
-      href:     `/escola/${escolaParam}/admin/notas`,
+      href:     buildPortalHref(escolaParam, "/admin/notas"),
       opensModal: true,
       disabled: !canLaunchNota,
       reason:   !avaliacaoFrequenciaOk
@@ -71,14 +72,14 @@ export default function QuickActionsSection({
       key: "aviso",
       label: "Criar Aviso",
       icon:  Megaphone,
-      href:  `/escola/${escolaParam}/admin/avisos/novo`,
+      href:  buildPortalHref(escolaParam, "/admin/avisos/novo"),
       opensModal: true,
     },
     {
       key: "evento",
       label: "Agendar Evento",
       icon:  Calendar,
-      href:  `/escola/${escolaParam}/admin/calendario/novo`,
+      href:  buildPortalHref(escolaParam, "/admin/calendario/novo"),
       opensModal: true,
     },
   ];
@@ -100,7 +101,7 @@ export default function QuickActionsSection({
               revisar e exportar notas com todos os filtros.
             </p>
             <Link
-              href={`/escola/${escolaParam}/admin/notas`}
+              href={buildPortalHref(escolaParam, "/admin/notas")}
               className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2 text-sm font-semibold text-white hover:brightness-95 transition-all shadow-md shadow-klasse-green/20"
             >
               Abrir Painel de Notas

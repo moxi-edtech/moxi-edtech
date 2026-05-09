@@ -1,7 +1,24 @@
-import FinanceiroDashboardPage, { dynamic } from "../page";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
-export { dynamic };
+export const dynamic = 'force-dynamic';
 
-export default function Page(props: { searchParams?: Promise<{ aluno?: string; view?: string }> }) {
-  return <FinanceiroDashboardPage {...props} />;
+export default async function DashboardRedirectPage({ searchParams }) {
+  const supabase = await supabaseServer();
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  
+  let escolaId: string | null = null;
+  if (user) {
+    const metaEscolaId = (user.app_metadata as any)?.escola_id ?? null;
+    escolaId = await resolveEscolaIdForUser(supabase as any, user.id, null, metaEscolaId);
+  }
+
+  if (escolaId) {
+    const q = new URLSearchParams(await searchParams).toString();
+    redirect(`/escola/${escolaId}/financeiro/dashboard${q ? '?' + q : ''}`);
+  }
+
+  redirect("/");
 }

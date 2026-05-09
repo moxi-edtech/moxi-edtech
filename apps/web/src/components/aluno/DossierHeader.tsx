@@ -6,6 +6,7 @@ import { DossierAcoes, type DossierRole } from "@/components/aluno/DossierAcoes"
 import { formatDate } from "@/lib/formatters";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 export function DossierHeader({
   aluno,
@@ -69,14 +70,14 @@ export function DossierHeader({
         <nav className="flex items-center gap-1 rounded-xl bg-slate-50/70 px-3 py-2 text-xs text-slate-400">
           {role === "admin" ? (
             <Link
-              href={`/escola/${escolaParam}/admin/alunos`}
+              href={buildPortalHref(escolaParam, "/admin/alunos")}
               className="hover:text-slate-600 transition-colors"
             >
               Admin
             </Link>
           ) : (
             <Link
-              href="/secretaria/alunos"
+              href={buildPortalHref(escolaParam, "/secretaria/alunos")}
               className="hover:text-slate-600 transition-colors"
             >
               Secretaria

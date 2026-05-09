@@ -425,9 +425,9 @@ function ProfileDrawer({
         />
       ) : null}
 
-      <div className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl
-        border-l border-slate-200 flex flex-col transition-transform duration-300
-        ${aluno ? "translate-x-0" : "translate-x-full"}`}>
+      {aluno ? (
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl
+        border-l border-slate-200 flex flex-col transition-transform duration-300 translate-x-0">
 
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div>
@@ -604,12 +604,14 @@ function ProfileDrawer({
                 <div className="grid grid-cols-2 gap-2">
                   <Link
                     href={`${secretariaBase}/alunos/${detail?.id ?? aluno?.id ?? ""}`}
+                    scroll={false}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     Perfil completo
                   </Link>
                   <Link
                     href={`${secretariaBase}/alunos/${detail?.id ?? aluno?.id ?? ""}/editar`}
+                    scroll={false}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   >
                     Editar
@@ -627,6 +629,7 @@ function ProfileDrawer({
                   {turmaId ? (
                     <Link
                       href={`${secretariaBase}/turmas/${turmaId}`}
+                      scroll={false}
                       className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                     >
                       Ver turma
@@ -642,6 +645,7 @@ function ProfileDrawer({
           )}
         </div>
       </div>
+      ) : null}
     </>
   );
 }
@@ -722,9 +726,9 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
         />
       ) : null}
 
-      <div className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
-        border-l border-slate-200 flex flex-col transition-transform duration-300
-        ${aluno ? "translate-x-0" : "translate-x-full"}`}>
+      {aluno ? (
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
+        border-l border-slate-200 flex flex-col transition-transform duration-300 translate-x-0">
 
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
@@ -835,6 +839,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
           </button>
         </form>
       </div>
+      ) : null}
     </>
   );
 }

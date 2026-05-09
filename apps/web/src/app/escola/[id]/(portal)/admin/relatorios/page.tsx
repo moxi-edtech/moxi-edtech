@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { formatDateTime } from "@/lib/formatters";
+import { buildPortalHref } from "@/lib/navigation";
 import type { Database } from "~types/supabase";
 import {
   FileText,
@@ -435,7 +436,8 @@ export default async function Page(props: {
   const days = parseDays(searchParams.days);
   const since = sinceFromDays(days);
 
-  const basePath = `/escola/${escolaParam}/admin/relatorios`;
+  const basePath = buildPortalHref(escolaParam, "/admin/relatorios");
+  const adminHref = buildPortalHref(escolaParam, "/admin");
 
   let query = supabase
     .from("audit_logs")
@@ -478,7 +480,7 @@ export default async function Page(props: {
             <ol className="flex items-center gap-1 text-xs font-semibold text-slate-400">
               <li>
                 <Link
-                  href={`/escola/${escolaParam}/admin`}
+                  href={adminHref}
                   className="hover:text-[#1F6B3B] transition-colors"
                 >
                   Admin

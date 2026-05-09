@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 
 type NavItem = {
   href: string;
+  path?: string;
   label: string;
   icon: LucideIcon;
   badge?: number;
@@ -22,8 +23,11 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
       aria-label="Navegação do portal do aluno"
     >
       <div className="mx-auto grid w-full max-w-5xl grid-cols-5 gap-2 px-2 py-2">
-        {items.map(({ href, label, icon: Icon, badge }) => {
-          const active = activePath === href || activePath.startsWith(`${href}/`);
+        {items.map(({ href, path, label, icon: Icon, badge }) => {
+          const active =
+            activePath === href ||
+            activePath.startsWith(`${href}/`) ||
+            (path ? activePath === path || activePath.startsWith(`${path}/`) : false);
           return (
           <Link
             key={href}

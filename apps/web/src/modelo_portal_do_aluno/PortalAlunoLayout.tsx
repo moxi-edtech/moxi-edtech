@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
+import { buildPortalHref } from "@/lib/navigation";
 
 import { AlunoHeader }    from "./layout/AlunoHeader";
 import { AlunoBottomNav } from "./layout/AlunoBottomNav";
@@ -81,13 +82,18 @@ export default function PortalAlunoLayout({ children }: { children?: React.React
       // Escola
       const { data: esc } = await s
         .from("escolas")
-        .select("nome, aluno_portal_enabled, status")
+        .select("nome, slug, aluno_portal_enabled, status")
         .eq("id", escolaId)
         .maybeSingle();
 
+      const escolaParam = esc?.slug ? String(esc.slug) : String(escolaId);
+      const disabledPath = buildPortalHref(escolaParam, "/aluno/desabilitado");
       if (esc?.status === "suspensa") { router.replace("/escola/suspensa"); return; }
-      if (!esc?.aluno_portal_enabled && pathname !== "/aluno/desabilitado") {
-        router.replace("/aluno/desabilitado"); return;
+      if (!esc?.aluno_portal_enabled && pathname !== disabledPath) {
+        router.replace(disabledPath); return;
+      }
+      if (esc?.aluno_portal_enabled && pathname?.startsWith("/aluno")) {
+        router.replace(buildPortalHref(escolaParam, pathname)); return;
       }
 
       // Alunos directos + via encarregado (em paralelo)

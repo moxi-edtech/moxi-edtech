@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { useDebounce } from "./useDebounce";
+import { buildPortalHref } from "@/lib/navigation";
 
 type SearchResult = {
   id: string;
@@ -105,64 +106,58 @@ function resolveHref(
   // Prioridade para intenção detectada
   if (intent === "financeiro") {
     if (item.type === "aluno" || item.type === "matricula") {
-      return escolaParam
-        ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
-        : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
+      return buildPortalHref(escolaParam, `/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`);
     }
   }
 
   if (intent === "documentos" && item.type === "aluno") {
-    return `/secretaria/documentos?alunoId=${item.id}`;
+    return buildPortalHref(escolaParam, `/secretaria/documentos?alunoId=${item.id}`);
   }
 
   if (basePortal === "professor") {
-    return `/professor/notas?alunoId=${item.id}`;
+    return buildPortalHref(escolaParam, `/professor/notas?alunoId=${item.id}`);
   }
 
   if (basePortal === "financeiro") {
     if (item.type === "recibo") {
-      return "/financeiro/cobrancas";
+      return buildPortalHref(escolaParam, "/financeiro/radar");
     }
-    return escolaParam
-      ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
-      : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
+    return buildPortalHref(escolaParam, `/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`);
   }
 
   if (basePortal === "admin") {
     if (!escolaParam) return "/admin";
     switch (item.type) {
       case "turma":
-        return `/escola/${escolaParam}/admin/turmas`;
+        return buildPortalHref(escolaParam, "/admin/turmas");
       case "professor":
-        return `/escola/${escolaParam}/admin/professores`;
+        return buildPortalHref(escolaParam, "/admin/professores");
       case "classe":
       case "curso":
-        return `/escola/${escolaParam}/admin/configuracoes`;
+        return buildPortalHref(escolaParam, "/admin/configuracoes");
       case "usuario":
-        return `/escola/${escolaParam}/admin/funcionarios`;
+        return buildPortalHref(escolaParam, "/admin/funcionarios");
       default:
-        return `/escola/${escolaParam}/admin`;
+        return buildPortalHref(escolaParam, "/admin");
     }
   }
 
   switch (item.type) {
     case "turma":
-      return `/secretaria/turmas/${item.id}`;
+      return buildPortalHref(escolaParam, `/secretaria/turmas/${item.id}`);
     case "matricula":
-      return `/secretaria/admissoes?matricula=${item.id}`;
+      return buildPortalHref(escolaParam, `/secretaria/admissoes?matricula=${item.id}`);
     case "documento":
-      return `/secretaria/documentos`;
+      return buildPortalHref(escolaParam, `/secretaria/documentos`);
     case "candidatura":
-      return `/secretaria/admissoes?candidatura=${item.id}`;
+      return buildPortalHref(escolaParam, `/secretaria/admissoes?candidatura=${item.id}`);
     case "mensalidade":
     case "pagamento":
     case "recibo":
-      return escolaParam
-        ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
-        : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
+      return buildPortalHref(escolaParam, `/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`);
     case "aluno":
     default:
-      return `/secretaria/alunos/${item.id}`;
+      return buildPortalHref(escolaParam, `/secretaria/alunos/${item.id}`);
   }
 }
 
@@ -408,4 +403,3 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
 
   return { query, setQuery, results, loading, hasMore, loadMore, detectedIntent: intent };
 }
-

@@ -15,7 +15,9 @@ import {
   KeyRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import { FilaAtendimentoModal } from "@/components/secretaria/FilaAtendimentoModal";
@@ -46,10 +48,16 @@ export function Dashboard({
   counts: DashboardCounts | null;
   recentes: DashboardRecentes | null;
 }) {
-  const { escolaId, isLoading: escolaLoading } = useEscolaId();
+  const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
+  const pathname = usePathname();
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const escolaParamFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const escolaParam = escolaSlug || escolaParamFromPath || escolaId;
 
   useEffect(() => {
     setNowMs(Date.now());
@@ -75,9 +83,9 @@ export function Dashboard({
       resumo,
       data: prazo.toISOString(),
       action_label: "Ver pautas pendentes",
-      action_href: "/secretaria/notas",
+      action_href: buildPortalHref(escolaParam, "/secretaria/notas"),
     };
-  }, [nowMs, recentes?.fecho_trimestre]);
+  }, [escolaParam, nowMs, recentes?.fecho_trimestre]);
   const avisoImportacao = useMemo(() => {
     const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
     if (pendencias > 0) return null;
@@ -90,9 +98,9 @@ export function Dashboard({
       resumo: "Faça a migração inicial de alunos e turmas para começar a operação.",
       data: new Date().toISOString(),
       action_label: "Iniciar importação",
-      action_href: "/secretaria/migracao/alunos",
+      action_href: buildPortalHref(escolaParam, "/secretaria/migracao/alunos"),
     };
-  }, [counts, recentes?.pendencias]);
+  }, [counts, escolaParam, recentes?.pendencias]);
   const avisos = useMemo(() => {
     const base = recentes?.avisos_recentes ?? [];
     const extras = [avisoFechoTrimestre, avisoImportacao].filter(Boolean);
@@ -109,7 +117,7 @@ export function Dashboard({
         titulo: `${pendencias} pendência${pendencias !== 1 ? "s" : ""} no painel`,
         descricao: "Há matrículas ou importações que precisam de validação.",
         count: pendencias,
-        link: "/secretaria/alertas",
+        link: buildPortalHref(escolaParam, "/secretaria/alertas"),
         link_label: "Ver pendências",
       });
     }
@@ -123,13 +131,13 @@ export function Dashboard({
         titulo: "Avisos recentes do dia",
         descricao: "Revise os avisos mais recentes antes de encerrar o turno.",
         count: avisos,
-        link: "/secretaria/avisos",
+        link: buildPortalHref(escolaParam, "/secretaria/avisos"),
         link_label: "Abrir avisos",
       });
     }
 
     return items;
-  }, [counts?.pendencias, recentes?.avisos_recentes?.length, recentes?.pendencias]);
+  }, [counts?.pendencias, escolaParam, recentes?.avisos_recentes?.length, recentes?.pendencias]);
 
   return (
     <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
@@ -140,7 +148,7 @@ export function Dashboard({
               title="Secretaria"
               description="Resumo operacional do dia"
               breadcrumbs={[
-                { label: "Início", href: "/secretaria" },
+                { label: "Início", href: "." },
                 { label: "Secretaria" },
               ]}
               actions={
@@ -152,7 +160,7 @@ export function Dashboard({
                     disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
                   />
                   <Link
-                    href="/secretaria/admissoes?nova=1"
+                    href="admissoes?nova=1"
                     className="
                       inline-flex items-center justify-center gap-2
                       rounded-xl bg-klasse-gold px-4 py-2
@@ -193,7 +201,7 @@ export function Dashboard({
                   Monitor único de fechamento acadêmico e lotes oficiais de documentos.
                 </p>
                 <Link
-                  href="/secretaria/operacoes-academicas"
+                  href="operacoes-academicas"
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Abrir painel
@@ -258,7 +266,7 @@ export function Dashboard({
                 <div className="flex items-center justify-between mb-4">
                   <SecaoLabel>Matrículas recentes</SecaoLabel>
                   <Link
-                    href="/secretaria/admissoes"
+                    href="admissoes"
                     className="text-xs font-semibold text-[#1F6B3B] hover:underline"
                   >
                     Ver tudo
@@ -270,27 +278,27 @@ export function Dashboard({
                 <div>
                   <SecaoLabel>Gestão</SecaoLabel>
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <AcaoRapidaCard icon={<Users className="h-5 w-5" />} label="Alunos" href="/secretaria/alunos" />
+                    <AcaoRapidaCard icon={<Users className="h-5 w-5" />} label="Alunos" href="alunos" />
                     <AcaoRapidaCard
                       icon={<UserCheck className="h-5 w-5" />}
                       label="Professores"
-                      href="/secretaria/professores"
+                      href="professores"
                     />
-                    <AcaoRapidaCard icon={<Building className="h-5 w-5" />} label="Turmas" href="/secretaria/turmas" />
+                    <AcaoRapidaCard icon={<Building className="h-5 w-5" />} label="Turmas" href="turmas" />
                     <AcaoRapidaCard
                       icon={<RefreshCcw className="h-5 w-5" />}
                       label="Rematrículas"
-                      href="/secretaria/rematricula"
+                      href="rematricula"
                     />
                     <AcaoRapidaCard
                       icon={<KeyRound className="h-5 w-5" />}
                       label="Acesso Alunos"
-                      href="/secretaria/acesso-alunos"
+                      href="acesso-alunos"
                     />
                     <AcaoRapidaCard
                       icon={<Upload size={20} className="text-klasse-green-600" />}
                       label="Migração"
-                      href="/secretaria/migracao/alunos"
+                      href="migracao/alunos"
                     />
                   </div>
                 </div>
@@ -319,7 +327,7 @@ export function Dashboard({
           <div className="space-y-4">
             <AdmissaoWizardClient escolaId={escolaId} />
             <Link
-              href="/secretaria/admissoes"
+              href="admissoes"
               className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
               Abrir admissões completas

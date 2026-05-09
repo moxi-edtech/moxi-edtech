@@ -10,6 +10,8 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from '@/components/ui/Button';
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 interface CandidaturaForm {
   nome: string;
@@ -29,13 +31,14 @@ export default function EditarCandidaturaPage() {
   const router = useRouter();
   const params = useParams();
   const { userRole: role } = useUserRole();
+  const { escolaSlug } = useEscolaId();
   const supabase = createClient();
 
   useEffect(() => {
     if (role === 'secretaria') {
-      router.replace('/secretaria/admissoes');
+      router.replace(buildPortalHref(escolaSlug, '/secretaria/admissoes'));
     }
-  }, [role, router]);
+  }, [role, router, escolaSlug]);
 
   const candidaturaId = useMemo(() => String(params?.id ?? ""), [params]);
 

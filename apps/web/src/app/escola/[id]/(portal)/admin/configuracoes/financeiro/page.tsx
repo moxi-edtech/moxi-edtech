@@ -14,6 +14,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type FinanceiroConfig = {
@@ -38,7 +39,8 @@ export default function FinanceiroConfiguracoesPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const baseRaw = "/admin/configuracoes";
+  const base = buildPortalHref(escolaParam, baseRaw);
   const { toast, dismiss, success, error } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
@@ -138,9 +140,9 @@ export default function FinanceiroConfiguracoesPage() {
       showInternalMenu={false}
       embedded
       backHref={base}
-      prevHref={`${base}/turmas`}
-      nextHref={`${base}/fluxos`}
-      testHref={`${base}/sandbox`}
+      prevHref={buildPortalHref(escolaParam, `${baseRaw}/turmas`)}
+      nextHref={buildPortalHref(escolaParam, `${baseRaw}/fluxos`)}
+      testHref={buildPortalHref(escolaParam, `${baseRaw}/sandbox`)}
       onSave={handleSave}
       saveDisabled={saving}
     >

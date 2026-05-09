@@ -5,6 +5,7 @@ import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react"
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import type { SetupStatus } from "./setupStatus";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,8 +81,8 @@ export default function KpiSection({
   const s = stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
   const { turmasOk } = setupStatus;
 
-  const adminHref = (path: string) => `/escola/${escolaParam}/admin/${path}`;
-  const financeHref = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
+  const adminHref = (path: string) => buildPortalHref(escolaParam, `/admin/${path}`);
+  const financeHref = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
 
   const kpis = [
     {

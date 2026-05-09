@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type BlockedItem = { aluno_id?: string; aluno_nome?: string | null; matricula_id?: string; motivos?: string[] }
 
@@ -18,6 +20,7 @@ type SuggestaoTurma = {
 
 export default function ConfirmarRematriculaPage() {
   const router = useRouter();
+  const { escolaSlug } = useEscolaId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<{
@@ -188,7 +191,7 @@ export default function ConfirmarRematriculaPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => router.push('/secretaria/rematricula')}
+            onClick={() => router.push(buildPortalHref(escolaSlug, '/secretaria/rematricula'))}
             className="inline-flex justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Voltar

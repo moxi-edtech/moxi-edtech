@@ -18,6 +18,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import { SistemaStatusModal } from "../_components/SistemaStatusModal";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type WorkflowStep = {
@@ -36,7 +37,7 @@ export default function FluxosConfiguracaoPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
   const { success } = useToast();
   
   const menuItems = buildConfigMenuItems(base);

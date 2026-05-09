@@ -87,7 +87,7 @@ export default function ClassesListClient() {
                     {classe.nome}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link href={`/secretaria/classes/${classe.id}`} className="text-klasse-green-600 hover:text-klasse-green-900">
+                    <Link href={`classes/${classe.id}`} className="text-klasse-green-600 hover:text-klasse-green-900">
                         Ver Disciplinas
                     </Link>
                   </td>

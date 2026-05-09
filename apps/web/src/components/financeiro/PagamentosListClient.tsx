@@ -16,7 +16,7 @@ type Pagamento = {
 
 type ApiResponse = { ok: boolean; items: Pagamento[]; error?: string };
 
-export function PagamentosListClient() {
+export function PagamentosListClient({ escolaId }: { escolaId: string }) {
   const searchParams = useSearchParams();
   const q = searchParams?.get("q") || "";
   const days = searchParams?.get("days") || "30";
@@ -35,7 +35,7 @@ export function PagamentosListClient() {
       setLoading(true);
       setError(null);
       try {
-        const params = new URLSearchParams({ q, days });
+        const params = new URLSearchParams({ q, days, escola_id: escolaId });
         const cacheKey = `financeiro:pagamentos:${params.toString()}`;
         const { data, fromCache, updatedAt } = await fetchJsonWithOffline<ApiResponse>(
           `/api/financeiro/pagamentos?${params.toString()}`,

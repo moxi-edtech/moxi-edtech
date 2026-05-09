@@ -1,10 +1,10 @@
-import AppShell from "@/components/layout/klasse/AppShell";
-import React from "react";
+import { Suspense } from 'react';
+import ClientLayout from './client-layout';
 
-export default function FinanceiroLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell>
-      {children}
-    </AppShell>
-  );
+    <Suspense fallback={<div>A carregar...</div>}>
+      <ClientLayout>{children}</ClientLayout>
+    </Suspense>
+  )
 }

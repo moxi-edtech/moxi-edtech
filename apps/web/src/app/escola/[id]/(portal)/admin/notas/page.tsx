@@ -1,5 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import { BookOpen, Search, Filter, ArrowUpDown, Users, BookCheck, GraduationCap, BarChart3 } from "lucide-react";
+import { buildPortalHref } from "@/lib/navigation";
+import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
@@ -426,27 +428,27 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           Mostrando <strong>{(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}</strong> de <strong>{total}</strong> notas
         </div>
         <div className="flex gap-2">
-          <a 
+          <Link 
             className={`inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm ${
               page <= 1 ? 'pointer-events-none opacity-50 text-slate-400' : 'text-slate-700 hover:bg-slate-50'
             }`} 
-            href={makeUrl({ page: Math.max(1, page-1) })}
+            href={buildPortalHref(escolaId, `/admin/notas${makeUrl({ page: Math.max(1, page-1) })}`)}
           >
             ← Anterior
-          </a>
+          </Link>
           
           <span className="px-3 py-2 text-sm text-slate-600">
             Página <strong>{page}</strong> de <strong>{totalPages}</strong>
           </span>
           
-          <a 
+          <Link 
             className={`inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm ${
               page >= totalPages ? 'pointer-events-none opacity-50 text-slate-400' : 'text-slate-700 hover:bg-slate-50'
             }`} 
-            href={makeUrl({ page: Math.min(totalPages, page+1) })}
+            href={buildPortalHref(escolaId, `/admin/notas${makeUrl({ page: Math.min(totalPages, page+1) })}`)}
           >
             Próxima →
-          </a>
+          </Link>
         </div>
       </div>
     </div>

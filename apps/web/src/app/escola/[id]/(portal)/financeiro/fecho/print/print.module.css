@@ -1,0 +1,33 @@
+.printRoot {
+  background: #f8fafc;
+}
+
+.receipt {
+  margin: 16px auto;
+  width: 148mm;
+  min-height: 210mm;
+  padding: 12mm;
+  background: white;
+}
+
+@media print {
+  .printRoot {
+    background: white !important;
+  }
+
+  .receipt {
+    margin: 0;
+    box-shadow: none;
+    padding: 10mm;
+  }
+
+  :global(body).printRoot :global(aside),
+  :global(body).printRoot :global(header.sticky),
+  :global(body).printRoot :global(main) {
+    display: none !important;
+  }
+
+  :global(body).printRoot {
+    background: white !important;
+  }
+}

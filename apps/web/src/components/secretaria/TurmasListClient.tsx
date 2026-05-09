@@ -15,6 +15,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { recordAuditClient } from "@/lib/auditClient";
 import TurmaForm from "./TurmaForm";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { formatTurmaNomeHumano } from "@/utils/formatters";
 import type { TurmaItem } from "~/types/turmas";
@@ -735,7 +736,7 @@ export default function TurmasListClient({
     return match?.[1] ?? null;
   }, [pathname]);
   const escolaParam = slugFromPath || escolaSlug || escolaId;
-  const secretariaBase = escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
+  const secretariaBase = buildPortalHref(escolaParam, "/secretaria");
 
   const [data,            setData]            = useState<TurmasResponse | null>(initialData);
   const [items,           setItems]           = useState<TurmaItem[]>(initialData?.items || []);

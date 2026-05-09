@@ -2,6 +2,7 @@ import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Settings } from "lucide-react";
 import StructureMarketplace from "@/components/escola/settings/StructureMarketplace";
+import { buildPortalHref } from "@/lib/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,7 +16,7 @@ export default function EstruturaPage({ params }: Props) {
       <div className="max-w-5xl mx-auto space-y-8">
         <div>
           <Link
-            href={`/escola/${escolaId}/admin/configuracoes`}
+            href={buildPortalHref(escolaId, "/admin/configuracoes")}
             className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" /> Voltar as definicoes

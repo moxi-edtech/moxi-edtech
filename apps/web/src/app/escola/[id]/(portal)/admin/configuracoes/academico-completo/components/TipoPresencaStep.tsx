@@ -19,6 +19,7 @@ import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Con
 import { buildConfigMenuItems } from "../../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // --- TIPAGENS ---
 type Componente = { code: string; peso: number; ativo: boolean };
@@ -56,7 +57,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
   const { id: escolaId } = use(params);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = `/escola/${escolaParam}/admin/configuracoes`;
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
   const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---

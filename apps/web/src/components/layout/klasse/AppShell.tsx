@@ -46,7 +46,7 @@ export default function AppShell({
 
   const escolaIdFromPath = useMemo(() => {
     if (!safePathname) return null;
-    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria|professores)/);
+    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria|financeiro|professor|aluno|professores|alunos)/);
     return match?.[1] ?? null;
   }, [safePathname]);
   
@@ -58,9 +58,19 @@ export default function AppShell({
     if (safePathname.startsWith("/admin")) return "admin";
     if (safePathname.startsWith("/secretaria")) return "secretaria";
     if (safePathname.startsWith("/financeiro")) return "financeiro";
-    if (safePathname.includes("/escola/") && safePathname.includes("/admin")) return "admin";
-    if (safePathname.includes("/escola/") && safePathname.includes("/secretaria")) return "secretaria";
-    if (safePathname.includes("/escola/") && safePathname.includes("/professores")) return "admin";
+    if (safePathname.startsWith("/professor")) return "professor";
+    if (safePathname.startsWith("/aluno")) return "aluno";
+
+    // canonical routes
+    if (safePathname.includes("/escola/")) {
+        if (safePathname.includes("/admin")) return "admin";
+        if (safePathname.includes("/secretaria")) return "secretaria";
+        if (safePathname.includes("/financeiro")) return "financeiro";
+        if (safePathname.includes("/professores")) return "admin";
+        if (safePathname.includes("/alunos")) return "admin";
+        if (safePathname.includes("/professor")) return "professor";
+        if (safePathname.includes("/aluno")) return "aluno";
+    }
 
     return null;
   }, [userRole, safePathname]);
@@ -74,7 +84,13 @@ export default function AppShell({
     
     let items = sidebarConfig[inferredRole] || [];
     
-    if (inferredRole === "admin" || inferredRole === "secretaria" || inferredRole === "financeiro") {
+    if (
+      inferredRole === "admin" ||
+      inferredRole === "secretaria" ||
+      inferredRole === "financeiro" ||
+      inferredRole === "professor" ||
+      inferredRole === "aluno"
+    ) {
       items = items
         .map((item) => {
           const children = item.children?.map((child) => {
@@ -106,7 +122,11 @@ export default function AppShell({
     }
     
     if (inferredRole === "financeiro" && Object.keys(financeBadges).length) {
-      items = items.map((item) => ({ ...item, badge: financeBadges[item.href] || item.badge }));
+      items = items.map((item) => {
+          // Normalizar o href para bater com as chaves dos badges que vêm da API (que são curtas)
+          const shortHref = item.href.replace(/\/escola\/[^\/]+/, "");
+          return { ...item, badge: financeBadges[shortHref] || item.badge };
+      });
     }
     
     return items;
@@ -204,7 +224,7 @@ export default function AppShell({
 
         const badges: Record<string, string> = {};
         if (json.candidaturasPendentes > 0) badges["/financeiro/candidaturas"] = String(Math.min(json.candidaturasPendentes, 99));
-        if (json.cobrancasPendentes > 0) badges["/financeiro/cobrancas"] = String(Math.min(json.cobrancasPendentes, 99));
+        if (json.cobrancasPendentes > 0) badges["/financeiro/radar"] = String(Math.min(json.cobrancasPendentes, 99));
 
         setFinanceBadges(badges);
       } catch {
