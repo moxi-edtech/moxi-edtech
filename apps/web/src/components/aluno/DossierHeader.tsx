@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, CalendarCheck, Users, ChevronRight } from "lucide-react";
 import { DossierAcoes, type DossierRole } from "@/components/aluno/DossierAcoes";
@@ -17,6 +18,9 @@ export function DossierHeader({
   role: DossierRole;
   escolaId: string;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const { perfil, matricula_atual } = aluno;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -159,11 +163,11 @@ export function DossierHeader({
           </p>
           {valorEmDivida > 0 ? (
             <span className="text-sm font-bold text-rose-700 flex-shrink-0">
-              {new Intl.NumberFormat("pt-AO", {
+              {mounted ? new Intl.NumberFormat("pt-AO", {
                 style: "currency",
                 currency: "AOA",
                 maximumFractionDigits: 0,
-              }).format(valorEmDivida)}{" "}
+              }).format(valorEmDivida) : "—"}{" "}
               em dívida
             </span>
           ) : null}

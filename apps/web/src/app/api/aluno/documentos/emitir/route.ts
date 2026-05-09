@@ -203,11 +203,8 @@ export async function POST(req: Request) {
       .from('documentos_emitidos')
       .getPublicUrl(filePath)
 
-    // 6. Atualizar registro do documento com a URL
-    await adminSupabase
-      .from('documentos_emitidos')
-      .update({ storage_path: filePath })
-      .eq('id', docId)
+    // 6. O registro do documento já possui o public_id, que é usado para resolver o arquivo no bucket.
+    // Não há coluna storage_path na tabela documentos_emitidos.
 
     return NextResponse.json({ ok: true, url: publicUrl })
 
