@@ -145,6 +145,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     const bases = resolveProductBases(host, params.redirect);
     const destinationConfig = resolveTenantRoute({
       tenantId: cachedContext.tenant_id,
+      tenantSlug: cachedContext.tenant_slug,
       tenantName: "",
       tenantType: cachedContext.tenant_type,
       role: cachedContext.role,

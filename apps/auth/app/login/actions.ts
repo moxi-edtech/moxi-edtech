@@ -232,7 +232,7 @@ export async function loginAction(_: unknown, formData: FormData) {
       await setTenantContextCookie({
         uid: data.user.id,
         tenant_id: single.tenantId,
-        tenant_slug: null,
+        tenant_slug: single.tenantSlug,
         tenant_type: single.tenantType,
         role: single.role,
       });

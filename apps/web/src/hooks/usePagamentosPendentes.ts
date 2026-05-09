@@ -43,6 +43,7 @@ type ExtendedDatabase = Omit<Database, "public"> & {
         Args: {
           p_pagamento_id: string;
           p_aprovado: boolean;
+          p_mensagem_secretaria?: string | null;
         };
         Returns: ValidarPagamentoReturn;
       };
@@ -109,21 +110,24 @@ export function usePagamentosPendentes(pageSize = 20) {
       setActioningById((prev) => ({ ...prev, [pagamentoId]: true }));
       setRows((prev) => prev.filter((row) => row.pagamento_id !== pagamentoId));
 
-      const callValidarPagamento = supabase.rpc.bind(supabase) as unknown as ValidarPagamentoRpc;
-      const { data, error: rpcError } = await callValidarPagamento("validar_pagamento", {
+      const { data, error: rpcError } = await supabase.rpc("validar_pagamento", {
         p_pagamento_id: pagamentoId,
         p_aprovado: aprovado,
         p_mensagem_secretaria: mensagemSecretaria ?? null,
       });
 
-      const rpcData: ValidarPagamentoReturn = data ?? {};
+      const rpcData = (data as ValidarPagamentoReturn) || {};
 
       if (rpcError || rpcData.ok !== true) {
         setRows(snapshot);
         setActioningById((prev) => ({ ...prev, [pagamentoId]: false }));
+        
+        const errorMsg = rpcError?.message || rpcData.error || "Falha ao validar pagamento.";
+        console.error("[usePagamentosPendentes] Erro na validação:", { rpcError, rpcData });
+
         return {
           ok: false,
-          error: rpcError?.message || rpcData.error || "Falha ao validar pagamento.",
+          error: errorMsg,
         };
       }
 

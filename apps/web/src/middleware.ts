@@ -1,7 +1,6 @@
 // apps/web/src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { isEscolaUuid } from '@/lib/tenant/escolaSlug';
 import { resolveEscolaParam } from '@/lib/tenant/resolveEscolaParam';
 import { logAuthEvent } from '@/lib/auth/logAuthEvent';
@@ -11,7 +10,6 @@ import {
   resolveDbAuthContext,
   type DbAuthContext,
 } from '@moxi/auth-middleware';
-import type { Database } from '~types/supabase';
 import {
   detectProductContextFromHostname,
   normalizeTenantType,
@@ -22,6 +20,22 @@ import { isRoleAllowedForProduct } from '@/lib/permissions';
 
 type AuthContext = Pick<DbAuthContext, 'userId' | 'role' | 'tenantId' | 'tenantType'> & {
   escolaId: string | null;
+  tenantSlug: string | null;
+};
+
+type TenantContextCookiePayload = {
+  uid: string;
+  tenant_id: string;
+  tenant_slug?: string | null;
+  tenant_type: TenantType;
+  role: string;
+  iat?: number;
+  exp: number;
+};
+
+type TenantContextCookieCandidate = AuthContext & {
+  issuedAt: number;
+  expiresAt: number;
 };
 
 // Simulação de Rate Limiting simples em memória (Edge Runtime)
@@ -37,6 +51,7 @@ const LIMITS = {
 };
 
 const ESCOLA_SLUG_TTL_MS = 5 * 60 * 1000;
+const TENANT_CONTEXT_COOKIE = 'klasse_ctx';
 const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? '')
@@ -199,10 +214,6 @@ const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   },
 ];
 
-const PRODUCT_HOSTNAMES: Record<Exclude<ProductContext, 'unknown' | 'landing'>, string> = {
-  k12: 'app.klasse.ao',
-  formacao: 'formacao.klasse.ao',
-};
 function safeAbsoluteUrl(
   value: string | undefined,
   fallback: string
@@ -241,6 +252,8 @@ export function resolveUniversalLoginUrl(): string {
 }
 
 function getLandingPathByContext(ctx: AuthContext): string {
+  const escolaParam = ctx.tenantSlug || ctx.escolaId;
+
   if (ctx.tenantType === 'formacao') {
     if (ctx.role === 'formador') return '/agenda';
     if (ctx.role === 'formando') return '/dashboard';
@@ -249,11 +262,11 @@ function getLandingPathByContext(ctx: AuthContext): string {
     return '/admin/dashboard';
   }
 
-  if (ctx.role === 'professor') return ctx.escolaId ? `/escola/${ctx.escolaId}/professor` : '/professor';
-  if (ctx.role === 'aluno' || ctx.role === 'encarregado') return ctx.escolaId ? `/escola/${ctx.escolaId}/aluno` : '/aluno';
-  if (ctx.role === 'financeiro') return '/financeiro';
-  if (ctx.role === 'secretaria') return '/secretaria';
-  return '/admin';
+  if (ctx.role === 'professor') return escolaParam ? `/escola/${escolaParam}/professor` : '/professor';
+  if (ctx.role === 'aluno' || ctx.role === 'encarregado') return escolaParam ? `/escola/${escolaParam}/aluno` : '/aluno';
+  if (ctx.role === 'financeiro') return escolaParam ? `/escola/${escolaParam}/financeiro` : '/financeiro';
+  if (ctx.role === 'secretaria') return escolaParam ? `/escola/${escolaParam}/secretaria` : '/secretaria';
+  return escolaParam ? `/escola/${escolaParam}/admin` : '/admin';
 }
 
 function pathRequiresK12Model(pathname: string): boolean {
@@ -279,7 +292,123 @@ function pathRequiresFormacaoModel(pathname: string): boolean {
   );
 }
 
+function resolveTenantContextCookieSecret() {
+  return (
+    process.env.KLASSE_CONTEXT_COOKIE_SECRET?.trim() ||
+    process.env.AUTH_CONTEXT_COOKIE_SECRET?.trim() ||
+    process.env.CRON_SECRET?.trim() ||
+    process.env.AUTH_ADMIN_JOB_TOKEN?.trim() ||
+    'dev-only-klasse-context-secret'
+  );
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function signTenantContextPayload(payloadEncoded: string): Promise<string | null> {
+  const cryptoApi = globalThis.crypto;
+  if (!cryptoApi?.subtle) return null;
+  const key = await cryptoApi.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(resolveTenantContextCookieSecret()),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await cryptoApi.subtle.sign('HMAC', key, new TextEncoder().encode(payloadEncoded));
+  return bytesToBase64Url(new Uint8Array(signature));
+}
+
+function hasLikelySupabaseSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      ({ name }) =>
+        name.startsWith('sb-') &&
+        (name.includes('auth-token') || name.includes('access-token') || name.includes('refresh-token'))
+    );
+}
+
+function getCookieValues(request: NextRequest, name: string): string[] {
+  const values = request.cookies.getAll(name).map((cookie) => cookie.value);
+  const rawCookieHeader = request.headers.get('cookie') ?? '';
+
+  for (const part of rawCookieHeader.split(';')) {
+    const [rawName, ...rawValueParts] = part.trim().split('=');
+    if (rawName === name && rawValueParts.length > 0) {
+      values.push(rawValueParts.join('='));
+    }
+  }
+
+  return values.filter((value, index, all) => value && all.indexOf(value) === index);
+}
+
+async function decodeTenantContextCookie(raw: string): Promise<TenantContextCookieCandidate | null> {
+  const [payloadEncoded, signature] = raw.split('.');
+  if (!payloadEncoded || !signature) return null;
+
+  const expectedSignature = await signTenantContextPayload(payloadEncoded);
+  if (!expectedSignature || expectedSignature !== signature) return null;
+
+  try {
+    const payloadJson = new TextDecoder().decode(base64UrlToBytes(payloadEncoded));
+    const payload = JSON.parse(payloadJson) as TenantContextCookiePayload;
+    const tenantType = normalizeTenantType(payload.tenant_type);
+
+    if (!payload.uid || !payload.tenant_id || !tenantType || !payload.role || !payload.exp) return null;
+    if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
+
+    return {
+      userId: payload.uid,
+      tenantId: payload.tenant_id,
+      escolaId: payload.tenant_id,
+      tenantSlug: payload.tenant_slug ? String(payload.tenant_slug) : null,
+      role: String(payload.role).trim().toLowerCase() || null,
+      tenantType,
+      issuedAt: Number(payload.iat ?? 0),
+      expiresAt: Number(payload.exp ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise<AuthContext | null> {
+  if (!hasLikelySupabaseSessionCookie(request)) return null;
+
+  const rawCookies = getCookieValues(request, TENANT_CONTEXT_COOKIE);
+  if (rawCookies.length === 0) return null;
+
+  const candidates = (
+    await Promise.all(rawCookies.map((raw) => decodeTenantContextCookie(raw)))
+  ).filter((candidate): candidate is TenantContextCookieCandidate => candidate !== null);
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.issuedAt - a.issuedAt || b.expiresAt - a.expiresAt);
+  const { issuedAt: _issuedAt, expiresAt: _expiresAt, ...authContext } = candidates[0];
+  return authContext;
+}
+
 async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext | null> {
+  const cookieContext = await resolveAuthContextFromTenantCookie(request);
+  if (cookieContext) return cookieContext;
+
   const supabase = createSupabaseClient(request, response);
   if (!supabase) return null;
 
@@ -294,6 +423,7 @@ async function resolveAuthContext(request: NextRequest, response: NextResponse):
     role: resolved.role,
     tenantId: resolved.tenantId,
     escolaId: resolved.tenantId,
+    tenantSlug: null,
     tenantType: resolved.tenantType as TenantType | null,
   };
 }
@@ -370,7 +500,8 @@ function applyResponseCookies(source: NextResponse, target: NextResponse) {
 async function resolveEscolaSlugMapping(
   request: NextRequest,
   response: NextResponse,
-  escolaParam: string
+  escolaParam: string,
+  authContext?: AuthContext | null
 ) {
   const cacheKey = escolaParam.toLowerCase();
   const cached = escolaSlugCache.get(cacheKey);
@@ -378,10 +509,29 @@ async function resolveEscolaSlugMapping(
     return cached;
   }
 
+  if (authContext?.escolaId) {
+    const tenantSlug = authContext.tenantSlug?.trim() || null;
+    const matchesCurrentTenant =
+      String(escolaParam) === String(authContext.escolaId) ||
+      (tenantSlug ? cacheKey === tenantSlug.toLowerCase() : false);
+
+    if (matchesCurrentTenant) {
+      const entry = {
+        id: String(authContext.escolaId),
+        slug: tenantSlug ?? String(authContext.escolaId),
+        expiresAt: Date.now() + ESCOLA_SLUG_TTL_MS,
+      };
+      escolaSlugCache.set(`id:${entry.id}`, entry);
+      escolaSlugCache.set(`slug:${entry.slug.toLowerCase()}`, entry);
+      escolaSlugCache.set(cacheKey, entry);
+      return entry;
+    }
+  }
+
   const supabase = createSupabaseClient(request, response);
   if (!supabase) return null;
 
-  const resolved = await resolveEscolaParam(supabase as any, escolaParam);
+  const resolved = await resolveEscolaParam(supabase, escolaParam);
   if (!resolved.escolaId || !resolved.slug) return null;
 
   const entry = { id: resolved.escolaId, slug: resolved.slug, expiresAt: Date.now() + ESCOLA_SLUG_TTL_MS };
@@ -507,6 +657,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
+  const fastAuthContext = await resolveAuthContextFromTenantCookie(request);
 
   const escolaMatch = pathname.match(/^\/(api\/)?escolas?\/([^/]+)(\/.*)?$/);
   if (escolaMatch) {
@@ -516,9 +667,9 @@ export async function middleware(request: NextRequest) {
     const suffix = escolaMatch[3] ?? '';
 
     if (escolaParam !== 'suspensa') {
-      const resolved = await resolveEscolaSlugMapping(request, response, escolaParam);
+      const resolved = await resolveEscolaSlugMapping(request, response, escolaParam, fastAuthContext);
       if (resolved) {
-        const tenant = await resolveAuthContext(request, response);
+        const tenant = fastAuthContext ?? await resolveAuthContext(request, response);
         if (!tenant) {
           if (!isApi) {
             console.info(
@@ -565,7 +716,7 @@ export async function middleware(request: NextRequest) {
   const portalRule = PORTAL_RULES.find((rule) => pathname.startsWith(rule.prefix));
   if (!portalRule) return finalizeResponse(request, response, allowedOrigin);
 
-  const authContext = await resolveAuthContext(request, response);
+  const authContext = fastAuthContext ?? await resolveAuthContext(request, response);
   if (!authContext?.role) {
     console.info(
       JSON.stringify({
