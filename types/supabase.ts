@@ -373,6 +373,7 @@ export type Database = {
           bi_numero: string | null
           bloqueado_em: string | null
           bloqueado_por: string | null
+          campos_extras: Json | null
           codigo_ativacao: string | null
           created_at: string
           data_ativacao: string | null
@@ -380,34 +381,41 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
+          documentos: Json | null
           email: string | null
           encarregado_email: string | null
           encarregado_nome: string | null
           encarregado_relacao: string | null
           encarregado_telefone: string | null
+          endereco: string | null
           escola_id: string
           id: string
           import_id: string | null
+          mae_nome: string | null
+          mesmo_que_encarregado: boolean | null
           motivo_bloqueio: string | null
           naturalidade: string | null
-          pai_nome: string | null
-          mae_nome: string | null
           nif: string | null
           nome: string
           nome_busca: string | null
           nome_completo: string | null
+          numero_documento: string | null
           numero_processo: string | null
           numero_processo_legado: string | null
+          pai_nome: string | null
           profile_id: string | null
           provincia: string | null
           responsavel: string | null
           responsavel_contato: string | null
+          responsavel_financeiro_nif: string | null
+          responsavel_financeiro_nome: string | null
           responsavel_nome: string | null
           search_text: string | null
           sexo: string | null
           status: string | null
           telefone: string | null
           telefone_responsavel: string | null
+          tipo_documento: string | null
           tsv: unknown
           ultimo_reset_senha: string | null
           updated_at: string | null
@@ -419,6 +427,7 @@ export type Database = {
           bi_numero?: string | null
           bloqueado_em?: string | null
           bloqueado_por?: string | null
+          campos_extras?: Json | null
           codigo_ativacao?: string | null
           created_at?: string
           data_ativacao?: string | null
@@ -426,34 +435,41 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
+          documentos?: Json | null
           email?: string | null
           encarregado_email?: string | null
           encarregado_nome?: string | null
           encarregado_relacao?: string | null
           encarregado_telefone?: string | null
+          endereco?: string | null
           escola_id: string
           id?: string
           import_id?: string | null
+          mae_nome?: string | null
+          mesmo_que_encarregado?: boolean | null
           motivo_bloqueio?: string | null
           naturalidade?: string | null
-          pai_nome?: string | null
-          mae_nome?: string | null
           nif?: string | null
           nome: string
           nome_busca?: string | null
           nome_completo?: string | null
+          numero_documento?: string | null
           numero_processo?: string | null
           numero_processo_legado?: string | null
+          pai_nome?: string | null
           profile_id?: string | null
           provincia?: string | null
           responsavel?: string | null
           responsavel_contato?: string | null
+          responsavel_financeiro_nif?: string | null
+          responsavel_financeiro_nome?: string | null
           responsavel_nome?: string | null
           search_text?: string | null
           sexo?: string | null
           status?: string | null
           telefone?: string | null
           telefone_responsavel?: string | null
+          tipo_documento?: string | null
           tsv?: unknown
           ultimo_reset_senha?: string | null
           updated_at?: string | null
@@ -465,6 +481,7 @@ export type Database = {
           bi_numero?: string | null
           bloqueado_em?: string | null
           bloqueado_por?: string | null
+          campos_extras?: Json | null
           codigo_ativacao?: string | null
           created_at?: string
           data_ativacao?: string | null
@@ -472,40 +489,54 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
+          documentos?: Json | null
           email?: string | null
           encarregado_email?: string | null
           encarregado_nome?: string | null
           encarregado_relacao?: string | null
           encarregado_telefone?: string | null
+          endereco?: string | null
           escola_id?: string
           id?: string
           import_id?: string | null
+          mae_nome?: string | null
+          mesmo_que_encarregado?: boolean | null
           motivo_bloqueio?: string | null
           naturalidade?: string | null
-          pai_nome?: string | null
-          mae_nome?: string | null
           nif?: string | null
           nome?: string
           nome_busca?: string | null
           nome_completo?: string | null
+          numero_documento?: string | null
           numero_processo?: string | null
           numero_processo_legado?: string | null
+          pai_nome?: string | null
           profile_id?: string | null
           provincia?: string | null
           responsavel?: string | null
           responsavel_contato?: string | null
+          responsavel_financeiro_nif?: string | null
+          responsavel_financeiro_nome?: string | null
           responsavel_nome?: string | null
           search_text?: string | null
           sexo?: string | null
           status?: string | null
           telefone?: string | null
           telefone_responsavel?: string | null
+          tipo_documento?: string | null
           tsv?: unknown
           ultimo_reset_senha?: string | null
           updated_at?: string | null
           usuario_auth_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "alunos_bloqueado_por_fkey"
+            columns: ["bloqueado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "alunos_deleted_by_fkey"
             columns: ["deleted_by"]
@@ -1355,6 +1386,13 @@ export type Database = {
             columns: ["candidatura_id"]
             isOneToOne: false
             referencedRelation: "candidaturas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidaturas_status_log_candidatura_id_fkey"
+            columns: ["candidatura_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_candidaturas"
             referencedColumns: ["id"]
           },
           {
@@ -2512,7 +2550,6 @@ export type Database = {
           public_id: string
           revoked_at: string | null
           revoked_by: string | null
-          storage_path: string | null
           tipo: Database["public"]["Enums"]["tipo_documento"]
         }
         Insert: {
@@ -2528,7 +2565,6 @@ export type Database = {
           public_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
-          storage_path?: string | null
           tipo: Database["public"]["Enums"]["tipo_documento"]
         }
         Update: {
@@ -2544,7 +2580,6 @@ export type Database = {
           public_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
-          storage_path?: string | null
           tipo?: Database["public"]["Enums"]["tipo_documento"]
         }
         Relationships: [
@@ -2932,19 +2967,19 @@ export type Database = {
           config_portal_admissao: Json | null
           cor_primaria: string | null
           created_at: string | null
+          dados_pagamento: Json | null
           endereco: string | null
           id: string
           logo_url: string | null
+          needs_academic_setup: boolean | null
           nif: string | null
           nome: string
+          onboarding_completed_at: string | null
+          onboarding_completed_by: string | null
           onboarding_finalizado: boolean
           plano_atual: Database["public"]["Enums"]["app_plan_tier"]
           slug: string
           status: string | null
-          dados_pagamento: Json | null
-          needs_academic_setup: boolean
-          onboarding_completed_at: string | null
-          onboarding_completed_by: string | null
           tenant_type: string
           updated_at: string | null
           use_mv_dashboards: boolean
@@ -2954,19 +2989,19 @@ export type Database = {
           config_portal_admissao?: Json | null
           cor_primaria?: string | null
           created_at?: string | null
+          dados_pagamento?: Json | null
           endereco?: string | null
           id?: string
           logo_url?: string | null
+          needs_academic_setup?: boolean | null
           nif?: string | null
           nome: string
+          onboarding_completed_at?: string | null
+          onboarding_completed_by?: string | null
           onboarding_finalizado?: boolean
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
           slug: string
           status?: string | null
-          dados_pagamento?: Json | null
-          needs_academic_setup?: boolean
-          onboarding_completed_at?: string | null
-          onboarding_completed_by?: string | null
           tenant_type?: string
           updated_at?: string | null
           use_mv_dashboards?: boolean
@@ -2976,19 +3011,19 @@ export type Database = {
           config_portal_admissao?: Json | null
           cor_primaria?: string | null
           created_at?: string | null
+          dados_pagamento?: Json | null
           endereco?: string | null
           id?: string
           logo_url?: string | null
+          needs_academic_setup?: boolean | null
           nif?: string | null
           nome?: string
+          onboarding_completed_at?: string | null
+          onboarding_completed_by?: string | null
           onboarding_finalizado?: boolean
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
           slug?: string
           status?: string | null
-          dados_pagamento?: Json | null
-          needs_academic_setup?: boolean
-          onboarding_completed_at?: string | null
-          onboarding_completed_by?: string | null
           tenant_type?: string
           updated_at?: string | null
           use_mv_dashboards?: boolean
@@ -5575,7 +5610,6 @@ export type Database = {
           formador_user_id: string
           id: string
           percentual_honorario: number
-          valor_hora: number
         }
         Insert: {
           cohort_id: string
@@ -5584,7 +5618,6 @@ export type Database = {
           formador_user_id: string
           id?: string
           percentual_honorario?: number
-          valor_hora?: number
         }
         Update: {
           cohort_id?: string
@@ -5593,7 +5626,6 @@ export type Database = {
           formador_user_id?: string
           id?: string
           percentual_honorario?: number
-          valor_hora?: number
         }
         Relationships: [
           {
@@ -5808,54 +5840,6 @@ export type Database = {
           },
         ]
       }
-      formacao_cohort_avisos: {
-        Row: {
-          id: string
-          escola_id: string
-          cohort_id: string
-          formador_user_id: string | null
-          titulo: string
-          conteudo: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          escola_id: string
-          cohort_id: string
-          formador_user_id?: string | null
-          titulo: string
-          conteudo: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          escola_id?: string
-          cohort_id?: string
-          formador_user_id?: string | null
-          titulo?: string
-          conteudo?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "formacao_cohort_avisos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "formacao_cohort_avisos_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "formacao_cohorts"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       formacao_cohorts: {
         Row: {
           carga_horaria_total: number
@@ -5868,7 +5852,6 @@ export type Database = {
           escola_id: string
           id: string
           nome: string
-          relatorio_pedagogico: string | null
           status: string
           turno: string | null
           updated_at: string
@@ -5886,7 +5869,6 @@ export type Database = {
           escola_id: string
           id?: string
           nome: string
-          relatorio_pedagogico?: string | null
           status?: string
           turno?: string | null
           updated_at?: string
@@ -5904,7 +5886,6 @@ export type Database = {
           escola_id?: string
           id?: string
           nome?: string
-          relatorio_pedagogico?: string | null
           status?: string
           turno?: string | null
           updated_at?: string
@@ -6624,7 +6605,6 @@ export type Database = {
           modalidade: string
           nome_snapshot: string | null
           origem: string
-          recomendado_certificacao: boolean | null
           status_pagamento: string
           telefone_snapshot: string | null
           updated_at: string
@@ -6645,7 +6625,6 @@ export type Database = {
           modalidade?: string
           nome_snapshot?: string | null
           origem?: string
-          recomendado_certificacao?: boolean | null
           status_pagamento?: string
           telefone_snapshot?: string | null
           updated_at?: string
@@ -6666,7 +6645,6 @@ export type Database = {
           modalidade?: string
           nome_snapshot?: string | null
           origem?: string
-          recomendado_certificacao?: boolean | null
           status_pagamento?: string
           telefone_snapshot?: string | null
           updated_at?: string
@@ -8378,6 +8356,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      idempotency_keys: {
+        Row: {
+          created_at: string
+          escola_id: string
+          key: string
+          result: Json | null
+          scope: string
+        }
+        Insert: {
+          created_at?: string
+          escola_id: string
+          key: string
+          result?: Json | null
+          scope: string
+        }
+        Update: {
+          created_at?: string
+          escola_id?: string
+          key?: string
+          result?: Json | null
+          scope?: string
+        }
+        Relationships: []
       }
       import_errors: {
         Row: {
@@ -11237,7 +11239,9 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banco: string | null
           bi_numero: string | null
+          bio: string | null
           created_at: string | null
           current_escola_id: string | null
           data_nascimento: string | null
@@ -11247,8 +11251,12 @@ export type Database = {
           email_real: string | null
           encarregado_relacao: string | null
           escola_id: string | null
+          especialidades: string[] | null
           global_role: string | null
+          grau_academico: string | null
+          iban: string | null
           naturalidade: string | null
+          nif: string | null
           nome: string
           numero_login: string | null
           numero_processo_login: string | null
@@ -11262,7 +11270,9 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banco?: string | null
           bi_numero?: string | null
+          bio?: string | null
           created_at?: string | null
           current_escola_id?: string | null
           data_nascimento?: string | null
@@ -11272,8 +11282,12 @@ export type Database = {
           email_real?: string | null
           encarregado_relacao?: string | null
           escola_id?: string | null
+          especialidades?: string[] | null
           global_role?: string | null
+          grau_academico?: string | null
+          iban?: string | null
           naturalidade?: string | null
+          nif?: string | null
           nome: string
           numero_login?: string | null
           numero_processo_login?: string | null
@@ -11287,7 +11301,9 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banco?: string | null
           bi_numero?: string | null
+          bio?: string | null
           created_at?: string | null
           current_escola_id?: string | null
           data_nascimento?: string | null
@@ -11297,8 +11313,12 @@ export type Database = {
           email_real?: string | null
           encarregado_relacao?: string | null
           escola_id?: string | null
+          especialidades?: string[] | null
           global_role?: string | null
+          grau_academico?: string | null
+          iban?: string | null
           naturalidade?: string | null
+          nif?: string | null
           nome?: string
           numero_login?: string | null
           numero_processo_login?: string | null
@@ -12136,6 +12156,96 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "import_migrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      substituicoes_professores: {
+        Row: {
+          created_at: string | null
+          data: string
+          escola_id: string
+          id: string
+          motivo: string | null
+          professor_id: string
+          slot_id: string
+          turma_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: string
+          escola_id: string
+          id?: string
+          motivo?: string | null
+          professor_id: string
+          slot_id: string
+          turma_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          motivo?: string | null
+          professor_id?: string
+          slot_id?: string
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "substituicoes_professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "horario_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
             referencedColumns: ["id"]
           },
         ]
@@ -14983,6 +15093,54 @@ export type Database = {
           },
         ]
       }
+      vw_search_candidaturas: {
+        Row: {
+          created_at: string | null
+          escola_id: string | null
+          highlight: string | null
+          id: string | null
+          label: string | null
+          search_text: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          escola_id?: string | null
+          highlight?: never
+          id?: string | null
+          label?: never
+          search_text?: never
+          type?: never
+          updated_at?: never
+        }
+        Update: {
+          created_at?: string | null
+          escola_id?: string | null
+          highlight?: never
+          id?: string | null
+          label?: never
+          search_text?: never
+          type?: never
+          updated_at?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidaturas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidaturas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_search_classes: {
         Row: {
           created_at: string | null
@@ -15510,6 +15668,17 @@ export type Database = {
           p_metadata?: Json
         }
         Returns: string
+      }
+      admissao_finalizar_matricula: {
+        Args: {
+          p_candidatura_id: string
+          p_escola_id: string
+          p_idempotency_key?: string
+          p_observacao?: string
+          p_pagamento?: Json
+          p_turma_id: string
+        }
+        Returns: Json
       }
       admissao_reject: {
         Args: {
@@ -16477,9 +16646,17 @@ export type Database = {
       formacao_formadores_por_centro: {
         Args: { p_escola_id: string }
         Returns: {
+          banco: string
+          bi_numero: string
+          bio: string
           email: string
+          especialidades: string[]
+          grau_academico: string
+          iban: string
+          nif: string
           nome: string
-          papel: string
+          sexo: string
+          telefone: string
           user_id: string
         }[]
       }
@@ -16576,7 +16753,9 @@ export type Database = {
         }
         Returns: {
           avatar_url: string | null
+          banco: string | null
           bi_numero: string | null
+          bio: string | null
           created_at: string | null
           current_escola_id: string | null
           data_nascimento: string | null
@@ -16586,8 +16765,12 @@ export type Database = {
           email_real: string | null
           encarregado_relacao: string | null
           escola_id: string | null
+          especialidades: string[] | null
           global_role: string | null
+          grau_academico: string | null
+          iban: string | null
           naturalidade: string | null
+          nif: string | null
           nome: string
           numero_login: string | null
           numero_processo_login: string | null
@@ -16837,6 +17020,26 @@ export type Database = {
           periodos_ativos: number[]
           professor_email: string
           professor_nome: string
+          turma_id: string
+        }[]
+      }
+      get_turma_occupancy_history: {
+        Args: { p_turma_id: string }
+        Returns: {
+          mes_referencia: string
+          total_alunos: number
+        }[]
+      }
+      get_turmas_pedagogico_stats: {
+        Args: { p_escola_id: string }
+        Returns: {
+          alunos_abaixo_notas: number
+          alunos_abaixo_presenca: number
+          candidatos_espera: number
+          decomposicao_saude: Json
+          is_desescoberta: boolean
+          media_notas: number
+          media_presenca: number
           turma_id: string
         }[]
       }
@@ -17714,6 +17917,7 @@ export type Database = {
         | "declaracao_notas"
         | "comprovante_matricula"
         | "boletim_trimestral"
+        | "ficha_inscricao"
       user_role:
         | "super_admin"
         | "global_admin"
@@ -17997,6 +18201,7 @@ export const Constants = {
         "declaracao_notas",
         "comprovante_matricula",
         "boletim_trimestral",
+        "ficha_inscricao",
       ],
       user_role: [
         "super_admin",
