@@ -39,6 +39,7 @@ export async function GET() {
     query = applyKf2ListInvariants(query, {
       defaultLimit: 50,
       order: [{ column: "dia", ascending: true }],
+      tieBreakerColumn: "dia",
     });
 
     const { data, error } = await query;
