@@ -171,7 +171,7 @@ export default function EscolaAdminDashboardContent({
   anoLetivo,
   loading,
   error,
-  notices            = [],
+  notices = [],
   charts,
   stats,
   pendingTurmasCount,
@@ -179,10 +179,13 @@ export default function EscolaAdminDashboardContent({
   setupStatus,
   missingPricingCount = 0,
   financeiroHref,
-  inadimplenciaTop   = [],
+  inadimplenciaTop = [],
   pagamentosRecentes = [],
   receitaResumo,
 }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const financeBase = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
@@ -285,10 +288,10 @@ export default function EscolaAdminDashboardContent({
           <div className="flex items-start justify-between gap-4 mb-6 relative z-10">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Desempenho Financeiro</p>
-              <h2 className="text-2xl font-black text-slate-900 leading-tight">
-                {moeda.format(realizadoReceita)}
-                <span className="ml-2 text-sm font-medium text-slate-400">de {moeda.format(previstoReceita)} previstos</span>
-              </h2>
+              <div className="text-2xl font-black text-slate-900 tracking-tight">
+                {mounted ? moeda.format(realizadoReceita) : "—"}
+                <span className="ml-2 text-sm font-medium text-slate-400">de {mounted ? moeda.format(previstoReceita) : "—"} previstos</span>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-3xl font-black text-[#1F6B3B] leading-none">{percentualReceita}%</p>
@@ -369,16 +372,15 @@ export default function EscolaAdminDashboardContent({
                     <StatusPill status={p.status} />
                     <div className="text-right">
                       <p className="text-sm font-black text-slate-900">
-                        {moeda.format(Number(p.valor_pago ?? 0))}
+                        {mounted ? moeda.format(Number(p.valor_pago ?? 0)) : "—"}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400">
-                        {p.created_at
+                        {mounted && p.created_at
                           ? new Date(p.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
                           : "—"}
                       </p>
                     </div>
-                  </div>
-                </motion.div>
+                  </div>                </motion.div>
               ))
             )}
           </AnimatePresence>
@@ -420,11 +422,11 @@ export default function EscolaAdminDashboardContent({
                           <span>{row.dias_em_atraso ? `${row.dias_em_atraso} DIAS DE ATRASO` : "—"}</span>
                         </div>
                       </div>
-                    </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-black text-rose-600">
-                        {moeda.format(Number(row.valor_em_atraso ?? 0))}
+                        {mounted ? moeda.format(Number(row.valor_em_atraso ?? 0)) : "—"}
                       </p>
+                    </div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Dívida Total</p>
                     </div>
                   </motion.div>

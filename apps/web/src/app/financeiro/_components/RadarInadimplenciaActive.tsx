@@ -154,6 +154,9 @@ export default function RadarInadimplenciaActive({
   onSelectionChange,
   disableActions = false,
 }: RadarInadimplenciaActiveProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const [dados, setDados] = useState<RadarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumo, setResumo] = useState<{
@@ -477,13 +480,13 @@ export default function RadarInadimplenciaActive({
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-2xl font-bold text-[#7A5200]">
-            {totalEmRisco.toLocaleString("pt-AO")} Kz
+            {mounted ? totalEmRisco.toLocaleString("pt-AO") : "—"} Kz
           </div>
           <div className="text-sm text-slate-500">Total em Risco</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="text-2xl font-bold text-[#1F6B3B]">
-            {potencialRecuperacao.toLocaleString("pt-AO")} Kz
+            {mounted ? potencialRecuperacao.toLocaleString("pt-AO") : "—"} Kz
           </div>
           <div className="text-sm text-slate-500">Potencial Recuperação</div>
         </div>
@@ -563,7 +566,7 @@ export default function RadarInadimplenciaActive({
             </div>
             <div className="text-center p-4 bg-[#E3B23C]/10 rounded-lg">
               <div className="text-2xl font-bold text-[#7A5200]">
-                {relatorio.valorRecuperado.toLocaleString("pt-AO")} Kz
+                {mounted ? relatorio.valorRecuperado.toLocaleString("pt-AO") : "—"} Kz
               </div>
               <div className="text-sm text-[#7A5200]">Valor Recuperado</div>
             </div>
@@ -698,11 +701,11 @@ export default function RadarInadimplenciaActive({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-bold text-slate-700">
-                      {item.valor_divida.toLocaleString("pt-AO", {
+                      {mounted ? item.valor_divida.toLocaleString("pt-AO", {
                         style: "currency",
                         currency: "AOA",
                         maximumFractionDigits: 0,
-                      })}
+                      }) : "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center gap-1">
@@ -754,7 +757,7 @@ export default function RadarInadimplenciaActive({
                                 {(item.mensalidades ?? []).map((mensalidade, index) => (
                                   <tr key={mensalidade.mensalidade_id ?? `${item.id}-${index}`}>
                                     <td className="py-1 pr-4">
-                                      {mensalidade.data_vencimento
+                                      {mounted && mensalidade.data_vencimento
                                         ? new Date(mensalidade.data_vencimento).toLocaleDateString()
                                         : "—"}
                                     </td>
@@ -762,18 +765,18 @@ export default function RadarInadimplenciaActive({
                                       {mensalidade.dias_em_atraso ?? 0}
                                     </td>
                                     <td className="py-1 pr-4">
-                                      {(mensalidade.valor_previsto ?? 0).toLocaleString("pt-AO", {
+                                      {mounted ? (mensalidade.valor_previsto ?? 0).toLocaleString("pt-AO", {
                                         style: "currency",
                                         currency: "AOA",
                                         maximumFractionDigits: 0,
-                                      })}
+                                      }) : "—"}
                                     </td>
                                     <td className="py-1 pr-4">
-                                      {(mensalidade.valor_em_atraso ?? 0).toLocaleString("pt-AO", {
+                                      {mounted ? (mensalidade.valor_em_atraso ?? 0).toLocaleString("pt-AO", {
                                         style: "currency",
                                         currency: "AOA",
                                         maximumFractionDigits: 0,
-                                      })}
+                                      }) : "—"}
                                     </td>
                                     <td className="py-1">{mensalidade.status_mensalidade}</td>
                                   </tr>

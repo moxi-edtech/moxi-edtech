@@ -111,7 +111,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { data: cohort, error: cohortError } = await s
     .from("formacao_cohorts")
-    .select("id, codigo, nome, curso_nome, carga_horaria_total, vagas, data_inicio, data_fim, status, created_at, curso_id, turno, relatorio_pedagogico, formacao_cursos(nome)")
+    .select("id, codigo, nome, curso_nome, carga_horaria_total, vagas, data_inicio, data_fim, status, created_at, curso_id, turno, formacao_cursos(nome)")
     .eq("escola_id", auth.escolaId)
     .eq("id", cohortId)
     .single();
@@ -136,7 +136,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { data: formadoresRows } = await s
     .from("formacao_cohort_formadores")
-    .select("id, formador_user_id, percentual_honorario, valor_hora, created_at")
+    .select("id, formador_user_id, percentual_honorario, created_at")
     .eq("escola_id", auth.escolaId)
     .eq("cohort_id", cohortId)
     .order("created_at", { ascending: false });
@@ -207,7 +207,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   const { data: inscricoesData } = await s
     .from("formacao_inscricoes")
-    .select("id, formando_user_id, estado, metadata, created_at, nome_snapshot, email_snapshot, telefone_snapshot, recomendado_certificacao")
+    .select("id, formando_user_id, estado, metadata, created_at, nome_snapshot, email_snapshot, telefone_snapshot")
     .eq("escola_id", auth.escolaId)
     .eq("cohort_id", cohortId)
     .is("cancelled_at", null)
@@ -450,15 +450,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       id: string;
       formador_user_id: string;
       percentual_honorario: number;
-      valor_hora: number;
       created_at: string;
     };
-
     return {
       id: typed.id,
       user_id: typed.formador_user_id,
       percentual_honorario: typed.percentual_honorario,
-      valor_hora: typed.valor_hora,
       created_at: typed.created_at,
       nome: profileMap.get(typed.formador_user_id)?.nome ?? "Formador",
       email: profileMap.get(typed.formador_user_id)?.email ?? null,

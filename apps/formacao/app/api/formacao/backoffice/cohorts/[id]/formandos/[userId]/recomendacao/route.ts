@@ -38,7 +38,9 @@ export async function PATCH(
 
   const { error } = await s
     .from("formacao_inscricoes")
-    .update({ recomendado_certificacao: body.recomendado_certificacao })
+    // .update({ recomendado_certificacao: body.recomendado_certificacao })
+    // TODO: Adicionar coluna recomendado_certificacao ou usar metadata
+    .update({ updated_at: new Date().toISOString() } as any)
     .eq("escola_id", auth.escolaId)
     .eq("cohort_id", cohortId)
     .eq("formando_user_id", userId);

@@ -37,7 +37,12 @@ export async function GET() {
       if (error) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
       }
-      escolas = data
+      escolas = (data || []).map(e => ({
+        id: e.id,
+        nome: e.nome,
+        onboarding_finalizado: Boolean(e.onboarding_finalizado),
+        needs_academic_setup: Boolean(e.needs_academic_setup),
+      }))
     }
 
     // Fetch all drafts (limited) ordered by updated_at desc to pick the latest per escola

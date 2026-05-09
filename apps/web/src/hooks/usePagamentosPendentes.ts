@@ -113,7 +113,7 @@ export function usePagamentosPendentes(pageSize = 20) {
       const { data, error: rpcError } = await supabase.rpc("validar_pagamento", {
         p_pagamento_id: pagamentoId,
         p_aprovado: aprovado,
-        p_mensagem_secretaria: mensagemSecretaria ?? null,
+        p_mensagem_secretaria: mensagemSecretaria ?? undefined,
       });
 
       const rpcData = (data as ValidarPagamentoReturn) || {};
