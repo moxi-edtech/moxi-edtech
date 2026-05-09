@@ -1,13 +1,23 @@
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { listAlunos } from "@/lib/services/alunos.service";
 import AlunosListClient from "@/components/escola-admin/AlunosListClient";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { notFound } from "next/navigation";
 import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id: escolaId } = await params;
+  const { id: idParam } = await params;
   const s = await supabaseServerTyped<Database>();
+
+  // Get user for resolution
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return notFound();
+
+  // Resolve UUID from slug or param
+  const escolaId = await resolveEscolaIdForUser(s, user.id, idParam);
+  if (!escolaId) return notFound();
 
   // Fetch initial alumnos for SSR
   const { items: initialAlunos, page } = await listAlunos(s, escolaId, { status: 'active', limit: 30 }, {

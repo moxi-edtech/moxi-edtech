@@ -26,11 +26,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-    const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
-
-    if (userEscolaId && userEscolaId !== requestedEscolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
+    const effectiveEscolaId = userEscolaId;
 
     const { data: hasAdminRole, error: roleError } = await supabase
       .rpc('user_has_role_in_school', {
@@ -107,11 +106,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-    const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
-
-    if (userEscolaId && userEscolaId !== requestedEscolaId) {
+    if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
+    const effectiveEscolaId = userEscolaId;
 
     const { data: hasRole, error: roleError } = await supabase
       .rpc('user_has_role_in_school', {

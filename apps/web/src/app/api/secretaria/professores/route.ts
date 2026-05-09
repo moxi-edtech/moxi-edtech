@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       metaEscolaId ? String(metaEscolaId) : null
     )
 
-    if (!escolaId || (requestedEscolaId && escolaId !== requestedEscolaId)) {
+    if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
