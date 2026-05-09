@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
+import { buildPortalHref } from "@/lib/navigation";
 
 type MissingItem = {
   curso_nome: string;
@@ -98,7 +99,7 @@ export function MissingPricingAlert({
 
           <div className="flex gap-3">
             <Link
-              href="/financeiro/configuracoes/precos"
+              href={buildPortalHref(escolaId, "/financeiro/configuracoes/precos")}
               className="inline-flex items-center gap-1 text-xs font-bold text-white bg-klasse-gold-600 hover:bg-klasse-gold-700 px-4 py-2 rounded-lg transition-colors shadow-sm"
             >
               Resolver Agora <ChevronRight className="w-3 h-3" />

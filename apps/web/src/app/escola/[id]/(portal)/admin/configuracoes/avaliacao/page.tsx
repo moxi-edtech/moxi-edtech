@@ -18,6 +18,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type Componente = { code: string; peso: number; ativo: boolean };
 type AvaliacaoConfigData = { componentes: Componente[] };
@@ -44,7 +45,7 @@ export default function AvaliacaoUnificadaClient() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
   const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---

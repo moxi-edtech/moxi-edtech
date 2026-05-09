@@ -227,7 +227,7 @@ export async function POST(
         tipo: "curso_precos_pendentes",
         titulo: `Novo curso criado: ${ins?.nome || parsed.data.nome}`,
         mensagem: "Configure a tabela de preços para liberar matrículas e propinas.",
-        link_acao: "/financeiro/configuracoes/precos",
+        link_acao: `/escola/${userEscolaId}/financeiro/configuracoes/precos`,
       });
     } catch (notifyError) {
       console.warn("Falha ao notificar financeiro:", notifyError);

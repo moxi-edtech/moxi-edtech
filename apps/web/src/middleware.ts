@@ -249,8 +249,8 @@ function getLandingPathByContext(ctx: AuthContext): string {
     return '/admin/dashboard';
   }
 
-  if (ctx.role === 'professor') return '/professor';
-  if (ctx.role === 'aluno' || ctx.role === 'encarregado') return '/aluno';
+  if (ctx.role === 'professor') return ctx.escolaId ? `/escola/${ctx.escolaId}/professor` : '/professor';
+  if (ctx.role === 'aluno' || ctx.role === 'encarregado') return ctx.escolaId ? `/escola/${ctx.escolaId}/aluno` : '/aluno';
   if (ctx.role === 'financeiro') return '/financeiro';
   if (ctx.role === 'secretaria') return '/secretaria';
   return '/admin';

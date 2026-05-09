@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Badge } from "@/components/ui/Badge";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type IdentidadeForm = {
   nome: string;
@@ -51,7 +52,7 @@ export default function IdentidadePage({ params }: Props) {
   const { id: escolaId } = use(params);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
   const { error } = useToast();
 
   const [loading, setLoading] = useState(true);

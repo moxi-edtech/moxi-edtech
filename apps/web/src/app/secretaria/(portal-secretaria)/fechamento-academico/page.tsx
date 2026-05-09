@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   Archive,
@@ -11,8 +12,9 @@ import {
   Play,
   RefreshCw,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type WizardState = "validando" | "bloqueado" | "pronto" | "rodando" | "falha" | "concluido";
 type JobStep = "PENDING" | "CLOSING_PERIOD" | "FINALIZING_ENROLLMENTS" | "GENERATING_HISTORY" | "COMPLETED";
@@ -63,6 +65,7 @@ const mapEstadoToStep = (estado?: string | null): JobStep => {
 };
 
 export default function FechamentoAcademicoPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [acao, setAcao] = useState<"fechar_trimestre" | "fechar_ano">("fechar_trimestre");
   const [anoLetivoId, setAnoLetivoId] = useState("");
@@ -347,12 +350,12 @@ export default function FechamentoAcademicoPage() {
             >
               Verificar novamente
             </button>
-            <a
-              href="/secretaria/fechamento-academico/sanidade"
+            <Link
+              href="sanidade"
               className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
             >
               Abrir relatório completo
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -430,12 +433,12 @@ export default function FechamentoAcademicoPage() {
           >
             Verificar se está tudo pronto
           </button>
-          <a
-            href="/secretaria/fechamento-academico/sanidade"
+          <Link
+            href="sanidade"
             className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
           >
             Abrir sanidade detalhada
-          </a>
+          </Link>
           <a
             href="/docs/academico/runbook-fechamento-academico"
             className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
@@ -509,7 +512,7 @@ export default function FechamentoAcademicoPage() {
           <CheckCircle2 className="w-12 h-12 text-[#1F6B3B] mx-auto mb-3" />
           <h3 className="text-xl font-bold text-[#1F6B3B] font-sora">Fecho concluído com sucesso</h3>
           <button
-            onClick={() => window.location.href = "/secretaria/dashboard"}
+            onClick={() => router.push(buildPortalHref(escolaParam, "/secretaria"))}
             className="mt-6 px-6 py-2.5 bg-[#1F6B3B] text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all inline-flex items-center gap-2"
           >
             Voltar ao painel <ArrowRight className="w-4 h-4" />

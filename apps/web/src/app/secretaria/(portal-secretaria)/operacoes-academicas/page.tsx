@@ -1,6 +1,8 @@
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { AlertTriangle, CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
+import { buildPortalHref } from "@/lib/navigation";
+import Link from "next/link";
 
 type FechamentoJob = {
   run_id: string;
@@ -55,15 +57,19 @@ const PERIOD_OPTIONS = [
 ];
 
 export default async function OperacoesAcademicasPage({
+  params,
   searchParams,
 }: {
+  params?: Promise<{ id: string }>;
   searchParams?: Promise<SearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
+  const resolvedParams = params ? await params : null;
   const s = await supabaseServer();
   const { data: sess } = await s.auth.getUser();
   const user = sess?.user;
   let escolaId: string | null = null;
+  let escolaSlug: string | null = resolvedParams?.id ?? null;
 
   if (user) {
     const { data: prof } = await s
@@ -72,7 +78,18 @@ export default async function OperacoesAcademicasPage({
       .eq("user_id", user.id)
       .maybeSingle();
     escolaId = (prof as { escola_id?: string | null })?.escola_id ?? null;
+    
+    if (!escolaSlug && escolaId) {
+      const { data: esc } = await s
+        .from("escolas")
+        .select("slug")
+        .eq("id", escolaId)
+        .maybeSingle();
+      escolaSlug = esc?.slug ?? null;
+    }
   }
+
+  const escolaParam = escolaSlug || escolaId;
 
   if (!escolaId) {
     return (
@@ -179,12 +196,12 @@ export default async function OperacoesAcademicasPage({
             Painel único para monitoramento de fechamento acadêmico e lotes oficiais.
           </p>
           <div>
-            <a
-              href="/admin/operacoes-academicas/wizard"
+            <Link
+              href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
               className="text-xs font-semibold text-klasse-green hover:underline"
             >
               Abrir wizard simplificado
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -272,9 +289,9 @@ export default async function OperacoesAcademicasPage({
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" /> Fechamento Académico
               </h2>
-              <a href={`/secretaria/fechamento-academico?${monitorQuery}`} className="text-xs font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, `/admin/operacoes-academicas/fechamento-academico?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
                 Abrir monitor
-              </a>
+              </Link>
             </div>
             <div className="mt-3 space-y-2">
               {(filteredFechamento as FechamentoJob[] | null)?.length ? (
@@ -319,9 +336,9 @@ export default async function OperacoesAcademicasPage({
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <FileText className="h-4 w-4" /> Documentos Oficiais (Lote)
               </h2>
-              <a href={`/secretaria/documentos-oficiais?${monitorQuery}`} className="text-xs font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, `/admin/operacoes-academicas/documentos-oficiais?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
                 Abrir monitor
-              </a>
+              </Link>
             </div>
             <div className="mt-3 space-y-2">
               {(filteredLotes as LoteJob[] | null)?.length ? (
@@ -384,36 +401,36 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Corrigir pendências e reexecutar o fechamento a partir do monitor.
               </p>
-              <a href="/secretaria/notas" className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/admin/notas")} className="text-[10px] font-semibold text-klasse-green hover:underline">
                 Abrir notas
-              </a>
+              </Link>
             </div>
             <div className="rounded-lg border border-slate-100 p-4">
               <p className="text-xs font-semibold text-slate-700">Snapshot legal bloqueado</p>
               <p className="text-xs text-slate-500 mt-1">
                 Solicitar reabertura auditada e repetir fechamento com justificativa.
               </p>
-              <a href="/secretaria/fechamento-academico" className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/fechamento-academico")} className="text-[10px] font-semibold text-klasse-green hover:underline">
                 Abrir fechamento
-              </a>
+              </Link>
             </div>
             <div className="rounded-lg border border-slate-100 p-4">
               <p className="text-xs font-semibold text-slate-700">Permissões insuficientes</p>
               <p className="text-xs text-slate-500 mt-1">
                 Revalidar roles do operador antes de reprocessar.
               </p>
-              <a href="/secretaria/acesso" className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/seguranca")} className="text-[10px] font-semibold text-klasse-green hover:underline">
                 Ver acessos
-              </a>
+              </Link>
             </div>
             <div className="rounded-lg border border-slate-100 p-4">
               <p className="text-xs font-semibold text-slate-700">Falha de storage (ZIP/manifest)</p>
               <p className="text-xs text-slate-500 mt-1">
                 Reprocessar o lote com falha e verificar o download.
               </p>
-              <a href="/secretaria/documentos-oficiais" className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/documentos-oficiais")} className="text-[10px] font-semibold text-klasse-green hover:underline">
                 Abrir documentos oficiais
-              </a>
+              </Link>
             </div>
           </div>
         </div>

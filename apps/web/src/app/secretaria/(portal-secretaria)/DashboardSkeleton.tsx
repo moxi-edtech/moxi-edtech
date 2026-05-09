@@ -1,152 +1,54 @@
-import {
-  DashboardHeader,
-  KpiCardSkeleton,
-  ActionCard,
-  SecondaryAction,
-  TaskListSkeleton,
-  NoticePanelSkeleton,
-} from "@/components/dashboard";
-import SecaoLabel from "@/components/shared/SecaoLabel";
-import {
-  Users,
-  FileText,
-  Banknote,
-  CalendarX,
-  FileEdit,
-  UserPlus,
-  Building,
-  RefreshCcw,
-  Upload,
-  KeyRound,
-  UserCheck,
-  Clock,
-} from "lucide-react";
+"use client";
 
-export function DashboardSkeleton() {
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
+import Link from "next/link";
+
+export default function DashboardSkeleton() {
+  const { escolaSlug } = useEscolaId();
+  
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
-      <div className="flex-1 flex">
-        <main className="flex-1 p-6 lg:p-8 pb-32">
-          <div className="max-w-5xl mx-auto space-y-8">
-            <DashboardHeader
-              title="Secretaria"
-              description="Resumo operacional do dia"
-              breadcrumbs={[
-                { label: "Início", href: "/secretaria" },
-                { label: "Secretaria" },
-              ]}
-              actions={
-                <div className="flex flex-col gap-3 items-stretch sm:flex-row sm:items-center sm:justify-end">
-                  <div className="h-10 w-64 bg-slate-200 rounded-lg animate-pulse"></div>
-                  <div className="h-10 w-40 bg-slate-200 rounded-xl animate-pulse"></div>
-                </div>
-              }
-            />
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <KpiCardSkeleton />
-              <KpiCardSkeleton />
-              <KpiCardSkeleton />
-              <KpiCardSkeleton />
-            </div>
-
-            <div className="bg-white rounded-xl border p-4">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="h-4 w-48 bg-slate-200 rounded-md animate-pulse"></div>
-                <div className="h-8 w-36 bg-slate-200 rounded-lg animate-pulse"></div>
-              </div>
-              <div className="h-10 w-full bg-slate-200 rounded-lg animate-pulse"></div>
-              <div className="h-3 w-40 bg-slate-200 rounded-md animate-pulse mt-2"></div>
-            </div>
-
-            <div>
-              <SecaoLabel>Balcão de Atendimento</SecaoLabel>
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/admissoes?nova=1" />
-                <ActionCard title="Emitir Declaração" sub="Com ou sem notas" icon={FileText} href="/secretaria/documentos" />
-                <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/balcao" />
-                <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/calendario" />
-                <ActionCard title="Lançar Nota" sub="Pauta Rápida" icon={FileEdit} href="/secretaria/notas" />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between mb-4">
-                  <SecaoLabel>Atenção Necessária</SecaoLabel>
-                  <div className="h-4 w-16 bg-slate-200 rounded-md animate-pulse"></div>
-                </div>
-
-                <TaskListSkeleton />
-
-                <div>
-                  <SecaoLabel>Gestão</SecaoLabel>
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <SecondaryAction icon={Users} label="Alunos" href="/secretaria/alunos" />
-                    <SecondaryAction icon={UserCheck} label="Professores" href="/secretaria/professores" />
-                    <SecondaryAction icon={Building} label="Turmas" href="/secretaria/turmas" />
-                    <SecondaryAction icon={RefreshCcw} label="Rematrículas" href="/secretaria/rematricula" />
-                    <SecondaryAction icon={KeyRound} label="Acesso Alunos" href="/secretaria/acesso-alunos" />
-                    <SecondaryAction icon={Upload} label="Migração" href="/secretaria/migracao/alunos" highlight={true} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <SecaoLabel>Avisos gerais</SecaoLabel>
-                  <div className="mt-4">
-                    <NoticePanelSkeleton showHeader={false} />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm animate-pulse">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-slate-200 rounded-xl"></div>
-                    <div>
-                      <div className="h-5 w-32 bg-slate-200 rounded-md"></div>
-                      <div className="h-4 w-full bg-slate-200 rounded-md mt-2"></div>
-                      <div className="h-4 w-3/4 bg-slate-200 rounded-md mt-1"></div>
-                      <div className="mt-3 h-8 w-24 bg-slate-200 rounded-lg"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-      <div className="fixed inset-0 z-50 hidden items-center justify-center bg-black/30 px-4 py-10">
-        <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <div className="h-5 w-40 bg-slate-200 rounded-md animate-pulse"></div>
-          </div>
-          <div className="grid gap-6 px-6 py-5 lg:grid-cols-[1.2fr_1fr]">
-            <div className="space-y-3">
-              <div className="h-8 w-32 bg-slate-200 rounded-full animate-pulse"></div>
-              <div className="h-24 bg-slate-200 rounded-xl animate-pulse"></div>
-              <div className="h-24 bg-slate-200 rounded-xl animate-pulse"></div>
-            </div>
-            <div className="space-y-3">
-              <div className="h-8 w-40 bg-slate-200 rounded-md animate-pulse"></div>
-              <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
-              <div className="h-20 bg-slate-200 rounded-lg animate-pulse"></div>
-              <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
-            </div>
-          </div>
+    <div className="space-y-8 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-8 w-48 bg-slate-100 rounded-lg" />
+          <div className="h-4 w-32 bg-slate-50 rounded-lg" />
         </div>
+        <div className="h-10 w-32 bg-slate-100 rounded-xl" />
       </div>
-      <div className="fixed inset-0 z-50 hidden items-center justify-center bg-black/30 px-4 py-10">
-        <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <div className="h-5 w-40 bg-slate-200 rounded-md animate-pulse"></div>
-            <div className="mt-2 h-3 w-56 bg-slate-200 rounded-md animate-pulse"></div>
+
+      <nav className="flex items-center gap-1 rounded-xl bg-white border border-slate-100 px-3 py-2">
+        {[
+          { label: "Início", href: buildPortalHref(escolaSlug, "/secretaria") },
+          { label: "Dashboard" }
+        ].map((item, i, arr) => (
+          <div key={item.label} className="flex items-center gap-1">
+            {item.href ? (
+              <Link href={item.href} className="text-xs font-medium text-slate-400">
+                {item.label}
+              </Link>
+            ) : (
+              <span className="text-xs font-bold text-slate-600">{item.label}</span>
+            )}
+            {i < arr.length - 1 && <span className="text-slate-200">/</span>}
           </div>
-          <div className="px-6 py-5 space-y-3">
-            <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
-            <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
-            <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
-          </div>
+        ))}
+      </nav>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-24 bg-white border border-slate-100 rounded-2xl" />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="h-64 bg-white border border-slate-100 rounded-2xl" />
+          <div className="h-96 bg-white border border-slate-100 rounded-2xl" />
+        </div>
+        <div className="space-y-6">
+          <div className="h-48 bg-white border border-slate-100 rounded-2xl" />
+          <div className="h-96 bg-white border border-slate-100 rounded-2xl" />
         </div>
       </div>
     </div>

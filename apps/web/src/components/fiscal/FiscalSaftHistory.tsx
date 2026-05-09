@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type FiscalSaftHistoryProps = {
   empresaId: string | null;
@@ -73,7 +75,8 @@ export function FiscalSaftHistory({ empresaId, refreshKey = 0 }: FiscalSaftHisto
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const safePathname = pathname ?? "/financeiro/fiscal";
+  const { escolaSlug } = useEscolaId();
+  const safePathname = pathname ?? buildPortalHref(escolaSlug, "/financeiro/fiscal");
   const currentSearchParams = searchParams ?? new URLSearchParams();
 
   const [loading, setLoading] = useState(false);

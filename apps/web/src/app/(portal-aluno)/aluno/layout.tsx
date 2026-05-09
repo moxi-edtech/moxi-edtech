@@ -87,6 +87,13 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   }
 
   const escolaId = vincPortal.escola_id;
+  const { data: escolaInfo } = await supabase
+    .from("escolas")
+    .select("slug")
+    .eq("id", escolaId)
+    .maybeSingle();
+  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : String(escolaId);
+
   const { data: configuracoes } = await (supabase as any)
     .from("configuracoes_financeiro")
     .select("bloquear_inadimplentes")
@@ -97,7 +104,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     const alunoIds = await resolveAlunoIds(supabase, escolaId, user.id, user.email);
     const bloqueado = await alunoTemInadimplencia(supabase, escolaId, alunoIds);
     if (bloqueado) {
-      redirect("/aluno/desabilitado");
+      redirect(`/escola/${escolaParam}/aluno/desabilitado`);
     }
   }
 

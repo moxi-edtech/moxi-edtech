@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Dashboard } from "./Dashboard";
-import { DashboardSkeleton } from "./DashboardSkeleton";
+import DashboardSkeleton from "./DashboardSkeleton";
 import type { DashboardCounts, DashboardRecentes, Plano } from "./types";
 
 export default function SecretariaDashboardPage() {

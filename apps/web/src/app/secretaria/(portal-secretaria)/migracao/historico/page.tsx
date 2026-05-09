@@ -55,7 +55,7 @@ export default function HistoricoImportacao() {
               {item.processed_at && <p>Processado: {new Date(item.processed_at).toLocaleString()}</p>}
               <div className="pt-2 flex items-center gap-2">
                 <a
-                  href={`/secretaria/migracao/alunos?importId=${encodeURIComponent(item.id)}&step=review`}
+                  href={`../alunos?importId=${encodeURIComponent(item.id)}&step=review`}
                   className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-white bg-klasse-green-600 hover:bg-klasse-green-700"
                 >
                   Reabrir Wizard na Revisão

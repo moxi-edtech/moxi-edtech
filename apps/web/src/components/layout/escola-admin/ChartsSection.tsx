@@ -1,34 +1,20 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Tooltip,
+  Bar,
+  BarChart,
+  CartesianGrid,
   Legend,
-} from "chart.js";
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { BarChart3, TrendingUp, Wallet } from "lucide-react";
 import type { PagamentosResumo } from "./definitions";
-
-// ─── Chart.js registration ────────────────────────────────────────────────────
-
-ChartJS.register(
-  CategoryScale, LinearScale,
-  PointElement, LineElement,
-  BarElement, ArcElement,
-  Tooltip, Legend
-);
-
-// ─── Dynamic imports (no SSR) ─────────────────────────────────────────────────
-
-const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), { ssr: false });
-const Bar  = dynamic(() => import("react-chartjs-2").then((m) => m.Bar),  { ssr: false });
 
 // ─── Klasse design tokens ─────────────────────────────────────────────────────
 
@@ -36,30 +22,34 @@ const KLASSE_GREEN  = "#1F6B3B";
 const KLASSE_GOLD   = "#E3B23C";
 const SLATE_GRID    = "rgba(148, 163, 184, 0.08)";
 const SLATE_TICK    = "#94a3b8";
-const TOOLTIP_BG    = "rgba(15, 23, 42, 0.92)";
 
 // ─── Shared chart defaults ────────────────────────────────────────────────────
 
-const sharedTooltip = {
-  backgroundColor: TOOLTIP_BG,
-  titleColor:      "#f1f5f9",
-  bodyColor:       "#cbd5e1",
-  borderColor:     "#334155",
-  borderWidth:     1,
-  padding:         10,
-  cornerRadius:    8,
-};
+const axisTick = { fill: SLATE_TICK, fontSize: 11 };
 
-const sharedAxisX = {
-  grid:  { display: false },
-  ticks: { color: SLATE_TICK, font: { size: 11 } },
-};
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ color?: string; name?: string; value?: number | string }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
 
-const sharedAxisY = {
-  beginAtZero: true,
-  grid:        { color: SLATE_GRID },
-  ticks:       { color: SLATE_TICK, font: { size: 11 } },
-};
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 text-xs shadow-lg">
+      {label ? <p className="mb-1 font-semibold text-slate-100">{label}</p> : null}
+      {payload.map((item) => (
+        <p key={`${item.name}-${item.value}`} className="font-medium text-slate-300">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+          {item.name}: {Number(item.value ?? 0).toLocaleString("pt-AO")}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
@@ -115,73 +105,24 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
   const resumo     = pagamentos ?? null;
 
   // ── Line chart (matrículas) ────────────────────────────────────────────────
-  const lineData = useMemo(() => ({
-    labels,
-    datasets: [{
-      label:                "Alunos matriculados",
-      data:                 dadosAlunos,
-      borderWidth:          2.5,
-      borderColor:          KLASSE_GREEN,
-      backgroundColor:      `${KLASSE_GREEN}18`,
-      tension:              0.4,
-      pointRadius:          4,
-      pointBackgroundColor: KLASSE_GREEN,
-      pointBorderColor:     "#ffffff",
-      pointBorderWidth:     2,
-      fill:                 true,
-    }],
-  }), [labels, dadosAlunos]);
-
-  const lineOptions = useMemo(() => ({
-    responsive:          true,
-    maintainAspectRatio: false as const,
-    plugins: {
-      legend: {
-        display:  true,
-        position: "top" as const,
-        labels:   { usePointStyle: true, padding: 14, color: SLATE_TICK, font: { size: 11 } },
-      },
-      tooltip: { ...sharedTooltip, mode: "index" as const, intersect: false },
-    },
-    scales: { x: sharedAxisX, y: sharedAxisY },
-  }), []);
+  const lineData = useMemo(
+    () =>
+      labels.map((mes, index) => ({
+        mes,
+        alunos: Number(dadosAlunos[index] ?? 0),
+      })),
+    [labels, dadosAlunos]
+  );
 
   // ── Bar chart (mensalidades) ───────────────────────────────────────────────
   const barData = useMemo(() => {
     const r = resumo ?? { pago: 0, pendente: 0, inadimplente: 0 };
-    return {
-      labels: ["Pago", "Pendente", "Inadimplente"],
-      datasets: [{
-        label:           "Mensalidades",
-        data:            [r.pago, r.pendente, r.inadimplente],
-        // Klasse-aligned palette: green / gold / rose
-        backgroundColor: [`${KLASSE_GREEN}cc`, `${KLASSE_GOLD}cc`, "rgba(239,68,68,0.75)"],
-        borderColor:     [KLASSE_GREEN,          KLASSE_GOLD,          "#dc2626"],
-        borderWidth:     1.5,
-        borderRadius:    6,
-      }],
-    };
+    return [
+      { status: "Pago", valor: Number(r.pago ?? 0), fill: KLASSE_GREEN },
+      { status: "Pendente", valor: Number(r.pendente ?? 0), fill: KLASSE_GOLD },
+      { status: "Inadimplente", valor: Number(r.inadimplente ?? 0), fill: "#dc2626" },
+    ];
   }, [resumo]);
-
-  const barOptions = useMemo(() => ({
-    responsive:          true,
-    maintainAspectRatio: false as const,
-    plugins: {
-      legend:  { display: false },
-      tooltip: sharedTooltip,
-    },
-    scales: {
-      x: sharedAxisX,
-      y: {
-        ...sharedAxisY,
-        ticks: {
-          ...sharedAxisY.ticks,
-          // Let Chart.js auto-calculate stepSize — avoids broken scale on large values
-          precision: 0,
-        },
-      },
-    },
-  }), []);
 
   const hasLineData = labels.length > 0 && dadosAlunos.length > 0;
 
@@ -196,7 +137,30 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
         subtitle="Evolução do ano letivo"
       >
         <div className="h-56">
-          {hasLineData ? <Line data={lineData} options={lineOptions} /> : <EmptyState />}
+          {hasLineData ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={lineData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
+                <CartesianGrid stroke={SLATE_GRID} vertical={false} />
+                <XAxis dataKey="mes" tick={axisTick} tickLine={false} axisLine={false} />
+                <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={{ color: SLATE_TICK, fontSize: 11, paddingBottom: 8 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="alunos"
+                  name="Alunos matriculados"
+                  stroke={KLASSE_GREEN}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: KLASSE_GREEN, stroke: "#ffffff", strokeWidth: 2 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : <EmptyState />}
         </div>
       </ChartCard>
 
@@ -208,7 +172,17 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
         subtitle="Distribuição atual"
       >
         <div className="h-56">
-          {resumo ? <Bar data={barData} options={barOptions} /> : <EmptyState />}
+          {resumo ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
+                <CartesianGrid stroke={SLATE_GRID} vertical={false} />
+                <XAxis dataKey="status" tick={axisTick} tickLine={false} axisLine={false} />
+                <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="valor" name="Mensalidades" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <EmptyState />}
         </div>
       </ChartCard>
 

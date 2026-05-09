@@ -62,7 +62,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               {["1", "7", "30", "90"].map((d) => (
                 <a
                   key={d}
-                  href={`/secretaria/relatorios?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
+                  href={`relatorios?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`px-2.5 py-1 rounded border ${
                     days === d
                       ? "bg-slate-600 text-white border-slate-600"
@@ -74,7 +74,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               ))}
               <span className="mx-2 h-4 w-px bg-gray-200" />
               <a
-                href={`/secretaria/relatorios/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
+                href={`relatorios/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
                 className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100"
                 target="_blank"
                 rel="noreferrer"
@@ -82,7 +82,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                 Exportar CSV
               </a>
               <a
-                href={`/secretaria/relatorios/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
+                href={`relatorios/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
                 className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100"
                 target="_blank"
                 rel="noreferrer"
@@ -90,7 +90,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                 Exportar JSON
               </a>
               <a
-                href="/secretaria/relatorios/mapa-aproveitamento"
+                href="relatorios/mapa-aproveitamento"
                 className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
               >
                 Abrir Mapa de Aproveitamento

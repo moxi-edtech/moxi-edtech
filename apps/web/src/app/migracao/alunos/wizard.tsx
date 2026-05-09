@@ -10,6 +10,9 @@ import {
   FileSpreadsheet, ChevronRight, School, LayoutDashboard
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import Link from "next/link";
+import { buildPortalHref } from "@/lib/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // Componentes internos (Importe os seus originais aqui se necessário)
 import BackfillStep from "@/components/escola/importacao/wizard/steps/BackfillStep";
@@ -181,6 +184,7 @@ function AlunoMigrationWizardContent() {
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   
   const summaryScrollRef = useRef<HTMLDivElement | null>(null);
+  const { escolaSlug } = useEscolaId();
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
   const deepApplied = useRef(false);
@@ -829,7 +833,7 @@ function AlunoMigrationWizardContent() {
                   )}
 
                   <div className="flex gap-4 pt-4 justify-center">
-                      <a href="/secretaria/alunos" className="text-slate-500 hover:text-klasse-green-900 text-sm font-medium underline underline-offset-4">Ir para lista de alunos</a>
+                      <Link href={buildPortalHref(escolaSlug, "/secretaria/alunos")} className="text-slate-500 hover:text-klasse-green-900 text-sm font-medium underline underline-offset-4">Ir para lista de alunos</Link>
                   </div>
                </div>
             </WizardShell>

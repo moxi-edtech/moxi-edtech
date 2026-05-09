@@ -1,7 +1,11 @@
 "use client";
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
 
 type AtribItem = {
@@ -55,6 +59,10 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [pendenciasResumo, setPendenciasResumo] = useState<PendenciasResumo | null>(null);
   const [overview, setOverview] = useState<OverviewInfo | null>(null);
+  const pathname = usePathname();
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
+  const professorHref = (path: string) => buildPortalHref(escolaParam, path);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,7 +196,7 @@ export default function Page() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-slate-900">Minhas turmas</h2>
-              <a href="/professor/frequencias" className="text-xs text-klasse-gold">Registrar presenças</a>
+              <Link href={professorHref("/professor/frequencias")} className="text-xs text-klasse-gold">Registrar presenças</Link>
             </div>
             {loading ? (
               <div className="grid gap-3 sm:grid-cols-2 animate-pulse">
@@ -217,7 +225,7 @@ export default function Page() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-slate-900">Agenda semanal</h2>
-              <a href="/professor/fluxos" className="text-xs text-klasse-gold">Ver fluxos</a>
+              <Link href={professorHref("/professor/fluxos")} className="text-xs text-klasse-gold">Ver fluxos</Link>
             </div>
             {loading ? (
               <div className="space-y-3 animate-pulse">
@@ -261,27 +269,27 @@ export default function Page() {
           </section>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
-          <a href="/professor/frequencias" className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/40 transition">
+          <Link href={professorHref("/professor/frequencias")} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/40 transition">
             <div className="w-10 h-10 rounded-lg bg-klasse-gold/10 text-klasse-gold flex items-center justify-center mb-3">
               <ClipboardDocumentListIcon className="w-6 h-6" />
             </div>
             <div className="font-semibold text-slate-900">Registrar Presenças</div>
             <div className="text-sm text-slate-500">Registro diário por turma e disciplina.</div>
-          </a>
-          <a href="/professor/notas" className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/40 transition">
+          </Link>
+          <Link href={professorHref("/professor/notas")} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/40 transition">
             <div className="w-10 h-10 rounded-lg bg-klasse-gold/10 text-klasse-gold flex items-center justify-center mb-3">
               <PencilSquareIcon className="w-6 h-6" />
             </div>
             <div className="font-semibold text-slate-900">Lançar Notas</div>
             <div className="text-sm text-slate-500">Notas por disciplina e período.</div>
-          </a>
-          <a href="/professor/fluxos" className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/40 transition">
+          </Link>
+          <Link href={professorHref("/professor/fluxos")} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-klasse-gold/40 transition">
             <div className="w-10 h-10 rounded-lg bg-klasse-gold/10 text-klasse-gold flex items-center justify-center mb-3">
               <MapIcon className="w-6 h-6" />
             </div>
             <div className="font-semibold text-slate-900">Fluxo Acadêmico</div>
             <div className="text-sm text-slate-500">Linha do tempo do ciclo académico.</div>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

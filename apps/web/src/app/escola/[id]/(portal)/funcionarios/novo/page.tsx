@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import {
   ArrowLeftIcon,
   UserPlusIcon,
@@ -98,7 +99,7 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
               <Link
                 key={tab}
                 href={
-                  tab === "funcionarios" ? `/escola/${escolaParam}/funcionarios` : `/escola/${escolaParam}/funcionarios/novo`
+                  tab === "funcionarios" ? buildPortalHref(escolaParam, "/funcionarios") : buildPortalHref(escolaParam, "/funcionarios/novo")
                 }
                 className={`px-6 py-3 font-medium relative ${
                   tab === "novo" ? "text-klasse-gold" : "text-slate-500 hover:text-slate-900"

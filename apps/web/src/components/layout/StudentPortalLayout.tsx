@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from '@/lib/supabaseClient'
 import SidebarContainer from "@/components/layout/shared/SidebarContainer";
 import {
@@ -18,6 +19,8 @@ import SignOutButton from '@/components/auth/SignOutButton'
 import BackButton from '@/components/navigation/BackButton'
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans"
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 
 type Item = { name: string, icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }
 
@@ -33,6 +36,10 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
   const [active, setActive] = useState('Dashboard')
   const [open, setOpen] = useState(false)
   const [plan, setPlan] = useState<PlanTier | null>(null)
+  const pathname = usePathname();
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
+  const dashboardHref = buildPortalHref(escolaParam, "/aluno/dashboard");
 
   useEffect(() => {
     const supabase = createClient()
@@ -70,7 +77,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
         className={`bg-white md:rounded-r-2xl transition-transform ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
         <div className="px-6 py-4 flex items-center justify-between">
-          <Link href="/aluno/dashboard" className="flex items-center gap-3" aria-label="Ir para a home do aluno">
+          <Link href={dashboardHref} className="flex items-center gap-3" aria-label="Ir para a home do aluno">
             <div className="h-10 w-10 rounded-xl bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center shadow-lg">
               <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
             </div>

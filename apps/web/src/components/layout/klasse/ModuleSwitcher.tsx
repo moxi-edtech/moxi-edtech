@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { usePapel } from "@/lib/usePapel";
+import { buildPortalHref } from "@/lib/navigation";
 
 type ModuleKey = "admin" | "secretaria" | "financeiro";
 
@@ -16,7 +17,7 @@ const LABELS: Record<ModuleKey, string> = {
 function resolveModule(pathname: string): ModuleKey | null {
   if (pathname.includes("/admin")) return "admin";
   if (pathname.includes("/secretaria")) return "secretaria";
-  if (pathname.startsWith("/financeiro")) return "financeiro";
+  if (pathname.includes("/financeiro")) return "financeiro";
   return null;
 }
 
@@ -31,7 +32,7 @@ export default function ModuleSwitcher() {
     const match = pathname.match(/\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
-  const escolaParam = escolaSlug || escolaId || escolaIdFromPath;
+  const escolaParam = escolaSlug || escolaIdFromPath || escolaId;
 
   const modules = useMemo<ModuleKey[]>(() => {
     if (papel === "admin_financeiro") return ["admin", "financeiro"];
@@ -50,11 +51,11 @@ export default function ModuleSwitcher() {
   }
 
   const resolveTarget = (moduleKey: ModuleKey) => {
-    if (moduleKey === "financeiro") return "/financeiro/dashboard";
+    if (moduleKey === "financeiro") return buildPortalHref(escolaParam, "/financeiro/dashboard");
     if (moduleKey === "admin") {
-      return escolaParam ? `/escola/${escolaParam}/admin/dashboard` : "/admin/dashboard";
+      return buildPortalHref(escolaParam, "/admin/dashboard");
     }
-    return escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
+    return buildPortalHref(escolaParam, "/secretaria");
   };
 
   const handleChange = (next: ModuleKey) => {

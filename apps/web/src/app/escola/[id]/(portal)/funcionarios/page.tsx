@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import {
   UserGroupIcon,
   PlusIcon,
@@ -77,7 +78,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
           <h1 className="text-3xl font-bold text-klasse-green">Funcionários</h1>
         </div>
         {!embedded && (
-          <Link href={`/escola/${escolaParam}/funcionarios/novo`}>
+          <Link href={buildPortalHref(escolaParam, "/funcionarios/novo")}>
             <Button tone="gold">
               <PlusIcon className="w-5 h-5" />
               Novo Funcionário
@@ -92,7 +93,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
             <Link
               key={tab}
               href={
-                tab === "novo" ? `/escola/${escolaParam}/funcionarios/novo` : `/escola/${escolaParam}/funcionarios`
+                tab === "novo" ? buildPortalHref(escolaParam, "/funcionarios/novo") : buildPortalHref(escolaParam, "/funcionarios")
               }
               className={`px-6 py-3 font-medium relative ${
                 tab === "funcionarios"

@@ -56,11 +56,11 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
   }
 
   if (escolaUsuario.papel === 'professor') {
-    return redirect('/professor');
+    return redirect(`/escola/${escolaParam}/professor`);
   }
 
   if (escolaUsuario.papel === 'aluno') {
-    return redirect('/aluno/dashboard');
+    return redirect(`/escola/${escolaParam}/aluno/dashboard`);
   }
 
   return redirect(`/escola/${escolaParam}/dashboard`);

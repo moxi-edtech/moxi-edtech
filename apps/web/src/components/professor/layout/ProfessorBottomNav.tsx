@@ -1,8 +1,8 @@
 import Link from "next/link";
-import type { ProfessorNavItem } from "@/lib/professorNav";
+import type { ProfessorNavLink } from "@/lib/professorNav";
 
 type Props = {
-  items: ProfessorNavItem[];
+  items: ProfessorNavLink[];
   activePath: string;
 };
 
@@ -14,8 +14,12 @@ export function ProfessorBottomNav({ items, activePath }: Props) {
       aria-label="Navegação do portal do professor"
     >
       <div className="mx-auto grid w-full max-w-5xl grid-cols-5 gap-2 px-2 py-2">
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = activePath === href || activePath.startsWith(`${href}/`);
+        {items.map(({ href, path, label, icon: Icon }) => {
+          const active =
+            activePath === href ||
+            activePath.startsWith(`${href}/`) ||
+            activePath === path ||
+            activePath.startsWith(`${path}/`);
           return (
             <Link
               key={href}

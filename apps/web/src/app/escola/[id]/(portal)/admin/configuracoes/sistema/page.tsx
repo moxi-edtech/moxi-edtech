@@ -20,6 +20,7 @@ import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice"
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
+import { buildPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type SetupState = {
@@ -50,7 +51,7 @@ export default function SistemaConfiguracoesPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
 
   // --- MENU CONFIG ---
   const modules = useMemo(() => [
@@ -131,7 +132,7 @@ export default function SistemaConfiguracoesPage() {
             next_action: setupRes.data.next_action?.href
               ? {
                   label: setupRes.data.next_action.label ?? "Continuar",
-                  href: setupRes.data.next_action.href,
+                  href: buildPortalHref(escolaParam, setupRes.data.next_action.href),
                 }
               : undefined,
             blockers: Array.isArray(setupRes.data.blockers)
@@ -175,7 +176,7 @@ export default function SistemaConfiguracoesPage() {
   }, [escolaParam, modules.length]);
 
   if (authRequired) {
-    const nextPath = `/escola/${escolaParam}/admin/configuracoes/sistema`;
+    const nextPath = buildPortalHref(escolaParam, "/admin/configuracoes/sistema");
     return (
       <ConfigSystemShell
         escolaId={escolaParam ?? ""}

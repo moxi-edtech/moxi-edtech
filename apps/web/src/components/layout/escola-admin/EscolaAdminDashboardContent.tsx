@@ -15,6 +15,7 @@ import ChartsSection   from "./ChartsSection";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 import type {
   KpiStats,
@@ -184,7 +185,7 @@ export default function EscolaAdminDashboardContent({
 }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const financeBase = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
+  const financeBase = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
   const [progress, setProgress] = useState(0);
 
   const horaAtual = new Date().getHours();
@@ -209,7 +210,7 @@ export default function EscolaAdminDashboardContent({
       titulo: `${pendingTurmasCount} turma${pendingTurmasCount > 1 ? "s" : ""} pendente${pendingTurmasCount > 1 ? "s" : ""} de validação`,
       descricao: "Revise turmas para liberar matrículas e financeiro.",
       count: pendingTurmasCount,
-      link: `/escola/${escolaParam}/admin/turmas?status=pendente`,
+      link: buildPortalHref(escolaParam, "/admin/turmas?status=pendente"),
       link_label: "Ver turmas",
     });
   }
@@ -221,7 +222,7 @@ export default function EscolaAdminDashboardContent({
       titulo: "Tabelas de preço pendentes",
       descricao: "Defina preços para liberar cobranças automáticas.",
       count: missingPricingCount,
-      link: `/escola/${escolaParam}/admin/configuracoes/mensalidades`,
+      link: buildPortalHref(escolaParam, "/admin/configuracoes/mensalidades"),
       link_label: "Configurar preços",
     });
   }

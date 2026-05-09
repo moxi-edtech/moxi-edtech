@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock, Layers } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,20 +104,21 @@ export default function AcademicSection({
   const canPromocao   = avaliacaoFrequenciaOk && turmasOk;
 
   // Scoped fallback — mirrors the fix applied in Data and Content
-  const pagamentosHref = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
+  const adminBase = buildPortalHref(escolaParam, "/admin");
+  const pagamentosHref = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
 
   const items: Item[] = [
     {
       title:       "Configurações Acadêmicas",
       description: "Disciplinas, calendário e regras",
       icon:        Settings,
-      href:        `/escola/${escolaParam}/admin/configuracoes`,
+      href:        buildPortalHref(escolaParam, "/admin/configuracoes"),
     },
     {
       title:       "Funcionários",
       description: "Equipe, acessos e permissões",
       icon:        Users,
-      href:        `/escola/${escolaParam}/admin/funcionarios`,
+      href:        buildPortalHref(escolaParam, "/admin/funcionarios"),
     },
     {
       title:       "Pagamentos",
@@ -131,7 +133,7 @@ export default function AcademicSection({
       title:       "Promoção",
       description: "Progressão de alunos",
       icon:        TrendingUp,
-      href:        `/escola/${escolaParam}/admin/alunos`,
+      href:        buildPortalHref(escolaParam, "/admin/alunos"),
       locked:      !canPromocao,
       reason:      !avaliacaoFrequenciaOk
         ? "Configure avaliação e frequência primeiro."
@@ -141,7 +143,7 @@ export default function AcademicSection({
       title:       "Biblioteca",
       description: "Acervo e empréstimos",
       icon:        BookOpen,
-      href:        `/escola/${escolaParam}/admin`,
+      href:        adminBase,
       locked:      true,
       reason:      "Módulo de biblioteca ainda não disponível neste portal.",
     },
@@ -161,7 +163,7 @@ export default function AcademicSection({
         </div>
 
         <Link
-          href={`/escola/${escolaParam}/admin`}
+          href={adminBase}
           className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-[#1F6B3B] hover:underline"
         >
           Ver tudo <ArrowRight className="h-3.5 w-3.5" />

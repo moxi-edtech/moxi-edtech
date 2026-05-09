@@ -19,6 +19,8 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
+import { buildPortalHref } from "@/lib/navigation";
+import Link from "next/link";
 
 // Copied from sistema/page.tsx
 // --- TYPES ---
@@ -55,7 +57,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = "/admin/configuracoes";
 
     // --- MENU CONFIG ---
   const modules = useMemo(() => [
@@ -63,45 +65,45 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
       key: "calendario",
       label: "Calendário Acadêmico",
       desc: "Defina os trimestres, feriados e datas de bloqueio.",
-      href: `${base}/calendario`,
+      href: buildPortalHref(escolaParam, `${base}/calendario`),
       icon: CalendarDays,
     },
     {
       key: "avaliacao",
       label: "Avaliação & Notas",
       desc: "Pesos, fórmulas de cálculo e regras de aprovação.",
-      href: `${base}/avaliacao`,
+      href: buildPortalHref(escolaParam, `${base}/avaliacao`),
       icon: GraduationCap,
     },
     {
       key: "turmas",
       label: "Turmas & Currículo",
       desc: "Gere as turmas a partir da grade curricular.",
-      href: `${base}/turmas`,
+      href: buildPortalHref(escolaParam, `${base}/turmas`),
       icon: Users,
     },
     {
       key: "financeiro",
       label: "Financeiro",
       desc: "Tabela de preços, multas e datas de vencimento.",
-      href: `${base}/financeiro`,
+      href: buildPortalHref(escolaParam, `${base}/financeiro`),
       icon: Wallet,
     },
     {
       key: "fluxos",
       label: "Fluxos de Aprovação",
       desc: "Quem aprova as notas antes do boletim sair?",
-      href: `${base}/fluxos`,
+      href: buildPortalHref(escolaParam, `${base}/fluxos`),
       icon: Workflow,
     },
     {
       key: "avancado",
       label: "Avançado",
       desc: "Logs de auditoria e configurações perigosas.",
-      href: `${base}/avancado`,
+      href: buildPortalHref(escolaParam, `${base}/avancado`),
       icon: Settings2,
     },
-  ], [base]);
+  ], [base, escolaParam]);
 
   // --- STATE ---
   const [setupState, setSetupState] = useState<SetupState | null>(null);
@@ -189,7 +191,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
     >
       {authRequired ? (
         <AuthRequiredNotice
-          nextPath={`/escola/${escolaParam}/admin/configuracoes/sistema`}
+          nextPath={buildPortalHref(escolaParam, "/admin/configuracoes/sistema")}
           compact
           description="Faça login novamente para visualizar o status do sistema."
         />
@@ -249,13 +251,13 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                     </p>
                 </div>
                 </div>
-                <a 
+                <Link
                 href={setupState.next_action.href}
                 className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition-colors"
                 >
                 Continuar Configuração
                 <ArrowRight className="h-3 w-3" />
-                </a>
+                </Link>
             </div>
             )}
 
@@ -285,7 +287,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                 const isDone = setupState?.badges?.[mod.key as keyof typeof setupState.badges];
                 
                 return (
-                <a 
+                <Link 
                     key={mod.key} 
                     href={mod.href}
                     className={`group relative flex flex-col justify-between overflow-hidden rounded-xl border p-6 transition-all hover:shadow-md hover:-translate-y-0.5 ${
@@ -324,7 +326,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                     {isDone ? "Revisar" : "Configurar"} 
                     <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
                     </div>
-                </a>
+                </Link>
                 );
             })}
             </div>

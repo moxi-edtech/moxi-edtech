@@ -1,6 +1,6 @@
 import SecretariaDashboardPage from "@/app/secretaria/(portal-secretaria)/page";
-import FinanceiroDashboardPage from "@/app/financeiro/page";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { redirect } from "next/navigation";
 
 export default async function SecretariaLandingPage({
   params,
@@ -32,7 +32,9 @@ export default async function SecretariaLandingPage({
   }
 
   if (papel === "financeiro") {
-    return <FinanceiroDashboardPage searchParams={Promise.resolve(sp ?? {})} />;
+    const qp = new URLSearchParams(sp as Record<string, string> | undefined);
+    const query = qp.toString();
+    redirect(`/escola/${escolaId}/financeiro${query ? `?${query}` : ""}`);
   }
 
   return <SecretariaDashboardPage />;

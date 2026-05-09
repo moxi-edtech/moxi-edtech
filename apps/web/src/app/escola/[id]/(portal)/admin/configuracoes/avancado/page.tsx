@@ -6,13 +6,14 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 export default function AvancadoConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
   const menuItems = buildConfigMenuItems(base);
   const { success, error } = useToast();
 

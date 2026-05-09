@@ -6,6 +6,8 @@ import { CircleX, FileDown, PencilRuler } from "lucide-react";
 
 import { AnularModal } from "@/components/fiscal/AnularModal";
 import type { FiscalDoc } from "@/components/fiscal/types";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type FiscalRowActionsProps = {
   doc: FiscalDoc;
@@ -14,6 +16,7 @@ type FiscalRowActionsProps = {
 
 export function FiscalRowActions({ doc, onRefresh }: FiscalRowActionsProps) {
   const router = useRouter();
+  const { escolaSlug } = useEscolaId();
   const [openAnular, setOpenAnular] = useState(false);
 
   return (
@@ -44,7 +47,7 @@ export function FiscalRowActions({ doc, onRefresh }: FiscalRowActionsProps) {
         {doc.status === "EMITIDO" && (
           <button
             type="button"
-            onClick={() => router.push(`/financeiro/fiscal/retificar/${doc.id}`)}
+            onClick={() => router.push(buildPortalHref(escolaSlug, `/financeiro/fiscal/retificar/${doc.id}`))}
             className="rounded-xl p-2 text-slate-400 transition hover:bg-green-50 hover:text-[#1F6B3B]"
             title="Retificar"
             aria-label="Retificar documento"

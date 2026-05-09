@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, CalendarCheck } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { buildPortalHref } from "@/lib/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import { createClient } from "@/lib/supabase/client";
 
 type TurmaItem = {
@@ -16,11 +19,19 @@ const cx = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
 export function JustificarFaltaModal() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { escolaId, escolaSlug } = useEscolaId();
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const escolaParamFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const escolaParam = escolaSlug || escolaParamFromPath || escolaId;
 
   useEffect(() => {
     const supabase = createClient();
@@ -66,7 +77,7 @@ export function JustificarFaltaModal() {
 
   const handleAbrirTurma = () => {
     if (!turmaId) return;
-    window.location.href = `/secretaria/turmas/${turmaId}`;
+    router.push(buildPortalHref(escolaParam, `/secretaria/turmas/${turmaId}`));
   };
 
   return (
@@ -125,7 +136,7 @@ export function JustificarFaltaModal() {
       <button
         type="button"
         onClick={() => {
-          window.location.href = "/secretaria/calendario";
+          router.push(buildPortalHref(escolaParam, "/secretaria/calendario"));
         }}
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
       >

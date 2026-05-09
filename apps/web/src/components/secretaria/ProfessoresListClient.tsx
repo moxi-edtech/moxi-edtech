@@ -179,7 +179,7 @@ export default function ProfessoresListClient() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="/secretaria/professores/novo"
+            href="professores/novo"
             className="inline-flex items-center gap-2 rounded-lg bg-moxinexa-teal px-5 py-3 text-sm font-bold text-white hover:bg-teal-600 shadow-lg shadow-teal-900/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
           >
             <UserPlus className="h-4 w-4" />
@@ -244,7 +244,7 @@ export default function ProfessoresListClient() {
           <span className="mx-2 h-4 w-px bg-slate-200" />
           
           <a 
-            href={`/secretaria/professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
+            href={`professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             target="_blank"
             rel="noreferrer"
@@ -253,7 +253,7 @@ export default function ProfessoresListClient() {
             Exportar CSV
           </a>
           <a 
-            href={`/secretaria/professores/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
+            href={`professores/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             target="_blank"
             rel="noreferrer"
@@ -393,14 +393,14 @@ export default function ProfessoresListClient() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center gap-1">
                           <Link
-                            href={`/secretaria/professores/${professor.user_id || professor.id}`}
+                            href={`professores/${professor.user_id || professor.id}`}
                             className="text-slate-600 hover:text-white hover:bg-slate-600 p-2 rounded-lg transition-all"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
                           <Link
-                            href={`/secretaria/professores/${professor.user_id || professor.id}/editar`}
+                            href={`professores/${professor.user_id || professor.id}/editar`}
                             className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
                             title="Editar professor"
                           >

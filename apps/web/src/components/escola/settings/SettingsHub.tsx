@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
+import { buildPortalHref } from "@/lib/navigation";
 import {
   Building2,
   BookOpen,
@@ -152,19 +153,19 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     : null;
 
   const configModules = [
-    { id: "calendario", label: "Calendário", icon: CalendarCheck, href: `/escola/${escolaParam}/admin/configuracoes/calendario` },
-    { id: "avaliacoes", label: "Avaliações", icon: BookOpen, href: `/escola/${escolaParam}/admin/configuracoes/avaliacao` },
-    { id: "turmas", label: "Turmas", icon: Users, href: `/escola/${escolaParam}/admin/configuracoes/turmas` },
-    { id: "horarios", label: "Horários", icon: CalendarCheck, href: `/escola/${escolaParam}/horarios/quadro` },
-    { id: "financeiro", label: "Financeiro · Políticas", icon: Wallet, href: `/escola/${escolaParam}/admin/configuracoes/financeiro` },
-    { id: "mensalidades", label: "Mensalidades & Emolumentos", icon: Landmark, href: `/escola/${escolaParam}/admin/configuracoes/mensalidades` },
-    { id: "fluxos", label: "Fluxos", icon: Layers, href: `/escola/${escolaParam}/admin/configuracoes/fluxos` },
-    { id: "excecoes", label: "Exceções", icon: AlertTriangle, href: `/escola/${escolaParam}/admin/configuracoes/excecoes` },
-    { id: "avancado", label: "Avançado", icon: ShieldCheck, href: `/escola/${escolaParam}/admin/configuracoes/avancado` },
+    { id: "calendario", label: "Calendário", icon: CalendarCheck, href: buildPortalHref(escolaParam, "/admin/configuracoes/calendario") },
+    { id: "avaliacoes", label: "Avaliações", icon: BookOpen, href: buildPortalHref(escolaParam, "/admin/configuracoes/avaliacao") },
+    { id: "turmas", label: "Turmas", icon: Users, href: buildPortalHref(escolaParam, "/admin/configuracoes/turmas") },
+    { id: "horarios", label: "Horários", icon: CalendarCheck, href: buildPortalHref(escolaParam, "/horarios/quadro") },
+    { id: "financeiro", label: "Financeiro · Políticas", icon: Wallet, href: buildPortalHref(escolaParam, "/admin/configuracoes/financeiro") },
+    { id: "mensalidades", label: "Mensalidades & Emolumentos", icon: Landmark, href: buildPortalHref(escolaParam, "/admin/configuracoes/mensalidades") },
+    { id: "fluxos", label: "Fluxos", icon: Layers, href: buildPortalHref(escolaParam, "/admin/configuracoes/fluxos") },
+    { id: "excecoes", label: "Exceções", icon: AlertTriangle, href: buildPortalHref(escolaParam, "/admin/configuracoes/excecoes") },
+    { id: "avancado", label: "Avançado", icon: ShieldCheck, href: buildPortalHref(escolaParam, "/admin/configuracoes/avancado") },
   ];
 
   if (authRequired) {
-    const nextPath = `/escola/${escolaParam}/admin/configuracoes`;
+    const nextPath = buildPortalHref(escolaParam, "/admin/configuracoes");
     return (
       <AuthRequiredNotice
         nextPath={nextPath}
@@ -189,19 +190,19 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       title: "Oferta Formativa",
       desc: estruturaMeta ?? "Cursos, níveis e disciplinas.",
       icon: Layers,
-      href: `/escola/${escolaParam}/admin/configuracoes/estrutura`,
+      href: buildPortalHref(escolaParam, "/admin/configuracoes/estrutura"),
     },
     {
       title: "Identidade",
       desc: "Logo e dados da escola.",
       icon: Building2,
-      href: `/escola/${escolaParam}/admin/configuracoes/identidade`,
+      href: buildPortalHref(escolaParam, "/admin/configuracoes/identidade"),
     },
     {
       title: "Horários",
       desc: "Slots e quadro automático.",
       icon: CalendarCheck,
-      href: `/escola/${escolaParam}/horarios/slots`,
+      href: buildPortalHref(escolaParam, "/horarios/slots"),
     },
   ];
 
@@ -365,7 +366,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
             </Link>
           ))}
           <Link
-            href={`/escola/${escolaParam}/admin/configuracoes/sandbox`}
+            href={buildPortalHref(escolaParam, "/admin/configuracoes/sandbox")}
             className="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:bg-slate-100 transition-colors"
           >
             <div className="flex items-center justify-between">
@@ -402,7 +403,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           <div className="px-6 pb-6 border-t border-rose-200">
             <div className="pt-4">
               <Link
-                href={`/escola/${escolaParam}/admin/configuracoes`}
+                href={buildPortalHref(escolaParam, "/admin/configuracoes")}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-rose-300 bg-white text-sm font-semibold text-rose-700 hover:bg-rose-50 transition-colors"
               >
                 <AlertTriangle className="w-4 h-4" />

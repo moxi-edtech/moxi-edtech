@@ -22,6 +22,8 @@ import {
 import { Command } from "cmdk";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import { cn } from "@/lib/utils";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 type Props = {
   escolaId?: string | null;
@@ -30,6 +32,9 @@ type Props = {
 
 export function CommandPalette({ escolaId, portal }: Props) {
   const router = useRouter();
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+
   const [open, setOpen] = React.useState(false);
   const { query, setQuery, results, loading, detectedIntent } = useGlobalSearch(escolaId, {
     portal,
@@ -68,7 +73,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "dashboard",
         label: "Ir para Dashboard",
         icon: LayoutDashboard,
-        onSelect: () => router.push(escolaId ? `/escola/${escolaId}/admin/dashboard` : "/dashboard"),
+        onSelect: () => router.push(buildPortalHref(escolaParam, portal === "admin" ? "/admin/dashboard" : "/dashboard")),
       },
     ];
 
@@ -77,7 +82,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "pagamentos",
         label: "Ver Pagamentos",
         icon: CreditCard,
-        onSelect: () => router.push(escolaId ? `/escola/${escolaId}/financeiro/pagamentos` : "/financeiro/cobrancas"),
+        onSelect: () => router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos")),
       });
     }
 
@@ -86,13 +91,13 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "alunos",
         label: "Gestão de Alunos",
         icon: Users,
-        onSelect: () => router.push(escolaId ? `/escola/${escolaId}/admin/alunos` : "/secretaria/alunos"),
+        onSelect: () => router.push(buildPortalHref(escolaParam, "/secretaria/alunos")),
       });
       actions.push({
         id: "turmas",
         label: "Gestão de Turmas",
         icon: GraduationCap,
-        onSelect: () => router.push(escolaId ? `/escola/${escolaId}/admin/turmas` : "/secretaria/turmas"),
+        onSelect: () => router.push(buildPortalHref(escolaParam, "/secretaria/turmas")),
       });
     }
 
@@ -101,12 +106,12 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "config",
         label: "Configurações da Escola",
         icon: Settings,
-        onSelect: () => router.push(`/escola/${escolaId}/admin/configuracoes`),
+        onSelect: () => router.push(buildPortalHref(escolaParam, "/admin/configuracoes")),
       });
     }
 
     return actions;
-  }, [portal, escolaId, router]);
+  }, [portal, escolaParam, router]);
 
   return (
     <>

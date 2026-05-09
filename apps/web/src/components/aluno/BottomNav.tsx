@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GraduationCap, Home, Wallet } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 
 const items = [
-  { href: "/home", label: "Home", icon: Home },
-  { href: "/academico", label: "Académico", icon: GraduationCap },
-  { href: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
+  { path: "/aluno/dashboard", label: "Home", icon: Home },
+  { path: "/aluno/academico", label: "Académico", icon: GraduationCap },
+  { path: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
 ];
 
 export function BottomNav() {
   const pathname = usePathname() ?? "";
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
 
   return (
     <nav
@@ -20,8 +24,9 @@ export function BottomNav() {
       aria-label="Navegação do portal do aluno"
     >
       <div className="mx-auto grid w-full max-w-5xl grid-cols-3 px-2 py-2">
-        {items.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+        {items.map(({ path, label, icon: Icon }) => {
+          const href = buildPortalHref(escolaParam, path);
+          const active = pathname === href || pathname.startsWith(`${href}/`) || pathname === path || pathname.startsWith(`${path}/`);
           return (
             <Link
               key={href}

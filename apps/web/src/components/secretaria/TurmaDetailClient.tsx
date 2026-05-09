@@ -741,7 +741,7 @@ export default function TurmaDetailClient({
 
           {/* Breadcrumb */}
           <Link
-            href="/secretaria/turmas"
+            href="../"
             className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-xs font-medium mb-6 transition-colors"
           >
             <ChevronLeft size={14} /> Turmas
@@ -812,7 +812,7 @@ export default function TurmaDetailClient({
                 </button>
               )}
               <Link
-                href={`/secretaria/admissoes/nova?turmaId=${turma.id}`}
+                href={`../admissoes/nova?turmaId=${turma.id}`}
                 className="flex items-center gap-2 bg-[#E3B23C] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:brightness-95 transition-all shadow-sm active:scale-95"
               >
                 <UserPlus size={16} /> Matricular

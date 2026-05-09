@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type SimulationResult = {
@@ -36,7 +37,7 @@ export default function SandboxConfiguracoesPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
+  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
 
   const menuItems = [
     { label: "📅 Calendário", href: `${base}/calendario` },
@@ -120,7 +121,7 @@ export default function SandboxConfiguracoesPage() {
         body: JSON.stringify({ changes: { sandbox: true, applied_at: new Date() } }),
       });
       toast.success("Configurações aplicadas com sucesso!");
-      router.push(`/escola/${escolaParam}/dashboard`); // Redireciona para o app real
+      router.push(buildPortalHref(escolaParam, "/admin"));
     } catch (error) {
       toast.error("Erro ao aplicar configurações.");
     } finally {

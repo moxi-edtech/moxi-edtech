@@ -21,7 +21,7 @@ export default async function Page() {
   const escolaId = (prof as { escola_id?: string | null } | null)?.escola_id ?? null;
 
   if (!escolaId) {
-    return redirect("/secretaria");
+    return redirect("/redirect");
   }
 
   const { data: escolaInfo } = await s

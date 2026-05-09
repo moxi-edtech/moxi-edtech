@@ -12,6 +12,7 @@ type Props = {
   educandos: Educando[];
   alunoSelecionadoId: string | null;
   onSelectAluno: (id: string) => void;
+  homeHref?: string;
   actions?: ReactNode;
 };
 
@@ -29,6 +30,7 @@ export function AlunoHeader({
   educandos,
   alunoSelecionadoId,
   onSelectAluno,
+  homeHref = "/aluno/dashboard",
   actions,
 }: Props) {
   const hasMultiple = educandos.length > 1;
@@ -39,7 +41,7 @@ export function AlunoHeader({
         
         {/* --- Lado Esquerdo: Marca e Contexto --- */}
         <div className="flex items-center gap-3">
-          <Link href="/aluno/dashboard" className="flex items-center gap-2" aria-label="Ir para a home do aluno">
+          <Link href={homeHref} className="flex items-center gap-2" aria-label="Ir para a home do aluno">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1F6B3B] text-white shadow-sm ring-4 ring-[#1F6B3B]/10">
               <Image src="/logo-klasse-ui.png" alt="KLASSE" width={18} height={18} className="h-4.5 w-4.5 object-contain" />
             </div>

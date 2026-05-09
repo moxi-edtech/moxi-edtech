@@ -77,7 +77,7 @@ export default async function ImportacaoDetailPage({ params }: { params: Promise
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/secretaria/importacoes" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-teal-700">
+          <Link href="../" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-teal-700">
             <ArrowLeft size={16} /> Voltar
           </Link>
           <h1 className="text-xl font-semibold text-slate-900">Detalhes da importação</h1>

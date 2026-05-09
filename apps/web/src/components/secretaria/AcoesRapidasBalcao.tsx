@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
   CreditCard,
@@ -121,6 +121,15 @@ export function AcoesRapidasBalcao({
   mensalidades,
 }: AcoesRapidasBalcaoProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const slugFromPath = useMemo(() => {
+    const match = pathname?.match(/^\/escola\/([^/]+)/);
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const withSlug = useCallback(
+    (suffix: string) => (slugFromPath ? `/escola/${slugFromPath}${suffix}` : suffix),
+    [slugFromPath]
+  );
   const { success, error } = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
@@ -153,18 +162,18 @@ export function AcoesRapidasBalcao({
 
   const goDocumento = useCallback(
     (tipo: "declaracao_frequencia" | "declaracao_notas") => {
-      router.push(`/secretaria/documentos?alunoId=${alunoId}&tipo=${tipo}`);
+      router.push(withSlug(`/secretaria/documentos?alunoId=${alunoId}&tipo=${tipo}`));
     },
-    [router, alunoId]
+    [router, alunoId, withSlug]
   );
 
   const goMatricula = useCallback(() => {
-    router.push(`/secretaria/admissoes/nova?alunoExistenteId=${alunoId}`);
-  }, [router, alunoId]);
+    router.push(withSlug(`/secretaria/admissoes/nova?alunoExistenteId=${alunoId}`));
+  }, [router, alunoId, withSlug]);
 
   const goExtrato = useCallback(() => {
-    router.push(`/financeiro?aluno=${alunoId}`);
-  }, [router, alunoId]);
+    router.push(withSlug(`/financeiro?aluno=${alunoId}`));
+  }, [router, alunoId, withSlug]);
 
   const actions: QuickAction[] = useMemo(
     () => [

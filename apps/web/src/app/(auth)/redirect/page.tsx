@@ -203,16 +203,11 @@ export default function RedirectPage() {
               }
               break;
             case "professor":
-              finalDest = "/professor";
+              finalDest = escolaParam ? `/escola/${escolaParam}/professor` : "/professor";
               break;
             case "aluno": {
-              const { data: prof2 } = await supabase
-                .from("profiles")
-                .select("escola_id")
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false })
-                .limit(1);
-              const escolaId = (prof2 && prof2.length > 0) ? prof2[0]?.escola_id : null;
+              const escolaId = baseEscolaId;
+              const alunoBase = escolaParam ? `/escola/${escolaParam}/aluno` : "/aluno";
               if (escolaId) {
                 const { data: esc } = await supabase
                   .from("escolas")
@@ -220,9 +215,9 @@ export default function RedirectPage() {
                   .eq("id", escolaId)
                   .limit(1);
                 const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
-                finalDest = enabled ? "/aluno" : "/aluno/desabilitado";
+                finalDest = enabled ? alunoBase : `${alunoBase}/desabilitado`;
               } else {
-                finalDest = "/aluno";
+                finalDest = alunoBase;
               }
               break;
             }

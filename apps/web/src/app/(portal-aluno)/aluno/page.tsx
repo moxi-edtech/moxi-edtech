@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { resolveCurrentEscolaParam } from "@/lib/tenant/resolveCurrentEscolaParam";
 
-export default function Page() {
-  redirect("/aluno/dashboard");
+export default async function Page() {
+  const escolaParam = await resolveCurrentEscolaParam();
+  redirect(escolaParam ? `/escola/${escolaParam}/aluno/dashboard` : "/redirect");
 }

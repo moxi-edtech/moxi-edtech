@@ -6,6 +6,7 @@ import React, {
 } from "react";
 import Link from "next/link";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import {
   Search, UserPlus, Archive, RotateCcw, Trash2,
   X, AlertTriangle, CheckCircle2, Loader2, Users,
@@ -295,9 +296,9 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
       ) : null}
 
       {/* Drawer */}
-      <div className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
-        border-l border-slate-200 flex flex-col transition-transform duration-300
-        ${aluno ? "translate-x-0" : "translate-x-full"}`}>
+      {aluno ? (
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
+        border-l border-slate-200 flex flex-col transition-transform duration-300 translate-x-0">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
@@ -431,6 +432,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
           </button>
         </div>
       </div>
+      ) : null}
     </>
   );
 }
@@ -1387,7 +1389,7 @@ export default function AlunosListClient({
                             opacity-0 group-hover:opacity-100 transition-opacity">
                             {tab === "ativos" ? (
                               <>
-                                <Link href={`/escola/${escolaParam}/admin/alunos/${aluno.id}`}
+                                <Link href={buildPortalHref(escolaParam, `/admin/alunos/${aluno.id}`)}
                                   className="flex items-center gap-1 rounded-lg border border-slate-200
                                     px-2 py-1.5 text-xs font-semibold text-slate-600
                                     hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"

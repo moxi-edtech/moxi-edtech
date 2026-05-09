@@ -1,1 +1,1 @@
-export { default } from "@/app/admin/operacoes-academicas/page";
+export { default } from "@/app/secretaria/(portal-secretaria)/operacoes-academicas/page";

@@ -57,10 +57,12 @@ export async function getFechoCaixaData({
   date,
   operadorId,
   operadorScope = "self",
+  escolaId: escolaIdParam,
 }: {
   date?: string | null;
   operadorId?: string | null;
   operadorScope?: "self" | "all";
+  escolaId?: string | null;
 }): Promise<FechoResponse | { ok: false; error: string }> {
   const supabase = await supabaseServerTyped();
   const { data: auth } = await supabase.auth.getUser();
@@ -70,7 +72,7 @@ export async function getFechoCaixaData({
     return { ok: false, error: "Não autenticado" };
   }
 
-  const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+  const escolaId = escolaIdParam || await resolveEscolaIdForUser(supabase as any, user.id);
   if (!escolaId) {
     return { ok: false, error: "Escola não encontrada" };
   }
