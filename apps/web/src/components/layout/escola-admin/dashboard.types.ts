@@ -37,3 +37,15 @@ export type DashboardCharts = {
   alunosPorMes: number[];
   pagamentos:   PagamentosResumo;
 };
+
+export type EstadoVital = {
+  escola_id: string;
+  session_id: string | null;
+  ano_ativo: number | null;
+  periodo_id: string | null;
+  periodo_tipo: string | null;
+  periodo_numero: number | null;
+  hoje_bloqueado_pedagogico: boolean;
+  evento_hoje_nome: string | null;
+  fase_operacional: 'REGULAR' | 'EXAMES';
+};

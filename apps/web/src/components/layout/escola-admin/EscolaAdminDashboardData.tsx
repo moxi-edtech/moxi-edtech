@@ -124,6 +124,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       dashboardChartsRes,
       inadimplenciaTopRes,
       pagamentosRecentesRes,
+      estadoVitalRes,
     ] = await Promise.all([
       s.from("vw_admin_dashboard_counts")
         .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
@@ -154,7 +155,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       s.from("anos_letivos")
         .select("ano")
         .eq("escola_id", validId)
-        .eq("status", "ativo")
+        .eq("ativo", true)
         .maybeSingle(),
 
       missingPricingQuery,
@@ -169,10 +170,14 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         { ok: false, data: [] }
       ),
 
-      // Note: when the API is updated to include aluno_nome, this type will be satisfied.
       fetchJson<{ ok: boolean; data: PagamentoRecenteRow[] }>(
         `/api/escolas/${escolaId}/admin/financeiro/pagamentos-recentes?limit=10&day_key=${todayKey}`,
         { ok: false, data: [] }
+      ),
+
+      fetchJson<{ ok: boolean; estado: any }>(
+        `/api/escola/${escolaId}/admin/estado-hoje`,
+        { ok: false, estado: null }
       ),
     ]);
 
@@ -257,6 +262,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     const charts           = (dashboardChartsRes as any)?.charts as DashboardCharts | undefined;
     const inadimplenciaTop = (inadimplenciaTopRes as any)?.data  as InadimplenciaTopRow[] ?? [];
     const pagamentosRecentes = (pagamentosRecentesRes as any)?.data as PagamentoRecenteRow[] ?? [];
+    const estadoVital      = (estadoVitalRes as any)?.estado ?? null;
     const avisos: Aviso[]  = [];
 
     return (
@@ -280,6 +286,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
           realizado,
         }}
         curriculoPendencias={curriculoPendencias}
+        estadoVital={estadoVital}
       />
     );
   } catch (e: any) {

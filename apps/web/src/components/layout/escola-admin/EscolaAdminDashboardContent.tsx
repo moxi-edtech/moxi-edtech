@@ -12,6 +12,7 @@ import AcademicSection from "./AcademicSection";
 import PostWizardChecklist from "./PostWizardChecklist";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
+import { EstadoVitalBanner } from "./EstadoVitalBanner";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -25,6 +26,7 @@ import type {
   DashboardCharts,
   InadimplenciaTopRow,
   PagamentoRecenteRow,
+  EstadoVital,
 } from "./dashboard.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ type Props = {
     previsto: number;
     realizado: number;
   };
+  estadoVital?:         EstadoVital | null;
 };
 
 // ─── Currency formatter ───────────────────────────────────────────────────────
@@ -182,6 +185,7 @@ export default function EscolaAdminDashboardContent({
   inadimplenciaTop = [],
   pagamentosRecentes = [],
   receitaResumo,
+  estadoVital,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -253,17 +257,14 @@ export default function EscolaAdminDashboardContent({
             {escolaNome && <p className="text-sm font-medium text-slate-400">· {escolaNome}</p>}
           </div>
         </div>
-
-        {anoLetivo && (
-          <div className="hidden md:flex flex-col items-end gap-1">
-            <span className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-2xl text-xs font-black text-slate-600 shadow-sm transition-all hover:border-slate-300">
-              <span className="w-2 h-2 rounded-full bg-[#1F6B3B]" />
-              ANO LETIVO {anoLetivo}
-            </span>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-2">Status do Período</p>
-          </div>
-        )}
       </motion.div>
+
+      {/* ── 1.1 ESTADO VITAL (Organismo Vivo) ────────────────────────────────── */}
+      {estadoVital && (
+        <motion.div variants={itemVariants}>
+          <EstadoVitalBanner estado={estadoVital} />
+        </motion.div>
+      )}
 
       {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>

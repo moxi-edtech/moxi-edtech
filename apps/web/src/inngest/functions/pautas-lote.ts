@@ -11,6 +11,17 @@ import { buildPautaGeralPayload, renderPautaGeralBuffer } from "@/lib/pedagogico
 import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico/pauta-anual"
 import { renderBoletimPdfBuffer, renderCertificadoPdfBuffer } from "@/lib/documentos/oficiaisBatchServer"
 
+type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado"
+
+type PautasLoteEventData = {
+  job_id: string
+  escola_id: string
+  turma_ids: string[]
+  tipo: PautaLoteTipo
+  documento_tipo?: string | null
+  periodo_letivo_id?: string | null
+}
+
 const getSupabaseAdmin = () => {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim()
   const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim()
@@ -24,7 +35,7 @@ export const pautasLote = inngest.createFunction(
   { id: "pautas-lote", triggers: [{ event: "docs/pautas-lote.requested" }] },
   async ({ event, step }) => {
     const supabase = getSupabaseAdmin()
-    const { job_id, escola_id, turma_ids, tipo, periodo_letivo_id } = event.data
+    const { job_id, escola_id, turma_ids, tipo, periodo_letivo_id } = event.data as PautasLoteEventData
 
     const documentoTipo =
       tipo === "trimestral"
@@ -52,17 +63,65 @@ export const pautasLote = inngest.createFunction(
         await supabase.from("pautas_lote_jobs").update({ status: "PROCESSING", error_message: null }).eq("id", job_id)
       }
 
-      const periodoNumero = await step.run("resolve-periodo", async () => {
-        if (tipo !== "trimestral") return null
-        if (!periodo_letivo_id) throw new Error("Período letivo é obrigatório")
-        const { data: periodo } = await supabase
-          .from("periodos_letivos")
-          .select("numero")
-          .eq("escola_id", escola_id)
-          .eq("id", periodo_letivo_id)
-          .maybeSingle()
-        return periodo?.numero ?? null
+      const periodoContext = await step.run("resolve-periodo", async () => {
+        if (tipo === "trimestral") {
+          if (!periodo_letivo_id) throw new Error("Período letivo é obrigatório")
+          const { data: periodo } = await supabase
+            .from("periodos_letivos")
+            .select("id,numero")
+            .eq("escola_id", escola_id)
+            .eq("id", periodo_letivo_id)
+            .maybeSingle()
+          if (!periodo?.id) throw new Error("Período letivo inválido")
+          return { id: periodo.id, numero: periodo.numero ?? null }
+        }
+
+        if (tipo === "anual") {
+          if (periodo_letivo_id) return { id: periodo_letivo_id, numero: null }
+
+          const { data: turmaRef } = await supabase
+            .from("turmas")
+            .select("session_id")
+            .eq("escola_id", escola_id)
+            .in("id", turma_ids)
+            .not("session_id", "is", null)
+            .limit(1)
+            .maybeSingle()
+
+          if (!turmaRef?.session_id) {
+            throw new Error("Não foi possível resolver o ano letivo das turmas para pauta anual")
+          }
+
+          const { data: periodo } = await supabase
+            .from("periodos_letivos")
+            .select("id")
+            .eq("escola_id", escola_id)
+            .eq("ano_letivo_id", turmaRef.session_id)
+            .order("data_fim", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (!periodo?.id) {
+            throw new Error("Ano letivo sem período final para pauta anual")
+          }
+
+          return { id: periodo.id, numero: null }
+        }
+
+        return { id: periodo_letivo_id ?? null, numero: null }
       })
+
+      if ((tipo === "trimestral" || tipo === "anual") && periodoContext.id && periodoContext.id !== periodo_letivo_id) {
+        await step.run("sync-job-periodo", async () => {
+          await supabase
+            .from("pautas_lote_jobs")
+            .update({ periodo_letivo_id: periodoContext.id })
+            .eq("id", job_id)
+        })
+      }
+
+      const periodoNumero = periodoContext.numero
+      const pautaPeriodoLetivoId = periodoContext.id
 
       const results = await Promise.all(
         turma_ids.map((turmaId) =>
@@ -106,17 +165,53 @@ export const pautasLote = inngest.createFunction(
                 .upload(pdfPath, pdfBuffer, { upsert: true, contentType: "application/pdf" })
               if (uploadError) throw new Error(uploadError.message)
 
-              if (tipo === "trimestral" || tipo === "anual") {
+              if (tipo === "trimestral") {
+                if (!pautaPeriodoLetivoId) throw new Error("Período letivo obrigatório para pauta trimestral")
                 await supabase.from("pautas_oficiais").upsert({
                   escola_id,
                   turma_id: turmaId,
-                  periodo_letivo_id: tipo === "trimestral" ? periodo_letivo_id : null,
+                  periodo_letivo_id: pautaPeriodoLetivoId,
                   tipo,
                   status: "SUCCESS",
                   pdf_path: pdfPath,
                   hash: randomUUID(),
                   generated_at: new Date().toISOString(),
                 }, { onConflict: "escola_id,turma_id,periodo_letivo_id,tipo" })
+              } else if (tipo === "anual") {
+                if (!pautaPeriodoLetivoId) throw new Error("Período final obrigatório para pauta anual")
+                const annualPayload = {
+                  escola_id,
+                  turma_id: turmaId,
+                  periodo_letivo_id: pautaPeriodoLetivoId,
+                  tipo,
+                  status: "SUCCESS",
+                  pdf_path: pdfPath,
+                  hash: randomUUID(),
+                  generated_at: new Date().toISOString(),
+                }
+
+                const { data: existingAnnual } = await supabase
+                  .from("pautas_oficiais")
+                  .select("id")
+                  .eq("escola_id", escola_id)
+                  .eq("turma_id", turmaId)
+                  .eq("tipo", "anual")
+                  .eq("periodo_letivo_id", pautaPeriodoLetivoId)
+                  .maybeSingle()
+
+                if (existingAnnual?.id) {
+                  await supabase
+                    .from("pautas_oficiais")
+                    .update({
+                      status: annualPayload.status,
+                      pdf_path: annualPayload.pdf_path,
+                      hash: annualPayload.hash,
+                      generated_at: annualPayload.generated_at,
+                    })
+                    .eq("id", existingAnnual.id)
+                } else {
+                  await supabase.from("pautas_oficiais").insert(annualPayload)
+                }
               }
 
               await supabase.from("pautas_lote_itens").update({
@@ -161,7 +256,7 @@ export const pautasLote = inngest.createFunction(
         job_id,
         escola_id,
         documento_tipo: documentoTipo,
-        periodo_letivo_id: periodo_letivo_id ?? null,
+        periodo_letivo_id: periodoContext.id,
         generated_at: new Date().toISOString(),
         files: successItems.map((item) => ({ turma_id: item.turmaId, pdf_path: item.pdfPath, checksum_sha256: item.checksum })),
       }
