@@ -59,6 +59,14 @@ export const FEATURE_GATE_MATRIX: Record<FeatureKey, FeatureGateConfig> = {
     errorCode: "PLAN_FEATURE_REQUIRED",
     upgradeCta: "upgrade_relatorio_avancado",
   },
+  fin_extrato_completo: {
+    feature: "fin_extrato_completo",
+    minPlan: "profissional",
+    products: ["k12"],
+    tenantTypes: ["k12"],
+    errorCode: "PLAN_FEATURE_REQUIRED",
+    upgradeCta: "upgrade_fin_extrato_completo",
+  },
   app_whatsapp_auto: {
     feature: "app_whatsapp_auto",
     minPlan: "premium",

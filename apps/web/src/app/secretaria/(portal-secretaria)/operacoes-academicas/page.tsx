@@ -1,8 +1,12 @@
 import AuditPageView from "@/components/audit/AuditPageView";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { AlertTriangle, CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
 import { buildPortalHref } from "@/lib/navigation";
 import Link from "next/link";
+import { buildCutoverHealthReport } from "@/lib/operacoes-academicas/cutover-health";
+import type { Database } from "~types/supabase";
+import { CutoverResolveActions } from "@/components/secretaria/virada-ano/CutoverResolveActions";
 
 type FechamentoJob = {
   run_id: string;
@@ -65,7 +69,7 @@ export default async function OperacoesAcademicasPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const resolvedParams = params ? await params : null;
-  const s = await supabaseServer();
+  const s = await supabaseServerTyped<Database>();
   const { data: sess } = await s.auth.getUser();
   const user = sess?.user;
   let escolaId: string | null = null;
@@ -185,16 +189,28 @@ export default async function OperacoesAcademicasPage({
 
   const fechamentoFalhas = filteredFechamento.filter((job) => String(job.estado || "").toUpperCase() === "FAILED").length;
   const loteFalhas = filteredLotes.filter((job) => String(job.status || "").toUpperCase() === "FAILED").length;
+  const cutoverHealth = await buildCutoverHealthReport(s, escolaId);
+  const cutoverStatusClass =
+    cutoverHealth.status === "BLOCKED"
+      ? "bg-red-100 text-red-700"
+      : cutoverHealth.status === "WARN"
+      ? "bg-amber-100 text-amber-700"
+      : "bg-emerald-100 text-emerald-700";
 
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="operacoes_academicas" />
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-semibold text-slate-900">Operações Académicas</h1>
-          <p className="text-sm text-slate-500">
-            Painel único para monitoramento de fechamento acadêmico e lotes oficiais.
-          </p>
+          <DashboardHeader
+            title="Operações Académicas"
+            description="Painel único para monitoramento de fechamento acadêmico e lotes oficiais."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Secretaria", href: "/secretaria" },
+              { label: "Operações Académicas" },
+            ]}
+          />
           <div>
             <Link
               href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
@@ -265,6 +281,17 @@ export default async function OperacoesAcademicasPage({
 
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-xs text-slate-400 uppercase font-semibold">SSOT virada</p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${cutoverStatusClass}`}>
+                {cutoverHealth.status}
+              </span>
+              <span className="text-xs text-slate-600">
+                {cutoverHealth.active_year ? `ano ativo ${cutoverHealth.active_year.ano}` : "sem ano ativo"}
+              </span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 p-4">
             <p className="text-xs text-slate-400 uppercase font-semibold">Fechamentos em aberto</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">
               {filteredFechamento.filter((j) => !["DONE", "FAILED"].includes(String(j.estado || "").toUpperCase())).length}
@@ -280,6 +307,84 @@ export default async function OperacoesAcademicasPage({
             <p className="text-xs text-slate-400 uppercase font-semibold">Falhas recentes</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">{fechamentoFalhas + loteFalhas}</p>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-800">Saúde da Virada de Ano (SSOT)</h2>
+            <form action="/api/secretaria/operacoes-academicas/virada/dry-run" method="post">
+              <button type="submit" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                Executar dry-run
+              </button>
+            </form>
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Turmas sem sessão</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.turmas_session_id_null}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Matrículas sem sessão</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.matriculas_session_id_null}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Histórico anual</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.historico_anos_total}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Snapshot locks</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.snapshot_locks_total}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Mensalidades fora janela</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.mensalidades_competencia_fora_janela}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Mensalidades sem matrícula</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.mensalidades_sem_matricula_id}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Currículos pendentes</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.curriculos_classes_pendentes}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Pautas anuais pendentes</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.pautas_anuais_pendentes}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Matrículas sem final</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.matriculas_status_final_pendente}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3">
+              <p className="text-[10px] uppercase text-slate-400 font-semibold">Snapshots pendentes</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.snapshot_locks_pendentes}</p>
+            </div>
+          </div>
+          {cutoverHealth.blockers.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <p className="text-xs font-semibold text-red-700">Bloqueadores</p>
+              <ul className="mt-1 list-disc pl-5 text-xs text-red-700">
+                {cutoverHealth.blockers.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {cutoverHealth.warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-semibold text-amber-700">Alertas</p>
+              <ul className="mt-1 list-disc pl-5 text-xs text-amber-700">
+                {cutoverHealth.warnings.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <CutoverResolveActions
+            activeYearId={cutoverHealth.active_year?.id ?? null}
+            metrics={cutoverHealth.metrics}
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">

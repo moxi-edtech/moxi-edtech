@@ -18,13 +18,13 @@ export async function GET(req: Request) {
     }
 
     let query = supabase
-      .from('events')
-      .select('id, escola_id, titulo, descricao, inicio_at, fim_at, publico_alvo')
+      .from('vw_eventos_escola_unificados')
+      .select('id, escola_id, nome, descricao, data_inicio, data_fim, tipo, publico_alvo, cor_hex')
       .eq('escola_id', escolaId);
 
     query = applyKf2ListInvariants(query, {
-      defaultLimit: 50,
-      order: [{ column: "inicio_at", ascending: true }],
+      defaultLimit: 100,
+      order: [{ column: "data_inicio", ascending: true }],
       tieBreakerColumn: "id",
     });
 
