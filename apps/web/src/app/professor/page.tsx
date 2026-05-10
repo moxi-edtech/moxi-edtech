@@ -1,6 +1,7 @@
 "use client";
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon } from "@heroicons/react/24/outline";
@@ -154,20 +155,19 @@ export default function Page() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <header>
-          <h1 className="text-2xl font-bold text-klasse-green">Portal do Professor</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            <span className="font-medium text-slate-700">
-              {overview?.escola_nome ? overview.escola_nome : 'Escola'}
-            </span>
-            {overview?.primeiro_nome && (
-              <>
-                <span className="mx-1 text-slate-400">·</span>
-                <span className="font-semibold text-klasse-green">
-                  {overview.primeiro_nome}
-                </span>
-              </>
-            )}
-          </p>
+          <DashboardHeader
+            title="Portal do Professor"
+            description={[
+              overview?.escola_nome ? overview.escola_nome : "Escola",
+              overview?.primeiro_nome ? `Professor: ${overview.primeiro_nome}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            breadcrumbs={[
+              { label: "Início", href: escolaParam ? `/escola/${escolaParam}` : "/" },
+              { label: "Professor" },
+            ]}
+          />
         </header>
         <AssignmentsBanner />
         <section className="rounded-2xl border border-emerald-950/30 bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white p-5 shadow-sm">

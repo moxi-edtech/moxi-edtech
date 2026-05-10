@@ -7,6 +7,7 @@ import { createIdempotencyKey } from "@/lib/idempotency"
 import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
+import { DashboardHeader } from "@/components/layout/DashboardHeader"
 
 type Atrib = {
   id: string
@@ -316,10 +317,15 @@ export default function ProfessorNotasPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6 space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-klasse-green">Lançamento de notas</h1>
-          <p className="text-sm text-slate-500">
-            Selecione turma, disciplina e trimestre. As notas são salvas automaticamente.
-          </p>
+          <DashboardHeader
+            title="Lançamento de Notas"
+            description="Selecione turma, disciplina e trimestre. As notas são salvas automaticamente."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Professor", href: "/professor" },
+              { label: "Notas" },
+            ]}
+          />
         </div>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">

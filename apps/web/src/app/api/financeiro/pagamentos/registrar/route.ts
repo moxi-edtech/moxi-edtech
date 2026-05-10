@@ -230,6 +230,7 @@ export async function POST(req: Request) {
           hash_control: string;
           key_version: number;
           payload_snapshot: Record<string, unknown>;
+          url_validacao?: string | null;
         }
       | {
           ok: false;
@@ -272,6 +273,7 @@ export async function POST(req: Request) {
         hash_control: fiscal.hash_control,
         key_version: fiscal.key_version,
         payload_snapshot: fiscal.payload_snapshot,
+        url_validacao: null, // Placeholder para futura implementação de página de validação
       };
     } catch (fiscalError) {
       const fiscalMessage =

@@ -360,7 +360,6 @@ onSuccess: () => void;
 const { success, error } = useToast();
 const [isSubmitting,  setIsSubmitting]  = useState(false);
 const [printQueue,    setPrintQueue]    = useState<Array<{ label: string; url: string }>>([]);
-const [feedback,      setFeedback]      = useState<{ type: "success" | "error"; message: string } | null>(null);
 const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
 
 const emitirDocumento = useCallback(async (servico: Servico): Promise<string | null> => {
@@ -463,20 +462,18 @@ try {
       : "Pagamento registado.";
 
   success(msg);
-  setFeedback({ type: "success", message: msg });
   carrinho.limpar();
   onSuccess();
 } catch (err: any) {
   const msg = err.message || "Erro ao finalizar pagamento.";
   error(msg);
-  setFeedback({ type: "error", message: msg });
 } finally {
   setIsSubmitting(false);
 }
 
 }, [aluno, carrinho, emitirDocumento, success, error, onSuccess]);
 
-return { isSubmitting, printQueue, setPrintQueue, feedback, setFeedback, emittingDocId, checkout, emitirDocumento };
+return { isSubmitting, printQueue, setPrintQueue, emittingDocId, checkout, emitirDocumento };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1216,24 +1213,6 @@ return (
 
         {/* Coluna direita */}
         <div className="xl:col-span-4 space-y-4">
-
-          {/* Feedback de pagamento */}
-          {checkout.feedback && (
-            <div className={`p-4 rounded-xl border flex items-start gap-3
-              animate-in slide-in-from-top-2 duration-200 ${
-              checkout.feedback.type === "success"
-                ? "bg-[#1F6B3B]/5 border-[#1F6B3B]/20 text-[#1F6B3B]"
-                : "bg-rose-50 border-rose-200 text-rose-700"}`}>
-              {checkout.feedback.type === "success"
-                ? <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                : <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              }
-              <p className="flex-1 text-sm font-medium">{checkout.feedback.message}</p>
-              <button onClick={() => checkout.setFeedback(null)}>
-                <X className="h-4 w-4 opacity-40 hover:opacity-100" />
-              </button>
-            </div>
-          )}
 
           {/* Documentos prontos */}
           {checkout.printQueue.length > 0 && (

@@ -1,6 +1,7 @@
 // hooks/useMatriculaLogic.ts
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Aluno, Candidatura, Curso, Orcamento, Session, Turma } from "~types/matricula";
 
 const extrairAnoLetivo = (valor?: string | number | null) => {
@@ -14,6 +15,7 @@ const extrairAnoLetivo = (valor?: string | number | null) => {
 export function useMatriculaLogic() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { success, error } = useToast();
 
   const candidaturaIdFromQuery = searchParams?.get("candidaturaId") || "";
   const alunoIdFromQuery = searchParams?.get("alunoId") || "";
@@ -347,10 +349,10 @@ export function useMatriculaLogic() {
 
       const numeroMatricula = json.numero_matricula ?? json.data?.numero_matricula;
 
-      alert(`Sucesso! Nº Matrícula: ${numeroMatricula ?? "—"}`);
+      success("Matrícula confirmada", `A matrícula foi concluída com sucesso. Nº de processo: ${numeroMatricula ?? "—"}`);
       router.back();
     } catch (e: any) {
-      alert("Erro: " + e.message);
+      error("Erro na matrícula", "Houve um erro técnico ao tentar processar a matrícula. Por favor, tente novamente.");
     } finally {
       setSubmitting(false);
     }

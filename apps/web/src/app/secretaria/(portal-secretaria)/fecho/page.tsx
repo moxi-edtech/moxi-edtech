@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import FechoCaixaCego from "@/components/secretaria/FechoCaixaCego";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 export default function SecretariaFechoPage() {
   const router = useRouter();
@@ -63,9 +64,19 @@ export default function SecretariaFechoPage() {
   };
 
   return (
-    <FechoCaixaCego
-      onConfirm={handleConfirm}
-      onClose={() => router.back()}
-    />
+    <div className="space-y-4">
+      <DashboardHeader
+        title="Fecho de Caixa (Secretaria)"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Fecho" },
+        ]}
+      />
+      <FechoCaixaCego
+        onConfirm={handleConfirm}
+        onClose={() => router.back()}
+      />
+    </div>
   );
 }

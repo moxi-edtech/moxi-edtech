@@ -6,11 +6,13 @@ import Link from "next/link";
 import { Archive, DollarSign, FileCheck, FileText, KeyRound, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 export type DossierRole = "admin" | "secretaria";
 
 export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; aluno: AlunoNormalizado; escolaId: string }) {
   const router = useRouter();
+  const { success, error } = useToast();
   const [loading, setLoading] = useState(false);
   const [resetResult, setResetResult] = useState<{ login: string; senha: string } | null>(null);
   const { escolaSlug } = useEscolaId();
@@ -41,10 +43,10 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao resetar senha.");
       if (json.login && json.senha) {
         setResetResult({ login: json.login, senha: json.senha });
+        success("Senha redefinida", "Uma nova senha temporária foi gerada com sucesso.");
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao resetar senha.";
-      window.alert(message);
+    } catch (err: any) {
+      error("Erro na redefinição", "Não conseguimos gerar uma nova senha no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
     }

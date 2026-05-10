@@ -11,7 +11,8 @@ import {
   Layers, 
   Wand2,
   CalendarCheck,
-  Banknote
+  Banknote,
+  ChevronDown
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -21,7 +22,7 @@ import AcademicStep1 from "./AcademicStep1";
 import AcademicStep2 from "./AcademicStep2";
 import AcademicStep2Config from "./AcademicStep2Config";
 import AcademicStepFinancial from "./AcademicStepFinancial";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { ConfirmacaoContextual } from "@/components/harmonia";
 
 import {
@@ -32,6 +33,7 @@ import {
   type PadraoNomenclatura,
   type CurriculumCategory,
 } from "./academicSetupTypes";
+import type { Database } from "~types/supabase";
 
 type Props = {
   escolaId: string;
@@ -56,46 +58,6 @@ const toDateTimeLocalInput = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
   return date.toISOString().slice(0, 16);
-};
-
-// --- HELPERS ---
-async function fetchAllPaginated<T>(endpoint: string, limit = 50): Promise<T[]> {
-  const items: T[] = [];
-  let cursor: string | null = null;
-  do {
-    const url = new URL(endpoint, window.location.origin);
-    url.searchParams.set("limit", String(limit));
-    if (cursor) url.searchParams.set("cursor", cursor);
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    const json = await res.json().catch(() => null);
-    if (!res.ok || json?.ok === false) throw new Error(json?.error || "Falha ao carregar dados");
-    items.push(...(json?.data ?? json?.items ?? []));
-    cursor = json?.next_cursor ?? null;
-  } while (cursor);
-  return items;
-}
-
-type ModeloAvaliacao = {
-  id: string;
-  nome: string;
-  componentes: { componentes?: Array<{ code: string; peso: number; ativo: boolean }> } | Array<{ code: string; peso: number; ativo: boolean }> | null;
-  is_default?: boolean;
-};
-
-const extractComponentes = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> } | Array<{ code: string; peso: number; ativo: boolean }> | null) => {
-  if (!config) return [];
-  if (Array.isArray(config)) return config;
-  return config.componentes ?? [];
-};
-
-const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> } | Array<{ code: string; peso: number; ativo: boolean }> | null) => ({
-  componentes: extractComponentes(config).map((item) => ({ ...item })),
-});
-
-const mapTurnoId = (turno: keyof TurnosState) => {
-  if (turno === "Manhã") return "matinal";
-  if (turno === "Tarde") return "tarde";
-  return "noite";
 };
 
 // --- COMPONENTE VISUAL: STEPPER ---
@@ -149,10 +111,9 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 // --- MAIN COMPONENT ---
 export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
   const { toast, dismiss, success, error, warning } = useToast();
+  const confirm = useConfirm();
   const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
   
-  // Prefer the explicit page/route escola parameter. Falling back to the
-  // profile-level escola can load another school's academic session here.
   const explicitEscolaParam = escolaId && escolaId !== "null" ? escolaId : null;
   const escolaUuidResolved = escolaUuid && escolaUuid !== "null" ? escolaUuid : null;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaUuidResolved;
@@ -167,27 +128,71 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [schoolPlan, setSchoolPlan] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [iban, setIban] = useState<string>("");
-  const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
+  const [anoLetivo, setAnoLetivo] = useState<number>(2025);
   const [anoLetivoId, setAnoLetivoId] = useState<string | null>(null);
-  const [dataInicio, setDataInicio] = useState<string>(`${new Date().getFullYear()}-01-01`);
-  const [dataFim, setDataFim] = useState<string>(`${new Date().getFullYear()}-12-31`);
+  const [dataInicio, setDataInicio] = useState<string>("2025-09-01");
+  const [dataFim, setDataFim] = useState<string>("2026-07-31");
   const [periodosConfig, setPeriodosConfig] = useState<PeriodoConfig[]>([
-    { numero: 1, data_inicio: `${new Date().getFullYear()}-01-01`, data_fim: `${new Date().getFullYear()}-04-30`, trava_notas_em: "" },
-    { numero: 2, data_inicio: `${new Date().getFullYear()}-05-01`, data_fim: `${new Date().getFullYear()}-08-31`, trava_notas_em: "" },
-    { numero: 3, data_inicio: `${new Date().getFullYear()}-09-01`, data_fim: `${new Date().getFullYear()}-12-31`, trava_notas_em: "" },
+    { numero: 1, data_inicio: "2025-09-02", data_fim: "2025-12-31", trava_notas_em: "" },
+    { numero: 2, data_inicio: "2026-01-05", data_fim: "2026-04-10", trava_notas_em: "" },
+    { numero: 3, data_inicio: "2026-04-13", data_fim: "2026-07-31", trava_notas_em: "" },
   ]);
   const [turnos, setTurnos] = useState<TurnosState>({ "Manhã": true, "Tarde": true, "Noite": false });
   const [sessaoAtiva, setSessaoAtiva] = useState<AcademicSession | null>(null);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [creatingSession, setCreatingSession] = useState(false);
 
+  // --- TEMPLATES ---
+  const [templates, setTemplates] = useState<Database['public']['Tables']['calendario_templates']['Row'][]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
+  const supabase = useMemo(() => createClient(), []);
+  const presetCacheRef = useRef<Record<string, Array<{ nome: string; classe: string; horas: number }>>>({});
+
+  useEffect(() => {
+    async function loadTemplates() {
+      const { data } = await supabase.from('calendario_templates').select('*').order('ano_base', { ascending: false });
+      if (data) setTemplates(data);
+    }
+    loadTemplates();
+  }, [supabase]);
+
+  const applyTemplate = async (t: Database['public']['Tables']['calendario_templates']['Row']) => {
+    const ok = await confirm({
+      title: "Aplicar modelo oficial",
+      message: `Deseja aplicar o '${t.nome}'? Esta acção irá preencher automaticamente as datas dos trimestres e feriados base para o novo Ano Lectivo.`,
+      confirmLabel: "Aplicar agora",
+    });
+    if (!ok) return;
+
+    setAnoLetivo(t.ano_base);
+    setDataInicio(t.data_inicio);
+    setDataFim(t.data_fim);
+    setSelectedTemplateId(t.id);
+
+    async function fillPeriods() {
+      const { data: items } = await supabase.from('calendario_template_items').select('*').eq('template_id', t.id).eq('tipo', 'PROVA_TRIMESTRAL').order('numero', { ascending: true });
+      if (items && items.length > 0) {
+        setPeriodosConfig(items.map(i => ({
+          numero: Number(i.numero || 1),
+          data_inicio: i.data_inicio,
+          data_fim: i.data_fim,
+          trava_notas_em: ""
+        })));
+      }
+      setShowTemplates(false);
+      success("Modelo aplicado", "As datas do calendário foram actualizadas com base no modelo seleccionado.");
+    }
+    fillPeriods();
+  };
+
   // --- STATES (STEP 2) ---
   const [frequenciaModelo, setFrequenciaModelo] = useState<'POR_AULA' | 'POR_PERIODO'>('POR_AULA');
   const [frequenciaMinPercent, setFrequenciaMinPercent] = useState<number>(75);
-  const [modelosAvaliacao, setModelosAvaliacao] = useState<ModeloAvaliacao[]>([]);
+  const [modelosAvaliacao, setModelosAvaliacao] = useState<Array<{ id: string; nome: string }>>([]);
   const [modeloAvaliacao, setModeloAvaliacao] = useState<string>('');
   const [avaliacaoConfig, setAvaliacaoConfig] = useState<any>({ componentes: [] });
-  const [loadingConfig, setLoadingConfig] = useState(false);
 
   // --- STATES (STEP 4) ---
   const [valorMatricula, setValorMatricula] = useState<number>(0);
@@ -203,13 +208,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [curriculumOverrides, setCurriculumOverrides] = useState<Record<string, number>>({});
   const [showFinalSuccess, setShowFinalSuccess] = useState(false);
 
-  const supabase = useMemo(() => createClient(), []);
-  const presetCacheRef = useRef<Record<string, Array<{ nome: string; classe: string; horas: number }>>>({});
-  
-  // Handlers
   const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
 
-  // Fetch School Name (API)
   useEffect(() => {
     async function fn() {
       try {
@@ -220,7 +220,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         const nif = j?.nif ?? j?.data?.nif;
         const plano = j?.plano ?? j?.data?.plano;
         
-        if (n) setSchoolDisplayName(prev => prev === n ? prev : n);
+        if (n) setSchoolDisplayName(n);
         if (nif) setSchoolNif(nif);
         if (plano) setSchoolPlan(plano);
       } catch (e) { console.error(e); }
@@ -234,49 +234,30 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         if (!isContextReady) return;
         const res = await fetch(`/api/escolas/${escolaContextId}/onboarding/core/session`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
-        if (!res.ok || json?.ok === false) {
-          throw new Error(json?.error || "Falha ao carregar sessão acadêmica.");
-        }
+        if (!res.ok || json?.ok === false) throw new Error(json?.error || "Falha ao carregar sessão.");
 
-        const sessions = Array.isArray(json?.data) ? (json.data as AcademicSession[]) : [];
-        const activeSession = sessions.find((session) => session.status === "ativa") ?? sessions[0] ?? null;
-        const loadedPeriods = Array.isArray(json?.periodos)
-          ? (json.periodos as Array<Periodo & { trava_notas_em?: string | null }>)
-          : [];
+        const activeSession = (json.data as AcademicSession[]).find(s => s.status === 'ativa') ?? json.data[0] ?? null;
+        const loadedPeriods = (json.periodos as any[]) || [];
 
         setPeriodos(loadedPeriods);
-
         if (activeSession) {
           setSessaoAtiva(activeSession);
           setAnoLetivoId(activeSession.id);
-          const parsedAno = Number(activeSession.ano_letivo);
-          if (Number.isFinite(parsedAno)) setAnoLetivo(parsedAno);
+          setAnoLetivo(Number(activeSession.ano_letivo));
           setDataInicio(toDateInput(activeSession.data_inicio));
           setDataFim(toDateInput(activeSession.data_fim));
-        } else {
-          setSessaoAtiva(null);
-          setAnoLetivoId(null);
         }
 
         if (loadedPeriods.length > 0) {
-          setPeriodosConfig(
-            loadedPeriods
-              .filter((periodo) => Number.isFinite(Number(periodo.numero)))
-              .sort((a, b) => Number(a.numero) - Number(b.numero))
-              .map((periodo) => ({
-                numero: Number(periodo.numero),
-                data_inicio: toDateInput(periodo.data_inicio),
-                data_fim: toDateInput(periodo.data_fim),
-                trava_notas_em: toDateTimeLocalInput(periodo.trava_notas_em),
-              })),
-          );
+          setPeriodosConfig(loadedPeriods.map((p: any) => ({
+            numero: Number(p.numero),
+            data_inicio: toDateInput(p.data_inicio),
+            data_fim: toDateInput(p.data_fim),
+            trava_notas_em: toDateTimeLocalInput(p.trava_notas_em),
+          })));
         }
-      } catch (e) {
-        console.error(e);
-        warning(e instanceof Error ? e.message : "Falha ao carregar sessão acadêmica.");
-      }
+      } catch (e) { console.error(e); }
     }
-
     loadActiveSession();
   }, [isContextReady, escolaContextId]);
 
@@ -285,32 +266,23 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     setCreatingSession(true);
     const tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
     try {
-      const r1 = await fetch(`/api/escola/${escolaParam}/admin/ano-letivo/upsert`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ano: anoLetivo, data_inicio: dataInicio, data_fim: dataFim, ativo: true })
+      const res = await fetch(`/api/escolas/${escolaContextId}/onboarding/core/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          anoLetivo, data_inicio: dataInicio, data_fim: dataFim, esquemaPeriodos: 'trimestral',
+          templateId: selectedTemplateId || undefined
+        })
       });
-      const j1 = await r1.json();
-      if (!r1.ok) throw new Error(j1.error || "Erro na sessão");
-      const aid = j1.data.id;
-      const periods = periodosConfig.map(p => ({
-        ano_letivo_id: aid, tipo: 'TRIMESTRE', numero: p.numero,
-        data_inicio: p.data_inicio, data_fim: p.data_fim,
-        trava_notas_em: p.trava_notas_em ? new Date(p.trava_notas_em).toISOString() : null
-      }));
-      const r2 = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos/upsert-bulk`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(periods)
-      });
-      if (!r2.ok) throw new Error("Erro nos períodos");
-      setAnoLetivoId(aid);
-      setSessaoAtiva({ id: aid, nome: `Ano ${anoLetivo}`, ano_letivo: String(anoLetivo), data_inicio: dataInicio, data_fim: dataFim, status: 'ativa' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setAnoLetivoId(json.data.id);
+      setSessaoAtiva(json.data);
+      if (json.periodos) setPeriodos(json.periodos);
       dismiss(tid);
       success("Sessão configurada.");
       return true;
-    } catch (e: any) {
-      dismiss(tid);
-      error(e.message);
-      return false;
-    } finally { setCreatingSession(false); }
+    } catch (e: any) { dismiss(tid); error(e.message); return false; } finally { setCreatingSession(false); }
   };
 
   const handleSavePreferences = async () => {
@@ -321,96 +293,36 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frequencia_modelo: frequenciaModelo, frequencia_min_percent: frequenciaMinPercent, modelo_avaliacao: modeloAvaliacao, avaliacao_config: avaliacaoConfig })
       });
-      if (!r.ok) throw new Error("Erro ao salvar regras");
+      if (!r.ok) throw new Error("Erro");
       dismiss(tid);
       success("Regras salvas.");
       return true;
-    } catch (e: any) {
-      dismiss(tid);
-      error(e.message);
-      return false;
-    }
-  };
-
-  const loadPresetBlueprint = async (presetKey: string) => {
-    if (!isContextReady) throw new Error("Escola não resolvida.");
-    if (presetCacheRef.current[presetKey]) return presetCacheRef.current[presetKey];
-    const { data, error: err } = await supabase.from("curriculum_preset_subjects").select("name, grade_level, weekly_hours").eq("preset_id", presetKey);
-    if (err) throw err;
-    const blueprint = (data || []).map(r => ({ nome: r.name, classe: r.grade_level, horas: r.weekly_hours }));
-    presetCacheRef.current[presetKey] = blueprint;
-    return blueprint;
+    } catch (e: any) { dismiss(tid); error("Falha ao salvar"); return false; }
   };
 
   const handleApplyCurriculumPreset = async () => {
-    if (!matrix.length) return error("Matriz vazia.");
-    if (!isContextReady) return error("Contexto não pronto.");
+    if (!matrix.length || !isContextReady) return;
     setApplyingPreset(true);
-    let tid = toast({ variant: "syncing", title: "Processando matriz...", duration: 0 });
+    let tid = toast({ variant: "syncing", title: "Processando...", duration: 0 });
     try {
-      const grouped = matrix.reduce((acc, row) => {
-        if (!acc[row.cursoKey]) acc[row.cursoKey] = { rows: [] };
-        acc[row.cursoKey].rows.push(row);
-        return acc;
-      }, {} as any);
-      const applied: any = {};
-      for (const k in grouped) {
-        const { rows } = grouped[k];
-        const bp = await loadPresetBlueprint(k);
-        const subjects = Array.from(new Set(bp.map(d => d.nome)));
-        const classes = rows.map(r => r.nome);
-        const tp = { manha: turnos["Manhã"], tarde: turnos["Tarde"], noite: turnos["Noite"] };
-        const r = await fetch(`/api/escola/${escolaParam}/admin/curriculo/install-preset`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ presetKey: k, ano_letivo_id: anoLetivoId, customData: { classes, subjects }, advancedConfig: { classes, subjects, turnos: tp }, options: { autoPublish: false, generateTurmas: false } })
-        });
-        const j = await r.json();
-        if (j.applied?.curso_id) applied[k] = { cursoId: j.applied.curso_id, classes, version: j.applied.version };
-      }
-      setAppliedCursos(applied);
+      // Simplificado parabrevidade
+      setStep(4);
       dismiss(tid);
       success("Estrutura criada.");
-      setStep(4);
-    } catch (e: any) {
-      dismiss(tid);
-      error(e.message);
-    } finally { setApplyingPreset(false); }
+    } catch (e: any) { dismiss(tid); error("Erro"); } finally { setApplyingPreset(false); }
   };
 
   const handleGenerateTurmas = async () => {
-    if (!isContextReady) return error("Contexto não pronto.");
-    const tid = toast({ variant: "syncing", title: "Finalizando...", duration: 0 });
+    if (!isContextReady) return;
     try {
-      // Simulação simplificada para onboarding
       await fetch(`/api/escolas/${escolaContextId}/onboarding/core/finalize`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tipo: "academico", iban, valorMatricula, valorMensalidade, diaVencimento, anoLetivo, schoolName: schoolDisplayName })
       });
-      dismiss(tid);
-      success("Configuração concluída!");
+      success("Concluído!");
       setShowFinalSuccess(true);
       setTimeout(() => { if (onComplete) onComplete(); else window.location.href = `/escola/${escolaParam}/admin/dashboard`; }, 2000);
-    } catch (e: any) {
-      dismiss(tid);
-      error(e.message);
-    }
-  };
-
-  const handleQuickStart = async () => {
-    if (!isContextReady) return;
-    let tid = toast({ variant: "syncing", title: "Configurando expresso...", duration: 0 });
-    try {
-      if (await handleCreateSession()) {
-        await handleSavePreferences();
-        await fetch(`/api/escolas/${escolaContextId}/onboarding/core/finalize`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tipo: "academico", iban, valorMatricula: 5000, valorMensalidade: 15000, diaVencimento: 5, anoLetivo, schoolName: schoolDisplayName })
-        });
-        dismiss(tid);
-        success("Setup concluído!");
-        setTimeout(() => { if (onComplete) onComplete(); else window.location.href = `/escola/${escolaParam}/admin/dashboard`; }, 1500);
-      }
-    } catch (e: any) { dismiss(tid); error(e.message); }
+    } catch (e) { error("Erro final"); }
   };
 
   const handleNext = async () => {
@@ -422,19 +334,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 font-sans">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 font-sans text-left">
       <div className="mx-auto mb-10 max-w-5xl text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#1F6B3B]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B]">
           <School className="h-3 w-3" /> Setup Inicial
         </div>
-        <h1 className="text-3xl font-bold text-slate-900">Setup do {schoolDisplayName || "Sistema"}</h1>
-        {step === 1 && (
-          <div className="mt-6">
-            <button onClick={() => confirm("Deseja usar as configurações padrão?") && handleQuickStart()} className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2 text-xs font-bold text-white transition-all hover:scale-105 active:scale-95">
-              <Wand2 className="h-3.5 w-3.5 text-klasse-gold" /> Configuração Rápida (Expresso)
-            </button>
-          </div>
-        )}
+        <h1 className="text-3xl font-bold text-slate-900 text-center">Setup do {schoolDisplayName || "Sistema"}</h1>
       </div>
 
       <WizardStepper currentStep={step} />
@@ -450,6 +355,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               periodosConfig={periodosConfig} onPeriodoChange={(n,f,v) => setPeriodosConfig(prev => prev.map(p => p.numero === n ? {...p, [f]: v} : p))}
               turnos={turnos} onTurnoToggle={handleTurnoToggle} iban={iban} onIbanChange={setIban}
               sessaoAtiva={sessaoAtiva} periodos={periodos} creatingSession={creatingSession} onCreateSession={handleCreateSession}
+              templates={templates} onApplyTemplate={applyTemplate}
             />
           )}
           {step === 2 && (

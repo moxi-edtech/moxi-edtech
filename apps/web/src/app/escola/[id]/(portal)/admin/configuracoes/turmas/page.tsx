@@ -18,7 +18,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
-import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
+import { Skeleton, useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 
@@ -133,6 +133,7 @@ export default function TurmasConfiguracoesPage() {
   const baseRaw = "/admin/configuracoes";
   const base = buildPortalHref(escolaParam, baseRaw);
   const { success, error, warning, toast: rawToast, dismiss } = useToast();
+  const confirm = useConfirm();
   const menuItems = buildConfigMenuItems(base);
 
   const [loading, setLoading] = useState(true);
@@ -890,13 +891,14 @@ export default function TurmasConfiguracoesPage() {
                   let json = await res.json().catch(() => null);
                   if (json?.code === "CURRICULO_REBUILD_CONFIRM_REQUIRED") {
                     const existing = Number(json?.details?.existing_turmas ?? 0);
-                    const confirmed = window.confirm(
-                      existing > 0
-                        ? `Existem ${existing} turma(s) já criada(s). Publicar sem rebuild irá sincronizar disciplinas novas sem reconstruir turmas. Deseja continuar?`
-                        : "Existem turmas já criadas. Publicar sem rebuild irá sincronizar disciplinas novas sem reconstruir turmas. Deseja continuar?"
-                    );
+                    const confirmed = await confirm({
+                      title: "Publicar sem reconstruir turmas",
+                      message: existing > 0
+                        ? `Existem ${existing} turma(s) já criada(s). A publicação irá sincronizar novas disciplinas sem apagar ou reconstruir as turmas existentes. Deseja continuar?`
+                        : "Existem turmas já criadas. A publicação irá sincronizar novas disciplinas sem reconstruir as turmas. Deseja continuar?",
+                      confirmLabel: "Publicar e sincronizar",
+                    });
                     if (!confirmed) return;
-
                     res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },

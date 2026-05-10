@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import {
   Loader2,
   Search,
@@ -145,7 +146,7 @@ function StatusBadge({ status }: { status?: string | null }) {
   );
 }
 
-function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
+function StatusBadgeEmpty({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="p-12 text-center">
       <p className="text-sm font-semibold text-slate-700">{title}</p>
@@ -159,6 +160,8 @@ function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
 // -----------------------------
 export default function AlunosListClient() {
   const router = useRouter();
+  const { success, error } = useToast();
+  const confirm = useConfirm();
   const pathname = usePathname();
   const slugFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
@@ -170,9 +173,6 @@ export default function AlunosListClient() {
   const [q, setQ] = useState("");
   const debouncedQ = useDebounce(q, 300);
 
-  // Mantive teus filtros (porque não tenho certeza do teu endpoint /api/secretaria/alunos).
-  // Se teu backend mudou para status de candidatura (submetida/em_analise/aprovada/matriculado),
-  // você só troca a lista abaixo + o "default".
   const [status, setStatus] = useState<"pendente" | "ativo" | "inativo" | "arquivado" | "todos">("pendente");
 
   // Paging/cursor
@@ -187,13 +187,9 @@ export default function AlunosListClient() {
 
   // UI state
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Delete modal
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
 
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
@@ -209,7 +205,7 @@ export default function AlunosListClient() {
   const load = useCallback(
     async (p = page) => {
       setLoading(true);
-      setError(null);
+      setFetchError(null);
 
       try {
         const cursor = pageCursors[p - 1] ?? null;
@@ -244,7 +240,7 @@ export default function AlunosListClient() {
           return next;
         });
       } catch (e: any) {
-        setError(e.message || "Erro inesperado.");
+        setFetchError(e.message || "Erro inesperado.");
         setItems([]);
         setTotal(0);
         setHasMore(false);
@@ -267,43 +263,46 @@ export default function AlunosListClient() {
   }, [page, load]);
 
   // Actions
-  const handleOpenDelete = (aluno: Aluno) => {
-    setAlunoSelecionado(aluno);
-    setDeleteReason("");
-    setShowDeleteModal(true);
-  };
+  const handleArchive = async (aluno: Aluno) => {
+    const reason = await confirm({
+      title: "Arquivar processo",
+      message: `Deseja mover o processo de ${aluno.nome} para o arquivo? Por favor, indique o motivo para consulta futura.`,
+      inputType: "text",
+      placeholder: "Ex: desistiu / transferência / duplicado...",
+      confirmLabel: "Arquivar definitivamente",
+      variant: "danger",
+    });
 
-  const handleConfirmDelete = async () => {
-    if (!alunoSelecionado) return;
-    const reason = deleteReason.trim();
-    if (!reason) {
-      alert("Motivo obrigatório.");
+    if (!reason || reason.trim().length < 3) {
+      if (reason !== null) {
+        error("Motivo necessário", "Por favor, indique um motivo válido com pelo menos 3 caracteres.");
+      }
       return;
     }
 
     setDeleting(true);
     try {
       const json = await fetchJson<{ ok: boolean; error?: string }>(
-        `/api/secretaria/alunos/${alunoSelecionado.id}/delete`,
+        `/api/secretaria/alunos/${aluno.id}/delete`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason }),
+          body: JSON.stringify({ reason: reason.trim() }),
         }
       );
 
       if (!json.ok) throw new Error(json.error || "Falha ao arquivar.");
 
+      success("Processo arquivado", "O processo do aluno foi movido para o arquivo com sucesso.");
       await load(1);
-      setShowDeleteModal(false);
     } catch (e: any) {
-      alert(e.message || "Erro ao arquivar.");
+      error("Não foi possível arquivar", "Houve um erro técnico ao tentar arquivar o processo deste aluno. Por favor, tente novamente.");
     } finally {
       setDeleting(false);
     }
   };
 
-  // Derived stats (só na página atual; se quiser global, precisa endpoint)
+  // Derived stats
   const stats = useMemo(() => {
     const pendentes = items.filter((a) => (a.status || "").toLowerCase() === "pendente").length;
     const ativos = items.filter((a) => (a.status || "").toLowerCase() === "ativo").length;
@@ -350,12 +349,12 @@ export default function AlunosListClient() {
       </div>
 
       {/* Error */}
-      {error ? (
+      {fetchError ? (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
           <div className="font-bold">Erro ao carregar</div>
-          <div className="mt-1">{error}</div>
+          <div className="mt-1">{fetchError}</div>
           <button
-            onClick={() => load(1)}
+            onClick={() => load( page )}
             className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white border border-rose-200 text-rose-700 hover:bg-rose-50"
           >
             Tentar novamente
@@ -441,7 +440,7 @@ export default function AlunosListClient() {
                 ) : items.length === 0 ? (
                   <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                     <td colSpan={5}>
-                      <EmptyState
+                      <StatusBadgeEmpty
                         title="Nenhum registro encontrado."
                         subtitle="Tente outro termo de busca ou ajuste o filtro."
                       />
@@ -575,11 +574,12 @@ export default function AlunosListClient() {
                                 </Link>
 
                                 <button
-                                  onClick={() => handleOpenDelete(aluno)}
-                                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                  onClick={() => handleArchive(aluno)}
+                                  disabled={deleting}
+                                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-30"
                                   title="Arquivar"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                                 </button>
                               </>
                             ) : null}
@@ -615,49 +615,6 @@ export default function AlunosListClient() {
           </div>
         </div>
       </div>
-
-      {/* Delete / Archive modal */}
-      {showDeleteModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
-          <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-black text-slate-950">Arquivar aluno</h3>
-            <p className="text-sm text-slate-600 mt-2">
-              Confirma arquivar <span className="font-bold">{alunoSelecionado?.nome}</span>? Isso não apaga histórico financeiro.
-            </p>
-
-            <div className="mt-4">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                Motivo (obrigatório)
-              </label>
-              <textarea
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                placeholder="Ex.: desistiu / transferência / duplicado…"
-                rows={3}
-                className="mt-2 w-full p-3 border border-slate-200 rounded-xl text-sm outline-none
-                           focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-
-              <button
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:brightness-95 disabled:opacity-60"
-              >
-                {deleting ? "Arquivando…" : "Confirmar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

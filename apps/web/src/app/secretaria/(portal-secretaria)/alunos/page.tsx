@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AlunosSecretariaPage from "@/components/secretaria/AlunosSecretariaPage";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -23,9 +24,17 @@ export default async function Page() {
   }
 
   return (
-    <>
+    <div className="space-y-4">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="alunos_list" />
+      <DashboardHeader
+        title="Alunos"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Alunos" },
+        ]}
+      />
       <AlunosSecretariaPage />
-    </>
+    </div>
   );
 }

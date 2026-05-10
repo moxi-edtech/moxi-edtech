@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useParams } from "next/navigation";
 
 // --- TYPES ---
@@ -173,12 +174,15 @@ export default function FechoCaixaPage() {
       {/* HEADER DE GESTÃO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
-            <Building2 className="w-4 h-4" />
-            Controle Financeiro
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Fecho de Caixa</h1>
-          <p className="text-slate-500 mt-1">Auditória e consolidação diária de valores.</p>
+          <DashboardHeader
+            title="Fecho de Caixa"
+            description="Auditoria e consolidação diária de valores."
+            breadcrumbs={[
+              { label: "Início", href: `/escola/${escolaId}` },
+              { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+              { label: "Fecho" },
+            ]}
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

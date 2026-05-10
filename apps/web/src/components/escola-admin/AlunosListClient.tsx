@@ -7,6 +7,7 @@ import React, {
 import Link from "next/link";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   Search, UserPlus, Archive, RotateCcw, Trash2,
   X, AlertTriangle, CheckCircle2, Loader2, Users,
@@ -193,43 +194,12 @@ function ConfirmModal({ cfg, onConfirm, onCancel }: {
 // Toast inline
 // ═════════════════════════════════════════════════════════════════════════════
 
-type ToastState = { type: "success" | "error"; message: string } | null;
-
-function InlineToast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(onDismiss, toast.type === "success" ? 3500 : 0);
-    return () => clearTimeout(t);
-  }, [toast, onDismiss]);
-
-  if (!toast) return null;
-  return (
-    <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-xl
-      px-4 py-3 shadow-xl animate-in slide-in-from-bottom-2 duration-200
-      ${toast.type === "success" ? "bg-[#1F6B3B]" : "bg-rose-600"}`}>
-      {toast.type === "success"
-        ? <CheckCircle2 size={15} className="text-white flex-shrink-0" />
-        : <AlertTriangle size={15} className="text-white flex-shrink-0" />
-      }
-      <p className="text-sm font-semibold text-white">{toast.message}</p>
-      {toast.type === "error" && (
-        <button onClick={onDismiss} className="text-white/70 hover:text-white ml-1">
-          <X size={13} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Drawer de pagamento rápido
-// ═════════════════════════════════════════════════════════════════════════════
-
 function PagamentoDrawer({ aluno, onClose, onSuccess }: {
   aluno:     Aluno | null;
   onClose:   () => void;
   onSuccess: (msg: string) => void;
 }) {
+  const { error } = useToast();
   const [valor,   setValor]   = useState("");
   const [metodo,  setMetodo]  = useState<MetodoPagamento>("numerario");
   const [ref,     setRef]     = useState("");
@@ -279,10 +249,10 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao registar pagamento.");
-      onSuccess(`Pagamento de ${formatKz(Number(valor))} registado para ${aluno.nome}.`);
+      onSuccess(`Pagamento registado com sucesso.`);
       onClose();
     } catch (err: any) {
-      alert(err.message);
+      error("Erro no pagamento", "Não foi possível processar o pagamento no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -731,6 +701,7 @@ export default function AlunosListClient({
   initialCursor?: string | null;
 }) {
   const { escolaSlug } = useEscolaId();
+  const { success, error } = useToast();
   const escolaParam = escolaSlug || escolaId;
 
   // ── Estado principal ────────────────────────────────────────────────────────
@@ -742,7 +713,6 @@ export default function AlunosListClient({
   const [loading,      setLoading]      = useState(initialAlunos.length === 0);
   const [loadingMore,  setLoadingMore]  = useState(false);
   const [creating,     startCreate]     = useTransition();
-  const [toast,        setToast]        = useState<ToastState>(null);
   const [showForm,     setShowForm]     = useState(false);
   const [invite,       setInvite]       = useState({ nome: "", email: "" });
 
@@ -791,7 +761,7 @@ export default function AlunosListClient({
         : setAlunos(json.items ?? []);
       setNextCursor(json.next_cursor ?? null);
     } catch (e: any) {
-      setToast({ type: "error", message: e.message });
+      error("Erro ao listar alunos", e.message);
       if (!opts?.append) setAlunos([]);
     } finally {
       opts?.append ? setLoadingMore(false) : setLoading(false);
@@ -851,7 +821,7 @@ export default function AlunosListClient({
       setModal(m => ({ ...m, open: false }));
       fetchAlunos();
     } catch (e: any) {
-      setToast({ type: "error", message: e.message });
+      error("Erro", e.message);
       setModal(m => ({ ...m, open: false }));
     }
   };
@@ -867,7 +837,7 @@ export default function AlunosListClient({
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao arquivar.");
-      setToast({ type: "success", message: `${aluno.nome} arquivado.` });
+      success("Aluno arquivado", `${aluno.nome} arquivado.`);
       setSelected(s => { const n = new Set(s); n.delete(aluno.id); return n; });
     },
   });
@@ -885,7 +855,7 @@ export default function AlunosListClient({
           })
         )
       );
-      setToast({ type: "success", message: `${selected.size} alunos arquivados.` });
+      success("Alunos arquivados", `${selected.size} alunos arquivados.`);
       setSelected(new Set());
     },
   });
@@ -898,7 +868,7 @@ export default function AlunosListClient({
       const res  = await fetch(`/api/secretaria/alunos/${aluno.id}/restore`, { method: "POST" });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao restaurar.");
-      setToast({ type: "success", message: `${aluno.nome} restaurado.` });
+      success("Aluno restaurado", `${aluno.nome} restaurado.`);
     },
   });
 
@@ -911,7 +881,7 @@ export default function AlunosListClient({
       const res  = await fetch(`/api/secretaria/alunos/${aluno.id}/hard-delete`, { method: "POST" });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao eliminar.");
-      setToast({ type: "success", message: "Aluno eliminado." });
+      success("Aluno eliminado", "Aluno eliminado.");
     },
   });
 
@@ -939,9 +909,9 @@ export default function AlunosListClient({
       a.download     = `alunos-${tab}-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`;
       a.click();
       URL.revokeObjectURL(blobUrl);
-      setToast({ type: "success", message: `Lista exportada em ${tipo === "excel" ? "Excel" : "PDF"}.` });
+      success("Exportação concluída", `Lista exportada em ${tipo === "excel" ? "Excel" : "PDF"}.`);
     } catch (e: any) {
-      setToast({ type: "error", message: e.message });
+      error("Erro na exportação", e.message);
     } finally {
       setExporting(false);
     }
@@ -963,9 +933,9 @@ export default function AlunosListClient({
       a.download    = `alunos-seleccionados-${Date.now()}.xlsx`;
       a.click();
       URL.revokeObjectURL(blobUrl);
-      setToast({ type: "success", message: `${selected.size} alunos exportados.` });
+      success("Exportação concluída", `${selected.size} alunos exportados.`);
     } catch (e: any) {
-      setToast({ type: "error", message: e.message });
+      error("Erro na exportação", e.message);
     } finally {
       setExporting(false);
     }
@@ -976,7 +946,7 @@ export default function AlunosListClient({
   const submitInvite = (e: React.FormEvent) => {
     e.preventDefault();
     if (!invite.nome.trim() || !invite.email.trim()) {
-      setToast({ type: "error", message: "Preenche o nome e o e-mail." });
+      error("Dados inválidos", "Preenche o nome e o e-mail.");
       return;
     }
     startCreate(async () => {
@@ -990,10 +960,10 @@ export default function AlunosListClient({
         setInvite({ nome: "", email: "" });
         setShowForm(false);
         if (tab !== "ativos") setTab("ativos");
-        setToast({ type: "success", message: `${invite.nome} adicionado com sucesso.` });
+        success("Aluno adicionado", `${invite.nome} adicionado com sucesso.`);
         fetchAlunos();
       } catch (e: any) {
-        setToast({ type: "error", message: e.message });
+        error("Erro ao adicionar aluno", e.message);
       }
     });
   };
@@ -1005,12 +975,10 @@ export default function AlunosListClient({
       <ConfirmModal cfg={modal} onConfirm={runModal}
         onCancel={() => setModal(m => ({ ...m, open: false }))} />
 
-      <InlineToast toast={toast} onDismiss={() => setToast(null)} />
-
       <PagamentoDrawer
         aluno={drawerAluno}
         onClose={() => setDrawerAluno(null)}
-        onSuccess={msg => { setToast({ type: "success", message: msg }); fetchAlunos(); }}
+        onSuccess={msg => { success("Sucesso", msg); fetchAlunos(); }}
       />
 
       <SelectionBar
@@ -1018,7 +986,7 @@ export default function AlunosListClient({
         total={alunos.length}
         onClear={() => setSelected(new Set())}
         onArchive={archiveSelected}
-        onMessage={() => setToast({ type: "error", message: "Comunicados — em breve." })}
+        onMessage={() => error("Em breve", "Comunicados — em breve.")}
         onExportSelection={handleExportSelection}
       />
 

@@ -1,5 +1,6 @@
 import AuditPageView from "@/components/audit/AuditPageView";
 import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -26,6 +27,14 @@ export default async function DocumentosPage() {
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
       <div className="p-4 md:p-6">
+        <DashboardHeader
+          title="Documentos"
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Documentos" },
+          ]}
+        />
         <DocumentosEmissaoHubClient escolaId={escolaId} />
       </div>
     </>

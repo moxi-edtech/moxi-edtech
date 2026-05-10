@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { Alerta } from '@/app/super-admin/health/types';
 import { AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';
+import { useToast } from '@/components/feedback/FeedbackSystem';
 
 interface AlertsTabProps {
   alertas: Alerta[];
@@ -21,11 +22,13 @@ const getAlertColor = (nivel: string) => {
   }
 };
 
-const sendTestAlert = async () => {
-  alert('Alerta de teste enviado para todas escolas');
-};
-
 export function AlertsTab({ alertas }: AlertsTabProps) {
+  const { success } = useToast();
+
+  const sendTestAlert = async () => {
+    success("Alerta enviado", "O alerta de teste foi disparado para todas as escolas activas.");
+  };
+
   return (
     <div className="space-y-4">
       {alertas.length === 0 ? (

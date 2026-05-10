@@ -60,6 +60,9 @@ export interface AcademicStep1Props {
   periodos: Periodo[];
   creatingSession: boolean;
   onCreateSession: () => void;
+  // Dynamic Templates
+  templates?: any[];
+  onApplyTemplate?: (template: any) => void;
 }
 
 export interface AcademicStepFinancialProps {

@@ -19,8 +19,9 @@ export default async function Page(props: {
     <div className="space-y-6">
       <DashboardHeader
         title="Pagamentos"
-        description="Histórico e acompanhamento das transações"
+        description="Histórico e acompanhamento das transações."
         breadcrumbs={[
+          { label: "Início", href: `/escola/${escolaId}` },
           { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
           { label: "Pagamentos" },
         ]}

@@ -2,20 +2,15 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import type { Database, Json } from "~types/supabase";
 
-type MensalidadeRow = {
-  id: string;
-  ano_referencia: number | null;
-  ano_letivo: string | null;
-  mes_referencia: number | null;
-  valor_previsto: number | null;
-  data_vencimento: string | null;
-  status: string | null;
-  data_pagamento_efetiva: string | null;
-};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const MIN_ANO = 2000;
 const MAX_SPAN = 10;
+
+type FinanceiroLedgerMovimento = Database["public"]["Tables"]["financeiro_ledger"]["Row"];
 
 function parseYear(value: string | null): number | null {
   if (!value) return null;
@@ -24,9 +19,6 @@ function parseYear(value: string | null): number | null {
   if (parsed < MIN_ANO || parsed > new Date().getFullYear() + 1) return null;
   return parsed;
 }
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export async function GET(request: Request) {
   try {
@@ -40,12 +32,6 @@ export async function GET(request: Request) {
     if (fromAno == null || toAno == null) {
       return NextResponse.json({ ok: false, error: "Parâmetros obrigatórios: fromAno e toAno." }, { status: 400 });
     }
-    if (fromAno > toAno) {
-      return NextResponse.json({ ok: false, error: "Intervalo inválido: fromAno deve ser <= toAno." }, { status: 400 });
-    }
-    if (toAno - fromAno > MAX_SPAN) {
-      return NextResponse.json({ ok: false, error: `Intervalo máximo permitido é ${MAX_SPAN + 1} anos.` }, { status: 400 });
-    }
 
     const { data: userRes } = await supabase.auth.getUser();
     const authorizedIds = await resolveAuthorizedStudentIds({
@@ -57,98 +43,75 @@ export async function GET(request: Request) {
 
     const selectedId = url.searchParams.get("studentId");
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
-    if (!alunoId) return NextResponse.json({ ok: true, mensalidades: [] });
+    if (!alunoId) return NextResponse.json({ ok: true, mensalidades: [], movimentos: [] });
 
-    const { data, error } = await supabase
+    // 1. Buscar Mensalidades (Legado, para compatibilidade de UI e botões de pagar)
+    const { data: mensalidades, error: mensError } = await supabase
       .from("mensalidades")
-      .select("id, ano_referencia, ano_letivo, mes_referencia, valor_previsto, data_vencimento, status, data_pagamento_efetiva, matricula_id")
+      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, data_vencimento, status, data_pagamento_efetiva")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
       .gte("ano_referencia", fromAno)
       .lte("ano_referencia", toAno)
-      .order("ano_referencia", { ascending: true })
-      .order("mes_referencia", { ascending: true })
-      .order("id", { ascending: true });
+      .order("ano_referencia", { ascending: false })
+      .order("mes_referencia", { ascending: false });
 
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    if (mensError) throw mensError;
 
+    // 2. Buscar Movimentos do Ledger (SSOT)
+    const { data: movimentos, error: ledgerError } = await supabase
+      .from("financeiro_ledger")
+      .select("*")
+      .eq("aluno_id", alunoId)
+      .eq("escola_id", ctx.escolaId)
+      .order("data_movimento", { ascending: false });
+
+    if (ledgerError) throw ledgerError;
+
+    // 3. Dados de pagamento da escola
+    let dados_pagamento: Json | null = null;
+    const { data: escola } = await supabase.from('escolas').select('dados_pagamento').eq('id', ctx.escolaId).maybeSingle();
+    if (escola?.dados_pagamento) dados_pagamento = escola.dados_pagamento;
+
+    // 4. Mapear status pendente real baseado no Ledger (opcional, ou manter o flag da tabela legada)
     const hoje = new Date().toISOString().slice(0, 10);
-    const mensalidadeIds = (data || []).map((item) => item.id);
-
-    let pendenciasMap = new Map<string, boolean>();
-    let ultimoComprovativoEnviadoEm: string | null = null;
-    let totalComprovativosPendentes = 0;
-    if (mensalidadeIds.length > 0) {
-      const { data: pendencias } = await supabase
-        .from("pagamentos")
-        .select("mensalidade_id, created_at")
-        .eq("escola_id", ctx.escolaId)
-        .eq("aluno_id", alunoId)
-        .eq("status", "pending")
-        .in("mensalidade_id", mensalidadeIds);
-
-      totalComprovativosPendentes = (pendencias || []).length;
-      ultimoComprovativoEnviadoEm = (pendencias || [])
-        .map((item) => item.created_at)
-        .filter((value): value is string => Boolean(value))
-        .sort((left, right) => right.localeCompare(left))[0] ?? null;
-
-      pendenciasMap = new Map(
-        (pendencias || [])
-          .filter((item) => item.mensalidade_id)
-          .map((item) => [String(item.mensalidade_id), true]),
-      );
-    }
-
-    const rows = (data || []).map((m: MensalidadeRow) => {
+    const rows = (mensalidades || []).map((m) => {
       const competencia = `${m.ano_referencia}-${String(m.mes_referencia).padStart(2, "0")}`;
       const vencimento = m.data_vencimento ?? "";
-      const pago_em = m.data_pagamento_efetiva ?? null;
-      let status: "pago" | "pendente" | "atrasado" | "em_verificacao" = "pendente";
-      if ((m.status as string) === "pago") status = "pago";
-      else if (pendenciasMap.has(m.id)) status = "em_verificacao";
-      else if (vencimento && vencimento < hoje) status = "atrasado";
-      return { id: m.id, competencia, valor: Number(m.valor_previsto ?? 0), vencimento, status, pago_em };
+      let status = m.status;
+      if (status === "pendente" && vencimento < hoje) status = "atrasado";
+      return { 
+        id: m.id, 
+        competencia, 
+        valor: Number(m.valor_previsto ?? m.valor ?? 0), 
+        vencimento, 
+        status, 
+        pago_em: m.data_pagamento_efetiva 
+      };
     });
 
-    // Dados de pagamento da escola
-    let dados_pagamento: {
-      iban?: string;
-      banco?: string;
-      titular?: string;
-    } | null = null;
-    try {
-      const { data: escola } = await supabase
-        .from('escolas')
-        .select('dados_pagamento')
-        .eq('id', ctx.escolaId)
-        .maybeSingle();
-
-      if (escola?.dados_pagamento) {
-        const raw = escola.dados_pagamento as Record<string, unknown>;
-        dados_pagamento = {
-          iban: typeof raw.iban === 'string' ? raw.iban : undefined,
-          banco: typeof raw.banco === 'string' ? raw.banco : undefined,
-          titular: typeof raw.titular === 'string' ? raw.titular : undefined,
-        };
-      }
-    } catch (e) {
-      console.error('Erro ao buscar dados de pagamento:', e);
-    }
+    // 5. Calcular Saldo Consolidado
+    const ledgerMovimentos = (movimentos ?? []) as FinanceiroLedgerMovimento[];
+    const totalDebitos = ledgerMovimentos.filter((m) => m.tipo === "debito").reduce((a, b) => a + Number(b.valor), 0) || 0;
+    const totalCreditos = ledgerMovimentos.filter((m) => m.tipo === "credito").reduce((a, b) => a + Number(b.valor), 0) || 0;
+    const saldoConsolidado = totalDebitos - totalCreditos;
 
     return NextResponse.json({
       ok: true,
       mensalidades: rows,
-      filters: { fromAno, toAno },
-      comprovativo_status: {
-        pendentes: totalComprovativosPendentes,
-        ultimo_envio_em: ultimoComprovativoEnviadoEm,
+      movimentos: ledgerMovimentos,
+      resumo: {
+        saldo_consolidado: saldoConsolidado,
+        total_pago: totalCreditos,
+        total_pendente: saldoConsolidado > 0 ? saldoConsolidado : 0,
+        em_dia: saldoConsolidado <= 0
       },
       dados_pagamento,
+      fonte: "financeiro_ledger (SSOT)"
     });
-    } catch (e) {
 
-    const message = e instanceof Error ? e.message : String(e);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

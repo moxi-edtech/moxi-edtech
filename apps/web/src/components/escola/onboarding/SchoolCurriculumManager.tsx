@@ -9,6 +9,7 @@ import {
   ArrowUpCircle,
   Info,
 } from "lucide-react";
+import { useConfirm } from "@/components/feedback/FeedbackSystem";
 
 import type { DisciplineComponent } from "@/lib/academico/curriculum-presets";
 
@@ -38,6 +39,7 @@ export function SchoolCurriculumManager({
   onCancel,
   className,
 }: Props) {
+  const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number>>(initialOverrides);
 
@@ -55,12 +57,15 @@ export function SchoolCurriculumManager({
     }));
   };
 
-  const handleRestoreDefaults = () => {
-    if (
-      window.confirm(
-        "Tem certeza que deseja restaurar a carga horária padrão do MED? Todas as customizações desta classe serão perdidas."
-      )
-    ) {
+  const handleRestoreDefaults = async () => {
+    const ok = await confirm({
+      title: "Restaurar carga horária",
+      message: "Tem certeza que deseja restaurar a carga horária padrão do MED? Todas as customizações desta classe serão perdidas e os valores originais serão aplicados.",
+      confirmLabel: "Restaurar padrão",
+      variant: "danger",
+    });
+
+    if (ok) {
       setOverrides({});
     }
   };

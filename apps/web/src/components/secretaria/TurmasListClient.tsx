@@ -18,6 +18,7 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { formatTurmaNomeHumano } from "@/utils/formatters";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import type { TurmaItem } from "~/types/turmas";
 
 // ─── Design tokens (single source of truth) ───────────────────────────────────
@@ -133,52 +134,6 @@ const HEALTH_CONFIG: Record<HealthSignal, { label: string; dot: string; ring: st
 };
 
 // ─── Lightweight helpers ──────────────────────────────────────────────────────
-
-type ToastState = { message: string; type: "success" | "error" } | null;
-
-function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(onDismiss, 4000);
-    return () => clearTimeout(t);
-  }, [toast, onDismiss]);
-
-  if (!toast) return null;
-  return (
-    <div className={`
-      fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg
-      text-sm font-semibold animate-in slide-in-from-bottom-2 duration-200
-      ${toast.type === "success" ? "bg-[#1F6B3B] text-white" : "bg-rose-600 text-white"}
-    `}>
-      {toast.message}
-      <button onClick={onDismiss}><X size={14} /></button>
-    </div>
-  );
-}
-
-function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
-  open: boolean; message: string; loading: boolean;
-  onConfirm: () => void; onCancel: () => void;
-}) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
-        <p className="text-sm font-medium text-slate-700">{message}</p>
-        <div className="flex justify-end gap-3">
-          <button onClick={onCancel} disabled={loading}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
-            Cancelar
-          </button>
-          <button onClick={onConfirm} disabled={loading}
-            className="px-4 py-2 rounded-xl bg-klasse-gold-500 text-white text-sm font-bold hover:bg-klasse-gold-600 disabled:opacity-60 transition-colors">
-            {loading ? "Aprovando…" : "Confirmar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
 // All operationally useful filters in one bar. Admin sees all; secretary sees subset.
@@ -722,16 +677,17 @@ function TurmaRow({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function TurmasListClient({ 
+export default function TurmasListClient({
   adminMode = false,
   initialData = null
-}: { 
+}: {
   adminMode?: boolean;
   initialData?: TurmasResponse | null;
 }) {
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
-  const pathname = usePathname();
-  const slugFromPath = useMemo(() => {
+  const { success, error, toast } = useToast();
+  const confirm = useConfirm();
+  const pathname = usePathname();  const slugFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
@@ -781,7 +737,7 @@ export default function TurmasListClient({
       });
       const json = await res.json();
       if (json.ok) {
-        setToast({ message: "Substituto atribuído com sucesso!", type: "success" });
+        success("Sucesso", "Substituto atribuído com sucesso!");
         setSubstituting(null);
         setSelectedProf("");
         fetchQuickView(turmaId);
@@ -789,7 +745,7 @@ export default function TurmasListClient({
         throw new Error(json.error || "Erro ao atribuir");
       }
     } catch (err: any) {
-      setToast({ message: err.message, type: "error" });
+      error("Erro ao atribuir", err.message);
     }
   };
 
@@ -822,20 +778,25 @@ export default function TurmasListClient({
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao iniciar impressão");
-      setToast({ message: "Lote de impressão iniciado. Verifique o Hub de Documentos para baixar.", type: "success" });
+      success("Impressão iniciada", "O lote de documentos foi enviado para processamento. Poderá baixar tudo no Hub de Documentos em instantes.");
       setSelectedIds(new Set());
     } catch (err: any) {
-      setToast({ message: err.message, type: "error" });
+      error("Erro na impressão", "Não conseguimos gerar o lote de documentos agora. Por favor, tente novamente.");
     }
   };
 
   const handleBulkClose = async () => {
     if (!escolaId || selectedIds.size === 0) return;
-    const confirm = window.confirm(`Deseja realmente FECHAR o período de ${selectedIds.size} turma(s)? Isso bloqueará o lançamento de novas notas.`);
-    if (!confirm) return;
+    const ok = await confirm({
+      title: "Fechar períodos lectivos",
+      message: `Deseja realmente FECHAR o período de ${selectedIds.size} turma(s)? Esta acção irá bloquear o lançamento de novas notas.`,
+      confirmLabel: "Fechar períodos",
+      variant: "danger",
+    });
+    if (!ok) return;
 
-    let success = 0;
-    let failed = 0;
+    let successCount = 0;
+    let failedCount = 0;
 
     for (const id of Array.from(selectedIds)) {
       try {
@@ -844,23 +805,25 @@ export default function TurmasListClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "FECHADO", reason: "Fechamento em bloco (Secretaria)" }),
         });
-        if (res.ok) success++;
-        else failed++;
+        if (res.ok) successCount++;
+        else failedCount++;
       } catch {
-        failed++;
+        failedCount++;
       }
     }
 
-    setToast({
-      message: `${success} turma(s) fechada(s). ${failed > 0 ? `${failed} falha(s).` : ""}`,
-      type: failed > 0 ? "error" : "success"
-    });
+    if (failedCount === 0) {
+      success("Períodos fechados", `${successCount} turma(s) foram fechadas com sucesso.`);
+    } else {
+      error("Falha no encerramento", `Processo concluído com ${successCount} sucessos e ${failedCount} falhas. Verifique as turmas restantes.`);
+    }
+
     setSelectedIds(new Set());
     fetchData();
   };
 
   const handleBulkNotify = () => {
-    setToast({ message: `Preparando notificação para encarregados de ${selectedIds.size} turma(s)...`, type: "success" });
+    success("Notificações em fila", `Estamos a preparar o envio de alertas para os encarregados de ${selectedIds.size} turma(s).`);
   };
 
   const fetchQuickView = useCallback(async (turmaId: string) => {
@@ -897,12 +860,10 @@ export default function TurmasListClient({
       setExpandedId(turmaId);
       fetchQuickView(turmaId);
     }
-  };
-  const [toast,           setToast]           = useState<ToastState>(null);
-  const [confirmOpen,     setConfirmOpen]     = useState(false);
-  const [confirmLoading,  setConfirmLoading]  = useState(false);
-  const [editingCell,     setEditingCell]     = useState<{ id: string; field: "sala" | "capacidade_maxima" } | null>(null);
-  const [inlineLoading,   setInlineLoading]   = useState<string | null>(null);
+    };
+
+    const [editingCell,     setEditingCell]     = useState<{ id: string; field: "sala" | "capacidade_maxima" } | null>(null);
+    const [inlineLoading,   setInlineLoading]   = useState<string | null>(null);
 
   const handleInlineUpdate = async (turmaId: string, field: "sala" | "capacidade_maxima", value: string | number | null) => {
     if (!escolaId) return;
@@ -918,8 +879,9 @@ export default function TurmasListClient({
       
       setItems(prev => prev.map(item => item.id === turmaId ? { ...item, [field]: value } : item));
       setEditingCell(null);
+      success("Actualizado", "A alteração foi guardada com sucesso.");
     } catch (err: any) {
-      setToast({ message: err.message || "Erro ao salvar", type: "error" });
+      error("Erro ao salvar", "Não foi possível actualizar este dado. Por favor, tente novamente.");
     } finally {
       setInlineLoading(null);
     }
@@ -1117,7 +1079,6 @@ export default function TurmasListClient({
   // ── Approve pending ───────────────────────────────────────────────────────
   const handleApproveConfirmed = useCallback(async () => {
     if (!escolaId) return;
-    setConfirmLoading(true);
     try {
       const res  = await fetch(buildEscolaUrl(escolaId, "/admin/turmas/aprovar"), {
         method: "POST",
@@ -1126,13 +1087,10 @@ export default function TurmasListClient({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao aprovar turmas");
-      setConfirmOpen(false);
-      setToast({ message: `${pendingItems.length} turma(s) aprovada(s)`, type: "success" });
+      success("Turmas aprovadas", `${pendingItems.length} turma(s) aprovada(s)`);
       await fetchData();
     } catch (err: any) {
-      setToast({ message: err?.message || "Falha ao aprovar turmas", type: "error" });
-    } finally {
-      setConfirmLoading(false);
+      error("Falha na aprovação", err?.message || "Falha ao aprovar turmas");
     }
   }, [escolaId, pendingItems, fetchData]);
 
@@ -1455,18 +1413,7 @@ export default function TurmasListClient({
         </div>
       )}
 
-      <ConfirmDialog
-        open={confirmOpen}
-        message={`Aprovar ${pendingItems.length} turma(s) pendente(s)? Esta ação não pode ser desfeita.`}
-        loading={confirmLoading}
-        onConfirm={handleApproveConfirmed}
-        onCancel={() => setConfirmOpen(false)}
-      />
-
-      <Toast toast={toast} onDismiss={() => setToast(null)} />
-
-      {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}
-      {selectedIds.size > 0 && (
+      {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}      {selectedIds.size > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-slate-700/50 backdrop-blur-md">
           <div className="flex items-center gap-3 border-r border-slate-700 pr-8">
             <div className="w-6 h-6 rounded-full bg-klasse-gold-500 text-slate-900 flex items-center justify-center text-xs font-bold">

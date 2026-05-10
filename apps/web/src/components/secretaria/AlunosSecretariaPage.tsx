@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   AlertCircle,
   Archive,
@@ -655,6 +656,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }) {
+  const { error } = useToast();
   const [valor, setValor] = useState("");
   const [metodo, setMetodo] = useState<MetodoPagamento>("numerario");
   const [ref, setRef] = useState("");
@@ -706,10 +708,10 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao registar pagamento.");
-      onSuccess(`Pagamento de ${formatKz(Number(valor))} registado para ${aluno.nome}.`);
+      onSuccess(`Pagamento registado com sucesso.`);
       onClose();
     } catch (err: any) {
-      alert(err.message);
+      error("Erro no pagamento", "Não foi possível registar o pagamento no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -1053,37 +1055,6 @@ function BulkArchiveModal({
   );
 }
 
-type ToastState = { type: "success" | "error"; message: string } | null;
-
-function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(onDismiss, toast.type === "success" ? 3500 : 0);
-    return () => clearTimeout(timer);
-  }, [toast, onDismiss]);
-
-  if (!toast) return null;
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-xl px-4 py-3 shadow-xl animate-in slide-in-from-bottom-2 duration-200 ${
-        toast.type === "success" ? "bg-[#1F6B3B]" : "bg-rose-600"
-      }`}
-    >
-      {toast.type === "success" ? (
-        <CheckCircle2 size={15} className="text-white flex-shrink-0" />
-      ) : (
-        <AlertCircle size={15} className="text-white flex-shrink-0" />
-      )}
-      <p className="text-sm font-semibold text-white">{toast.message}</p>
-      {toast.type === "error" && (
-        <button onClick={onDismiss} className="text-white/70 hover:text-white ml-1">
-          <X size={13} />
-        </button>
-      )}
-    </div>
-  );
-}
-
 function OfflineBanner({ fromCache, updatedAt }: { fromCache: boolean; updatedAt: string | null }) {
   if (!fromCache) return null;
   return (
@@ -1120,6 +1091,7 @@ const TAB_TO_STATUS: Record<TabStatus, string> = {
 
 export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string | null }) {
   const pathname = usePathname();
+  const { success, error } = useToast();
   const slugFromPath = React.useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
@@ -1155,7 +1127,6 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [drawerAluno, setDrawerAluno] = useState<Aluno | null>(null);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
   const [bulkArchiveLoading, setBulkArchiveLoading] = useState(false);
-  const [toast, setToast] = useState<ToastState>(null);
   const [tabCounts, setTabCounts] = useState<Partial<Record<TabStatus, number>>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
@@ -1274,14 +1245,14 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   };
 
   const handleArchiveSuccess = (message: string) => {
-    setToast({ type: "success", message });
+    success("Operação concluída", message);
     setPage(1);
     pageCursors.current = [null];
     load(1, tab, debouncedQ, filters);
   };
 
   const handlePagamentoSuccess = (message: string) => {
-    setToast({ type: "success", message });
+    success("Pagamento registado", message);
     load(page, tab, debouncedQ, filters);
   };
 
@@ -1385,10 +1356,10 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     const successCount = results.filter(Boolean).length;
     const failureCount = ids.length - successCount;
     if (successCount > 0) {
-      setToast({ type: "success", message: `${successCount} aluno(s) arquivado(s).` });
+      success("Alunos arquivados", `${successCount} aluno(s) arquivado(s).`);
     }
     if (failureCount > 0) {
-      setToast({ type: "error", message: `${failureCount} falha(s) ao arquivar.` });
+      error("Falha ao arquivar", `${failureCount} falha(s) ao arquivar.`);
     }
     setBulkArchiveOpen(false);
     setBulkArchiveLoading(false);
@@ -1448,8 +1419,6 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
         onClose={() => setDrawerAluno(null)}
         onSuccess={handlePagamentoSuccess}
       />
-
-      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       <div className="w-full max-w-6xl mx-auto px-6 py-8 space-y-6">
         <Breadcrumb

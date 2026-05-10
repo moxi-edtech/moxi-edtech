@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useEscolaId } from '@/hooks/useEscolaId'
+import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -103,6 +104,8 @@ export default function AdmissoesInboxClient({
   initialItems?: CandidaturaListItem[];
 }) {
   const router = useRouter()
+  const { success, error: toastError } = useToast()
+  const confirm = useConfirm()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { escolaSlug } = useEscolaId()
@@ -149,7 +152,7 @@ export default function AdmissoesInboxClient({
 
   const items = itemsData || []
   const loading = isLoading && items.length === 0
-  const error = swrError instanceof Error ? swrError.message : null
+  const listError = swrError instanceof Error ? swrError.message : null
 
   const publicLink = typeof window !== 'undefined' 
     ? `${window.location.origin}/admissoes/${escolaParam}` 
@@ -158,7 +161,7 @@ export default function AdmissoesInboxClient({
   const handleCopyLink = () => {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(publicLink)
-        .then(() => alert('Link copiado para a área de transferência!'))
+        .then(() => success('Link copiado', 'O link de acesso foi copiado. Já o pode partilhar com o encarregado ou aluno.'))
         .catch(() => fallbackCopy(publicLink))
     } else {
       fallbackCopy(publicLink)
@@ -183,13 +186,13 @@ export default function AdmissoesInboxClient({
       document.body.removeChild(textArea)
       
       if (successful) {
-        alert('Link copiado para a área de transferência!')
+        success('Link copiado', 'O link de acesso foi copiado. Já o pode partilhar com o encarregado ou aluno.')
       } else {
         throw new Error('Fallback copy failed')
       }
     } catch (err) {
       console.error('Erro ao copiar link:', err)
-      alert('Não foi possível copiar o link automaticamente. Por favor, selecione-o manualmente.')
+      toastError('Não foi possível copiar', 'Não conseguimos copiar o link automaticamente. Por favor, selecione o texto manualmente para partilhar.')
     }
   }
 
@@ -250,17 +253,29 @@ export default function AdmissoesInboxClient({
 
   const handleReject = async () => {
     if (!selectedId) return
-    const motivo = window.prompt('Motivo da rejeição (obrigatório):')?.trim()
-    if (!motivo) return
-    const ok = window.confirm('Tem certeza que deseja REJEITAR esta candidatura?')
-    if (!ok) return
+
+    const motivo = await confirm({
+      title: 'Rejeitar candidatura',
+      message: 'Por favor, indique o motivo da rejeição. Esta informação será guardada para consulta futura.',
+      inputType: 'text',
+      placeholder: 'Ex: Falta de documentação obrigatória',
+      confirmLabel: 'Rejeitar candidatura',
+      variant: 'danger'
+    })
+
+    if (!motivo || motivo.trim().length < 3) {
+      if (motivo !== null) {
+        toastError('Motivo inválido', 'Por favor, indique um motivo válido com pelo menos 3 caracteres.')
+      }
+      return
+    }
 
     setLoadingAction('rejecting')
     try {
       const res = await fetch('/api/secretaria/admissoes/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidatura_id: selectedId, motivo }),
+        body: JSON.stringify({ candidatura_id: selectedId, motivo: motivo.trim() }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao rejeitar')
@@ -270,9 +285,9 @@ export default function AdmissoesInboxClient({
         false
       )
       if (selectedData) setSelectedData({ ...selectedData, status: 'rejeitada' })
-      alert('Candidatura rejeitada.')
+      success('Candidatura rejeitada', 'A candidatura foi marcada como rejeitada. O registo permanecerá no sistema para consulta futura.')
     } catch (err: any) {
-      alert(err.message)
+      toastError('Falha na operação', 'Não foi possível rejeitar a candidatura no momento. Por favor, tente novamente.')
     } finally {
       setLoadingAction(null)
     }
@@ -280,16 +295,29 @@ export default function AdmissoesInboxClient({
 
   const handleArchive = async () => {
     if (!selectedId) return
-    const motivo = window.prompt('Motivo do arquivamento (opcional):')?.trim() || undefined
-    const ok = window.confirm('Deseja arquivar esta candidatura? Ela sairá da fila principal.')
+    
+    const ok = await confirm({
+      title: 'Arquivar candidatura',
+      message: 'Deseja mover esta candidatura para o arquivo? Ela deixará de aparecer na fila de espera principal.',
+      confirmLabel: 'Arquivar',
+    })
+
     if (!ok) return
+
+    const motivo = await confirm({
+      title: 'Motivo do arquivamento',
+      message: 'Deseja indicar um motivo para o arquivamento? (Opcional)',
+      inputType: 'text',
+      placeholder: 'Ex: Candidato desistiu do processo',
+      confirmLabel: 'Arquivar',
+    })
 
     setLoadingAction('archiving')
     try {
       const res = await fetch('/api/secretaria/admissoes/archive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidatura_id: selectedId, motivo }),
+        body: JSON.stringify({ candidatura_id: selectedId, motivo: motivo || undefined }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao arquivar')
@@ -299,9 +327,9 @@ export default function AdmissoesInboxClient({
       await mutate()
       setSelectedId(null)
       setSelectedData(null)
-      alert('Candidatura arquivada.')
+      success('Candidatura arquivada', 'A candidatura foi movida para o arquivo e já não aparece na fila de espera principal.')
     } catch (err: any) {
-      alert(err.message)
+      toastError('Falha ao arquivar', 'Houve um erro técnico ao tentar arquivar este registo. Por favor, tente novamente.')
     } finally {
       setLoadingAction(null)
     }

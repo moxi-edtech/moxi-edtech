@@ -31,5 +31,5 @@ export default async function Page() {
     .maybeSingle();
   const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId;
 
-  return redirect(`/escola/${escolaParam}/professores?tab=adicionar`);
+  return redirect(`/escola/${escolaParam}/secretaria/professores?tab=adicionar`);
 }

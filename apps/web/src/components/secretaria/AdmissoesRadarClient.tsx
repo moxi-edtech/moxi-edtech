@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Archive, Plus } from 'lucide-react'
+import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 
 type AdmissaoStatus =
   | 'rascunho'
@@ -90,6 +91,8 @@ function pickCount(data: RadarData | null, status: AdmissaoStatus, fallback: num
 export default function AdmissoesRadarClient({ escolaId }: { escolaId: string }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { success, error: toastError } = useToast()
+  const confirm = useConfirm()
   const slugFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/)
     return match?.[1] ?? null
@@ -121,47 +124,80 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
 
   const archive = useCallback(
     async (item: RadarItem) => {
-      const motivo = window.prompt("Motivo (opcional):")?.trim() || undefined
+      const ok = await confirm({
+        title: "Arquivar candidatura",
+        message: `Deseja mover a candidatura de ${item.nome_candidato || 'este candidato'} para o arquivo?`,
+        confirmLabel: "Arquivar",
+      })
+
+      if (!ok) return
+
+      const motivo = await confirm({
+        title: "Motivo do arquivamento",
+        message: "Deseja indicar um motivo para o arquivamento? (Opcional)",
+        inputType: "text",
+        placeholder: "Ex: Candidato desistiu do processo",
+        confirmLabel: "Concluir arquivamento",
+      })
+
       setActionLoadingId(item.id)
       try {
         const res = await fetch('/api/secretaria/admissoes/archive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidatura_id: item.id, motivo }),
+          body: JSON.stringify({ candidatura_id: item.id, motivo: motivo || undefined }),
         })
         const json = await res.json().catch(() => null)
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao arquivar')
+        
+        success("Candidatura arquivada", "O registo foi movido para o arquivo com sucesso.")
         reload()
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Falha ao arquivar')
+        toastError("Erro ao arquivar", "Não conseguimos arquivar esta candidatura no momento. Por favor, tente novamente.")
       } finally {
         setActionLoadingId(null)
       }
     },
-    [reload]
+    [confirm, reload, success, toastError]
   )
 
   const reject = useCallback(
     async (item: RadarItem) => {
-      const motivo = window.prompt("Motivo da rejeição:")?.trim()
-      if (!motivo) return
+      const motivo = await confirm({
+        title: "Rejeitar candidatura",
+        message: `Por favor, indique o motivo da rejeição da candidatura de ${item.nome_candidato || 'este candidato'}.`,
+        inputType: "text",
+        placeholder: "Ex: Falta de documentação obrigatória",
+        confirmLabel: "Rejeitar candidatura",
+        variant: "danger"
+      })
+
+      if (!motivo || motivo.trim().length < 3) {
+        if (motivo !== null) {
+          toastError("Motivo necessário", "Por favor, indique um motivo válido com pelo menos 3 caracteres.")
+        }
+        return
+      }
+
       setActionLoadingId(item.id)
       try {
         const res = await fetch('/api/secretaria/admissoes/reject', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidatura_id: item.id, motivo }),
+          body: JSON.stringify({ candidatura_id: item.id, motivo: motivo.trim() }),
         })
         const json = await res.json().catch(() => null)
         if (!res.ok) throw new Error(json?.details || json?.error || 'Falha ao rejeitar')
+        
+        success("Candidatura rejeitada", "A candidatura foi marcada como rejeitada e o registo foi actualizado.")
         reload()
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Falha ao rejeitar')
+        toastError("Erro na rejeição", "Houve um erro técnico ao tentar rejeitar a candidatura. Por favor, tente novamente.")
       } finally {
         setActionLoadingId(null)
       }
     },
-    [reload]
+    [confirm, reload, success, toastError]
   )
 
   const fetchData = useCallback(

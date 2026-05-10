@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Sparkles, ArrowRight, Loader2, CheckCircle2, AlertCircle, Wallet } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 
 type RematriculaStatus = {
   ok: boolean
@@ -17,6 +18,8 @@ type RematriculaStatus = {
 
 export function RematriculaBanner() {
   const router = useRouter()
+  const { success, error } = useToast()
+  const confirm = useConfirm()
   const [status, setStatus] = useState<RematriculaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -47,7 +50,13 @@ export function RematriculaBanner() {
       return
     }
 
-    if (!window.confirm(`Deseja confirmar sua rematrícula para o Ano Letivo ${status?.nextAno}?`)) return
+    const ok = await confirm({
+      title: 'Confirmar rematrícula',
+      message: `Deseja confirmar a sua rematrícula para o Ano Lectivo ${status?.nextAno}? Esta acção irá iniciar o processo administrativo de renovação.`,
+      confirmLabel: 'Confirmar agora',
+    })
+
+    if (!ok) return
 
     setBusy(true)
     try {
@@ -55,10 +64,16 @@ export function RematriculaBanner() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao confirmar')
       
-      alert('Pedido de rematrícula enviado com sucesso! A secretaria irá processar sua solicitação.')
+      success(
+        'Pedido enviado',
+        'O seu pedido de rematrícula foi enviado com sucesso. A secretaria irá processar a solicitação e em breve terá uma atualização aqui no portal.'
+      )
       fetchStatus()
     } catch (err: any) {
-      alert(err.message)
+      error(
+        'Não foi possível completar o pedido',
+        'Ocorreu um problema ao processar a sua rematrícula. Por favor, tente novamente em instantes ou contacte a secretaria se o problema persistir.'
+      )
     } finally {
       setBusy(false)
     }

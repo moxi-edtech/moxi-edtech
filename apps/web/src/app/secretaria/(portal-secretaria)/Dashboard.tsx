@@ -160,7 +160,7 @@ export function Dashboard({
                     disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
                   />
                   <Link
-                    href="admissoes?nova=1"
+                    href={buildPortalHref(escolaParam, "/secretaria/admissoes?nova=1")}
                     className="
                       inline-flex items-center justify-center gap-2
                       rounded-xl bg-klasse-gold px-4 py-2
@@ -201,7 +201,7 @@ export function Dashboard({
                   Monitor único de fechamento acadêmico e lotes oficiais de documentos.
                 </p>
                 <Link
-                  href="operacoes-academicas"
+                  href={buildPortalHref(escolaParam, "/secretaria/operacoes-academicas")}
                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Abrir painel
@@ -266,7 +266,7 @@ export function Dashboard({
                 <div className="flex items-center justify-between mb-4">
                   <SecaoLabel>Matrículas recentes</SecaoLabel>
                   <Link
-                    href="admissoes"
+                    href={buildPortalHref(escolaParam, "/secretaria/admissoes")}
                     className="text-xs font-semibold text-[#1F6B3B] hover:underline"
                   >
                     Ver tudo
@@ -278,27 +278,27 @@ export function Dashboard({
                 <div>
                   <SecaoLabel>Gestão</SecaoLabel>
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <AcaoRapidaCard icon={<Users className="h-5 w-5" />} label="Alunos" href="alunos" />
+                    <AcaoRapidaCard icon={<Users className="h-5 w-5" />} label="Alunos" href={buildPortalHref(escolaParam, "/secretaria/alunos")} />
                     <AcaoRapidaCard
                       icon={<UserCheck className="h-5 w-5" />}
                       label="Professores"
-                      href="professores"
+                      href={buildPortalHref(escolaParam, "/secretaria/professores")}
                     />
-                    <AcaoRapidaCard icon={<Building className="h-5 w-5" />} label="Turmas" href="turmas" />
+                    <AcaoRapidaCard icon={<Building className="h-5 w-5" />} label="Turmas" href={buildPortalHref(escolaParam, "/secretaria/turmas")} />
                     <AcaoRapidaCard
                       icon={<RefreshCcw className="h-5 w-5" />}
                       label="Rematrículas"
-                      href="rematricula"
+                      href={buildPortalHref(escolaParam, "/secretaria/rematricula")}
                     />
                     <AcaoRapidaCard
                       icon={<KeyRound className="h-5 w-5" />}
                       label="Acesso Alunos"
-                      href="acesso-alunos"
+                      href={buildPortalHref(escolaParam, "/secretaria/acesso-alunos")}
                     />
                     <AcaoRapidaCard
                       icon={<Upload size={20} className="text-klasse-green-600" />}
                       label="Migração"
-                      href="migracao/alunos"
+                      href={buildPortalHref(escolaParam, "/secretaria/migracao/alunos")}
                     />
                   </div>
                 </div>
@@ -327,7 +327,7 @@ export function Dashboard({
           <div className="space-y-4">
             <AdmissaoWizardClient escolaId={escolaId} />
             <Link
-              href="admissoes"
+              href={buildPortalHref(escolaParam, "/secretaria/admissoes")}
               className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
               Abrir admissões completas

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -176,6 +177,17 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
+      <div className="max-w-5xl mx-auto px-4 pt-4">
+        <DashboardHeader
+          title="Editar Aluno"
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Alunos", href: "/secretaria/alunos" },
+            { label: "Editar" },
+          ]}
+        />
+      </div>
       {/* Header Fixo */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">

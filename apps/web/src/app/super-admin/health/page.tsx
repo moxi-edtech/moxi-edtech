@@ -131,7 +131,7 @@ export default function AdminHealthDashboard() {
             
             <div className="flex gap-2">
               <Button variant="outline" size="sm" asChild>
-                <a href="/super-admin/logs">
+                <a href="/super-admin/diagnostics">
                   Ver Logs Completos
                 </a>
               </Button>

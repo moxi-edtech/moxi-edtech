@@ -3,20 +3,47 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { 
+  emitirDocumentoFiscalViaAdapter, 
+  resolveEmpresaFiscalAtiva 
+} from "@/lib/fiscal/financeiroFiscalAdapter";
+import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const payloadSchema = z.object({
   aluno_id: z.string().uuid(),
-  mensalidade_id: z.string().uuid().nullable().optional(),
+  mensalidade_id: z.string().uuid(),
   valor: z.number().positive(),
   metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"]),
   reference: z.string().trim().min(1).nullable().optional(),
   evidence_url: z.string().trim().min(1).nullable().optional(),
   gateway_ref: z.string().trim().min(1).nullable().optional(),
-  meta: z.record(z.any()).optional(),
+  meta: z.record(z.unknown()).optional(),
 });
+
+type PagamentoRow = Database["public"]["Functions"]["financeiro_registrar_pagamento_secretaria"]["Returns"];
+type BalcaoFiscalResult =
+  | {
+      ok: true;
+      documento_id: string;
+      numero_formatado: string;
+      url_validacao: string | null;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function getStringField(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await supabaseServerTyped<Database>();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -63,21 +90,59 @@ export async function POST(request: Request) {
     }
 
     const payload = parsed.data;
-    const metodo = payload.metodo === "kwik" ? "kiwk" : payload.metodo;
-    const { data, error } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
+    const meta = asRecord(payload.meta);
+    const metodo = payload.metodo === "kiwk" ? "kwik" : payload.metodo;
+    
+    // 1. Registro Financeiro
+    const { data: pagamento, error: pgError } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
       p_escola_id: escolaId,
       p_aluno_id: payload.aluno_id,
-      p_mensalidade_id: payload.mensalidade_id ?? null,
+      p_mensalidade_id: payload.mensalidade_id,
       p_valor: payload.valor,
       p_metodo: metodo,
-      p_reference: payload.reference ?? null,
-      p_evidence_url: payload.evidence_url ?? null,
-      p_gateway_ref: payload.gateway_ref ?? null,
-      p_meta: { ...(payload.meta ?? {}), idempotency_key: idempotencyKey },
+      p_reference: payload.reference ?? undefined,
+      p_evidence_url: payload.evidence_url ?? undefined,
+      p_gateway_ref: payload.gateway_ref ?? undefined,
+      p_meta: { ...meta, idempotency_key: idempotencyKey },
     });
 
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    if (pgError) throw pgError;
+
+    // 2. Emissão Fiscal Síncrona (O Papel na Mão)
+    const pagamentoRow = pagamento as PagamentoRow | null;
+    let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
+    try {
+      const origin = new URL(request.url).origin;
+      const cookieHeader = request.headers.get("cookie");
+      
+      const fiscal = await emitirDocumentoFiscalViaAdapter({
+        tipoFluxoFinanceiro: "immediate_payment",
+        origemOperacao: "financeiro_balcao_pagamento",
+        origemId: pagamentoRow?.id || idempotencyKey,
+        descricaoPrincipal: "Pagamento via Balcão",
+        itens: [{ 
+          descricao: getStringField(meta, "descricao_item") || "Serviço/Item Balcão",
+          valor: payload.valor 
+        }],
+        cliente: { nome: null, nif: null },
+        escolaId,
+        origin,
+        cookieHeader,
+        metadata: {
+          pagamento_id: pagamentoRow?.id,
+          aluno_id: payload.aluno_id
+        }
+      });
+
+      fiscalResult = {
+        ok: true,
+        documento_id: fiscal.documento_id,
+        numero_formatado: fiscal.numero_formatado,
+        url_validacao: null // Placeholder
+      };
+    } catch (fError: unknown) {
+      const message = fError instanceof Error ? fError.message : String(fError);
+      console.error("[BALCAO-FISCAL] Falha síncrona:", message);
     }
 
     recordAuditServer({
@@ -85,11 +150,11 @@ export async function POST(request: Request) {
       portal: "secretaria",
       acao: "PAGAMENTO_REGISTRADO",
       entity: "pagamento",
-      entityId: (data as any)?.id ?? null,
-      details: { valor: payload.valor, metodo, status: (data as any)?.status ?? null },
+      entityId: pagamentoRow?.id ?? null,
+      details: { valor: payload.valor, metodo, fiscal_ok: fiscalResult.ok },
     }).catch(() => null);
 
-    const intentId = (payload.meta as any)?.pagamento_intent_id ?? null;
+    const intentId = getStringField(meta, "pagamento_intent_id");
     if (intentId) {
       await confirmPagamentoIntent({
         supabase,
@@ -99,16 +164,21 @@ export async function POST(request: Request) {
         reference: payload.reference ?? null,
         terminalId: payload.gateway_ref ?? null,
         evidenceUrl: payload.evidence_url ?? null,
-        meta: payload.meta ?? {},
+        meta,
       });
     }
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ 
+      ok: true, 
+      data: pagamento,
+      fiscal: fiscalResult
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
 
 async function confirmPagamentoIntent({
   supabase,
@@ -120,14 +190,14 @@ async function confirmPagamentoIntent({
   evidenceUrl,
   meta,
 }: {
-  supabase: Awaited<ReturnType<typeof supabaseServerTyped<any>>>;
+  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
   intentId: string;
   escolaId: string;
   metodo: string;
   reference: string | null;
   terminalId: string | null;
   evidenceUrl: string | null;
-  meta: Record<string, any>;
+  meta: Record<string, unknown>;
 }) {
   const { data: intent, error } = await supabase
     .from("pagamento_intents")
@@ -154,7 +224,7 @@ async function confirmPagamentoIntent({
       reference: reference ?? undefined,
       terminal_id: terminalId ?? undefined,
       evidence_url: evidenceUrl ?? undefined,
-      meta: { ...(meta ?? {}), confirmed_via: "balcao_pagamentos" },
+      meta: { ...meta, confirmed_via: "balcao_pagamentos" } as Json,
       settled_at: newStatus === "settled" ? new Date().toISOString() : null,
     })
     .eq("id", intentId);

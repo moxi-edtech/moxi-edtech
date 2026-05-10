@@ -1,6 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AdmissoesInboxClient from "@/components/secretaria/AdmissoesInboxClient";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { resolveSecretariaEscolaIdForPage } from "@/lib/secretaria/resolveSecretariaEscolaIdForPage";
 
 export const dynamic = 'force-dynamic'
@@ -85,8 +86,15 @@ export default async function Page({ params }: PageProps = {}) {
   return (
     <div className="flex flex-col gap-4">
       <div className="px-6 pt-6">
-        <h1 className="text-2xl font-bold text-slate-900 font-sans">Gestão de Admissões</h1>
-        <p className="text-sm text-slate-500">Acompanhe e processe novas matrículas online com foco em produtividade.</p>
+        <DashboardHeader
+          title="Gestão de Admissões"
+          description="Acompanhe e processe novas matrículas online com foco em produtividade."
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Admissões" },
+          ]}
+        />
       </div>
 
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_inbox" />

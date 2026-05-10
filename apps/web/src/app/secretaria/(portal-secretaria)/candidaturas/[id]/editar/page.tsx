@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from '@/components/ui/Button';
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 interface CandidaturaForm {
   nome: string;
@@ -152,8 +153,16 @@ export default function EditarCandidaturaPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-klasse-gold-500 rounded-full mb-4">
             <PencilSquareIcon className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-moxinexa-dark mb-2">Resolver pendências da candidatura</h1>
-          <p className="text-moxinexa-gray text-lg">Atualize apenas os dados necessários para matrícula</p>
+          <DashboardHeader
+            title="Resolver Pendências da Candidatura"
+            description="Atualize apenas os dados necessários para matrícula."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Secretaria", href: "/secretaria" },
+              { label: "Admissões", href: "/secretaria/admissoes" },
+              { label: "Editar" },
+            ]}
+          />
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">

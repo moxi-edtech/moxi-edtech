@@ -15,6 +15,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 type WizardState = "validando" | "bloqueado" | "pronto" | "rodando" | "falha" | "concluido";
 type JobStep = "PENDING" | "CLOSING_PERIOD" | "FINALIZING_ENROLLMENTS" | "GENERATING_HISTORY" | "COMPLETED";
@@ -351,7 +352,7 @@ export default function FechamentoAcademicoPage() {
               Verificar novamente
             </button>
             <Link
-              href="sanidade"
+              href="/secretaria/fechamento-academico/sanidade"
               className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
             >
               Abrir relatório completo
@@ -377,10 +378,15 @@ export default function FechamentoAcademicoPage() {
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-4xl mx-auto">
       <div className="mb-8 border-b border-slate-100 pb-6 space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 font-sora mb-2">{titulo}</h1>
-          <p className="text-slate-500 text-sm">
-            O sistema faz tudo automaticamente. Evite fechar esta janela durante a execução.
-          </p>
+          <DashboardHeader
+            title={titulo}
+            description="O sistema faz tudo automaticamente. Evite fechar esta janela durante a execução."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Secretaria", href: "/secretaria" },
+              { label: "Fechamento Acadêmico" },
+            ]}
+          />
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <select className="rounded border p-2" value={acao} onChange={(e) => setAcao(e.target.value as any)}>
@@ -434,7 +440,7 @@ export default function FechamentoAcademicoPage() {
             Verificar se está tudo pronto
           </button>
           <Link
-            href="sanidade"
+            href="/secretaria/fechamento-academico/sanidade"
             className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
           >
             Abrir sanidade detalhada

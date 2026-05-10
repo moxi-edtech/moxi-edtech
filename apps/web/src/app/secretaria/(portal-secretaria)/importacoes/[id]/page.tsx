@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { AlertTriangle, ArrowLeft, FileText, List, Table } from "lucide-react";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 type ImportItem = {
   id: string;
@@ -80,9 +81,17 @@ export default async function ImportacaoDetailPage({ params }: { params: Promise
           <Link href="../" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-teal-700">
             <ArrowLeft size={16} /> Voltar
           </Link>
-          <h1 className="text-xl font-semibold text-slate-900">Detalhes da importação</h1>
         </div>
       </div>
+      <DashboardHeader
+        title="Detalhes da importação"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Importações", href: "/secretaria/importacoes" },
+          { label: "Detalhe" },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-4">

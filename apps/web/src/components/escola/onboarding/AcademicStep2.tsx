@@ -243,7 +243,7 @@ export default function AcademicStep2({
   onCurriculumOverridesChange,
 }: AcademicStep2Props) {
   const supabase = useMemo(() => createClient(), []);
-  const { toast, dismiss, success, error } = useToast();
+  const { toast, dismiss, success, error, warning } = useToast();
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
   const [selectedCurriculumCourse, setSelectedCurriculumCourse] = useState<CurriculumKey | "">("");
@@ -347,8 +347,7 @@ export default function AcademicStep2({
   const handleAddCourse = async () => {
     if (!selectedPresetKey) return;
     if (addedCourses.find((c) => c.id === selectedPresetKey)) {
-      // Idealmente usar toast aqui, mas alert serve por hora se não tiver contexto
-      alert("Curso já adicionado."); 
+      warning("Curso já adicionado", "Este curso já consta na sua lista de oferta formativa."); 
       return;
     }
 

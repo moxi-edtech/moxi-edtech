@@ -1,21 +1,30 @@
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { BookOpen, Search, Filter, ArrowUpDown, Users, BookCheck, GraduationCap, BarChart3 } from "lucide-react";
 import { buildPortalHref } from "@/lib/navigation";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
 type Search = { q?: string; orderBy?: string; dir?: string; page?: string; pageSize?: string };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>, searchParams?: Promise<Search> }) {
-  const { id: escolaId } = await params;
+  const { id: idParam } = await params;
+  const s = await supabaseServer();
+
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return notFound();
+
+  const escolaId = await resolveEscolaIdForUser(s as any, user.id, idParam);
+  if (!escolaId) return notFound();
+
   const sp = (await searchParams) || {};
   const q = (sp.q || '').trim();
   const orderBy = (sp.orderBy || 'recentes');
   const dir = (sp.dir || (orderBy === 'nota' ? 'desc' : 'desc')).toLowerCase() === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, parseInt(sp.page || '1', 10) || 1);
   const pageSize = Math.min(100, Math.max(1, parseInt(sp.pageSize || '20', 10) || 20));
-  const s = await supabaseServer();
 
   // Ajustado ao schema atual:
   // - notas: matricula_id, avaliacao_id, valor

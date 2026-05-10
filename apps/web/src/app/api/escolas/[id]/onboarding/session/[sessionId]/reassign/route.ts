@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import type { Database } from "~types/supabase";
+
+function extractTargetSessionId(body: unknown) {
+  if (!body || typeof body !== "object" || !("targetSessionId" in body)) return "";
+
+  const value = (body as { targetSessionId?: unknown }).targetSessionId;
+  return value == null ? "" : String(value).trim();
+}
 
 // POST /api/escolas/[id]/onboarding/session/[sessionId]/reassign
 // Reassigns dependents (turmas, matriculas) from one session to another within the same escola.
@@ -13,12 +21,12 @@ export async function POST(
   const { id: escolaId, sessionId } = await context.params;
 
   try {
-    const s = await supabaseServer();
+    const s = await supabaseServerTyped<Database>();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
     if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
@@ -32,8 +40,7 @@ export async function POST(
         .eq('escola_id', resolvedEscolaId)
         .eq('user_id', user.id)
         .maybeSingle();
-      const papel = (vinc as any)?.papel as string | undefined;
-      if (!allowed) allowed = !!papel && hasPermission(papel as any, 'configurar_escola');
+      if (!allowed) allowed = !!vinc?.papel && hasPermission(vinc.papel, 'configurar_escola');
     } catch {}
     if (!allowed) {
       try {
@@ -43,7 +50,7 @@ export async function POST(
           .eq('escola_id', resolvedEscolaId)
           .eq('user_id', user.id)
           .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
+        allowed = Boolean(adminLink?.length);
       } catch {}
     }
     if (!allowed) {
@@ -54,13 +61,13 @@ export async function POST(
           .eq('user_id', user.id)
           .eq('escola_id', resolvedEscolaId)
           .limit(1);
-        allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin');
+        allowed = Boolean(prof?.some((profile) => profile.role === 'admin'));
       } catch {}
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
-    const body = await req.json().catch(() => ({}));
-    const targetSessionId = String((body?.targetSessionId ?? '')).trim();
+    const body: unknown = await req.json().catch(() => ({}));
+    const targetSessionId = extractTargetSessionId(body);
     if (!targetSessionId) {
       return NextResponse.json({ ok: false, error: 'Parâmetro targetSessionId é obrigatório' }, { status: 400 });
     }
@@ -70,27 +77,47 @@ export async function POST(
 
     // Validate current and target sessions belong to the escola
     const [fromRes, toRes] = await Promise.all([
-      (s as any).from('anos_letivos').select('id, escola_id, ano').eq('id', sessionId).limit(1),
-      (s as any).from('anos_letivos').select('id, escola_id, ano').eq('id', targetSessionId).limit(1),
+      s
+        .from('anos_letivos')
+        .select('id, escola_id, ano')
+        .eq('id', sessionId)
+        .eq('escola_id', resolvedEscolaId)
+        .maybeSingle(),
+      s
+        .from('anos_letivos')
+        .select('id, escola_id, ano')
+        .eq('id', targetSessionId)
+        .eq('escola_id', resolvedEscolaId)
+        .maybeSingle(),
     ]);
-    const fromSess = Array.isArray(fromRes.data) ? fromRes.data[0] : undefined;
-    const toSess = Array.isArray(toRes.data) ? toRes.data[0] : undefined;
-    if (!fromSess || String(fromSess.escola_id) !== String(escolaId)) {
+    if (fromRes.error) return NextResponse.json({ ok: false, error: fromRes.error.message }, { status: 400 });
+    if (toRes.error) return NextResponse.json({ ok: false, error: toRes.error.message }, { status: 400 });
+
+    const fromSess = fromRes.data;
+    const toSess = toRes.data;
+    if (!fromSess) {
       return NextResponse.json({ ok: false, error: 'Ano letivo de origem não encontrado' }, { status: 404 });
     }
-    if (!toSess || String(toSess.escola_id) !== String(escolaId)) {
+    if (!toSess) {
       return NextResponse.json({ ok: false, error: 'Ano letivo de destino não encontrado' }, { status: 404 });
     }
 
     // Count current dependents to report
-    const anoOrigem = fromSess.ano ? String(fromSess.ano) : null;
-    const anoDestino = toSess.ano ? String(toSess.ano) : null;
+    const turmaSourceFilter = `session_id.eq.${sessionId},ano_letivo_id.eq.${sessionId}`;
+    const matriculaSourceFilter = `session_id.eq.${sessionId},ano_letivo.eq.${fromSess.ano}`;
+    const anoDestino = toSess.ano ?? null;
 
     const [turmasCountRes, matriculasCountRes] = await Promise.all([
-      anoOrigem
-        ? (s as any).from('turmas').select('id', { count: 'estimated', head: true }).eq('ano_letivo', anoOrigem)
-        : Promise.resolve({ count: 0 }),
-      (s as any).from('matriculas').select('id', { count: 'estimated', head: true }).eq('ano_letivo_id', sessionId),
+      s
+        .from('turmas')
+        .select('id', { count: 'estimated', head: true })
+        .eq('escola_id', resolvedEscolaId)
+        .or(turmaSourceFilter),
+      s
+        .from('matriculas')
+        .select('id', { count: 'estimated', head: true })
+        .eq('escola_id', resolvedEscolaId)
+        .or(matriculaSourceFilter),
     ]);
     const before = {
       turmas: turmasCountRes?.count ?? 0,
@@ -99,16 +126,39 @@ export async function POST(
 
     // Reassign
     const updErrors: string[] = [];
-    if (anoOrigem && anoDestino) {
-      try { await (s as any).from('turmas').update({ ano_letivo: anoDestino } as any).eq('ano_letivo', anoOrigem).eq('escola_id', resolvedEscolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
-    }
-    try { await (s as any).from('matriculas').update({ ano_letivo_id: targetSessionId } as any).eq('ano_letivo_id', sessionId).eq('escola_id', resolvedEscolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
+
+    // Update Turmas (priority session_id, fallback ano_letivo)
+    try {
+      const turmaUpdate: Database["public"]["Tables"]["turmas"]["Update"] = {
+        session_id: targetSessionId,
+        ano_letivo_id: targetSessionId,
+        ano_letivo: anoDestino,
+      };
+      const { error } = await s.from('turmas')
+        .update(turmaUpdate)
+        .eq('escola_id', resolvedEscolaId)
+        .or(turmaSourceFilter);
+      if (error) updErrors.push(error.message);
+    } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
+
+    // Update Matriculas (session_id is canonical)
+    try {
+      const matriculaUpdate: Database["public"]["Tables"]["matriculas"]["Update"] = {
+        session_id: targetSessionId,
+        ano_letivo: anoDestino,
+      };
+      const { error } = await s.from('matriculas')
+        .update(matriculaUpdate)
+        .eq('escola_id', resolvedEscolaId)
+        .or(matriculaSourceFilter);
+      if (error) updErrors.push(error.message);
+    } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
     if (updErrors.length) {
       return NextResponse.json({ ok: false, error: `Falha ao mover registros: ${updErrors.join(' | ')}` }, { status: 400 });
     }
 
     recordAuditServer({
-      escolaId,
+      escolaId: resolvedEscolaId,
       portal: 'admin_escola',
       acao: 'ANO_LETIVO_REASSOCIADO',
       entity: 'anos_letivos',

@@ -204,10 +204,10 @@ export default async function Page() {
   ];
 
   const quickActions: QuickAction[] = [
-    { label: 'Criar Usuário', route: '/admin/usuarios/novo', icon: PlusIcon },
-    { label: 'Criar Escola', route: '/admin/escolas/novo', icon: BuildingLibraryIcon },
-    { label: 'Lançar Nota', route: '/admin/academico/notas/novo', icon: ChartBarIcon },
-    { label: 'Registrar Pagamento', route: '/admin/financeiro/pagamentos/novo', icon: BanknotesIcon },
+    { label: 'Criar Usuário', route: '/super-admin/usuarios/novo', icon: PlusIcon },
+    { label: 'Criar Escola', route: '/super-admin/escolas/nova', icon: BuildingLibraryIcon },
+    { label: 'Lançar Nota', route: '/secretaria/notas', icon: ChartBarIcon },
+    { label: 'Registrar Pagamento', route: '/financeiro/pagamentos', icon: BanknotesIcon },
     { label: 'Operações Académicas', route: '/admin/operacoes-academicas', icon: ClipboardDocumentListIcon },
     { label: 'Fecho Académico', route: fechamentoRoute, icon: LockClosedIcon },
     { label: 'Runbook Fechamento', route: '/docs/academico/runbook-fechamento-academico', icon: ChartPieIcon },

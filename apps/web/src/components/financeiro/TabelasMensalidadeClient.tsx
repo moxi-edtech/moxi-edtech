@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
 // --- TIPOS ---
 type Item = { 
@@ -38,6 +38,7 @@ export default function TabelasMensalidadeClient({
   void escolaLoading
   void escolaError
   const { toast, dismiss, success, error } = useToast();
+  const confirm = useConfirm();
   
   // Filtros
   const [search, setSearch] = useState("");
@@ -116,10 +117,15 @@ export default function TabelasMensalidadeClient({
 
   // --- ACTIONS ---
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem a certeza que deseja apagar esta regra de preço?")) return;
-    
-    const t = toast({ variant: "syncing", title: "A apagar...", duration: 0 });
-    try {
+    const ok = await confirm({
+      title: "Remover regra de preço",
+      message: "Tem a certeza que deseja apagar esta regra de preço? Esta acção pode impactar o cálculo de novas mensalidades e já não poderá ser revertida.",
+      confirmLabel: "Remover",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    const t = toast({ variant: "syncing", title: "A apagar...", duration: 0 });    try {
         const res = await fetch(`/api/financeiro/tabelas-mensalidade?id=${id}`, { method: 'DELETE' });
         if (res.ok) {
             dismiss(t);

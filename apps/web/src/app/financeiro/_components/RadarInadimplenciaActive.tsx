@@ -11,6 +11,7 @@ import {
   Phone,
   MessageSquare,
 } from "lucide-react";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- Tipos vindos da API (view vw_radar_inadimplencia) ---
 type RadarRowFromApi = {
@@ -157,6 +158,7 @@ export default function RadarInadimplenciaActive({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const { success, error } = useToast();
   const [dados, setDados] = useState<RadarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumo, setResumo] = useState<{
@@ -390,16 +392,14 @@ export default function RadarInadimplenciaActive({
       );
       await carregarResumoCobrancas();
 
-      alert(
-        `${resultado.sucesso} mensagens enviadas com sucesso.\n` +
-          `Potencial de recuperação: ${Math.floor(
-            totalRecuperavel * 0.4
-          ).toLocaleString("pt-AO")} Kz`
+      success(
+        "Lembretes processados",
+        `Enviámos ${resultado.sucesso} mensagens com sucesso. O potencial de recuperação estimado é de ${Math.floor(totalRecuperavel * 0.4).toLocaleString("pt-AO")} Kz.`
       );
 
       setSelectedIds(new Set());
-    } catch (error) {
-      alert("Erro ao enviar mensagens. Tente novamente.");
+    } catch (err) {
+      error("Erro no envio", "Não conseguimos concluir o envio das mensagens. Por favor, tente novamente.");
     } finally {
       setEnviando(false);
     }
@@ -452,7 +452,7 @@ export default function RadarInadimplenciaActive({
         )
       );
     } catch {
-      alert("Erro ao abrir WhatsApp");
+      error("Erro no WhatsApp", "Não foi possível abrir a aplicação do WhatsApp. Verifique se o número de telefone é válido.");
     }
   };
 

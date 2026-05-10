@@ -31,7 +31,8 @@ export async function GET(
         .from("anos_letivos")
         .select("id, ano, ativo")
         .eq("escola_id", escolaId)
-        .eq("ativo", true)
+        .order("ano", { ascending: false }) // Pegar o ano mais recente (ex: 2025)
+        .limit(1)
         .maybeSingle(),
       supabase
         .from("cursos")

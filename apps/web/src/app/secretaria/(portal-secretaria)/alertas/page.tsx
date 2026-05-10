@@ -1,4 +1,5 @@
 import AuditPageView from "@/components/audit/AuditPageView";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
@@ -97,8 +98,15 @@ export default async function Page() {
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="alertas" />
       <div className="bg-white rounded-xl shadow border p-5 space-y-6">
         <div>
-          <h1 className="text-lg font-semibold mb-1">Alertas (Secretaria)</h1>
-          <p className="text-xs text-slate-500">Telemetria interna de jobs críticos.</p>
+          <DashboardHeader
+            title="Alertas (Secretaria)"
+            description="Telemetria interna de jobs críticos."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Secretaria", href: "/secretaria" },
+              { label: "Alertas" },
+            ]}
+          />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -108,7 +116,7 @@ export default async function Page() {
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-slate-400">últimos 8</span>
                 <a
-                  href="fechamento-academico"
+                  href="/secretaria/fechamento-academico"
                   className="text-[10px] font-semibold text-klasse-green hover:underline"
                 >
                   Abrir monitor
@@ -151,7 +159,7 @@ export default async function Page() {
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-slate-400">últimos 8</span>
                 <a
-                  href="documentos-oficiais"
+                  href="/secretaria/documentos-oficiais"
                   className="text-[10px] font-semibold text-klasse-green hover:underline"
                 >
                   Abrir monitor

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type React from "react"
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem"
 
 type VendaProps = { escolaId: string }
 
@@ -16,9 +17,11 @@ type Item = {
 }
 
 export default function VendaCaixaClient({ escolaId }: VendaProps) {
+  const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -55,14 +58,14 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
 
   async function fetchItems() {
     setLoading(true)
-    setError(null)
+    setErrorMessage(null)
     try {
       const res = await fetch("/api/financeiro/itens?ativos=false", { cache: "no-store" })
       const json = await res.json()
       if (!json.ok) throw new Error(json.error || "Erro ao carregar itens")
       setItems(json.items || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setErrorMessage(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
@@ -75,7 +78,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
 
   async function handleItemSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
+    setErrorMessage(null)
     setMessage(null)
 
     const payload = {
@@ -93,7 +96,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
     })
     const json = await res.json()
     if (!json.ok) {
-      setError(json.error || "Erro ao salvar item")
+      setErrorMessage(json.error || "Erro ao salvar item")
     } else {
       setMessage(editingId ? "Item atualizado" : "Item criado")
       resetForm()
@@ -102,40 +105,44 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Desativar este item?")) return
+    const ok = await confirm({
+      title: "Desactivar item",
+      message: "Tem certeza que deseja desactivar este item do catálogo? Ele deixará de aparecer nas opções de venda.",
+      confirmLabel: "Desactivar",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     const res = await fetch(`/api/financeiro/itens?id=${encodeURIComponent(id)}`, { method: "DELETE" })
     const json = await res.json()
-    if (!json.ok) setError(json.error || "Erro ao desativar")
+    if (!json.ok) toastError("Erro ao desactivar", json.error || "Não conseguimos processar o pedido agora.")
     else {
-      setMessage("Item desativado")
+      success("Item desactivado", "O item foi removido do catálogo activo.");
       fetchItems()
     }
   }
 
   async function handleVenda(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
-    setMessage(null)
-
-    const res = await fetch("/api/financeiro/itens/venda", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...sale,
-        quantidade: Number(sale.quantidade),
-        valor_unitario: sale.valor_unitario ? Number(sale.valor_unitario) : undefined,
-        desconto: Number(sale.desconto || 0),
-      }),
-    })
-    const json = await res.json()
-    if (!json.ok) {
-      setError(json.error || "Erro ao registrar venda")
-    } else {
+    
+    try {
+      const res = await fetch("/api/financeiro/itens/venda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...sale,
+          quantidade: Number(sale.quantidade),
+          valor_unitario: sale.valor_unitario ? Number(sale.valor_unitario) : undefined,
+          desconto: Number(sale.desconto || 0),
+        }),
+      })
+      const json = await res.json()
+      if (!json.ok) throw new Error(json.error || "Erro ao registrar venda")
+      
       const novoEstoque = json?.result?.estoque_atual
-      setMessage(
-        `Venda registada. Lançamento ${json?.result?.lancamento_id || ""}${
-          novoEstoque !== undefined ? ` | Estoque atual: ${novoEstoque}` : ""
-        }`
+      success(
+        "Venda registada",
+        `O lançamento foi concluído com sucesso.${novoEstoque !== undefined ? ` Stock actual: ${novoEstoque}` : ""}`
       )
       setSale({
         aluno_id: "",
@@ -148,6 +155,8 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
         status: "pago",
       })
       fetchItems()
+    } catch (err: any) {
+      toastError("Erro na venda", err.message);
     }
   }
 
@@ -161,13 +170,13 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
         <div className="text-xs text-gray-500">Escola: {escolaId}</div>
       </div>
 
-      {(error || message) && (
+      {(errorMessage || message) && (
         <div
           className={`p-3 rounded border text-sm ${
-            error ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
+            errorMessage ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
           }`}
         >
-          {error || message}
+          {errorMessage || message}
         </div>
       )}
 
