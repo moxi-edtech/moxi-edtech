@@ -6,6 +6,7 @@ import { useToast } from "@/components/feedback/FeedbackSystem";
 import RadarInadimplenciaActive, {
   type RadarEntry,
 } from "@/app/financeiro/_components/RadarInadimplenciaActive";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useParams } from "next/navigation";
 
 // --- TIPAGENS ---
@@ -169,10 +170,15 @@ export default function SistemaCobrancas() {
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Sistema de Cobranças</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Automatize cobranças por WhatsApp, SMS e Email
-            </p>
+            <DashboardHeader
+              title="Sistema de Cobranças"
+              description="Automatize cobranças por WhatsApp, SMS e email."
+              breadcrumbs={[
+                { label: "Início", href: `/escola/${escolaId}` },
+                { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+                { label: "Radar" },
+              ]}
+            />
           </div>
           <button
             onClick={() => setMostrarCriarCampanha(true)}

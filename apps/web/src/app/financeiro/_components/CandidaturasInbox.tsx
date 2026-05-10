@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CheckCircle2, XCircle, Paperclip, Loader2 } from 'lucide-react'
 import { enqueueOfflineAction } from '@/lib/offline/queue'
+import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 
 type InboxItem = {
   id: string
@@ -69,6 +70,8 @@ export function FinanceiroCandidaturasInbox({
   initialSelectedId?: string | null
 }) {
   void escolaId
+  const { success, error: toastError } = useToast()
+  const confirm = useConfirm()
   const [items, setItems] = useState<InboxItem[]>(initialItems || [])
   const [selected, setSelected] = useState<InboxItem | null>(() => {
     if (!initialSelectedId) return null
@@ -121,7 +124,7 @@ export function FinanceiroCandidaturasInbox({
         })
         removeItem(item.id)
         setSelected(null)
-        setError('Sem internet. Conversão enfileirada para sincronizar depois.')
+        toastError('Modo offline', 'Está sem internet. A conversão foi guardada localmente e será processada assim que recuperar a ligação.')
         setLoadingId(null)
         return
       }
@@ -136,6 +139,8 @@ export function FinanceiroCandidaturasInbox({
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao converter')
+      
+      success('Matrícula confirmada', `O pagamento foi compensado e o aluno ${item.nome} foi matriculado com sucesso.`)
       removeItem(item.id)
       setSelected(null)
     } catch (e: unknown) {
@@ -146,17 +151,29 @@ export function FinanceiroCandidaturasInbox({
   }
 
   const handleReject = async (item: InboxItem) => {
-    const motivo = prompt('Informe o motivo da rejeição (opcional):') || undefined
+    const motivo = await confirm({
+      title: 'Rejeitar pagamento',
+      message: `Deseja rejeitar o comprovativo de ${item.nome}? Por favor, indique o motivo para consulta futura.`,
+      inputType: 'text',
+      placeholder: 'Ex: Valor não identificado no extrato',
+      confirmLabel: 'Rejeitar',
+      variant: 'danger'
+    })
+
+    if (motivo === null) return
+    
     setLoadingId(item.id)
     setError(null)
     try {
       const res = await fetch('/api/financeiro/candidaturas/rejeitar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id, motivo }),
+        body: JSON.stringify({ id: item.id, motivo: motivo || undefined }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao rejeitar')
+      
+      success('Pagamento rejeitado', 'O comprovativo foi marcado como inválido e o candidato será notificado.')
       removeItem(item.id)
       setSelected(null)
     } catch (e: unknown) {

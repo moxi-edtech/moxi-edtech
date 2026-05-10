@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 type BlockedItem = { aluno_id?: string; aluno_nome?: string | null; matricula_id?: string; motivos?: string[] }
 
@@ -107,7 +108,17 @@ export default function ConfirmarRematriculaPage() {
 
   return (
     <div className="bg-white rounded-xl shadow border p-5">
-      <h1 className="text-lg font-semibold mb-4">Confirmar Rematrícula em Massa</h1>
+      <div className="mb-4">
+        <DashboardHeader
+          title="Confirmar Rematrícula em Massa"
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Rematrícula", href: "/secretaria/rematricula" },
+            { label: "Confirmar" },
+          ]}
+        />
+      </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {summary && (
         <div className="mb-4 rounded-md border border-klasse-green-200 bg-klasse-green-50 p-3 text-sm text-klasse-green-900">

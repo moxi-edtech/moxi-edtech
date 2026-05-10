@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Filter, Mail, Pencil, Plus, Search, Shield, Trash2, X } from "lucide-react";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -154,6 +154,7 @@ export function SuperAdminUsuariosListClient() {
 
 function ListaUsuarios() {
   const { success, error: notifyError } = useToast();
+  const confirm = useConfirm();
   const [usuarios, setUsuarios]   = useState<Usuario[]>([]);
   const [escolas,  setEscolas]    = useState<Escola[]>([]);
   const [loading,  setLoading]    = useState(true);
@@ -255,7 +256,14 @@ function ListaUsuarios() {
   };
 
   const handleDelete = async (uid: string, email: string) => {
-    if (!confirm(`Operação destrutiva: Revogar acesso a ${email}?`)) return;
+    const ok = await confirm({
+      title: "Revogar acesso",
+      message: `Tem certeza que deseja revogar o acesso de ${email}? O utilizador será desconectado e não poderá mais entrar no sistema.`,
+      confirmLabel: "Revogar acesso",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     try {
       setSaving(uid);
       const res = await fetch("/api/super-admin/users/delete", {
@@ -264,6 +272,7 @@ function ListaUsuarios() {
       });
       if (!res.ok) throw new Error("Falha ao revogar.");
       setUsuarios(prev => prev.filter(u => u.id !== uid));
+      success("Acesso revogado", "O utilizador foi removido do sistema com sucesso.");
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao eliminar.");
     } finally { setSaving(null); }

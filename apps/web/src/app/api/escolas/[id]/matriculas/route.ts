@@ -61,7 +61,7 @@ export async function GET(
         numero_matricula,
         numero_chamada,
         ano_letivo,
-        ano_letivo_id,
+        session_id,
         turma_id,
         turma_nome,
         turno,
@@ -76,7 +76,8 @@ export async function GET(
       `
       )
       .eq("escola_id", resolvedEscolaId)
-      .eq("ano_letivo_id", anoLetivoId)
+      // session_id is now the canonical reference for the academic year session
+      .eq("session_id", anoLetivoId)
       .order("created_at", { ascending: false });
 
     query = applyKf2ListInvariants(query, { defaultLimit: 50 });

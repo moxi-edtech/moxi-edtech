@@ -32,11 +32,19 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
+    const url = new URL(req.url);
+    const requestedAnoId = url.searchParams.get("ano_letivo_id");
+
     let anoLetivoQuery = supabase
       .from('anos_letivos')
       .select('id, ano, data_inicio, data_fim, ativo')
-      .eq('escola_id', userEscolaId)
-      .eq('ativo', true)
+      .eq('escola_id', userEscolaId);
+
+    if (requestedAnoId) {
+      anoLetivoQuery = anoLetivoQuery.eq('id', requestedAnoId);
+    } else {
+      anoLetivoQuery = anoLetivoQuery.eq('ativo', true);
+    }
 
     anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {
       defaultLimit: 1,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
 const formatKz = (valor: number) =>
   new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(
@@ -19,16 +20,16 @@ export function RegistrarPagamentoButton({
 }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { success, error, warning } = useToast();
+  const confirm = useConfirm();
 
   async function handlePay() {
-    if (
-      !confirm(
-        `Confirmar recebimento de ${formatKz(
-          valor
-        )} para esta mensalidade?`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: "Confirmar recebimento",
+      message: `Deseja registar o recebimento de ${formatKz(valor)} para esta mensalidade?`,
+      confirmLabel: "Confirmar pagamento",
+    });
+    if (!ok) return;
 
     setLoading(true);
     try {
@@ -46,7 +47,7 @@ export function RegistrarPagamentoButton({
           body: JSON.stringify(payload),
           type: "registrar_pagamento",
         });
-        alert("Sem internet. Pagamento será sincronizado quando a conexão voltar.");
+        warning("Modo offline", "Está sem internet no momento. O pagamento foi guardado e será processado automaticamente assim que a sua ligação voltar.");
         return;
       }
 
@@ -57,10 +58,11 @@ export function RegistrarPagamentoButton({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao registrar pagamento");
+      
+      success("Pagamento registado", "O pagamento foi processado com sucesso.");
       router.refresh();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Falha ao registrar pagamento";
-      alert("Erro: " + message);
+      error("Falha no registo", "Não foi possível registar o pagamento. Por favor, verifique os dados e tente novamente.");
     } finally {
       setLoading(false);
     }

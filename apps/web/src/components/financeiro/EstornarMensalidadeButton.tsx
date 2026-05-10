@@ -1,15 +1,24 @@
 "use client";
-
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
 export function EstornarMensalidadeButton({ mensalidadeId }: { mensalidadeId: string }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { success, error } = useToast();
+  const confirm = useConfirm();
 
   async function handleEstorno() {
-    if (!confirm("Confirmar estorno desta mensalidade?")) return;
+    const ok = await confirm({
+      title: "Confirmar estorno",
+      message: "Deseja realmente estornar esta mensalidade? Esta acção irá reverter o pagamento e actualizar o saldo do aluno.",
+      confirmLabel: "Estornar pagamento",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     setLoading(true);
     try {
       const res = await fetch("/api/financeiro/mensalidades/estornar", {
@@ -21,10 +30,10 @@ export function EstornarMensalidadeButton({ mensalidadeId }: { mensalidadeId: st
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Falha ao estornar mensalidade");
       }
+      success("Estorno concluído", "O estorno foi processado com sucesso e a mensalidade foi actualizada.");
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      alert(`Erro ao estornar: ${message}`);
+      error("Erro no estorno", "Não foi possível processar o estorno no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
     }

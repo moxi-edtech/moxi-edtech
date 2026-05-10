@@ -5,9 +5,11 @@ import { FileText, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { Pill } from "@/components/aluno/shared/Pill";
 import { useSearchParams } from "next/navigation";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 export function TabDocumentos() {
   const searchParams = useSearchParams();
+  const { error } = useToast();
   const studentId = searchParams?.get("aluno") ?? null;
   
   const [loading, setLoading] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function TabDocumentos() {
         window.open(json.url, '_blank');
       }
     } catch (err: any) {
-      alert(err.message);
+      error("Erro na emissão", "Não conseguimos gerar o seu documento no momento. Por favor, tente novamente em instantes.");
     } finally {
       setLoading(null);
     }

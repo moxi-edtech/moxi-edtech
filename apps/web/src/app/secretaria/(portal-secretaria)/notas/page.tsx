@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
+import { DashboardHeader } from "@/components/layout/DashboardHeader"
 
 type TurmaItem = {
   id: string
@@ -241,8 +242,15 @@ export default function SecretariaNotasPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Lançamento de Notas</h1>
-        <p className="text-sm text-slate-500">Pauta reativa para secretaria.</p>
+        <DashboardHeader
+          title="Lançamento de Notas"
+          description="Pauta reativa da secretaria."
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Notas" },
+          ]}
+        />
       </div>
 
       <div className="grid md:grid-cols-[1fr_1fr_1fr] gap-3 items-center">

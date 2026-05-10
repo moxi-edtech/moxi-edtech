@@ -7,8 +7,11 @@ import {
   Check, 
   CalendarClock, 
   Lock, 
-  Loader2 
+  Loader2,
+  Wand2,
+  ChevronDown
 } from "lucide-react";
+import { useState } from "react";
 
 import {
   type AcademicStep1Props,
@@ -38,8 +41,12 @@ export default function AcademicStep1({
   periodos,
   creatingSession,
   onCreateSession,
+  templates = [],
+  onApplyTemplate
 }: AcademicStep1Props) {
   
+  const [showTemplates, setShowTemplates] = useState(false);
+
   // Estilo padrão para inputs
   const inputClass = "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C] placeholder:text-slate-300";
   const labelClass = "mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500";
@@ -67,6 +74,46 @@ export default function AcademicStep1({
             A entidade <strong className="text-slate-900">{schoolDisplayName || "Escola"}</strong> {schoolNif && <span>(NIF: <code className="font-mono text-[10px] bg-white px-1 rounded border border-slate-100">{schoolNif}</code>)</span>} está validada no sistema. <br />
             Esta configuração definirá a base do calendário acadêmico e financeiro.
           </p>
+        </div>
+      </div>
+
+      {/* NOVO: ATALHO PARA TEMPLATES OFICIAIS */}
+      <div className="rounded-2xl border border-klasse-gold/20 bg-klasse-gold/5 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div>
+           <h3 className="text-sm font-bold text-klasse-gold-700 flex items-center gap-2">
+            <Wand2 className="h-4 w-4" />
+            Configuração Automática (Recomendado)
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">Deseja preencher as datas usando o calendário oficial do Ministério da Educação?</p>
+        </div>
+        
+        <div className="relative">
+          <button 
+            onClick={() => setShowTemplates(!showTemplates)}
+            className="inline-flex items-center gap-2 rounded-xl bg-white border border-klasse-gold/30 px-5 py-2.5 text-sm font-bold text-klasse-gold shadow-sm transition-all hover:bg-klasse-gold/5"
+          >
+            Importar Modelo Oficial
+            <ChevronDown className={`h-4 w-4 transition-transform ${showTemplates ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showTemplates && (
+            <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in slide-in-from-top-2">
+              <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Selecione o Modelo</p>
+              {templates.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { onApplyTemplate?.(t); setShowTemplates(false); }}
+                  className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-between"
+                >
+                  {t.nome}
+                  <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{t.ano_base}</span>
+                </button>
+              ))}
+              {templates.length === 0 && (
+                <p className="px-3 py-4 text-center text-xs text-slate-400 italic">Nenhum modelo oficial encontrado.</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

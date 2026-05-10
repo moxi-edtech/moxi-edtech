@@ -4,11 +4,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { enqueueOfflineAction } from '@/lib/offline/queue'
 import { createIdempotencyKey } from '@/lib/idempotency'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { useToast } from '@/components/feedback/FeedbackSystem';
 
 type Atrib = { id: string; turma: { id: string; nome: string | null }; disciplina: { id: string; nome: string | null } }
 type Aluno = { id: string; nome: string }
 
 export default function ProfessorFrequenciasPage() {
+  const { success, error, warning } = useToast();
   const [atribs, setAtribs] = useState<Atrib[]>([])
   const [turmaId, setTurmaId] = useState('')
   const [disciplinaId, setDisciplinaId] = useState('')
@@ -70,6 +73,7 @@ export default function ProfessorFrequenciasPage() {
       if (!online) {
         await enqueueOfflineAction(request)
         setSubmitStatus('pending')
+        warning("Modo offline", "As presenças foram guardadas localmente e serão sincronizadas quando recuperar a ligação à internet.")
         return
       }
 
@@ -84,22 +88,32 @@ export default function ProfessorFrequenciasPage() {
         throw new Error(json?.error || 'Falha ao salvar presença')
       }
       setSubmitStatus('saved')
-    } catch (e) {
+      success("Presenças guardadas", "O registo de frequências foi actualizado com sucesso.")
+      } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       if (!online) {
         setSubmitStatus('pending')
       } else {
         setSubmitStatus('failed')
+        error("Erro ao guardar", "Não foi possível registar as presenças. Por favor, tente novamente.")
       }
-      alert(message)
-    } finally {
-      setSaving(false)
-    }
-  }
+      } finally {
+      setSaving(false);
+      }
+      }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6">
-      <h1 className="text-2xl font-semibold mb-3 sm:mb-4 text-klasse-green">Frequências</h1>
+      <div className="mb-3 sm:mb-4">
+        <DashboardHeader
+          title="Frequências"
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Professor", href: "/professor" },
+            { label: "Frequências" },
+          ]}
+        />
+      </div>
       <form onSubmit={onSubmit} className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="space-y-3 sm:space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3">

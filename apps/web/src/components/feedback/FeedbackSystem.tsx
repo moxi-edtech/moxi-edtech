@@ -25,12 +25,27 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+
 const K = {
   green: "#1F6B3B",
   rose: "#e11d48",
   amber: "#E3B23C",
   slate9: "#94a3b8",
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TOAST SYSTEM
+// ═════════════════════════════════════════════════════════════════════════════
 
 export type ToastVariant = "success" | "error" | "warning" | "info" | "offline" | "syncing"
 
@@ -86,16 +101,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastCtx.Provider value={{ toasts, toast, dismiss, clear }}>
-      <OfflineBanner />
       {children}
-      <ToastStack />
     </ToastCtx.Provider>
   )
 }
 
 export function useToast() {
   const ctx = useContext(ToastCtx)
-  if (!ctx) throw new Error("useToast precisa de ToastProvider")
+  if (!ctx) throw new Error("useToast precisa de FeedbackProvider")
 
   return {
     ...ctx,
@@ -119,6 +132,114 @@ export function useToast() {
       ctx.toast({ variant: "success", title: label, duration: 2000 }),
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CONFIRMATION SYSTEM (Dialog Boxes)
+// ═════════════════════════════════════════════════════════════════════════════
+
+export type ConfirmOptions = {
+  title: string
+  message: string
+  confirmLabel?: string
+  cancelLabel?: string
+  variant?: "default" | "danger"
+  inputType?: "text" | "password" | "number"
+  placeholder?: string
+  defaultValue?: string
+}
+
+type ConfirmState = (ConfirmOptions & { resolve: (val: any) => void }) | null
+
+const ConfirmCtx = createContext<(opts: ConfirmOptions) => Promise<any>>(() => Promise.resolve(false))
+
+export function useConfirm() {
+  const ctx = useContext(ConfirmCtx)
+  if (!ctx) throw new Error("useConfirm precisa de FeedbackProvider")
+  return ctx
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MAIN FEEDBACK PROVIDER
+// ═════════════════════════════════════════════════════════════════════════════
+
+export function FeedbackProvider({ children }: { children: React.ReactNode }) {
+  const [confirmState, setConfirmState] = useState<ConfirmState>(null)
+  const [inputValue, setInputValue] = useState("")
+
+  const confirm = useCallback((opts: ConfirmOptions) => {
+    return new Promise((resolve) => {
+      setConfirmState({ ...opts, resolve })
+      setInputValue(opts.defaultValue ?? "")
+    })
+  }, [])
+
+  const handleConfirm = () => {
+    if (!confirmState) return
+    confirmState.resolve(confirmState.inputType ? inputValue : true)
+    setConfirmState(null)
+  }
+
+  const handleCancel = () => {
+    if (!confirmState) return
+    confirmState.resolve(confirmState.inputType ? null : false)
+    setConfirmState(null)
+  }
+
+  return (
+    <ToastProvider>
+      <ConfirmCtx.Provider value={confirm}>
+        <OfflineBanner />
+        {children}
+        <ToastStack />
+
+        <Dialog open={!!confirmState} onOpenChange={(open) => !open && handleCancel()}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className={confirmState?.variant === "danger" ? "text-rose-600" : ""}>
+                {confirmState?.title}
+              </DialogTitle>
+              <DialogDescription>{confirmState?.message}</DialogDescription>
+            </DialogHeader>
+
+            {confirmState?.inputType && (
+              <div className="py-4">
+                <Input
+                  label="Confirmação"
+                  type={confirmState.inputType}
+                  placeholder={confirmState.placeholder}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
+                />
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={handleCancel} className="rounded-xl">
+                {confirmState?.cancelLabel ?? "Cancelar"}
+              </Button>
+              <Button
+                variant={confirmState?.variant === "danger" ? "destructive" : "default"}
+                onClick={handleConfirm}
+                className="rounded-xl"
+              >
+                {confirmState?.confirmLabel ?? (confirmState?.inputType ? "Confirmar" : "Sim")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </ConfirmCtx.Provider>
+    </ToastProvider>
+  )
+}
+
+// Aliasing ToastProvider for backward compatibility
+export const ToastProviderLegacy = ToastProvider
+
+// ═════════════════════════════════════════════════════════════════════════════
+// INTERNAL COMPONENTS
+// ═════════════════════════════════════════════════════════════════════════════
 
 const TOAST_CONFIG: Record<
   ToastVariant,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -12,7 +13,14 @@ export default async function RelatoriosPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Relatórios Financeiros</h1>
+      <DashboardHeader
+        title="Relatórios Financeiros"
+        breadcrumbs={[
+          { label: "Início", href: `/escola/${escolaId}` },
+          { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+          { label: "Relatórios" },
+        ]}
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link href={`/escola/${escolaId}/financeiro/relatorios/propinas`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Propinas</div>

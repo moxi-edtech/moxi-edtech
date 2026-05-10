@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   UserPlusIcon,
   CheckCircleIcon,
@@ -54,6 +56,7 @@ type AlunoListItem = {
 
 export default function AlunosPage() {
   const router = useRouter();
+  const { success, error } = useToast();
   const [activeTab, setActiveTab] = useState<"add" | "list">("add");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -370,12 +373,11 @@ export default function AlunosPage() {
         /* ignore */
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      error("Não conseguimos processar o cadastro", "Houve um erro técnico ao tentar criar esta candidatura. Por favor, verifique se todos os campos estão correctos e tente salvar novamente.");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
+    };
   const nextStep = () => {
     if (currentStep < 4) setCurrentStep((prev) => prev + 1);
   };
@@ -453,8 +455,16 @@ export default function AlunosPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-moxinexa-teal rounded-full mb-4">
             <AcademicCapIcon className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-moxinexa-dark mb-2">Gestão de Estudantes</h1>
-          <p className="text-moxinexa-gray text-lg">Cadastro de candidatos separado da matrícula</p>
+          <DashboardHeader
+            title="Gestão de Estudantes"
+            description="Cadastro de candidatos separado da matrícula."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Secretaria", href: "/secretaria" },
+              { label: "Alunos", href: "/secretaria/alunos" },
+              { label: "Novo" },
+            ]}
+          />
         </div>
 
         {planLimitError && (

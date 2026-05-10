@@ -6,9 +6,12 @@ import { createClient } from '@/lib/supabaseClient';
 import type { SystemHealth, EscolaMetricas, OutboxMetrics, InfraMetrics, Alerta } from './types';
 import { calcularSaudeEscola, gerarAlertasEscola } from '@/lib/super-admin/escola-saude-utils';
 import { runOutboxWorker, recalcAllAggregates } from './actions';
+import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem';
 
 export function useHealthData() {
   const supabase = createClient();
+  const { success, error } = useToast();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -226,14 +229,22 @@ export function useHealthData() {
   }, [loadHealthData]);
 
   const handleRecalcAggregates = async () => {
-    if (!confirm('Recalcular aggregates de TODAS as escolas? Isso pode levar alguns minutos.')) return;
+    const ok = await confirm({
+      title: 'Recalcular indicadores globais',
+      message: 'Esta acção irá recalcular os agregados de todas as escolas. O processo pode levar alguns minutos e impactar a performance momentaneamente. Deseja continuar?',
+      confirmLabel: 'Recalcular tudo',
+      variant: 'danger'
+    });
+    
+    if (!ok) return;
+
     try {
       await recalcAllAggregates();
-      alert('Aggregates em recálculo! Os dashboards atualizarão em alguns minutos.');
+      success("Recálculo iniciado", "Os indicadores globais estão a ser recalculados. Os dados serão actualizados em breve.");
       loadHealthData();
-    } catch (error) {
-      console.error('Erro ao recalcular:', error);
-      alert('Erro ao iniciar recálculo');
+    } catch (err) {
+      console.error('Erro ao recalcular:', err);
+      error("Erro no recálculo", "Não foi possível iniciar o processamento dos indicadores.");
     }
   };
 
@@ -242,12 +253,12 @@ export function useHealthData() {
       const result = await runOutboxWorker();
       if(result.data) {
         const data = result.data as any[];
-         alert(`Worker executado: ${data[0]?.processed_count || 0} processados, ${data[0]?.failed_count || 0} falhas`);
+        success("Worker executado", `O processamento foi concluído: ${data[0]?.processed_count || 0} eventos processados e ${data[0]?.failed_count || 0} falhas.`);
       }
       loadHealthData();
-    } catch (error) {
-      console.error('Erro ao executar worker:', error);
-      alert('Erro ao executar worker');
+    } catch (err) {
+      console.error('Erro ao executar worker:', err);
+      error("Erro no worker", "Não conseguimos executar o processamento manual da fila outbox.");
     }
   };
   

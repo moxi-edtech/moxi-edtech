@@ -1,12 +1,20 @@
 import TurmasListClient from "@/components/secretaria/TurmasListClient";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id: escolaId } = await params;
+  const { id: escolaIdParam } = await params;
   const supabase = await supabaseServer();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const escolaId = user ? await resolveEscolaIdForUser(supabase as any, user.id, escolaIdParam) : null;
+
+  if (!escolaId) {
+    return <div className="p-8 text-center text-slate-500">Escola não identificada.</div>;
+  }
 
   // Fetch initial data for SSR
   const { data: items, error } = await supabase

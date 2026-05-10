@@ -1,14 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
+
+type ReciboState = {
+  url_validacao: string | null;
+  escola_nome: string;
+  aluno_nome: string;
+  valor: number;
+  data: string;
+} | null;
 
 type Props = {
   open: boolean;
@@ -41,8 +50,10 @@ export function PagamentoModal({
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [gatewayRef, setGatewayRef] = useState("");
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{ status: "success" | "error"; message: string } | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [recibo, setRecibo] = useState<ReciboState>(null);
+  const [escolaNome, setEscolaNome] = useState<string | null>(null);
+
   const { success, error } = useToast();
   const { escolaId, escolaSlug } = useEscolaId();
   const router = useRouter();
@@ -51,14 +62,31 @@ export function PagamentoModal({
   const needsRef = useMemo(() => method === "tpa", [method]);
   const needsEvidence = useMemo(() => method === "transfer", [method]);
   const needsGatewayRef = useMemo(() => method === "mcx" || method === "kiwk", [method]);
+
+  // Buscar nome da escola para o recibo
+  useEffect(() => {
+    if (!open || !escolaId) return;
+    fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(j => { if (j?.ok && j?.nome) setEscolaNome(j.nome); })
+      .catch(() => {});
+  }, [escolaId, open]);
+
+  // Gatilho de Impressão
+  useEffect(() => {
+    if (!recibo) return;
+    const t = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(t);
+  }, [recibo]);
+
   const handleClose = () => {
     setMethod("cash");
     setReference("");
     setTerminalId("");
     setEvidenceUrl("");
     setGatewayRef("");
-    setFeedback(null);
     setShowSuccess(false);
+    setRecibo(null);
     onClose();
   };
 
@@ -77,7 +105,6 @@ export function PagamentoModal({
     }
 
     setLoading(true);
-    setFeedback(null);
 
     const idempotencyKey =
       typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -103,32 +130,34 @@ export function PagamentoModal({
           origem: "balcao_servico",
           pedido_id: pedidoId || null,
           pagamento_intent_id: intentId || null,
+          descricao_item: pedidoId ? `Pedido #${pedidoId.slice(0,8)}` : "Serviço Balcão"
         },
       }),
     });
+
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json?.ok) {
       setLoading(false);
       error(json?.error || "Falha ao registrar pagamento.");
-      setFeedback({
-        status: "error",
-        message: json?.error || "Falha ao registrar pagamento.",
-      });
       return;
+    }
+
+    // Se a emissão fiscal síncrona funcionou, preparamos o recibo para impressão
+    if (json.fiscal?.ok) {
+      setRecibo({
+        url_validacao: json.fiscal.url_validacao,
+        escola_nome: escolaNome || "Escola",
+        aluno_nome: alunoNome || "Aluno",
+        valor: totalKz,
+        data: new Date().toISOString()
+      });
     }
 
     const status = json?.data?.status ?? (method === "cash" ? "settled" : "pending");
     if (status === "settled") {
-      // Feedback principal exibido via ConfirmacaoContextual/FluxoPosAccao
-      setFeedback({
-        status: "success",
-        message: "Pagamento liquidado e serviço liberado.",
-      });
+      success("Pagamento liquidado e serviço liberado.");
     } else {
-      setFeedback({
-        status: "success",
-        message: "Pagamento registrado como pendente.",
-      });
+      success("Pagamento registrado como pendente.");
     }
     setLoading(false);
     setShowSuccess(true);
@@ -137,196 +166,198 @@ export function PagamentoModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <div className="font-bold text-slate-900">Pagamento · {kwanza.format(totalKz)} </div>
-          <button onClick={handleClose} className="rounded-xl p-2 hover:bg-slate-50">
-            <X className="h-4 w-4 text-slate-400" />
-          </button>
-        </div>
-
-        <div className="space-y-4 p-5">
-          {showSuccess ? (
-            <div className="space-y-6">
-              <ConfirmacaoContextual
-                acaoId="pagamento.registado"
-                contexto={{
-                  valor: kwanza.format(totalKz),
-                  nome: alunoNome || "Aluno",
-                  mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
-                }}
-                onClose={() => {}}
-              />
-
-              <FluxoPosAccao
-                acaoId="pagamento.registado"
-                contexto={{
-                  valor: kwanza.format(totalKz),
-                  nome: alunoNome || "Aluno",
-                  mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
-                }}
-                onEscolher={(passo: Passo) => {
-                  if (passo.id === "emitir_recibo" && escolaParam) {
-                    router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos"));
-                  } else if (passo.id === "ver_atrasos" && escolaParam) {
-                    router.push(buildPortalHref(escolaParam, "/financeiro/radar"));
-                  } else if (passo.id === "novo_pagamento") {
-                    handleClose();
-                  }
-                }}
-                onDismiss={handleClose}
-              />
-            </div>
-          ) : (
-            <>
-              {feedback ? (
-                <div
-                  className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
-                    feedback.status === "success"
-                      ? "border-klasse-green-200 bg-klasse-green-50 text-klasse-green-900"
-                      : "border-rose-200 bg-rose-50 text-rose-900"
-                  }`}
-                >
-                  {feedback.message}
-                </div>
-              ) : null}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMethod("cash")}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                    method === "cash"
-                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <Banknote className="h-4 w-4 text-slate-500" /> Cash
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMethod("tpa")}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                    method === "tpa"
-                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <CreditCard className="h-4 w-4 text-slate-500" /> TPA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMethod("transfer")}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                    method === "transfer"
-                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <Upload className="h-4 w-4 text-slate-500" /> Transferência
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMethod("mcx")}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                    method === "mcx"
-                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <ReceiptText className="h-4 w-4 text-slate-500" /> Multicaixa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMethod("kiwk")}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                    method === "kiwk"
-                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <ReceiptText className="h-4 w-4 text-slate-500" /> KIWK
-                </button>
-              </div>
-
-              {needsRef || needsGatewayRef ? (
-                <div className="space-y-2">
-                  {needsRef ? (
-                    <>
-                      <label className="text-xs font-bold uppercase text-slate-500">Referência (obrigatório)</label>
-                      <input
-                        value={reference}
-                        onChange={(event) => setReference(event.target.value)}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                        placeholder="Ex: TPA-2026-000882"
-                      />
-                    </>
-                  ) : null}
-                  {method === "tpa" ? (
-                    <input
-                      value={terminalId}
-                      onChange={(event) => setTerminalId(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                      placeholder="Terminal ID (opcional)"
-                    />
-                  ) : null}
-                  {needsGatewayRef ? (
-                    <>
-                      <label className="text-xs font-bold uppercase text-slate-500">
-                        {method === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
-                      </label>
-                      <input
-                        value={gatewayRef}
-                        onChange={(event) => setGatewayRef(event.target.value)}
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                        placeholder="MCX-..."
-                      />
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {needsEvidence ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-sm font-bold text-slate-900">Comprovativo (obrigatório)</div>
-                  <div className="text-xs text-slate-500">
-                    Faça upload e cole a URL do comprovativo.
-                  </div>
-                  <input
-                    value={evidenceUrl}
-                    onChange={(event) => setEvidenceUrl(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                    placeholder="https://..."
-                  />
-                </div>
-              ) : null}
-
-              <div className="text-xs text-slate-500">
-                * TPA/Transfer/MCX/KIWK entram como pendente até conciliação.
-              </div>
-            </>
-          )}
-        </div>
-
-        {!showSuccess && (
-          <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
-            <button
-              onClick={handleClose}
-              className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
-            >
-              Voltar
-            </button>
-            <button
-              onClick={handleConfirmar}
-              disabled={loading || !intentId}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-              Confirmar
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div className="font-bold text-slate-900">Pagamento · {kwanza.format(totalKz)} </div>
+            <button onClick={handleClose} className="rounded-xl p-2 hover:bg-slate-50">
+              <X className="h-4 w-4 text-slate-400" />
             </button>
           </div>
-        )}
+
+          <div className="space-y-4 p-5">
+            {showSuccess ? (
+              <div className="space-y-6">
+                <ConfirmacaoContextual
+                  acaoId="pagamento.registado"
+                  contexto={{
+                    valor: kwanza.format(totalKz),
+                    nome: alunoNome || "Aluno",
+                    mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
+                  }}
+                  onClose={() => {}}
+                />
+
+                <FluxoPosAccao
+                  acaoId="pagamento.registado"
+                  contexto={{
+                    valor: kwanza.format(totalKz),
+                    nome: alunoNome || "Aluno",
+                    mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
+                  }}
+                  onEscolher={(passo: Passo) => {
+                    if (passo.id === "emitir_recibo" && escolaParam) {
+                      router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos"));
+                    } else if (passo.id === "ver_atrasos" && escolaParam) {
+                      router.push(buildPortalHref(escolaParam, "/financeiro/radar"));
+                    } else if (passo.id === "novo_pagamento") {
+                      handleClose();
+                    }
+                  }}
+                  onDismiss={handleClose}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMethod("cash")}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                      method === "cash"
+                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <Banknote className="h-4 w-4 text-slate-500" /> Cash
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod("tpa")}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                      method === "tpa"
+                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4 text-slate-500" /> TPA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod("transfer")}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                      method === "transfer"
+                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <Upload className="h-4 w-4 text-slate-500" /> Transferência
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod("mcx")}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                      method === "mcx"
+                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <ReceiptText className="h-4 w-4 text-slate-500" /> Multicaixa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod("kiwk")}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                      method === "kiwk"
+                        ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <ReceiptText className="h-4 w-4 text-slate-500" /> KIWK
+                  </button>
+                </div>
+
+                {needsRef || needsGatewayRef ? (
+                  <div className="space-y-2">
+                    {needsRef ? (
+                      <>
+                        <label className="text-xs font-bold uppercase text-slate-500">Referência (obrigatório)</label>
+                        <input
+                          value={reference}
+                          onChange={(event) => setReference(event.target.value)}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                          placeholder="Ex: TPA-2026-000882"
+                        />
+                      </>
+                    ) : null}
+                    {method === "tpa" ? (
+                      <input
+                        value={terminalId}
+                        onChange={(event) => setTerminalId(event.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                        placeholder="Terminal ID (opcional)"
+                      />
+                    ) : null}
+                    {needsGatewayRef ? (
+                      <>
+                        <label className="text-xs font-bold uppercase text-slate-500">
+                          {method === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
+                        </label>
+                        <input
+                          value={gatewayRef}
+                          onChange={(event) => setGatewayRef(event.target.value)}
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                          placeholder="MCX-..."
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {needsEvidence ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-sm font-bold text-slate-900">Comprovativo (obrigatório)</div>
+                    <div className="text-xs text-slate-500">
+                      Faça upload e cole a URL do comprovativo.
+                    </div>
+                    <input
+                      value={evidenceUrl}
+                      onChange={(event) => setEvidenceUrl(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      placeholder="https://..."
+                    />
+                  </div>
+                ) : null}
+
+                <div className="text-xs text-slate-500">
+                  * TPA/Transfer/MCX/KIWK entram como pendente até conciliação.
+                </div>
+              </>
+            )}
+          </div>
+
+          {!showSuccess && (
+            <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+              <button
+                onClick={handleClose}
+                className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={handleConfirmar}
+                disabled={loading || !intentId}
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                Confirmar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Componente de Recibo para Impressão */}
+      {recibo && (
+        <ReciboImprimivel
+          escolaNome={recibo.escola_nome}
+          alunoNome={recibo.aluno_nome}
+          valor={recibo.valor}
+          data={recibo.data}
+          urlValidacao={recibo.url_validacao}
+        />
+      )}
+    </>
   );
 }

@@ -68,18 +68,18 @@ export async function POST(
     if (esc?.status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa. Regularize pagamentos.' }, { status: 400 })
 
     // 5. Business Logic: Validate Course/Grade Requirements
-    const { data: grade, error: gradeError } = await supabase.from('grades' as any).select('id, nome').eq('id', body.classe_id).maybeSingle()
-    if (gradeError || !grade) return NextResponse.json({ ok: false, error: 'Classe não encontrada' }, { status: 400 })
+    const { data: grade, error: gradeError } = await supabase.from('classes').select('id, nome').eq('id', body.classe_id).maybeSingle();
+    if (gradeError || !grade) return NextResponse.json({ ok: false, error: 'Classe não encontrada' }, { status: 400 });
 
     let course: any = null
     if (body.course_id) {
-      const { data: courseRow, error: courseError } = await supabase.from('courses' as any).select('id, nome, type').eq('id', body.course_id).maybeSingle()
-      if (courseError || !courseRow) return NextResponse.json({ ok: false, error: 'Curso inválido' }, { status: 400 })
+      const { data: courseRow, error: courseError } = await supabase.from('cursos').select('id, nome, tipo').eq('id', body.course_id).maybeSingle();
+      if (courseError || !courseRow) return NextResponse.json({ ok: false, error: 'Curso inválido' }, { status: 400 });
       course = courseRow
     }
 
     const gradeNome = (grade as any)?.nome
-    const requiresCourse = isUpperCycleGrade(gradeNome) || ['puniv', 'tecnico'].includes(((course as any)?.type || '').toLowerCase())
+    const requiresCourse = isUpperCycleGrade(gradeNome) || ['puniv', 'tecnico'].includes(((course as any)?.tipo || '').toLowerCase())
     if (requiresCourse && !course && !body.permitir_sem_curso) {
       return NextResponse.json({ ok: false, error: 'Curso obrigatório para PUNIV/Técnico' }, { status: 400 })
     }
@@ -97,7 +97,7 @@ export async function POST(
     } else {
         // If it's a UUID, fetch the year
         try {
-             const { data: anoRow } = await supabase.from('anos_letivos' as any).select('ano').eq('id', body.ano_letivo_id).maybeSingle();
+             const { data: anoRow } = await supabase.from('anos_letivos').select('ano').eq('id', body.ano_letivo_id).maybeSingle();
              if (anoRow && (anoRow as any).ano) {
                  anoLetivoInt = Number((anoRow as any).ano);
              }
@@ -131,10 +131,8 @@ export async function POST(
     const { data: matUpdated, error: updateError } = await admin
         .from('matriculas')
         .update({
-            classe_id: body.classe_id,
-            course_id: course?.id ?? body.course_id ?? null,
-            ano_letivo_id: body.ano_letivo_id, // Save the UUID reference if your DB uses it
-            // status is already 'ativo' from RPC, but we can respect body.status if needed
+            // session_id is our canonical reference to the academic year session (anos_letivos.id)
+            session_id: body.ano_letivo_id, 
             status: body.status || 'ativo'
         })
         .eq('escola_id', resolvedEscolaId)

@@ -480,18 +480,9 @@ function usePagamentoSubmit({
       if (!res.ok || !json?.ok)
         throw new Error(json?.error || "Falha ao registar pagamento.");
 
-      // Recibo (guard de plano)
-      if (canEmitirRecibo) {
-        const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mensalidadeId: mensalidade.id }),
-        }).catch(() => null);
-
-        if (reciboRes?.ok) {
-          const rj = await reciboRes.json().catch(() => null);
-          if (rj?.ok) onRecibo({ url_validacao: rj.url_validacao ?? null });
-        }
+      // Já recebe os dados fiscais de forma atômica no registro
+      if (json.fiscal?.ok) {
+        onRecibo({ url_validacao: json.fiscal.url_validacao ?? null });
       }
 
       onConcluido();

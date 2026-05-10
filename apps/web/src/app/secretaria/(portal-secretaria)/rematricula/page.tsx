@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import { 
   UsersRound, 
   ArrowRight, 
@@ -41,6 +43,7 @@ interface AlunoTriagem {
 
 export default function RematriculaPage() {
   const router = useRouter();
+  const { success, error: toastError } = useToast();
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const slugFromPath = useMemo(() => {
@@ -209,9 +212,10 @@ export default function RematriculaPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "A transação falhou num dos Gates do servidor.");
 
-      alert(`Sucesso! ${json.sucesso} alunos transitados, ${json.falhas} falhas.`);
+      success("Transição concluída", `${json.sucesso} alunos foram transitados para a nova turma com sucesso.`);
       router.push(buildPortalHref(escolaParam, "/secretaria/turmas"));
     } catch (e) {
+      toastError("Falha na rematrícula", "Houve um erro técnico ao tentar processar a transição dos alunos. Por favor, tente novamente.");
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
@@ -222,14 +226,16 @@ export default function RematriculaPage() {
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-5xl mx-auto font-sans">
       
       {/* HEADER DA PÁGINA */}
-      <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
-        <div className="bg-[#1F6B3B]/10 p-3 rounded-xl">
-          <UsersRound className="w-6 h-6 text-[#1F6B3B]" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-slate-950 font-sora">Promoção em Massa</h1>
-          <p className="text-sm text-slate-500">Transfira alunos aprovados para o próximo ano letivo.</p>
-        </div>
+      <div className="mb-8 border-b border-slate-100 pb-4">
+        <DashboardHeader
+          title="Promoção em Massa"
+          description="Transfira alunos aprovados para o próximo ano letivo."
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Rematrícula" },
+          ]}
+        />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">

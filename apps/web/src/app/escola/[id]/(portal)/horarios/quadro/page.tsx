@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
 import { pdf } from "@react-pdf/renderer";
 import { QuadroHorarioPdf } from "@/templates/pdf/horarios/QuadroHorario";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
@@ -25,6 +25,7 @@ export default function QuadroHorariosPage() {
   const escolaParam = escolaSlug || escolaId;
   const { online } = useOfflineStatus();
   const { success, error, warning, toast: rawToast } = useToast();
+  const confirm = useConfirm();
   const [isMounted, setIsMounted] = useState(false);
 
   const [versaoId, setVersaoId] = useState<string | null>(null);
@@ -545,7 +546,14 @@ export default function QuadroHorariosPage() {
 
   const handleClearQuadro = async () => {
     if (!escolaId || !turmaId || !versaoId) return;
-    if (!window.confirm("Limpar o quadro desta turma? Essa ação não pode ser desfeita.")) return;
+    const ok = await confirm({
+      title: "Limpar quadro",
+      message: "Deseja realmente apagar todos os horários desta turma? Esta acção é irreversível.",
+      confirmLabel: "Limpar tudo",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     try {
       setClearingQuadro(true);
       const res = await fetch(
@@ -1061,20 +1069,21 @@ export default function QuadroHorariosPage() {
             <Select
               value={turmaId ?? ""}
               options={turmaOptions}
-              onChange={(event) => {
+              onChange={async (event) => {
                 const nextTurmaId = event.target.value || null;
                 if (nextTurmaId === turmaId) return;
                 if (autoDraftDirty) {
-                  const confirmed = window.confirm(
-                    "Existe auto-completar não salvo. Deseja trocar de turma mesmo assim?"
-                  );
+                  const confirmed = await confirm({
+                    title: "Alterações não salvas",
+                    message: "Existem horários sugeridos que ainda não foram guardados. Se mudar de turma agora, estas sugestões serão perdidas. Deseja continuar?",
+                    confirmLabel: "Continuar sem salvar",
+                  });
                   if (!confirmed) return;
                 }
                 setTurmaId(nextTurmaId);
               }}
               className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
-            />
-            {selectedTurma?.sala ? (
+            />            {selectedTurma?.sala ? (
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
                 Sala {selectedTurma.sala}
               </span>

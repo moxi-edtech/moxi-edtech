@@ -1,6 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { resolveSecretariaEscolaIdForPage } from "@/lib/secretaria/resolveSecretariaEscolaIdForPage";
 
 export const dynamic = 'force-dynamic'
@@ -36,6 +37,15 @@ export default async function Page({ params }: PageProps = {}) {
   return (
     <div className="p-6">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_wizard" />
+      <DashboardHeader
+        title="Nova Admissão"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Admissões", href: "/secretaria/admissoes" },
+          { label: "Novo" },
+        ]}
+      />
       <AdmissaoWizardClient escolaId={escolaId} escolaSlug={escolaSlug} />
     </div>
   )

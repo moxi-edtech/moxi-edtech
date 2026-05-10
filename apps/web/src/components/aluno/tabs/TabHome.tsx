@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
 import { RematriculaBanner } from "@/components/aluno/home/RematriculaBanner";
@@ -8,6 +9,7 @@ import { RematriculaBanner } from "@/components/aluno/home/RematriculaBanner";
 type StatusResponse = { nome: string; classe: string | null; turma: string | null; estadoAcademico: string } | null;
 type FinanceResponse = { id: string; valor: number; mes: string | null } | null;
 type GradeItem = { disciplina: string; tipo: string; nota: number | null; data: string | null };
+type AcademicEvent = { id: string; nome: string; data_inicio: string; data_fim: string; tipo: string };
 
 export function TabHome() {
   const searchParams = useSearchParams();
@@ -16,9 +18,11 @@ export function TabHome() {
   const [status, setStatus] = useState<StatusResponse>(null);
   const [alert, setAlert] = useState<FinanceResponse>(null);
   const [grades, setGrades] = useState<GradeItem[]>([]);
+  const [events, setEvents] = useState<AcademicEvent[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [loadingAlert, setLoadingAlert] = useState(true);
   const [loadingGrades, setLoadingGrades] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const query = studentId ? `?studentId=${studentId}` : "";
@@ -56,9 +60,20 @@ export function TabHome() {
     },
   });
 
+  const eventsReq = usePortalSWR({
+    key: `home-events-${studentId ?? "default"}`,
+    url: `/api/aluno/home/academic-events${query}`,
+    intervalMs: 120000,
+    parse: (payload) => (payload as { items?: AcademicEvent[] }).items ?? [],
+    onData: (data) => {
+      setEvents(data);
+      setLoadingEvents(false);
+    },
+  });
+
   const pullToRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([statusReq.refresh(), alertReq.refresh(), gradesReq.refresh()]);
+    await Promise.all([statusReq.refresh(), alertReq.refresh(), gradesReq.refresh(), eventsReq.refresh()]);
     setRefreshing(false);
   };
 
@@ -122,24 +137,54 @@ export function TabHome() {
 
       {loadingAlert ? (
         <div className="h-14 sm:h-16 animate-pulse rounded-2xl bg-klasse-gold-100" />
-      ) : alert ? (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Mensalidade em atraso</p>
-            <p className="text-xs text-slate-500">
-              {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(alert.valor)}
-              {alert.mes ? ` • ${alert.mes}` : ""}
-            </p>
-          </div>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-klasse-gold-700">
-            Consulte o financeiro
-          </span>
-        </section>
-      ) : null}
+      ) : (
+        <>
+          {alert && (
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Mensalidade em atraso</p>
+                <p className="text-xs text-slate-500">
+                  {new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 }).format(alert.valor)}
+                  {alert.mes ? ` • ${alert.mes}` : ""}
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-klasse-gold-700">
+                Consulte o financeiro
+              </span>
+            </section>
+          )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {/* NOVO WIDGET: EVENTOS ACADÉMICOS */}
+          {!loadingEvents && events.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-900 mb-3">Próximos Eventos</p>
+              <div className="space-y-3">
+                {events.map((ev) => (
+                  <div key={ev.id} className="flex items-center gap-3">
+                    <div className={`h-10 w-1 flex-shrink-0 rounded-full ${
+                      ev.tipo === 'FERIADO' ? 'bg-rose-400' : 
+                      ev.tipo === 'PROVA_TRIMESTRAL' ? 'bg-amber-400' : 'bg-blue-400'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">{ev.nome}</p>
+                      <p className="text-xs text-slate-500">
+                        {format(parseISO(ev.data_inicio), 'dd/MM')} 
+                        {ev.data_inicio !== ev.data_fim && ` a ${format(parseISO(ev.data_fim), 'dd/MM')}`}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{ev.tipo.replace('_', ' ')}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-900">Notas recentes</p>
+
           <span className="text-xs text-slate-400">Últimas avaliações</span>
         </div>
         {loadingGrades ? (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Eye, Mail, MessageCircle, RefreshCw, Save, Settings2, FileText, CheckCircle2, XCircle } from "lucide-react";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { Button } from "@/components/ui/Button";
 
 type CentroItem = {
@@ -95,7 +95,8 @@ function statusLabel(item: CentroItem) {
 }
 
 export default function SubscricoesCockpitClient() {
-  const { toast } = useToast();
+  const { toast, success, error } = useToast();
+  const confirm = useConfirm();
   const [items, setItems] = useState<CentroItem[]>([]);
   const [settings, setSettings] = useState<CommercialSettings>(emptySettings);
   const [loading, setLoading] = useState(true);
@@ -261,7 +262,13 @@ export default function SubscricoesCockpitClient() {
       toast({ variant: "info", title: "Selecione pelo menos um centro." });
       return;
     }
-    if (!confirm(`Enviar lembrete por e-mail para ${targets.length} centro(s)?`)) return;
+    
+    const ok = await confirm({
+      title: "Enviar lembretes",
+      message: `Deseja enviar um lembrete por e-mail para os ${targets.length} centros seleccionados?`,
+      confirmLabel: "Enviar lembretes",
+    });
+    if (!ok) return;
 
     setBusyId("bulk");
     let sent = 0;
@@ -329,7 +336,12 @@ export default function SubscricoesCockpitClient() {
       return;
     }
 
-    if (!confirm(`Deseja confirmar o pagamento de ${item.nome} e activar a subscrição?`)) return;
+    const ok = await confirm({
+      title: "Validar pagamento",
+      message: `Deseja confirmar o pagamento de ${item.nome} e activar a subscrição agora?`,
+      confirmLabel: "Activar subscrição",
+    });
+    if (!ok) return;
 
     setBusyId(item.escola_id);
     try {
@@ -360,7 +372,21 @@ export default function SubscricoesCockpitClient() {
       return;
     }
 
-    if (!confirm(`Deseja rejeitar o comprovativo de ${item.nome}?`)) return;
+    const motivo = await confirm({
+      title: "Rejeitar comprovativo",
+      message: `Deseja marcar o comprovativo de ${item.nome} como inválido? Por favor, indique o motivo para que o cliente possa corrigir.`,
+      inputType: "text",
+      placeholder: "Ex: Valor insuficiente ou imagem ilegível",
+      confirmLabel: "Rejeitar",
+      variant: "danger",
+    });
+
+    if (motivo === null) return;
+    const msg = String(motivo).trim();
+    if (msg.length < 3) {
+      error("Motivo necessário", "Por favor, indique um motivo válido com pelo menos 3 caracteres.");
+      return;
+    }
 
     setBusyId(item.escola_id);
     try {
@@ -369,7 +395,8 @@ export default function SubscricoesCockpitClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "reject_receipt",
-          pagamento_id: item.billing.last_payment_id
+          pagamento_id: item.billing.last_payment_id,
+          motivo: msg
         }),
       });
 

@@ -1,4 +1,5 @@
 import AuditPageView from "@/components/audit/AuditPageView";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 
@@ -40,7 +41,14 @@ export default async function Page() {
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="exportacoes" />
       <div className="bg-white rounded-xl shadow border p-5">
-        <h1 className="text-lg font-semibold mb-2">Exportações (Secretaria)</h1>
+        <DashboardHeader
+          title="Exportações (Secretaria)"
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Exportações" },
+          ]}
+        />
         {!allowed ? (
           <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
             Disponível no plano {PLAN_NAMES.profissional} ou {PLAN_NAMES.premium}. Fale com o Super Admin para atualizar o plano da escola.

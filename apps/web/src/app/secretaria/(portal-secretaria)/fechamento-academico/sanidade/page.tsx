@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 type Pendencia = {
   id: string;
@@ -49,7 +50,15 @@ export default function SanidadeFechamentoPage() {
 
   return (
     <main className="space-y-4 p-6">
-      <h1 className="text-xl font-semibold">Sanidade pré-fechamento acadêmico</h1>
+      <DashboardHeader
+        title="Sanidade Pré-Fechamento Acadêmico"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Fechamento Acadêmico", href: "/secretaria/fechamento-academico" },
+          { label: "Sanidade" },
+        ]}
+      />
       <div className="grid gap-3 md:grid-cols-2">
         <select value={acao} onChange={(e) => setAcao(e.target.value as "fechar_trimestre" | "fechar_ano")} className="rounded border p-2">
           <option value="fechar_trimestre">Fechar trimestre</option>

@@ -6,6 +6,8 @@ import { Loader2, ShieldCheck, Send, FileWarning, FileX2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
+import { useToast } from "@/components/feedback/FeedbackSystem";
+
 type ActionKind = "rectificar" | "anular" | "submeter";
 
 type FiscalOperationsClientProps = {
@@ -37,6 +39,7 @@ function actionLabel(action: ActionKind) {
 }
 
 export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProps) {
+  const { success, error } = useToast();
   const now = useMemo(() => new Date(), []);
   const [periodoInicio, setPeriodoInicio] = useState(toMonthStartDate(now));
   const [periodoFim, setPeriodoFim] = useState(toMonthEndDate(now));
@@ -47,7 +50,6 @@ export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProp
   const [loadingSaft, setLoadingSaft] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [loadingProbe, setLoadingProbe] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [probeFeedback, setProbeFeedback] = useState<{
     tone: "ok" | "warn" | "error";
     text: string;
@@ -55,7 +57,6 @@ export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProp
 
   const runSaftExport = async () => {
     setLoadingSaft(true);
-    setFeedback(null);
     try {
       const res = await fetch("/api/fiscal/saft/export", {
         method: "POST",
@@ -70,13 +71,15 @@ export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProp
       });
       const json = (await res.json().catch(() => ({}))) as ApiResult;
       if (!res.ok || !json.ok) {
-        setFeedback({
-          tone: "error",
-          text: `${json.error?.code ?? "FISCAL_SAFT_FAILED"}: ${json.error?.message ?? "Falha ao exportar SAF-T."}`,
-        });
+        error(
+          "Exportação SAF-T falhou",
+          `${json.error?.code ?? "FISCAL_SAFT_FAILED"}: ${json.error?.message ?? "Falha ao exportar SAF-T."}`
+        );
         return;
       }
-      setFeedback({ tone: "ok", text: "Exportação SAF-T iniciada/concluída com sucesso." });
+      success("Exportação SAF-T iniciada/concluída com sucesso.");
+    } catch (err: any) {
+      error("Erro na exportação SAF-T", err.message || "Erro inesperado.");
     } finally {
       setLoadingSaft(false);
     }
@@ -84,16 +87,15 @@ export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProp
 
   const runDocAction = async () => {
     if (!docId.trim()) {
-      setFeedback({ tone: "error", text: "Informe o ID do documento fiscal." });
+      error("Campo obrigatório", "Informe o ID do documento fiscal.");
       return;
     }
     if (motivo.trim().length < 3) {
-      setFeedback({ tone: "error", text: "Informe um motivo com pelo menos 3 caracteres." });
+      error("Campo obrigatório", "Informe um motivo com pelo menos 3 caracteres.");
       return;
     }
 
     setLoadingAction(true);
-    setFeedback(null);
     try {
       const route =
         action === "submeter"
@@ -110,13 +112,15 @@ export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProp
       });
       const json = (await res.json().catch(() => ({}))) as ApiResult;
       if (!res.ok || !json.ok) {
-        setFeedback({
-          tone: "error",
-          text: `${json.error?.code ?? "FISCAL_ACTION_FAILED"}: ${json.error?.message ?? "Falha na operação fiscal."}`,
-        });
+        error(
+          `${actionLabel(action)} falhou`,
+          `${json.error?.code ?? "FISCAL_ACTION_FAILED"}: ${json.error?.message ?? "Falha na operação fiscal."}`
+        );
         return;
       }
-      setFeedback({ tone: "ok", text: `${actionLabel(action)} executado com sucesso.` });
+      success(`${actionLabel(action)} executado com sucesso.`);
+    } catch (err: any) {
+      error(`Erro ao ${action}`, err.message || "Erro inesperado.");
     } finally {
       setLoadingAction(false);
     }
@@ -270,18 +274,6 @@ export function FiscalOperationsClient({ empresaId }: FiscalOperationsClientProp
           </span>
         )}
       </div>
-
-      {feedback ? (
-        <div
-          className={`rounded-lg border px-3 py-2 text-sm ${
-            feedback.tone === "ok"
-              ? "border-green-200 bg-green-50 text-green-700"
-              : "border-red-200 bg-red-50 text-red-700"
-          }`}
-        >
-          {feedback.text}
-        </div>
-      ) : null}
     </section>
   );
 }

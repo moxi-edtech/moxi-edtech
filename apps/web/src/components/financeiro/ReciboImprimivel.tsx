@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { Eye } from "lucide-react";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 const formatKz = (valor: number) =>
   new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(
@@ -106,6 +107,7 @@ export function ReciboPrintButton({
   valor: number;
   dataPagamento: string;
 }) {
+  const { error } = useToast();
   const [loading, setLoading] = useState(false);
   const [recibo, setRecibo] = useState<ReciboPayload | null>(null);
   const [printRequested, setPrintRequested] = useState(false);
@@ -139,8 +141,7 @@ export function ReciboPrintButton({
       });
       setPrintRequested(true);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      alert(`Erro ao imprimir recibo: ${message}`);
+      error("Erro na emissão", "Não conseguimos gerar o recibo para impressão no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
     }

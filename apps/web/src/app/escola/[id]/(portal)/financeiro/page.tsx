@@ -218,6 +218,10 @@ export default async function FinanceiroDashboardPage({
       <DashboardHeader
         title="Financeiro"
         description="Controlo total do mês em um único ecrã operacional."
+        breadcrumbs={[
+          { label: "Início", href: `/escola/${escolaId}` },
+          { label: "Financeiro" },
+        ]}
         actions={
           escolaId ? (
             <GerarMensalidadesDialog />

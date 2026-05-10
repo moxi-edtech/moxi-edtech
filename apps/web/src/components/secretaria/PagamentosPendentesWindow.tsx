@@ -2,7 +2,7 @@
 
 import { Loader2, FileText, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
 import { usePagamentosPendentes } from "@/hooks/usePagamentosPendentes";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -16,6 +16,7 @@ function isPdf(url: string) {
 
 export default function PagamentosPendentesWindow() {
   const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
   const {
     rows,
     total,
@@ -33,9 +34,19 @@ export default function PagamentosPendentesWindow() {
   async function handleAction(pagamentoId: string, aprovado: boolean) {
     let mensagemSecretaria: string | null = null;
     if (!aprovado) {
-      const motivo = window.prompt("Informe o motivo da rejeição:", "");
+      const motivo = await confirm({
+        title: "Rejeitar comprovativo",
+        message: "Por favor, indique o motivo da rejeição. Esta informação será partilhada com o aluno para que ele possa corrigir o envio.",
+        inputType: "text",
+        placeholder: "Ex: Comprovativo ilegível ou valor incorrecto",
+        confirmLabel: "Confirmar rejeição",
+        variant: "danger"
+      });
+
       if (!motivo || !motivo.trim()) {
-        toastError("Motivo da rejeição é obrigatório.");
+        if (motivo !== null) {
+          toastError("Por favor, indique o motivo para a rejeição.");
+        }
         return;
       }
       mensagemSecretaria = motivo.trim();

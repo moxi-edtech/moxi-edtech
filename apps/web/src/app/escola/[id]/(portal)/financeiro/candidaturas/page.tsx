@@ -36,6 +36,11 @@ export default async function FinanceiroCandidaturasPage({ params, searchParams 
       <DashboardHeader
         title="Inbox de Candidaturas"
         description="Compense pagamentos, valide comprovativos e converta em matrículas."
+        breadcrumbs={[
+          { label: "Início", href: `/escola/${escolaId}` },
+          { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+          { label: "Candidaturas" },
+        ]}
       />
       <FinanceiroCandidaturasInbox
         escolaId={escolaId}

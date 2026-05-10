@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirm, useToast } from "@/components/feedback/FeedbackSystem";
 
 type Slot = {
   id: string;
@@ -65,6 +66,8 @@ const SvgIcons = {
 
 export default function RotinasPage() {
   const router = useRouter();
+  const { success, error, warning } = useToast();
+  const confirm = useConfirm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -106,7 +109,7 @@ export default function RotinasPage() {
     if (!curso.trim()) return;
     
     if (toMinutes(fim) <= toMinutes(inicio)) {
-      alert("⚠ Fim não pode ser antes do início.");
+      warning("Horário inválido", "O horário de término deve ser posterior ao horário de início. Por favor, ajuste os campos.");
       return;
     }
     
@@ -132,7 +135,7 @@ export default function RotinasPage() {
       const dayList = [...(novo[key][dia] || [])];
       
       if (dayList.some((s) => overlaps(s, newSlot))) {
-        alert("⚠ Conflito de horário detectado!");
+        warning("Conflito detectado", "Já existe uma aula agendada para este período. Por favor, verifique o quadro de horários.");
         return prev;
       }
       
@@ -144,6 +147,7 @@ export default function RotinasPage() {
     });
 
     setIsSubmitting(false);
+    success("Horário guardado", "O novo horário foi adicionado à grade com sucesso.");
     setShowSuccess(true);
     
     // Resetar apenas alguns campos
@@ -154,15 +158,23 @@ export default function RotinasPage() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  const handleDeleteSlot = (dia: string, slotId: string) => {
-    if (confirm("Tem certeza que deseja excluir este horário?")) {
+  const handleDeleteSlot = async (dia: string, slotId: string) => {
+    const ok = await confirm({
+      title: "Remover horário",
+      message: "Tem certeza que deseja excluir este horário da grade? Esta acção não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      variant: "danger",
+    });
+
+    if (ok) {
       setStore(prev => ({
-        ...prev,
+  ...prev,
         [classeFiltro]: {
           ...prev[classeFiltro],
           [dia]: prev[classeFiltro][dia].filter(slot => slot.id !== slotId)
         }
       }));
+      success("Horário removido", "A aula foi removida da grade de horários.");
     }
   };
 

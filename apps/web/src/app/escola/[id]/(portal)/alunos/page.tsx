@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import { 
   ArrowLeft, 
   UserPlus, 
@@ -104,6 +105,7 @@ const SelectGroup = ({ label, icon: Icon, children, ...props }: any) => (
 
 export default function AlunosPage() {
   const router = useRouter();
+  const { success } = useToast();
   const [view, setView] = useState<"list" | "form">("list"); // Controla a vista
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
@@ -156,7 +158,7 @@ export default function AlunosPage() {
     // Simulação API
     await new Promise(r => setTimeout(r, 2000));
     setIsSubmitting(false);
-    alert("Aluno criado com sucesso! 🎓");
+    success("Aluno registado", "O novo aluno foi adicionado ao sistema com sucesso e já pode ser enturmado.");
     setView("list");
     setStep(1);
   };

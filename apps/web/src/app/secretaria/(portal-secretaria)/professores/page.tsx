@@ -1,6 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import ProfessoresListClient from "@/components/secretaria/ProfessoresListClient";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +32,17 @@ export default async function Page() {
   }
 
   return (
-    <>
+    <div className="space-y-4">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="professores_list" />
+      <DashboardHeader
+        title="Professores"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Professores" },
+        ]}
+      />
       <ProfessoresListClient />
-    </>
+    </div>
   );
 }

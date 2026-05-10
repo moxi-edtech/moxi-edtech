@@ -23,6 +23,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useParams } from "next/navigation";
 
 // -----------------------------
@@ -451,12 +452,15 @@ const ConciliacaoBancaria: React.FC = () => {
         <div className="px-6 py-6 md:px-8 md:py-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <h1 className="text-2xl font-black tracking-tight text-slate-900">
-                Conciliação Bancária
-              </h1>
-              <p className="mt-1 text-sm text-slate-600">
-                Importa extratos, sugere matches e registra pagamentos com rastreabilidade.
-              </p>
+              <DashboardHeader
+                title="Conciliação Bancária"
+                description="Importa extratos, sugere matches e registra pagamentos com rastreabilidade."
+                breadcrumbs={[
+                  { label: "Início", href: `/escola/${escolaId}` },
+                  { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+                  { label: "Conciliação" },
+                ]}
+              />
             </div>
 
             <div className="flex flex-wrap gap-2">

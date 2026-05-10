@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import PagamentosPendentesWindow from "@/components/secretaria/PagamentosPendentesWindow";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,5 +21,17 @@ export default async function RecebimentosPage() {
     redirect("/redirect");
   }
 
-  return <PagamentosPendentesWindow />;
+  return (
+    <div className="space-y-4">
+      <DashboardHeader
+        title="Recebimentos"
+        breadcrumbs={[
+          { label: "Início", href: "/" },
+          { label: "Secretaria", href: "/secretaria" },
+          { label: "Recebimentos" },
+        ]}
+      />
+      <PagamentosPendentesWindow />
+    </div>
+  );
 }

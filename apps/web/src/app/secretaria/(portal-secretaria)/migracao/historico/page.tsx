@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/Card";
 
 interface HistoricoItem {
@@ -36,8 +37,16 @@ export default function HistoricoImportacao() {
   return (
     <main className="p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Histórico de Importações</h1>
-        <p className="text-sm text-muted-foreground">Acompanhe importações recentes e resultados.</p>
+        <DashboardHeader
+          title="Histórico de Importações"
+          description="Acompanhe importações recentes e resultados."
+          breadcrumbs={[
+            { label: "Início", href: "/" },
+            { label: "Secretaria", href: "/secretaria" },
+            { label: "Migração", href: "/secretaria/migracao/historico" },
+            { label: "Histórico" },
+          ]}
+        />
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">

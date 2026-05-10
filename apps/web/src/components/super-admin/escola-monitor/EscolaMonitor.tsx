@@ -9,7 +9,7 @@ import {
   AlertTriangle, CheckCircle, Clock, Zap, BarChart3, ShieldCheck, XCircle,
   ArrowRight, Search
 } from "lucide-react";
-import { toast } from "sonner";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { createClient } from "@/lib/supabaseClient";
 import type {
   EscolaDetalhes,
@@ -234,6 +234,8 @@ export default function EscolaMonitor({
   onUpdate,
 }: EscolaMonitorProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
   const supabase = createClient();
   const dominioRaw = escola.dominio || escola.subdominio || null;
   const dominio = dominioRaw
@@ -246,7 +248,13 @@ export default function EscolaMonitor({
 
   const togglePortalAluno = async () => {
     const newStatus = !escola.aluno_portal_enabled;
-    if (!confirm(`Deseja ${newStatus ? 'ATIVAR' : 'DESATIVAR'} o Portal do Aluno para ${escola.nome}?`)) return;
+    const ok = await confirm({
+      title: `${newStatus ? "Activar" : "Desactivar"} Portal do Aluno`,
+      message: `Deseja realmente ${newStatus ? "activar" : "desactivar"} o acesso ao Portal do Aluno para ${escola.nome}?`,
+      confirmLabel: newStatus ? "Activar" : "Desactivar",
+      variant: newStatus ? "default" : "danger",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/super-admin/escolas/${escola.id}/update`, {
@@ -260,10 +268,10 @@ export default function EscolaMonitor({
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao actualizar escola');
 
-      toast.success(`Portal do aluno ${newStatus ? 'ativado' : 'desativado'}!`);
+      success("Estado actualizado", `O Portal do Aluno foi ${newStatus ? "activado" : "desactivado"} com sucesso.`);
       onUpdate();
     } catch (error: any) {
-      toast.error('Erro: ' + error.message);
+      toastError("Erro na actualização", "Não conseguimos alterar o estado do portal agora. Por favor, tente novamente.");
     }
   };
 
@@ -561,7 +569,7 @@ export default function EscolaMonitor({
                           <p className="text-sm font-bold text-slate-900">Resetar Escola</p>
                           <p className="text-xs text-slate-600 font-medium">Esta acção apaga todos os dados e não pode ser desfeita.</p>
                         </div>
-                        <Button variant="destructive" size="sm" className="rounded-xl font-bold text-xs" onClick={() => toast.error("Protegido por MFA de Supervisor")}>
+                        <Button variant="destructive" size="sm" className="rounded-xl font-bold text-xs" onClick={() => toastError("Acção bloqueada", "Protegido por MFA de Supervisor")}>
                           Resetar Dados
                         </Button>
                       </div>

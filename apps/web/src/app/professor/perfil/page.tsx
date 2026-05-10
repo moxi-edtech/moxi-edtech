@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 type DisciplinaItem = { id: string; nome: string };
 
@@ -62,8 +63,15 @@ export default function ProfessorPerfilPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-klasse-green">Perfil do professor</h1>
-          <p className="text-sm text-slate-500">Consulte seus dados e disponibilidade cadastrados.</p>
+          <DashboardHeader
+            title="Perfil do Professor"
+            description="Consulte seus dados e disponibilidade cadastrados."
+            breadcrumbs={[
+              { label: "Início", href: "/" },
+              { label: "Professor", href: "/professor" },
+              { label: "Perfil" },
+            ]}
+          />
         </div>
 
         {loading ? (

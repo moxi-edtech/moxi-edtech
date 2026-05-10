@@ -71,7 +71,8 @@ export async function POST(
         .from("anos_letivos")
         .select("ano")
         .eq("escola_id", escolaId)
-        .eq("ativo", true)
+        .order("ano", { ascending: false }) // Priorizar o ano mais recente para novas admissões
+        .limit(1)
         .maybeSingle(),
       supabase
         .from("cursos")

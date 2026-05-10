@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
 import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
-import { ToastProvider } from "@/components/feedback/FeedbackSystem";
+import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import SessionLockProvider from "@/components/session/SessionLockProvider";
 import { UserRoleProvider } from "@/components/auth/UserRoleProvider";
 import SWRProvider from "@/components/providers/SWRProvider";
@@ -41,13 +41,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="h-full" style={{ fontFamily: shouldLoadGoogleFonts ? "Sora, sans-serif" : "sans-serif" }}>
         <ServiceWorkerRegister />
         <OfflineSyncRegister />
-        <ToastProvider>
+        <FeedbackProvider>
           <SWRProvider>
             <UserRoleProvider>
               <SessionLockProvider>{children}</SessionLockProvider>
             </UserRoleProvider>
           </SWRProvider>
-        </ToastProvider>
+        </FeedbackProvider>
       </body>
     </html>
   );

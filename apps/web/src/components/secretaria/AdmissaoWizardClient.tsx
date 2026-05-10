@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -1858,6 +1859,8 @@ export default function AdmissaoWizardClient({
   escolaSlug?: string | null;
 }) {
   const router = useRouter();
+  const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
   const pathname = usePathname();
   const [step, setStep] = useState(1);
   const [candidaturaId, setCandidaturaId] = useState<string | null>(null);
@@ -1989,8 +1992,13 @@ export default function AdmissaoWizardClient({
 
   const handleDeleteDraft = async (id: string) => {
     if (!isUuid(id)) return;
-    const confirmDelete = window.confirm("Excluir este rascunho? Esta ação não pode ser desfeita.");
-    if (!confirmDelete) return;
+    const ok = await confirm({
+      title: "Excluir rascunho",
+      message: "Tem certeza que deseja apagar este rascunho de admissão? Esta acção não pode ser desfeita.",
+      confirmLabel: "Excluir rascunho",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const params = new URLSearchParams({ escolaId });
       const res = await fetch(`/api/secretaria/admissoes/rascunhos?${params.toString()}`, {
@@ -2007,14 +2015,20 @@ export default function AdmissaoWizardClient({
       if (cached?.candidaturaId === id) {
         writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} });
       }
+      success("Rascunho excluído", "O registo foi removido com sucesso.");
     } catch (err: any) {
       setDraftsError(err.message || "Falha ao excluir rascunho.");
     }
   };
 
   const handleDeleteAllDrafts = async () => {
-    const confirmDelete = window.confirm("Excluir todos os rascunhos? Esta ação não pode ser desfeita.");
-    if (!confirmDelete) return;
+    const ok = await confirm({
+      title: "Excluir todos os rascunhos",
+      message: "Tem certeza que deseja apagar todos os rascunhos de admissão guardados no servidor? Esta acção é irreversível.",
+      confirmLabel: "Excluir tudo",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const params = new URLSearchParams({ escolaId });
       const res = await fetch(`/api/secretaria/admissoes/rascunhos?${params.toString()}`, {
@@ -2028,6 +2042,7 @@ export default function AdmissaoWizardClient({
       }
       setDraftItems([]);
       writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} });
+      success("Rascunhos limpos", "Todos os rascunhos foram removidos com sucesso.");
     } catch (err: any) {
       setDraftsError(err.message || "Falha ao excluir rascunhos.");
     }

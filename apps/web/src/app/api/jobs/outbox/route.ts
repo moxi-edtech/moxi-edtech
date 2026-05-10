@@ -22,6 +22,17 @@ type OutboxEvent = {
   last_error: string | null;
 };
 
+type PagamentoRow = {
+  id: string;
+  escola_id: string;
+  aluno_id: string | null;
+  mensalidade_id: string | null;
+  valor_pago: number | null;
+  data_pagamento: string | null;
+  metodo: string | null;
+  reference: string | null;
+};
+
 function resolveJobToken(req: Request) {
   return req.headers.get("x-job-token") || req.headers.get("authorization")?.replace("Bearer ", "");
 }
@@ -215,6 +226,75 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
   });
 }
 
+async function emitirReciboPagamento(
+  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  event: OutboxEvent
+) {
+  const payload = (event.payload || {}) as Record<string, unknown>;
+  const pagamentoId = typeof payload.pagamento_id === "string" ? payload.pagamento_id : null;
+  if (!pagamentoId) throw new Error("payload missing pagamento_id");
+
+  const { data: pagamento, error: pagamentoErr } = await admin
+    .from("pagamentos")
+    .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference")
+    .eq("id", pagamentoId)
+    .maybeSingle();
+
+  if (pagamentoErr) throw pagamentoErr;
+  if (!pagamento) throw new Error("pagamento not found");
+
+  const row = pagamento as PagamentoRow;
+  if (!row.aluno_id) throw new Error("pagamento sem aluno_id");
+
+  if (row.mensalidade_id) {
+    const { data: existingMensalidadeDoc } = await admin
+      .from("documentos_emitidos")
+      .select("id")
+      .eq("tipo", "recibo")
+      .eq("mensalidade_id", row.mensalidade_id)
+      .maybeSingle();
+
+    if (existingMensalidadeDoc?.id) return;
+  } else {
+    const { data: existingByPagamento } = await admin
+      .from("documentos_emitidos")
+      .select("id")
+      .eq("tipo", "recibo")
+      .eq("escola_id", row.escola_id)
+      .contains("dados_snapshot", { pagamento_id: row.id })
+      .limit(1);
+
+    if ((existingByPagamento ?? []).length > 0) return;
+  }
+
+  const valor = Number(row.valor_pago ?? 0);
+  if (!Number.isFinite(valor) || valor <= 0) throw new Error("pagamento com valor inválido");
+
+  const hash = crypto.randomUUID().replace(/-/g, "");
+  const { error: insertDocError } = await admin.from("documentos_emitidos").insert({
+    escola_id: row.escola_id,
+    aluno_id: row.aluno_id,
+    mensalidade_id: row.mensalidade_id,
+    tipo: "recibo",
+    dados_snapshot: {
+      origem: "pagamento_auto",
+      pagamento_id: row.id,
+      mensalidade_id: row.mensalidade_id,
+      valor_pago: valor,
+      data_pagamento: row.data_pagamento,
+      metodo: row.metodo,
+      reference: row.reference,
+      hash_validacao: hash,
+    },
+    created_by: null,
+    hash_validacao: hash,
+  });
+
+  if (insertDocError && insertDocError.code !== "23505") {
+    throw insertDocError;
+  }
+}
+
 export async function POST(req: Request) {
   const token = resolveJobToken(req);
   const expected = process.env.OUTBOX_JOB_TOKEN || process.env.CRON_SECRET;
@@ -227,29 +307,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
   }
 
-  const { data: events, error } = await admin.rpc("claim_outbox_events", {
-    p_topic: "auth_provision_student",
-    p_limit: 25,
-  });
+  const processTopic = async (
+    topic: string,
+    handler: (event: OutboxEvent) => Promise<void>
+  ) => {
+    const { data: events, error } = await admin.rpc("claim_outbox_events", {
+      p_topic: topic,
+      p_limit: 25,
+    });
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
-
-  const items = (events || []) as OutboxEvent[];
-  const results = [] as Array<{ id: string; status: string; error?: string }>;
-
-  for (const event of items) {
-    try {
-      await provisionStudent(admin, event);
-      await markEvent(admin, event, "processed");
-      results.push({ id: event.id, status: "processed" });
-    } catch (err: any) {
-      const message = err?.message || String(err);
-      await markEvent(admin, event, "failed", message);
-      results.push({ id: event.id, status: "failed", error: message });
+    if (error) {
+      throw new Error(`[${topic}] ${error.message}`);
     }
-  }
 
+    const items = (events || []) as OutboxEvent[];
+    const results = [] as Array<{ id: string; status: string; error?: string }>;
+
+    for (const event of items) {
+      try {
+        await handler(event);
+        await markEvent(admin, event, "processed");
+        results.push({ id: event.id, status: "processed" });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        await markEvent(admin, event, "failed", message);
+        results.push({ id: event.id, status: "failed", error: message });
+      }
+    }
+
+    return results;
+  };
+
+  const authResults = await processTopic("auth_provision_student", (event) =>
+    provisionStudent(admin, event)
+  );
+
+  const reciboResults = await processTopic("financeiro_recibo_pagamento", (event) =>
+    emitirReciboPagamento(admin, event)
+  );
+
+  const results = [...authResults, ...reciboResults];
   return NextResponse.json({ ok: true, processed: results.length, results });
 }
