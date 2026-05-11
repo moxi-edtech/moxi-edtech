@@ -43,6 +43,13 @@ export default async function ReciboPrintPage({
   const metodo = snapshot.metodo || "—";
   const numero = snapshot.numero_sequencial ? String(snapshot.numero_sequencial).padStart(6, "0") : null;
 
+  // Novos campos enriquecidos
+  const alunoNome = snapshot.aluno_nome || "—";
+  const alunoBi = snapshot.aluno_bi || "—";
+  const turmaNome = snapshot.turma_nome || "—";
+  const classeNome = snapshot.classe_nome || "—";
+  const cursoNome = snapshot.curso_nome || "";
+
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
       <PrintTrigger />
@@ -63,6 +70,28 @@ export default async function ReciboPrintPage({
               {numero ? <p>Nº de Série: {numero}</p> : null}
             </div>
           </header>
+
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Identificação do Aluno</h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+              <div className="col-span-2">
+                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Nome Completo</p>
+                <p className="font-semibold text-base">{alunoNome}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">NIF / BI</p>
+                <p className="font-medium">{alunoBi}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Classe / Curso</p>
+                <p className="font-medium">{classeNome}{cursoNome ? ` - ${cursoNome}` : ""}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Turma</p>
+                <p className="font-medium">{turmaNome}</p>
+              </div>
+            </div>
+          </section>
 
           <section className="space-y-4">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Dados do Pagamento</h2>
