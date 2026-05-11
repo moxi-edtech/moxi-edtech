@@ -53,7 +53,7 @@ export default function IdentidadePage({ params }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const base = buildPortalHref(escolaParam, "/admin/configuracoes");
-  const { error } = useToast();
+  const { error, success } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<IdentidadeForm>({
@@ -69,6 +69,7 @@ export default function IdentidadePage({ params }: Props) {
   });
   const [planoLimites, setPlanoLimites] = useState<PlanoLimites | null>(null);
   const [assinatura, setAssinatura] = useState<AssinaturaResumo | null>(null);
+  const [savingLogo, setSavingLogo] = useState(false);
   const beneficiosPlano = useMemo(() => {
     if (!planoLimites) return [];
     return [
@@ -82,6 +83,52 @@ export default function IdentidadePage({ params }: Props) {
   }, [planoLimites]);
 
   const logoPreview = useMemo(() => formData.logo_url?.trim() || "", [formData.logo_url]);
+
+  async function uploadLogo(file: File) {
+    setSavingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.set("logo", file);
+      const res = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/identidade`, {
+        method: "PUT",
+        body: fd,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        error(json?.error || "Falha ao actualizar logo.");
+        return;
+      }
+      setFormData((prev) => ({ ...prev, logo_url: json.data?.logo_url ?? prev.logo_url }));
+      success("Logo atualizado com sucesso.");
+    } catch {
+      error("Erro ao carregar logo.");
+    } finally {
+      setSavingLogo(false);
+    }
+  }
+
+  async function removeLogo() {
+    setSavingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.set("removeLogo", "true");
+      const res = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/identidade`, {
+        method: "PUT",
+        body: fd,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        error(json?.error || "Falha ao remover logo.");
+        return;
+      }
+      setFormData((prev) => ({ ...prev, logo_url: null }));
+      success("Logo removido com sucesso.");
+    } catch {
+      error("Erro ao remover logo.");
+    } finally {
+      setSavingLogo(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -204,6 +251,30 @@ export default function IdentidadePage({ params }: Props) {
                     readOnly
                     placeholder="https://..."
                   />
+                  <div className="mt-3 flex items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700">
+                      {savingLogo ? "A carregar..." : "Carregar logo"}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="hidden"
+                        disabled={savingLogo}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadLogo(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      disabled={savingLogo || !formData.logo_url}
+                      onClick={() => void removeLogo()}
+                    >
+                      Remover
+                    </button>
+                  </div>
                 </div>
 
                 <div>
