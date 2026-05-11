@@ -8,13 +8,14 @@ import {
   resolveEmpresaFiscalAtiva 
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Database, Json } from "~types/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const payloadSchema = z.object({
   aluno_id: z.string().uuid(),
-  mensalidade_id: z.string().uuid(),
+  mensalidade_id: z.string().uuid().nullable().optional(),
   valor: z.number().positive(),
   metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"]),
   reference: z.string().trim().min(1).nullable().optional(),
@@ -35,6 +36,9 @@ type BalcaoFiscalResult =
       ok: false;
       error: string;
     };
+type BalcaoReciboResult =
+  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null }
+  | { ok: false; error: string };
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -97,7 +101,7 @@ export async function POST(request: Request) {
     const { data: pagamento, error: pgError } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
       p_escola_id: escolaId,
       p_aluno_id: payload.aluno_id,
-      p_mensalidade_id: payload.mensalidade_id,
+      p_mensalidade_id: (payload.mensalidade_id ?? null) as any,
       p_valor: payload.valor,
       p_metodo: metodo,
       p_reference: payload.reference ?? undefined,
@@ -106,10 +110,59 @@ export async function POST(request: Request) {
       p_meta: { ...meta, idempotency_key: idempotencyKey },
     });
 
-    if (pgError) throw pgError;
+    if (pgError) {
+      const err = pgError as PostgrestError & {
+        details?: string | null;
+        hint?: string | null;
+        code?: string;
+      };
+      console.error("[BALCAO-PAGAMENTOS][RPC_ERROR]", {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: err.message || "Falha ao registrar pagamento",
+          pg: {
+            code: err.code ?? null,
+            details: err.details ?? null,
+            hint: err.hint ?? null,
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     // 2. Emissão Fiscal Síncrona (O Papel na Mão)
     const pagamentoRow = pagamento as PagamentoRow | null;
+    let recibo: BalcaoReciboResult = { ok: false, error: "Recibo não aplicável" };
+    if (payload.mensalidade_id) {
+      try {
+        const { data: reciboData, error: reciboError } = await supabase.rpc("emitir_recibo", {
+          p_mensalidade_id: payload.mensalidade_id,
+        });
+        if (reciboError) {
+          recibo = { ok: false, error: reciboError.message || "Falha ao emitir recibo" };
+        } else {
+          const rec = asRecord(reciboData);
+          const recOk = rec.ok === true;
+          recibo = recOk
+            ? {
+                ok: true,
+                doc_id: getStringField(rec, "doc_id"),
+                public_id: getStringField(rec, "public_id"),
+                emitido_em: getStringField(rec, "emitido_em"),
+              }
+            : { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
+        }
+      } catch (reciboErr: unknown) {
+        const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
+        recibo = { ok: false, error: message };
+      }
+    }
     let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
     try {
       const origin = new URL(request.url).origin;
@@ -171,11 +224,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       ok: true, 
       data: pagamento,
+      recibo,
       fiscal: fiscalResult
     });
   } catch (e) {
+    const err = e as Partial<PostgrestError> & { details?: string; hint?: string; code?: string };
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[BALCAO-PAGAMENTOS] POST erro:", {
+      message,
+      code: err?.code ?? null,
+      details: err?.details ?? null,
+      hint: err?.hint ?? null,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: message,
+        pg: {
+          code: err?.code ?? null,
+          details: err?.details ?? null,
+          hint: err?.hint ?? null,
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 
