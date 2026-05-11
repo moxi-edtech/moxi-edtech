@@ -58,6 +58,17 @@ type Props = {
 
 const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" });
 
+function formatMetodoPagamento(metodo: string | null): string {
+  const value = (metodo || "").toLowerCase().trim();
+  if (!value) return "Método não informado";
+  if (value === "cash" || value === "dinheiro" || value === "numerario") return "Numerário";
+  if (value === "tpa") return "TPA";
+  if (value === "transfer" || value === "transferencia") return "Transferência";
+  if (value === "mcx" || value === "multicaixa") return "Multicaixa";
+  if (value === "kiwk" || value === "kwik") return "KIWK";
+  return metodo || "Método não informado";
+}
+
 // ─── Animation Variants ───────────────────────────────────────────────────────
 
 const containerVariants: Variants = {
@@ -361,13 +372,13 @@ export default function EscolaAdminDashboardContent({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex items-center justify-between gap-3 py-4 group/row transition-colors hover:bg-slate-50/50"
+                    className="flex items-center justify-between gap-3 py-4 group/row transition-colors hover:bg-slate-50/50"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-900 truncate group-hover/row:text-klasse-green transition-colors">
-                      {p.aluno_nome ?? (p.aluno_id ? `Aluno ${p.aluno_id.slice(0, 8)}…` : "—")}
+                      {p.aluno_nome?.trim() || "Aluno não identificado"}
                     </p>
-                    <p className="text-[11px] font-medium text-slate-400">{p.metodo ?? "—"}</p>
+                    <p className="text-[11px] font-medium text-slate-400">{formatMetodoPagamento(p.metodo)}</p>
                   </div>
                   <div className="flex items-center gap-4 flex-shrink-0">
                     <StatusPill status={p.status} />

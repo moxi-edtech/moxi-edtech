@@ -10,6 +10,7 @@ import {
   Zap,
   Phone,
   MessageSquare,
+  Clock3,
 } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
@@ -37,6 +38,9 @@ type RadarRowFromApi = {
     valor_previsto: number | null;
     status_mensalidade: string;
   }>;
+  case_status?: "novo" | "em_contato" | "promessa" | "escalado" | "resolvido";
+  case_owner_user_id?: string | null;
+  score_prioridade?: number;
 };
 
 // --- Tipos usados no componente ---
@@ -62,6 +66,9 @@ export type RadarEntry = {
     valor_previsto: number | null;
     status_mensalidade: string;
   }>;
+  case_status: "novo" | "em_contato" | "promessa" | "escalado" | "resolvido";
+  case_owner_user_id?: string | null;
+  score_prioridade: number;
 };
 
 type Relatorio = {
@@ -151,6 +158,56 @@ type RadarInadimplenciaActiveProps = {
   disableActions?: boolean;
 };
 
+type CaseEvent = {
+  id: string;
+  event_type: "status_change" | "contato" | "promessa" | "nota";
+  payload: Record<string, any> | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+function humanizeCaseStatus(value?: string | null) {
+  if (!value) return "Não definido";
+  const map: Record<string, string> = {
+    novo: "Novo",
+    em_contato: "Em contato",
+    promessa: "Promessa",
+    escalado: "Escalado",
+    resolvido: "Resolvido",
+  };
+  return map[value] ?? value;
+}
+
+function humanizeEventTitle(eventType: CaseEvent["event_type"]) {
+  const map: Record<CaseEvent["event_type"], string> = {
+    status_change: "Mudança de status",
+    contato: "Contato registrado",
+    promessa: "Promessa registrada",
+    nota: "Nota operacional",
+  };
+  return map[eventType] ?? eventType;
+}
+
+function humanizeEventBody(ev: CaseEvent) {
+  const payload = ev.payload ?? {};
+  if (ev.event_type === "status_change") {
+    return `Status definido para ${humanizeCaseStatus(payload.status_operacional)}.`;
+  }
+  if (ev.event_type === "contato") {
+    const nota = payload.nota ? ` Observação: ${String(payload.nota)}.` : "";
+    return `Contato marcado no caso.${nota}`;
+  }
+  if (ev.event_type === "promessa") {
+    const valor = payload.valor ? ` Valor prometido: ${String(payload.valor)}.` : "";
+    const data = payload.data ? ` Data acordada: ${String(payload.data)}.` : "";
+    return `Promessa registrada.${valor}${data}`;
+  }
+  if (ev.event_type === "nota") {
+    return payload.nota ? String(payload.nota) : "Nota sem texto.";
+  }
+  return "Evento operacional registrado.";
+}
+
 export default function RadarInadimplenciaActive({
   onSelectionChange,
   disableActions = false,
@@ -179,6 +236,13 @@ export default function RadarInadimplenciaActive({
   const [filtroTexto, setFiltroTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [timelineFor, setTimelineFor] = useState<RadarEntry | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineEvents, setTimelineEvents] = useState<CaseEvent[]>([]);
+  const [filtroStatusOperacional, setFiltroStatusOperacional] = useState<"todos" | RadarEntry["case_status"]>("todos");
+  const [filtroRisco, setFiltroRisco] = useState<"todos" | RadarEntry["status"]>("todos");
+  const [filtroFaixaValor, setFiltroFaixaValor] = useState<"todos" | "baixo" | "medio" | "alto">("todos");
   const [relatorio, setRelatorio] = useState<Relatorio>({
     totalEnviadas: 0,
     totalRespondidas: 0,
@@ -227,6 +291,9 @@ export default function RadarInadimplenciaActive({
             ultimo_contato: null,
             ultimo_contato_data: undefined,
             mensalidades: row.mensalidades ?? [],
+            case_status: row.case_status ?? "novo",
+            case_owner_user_id: row.case_owner_user_id ?? null,
+            score_prioridade: Number(row.score_prioridade ?? 0),
           }));
           setDados(mapped);
         }
@@ -456,11 +523,69 @@ export default function RadarInadimplenciaActive({
     }
   };
 
-  const dadosFiltrados = dados.filter(
-    (d) =>
+  const dadosFiltrados = dados.filter((d) => {
+    const textoOk =
       d.nome_aluno.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-      d.responsavel.toLowerCase().includes(filtroTexto.toLowerCase())
-  );
+      d.responsavel.toLowerCase().includes(filtroTexto.toLowerCase());
+    const statusOpOk =
+      filtroStatusOperacional === "todos" || d.case_status === filtroStatusOperacional;
+    const riscoOk = filtroRisco === "todos" || d.status === filtroRisco;
+    const valor = Number(d.valor_divida ?? 0);
+    const faixaOk =
+      filtroFaixaValor === "todos" ||
+      (filtroFaixaValor === "baixo" && valor < 25000) ||
+      (filtroFaixaValor === "medio" && valor >= 25000 && valor < 100000) ||
+      (filtroFaixaValor === "alto" && valor >= 100000);
+    return textoOk && statusOpOk && riscoOk && faixaOk;
+  });
+
+  const atualizarCase = async (
+    item: RadarEntry,
+    action: "set_status" | "registrar_contato",
+    status_operacional?: RadarEntry["case_status"]
+  ) => {
+    const res = await fetch("/api/financeiro/radar/actions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aluno_id: item.aluno_id,
+        action,
+        status_operacional,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar caso");
+
+    setDados((prev) =>
+      prev.map((d) =>
+        d.aluno_id === item.aluno_id
+          ? {
+              ...d,
+              case_status: json?.case?.status_operacional ?? d.case_status,
+              ultimo_contato: action === "registrar_contato" ? "Agora" : d.ultimo_contato,
+              ultimo_contato_data: action === "registrar_contato" ? new Date() : d.ultimo_contato_data,
+            }
+          : d
+      )
+    );
+  };
+
+  const abrirTimeline = async (item: RadarEntry) => {
+    setTimelineFor(item);
+    setTimelineOpen(true);
+    setTimelineLoading(true);
+    try {
+      const res = await fetch(`/api/financeiro/radar/case-history?aluno_id=${item.aluno_id}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar timeline.");
+      setTimelineEvents((json.events ?? []) as CaseEvent[]);
+    } catch (err) {
+      error("Falha na timeline", err instanceof Error ? err.message : "Erro inesperado.");
+      setTimelineEvents([]);
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
 
   const totalEmRisco = dados.reduce(
     (acc, curr) => acc + curr.valor_divida,
@@ -583,7 +708,7 @@ export default function RadarInadimplenciaActive({
       )}
 
       {/* --- FILTROS E PESQUISA --- */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
@@ -597,6 +722,38 @@ export default function RadarInadimplenciaActive({
         <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center gap-2 text-sm font-medium">
           <Filter className="h-4 w-4" /> Filtros
         </button>
+        <select
+          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700"
+          value={filtroStatusOperacional}
+          onChange={(e) => setFiltroStatusOperacional(e.target.value as any)}
+        >
+          <option value="todos">Status operacional</option>
+          <option value="novo">Novo</option>
+          <option value="em_contato">Em contato</option>
+          <option value="promessa">Promessa</option>
+          <option value="escalado">Escalado</option>
+          <option value="resolvido">Resolvido</option>
+        </select>
+        <select
+          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700"
+          value={filtroRisco}
+          onChange={(e) => setFiltroRisco(e.target.value as any)}
+        >
+          <option value="todos">Risco</option>
+          <option value="critico">Crítico</option>
+          <option value="atencao">Atenção</option>
+          <option value="recente">Recente</option>
+        </select>
+        <select
+          className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700"
+          value={filtroFaixaValor}
+          onChange={(e) => setFiltroFaixaValor(e.target.value as any)}
+        >
+          <option value="todos">Faixa de valor</option>
+          <option value="baixo">Baixo (&lt; 25k)</option>
+          <option value="medio">Médio (25k - 100k)</option>
+          <option value="alto">Alto (100k+)</option>
+        </select>
       </div>
 
       {/* --- TABELA ATIVA --- */}
@@ -626,6 +783,12 @@ export default function RadarInadimplenciaActive({
                   Valor
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Score
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Caso
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
                   Ação Rápida
                 </th>
               </tr>
@@ -634,14 +797,14 @@ export default function RadarInadimplenciaActive({
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                     Carregando devedores...
                   </td>
                 </tr>
               ) : dadosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
                     Nenhum registo encontrado.
                   </td>
                 </tr>
@@ -708,6 +871,57 @@ export default function RadarInadimplenciaActive({
                       }) : "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
+                        item.score_prioridade >= 75 ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                        item.score_prioridade >= 45 ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                        "bg-slate-50 text-slate-600 border border-slate-200"
+                      }`}>
+                        {item.score_prioridade}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-2">
+                        <select
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                          value={item.case_status}
+                          onChange={async (e) => {
+                            try {
+                              await atualizarCase(item, "set_status", e.target.value as RadarEntry["case_status"]);
+                              success("Status operacional atualizado.");
+                            } catch (err) {
+                              error(
+                                "Falha ao atualizar status",
+                                err instanceof Error ? err.message : "Erro inesperado."
+                              );
+                            }
+                          }}
+                        >
+                          <option value="novo">Novo</option>
+                          <option value="em_contato">Em contato</option>
+                          <option value="promessa">Promessa</option>
+                          <option value="escalado">Escalado</option>
+                          <option value="resolvido">Resolvido</option>
+                        </select>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50"
+                          onClick={async () => {
+                            try {
+                              await atualizarCase(item, "registrar_contato");
+                              success("Contato registrado.");
+                            } catch (err) {
+                              error(
+                                "Falha ao registrar contato",
+                                err instanceof Error ? err.message : "Erro inesperado."
+                              );
+                            }
+                          }}
+                        >
+                          Registrar contato
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       <div className="flex justify-center gap-1">
                         <button
                           onClick={() => handleCobrancaIndividual(item)}
@@ -733,12 +947,19 @@ export default function RadarInadimplenciaActive({
                         >
                           {expandedIds.has(item.id) ? "Ocultar" : "Detalhes"}
                         </button>
+                        <button
+                          onClick={() => void abrirTimeline(item)}
+                          className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 inline-flex items-center gap-1"
+                        >
+                          <Clock3 className="w-3 h-3" />
+                          Timeline
+                        </button>
                       </div>
                     </td>
                     </tr>
                     {expandedIds.has(item.id) && (
                       <tr className="bg-slate-50/60">
-                        <td colSpan={6} className="px-4 py-4">
+                        <td colSpan={8} className="px-4 py-4">
                           <div className="text-xs font-semibold text-slate-600 mb-2">
                             Mensalidades em atraso
                           </div>
@@ -794,6 +1015,62 @@ export default function RadarInadimplenciaActive({
           </table>
         </div>
       </section>
+
+      {timelineOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex justify-end">
+          <div className="w-full max-w-md h-full bg-white border-l border-slate-200 shadow-xl p-5 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Timeline 360</h3>
+                <p className="text-xs text-slate-500">{timelineFor?.nome_aluno ?? "Aluno"}</p>
+              </div>
+              <button
+                onClick={() => setTimelineOpen(false)}
+                className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Fechar
+              </button>
+            </div>
+
+            {timelineLoading ? (
+              <div className="py-8 text-center text-slate-500">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                Carregando histórico...
+              </div>
+            ) : timelineEvents.length === 0 ? (
+              <p className="text-sm text-slate-500">Sem eventos operacionais ainda.</p>
+            ) : (
+              <div className="space-y-3">
+                {timelineEvents.map((ev) => (
+                  <div key={ev.id} className="rounded-lg border border-slate-200 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        {humanizeEventTitle(ev.event_type)}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {new Date(ev.created_at).toLocaleString("pt-PT")}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-[12px] leading-relaxed text-slate-700">
+                      {humanizeEventBody(ev)}
+                    </p>
+                    {ev.payload && Object.keys(ev.payload).length > 0 ? (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-[11px] font-semibold text-slate-500">
+                          Ver detalhe técnico
+                        </summary>
+                        <pre className="mt-2 text-[11px] text-slate-600 whitespace-pre-wrap break-words">
+                          {JSON.stringify(ev.payload, null, 2)}
+                        </pre>
+                      </details>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
