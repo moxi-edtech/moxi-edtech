@@ -22,7 +22,7 @@ type ReciboResponse = {
     numero_formatado: string;
     hash_control: string;
     key_version: number;
-  };
+  } | null;
 };
 
 export async function POST(req: NextRequest) {
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       productContext: "k12",
       requireTenantType: "k12",
       allowedRoles: [
+        "secretaria",
         "financeiro",
         "secretaria_financeiro",
         "admin_financeiro",
@@ -114,11 +115,48 @@ export async function POST(req: NextRequest) {
 
     const origin = new URL(req.url).origin;
     const cookieHeader = req.headers.get("cookie");
-    const empresaFiscalId = await resolveEmpresaFiscalAtiva({
-      origin,
-      escolaId,
-      cookieHeader,
-    });
+    let empresaFiscalId: string | null = null;
+    try {
+      empresaFiscalId = await resolveEmpresaFiscalAtiva({
+        origin,
+        escolaId,
+        cookieHeader,
+      });
+    } catch (ctxErr) {
+      const message = ctxErr instanceof Error ? ctxErr.message : String(ctxErr);
+      if (message.includes("FISCAL_EMPRESA_CONTEXT_REQUIRED")) {
+        const { data: legacyRecibo, error: legacyError } = await supabase.rpc("emitir_recibo", {
+          p_mensalidade_id: mensalidadeId,
+        });
+        if (legacyError) {
+          return NextResponse.json(
+            { ok: false, error: legacyError.message, code: "LEGACY_RECIBO_EMIT_FAILED" },
+            { status: 500 }
+          );
+        }
+
+        const legacy = (legacyRecibo ?? {}) as Record<string, unknown>;
+        if (legacy.ok !== true) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: String(legacy.erro ?? "Falha ao emitir recibo."),
+              code: "LEGACY_RECIBO_EMIT_FAILED",
+            },
+            { status: 400 }
+          );
+        }
+
+        const response: ReciboResponse = {
+          ok: true,
+          doc_id: String(legacy.doc_id ?? ""),
+          url_validacao: null,
+          fiscal: null,
+        };
+        return NextResponse.json(response, { status: 200 });
+      }
+      throw ctxErr;
+    }
 
     const pendingPayload = {
       escola_id: escolaId,

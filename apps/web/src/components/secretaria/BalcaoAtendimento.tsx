@@ -421,6 +421,32 @@ try {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao registar pagamento.");
+
+    // Emissão fiscal do recibo da mensalidade (não bloqueia o pagamento já registado)
+    try {
+      const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `balcao-recibo-${m.id}`,
+        },
+        body: JSON.stringify({ mensalidadeId: m.id }),
+      });
+      const reciboJson = await reciboRes.json().catch(() => ({}));
+      if (!reciboRes.ok || !reciboJson?.ok) {
+        error("Pagamento registado, mas recibo pendente", reciboJson?.error || "Não foi possível emitir o recibo agora.");
+      } else {
+        const docId = typeof reciboJson?.doc_id === "string" ? reciboJson.doc_id : null;
+        if (docId) {
+          const printUrl = `/secretaria/documentos/${docId}/recibo/print`;
+          setPrintQueue(prev => [{ label: "Recibo de pagamento", url: printUrl }, ...prev]);
+          window.open(printUrl, "_blank", "noopener,noreferrer");
+        }
+      }
+    } catch {
+      error("Pagamento registado, mas recibo pendente", "Não foi possível emitir o recibo agora.");
+    }
   }
 
   // 2. Pagar serviços com valor
