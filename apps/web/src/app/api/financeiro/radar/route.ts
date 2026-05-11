@@ -161,7 +161,48 @@ export async function GET() {
       numero_matricula: item.numero_matricula ?? numeroPorAluno[item.aluno_id] ?? null,
     }));
 
-    return NextResponse.json({ ok: true, items: enriched });
+    const sAny = s as any;
+    const { data: cases } = await sAny
+      .from("financeiro_cobranca_cases")
+      .select("aluno_id, status_operacional, owner_user_id, last_contact_at, next_action_at, sla_at")
+      .eq("escola_id", escolaId)
+      .in("aluno_id", alunoIds);
+    const caseByAluno = new Map<string, any>((cases ?? []).map((c: any) => [c.aluno_id, c]));
+
+    const enrichedWithCases = enriched.map((item) => {
+      const c: any = caseByAluno.get(item.aluno_id);
+      const dias = Number(item.dias_em_atraso ?? 0);
+      const valor = Number(item.valor_em_atraso ?? item.valor_previsto ?? 0);
+      const reincidencia = Array.isArray(item.mensalidades) ? Math.min(item.mensalidades.length, 6) : 0;
+      const statusOperacional = c?.status_operacional ?? "novo";
+      const statusWeight =
+        statusOperacional === "escalado" ? 16 :
+        statusOperacional === "promessa" ? 8 :
+        statusOperacional === "em_contato" ? 4 : 0;
+      const scoreBruto =
+        Math.min(dias, 90) * 0.45 +
+        Math.min(valor / 1000, 40) * 0.9 +
+        reincidencia * 3 +
+        statusWeight;
+      const scorePrioridade = Math.max(0, Math.min(100, Math.round(scoreBruto)));
+      return {
+        ...item,
+        case_status: c?.status_operacional ?? "novo",
+        case_owner_user_id: c?.owner_user_id ?? null,
+        case_last_contact_at: c?.last_contact_at ?? null,
+        case_next_action_at: c?.next_action_at ?? null,
+        case_sla_at: c?.sla_at ?? null,
+        score_prioridade: scorePrioridade,
+      };
+    });
+
+    const ordered = [...enrichedWithCases].sort((a: any, b: any) => {
+      const s = Number(b.score_prioridade ?? 0) - Number(a.score_prioridade ?? 0);
+      if (s !== 0) return s;
+      return Number(b.valor_em_atraso ?? 0) - Number(a.valor_em_atraso ?? 0);
+    });
+
+    return NextResponse.json({ ok: true, items: ordered });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Erro inesperado no radar financeiro:", message);
