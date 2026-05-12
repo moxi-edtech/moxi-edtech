@@ -28,6 +28,15 @@ function deriveAnoLetivo(anoAtivo?: number | null): string {
   return `${base}/${base + 1}`;
 }
 
+function getLocalDayKey(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Luanda",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 type Props = { escolaId: string; escolaNome?: string };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -52,11 +61,17 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
   const scopedEscolaId = resolvedEscolaId ?? (escolaId !== "null" ? (escolaId || null) : null);
   const isValidId = Boolean(scopedEscolaId && scopedEscolaId !== "null");
 
-  const fetchJson = async <T,>(path: string, fallback: T): Promise<T> => {
+  const fetchJson = async <T,>(
+    path: string,
+    fallback: T,
+    options?: { cache?: RequestCache; revalidate?: number }
+  ): Promise<T> => {
     if (!baseUrl || !isValidId) return fallback;
     try {
+      const cacheMode = options?.cache ?? "no-store";
       const res  = await fetch(`${baseUrl}${path}`, {
-        cache: "no-store",
+        cache: cacheMode,
+        next: options?.revalidate != null ? { revalidate: options.revalidate } : undefined,
         headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       });
       const json = await res.json().catch(() => null);
@@ -86,7 +101,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     if (!isValidId) throw new Error("ID de escola inválido ou ausente.");
     const validId = scopedEscolaId as string;
 
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = getLocalDayKey();
     const now = new Date();
     const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
@@ -121,7 +136,8 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       missingPricingResult,
       financeiroKpiResult,
       escolaNomeResult,
-      dashboardChartsRes,
+      matriculasMesResult,
+      mensalidadesStatusResult,
       inadimplenciaTopRes,
       pagamentosRecentesRes,
       estadoVitalRes,
@@ -163,7 +179,14 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
       s.from("escolas").select("nome, slug").eq("id", validId).maybeSingle(),
 
-      fetchJson(`/api/escolas/${escolaId}/admin/dashboard`, { ok: false, charts: null }),
+      s.from("vw_admin_matriculas_por_mes" as any)
+        .select("mes, total")
+        .eq("escola_id", validId)
+        .order("mes", { ascending: true }),
+
+      s.from("vw_mensalidades_operacional_status_ano_ativo" as any)
+        .select("status_operacional, total")
+        .eq("escola_id", validId),
 
       fetchJson<{ ok: boolean; data: InadimplenciaTopRow[] }>(
         `/api/escolas/${escolaId}/admin/financeiro/inadimplencia-top?limit=5`,
@@ -172,7 +195,8 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
       fetchJson<{ ok: boolean; data: PagamentoRecenteRow[] }>(
         `/api/escolas/${escolaId}/admin/financeiro/pagamentos-recentes?limit=10&day_key=${todayKey}`,
-        { ok: false, data: [] }
+        { ok: false, data: [] },
+        { cache: "force-cache", revalidate: 20 }
       ),
 
       fetchJson<{ ok: boolean; estado: any }>(
@@ -259,7 +283,39 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     financeiroHref = `/escola/${escolaParam}/financeiro`;
     const pendingTurmasCount = pendingTurmasResult.data?.pendentes_total ?? 0;
     const missingPricingCount = Number(missingPricingResult.data?.[0]?.missing_count ?? 0);
-    const charts           = (dashboardChartsRes as any)?.charts as DashboardCharts | undefined;
+    const meses = ["Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev", "Mar", "Abr", "Mai"];
+    const matriculasMesRows = (matriculasMesResult.data ?? []) as Array<{ mes?: string | null; total?: number | null }>;
+    const nowRef = new Date();
+    const monthKeys: string[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(nowRef.getFullYear(), nowRef.getMonth() - i, 1);
+      monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    const alunosPorMes = new Array(12).fill(0);
+    matriculasMesRows.forEach((row) => {
+      const raw = String(row.mes ?? "");
+      const match = /^(\d{4})-(\d{2})/.exec(raw);
+      if (!match) return;
+      const key = `${match[1]}-${match[2]}`;
+      const idx = monthKeys.indexOf(key);
+      if (idx >= 0) alunosPorMes[idx] = Number(row.total ?? 0);
+    });
+
+    const statusRows = (mensalidadesStatusResult.data ?? []) as Array<{ status_operacional?: string | null; total?: number | null }>;
+    const pagamentosResumo = { pago: 0, pendente: 0, inadimplente: 0, ajuste: 0 };
+    statusRows.forEach((row) => {
+      const status = String(row.status_operacional ?? "").toLowerCase();
+      const total = Number(row.total ?? 0);
+      if (status === "pago") pagamentosResumo.pago += total;
+      else if (status === "pendente") pagamentosResumo.pendente += total;
+      else if (status === "inadimplente") pagamentosResumo.inadimplente += total;
+    });
+
+    const charts: DashboardCharts = {
+      meses,
+      alunosPorMes,
+      pagamentos: pagamentosResumo,
+    };
     const inadimplenciaTop = (inadimplenciaTopRes as any)?.data  as InadimplenciaTopRow[] ?? [];
     const pagamentosRecentes = (pagamentosRecentesRes as any)?.data as PagamentoRecenteRow[] ?? [];
     const estadoVital      = (estadoVitalRes as any)?.estado ?? null;

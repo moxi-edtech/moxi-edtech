@@ -29,6 +29,50 @@ export default async function ReciboPrintPage({
   }
 
   const snapshot = (doc.dados_snapshot || {}) as Record<string, any>;
+  let fallbackAlunoNome: string | null = null;
+  let fallbackAlunoBi: string | null = null;
+  let fallbackTurmaNome: string | null = null;
+  let fallbackClasseNome: string | null = null;
+  let fallbackCursoNome: string | null = null;
+
+  if (
+    doc.aluno_id &&
+    (!snapshot.aluno_nome || !snapshot.aluno_bi || !snapshot.turma_nome || !snapshot.classe_nome)
+  ) {
+    const { supabaseServerTyped } = await import("@/lib/supabaseServer");
+    const supabase = await supabaseServerTyped();
+    const { data: aluno } = await supabase
+      .from("alunos")
+      .select("nome, bi_numero")
+      .eq("id", doc.aluno_id)
+      .maybeSingle();
+    fallbackAlunoNome = aluno?.nome ?? null;
+    fallbackAlunoBi = aluno?.bi_numero ?? null;
+
+    const { data: matricula } = await supabase
+      .from("matriculas")
+      .select(`
+        id,
+        turma_id,
+        ano_letivo,
+        status,
+        ativo,
+        turmas (
+          nome,
+          turno,
+          classes ( nome ),
+          cursos ( nome )
+        )
+      `)
+      .eq("aluno_id", doc.aluno_id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const turma = (matricula as any)?.turmas;
+    fallbackTurmaNome = turma?.nome ?? null;
+    fallbackClasseNome = turma?.classes?.nome ?? null;
+    fallbackCursoNome = turma?.cursos?.nome ?? null;
+  }
   const baseUrl = normalizeValidationBaseUrl(
     process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? validationBaseUrl ?? (await getRequestOrigin())
   );
@@ -44,11 +88,11 @@ export default async function ReciboPrintPage({
   const numero = snapshot.numero_sequencial ? String(snapshot.numero_sequencial).padStart(6, "0") : null;
 
   // Novos campos enriquecidos
-  const alunoNome = snapshot.aluno_nome || "—";
-  const alunoBi = snapshot.aluno_bi || "—";
-  const turmaNome = snapshot.turma_nome || "—";
-  const classeNome = snapshot.classe_nome || "—";
-  const cursoNome = snapshot.curso_nome || "";
+  const alunoNome = snapshot.aluno_nome || fallbackAlunoNome || "—";
+  const alunoBi = snapshot.aluno_bi || fallbackAlunoBi || "—";
+  const turmaNome = snapshot.turma_nome || fallbackTurmaNome || "—";
+  const classeNome = snapshot.classe_nome || fallbackClasseNome || "—";
+  const cursoNome = snapshot.curso_nome || fallbackCursoNome || "";
 
   // Componente para renderizar uma via do recibo
   const ReciboVia = ({ titulo }: { titulo: string }) => (

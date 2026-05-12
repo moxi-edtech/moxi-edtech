@@ -18,6 +18,13 @@ function last12MonthsLabels(): string[] {
   return arr;
 }
 
+function monthKeyFromIsoDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})/.exec(value);
+  if (match) return `${match[1]}-${match[2]}`;
+  const d = new Date(value);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params; 
 
@@ -52,13 +59,13 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     // 🚀 O SEGREDO: Disparar TODAS as queries ao mesmo tempo (Paralelismo)
     let pagamentosQuery = supabase
-      .from('vw_pagamentos_status' as any)
-      .select('status, total')
+      .from('vw_mensalidades_operacional_status_ano_ativo' as any)
+      .select('status_operacional, total')
       .eq('escola_id', resolvedEscolaId)
-      .order('status', { ascending: true });
+      .order('status_operacional', { ascending: true });
     pagamentosQuery = applyKf2ListInvariants(pagamentosQuery, { 
       defaultLimit: 50,
-      tieBreakerColumn: 'status'
+      tieBreakerColumn: 'status_operacional'
     });
 
     let matriculasMesQuery = supabase
@@ -96,12 +103,17 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       ajuste: 0,
     };
     pgList.forEach((p: any) => {
-      const status = String(p.status || '').toLowerCase();
+      const status = String(p.status_operacional || '').toLowerCase();
       const total = Number(p.total || 0);
-      if (status === 'pago') pagamentos.pago += total;
-      else if (status === 'pendente') pagamentos.pendente += total;
-      else if (status === 'ajuste') pagamentos.ajuste += total;
-      else if (status === 'atrasado' || status === 'inadimplente') pagamentos.inadimplente += total;
+      if (status === 'pago') {
+        pagamentos.pago += total;
+      } else if (status === 'pendente') {
+        pagamentos.pendente += total;
+      } else if (status === 'inadimplente') {
+        pagamentos.inadimplente += total;
+      } else if (status === 'ajuste') {
+        pagamentos.ajuste += total;
+      }
     });
 
     // KPI: Gráfico de Matrículas
@@ -113,8 +125,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
     }
     (matriculasMesRes.data || []).forEach((row: any) => {
-      const d = new Date(row.mes);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const key = monthKeyFromIsoDate(String(row.mes ?? ""));
       const idx = monthKeys.indexOf(key);
       if (idx >= 0) counts[idx] = Number(row.total || 0);
     });

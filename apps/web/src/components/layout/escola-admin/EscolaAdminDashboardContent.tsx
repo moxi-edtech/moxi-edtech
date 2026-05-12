@@ -160,13 +160,17 @@ function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, child
 
 function StatusPill({ status }: { status: string | null }) {
   const s = (status ?? "").toLowerCase();
-  if (s === "pago" || s === "confirmado") {
-    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">Pago</span>;
+  if (s === "pago" || s === "confirmado" || s === "settled" || s === "liquidado") {
+    const label = s === "settled" || s === "liquidado" ? "Liquidado" : "Pago";
+    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">{label}</span>;
   }
   if (s === "pendente") {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-klasse-gold-50 text-klasse-gold-700">Pendente</span>;
   }
-  return <span className="text-xs text-slate-400">{status ?? "—"}</span>;
+  if (s === "failed" || s === "falhado") {
+    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">Falhado</span>;
+  }
+  return <span className="text-xs text-slate-400">{status ? status[0].toUpperCase() + status.slice(1) : "—"}</span>;
 }
 
 // ─── Inadimplência severity indicator ────────────────────────────────────────
@@ -211,8 +215,9 @@ export default function EscolaAdminDashboardContent({
 
   const previstoReceita = Number(receitaResumo?.previsto ?? 0);
   const realizadoReceita = Number(receitaResumo?.realizado ?? 0);
+  const hasMetaReceita = previstoReceita > 0;
   const percentualReceita =
-    previstoReceita > 0 ? Math.min(100, Math.round((realizadoReceita / previstoReceita) * 100)) : 0;
+    hasMetaReceita ? Math.min(100, Math.round((realizadoReceita / previstoReceita) * 100)) : 0;
 
   useEffect(() => {
     const timer = setTimeout(() => setProgress(percentualReceita), 150);
@@ -302,7 +307,11 @@ export default function EscolaAdminDashboardContent({
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Desempenho Financeiro</p>
               <div className="text-2xl font-black text-slate-900 tracking-tight">
                 {mounted ? moeda.format(realizadoReceita) : "—"}
-                <span className="ml-2 text-sm font-medium text-slate-400">de {mounted ? moeda.format(previstoReceita) : "—"} previstos</span>
+                <span className="ml-2 text-sm font-medium text-slate-400">
+                  {hasMetaReceita
+                    ? `de ${mounted ? moeda.format(previstoReceita) : "—"} previstos`
+                    : "sem meta prevista no mês"}
+                </span>
               </div>
             </div>
             <div className="text-right">
@@ -317,7 +326,11 @@ export default function EscolaAdminDashboardContent({
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_20px_rgba(74,222,128,0.3)]"
+                className={`h-full rounded-full ${
+                  hasMetaReceita
+                    ? "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_20px_rgba(74,222,128,0.3)]"
+                    : "bg-gradient-to-r from-slate-300 to-slate-400"
+                }`}
               />
             </div>
             
@@ -328,7 +341,9 @@ export default function EscolaAdminDashboardContent({
             >
               <div className="w-2 h-2 rounded-full bg-slate-300 -mt-0.5 shadow-sm" />
               <div className="absolute top-5 bg-white border border-slate-100 px-1.5 py-0.5 rounded shadow-sm">
-                <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">META 70%</span>
+                <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">
+                  {hasMetaReceita ? "META 70%" : "META N/D"}
+                </span>
               </div>
             </div>
           </div>
