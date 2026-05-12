@@ -19,6 +19,150 @@ const convertPayloadSchema = z.object({
   // ... other payment details
 })
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+function extractMatriculaIdFromConflict(text: string): string | null {
+  const keyMatch = text.match(/matricula_id\)=\(\s*([0-9a-f-]{36})\s*\)/i);
+  if (keyMatch?.[1]) return keyMatch[1];
+
+  const messageMatch = text.match(/Matr[ií]cula\s+([0-9a-f-]{36})/i);
+  if (messageMatch?.[1]) return messageMatch[1];
+
+  const fallbackMatch = text.match(UUID_RE);
+  return fallbackMatch?.[0] ?? null;
+}
+
+function isOfficialMatriculaStatus(status: unknown): boolean {
+  return ["ativo", "ativa", "active"].includes(String(status ?? "").toLowerCase());
+}
+
+async function getFinalizedAdmissionResult(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  candidaturaId: string,
+  escolaId: string | null
+) {
+  if (!escolaId) return null;
+
+  const { data: candAfter } = await supabase
+    .from("candidaturas")
+    .select("status, matricula_id, aluno_id")
+    .eq("id", candidaturaId)
+    .eq("escola_id", escolaId)
+    .maybeSingle();
+  const statusAfter = String(candAfter?.status ?? "").toLowerCase();
+  if (statusAfter !== "matriculado" || !candAfter?.matricula_id) return null;
+
+  const { data: matricula } = await supabase
+    .from("matriculas")
+    .select("numero_matricula")
+    .eq("id", candAfter.matricula_id)
+    .eq("escola_id", escolaId)
+    .maybeSingle();
+
+  return {
+    ok: true,
+    idempotent: true,
+    message: "Matrícula já havia sido finalizada.",
+    matricula_id: candAfter.matricula_id,
+    aluno_id: candAfter.aluno_id,
+    numero_matricula: (matricula?.numero_matricula as string | null) ?? null,
+  };
+}
+
+async function getExistingMatriculaConflict(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  escolaId: string | null,
+  conflictText: string
+) {
+  const matriculaId = extractMatriculaIdFromConflict(conflictText);
+  if (!matriculaId || !escolaId) return null;
+
+  const { data: matricula } = await supabase
+    .from("matriculas")
+    .select("id, aluno_id, turma_id, numero_matricula, ano_letivo, status")
+    .eq("escola_id", escolaId)
+    .eq("id", matriculaId)
+    .maybeSingle();
+
+  if (!matricula) return null;
+
+  const { data: aluno } = await supabase
+    .from("alunos")
+    .select("id, nome, nome_completo, bi_numero, numero_documento, telefone")
+    .eq("escola_id", escolaId)
+    .eq("id", matricula.aluno_id)
+    .maybeSingle();
+
+  const { data: turma } = matricula.turma_id
+    ? await supabase
+        .from("turmas")
+        .select("id, nome, turma_codigo, turno")
+        .eq("escola_id", escolaId)
+        .eq("id", matricula.turma_id)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: candidatura } = await supabase
+    .from("candidaturas")
+    .select("id, status, nome_candidato")
+    .eq("escola_id", escolaId)
+    .eq("matricula_id", matriculaId)
+    .maybeSingle();
+
+  return {
+    matricula_id: matricula.id,
+    aluno_id: matricula.aluno_id,
+    numero_matricula: matricula.numero_matricula,
+    ano_letivo: matricula.ano_letivo,
+    status: matricula.status,
+    aluno_nome: aluno?.nome_completo ?? aluno?.nome ?? null,
+    aluno_documento: aluno?.numero_documento ?? aluno?.bi_numero ?? null,
+    aluno_telefone: aluno?.telefone ?? null,
+    turma_id: turma?.id ?? matricula.turma_id ?? null,
+    turma_nome: turma?.nome ?? turma?.turma_codigo ?? null,
+    turma_turno: turma?.turno ?? null,
+    candidatura_id: candidatura?.id ?? null,
+    candidatura_status: candidatura?.status ?? null,
+    nome_candidato: candidatura?.nome_candidato ?? null,
+  };
+}
+
+async function getCurrentAdmissionSnapshot(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  candidaturaId: string,
+  escolaId: string | null
+) {
+  if (!escolaId) return null;
+
+  const { data: candidatura } = await supabase
+    .from("candidaturas")
+    .select("id, status, nome_candidato, dados_candidato")
+    .eq("id", candidaturaId)
+    .eq("escola_id", escolaId)
+    .maybeSingle();
+
+  if (!candidatura) return null;
+
+  const dados =
+    candidatura.dados_candidato &&
+    typeof candidatura.dados_candidato === "object" &&
+    !Array.isArray(candidatura.dados_candidato)
+      ? (candidatura.dados_candidato as Record<string, unknown>)
+      : {};
+  const pickString = (key: string) => {
+    const value = dados[key];
+    return typeof value === "string" && value.trim() ? value : null;
+  };
+
+  return {
+    id: candidatura.id,
+    status: candidatura.status ?? null,
+    nome_candidato: candidatura.nome_candidato ?? null,
+    documento: pickString("numero_documento") ?? pickString("bi_numero"),
+    telefone: pickString("telefone") ?? pickString("responsavel_contato"),
+  };
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
   const idempotencyKey = request.headers.get('idempotency-key');
@@ -55,6 +199,7 @@ export async function POST(request: Request) {
         .from("matriculas")
         .select("numero_matricula")
         .eq("id", candidatura.matricula_id)
+        .eq("escola_id", candidatura.escola_id)
         .maybeSingle();
       numeroMatricula = (matricula?.numero_matricula as string | null) ?? null;
 
@@ -191,12 +336,19 @@ export async function POST(request: Request) {
       typeof error === 'object' && error && 'message' in error
         ? String((error as { message?: string }).message ?? '')
         : '';
+    const errorDetails =
+      typeof error === 'object' && error && 'details' in error
+        ? String((error as { details?: string }).details ?? '')
+        : '';
     const isAlreadyProcessedMessage =
       /this request has already been processed/i.test(errorMessage);
+    const isIdempotencyUniqueViolation =
+      isUniqueViolation &&
+      /idempotency_keys|idempotency_keys_pkey|admissao_finalizar_matricula/i.test(`${errorMessage} ${errorDetails}`);
 
-    if (isUniqueViolation || isAlreadyProcessedMessage) {
+    if (isIdempotencyUniqueViolation || isAlreadyProcessedMessage) {
       // 1) Tenta recuperar resultado idempotente já gravado pela RPC.
-      if (idempotencyKey) {
+      if (idempotencyKey && escolaIdContext) {
         const { data: existingIdempotency } = await (supabase as any)
           .from("idempotency_keys")
           .select("result")
@@ -210,33 +362,74 @@ export async function POST(request: Request) {
       }
 
       // 2) Fallback: verifica estado final da candidatura/matrícula.
-      const { data: candAfter } = await supabase
-        .from("candidaturas")
-        .select("status, matricula_id, aluno_id")
-        .eq("id", candidatura_id)
-        .maybeSingle();
-      const statusAfter = String(candAfter?.status ?? "").toLowerCase();
-      if (statusAfter === "matriculado" && candAfter?.matricula_id) {
-        const { data: matricula } = await supabase
-          .from("matriculas")
-          .select("numero_matricula")
-          .eq("id", candAfter.matricula_id)
-          .maybeSingle();
+      const finalizedResult = await getFinalizedAdmissionResult(supabase, candidatura_id, escolaIdContext);
+      if (finalizedResult) return NextResponse.json(finalizedResult);
 
-        return NextResponse.json({
-          ok: true,
-          idempotent: true,
-          message: "Matrícula já havia sido finalizada.",
-          matricula_id: candAfter.matricula_id,
-          aluno_id: candAfter.aluno_id,
-          numero_matricula: (matricula?.numero_matricula as string | null) ?? null,
-        });
-      }
       return NextResponse.json(
         {
           ok: false,
           error: "Operação duplicada detectada sem resultado persistido. A requisição original pode ainda estar em processamento.",
           code: "DUPLICATE_REQUEST_PENDING_STATE",
+        },
+        { status: 409 }
+      );
+    }
+    if (isUniqueViolation) {
+      const finalizedResult = await getFinalizedAdmissionResult(supabase, candidatura_id, escolaIdContext);
+      if (finalizedResult) return NextResponse.json(finalizedResult);
+
+      const conflictText = `${errorMessage} ${errorDetails}`;
+      const existingMatricula = await getExistingMatriculaConflict(
+        supabase,
+        escolaIdContext,
+        conflictText
+      );
+
+      if (
+        existingMatricula &&
+        !isOfficialMatriculaStatus(existingMatricula.status) &&
+        /candidaturas_matricula_draft_conflict|rascunho de matr[ií]cula|Retome a candidatura/i.test(conflictText)
+      ) {
+        const currentCandidatura = await getCurrentAdmissionSnapshot(supabase, candidatura_id, escolaIdContext);
+
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Este aluno/documento já tem uma admissão em andamento. Retome o rascunho existente para finalizar a matrícula sem duplicar registos.",
+            details: errorDetails || errorMessage || null,
+            code: "ADMISSION_EXISTING_DRAFT",
+            existing_matricula: existingMatricula,
+            current_candidatura: currentCandidatura,
+          },
+          { status: 409 }
+        );
+      }
+
+      if (
+        existingMatricula &&
+        /candidaturas_matricula_id_unique|matricula_id|Matr[ií]cula/i.test(conflictText)
+      ) {
+        const currentCandidatura = await getCurrentAdmissionSnapshot(supabase, candidatura_id, escolaIdContext);
+
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Este aluno/documento já tem matrícula finalizada neste ano letivo. Abra a matrícula existente ou corrija a candidatura duplicada.",
+            details: errorDetails || errorMessage || null,
+            code: "ADMISSION_ALREADY_MATRICULATED",
+            existing_matricula: existingMatricula,
+            current_candidatura: currentCandidatura,
+          },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Conflito de dados ao finalizar matrícula. Verifique se o aluno/documento já existe ou se já há matrícula no ano letivo.",
+          details: errorDetails || errorMessage || null,
+          code: "ADMISSION_CONSTRAINT_CONFLICT",
         },
         { status: 409 }
       );

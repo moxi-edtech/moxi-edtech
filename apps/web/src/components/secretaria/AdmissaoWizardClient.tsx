@@ -3,10 +3,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
+import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
 
 /**
@@ -139,6 +139,39 @@ type SimpleResult = {
   matricula_id?: string;
   numero_matricula?: string;
   comprovante?: { ok: boolean; printUrl?: string; error?: string };
+};
+
+type ExistingMatriculaConflict = {
+  matricula_id?: string | null;
+  aluno_id?: string | null;
+  numero_matricula?: string | number | null;
+  ano_letivo?: string | number | null;
+  status?: string | null;
+  aluno_nome?: string | null;
+  aluno_documento?: string | null;
+  aluno_telefone?: string | null;
+  turma_id?: string | null;
+  turma_nome?: string | null;
+  turma_turno?: string | null;
+  candidatura_id?: string | null;
+  candidatura_status?: string | null;
+  nome_candidato?: string | null;
+};
+
+type CurrentCandidaturaConflict = {
+  id?: string | null;
+  status?: string | null;
+  nome_candidato?: string | null;
+  documento?: string | null;
+  telefone?: string | null;
+};
+
+type AdmissionDuplicateConflict = {
+  code?: string | null;
+  error: string;
+  details?: string | null;
+  existing_matricula?: ExistingMatriculaConflict | null;
+  current_candidatura?: CurrentCandidaturaConflict | null;
 };
 
 async function postJson<TResp>(
@@ -1358,6 +1391,152 @@ function Step2FitAcademico(props: {
  * Step 3: Pagamento / Conversão
  * ========================= */
 
+const formatConflictValue = (value: unknown) => {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
+};
+
+const isActiveMatriculaStatus = (status: unknown) =>
+  ["ativo", "ativa", "active"].includes(String(status ?? "").toLowerCase());
+
+function ConflictField({ label, value }: { label: string; value: unknown }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold uppercase text-slate-400">{label}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-slate-800">
+        {formatConflictValue(value)}
+      </p>
+    </div>
+  );
+}
+
+function AdmissionDuplicateDialog({
+  open,
+  conflict,
+  onOpenChange,
+  onOpenExisting,
+  onCorrectAdmission,
+  onArchiveDuplicate,
+  archiveLoading,
+  actionError,
+}: {
+  open: boolean;
+  conflict: AdmissionDuplicateConflict | null;
+  onOpenChange: (open: boolean) => void;
+  onOpenExisting: () => void;
+  onCorrectAdmission: () => void;
+  onArchiveDuplicate: () => void;
+  archiveLoading: boolean;
+  actionError: string | null;
+}) {
+  const existing = conflict?.existing_matricula ?? null;
+  const current = conflict?.current_candidatura ?? null;
+  const isDraftConflict =
+    conflict?.code === "ADMISSION_EXISTING_DRAFT" ||
+    Boolean(existing?.candidatura_id && !isActiveMatriculaStatus(existing?.status));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-none p-0 shadow-2xl sm:rounded-2xl">
+        <DialogHeader className="border-b border-slate-200 bg-slate-50 px-6 py-5">
+          <DialogTitle className="text-xl font-bold text-slate-900">
+            {isDraftConflict
+              ? "Já existe admissão em andamento"
+              : "Já existe matrícula para este documento"}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-slate-600">
+            {isDraftConflict
+              ? "Este registo coincide com um rascunho existente. Retome esse rascunho para finalizar a matrícula sem duplicar dados."
+              : "Este registo coincide com uma matrícula ativa. Escolha a ação correta para continuar."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 px-6 py-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <section className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+                  <Check className="h-4 w-4" />
+                </span>
+                <h3 className="text-sm font-bold text-emerald-900">
+                  {isDraftConflict ? "Rascunho existente" : "Matrícula existente"}
+                </h3>
+              </div>
+              <div className="grid gap-3">
+                <ConflictField label="Aluno" value={existing?.aluno_nome ?? existing?.nome_candidato} />
+                <ConflictField label="Nº matrícula" value={existing?.numero_matricula} />
+                <ConflictField label="Ano letivo" value={existing?.ano_letivo} />
+                <ConflictField
+                  label="Turma"
+                  value={[
+                    existing?.turma_nome,
+                    existing?.turma_turno ? `Turno ${existing.turma_turno}` : null,
+                  ].filter(Boolean).join(" · ")}
+                />
+                <ConflictField label="Documento" value={existing?.aluno_documento} />
+                <ConflictField label="Telefone" value={existing?.aluno_telefone} />
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="rounded-lg bg-amber-100 p-2 text-amber-700">
+                  <AlertCircle className="h-4 w-4" />
+                </span>
+                <h3 className="text-sm font-bold text-amber-900">Admissão atual</h3>
+              </div>
+              <div className="grid gap-3">
+                <ConflictField label="Candidato" value={current?.nome_candidato} />
+                <ConflictField label="Documento" value={current?.documento} />
+                <ConflictField label="Telefone" value={current?.telefone} />
+                <ConflictField label="Status" value={current?.status} />
+                <ConflictField label="Candidatura" value={current?.id} />
+              </div>
+            </section>
+          </div>
+
+          {actionError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {actionError}
+            </div>
+          ) : null}
+        </div>
+
+        <DialogFooter className="gap-2 border-t border-slate-200 bg-white px-6 py-4 sm:justify-between sm:space-x-0">
+          <button
+            type="button"
+            onClick={onArchiveDuplicate}
+            disabled={archiveLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+          >
+            <Archive className="h-4 w-4" />
+            {archiveLoading ? "A arquivar..." : "Arquivar duplicada"}
+          </button>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={onCorrectAdmission}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+            >
+              <Edit3 className="h-4 w-4" />
+              Corrigir dados
+            </button>
+            <button
+              type="button"
+              onClick={onOpenExisting}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {isDraftConflict ? "Retomar rascunho existente" : "Abrir aluno existente"}
+            </button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Step3Pagamento(props: {
   onBack: () => void;
   onReset: () => void;
@@ -1406,6 +1585,9 @@ function Step3Pagamento(props: {
   const [loading, setLoading] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [result, setResult] = useState<SimpleResult | null>(null);
+  const [duplicateConflict, setDuplicateConflict] = useState<AdmissionDuplicateConflict | null>(null);
+  const [duplicateActionError, setDuplicateActionError] = useState<string | null>(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [priceHint, setPriceHint] = useState<string | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const router = useRouter();
@@ -1496,6 +1678,64 @@ function Step3Pagamento(props: {
     return true;
   }, [candidaturaId, turmaId, statusNormalized]);
 
+  const openExistingAluno = () => {
+    const existingCandidaturaId = duplicateConflict?.existing_matricula?.candidatura_id;
+    const existingStatus = duplicateConflict?.existing_matricula?.status;
+    const shouldResumeDraft =
+      duplicateConflict?.code === "ADMISSION_EXISTING_DRAFT" ||
+      Boolean(existingCandidaturaId && !isActiveMatriculaStatus(existingStatus));
+
+    if (shouldResumeDraft && isUuid(existingCandidaturaId)) {
+      router.push(`${secretariaBase}/admissoes/nova?candidaturaId=${existingCandidaturaId}`);
+      return;
+    }
+
+    const alunoId = duplicateConflict?.existing_matricula?.aluno_id;
+    if (isUuid(alunoId)) {
+      router.push(`${secretariaBase}/alunos/${alunoId}`);
+      return;
+    }
+    router.push(`${secretariaBase}/alunos`);
+  };
+
+  const correctDuplicateAdmission = () => {
+    setDuplicateConflict(null);
+    setDuplicateActionError(null);
+    setResult(null);
+    void onEditDados();
+  };
+
+  const archiveDuplicateAdmission = async () => {
+    if (!isUuid(candidaturaId)) {
+      setDuplicateActionError("Candidatura inválida.");
+      return;
+    }
+
+    setArchiveLoading(true);
+    setDuplicateActionError(null);
+    const existing = duplicateConflict?.existing_matricula;
+    const resp = await postJson<SimpleResult>("/api/secretaria/admissoes/archive", {
+      candidatura_id: candidaturaId,
+      motivo: [
+        duplicateConflict?.code === "ADMISSION_EXISTING_DRAFT"
+          ? "Duplicada: rascunho existente detectado na finalização."
+          : "Duplicada: matrícula existente detectada na finalização.",
+        existing?.matricula_id ? `matricula_id=${existing.matricula_id}` : null,
+        existing?.numero_matricula ? `numero=${existing.numero_matricula}` : null,
+        existing?.candidatura_id ? `candidatura_original=${existing.candidatura_id}` : null,
+      ].filter(Boolean).join(" "),
+    });
+    setArchiveLoading(false);
+
+    if (!resp.ok) {
+      setDuplicateActionError(resp.error);
+      return;
+    }
+
+    setDuplicateConflict(null);
+    router.push(`${secretariaBase}/admissoes`);
+  };
+
   const handleFinalizarMatricula = async () => {
     if (!canFinalize) {
       setResult({ ok: false, error: "Candidatura ou turma inválida." });
@@ -1537,6 +1777,25 @@ function Step3Pagamento(props: {
 
     setLoading(false);
     if (!convertResp.ok) {
+      const responseCode = typeof convertResp.raw?.code === "string" ? convertResp.raw.code : null;
+      if (responseCode === "ADMISSION_ALREADY_MATRICULATED" || responseCode === "ADMISSION_EXISTING_DRAFT") {
+        const existingMatricula = isJsonRecord(convertResp.raw?.existing_matricula)
+          ? (convertResp.raw.existing_matricula as ExistingMatriculaConflict)
+          : null;
+        const currentCandidatura = isJsonRecord(convertResp.raw?.current_candidatura)
+          ? (convertResp.raw.current_candidatura as CurrentCandidaturaConflict)
+          : null;
+        setDuplicateConflict({
+          code: responseCode,
+          error: convertResp.error,
+          details: typeof convertResp.raw?.details === "string" ? convertResp.raw.details : null,
+          existing_matricula: existingMatricula,
+          current_candidatura: currentCandidatura,
+        });
+        setDuplicateActionError(null);
+        return;
+      }
+
       const shouldReopen = convertResp.status >= 500;
       if (shouldReopen && isUuid(candidaturaId)) {
         try {
@@ -1695,6 +1954,22 @@ function Step3Pagamento(props: {
 
   return (
     <div className="space-y-5">
+      <AdmissionDuplicateDialog
+        open={Boolean(duplicateConflict)}
+        conflict={duplicateConflict}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDuplicateConflict(null);
+            setDuplicateActionError(null);
+          }
+        }}
+        onOpenExisting={openExistingAluno}
+        onCorrectAdmission={correctDuplicateAdmission}
+        onArchiveDuplicate={archiveDuplicateAdmission}
+        archiveLoading={archiveLoading}
+        actionError={duplicateActionError}
+      />
+
       {resumeMode && (
         <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="flex items-start justify-between gap-4">
