@@ -22,6 +22,7 @@ const convertPayloadSchema = z.object({
 export async function POST(request: Request) {
   const supabase = await createClient()
   const idempotencyKey = request.headers.get('idempotency-key');
+  let escolaIdContext: string | null = null;
   if (!idempotencyKey) {
     return NextResponse.json({ error: 'Idempotency-Key header is required' }, { status: 400 });
   }
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Candidatura not found' }, { status: 404 });
     }
 
+    escolaIdContext = candidatura.escola_id as string;
     const statusAtual = String(candidatura.status ?? "").toLowerCase();
     if (statusAtual === "matriculado" && candidatura.matricula_id) {
       let numeroMatricula: string | null = null;
@@ -76,12 +78,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 });
   }
 
-  const { error: authError } = await requireRoleInSchool({
+    const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId: candidatura.escola_id,
     roles: ['secretaria', 'admin', 'admin_escola', 'staff_admin', 'financeiro']
   });
-  if (authError) return authError;
+    if (authError) return authError;
+
+    // Idempotência canônica: se já temos resultado persistido para esta chave/scope, devolvemos.
+    if (idempotencyKey) {
+      const { data: existingIdempotency } = await (supabase as any)
+        .from("idempotency_keys")
+        .select("result")
+        .eq("escola_id", escolaIdContext)
+        .eq("scope", "admissao_finalizar_matricula")
+        .eq("key", idempotencyKey)
+        .maybeSingle();
+      if (existingIdempotency?.result && typeof existingIdempotency.result === "object") {
+        return NextResponse.json(existingIdempotency.result);
+      }
+    }
 
     try {
       const { data: profile } = await supabase
@@ -166,7 +182,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, comprovante })
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
-    if (typeof error === 'object' && error && 'code' in error && error.code === '23505') { // unique_violation
+    const isUniqueViolation =
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      (error as { code?: string }).code === '23505';
+    const errorMessage =
+      typeof error === 'object' && error && 'message' in error
+        ? String((error as { message?: string }).message ?? '')
+        : '';
+    const isAlreadyProcessedMessage =
+      /this request has already been processed/i.test(errorMessage);
+
+    if (isUniqueViolation || isAlreadyProcessedMessage) {
+      // 1) Tenta recuperar resultado idempotente já gravado pela RPC.
+      if (idempotencyKey) {
+        const { data: existingIdempotency } = await (supabase as any)
+          .from("idempotency_keys")
+          .select("result")
+          .eq("escola_id", escolaIdContext)
+          .eq("scope", "admissao_finalizar_matricula")
+          .eq("key", idempotencyKey)
+          .maybeSingle();
+        if (existingIdempotency?.result && typeof existingIdempotency.result === "object") {
+          return NextResponse.json(existingIdempotency.result);
+        }
+      }
+
+      // 2) Fallback: verifica estado final da candidatura/matrícula.
       const { data: candAfter } = await supabase
         .from("candidaturas")
         .select("status, matricula_id, aluno_id")
@@ -189,7 +232,14 @@ export async function POST(request: Request) {
           numero_matricula: (matricula?.numero_matricula as string | null) ?? null,
         });
       }
-      return NextResponse.json({ error: 'This request has already been processed.' }, { status: 409 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Operação duplicada detectada sem resultado persistido. A requisição original pode ainda estar em processamento.",
+          code: "DUPLICATE_REQUEST_PENDING_STATE",
+        },
+        { status: 409 }
+      );
     }
     if (typeof error === 'object' && error && 'code' in error && error.code === '42883') {
       const message = String((error as { message?: string }).message ?? '')
