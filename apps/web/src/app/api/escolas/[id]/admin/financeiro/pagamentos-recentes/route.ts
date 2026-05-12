@@ -12,6 +12,15 @@ const querySchema = z.object({
   day_key: z.string().optional(),
 });
 
+function getLocalDayKey(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Luanda",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id: escolaId } = await context.params;
@@ -47,11 +56,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
 
     const limit = Math.min(Math.max(Number(parsed.data.limit ?? 10), 1), 50);
-    const dayKey = parsed.data.day_key ?? new Date().toISOString().slice(0, 10);
+    const dayKey = parsed.data.day_key ?? getLocalDayKey();
 
-    const { data, error } = await supabase
-      .from("pagamentos")
-      .select("id, aluno_id, valor_pago, metodo, status, created_at")
+    const supabaseAny = supabase as any;
+    const { data, error } = await supabaseAny
+      .from("vw_pagamentos_recentes_humanized")
+      .select("id, aluno_id, aluno_nome, valor_pago, metodo, metodo_label, status, status_label, created_at")
       .eq("escola_id", resolvedEscolaId)
       .eq("day_key", dayKey)
       .order("created_at", { ascending: false })
@@ -61,7 +71,17 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data: data ?? [] });
+    const normalized = (data ?? []).map((row: any) => ({
+      id: row.id,
+      aluno_id: row.aluno_id ?? null,
+      aluno_nome: row.aluno_nome ?? null,
+      valor_pago: row.valor_pago ?? null,
+      metodo: row.metodo_label ?? row.metodo ?? null,
+      status: row.status_label ?? row.status ?? null,
+      created_at: row.created_at ?? null,
+    }));
+
+    return NextResponse.json({ ok: true, data: normalized });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
