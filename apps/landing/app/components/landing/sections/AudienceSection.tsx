@@ -1,6 +1,8 @@
- 'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
+
+import { FadeIn, FadeInStagger } from '../FadeIn'
 
 export function AudienceSection() {
   const [isMobile, setIsMobile] = useState(false)
@@ -40,10 +42,10 @@ export function AudienceSection() {
   const visibleProblems = isMobile && !expanded ? problems.slice(0, 2) : problems
 
   return (
-    <section className="problema z reveal section-bg section-bg-audience section-accent" id="para-quem">
+    <section className="problema z section-bg section-bg-audience section-accent" id="para-quem">
       <div className="container">
         <div className="audience-layout">
-          <div>
+          <FadeIn direction="right">
             <div className="sec-eyebrow">Para quem é</div>
             <h2 className="sec-title">
               Se estes problemas já são da <span className="audience-escola">sua escola</span>, o{' '}
@@ -52,26 +54,28 @@ export function AudienceSection() {
             <p className="sec-sub">
               Escolas privadas que já cresceram e precisam de operação organizada, dados fiáveis e visão diária da gestão.
             </p>
-          </div>
+          </FadeIn>
 
-          <div className="audience-problem-list">
+          <FadeInStagger className="audience-problem-list">
             {visibleProblems.map((problem, index) => (
-              <article key={problem.title} className="audience-problem-card">
+              <FadeIn key={problem.title} direction="up" className="audience-problem-card">
                 <div className="audience-problem-num">{String(index + 1).padStart(2, '0')}</div>
                 <div>
                   <h3 className="audience-problem-title">{problem.title}</h3>
                   <p className="audience-problem-desc">{problem.description}</p>
                 </div>
-              </article>
+              </FadeIn>
             ))}
-            <button
-              type="button"
-              className="audience-more-btn"
-              onClick={() => setExpanded((prev) => !prev)}
-            >
-              {expanded ? 'Ver menos' : 'Ver mais'}
-            </button>
-          </div>
+            <FadeIn direction="up">
+              <button
+                type="button"
+                className="audience-more-btn"
+                onClick={() => setExpanded((prev) => !prev)}
+              >
+                {expanded ? 'Ver menos' : 'Ver mais'}
+              </button>
+            </FadeIn>
+          </FadeInStagger>
         </div>
       </div>
     </section>

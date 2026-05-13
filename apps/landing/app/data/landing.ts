@@ -6,87 +6,87 @@ export const navLinks = [
 ]
 
 export const hero = {
-  eyebrow: 'Sistema de gestão escolar para a sua secretaria',
-  titleLines: ['A secretaria que a sua escola', 'merecia desde sempre.'],
+  eyebrow: 'Gestão escolar para Angola',
+  titleLines: ['Assuma o controlo total', 'da sua escola hoje.'],
   subtitle:
-    'Matrículas, propinas, notas e documentos MED — num só lugar. Sem papel, sem Excel, sem confusão.',
-  primaryCta: 'Quero testar 2 meses grátis',
+    'Propinas sob controlo. Documentos MED prontos. Sem caos no Excel.',
+  primaryCta: 'Começar agora (2 meses grátis)',
   secondaryCta: 'Fale connosco',
-  note: 'Sem compromisso. A nossa equipa configura tudo consigo.',
+  note: 'Configuração assistida pela nossa equipa.',
 }
 
 export const heroMockup = {
   stats: [
-    { value: '583', label: 'Alunos', tone: 'green' as const },
-    { value: 'Kz 4.2M', label: 'Kz Cobrado', tone: 'gold' as const },
+    { value: '583', label: 'Alunos Ativos', tone: 'green' as const },
+    { value: 'Kz 4.2M', label: 'Arrecadado', tone: 'gold' as const },
     { value: '24', label: 'Turmas', tone: 'default' as const },
   ],
   rows: [
-    { name: 'João Manuel · TI-10-M-A', status: 'Pago', statusTone: 'ok' as const },
+    { name: 'João Manuel · TI-10-M-A', status: 'Liquidado', statusTone: 'ok' as const },
     { name: 'Maria Antónia · ESG-9-T-B', status: 'Pendente', statusTone: 'pen' as const },
-    { name: 'Pedro Afonso · EP-6-M-C', status: 'Pago', statusTone: 'ok' as const },
-    { name: 'Ana Silva · CFB-11-M-A', status: '35 dias atraso', statusTone: 'late' as const },
+    { name: 'Pedro Afonso · EP-6-M-C', status: 'Liquidado', statusTone: 'ok' as const },
+    { name: 'Ana Silva · CFB-11-M-A', status: 'Em atraso', statusTone: 'late' as const },
   ],
   floatingBadges: [
-    { label: 'Propinas cobradas', value: 'Kz 4.2M', sub: 'Outubro 2026', tone: 'green' as const },
-    { label: 'Alunos activos', value: '583', sub: 'Ano lectivo 2026' },
+    { label: 'Arrecadado', value: 'Kz 4.2M', sub: 'Mês Corrente', tone: 'green' as const },
+    { label: 'Eficácia', value: '87%', sub: 'Meta: 90%' },
   ],
 }
 
 export const productCards = [
   {
     title: 'Secretaria sem filas',
-    description: 'Matrículas, documentos MED e pagamentos num único ecrã.',
+    description: 'Matrículas e documentos MED em poucos segundos.',
   },
   {
-    title: 'Financeiro sempre visível',
-    description: 'Propinas pagas, pendentes e em atraso — sem abrir um caderno.',
+    title: 'Zero desvio financeiro',
+    description: 'Controlo total de propinas e multas. Cada Kwanza conta.',
   },
   {
-    title: 'Director com visão real',
-    description: 'Relatórios em tempo real para decidir hoje, não na semana que vem.',
+    title: 'Decisão por dados',
+    description: 'Relatórios de inadimplência e notas sempre atualizados.',
   },
   {
-    title: 'Implementação acompanhada',
-    description: 'Configuramos o sistema consigo para a escola não ficar sozinha.',
+    title: 'KLASSE Network',
+    description: 'Valide o histórico de novos alunos instantaneamente.',
   },
 ]
 
 export const audienceCards = [
   {
-    title: 'Director',
-    description: 'Quer saber o estado da escola sem esperar relatório.',
+    title: 'Directores',
+    description: 'Visibilidade real sobre o financeiro e académico.',
   },
   {
     title: 'Secretaria',
-    description: 'Responde às mesmas perguntas e procura papéis.',
+    description: 'Fim dos processos manuais e pilhas de papel.',
   },
   {
-    title: 'Escola em crescimento',
-    description: 'Excel funcionava com 100 alunos, com 400 já não.',
+    title: 'Escolas em Crescimento',
+    description: 'Substitua o Excel por um sistema robusto.',
   },
 ]
 
 export const productSteps = [
   {
-    title: 'Conta-nos sobre a escola',
-    description: 'Partilhe turmas, número de alunos e o processo atual da secretaria.',
+    title: 'Mapeamento',
+    description: 'Entendemos o seu fluxo e modelo escolar.',
   },
   {
-    title: 'Configuramos tudo',
-    description: 'Montamos o sistema e validamos consigo antes do arranque.',
+    title: 'Configuração',
+    description: 'Migramos os dados para o seu novo sistema.',
   },
   {
-    title: 'A escola começa a usar',
-    description: 'com os alunos importados e a equipa treinada.',
+    title: 'Arranque',
+    description: 'Equipa treinada e operação assistida.',
   },
 ]
 
 export const pricingIntro =
-  'Todos os planos incluem as funcionalidades principais. O que muda é capacidade, suporte e escala da operação.'
+  'Planos transparentes. Sem custos ocultos.'
 
 export const pricingNote =
-  'Uma escola Essencial tem o Balcão Inteligente, o portal da direção e os documentos MED — só não consegue registar mais de 600 alunos.'
+  'O plano Essencial inclui Balcão, Portal da Direção e MED — até 600 alunos.'
 
 export const portals = [
   {

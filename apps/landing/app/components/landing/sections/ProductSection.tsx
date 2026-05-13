@@ -11,6 +11,8 @@ import {
   BarChart3,
 } from 'lucide-react'
 
+import { FadeIn, FadeInStagger } from '../FadeIn'
+
 export function ProductSection() {
   const [isMobile, setIsMobile] = useState(false)
   const [mobilePage, setMobilePage] = useState(0)
@@ -65,22 +67,23 @@ export function ProductSection() {
   const visibleFeatures = isMobile ? features.slice(mobilePage * 3, mobilePage * 3 + 3) : features
 
   return (
-    <section className="features z reveal section-bg section-bg-product section-accent" id="produto">
+    <section className="features z section-bg section-bg-product section-accent" id="produto">
       <div className="container">
-        <div className="product-intro product-intro--slide">
+        <FadeIn className="product-intro product-intro--slide">
           <div className="sec-eyebrow">O produto</div>
           <h2 className="sec-title product-title-main">Funcionalidades para operar a escola com controlo.</h2>
           <p className="sec-sub">Do balcao ao financeiro, tudo integrado numa so plataforma.</p>
-        </div>
+        </FadeIn>
 
-        <div className="product-showcase-grid">
+        <FadeInStagger className="product-showcase-grid">
           {visibleFeatures.map((feature, index) => {
             const Icon = feature.icon
             const iconVariant = index % 2 === 0 ? 'product-showcase-icon--green' : 'product-showcase-icon--gold'
 
             return (
-              <article
+              <FadeIn
                 key={feature.title}
+                direction="up"
                 className="product-showcase-item"
               >
                 <div className={`product-showcase-icon ${iconVariant}`}>
@@ -89,10 +92,10 @@ export function ProductSection() {
                 <h3 className="product-showcase-title">{feature.title}</h3>
                 <p className="product-showcase-desc">{feature.description}</p>
                 <span className="product-showcase-accent" />
-              </article>
+              </FadeIn>
             )
           })}
-        </div>
+        </FadeInStagger>
         <div className="product-mobile-pager" role="tablist" aria-label="Páginas de funcionalidades">
           <button
             type="button"
@@ -108,16 +111,16 @@ export function ProductSection() {
           />
         </div>
 
-        <div className="product-highlight-row">
-          <div className="product-highlight-card">
+        <FadeInStagger className="product-highlight-row">
+          <FadeIn direction="up" className="product-highlight-card">
             <h3>Conciliacao bancaria assistida</h3>
             <p>Upload e matching automatico para fechar o ciclo financeiro com menos erro manual.</p>
-          </div>
-          <div className="product-highlight-card">
+          </FadeIn>
+          <FadeIn direction="up" className="product-highlight-card">
             <h3>Relatorios para a direcao</h3>
             <p>Visao diaria do academico e financeiro para decisoes rapidas.</p>
-          </div>
-        </div>
+          </FadeIn>
+        </FadeInStagger>
       </div>
     </section>
   )
