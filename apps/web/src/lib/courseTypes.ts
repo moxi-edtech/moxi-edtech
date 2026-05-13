@@ -24,6 +24,7 @@ export type CourseType =
 
 // Mapeia cada preset oficial para um tipo estável
 export const PRESET_TO_TYPE: Record<CurriculumKey, CourseType> = {
+  pre_escolar: "primario",
   primario_generico: "primario",
   esg_ciclo1: "ciclo1",
   esg_puniv_cfb: "puniv",

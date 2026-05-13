@@ -43,6 +43,10 @@ const detectPresetByCourse = (
 
   const mappings: Array<{ preset: CurriculumKey; keywords: string[] }> = [
     {
+      preset: "pre_escolar",
+      keywords: ["pre escolar", "pre-escolar", "pré escolar", "pré-escolar", "creche", "infantil"],
+    },
+    {
       preset: "tec_contabilidade",
       keywords: ["contabilidade", "gestao", "administracao"],
     },

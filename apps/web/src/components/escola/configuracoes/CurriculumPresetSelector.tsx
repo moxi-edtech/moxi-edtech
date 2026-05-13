@@ -32,6 +32,7 @@ const TABS: { id: CurriculumCategory; label: string; description: string }[] = [
 // Mapeamento presets → categorias UI
 const PRESET_CATEGORIES: Record<CurriculumKey, CurriculumCategory> = {
   // Geral
+  pre_escolar: "geral",
   primario_generico: "geral",
   esg_ciclo1: "geral",
   esg_puniv_cfb: "geral",
