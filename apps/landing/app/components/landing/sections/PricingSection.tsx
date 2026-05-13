@@ -1,6 +1,11 @@
-import type { PricingPlan } from '../../../data/landing'
+'use client'
 
+import { track } from '@vercel/analytics'
+import { motion } from 'framer-motion'
+
+import type { PricingPlan } from '../../../data/landing'
 import { pricingPlans } from '../../../data/landing'
+import { FadeIn, FadeInStagger } from '../FadeIn'
 
 interface PricingSectionProps {
   intro: string
@@ -54,16 +59,20 @@ function PricingPlanCard({ plan, appUrl }: { plan: PricingPlan; appUrl: string }
   const capacityValues = resolveCapacity(plan)
 
   return (
-    <div
+    <motion.div
+      whileHover={{ y: -8 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className={variant.card}
       role="link"
       tabIndex={0}
       onClick={() => {
+        track('pricing_click', { section: 'pricing', plan: plan.slug, target: 'card' })
         window.location.href = planHref
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
+          track('pricing_click', { section: 'pricing', plan: plan.slug, target: 'card' })
           window.location.href = planHref
         }
       }}
@@ -113,18 +122,25 @@ function PricingPlanCard({ plan, appUrl }: { plan: PricingPlan; appUrl: string }
         ))}
       </div>
 
-      <a href={planHref} className={variant.cta}>
+      <a
+        href={planHref}
+        className={variant.cta}
+        onClick={(e) => {
+          e.stopPropagation()
+          track('pricing_click', { section: 'pricing', plan: plan.slug, target: 'cta' })
+        }}
+      >
         {plan.cta}
       </a>
 
       {plan.featured && <div className="pricing-highlight" />}
-    </div>
+    </motion.div>
   )
 }
 
 function PricingIntro({ intro }: { intro: string }) {
   return (
-    <div style={{ textAlign: 'center', maxWidth: 520, margin: '0 auto 0' }}>
+    <FadeIn style={{ textAlign: 'center', maxWidth: 520, margin: '0 auto 0' }}>
       <div className="sec-eyebrow" style={{ justifyContent: 'center' }}>
         Planos transparentes
       </div>
@@ -132,7 +148,7 @@ function PricingIntro({ intro }: { intro: string }) {
         Preços para a nossa realidade.
       </h2>
       <p className="precos-intro">{intro}</p>
-    </div>
+    </FadeIn>
   )
 }
 
@@ -141,7 +157,7 @@ export function PricingPanel({ plan, intro, note, appUrl, showIntro, showNote }:
   const centerPanel = !showIntro
   return (
     <section
-      className={`precos precos-dark z reveal section-accent${centerPanel ? ' precos--center' : ''}`}
+      className={`precos precos-dark z section-accent${centerPanel ? ' precos--center' : ''}`}
       id={sectionId}
     >
       <div className="container">
@@ -149,7 +165,7 @@ export function PricingPanel({ plan, intro, note, appUrl, showIntro, showNote }:
         <div className="precos-grid precos-grid-dark">
           <PricingPlanCard plan={plan} appUrl={appUrl} />
         </div>
-        {showNote && <p className="precos-note">{note}</p>}
+        {showNote && <FadeIn direction="up"><p className="precos-note">{note}</p></FadeIn>}
       </div>
     </section>
   )
@@ -157,15 +173,17 @@ export function PricingPanel({ plan, intro, note, appUrl, showIntro, showNote }:
 
 export function PricingSection({ intro, note, appUrl }: PricingSectionProps) {
   return (
-    <section className="precos precos-dark z reveal section-accent" id="precos">
+    <section className="precos precos-dark z section-accent" id="precos">
       <div className="container">
         <PricingIntro intro={intro} />
-        <div className="precos-grid precos-grid-dark">
+        <FadeInStagger className="precos-grid precos-grid-dark">
           {pricingPlans.map((plan) => (
-            <PricingPlanCard key={plan.name} plan={plan} appUrl={appUrl} />
+            <FadeIn key={plan.name} direction="up" fullWidth>
+              <PricingPlanCard plan={plan} appUrl={appUrl} />
+            </FadeIn>
           ))}
-        </div>
-        <p className="precos-note">{note}</p>
+        </FadeInStagger>
+        <FadeIn direction="up"><p className="precos-note">{note}</p></FadeIn>
       </div>
     </section>
   )

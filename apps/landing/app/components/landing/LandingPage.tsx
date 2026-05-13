@@ -3,7 +3,6 @@
 import { useState } from 'react'
 
 import { footerLinks, hero, navLinks, pricingNote, pricingIntro, pricingPlans } from '../../data/landing'
-import { useRevealOnScroll } from '../../hooks/useRevealOnScroll'
 
 import { AudienceSection } from './sections/AudienceSection'
 import { DashboardSection } from './sections/DashboardSection'
@@ -20,8 +19,6 @@ import { WaveDivider } from './sections/WaveDivider'
 
 export function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  useRevealOnScroll()
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klasse.ao'
   const scheduleUrl =

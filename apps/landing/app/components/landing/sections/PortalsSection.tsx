@@ -1,4 +1,9 @@
-import { useMemo, useState } from 'react'
+'use client'
+
+import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
+
+import { FadeIn } from '../FadeIn'
 
 type PortalSlide = {
   id: 'aluno' | 'professor' | 'diretor'
@@ -227,36 +232,35 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
 
 export function PortalsSection() {
   const [activeId, setActiveId] = useState<PortalSlide['id']>('diretor')
-  const [visibleId, setVisibleId] = useState<PortalSlide['id']>('diretor')
-  const [isFading, setIsFading] = useState(false)
 
-  const activeSlide = useMemo(() => slides.find((slide) => slide.id === visibleId) ?? slides[0], [visibleId])
-
-  const handleSwap = (nextId: PortalSlide['id']) => {
-    if (nextId === visibleId || isFading) return
-    setActiveId(nextId)
-    setIsFading(true)
-    window.setTimeout(() => {
-      setVisibleId(nextId)
-      setIsFading(false)
-    }, 140)
-  }
+  const activeSlide = slides.find((slide) => slide.id === activeId) ?? slides[0]
 
   return (
-    <section className="portais reveal section-accent" id="portais">
+    <section className="portais section-accent" id="portais">
       <div className="container">
-        <div className="portais-device-intro">
+        <FadeIn className="portais-device-intro">
           <div className="sec-eyebrow">O sistema</div>
           <h2 className="sec-h">Cada pessoa vê o que precisa.</h2>
           <p className="sec-p">Cada perfil trabalha no seu próprio fluxo, com menos ruído e mais velocidade de execução.</p>
-        </div>
+        </FadeIn>
 
         <div className="portais-swap" aria-label="Portais KLASSE com troca de perfil">
-          <div className={`portais-swap-media portais-swap-media--${activeSlide.id}${isFading ? ' is-fading' : ''}`}>
-            <DeviceMock activeId={activeSlide.id} />
+          <div className="portais-swap-media">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeId}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className={`portais-swap-media-inner portais-swap-media--${activeId}`}
+              >
+                <DeviceMock activeId={activeId} />
+              </motion.div>
+            </AnimatePresence>
           </div>
 
-          <div className={`portais-swap-panel${isFading ? ' is-fading' : ''}`}>
+          <div className="portais-swap-panel">
             <div className="portais-swap-tabs" role="tablist" aria-label="Trocar perfil">
               {slides.map((slide) => {
                 const isActive = slide.id === activeId
@@ -267,23 +271,40 @@ export function PortalsSection() {
                     role="tab"
                     aria-selected={isActive}
                     className={`portais-swap-tab${isActive ? ' is-active' : ''}`}
-                    onClick={() => handleSwap(slide.id)}
+                    onClick={() => setActiveId(slide.id)}
                   >
                     {slide.tab}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="portais-swap-tab-indicator"
+                        style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--gx)', zIndex: -1, borderRadius: '8px' }}
+                      />
+                    )}
                   </button>
                 )
               })}
             </div>
 
-            <div className="portais-swap-content" role="tabpanel">
-              <h3>{activeSlide.title}</h3>
-              <p>{activeSlide.description}</p>
-              <ul>
-                {activeSlide.points.map((point) => (
-                  <li key={point}>{point}</li>
-                ))}
-              </ul>
-            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeId}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="portais-swap-content"
+                role="tabpanel"
+              >
+                <h3>{activeSlide.title}</h3>
+                <p>{activeSlide.description}</p>
+                <ul>
+                  {activeSlide.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </motion.div>
+            </AnimatePresence>
 
             <div className="portais-swap-actions">
               <a className="btn-p" href="#onboarding">

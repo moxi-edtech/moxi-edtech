@@ -1,3 +1,6 @@
+'use client'
+
+import { track } from '@vercel/analytics'
 import { useEffect } from 'react'
 
 interface NavLink {
@@ -57,19 +60,40 @@ export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps)
           </a>
           <div className="nav-links z">
             {links.map((link) => (
-              <a key={link.href} href={link.href}>
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => track('nav_click', { section: 'navbar', label: link.label, type: 'link' })}
+              >
                 {link.label}
               </a>
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="z nav-actions">
-            <a href={primaryCta.href} className="nav-cta">
+            <a
+              href={primaryCta.href}
+              className="nav-cta"
+              onClick={() => track('conversion_click', { section: 'navbar', label: primaryCta.label })}
+            >
               {primaryCta.label}
             </a>
-            <a href={`${appUrl}/login`} className="btn-s" style={{ padding: '8px 18px', fontSize: 13 }}>
+            <a
+              href={`${appUrl}/login`}
+              className="btn-s"
+              style={{ padding: '8px 18px', fontSize: 13 }}
+              onClick={() => track('login_click', { section: 'navbar' })}
+            >
               Entrar
             </a>
-            <button className="hamburger" onClick={onMenuToggle} aria-label="Menu" type="button">
+            <button
+              className="hamburger"
+              onClick={() => {
+                track('menu_toggle', { section: 'navbar' })
+                onMenuToggle()
+              }}
+              aria-label="Menu"
+              type="button"
+            >
               <span></span>
               <span></span>
               <span></span>

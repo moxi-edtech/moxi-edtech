@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react'
 import type { Metadata } from 'next'
 import { Manrope, Sora } from 'next/font/google'
 import type { ReactNode } from 'react'
@@ -70,7 +71,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <SchemaMarkup />
       </head>
-      <body className={`${manrope.variable} ${sora.variable}`}>{children}</body>
+      <body className={`${manrope.variable} ${sora.variable}`}>
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }

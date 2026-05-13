@@ -10,6 +10,8 @@
     "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "framer-motion": "^12.38.0",
     "next": "15.5.7",
     "react": "19.1.0",
     "react-dom": "19.1.0"

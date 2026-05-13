@@ -1,3 +1,9 @@
+'use client'
+
+import { motion } from 'framer-motion'
+
+import { FadeIn, FadeInStagger } from '../FadeIn'
+
 export function DashboardSection() {
   const bullets = [
     'Receita prevista vs. receita realizada',
@@ -7,9 +13,9 @@ export function DashboardSection() {
   ]
 
   return (
-    <section className="dashboard section-accent reveal" id="dashboard">
+    <section className="dashboard section-accent" id="dashboard">
       <div className="container dashboard-grid">
-        <div className="dashboard-copy">
+        <FadeIn direction="right" className="dashboard-copy">
           <div className="sec-eyebrow">Painel de gestão</div>
           <h2 className="sec-title">
             O director ve <span>tudo</span> em tempo real.
@@ -17,17 +23,24 @@ export function DashboardSection() {
           <p className="sec-sub">
             Do fecho de caixa ao risco de inadimplência, a direção acompanha a escola com dados acionáveis num único painel.
           </p>
-          <div className="dashboard-bullets">
+          <FadeInStagger className="dashboard-bullets">
             {bullets.map((bullet) => (
-              <div key={bullet} className="dashboard-bullet">
+              <FadeIn key={bullet} direction="up" className="dashboard-bullet">
                 <span className="dashboard-bullet-dot" />
                 <span>{bullet}</span>
-              </div>
+              </FadeIn>
             ))}
-          </div>
-        </div>
+          </FadeInStagger>
+        </FadeIn>
 
-        <div className="dashboard-visual" aria-label="Exemplo de dashboard KLASSE">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+          className="dashboard-visual"
+          aria-label="Exemplo de dashboard KLASSE"
+        >
           <div className="dashboard-frame">
             <div className="dashboard-bar">
               <span />
@@ -118,7 +131,7 @@ export function DashboardSection() {
           <div className="dashboard-neck" />
           <div className="dashboard-stand" />
           <div className="dashboard-base" />
-        </div>
+        </motion.div>
       </div>
     </section>
   )

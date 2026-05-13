@@ -50,8 +50,13 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   background-size:200px 200px;
 }
 
-.panel-stack{height:100vh;height:100dvh;overflow-y:scroll;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-padding-top:var(--nav-h);overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
-.panel{height:100vh;height:100dvh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box}
+.panel-stack{height:100vh;height:100dvh;overflow-y:scroll;overflow-x:hidden;scroll-snap-type:y proximity;scroll-padding-top:var(--nav-h);overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.panel{height:100vh;height:100dvh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:normal;box-sizing:border-box}
+
+@media (min-width: 901px) {
+  .panel-stack { scroll-snap-type: y mandatory; }
+  .panel { scroll-snap-stop: always; }
+}
 .panel--hero{background:var(--dk)}
 .panel--portals{height:100vh;height:100dvh;scroll-snap-stop:always;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .panel--portals .portais{height:auto;min-height:100%}

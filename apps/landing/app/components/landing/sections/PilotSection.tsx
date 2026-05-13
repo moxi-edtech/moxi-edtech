@@ -1,14 +1,17 @@
+'use client'
+
 import { pilot } from '../../../data/landing'
+import { FadeIn } from '../FadeIn'
 
 export function PilotSection() {
   return (
     <section className="piloto section-accent">
       <div className="container">
-        <div className="piloto-inner reveal">
+        <FadeIn className="piloto-inner">
           <div className="piloto-badge">{pilot.badge}</div>
           <h2>{pilot.title}</h2>
           <p>{pilot.description}</p>
-        </div>
+        </FadeIn>
       </div>
     </section>
   )

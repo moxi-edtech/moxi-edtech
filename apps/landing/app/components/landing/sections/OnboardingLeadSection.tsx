@@ -1,6 +1,9 @@
 'use client'
 
+import { track } from '@vercel/analytics'
 import { useMemo, useState } from 'react'
+
+import { FadeIn } from '../FadeIn'
 
 interface OnboardingLeadSectionProps {
   scheduleUrl: string
@@ -86,9 +89,9 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
   }, [form, scheduleUrl])
 
   return (
-    <section className="onboarding-lead z reveal section-accent" id="onboarding">
+    <section className="onboarding-lead z section-accent" id="onboarding">
       <div className="container">
-        <div className="onboarding-lead__compact">
+        <FadeIn className="onboarding-lead__compact">
           <div className="sec-eyebrow">Onboarding público</div>
           <h2 className="sec-title">Ativamos a sua escola em poucos passos</h2>
           <p className="sec-sub">Fale com a equipa KLASSE e começe com apoio guiado.</p>
@@ -100,133 +103,139 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
               Aceder ao sistema
             </a>
           </div>
-        </div>
+        </FadeIn>
 
-        <div className="onboarding-lead__header">
+        <FadeIn className="onboarding-lead__header">
           <div className="sec-eyebrow">Onboarding público</div>
           <h2 className="sec-title">Comece o onboarding da sua escola</h2>
           <p className="sec-sub">
             Deixe os dados base da escola e a nossa equipa entra em contacto para ativar o sistema.
           </p>
-        </div>
+        </FadeIn>
 
-        <form
-          className="onboarding-lead__form"
-          onSubmit={async (event) => {
-            event.preventDefault()
-            try {
-              await fetch('/api/onboarding-lead', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  escola: form.escola,
-                  provincia: form.provincia,
-                  municipio: form.municipio,
-                  alunos: form.alunos,
-                  contacto: form.contacto,
-                  website: form.website,
-                }),
+        <FadeIn direction="up">
+          <form
+            className="onboarding-lead__form"
+            onSubmit={async (event) => {
+              event.preventDefault()
+              track('onboarding_lead_submit', {
+                provincia: form.provincia,
+                alunos: form.alunos,
               })
-            } catch {
-              // fallback to WhatsApp even if API fails
-            }
-            window.open(whatsappLink, '_blank', 'noopener,noreferrer')
-          }}
-        >
-          <div className="onboarding-lead__grid">
-            <label className="onboarding-lead__field">
-              <span>Nome da escola</span>
-              <input
-                className="lead-input"
-                value={form.escola}
-                onChange={(event) => setForm((prev) => ({ ...prev, escola: event.target.value }))}
-                placeholder="Ex: Colégio Horizonte"
-                required
-              />
-            </label>
-            <label className="onboarding-lead__field">
-              <span>Província</span>
-              <select
-                className="lead-input"
-                value={form.provincia}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, provincia: event.target.value, municipio: '' }))
-                }
-                required
-              >
-                <option value="">Seleccionar...</option>
-                {PROVINCIAS.map((provincia) => (
-                  <option key={provincia} value={provincia}>
-                    {provincia}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="onboarding-lead__field">
-              <span>Município</span>
-              <select
-                className="lead-input"
-                value={form.municipio}
-                onChange={(event) => setForm((prev) => ({ ...prev, municipio: event.target.value }))}
-                required
-              >
-                <option value="">Seleccionar...</option>
-                {(MUNICIPIOS_POR_PROVINCIA[form.provincia] ?? []).map((municipio) => (
-                  <option key={municipio} value={municipio}>
-                    {municipio}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="onboarding-lead__field">
-              <span>Número de alunos</span>
-              <select
-                className="lead-input"
-                value={form.alunos}
-                onChange={(event) => setForm((prev) => ({ ...prev, alunos: event.target.value }))}
-                required
-              >
-                <option value="">Seleccionar...</option>
-                {FAIXAS_ALUNOS.map((faixa) => (
-                  <option key={faixa} value={faixa}>
-                    {faixa}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="onboarding-lead__field onboarding-lead__field--full">
-              <span>Contacto (WhatsApp ou email)</span>
-              <input
-                className="lead-input"
-                value={form.contacto}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, contacto: normalizeContato(event.target.value) }))
-                }
-                placeholder="+2449XXXXXXXX ou email"
-                required
-              />
-            </label>
-            <label className="onboarding-lead__field onboarding-lead__field--honeypot" aria-hidden="true">
-              <span>Website</span>
-              <input
-                className="lead-input"
-                value={form.website}
-                onChange={(event) => setForm((prev) => ({ ...prev, website: event.target.value }))}
-                tabIndex={-1}
-                autoComplete="off"
-              />
-            </label>
-          </div>
+              try {
+                await fetch('/api/onboarding-lead', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    escola: form.escola,
+                    provincia: form.provincia,
+                    municipio: form.municipio,
+                    alunos: form.alunos,
+                    contacto: form.contacto,
+                    website: form.website,
+                  }),
+                })
+              } catch {
+                // fallback to WhatsApp even if API fails
+              }
+              window.open(whatsappLink, '_blank', 'noopener,noreferrer')
+            }}
+          >
+            <div className="onboarding-lead__grid">
+              <label className="onboarding-lead__field">
+                <span>Nome da escola</span>
+                <input
+                  className="lead-input"
+                  value={form.escola}
+                  onChange={(event) => setForm((prev) => ({ ...prev, escola: event.target.value }))}
+                  placeholder="Ex: Colégio Horizonte"
+                  required
+                />
+              </label>
+              <label className="onboarding-lead__field">
+                <span>Província</span>
+                <select
+                  className="lead-input"
+                  value={form.provincia}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, provincia: event.target.value, municipio: '' }))
+                  }
+                  required
+                >
+                  <option value="">Seleccionar...</option>
+                  {PROVINCIAS.map((provincia) => (
+                    <option key={provincia} value={provincia}>
+                      {provincia}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="onboarding-lead__field">
+                <span>Município</span>
+                <select
+                  className="lead-input"
+                  value={form.municipio}
+                  onChange={(event) => setForm((prev) => ({ ...prev, municipio: event.target.value }))}
+                  required
+                >
+                  <option value="">Seleccionar...</option>
+                  {(MUNICIPIOS_POR_PROVINCIA[form.provincia] ?? []).map((municipio) => (
+                    <option key={municipio} value={municipio}>
+                      {municipio}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="onboarding-lead__field">
+                <span>Número de alunos</span>
+                <select
+                  className="lead-input"
+                  value={form.alunos}
+                  onChange={(event) => setForm((prev) => ({ ...prev, alunos: event.target.value }))}
+                  required
+                >
+                  <option value="">Seleccionar...</option>
+                  {FAIXAS_ALUNOS.map((faixa) => (
+                    <option key={faixa} value={faixa}>
+                      {faixa}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="onboarding-lead__field onboarding-lead__field--full">
+                <span>Contacto (WhatsApp ou email)</span>
+                <input
+                  className="lead-input"
+                  value={form.contacto}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, contacto: normalizeContato(event.target.value) }))
+                  }
+                  placeholder="+2449XXXXXXXX ou email"
+                  required
+                />
+              </label>
+              <label className="onboarding-lead__field onboarding-lead__field--honeypot" aria-hidden="true">
+                <span>Website</span>
+                <input
+                  className="lead-input"
+                  value={form.website}
+                  onChange={(event) => setForm((prev) => ({ ...prev, website: event.target.value }))}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </label>
+            </div>
 
-          <div className="onboarding-lead__actions">
-            <button className="btn-p" type="submit">
-              Pedir demo
-            </button>
-            <a className="btn-s" href="https://app.klasse.ao/login" rel="noopener noreferrer">
-              Aceder ao sistema
-            </a>
-          </div>
-        </form>
+            <div className="onboarding-lead__actions">
+              <button className="btn-p" type="submit">
+                Pedir demo
+              </button>
+              <a className="btn-s" href="https://app.klasse.ao/login" rel="noopener noreferrer">
+                Aceder ao sistema
+              </a>
+            </div>
+          </form>
+        </FadeIn>
       </div>
     </section>
   )
