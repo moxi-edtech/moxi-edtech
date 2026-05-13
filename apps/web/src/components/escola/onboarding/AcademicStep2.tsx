@@ -46,6 +46,7 @@ import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- CONFIGURAÇÃO ---
 const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
+  pre_escolar: "geral",
   primario_generico: "geral",
   esg_ciclo1: "geral",
   esg_puniv_cfb: "geral",

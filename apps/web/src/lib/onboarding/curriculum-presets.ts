@@ -167,9 +167,16 @@ const _PRESETS: Record<
   // PRÉ-ESCOLAR
   // ---------------------------------------------------------------------------
   pre_escolar: grid(
-    ["Creche", "Pré-Escolar"],
+    ["Pré-Escolar"],
     "pre_escolar",
-    ["Educação Pré-Escolar"],
+    [
+      "Comunicação linguística",
+      "Representação Matemática",
+      "Meio Físico e Social",
+      "Expressão Manual e Plástica",
+      "Expressão Musical",
+      "Expressão Motora/Psicomotricidade",
+    ],
   ),
 
   // ---------------------------------------------------------------------------
@@ -447,7 +454,7 @@ const LEVEL_INFO: Record<
     tipo: string;
   }
 > = {
-  pre_escolar: { idadeMin: 3, idadeMax: 5, duracaoAnos: 3, tipo: "Pré-Escolar" },
+  pre_escolar: { idadeMin: 3, idadeMax: 5, duracaoAnos: 1, tipo: "Pré-Escolar" },
   primario_i: { idadeMin: 6, idadeMax: 9, duracaoAnos: 4, tipo: "Primário I" },
   primario_ii: { idadeMin: 10, idadeMax: 11, duracaoAnos: 2, tipo: "Primário II" },
   secundario_i: { idadeMin: 12, idadeMax: 14, duracaoAnos: 3, tipo: "Secundário I" },
@@ -490,8 +497,8 @@ const CURRICULUM_PRESETS_META_BASE: Array<
   {
     key: "pre_escolar",
     label: "Pré-Escolar",
-    description: "Educação infantil para crianças de 3 a 5 anos. (Em construção)",
-    badge: "Pré-Escolar",
+    description: "Educação infantil organizada como uma classe única.",
+    badge: "Classe única",
     recommended: false,
   },
   {

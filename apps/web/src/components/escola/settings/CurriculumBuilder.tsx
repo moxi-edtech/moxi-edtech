@@ -304,6 +304,7 @@ export default function CurriculumBuilder({
     const keysForCat: CurriculumKey[] =
       (catId === "geral"
         ? ([
+            "pre_escolar",
             "primario_generico",
             "esg_ciclo1",
             "esg_puniv_cfb",

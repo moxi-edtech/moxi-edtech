@@ -3,6 +3,7 @@
 // ==========================================
 
 export type CurriculumKey =
+  | "pre_escolar"
   | "primario_generico"
   | "esg_ciclo1"
   | "esg_puniv_cfb"
@@ -65,6 +66,20 @@ const d = (
 // ==========================================
 
 export const CURRICULUM_PRESETS: Record<CurriculumKey, CurriculumDisciplineBlueprint[]> = {
+  // --------------------------------------------------------------------------
+  // 0. PRÉ-ESCOLAR
+  // Plano Curricular da Educação Pré-escolar e Ensino Primário, INIDE/MED.
+  // Modelo operacional: uma classe única, com carga da Classe de Iniciação.
+  // --------------------------------------------------------------------------
+  pre_escolar: [
+    d("Comunicação linguística", "Pré-Escolar", 5, "GERAL"),
+    d("Representação Matemática", "Pré-Escolar", 5, "GERAL"),
+    d("Meio Físico e Social", "Pré-Escolar", 4, "GERAL"),
+    d("Expressão Manual e Plástica", "Pré-Escolar", 5, "GERAL"),
+    d("Expressão Musical", "Pré-Escolar", 3, "GERAL"),
+    d("Expressão Motora/Psicomotricidade", "Pré-Escolar", 3, "GERAL"),
+  ],
+
   // --------------------------------------------------------------------------
   // 1. ENSINO PRIMÁRIO (1ª à 6ª Classe)
   // Nota: Baseado no padrão nacional, pois o doc específico não foi anexado.
@@ -1286,6 +1301,13 @@ export type CurriculumPresetMeta = {
 };
 
 const META_INFO: Record<CurriculumKey, Omit<CurriculumPresetMeta, "classes" | "subjectsCount">> = {
+  pre_escolar: {
+    key: "pre_escolar",
+    label: "Pré-Escolar",
+    course_code: "PRE",
+    badge: "Classe única",
+    description: "Educação infantil organizada como uma classe única.",
+  },
   primario_generico: {
     key: "primario_generico",
     label: "Ensino Primário",

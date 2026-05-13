@@ -7,6 +7,7 @@ import { type CurriculumKey } from "@/lib/academico/curriculum-presets";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number }> = {
+  pre_escolar: { min: 0, max: 0 },
   primario_generico: { min: 1, max: 6 },
   esg_ciclo1: { min: 7, max: 9 },
   esg_puniv_cfb: { min: 10, max: 12 },
@@ -46,6 +47,13 @@ const parseClasseNumero = (nome: string) => {
   const match = nome.match(/\d{1,2}/);
   return match ? Number(match[0]) : null;
 };
+
+const normalizeClasseLabel = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 // GET /api/escolas/[id]/classes
 // Lista classes da escola (usa service role com autorização)
@@ -260,28 +268,47 @@ export async function POST(
     if (cursoInfo.curriculum_key) {
       const classNum = parseClasseNumero(parsed.data.nome);
       if (!classNum) {
-        return NextResponse.json(
-          { ok: false, error: "Classe inválida para curso com currículo definido." },
-          { status: 400 }
+        const { data: presetSubjects, error: presetSubjectsErr } = await (supabase as any)
+          .from("curriculum_preset_subjects")
+          .select("grade_level")
+          .eq("preset_id", cursoInfo.curriculum_key);
+
+        if (presetSubjectsErr) {
+          return NextResponse.json({ ok: false, error: presetSubjectsErr.message }, { status: 400 });
+        }
+
+        const requestedClass = normalizeClasseLabel(parsed.data.nome);
+        const allowedNamedClass = (presetSubjects || []).some(
+          (row: any) => normalizeClasseLabel(String(row.grade_level ?? "")) === requestedClass
         );
-      }
 
-      const { data: presetCatalog } = await (supabase as any)
-        .from("curriculum_presets")
-        .select("class_min, class_max")
-        .eq("id", cursoInfo.curriculum_key)
-        .maybeSingle();
+        if (!allowedNamedClass) {
+          return NextResponse.json(
+            { ok: false, error: "Classe inválida para curso com currículo definido." },
+            { status: 400 }
+          );
+        }
+      } else {
+        const { data: presetCatalog } = await (supabase as any)
+          .from("curriculum_presets")
+          .select("class_min, class_max")
+          .eq("id", cursoInfo.curriculum_key)
+          .maybeSingle();
 
-      const range =
-        presetCatalog?.class_min && presetCatalog?.class_max
-          ? { min: presetCatalog.class_min, max: presetCatalog.class_max }
-          : CURRICULUM_CLASS_RANGES[cursoInfo.curriculum_key as CurriculumKey];
+        const range =
+          presetCatalog?.class_min !== null &&
+          presetCatalog?.class_min !== undefined &&
+          presetCatalog?.class_max !== null &&
+          presetCatalog?.class_max !== undefined
+            ? { min: presetCatalog.class_min, max: presetCatalog.class_max }
+            : CURRICULUM_CLASS_RANGES[cursoInfo.curriculum_key as CurriculumKey];
 
-      if (!range || classNum < range.min || classNum > range.max) {
-        return NextResponse.json(
-          { ok: false, error: `Classe fora do intervalo permitido (${range?.min}ª–${range?.max}ª).` },
-          { status: 400 }
-        );
+        if (!range || classNum < range.min || classNum > range.max) {
+          return NextResponse.json(
+            { ok: false, error: `Classe fora do intervalo permitido (${range?.min}ª–${range?.max}ª).` },
+            { status: 400 }
+          );
+        }
       }
     }
 
