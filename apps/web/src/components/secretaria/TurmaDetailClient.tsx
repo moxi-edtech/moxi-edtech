@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   RefreshCw, UsersRound, BookOpen, UserCheck, Download,
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings,
@@ -13,6 +14,7 @@ import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -42,6 +44,7 @@ type Aluno = {
   numero_matricula?:  string | number | null;
   status_matricula:   string;
   status_financeiro?: "em_dia" | "atraso";
+  saldo_pendente?:    number;
 };
 
 type TurmaData = {
@@ -277,9 +280,25 @@ function FinanceiroBadge({ status }: { status?: "em_dia" | "atraso" }) {
   );
 }
 
+function formatKz(valor?: number) {
+  return new Intl.NumberFormat("pt-AO", {
+    style: "currency",
+    currency: "AOA",
+    maximumFractionDigits: 0,
+  }).format(Number(valor ?? 0));
+}
+
 // ─── Aluno row ────────────────────────────────────────────────────────────────
 
-function AlunoRow({ aluno, style }: { aluno: Aluno; style?: React.CSSProperties }) {
+function AlunoRow({
+  aluno,
+  profileHref,
+  style,
+}: {
+  aluno: Aluno;
+  profileHref: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <tr className="group hover:bg-slate-50/80 transition-colors" style={style}>
       <td className="px-5 py-3.5 text-[10px] font-semibold text-slate-400">
@@ -300,12 +319,23 @@ function AlunoRow({ aluno, style }: { aluno: Aluno; style?: React.CSSProperties 
         </div>
       </td>
       <td className="px-5 py-3.5">
-        <FinanceiroBadge status={aluno.status_financeiro} />
+        <div className="flex flex-col gap-1">
+          <FinanceiroBadge status={aluno.status_financeiro} />
+          {(aluno.saldo_pendente ?? 0) > 0 ? (
+            <span className="text-[11px] font-bold text-rose-700">
+              {formatKz(aluno.saldo_pendente)}
+            </span>
+          ) : null}
+        </div>
       </td>
       <td className="px-5 py-3.5 text-right">
-        <button className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors opacity-0 group-hover:opacity-100">
+        <Link
+          href={profileHref}
+          title="Ver perfil do aluno"
+          className="inline-flex rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors opacity-0 group-hover:opacity-100"
+        >
           <MoreVertical size={15} />
-        </button>
+        </Link>
       </td>
     </tr>
   );
@@ -397,6 +427,7 @@ export default function TurmaDetailClient({
   const [notasSaving, setNotasSaving] = useState(false);
   const [notasPesoPorTipo, setNotasPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [notasComponentes, setNotasComponentes] = useState<string[]>([]);
+  const pathname = usePathname();
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
@@ -404,6 +435,7 @@ export default function TurmaDetailClient({
   const { escolaSlug } = useEscolaId();
   const escolaId = data?.turma.escola_id;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaId;
+  const isSecretariaContext = pathname?.includes("/secretaria/") ?? false;
 
   const alunosVirtualizer = useVirtualizer({
     count:            alunos.length,
@@ -931,21 +963,32 @@ export default function TurmaDetailClient({
                         </td>
                       </tr>
                     ) : (
-                      alunosVirtualizer.getVirtualItems().map((vr) => (
-                        <AlunoRow
-                          key={alunos[vr.index].aluno_id}
-                          aluno={alunos[vr.index]}
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            transform: `translateY(${vr.start}px)`,
-                            width: "100%",
-                            display: "table",
-                            tableLayout: "fixed",
-                          }}
-                        />
-                      ))
+                      alunosVirtualizer.getVirtualItems().map((vr) => {
+                        const aluno = alunos[vr.index];
+                        const profileHref = buildPortalHref(
+                          escolaParam,
+                          isSecretariaContext
+                            ? `/secretaria/alunos/${aluno.aluno_id}`
+                            : `/admin/alunos/${aluno.aluno_id}`
+                        );
+
+                        return (
+                          <AlunoRow
+                            key={aluno.aluno_id}
+                            aluno={aluno}
+                            profileHref={profileHref}
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              transform: `translateY(${vr.start}px)`,
+                              width: "100%",
+                              display: "table",
+                              tableLayout: "fixed",
+                            }}
+                          />
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

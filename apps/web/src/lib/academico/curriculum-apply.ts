@@ -386,7 +386,7 @@ async function createTurmasPadrao(args: {
         ano_letivo: anoLetivo,
         nome: "A",
         turno,
-        capacidade_maxima: 35,
+        capacidade_maxima: 70,
         status_validacao: "ativo",
       });
     }

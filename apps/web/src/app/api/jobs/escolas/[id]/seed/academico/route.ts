@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const generationParams = {
         classes: [{ classeId: 'uuid-dummy-class-id', quantidade: 1, nome: '1º Ano' }], // '1º Ano' é apenas um placeholder para o nome da classe
         turmas: [{ classeId: 'uuid-dummy-class-id', turno: 'M', quantidade: 1, nome: turmaNomeParaSeed }], // Nome da turma com letra 'A'
-        capacidadeMaxima: 35,
+        capacidadeMaxima: 70,
     };
     
     // Antes de chamar a RPC, precisamos de um ID de classe existente.

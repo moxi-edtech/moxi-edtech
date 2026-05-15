@@ -120,7 +120,11 @@ function isMissingOrchestratorFunction(err: { message?: string | null; code?: st
   if (!err) return false;
   const code = String(err.code ?? '');
   const message = String(err.message ?? '').toLowerCase();
-  return code === '42883' || message.includes('curriculo_install_orchestrated');
+  return (
+    code === '42883' ||
+    message.includes('curriculo_install_orchestrated') ||
+    (message.includes('curriculo_publish') && message.includes('is not unique'))
+  );
 }
 
 async function compensateInstallPartialFailure(args: {
@@ -425,6 +429,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           p_ano_letivo_id: anoLetivo.id,
           p_version: applyResult.curriculo.version,
           p_rebuild_turmas: false,
+          p_classe_id: null,
         });
 
       if (publishError) {

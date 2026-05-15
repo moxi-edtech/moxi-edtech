@@ -106,7 +106,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .maybeSingle()
 
     const profCheck = profCheckRes.data as { escola_id?: string | null; role?: string | null } | null
-    const profilePapel = profCheck?.escola_id === escolaId ? normalizePapel(profCheck?.role) : null
+    const profilePapel = profCheck?.escola_id === userEscolaId ? normalizePapel(profCheck?.role) : null
 
     let allowed = hasPermission(papelReq, 'criar_usuario') || hasPermission(profilePapel, 'criar_usuario')
     let adminLink: { user_id: string | null }[] | null = null
@@ -155,10 +155,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           nome,
           full_name: nome,
           role: roleEnum,
-          escola_id: escolaId,
+          escola_id: userEscolaId,
           must_change_password: true,
         },
-        app_metadata: { role: roleEnum, escola_id: escolaId },
+        app_metadata: { role: roleEnum, escola_id: userEscolaId },
       })
       const createdUser = created as { user?: { id?: string | null } | null } | null
       userId = createdUser?.user?.id ?? undefined
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
       await callAuthAdminJob(req, 'updateUserById', {
         userId,
-        attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
+        attributes: { app_metadata: { role: roleEnum, escola_id: userEscolaId } },
       })
     } catch (error) {
       await rollbackAuthUserCreate()
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: rpcData, error: rpcError } = await (supabase as any).rpc(
       'create_or_update_professor_academico',
       {
-        p_escola_id: escolaId,
+        p_escola_id: userEscolaId,
         p_user_id: userId,
         p_profile: {
           email,
@@ -282,7 +282,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: escolaInfo } = await supabase
       .from('escolas')
       .select('nome')
-      .eq('id', escolaId)
+      .eq('id', userEscolaId)
       .maybeSingle()
     const escolaNome = String((escolaInfo as { nome?: string | null } | null)?.nome ?? 'sua escola')
 

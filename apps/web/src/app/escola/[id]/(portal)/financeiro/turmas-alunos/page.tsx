@@ -1,13 +1,15 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, Filter, Eye, AlertCircle, 
+  Search, Eye, AlertCircle, 
   CheckCircle, Clock, ChevronDown, ChevronUp, Mail, 
-  Download, Users, ArrowUpRight, Ban, User, Wallet
+  Download, ArrowUpRight, Ban, Wallet
 } from 'lucide-react';
 import ModalExtratoAluno from './modal-extrato-aluno';
 import { useParams } from 'next/navigation';
+import { buildPortalHref } from '@/lib/navigation';
 
 // --- Types & Interfaces ---
 interface Aluno {
@@ -19,6 +21,11 @@ interface Aluno {
   turmaId: string;
   turmaNome: string;
   avatarUrl?: string;
+  statusFinanceiro: 'pendente' | 'paga' | 'atrasada' | 'cancelada';
+  possuiMensalidades: boolean;
+  valorEmDivida: number;
+  diasAtraso?: number;
+  qtdMensalidadesAtrasadas: number;
 }
 
 interface Turma {
@@ -40,7 +47,7 @@ interface MensalidadeAluno {
   mesReferencia: number;
   anoReferencia: number;
   valor: number;
-  dataVencimento: Date;
+  dataVencimento: Date | string | null;
   status: 'pendente' | 'paga' | 'atrasada' | 'cancelada';
   diasAtraso?: number;
 }
@@ -84,8 +91,9 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   const escolaId = params?.id as string;
   
   // --- States ---
-  const [data, setData] = useState<{ turmas: Turma[], alunos: Aluno[], mensalidades: MensalidadeAluno[] }>({ turmas: [], alunos: [], mensalidades: [] });
+  const [data, setData] = useState<{ turmas: Turma[], alunos: Aluno[] }>({ turmas: [], alunos: [] });
   const [loading, setLoading] = useState(true);
+  const [mensalidadesByAluno, setMensalidadesByAluno] = useState<Record<string, MensalidadeAluno[]>>({});
   
   // UX States
   const [expandedTurmas, setExpandedTurmas] = useState<string[]>([]);
@@ -101,22 +109,19 @@ const TurmasAlunosFinanceiro: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [turmasRes, alunosRes, mensalidadesRes] = await Promise.all([
-          fetch(`/api/financeiro/turmas?escolaId=${escolaId}`, { cache: 'no-store' }),
-          fetch(`/api/financeiro/alunos?escolaId=${escolaId}`, { cache: 'no-store' }),
-          fetch(`/api/financeiro/mensalidades?escolaId=${escolaId}`, { cache: 'no-store' })
+        const [turmasRes, alunosRes] = await Promise.all([
+          fetch(`/api/financeiro/turmas`, { cache: 'no-store' }),
+          fetch(`/api/financeiro/alunos`, { cache: 'no-store' })
         ]);
         
-        const [turmas, alunos, mensalidades] = await Promise.all([
-          turmasRes.json(), 
-          alunosRes.json(), 
-          mensalidadesRes.json()
+        const [turmas, alunos] = await Promise.all([
+          turmasRes.json(),
+          alunosRes.json()
         ]);
 
         setData({ 
           turmas: Array.isArray(turmas) ? turmas : [], 
-          alunos: Array.isArray(alunos) ? alunos : [], 
-          mensalidades: Array.isArray(mensalidades) ? mensalidades : [] 
+          alunos: Array.isArray(alunos) ? alunos : [],
         });
       } catch (error) {
         console.error("Erro ao carregar dados", error);
@@ -134,16 +139,35 @@ const TurmasAlunosFinanceiro: React.FC = () => {
     );
   };
 
+  const openExtrato = async (aluno: Aluno) => {
+    setModalExtrato({ show: true, aluno });
+    if (mensalidadesByAluno[aluno.id]) return;
+
+    try {
+      const response = await fetch(`/api/financeiro/mensalidades?alunoId=${aluno.id}`, { cache: 'no-store' });
+      const payload = await response.json();
+      setMensalidadesByAluno(prev => ({
+        ...prev,
+        [aluno.id]: Array.isArray(payload) ? payload : [],
+      }));
+    } catch (error) {
+      console.error("Erro ao carregar extrato do aluno", error);
+      setMensalidadesByAluno(prev => ({
+        ...prev,
+        [aluno.id]: [],
+      }));
+    }
+  };
+
   const getResumoFinanceiro = (turmaId: string) => {
     const alunosDaTurma = data.alunos.filter(a => a.turmaId === turmaId);
-    const mensalidadesDaTurma = data.mensalidades.filter(m => alunosDaTurma.some(a => a.id === m.alunoId));
-    
-    const total = mensalidadesDaTurma.length;
-    const pagas = mensalidadesDaTurma.filter(m => m.status === 'paga').length;
-    const atrasadas = mensalidadesDaTurma.filter(m => m.status === 'atrasada').length;
-    const arrecadacao = (pagas / (total || 1)) * 100;
+    const pagas = alunosDaTurma.filter(aluno => aluno.statusFinanceiro === 'paga').length;
+    const atrasadas = alunosDaTurma.filter(aluno => aluno.valorEmDivida > 0).length;
+    const emDia = alunosDaTurma.length - atrasadas;
+    const arrecadacao = (emDia / (alunosDaTurma.length || 1)) * 100;
+    const totalEmDivida = alunosDaTurma.reduce((acc, aluno) => acc + Number(aluno.valorEmDivida ?? 0), 0);
 
-    return { total, pagas, atrasadas, arrecadacao, qtdAlunos: alunosDaTurma.length };
+    return { pagas, atrasadas, arrecadacao, qtdAlunos: alunosDaTurma.length, totalEmDivida };
   };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(val);
@@ -304,16 +328,14 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                         <tr>
                           <th className="px-6 py-3 pl-8">Aluno</th>
                           <th className="px-6 py-3 text-center">Status</th>
-                          <th className="px-6 py-3 text-right">Mensalidade</th>
+                          <th className="px-6 py-3 text-right">Em dívida</th>
                           <th className="px-6 py-3 text-right pr-8">Ações</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
                         {alunosFiltrados.map(aluno => {
-                          const mensalidade = data.mensalidades.find(m => m.alunoId === aluno.id);
-                          
                           // Filtro Interno
-                          if (filtroStatus === 'inadimplentes' && mensalidade?.status !== 'atrasada') return null;
+                          if (filtroStatus === 'inadimplentes' && aluno.statusFinanceiro !== 'atrasada') return null;
 
                           return (
                             <tr key={aluno.id} className="group hover:bg-slate-50 transition-colors">
@@ -331,21 +353,21 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                 </div>
                               </td>
                               <td className="px-6 py-4 text-center">
-                                {mensalidade ? (
-                                  <StatusBadge status={mensalidade.status} diasAtraso={mensalidade.diasAtraso} />
+                                {aluno.possuiMensalidades ? (
+                                  <StatusBadge status={aluno.statusFinanceiro} diasAtraso={aluno.diasAtraso} />
                                 ) : (
                                   <span className="text-slate-300 text-xs italic">Sem registro</span>
                                 )}
                               </td>
                               <td className="px-6 py-4 text-right font-medium text-slate-700 tabular-nums">
-                                {mensalidade ? formatCurrency(mensalidade.valor) : '-'}
+                                {aluno.valorEmDivida > 0 ? formatCurrency(aluno.valorEmDivida) : '-'}
                               </td>
                               <td className="px-6 py-4 pr-8 text-right">
                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   {/* Botão Pagar: Dourado (Ação) */}
                                   <button 
                                     title="Ver Extrato"
-                                    onClick={(e) => { e.stopPropagation(); setModalExtrato({ show: true, aluno }); }}
+                                    onClick={(e) => { e.stopPropagation(); void openExtrato(aluno); }}
                                     className="p-1.5 text-[#E3B23C] bg-[#E3B23C]/10 hover:bg-[#E3B23C] hover:text-white rounded-lg transition-colors"
                                   >
                                     <Eye className="w-4 h-4" />
@@ -358,12 +380,13 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                     <Mail className="w-4 h-4" />
                                   </button>
                                   {/* Botão Perfil: Slate (Neutro) */}
-                                  <button 
+                                  <Link
+                                    href={buildPortalHref(escolaId, `/admin/alunos/${aluno.id}`)}
                                     title="Ver Perfil Completo"
                                     className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                                   >
                                     <ArrowUpRight className="w-4 h-4" />
-                                  </button>
+                                  </Link>
                                 </div>
                               </td>
                             </tr>
@@ -394,7 +417,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             nome: modalExtrato.aluno.nome, 
             turma: modalExtrato.aluno.turmaNome 
           }}
-          mensalidades={data.mensalidades.filter(m => m.alunoId === modalExtrato.aluno?.id)}
+          mensalidades={mensalidadesByAluno[modalExtrato.aluno.id] ?? []}
           onClose={() => setModalExtrato({ show: false, aluno: null })}
         />
       )}

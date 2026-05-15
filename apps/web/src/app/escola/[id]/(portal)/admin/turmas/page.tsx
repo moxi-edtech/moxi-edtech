@@ -48,7 +48,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     nome: t.turma_nome || 'Sem Nome',
     turno: t.turno || 'sem_turno',
     sala: t.sala || '',
-    capacidade_maxima: t.capacidade_maxima || 60,
+    capacidade_maxima: t.capacidade_maxima || 70,
     curso_nome: t.curso_nome || '',
     classe_nome: t.classe_nome || '',
     status_validacao: t.status_validacao || 'ativo',

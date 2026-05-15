@@ -6,6 +6,16 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 
+const ACTIVE_MATRICULA_STATUSES = new Set(['ativa', 'ativo']);
+
+const normalizeStatus = (raw?: string | null) => {
+  const value = (raw ?? 'pendente').toLowerCase();
+  if (value === 'pago' || value === 'paga') return 'paga';
+  if (value === 'atrasado' || value === 'atrasada') return 'atrasada';
+  if (value === 'cancelado' || value === 'cancelada') return 'cancelada';
+  return 'pendente';
+};
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -29,20 +39,22 @@ export async function GET(request: Request) {
         nome,
         bi_numero,
         telefone_responsavel,
-        matriculas!inner(
-            turma_id,
-            turma:turmas(nome)
+        matriculas(
+          status,
+          turma_id,
+          turma:turmas(nome)
         )
       `)
       .eq('escola_id', escolaId)
       .eq('status', 'ativo');
 
-    if (turmaId && turmaId !== 'todas') {
-      query = query.eq('matriculas.turma_id', turmaId);
-    }
-    
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
-    
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 1000,
+      maxLimit: 2000,
+      order: [{ column: 'nome', ascending: true }],
+      tieBreakerColumn: 'id',
+    });
+
     const { data: alunos, error } = await query;
 
     if (error) {
@@ -50,15 +62,123 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    const formattedData = alunos.map(a => ({
-        id: a.id,
-        nome: a.nome,
-        numeroEstudante: a.id.substring(0, 8), // Placeholder for numeroEstudante
-        bi: a.bi_numero,
-        telefone: a.telefone_responsavel,
-        turmaId: a.matriculas[0]?.turma_id,
-        turmaNome: a.matriculas[0]?.turma?.nome,
-    }));
+    const alunosComTurma = (alunos ?? [])
+      .map((aluno: any) => {
+        const matriculas = Array.isArray(aluno.matriculas) ? aluno.matriculas : [];
+        const matriculaAtiva =
+          matriculas.find((matricula: any) => ACTIVE_MATRICULA_STATUSES.has(String(matricula?.status ?? '').toLowerCase())) ??
+          matriculas[0];
+
+        return {
+          id: aluno.id,
+          nome: aluno.nome,
+          numeroEstudante: aluno.id.substring(0, 8),
+          bi: aluno.bi_numero,
+          telefone: aluno.telefone_responsavel,
+          turmaId: matriculaAtiva?.turma_id ?? null,
+          turmaNome: matriculaAtiva?.turma?.nome ?? null,
+        };
+      })
+      .filter((aluno: any) => aluno.turmaId)
+      .filter((aluno: any) => !turmaId || turmaId === 'todas' || aluno.turmaId === turmaId);
+
+    const alunoIds = alunosComTurma.map((aluno: any) => aluno.id);
+    const resumoFinanceiro = new Map<string, {
+      totalEmDivida: number;
+      diasAtraso: number;
+      qtdMensalidadesAtrasadas: number;
+      possuiMensalidades: boolean;
+      possuiMensalidadePaga: boolean;
+      possuiMensalidadeAberta: boolean;
+    }>();
+
+    if (alunoIds.length > 0) {
+      let mensalidadesQuery = supabase
+        .from('mensalidades')
+        .select('id, aluno_id, valor, status, data_vencimento')
+        .eq('escola_id', escolaId)
+        .in('aluno_id', alunoIds);
+
+      mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
+        defaultLimit: 10000,
+        maxLimit: 20000,
+        order: [{ column: 'data_vencimento', ascending: false }],
+        tieBreakerColumn: 'id',
+      });
+
+      const { data: mensalidades, error: mensalidadesError } = await mensalidadesQuery;
+      if (mensalidadesError) {
+        console.error('Erro ao resumir mensalidades por aluno:', mensalidadesError);
+        throw mensalidadesError;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (const mensalidade of mensalidades ?? []) {
+        const key = String((mensalidade as any).aluno_id ?? '');
+        if (!key) continue;
+
+        const current = resumoFinanceiro.get(key) ?? {
+          totalEmDivida: 0,
+          diasAtraso: 0,
+          qtdMensalidadesAtrasadas: 0,
+          possuiMensalidades: false,
+          possuiMensalidadePaga: false,
+          possuiMensalidadeAberta: false,
+        };
+
+        current.possuiMensalidades = true;
+
+        const status = normalizeStatus((mensalidade as any).status);
+        const dataVencimento = (mensalidade as any).data_vencimento ? new Date((mensalidade as any).data_vencimento) : null;
+        if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
+
+        if (status === 'paga') {
+          current.possuiMensalidadePaga = true;
+        }
+
+        const aberta = status !== 'paga' && status !== 'cancelada';
+        if (aberta) {
+          current.possuiMensalidadeAberta = true;
+        }
+
+        const vencida = aberta && !!dataVencimento && dataVencimento.getTime() < today.getTime();
+        if (vencida) {
+          const valor = Number((mensalidade as any).valor ?? 0);
+          const diasAtraso = Math.max(0, Math.floor((today.getTime() - dataVencimento.getTime()) / (1000 * 3600 * 24)));
+          current.totalEmDivida += valor;
+          current.qtdMensalidadesAtrasadas += 1;
+          current.diasAtraso = Math.max(current.diasAtraso, diasAtraso);
+        }
+
+        resumoFinanceiro.set(key, current);
+      }
+    }
+
+    const formattedData = alunosComTurma.map((aluno: any) => {
+      const financeiro = resumoFinanceiro.get(aluno.id);
+      const possuiMensalidades = financeiro?.possuiMensalidades ?? false;
+      const totalEmDivida = Number(financeiro?.totalEmDivida ?? 0);
+
+      let statusFinanceiro: 'paga' | 'pendente' | 'atrasada' | 'cancelada' = 'cancelada';
+      if (totalEmDivida > 0) {
+        statusFinanceiro = 'atrasada';
+      } else if (financeiro?.possuiMensalidadeAberta) {
+        statusFinanceiro = 'pendente';
+      } else if (financeiro?.possuiMensalidadePaga) {
+        statusFinanceiro = 'paga';
+      }
+
+      return {
+        ...aluno,
+        statusFinanceiro,
+        possuiMensalidades,
+        valorEmDivida: totalEmDivida,
+        diasAtraso: Number(financeiro?.diasAtraso ?? 0),
+        qtdMensalidadesAtrasadas: Number(financeiro?.qtdMensalidadesAtrasadas ?? 0),
+      };
+    });
 
     return NextResponse.json(formattedData);
   } catch (e: any) {

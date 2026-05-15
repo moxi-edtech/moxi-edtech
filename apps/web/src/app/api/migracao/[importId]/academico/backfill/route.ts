@@ -231,7 +231,7 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
         letra: t.letra,
         status_validacao: "rascunho",
         import_id: importId,
-        capacidade_maxima: 35,
+        capacidade_maxima: 70,
       };
 
       // Usa o índice completo: uq_turmas_escola_ano_codigo (não parcial)

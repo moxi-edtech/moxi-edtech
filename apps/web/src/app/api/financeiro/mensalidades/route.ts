@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from('mensalidades')
       .select(`
+        id,
         aluno_id,
         aluno:alunos(nome),
         matricula:matriculas(turma:turmas(nome)),
@@ -58,7 +59,12 @@ export async function GET(request: Request) {
       // We will filter on the client side for now.
     }
     
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: alunoId ? 500 : 50,
+      maxLimit: alunoId ? 1000 : 2000,
+      order: [{ column: 'data_vencimento', ascending: false }],
+      tieBreakerColumn: 'id',
+    });
     
     const { data: mensalidades, error } = await query;
 
@@ -88,6 +94,7 @@ export async function GET(request: Request) {
             : 0;
 
         return {
+            id: m.id,
             alunoId: m.aluno_id,
             alunoNome: m.aluno?.nome,
             turma: m.matricula?.turma?.nome || 'N/A',
