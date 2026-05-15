@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, Save, WifiOff, Printer, FileDown } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
@@ -20,6 +20,7 @@ const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
 export default function QuadroHorariosPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const escolaId = params?.id as string;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -198,11 +199,13 @@ export default function QuadroHorariosPage() {
       setTurmaId(null);
       return;
     }
+    const turmaIdFromQuery = searchParams?.get("turmaId") ?? null;
     setTurmaId((prev) => {
       if (prev && turmas.some((turma) => turma.id === prev)) return prev;
+      if (turmaIdFromQuery && turmas.some((turma) => turma.id === turmaIdFromQuery)) return turmaIdFromQuery;
       return turmas[0]?.id ?? null;
     });
-  }, [turmas]);
+  }, [searchParams, turmas]);
 
   useEffect(() => {
     const targetCursoId = turmas.find((turma) => turma.id === turmaId)?.curso_id;
