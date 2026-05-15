@@ -124,6 +124,35 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       // Continuar mesmo com erro nos alunos, retornar array vazio
     }
 
+    const matriculaIds = (alunosData || []).map((row: any) => row.id).filter(Boolean);
+    const mensalidadesMap = new Map<string, number>();
+
+    if (matriculaIds.length > 0) {
+      const { data: mensalidades, error: mensalidadesError } = await supabase
+        .from('mensalidades')
+        .select('matricula_id, status, valor_previsto, valor, valor_pago_total')
+        .eq('escola_id', escolaId)
+        .in('matricula_id', matriculaIds);
+
+      if (mensalidadesError) {
+        console.error('Error fetching mensalidades for turma details:', mensalidadesError);
+      } else {
+        for (const row of mensalidades || []) {
+          const status = String((row as any).status || '').toLowerCase();
+          if (['pago', 'isento', 'cancelado', 'cancelada'].includes(status)) continue;
+
+          const valorPrevisto = Number((row as any).valor_previsto ?? (row as any).valor ?? 0);
+          const valorPago = Number((row as any).valor_pago_total ?? 0);
+          const saldo = Math.max(valorPrevisto - valorPago, 0);
+          if (!Number.isFinite(saldo) || saldo <= 0) continue;
+
+          const matriculaId = String((row as any).matricula_id ?? '');
+          if (!matriculaId) continue;
+          mensalidadesMap.set(matriculaId, (mensalidadesMap.get(matriculaId) ?? 0) + saldo);
+        }
+      }
+    }
+
     // 5. Buscar disciplinas e professores separadamente
     let disciplinasData: any[] | null = null;
     let disciplinasError: Error | null = null;
@@ -259,16 +288,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }));
     }
 
-    const alunos = (alunosData || []).map(m => ({
-      matricula_id: m.id,
-      numero: m.numero_chamada,
-      aluno_id: m.alunos?.id || '',
-      nome: m.alunos?.nome || 'Nome Desconhecido',
-      bi: m.alunos?.bi_numero || 'N/A',
-      foto: m.alunos?.profiles?.avatar_url || undefined,
-      numero_matricula: m.numero_matricula,
-      status_matricula: m.status || m.alunos?.status || 'desconhecido',
-    }));
+    const alunos = (alunosData || []).map(m => {
+      const saldoPendente = mensalidadesMap.get(m.id) ?? 0;
+      return {
+        matricula_id: m.id,
+        numero: m.numero_chamada,
+        aluno_id: m.alunos?.id || '',
+        nome: m.alunos?.nome || 'Nome Desconhecido',
+        bi: m.alunos?.bi_numero || 'N/A',
+        foto: m.alunos?.profiles?.avatar_url || undefined,
+        numero_matricula: m.numero_matricula,
+        status_matricula: m.status || m.alunos?.status || 'desconhecido',
+        status_financeiro: saldoPendente > 0 ? 'atraso' : 'em_dia',
+        saldo_pendente: saldoPendente,
+      };
+    });
 
     const ocupacaoFinal = Number.isFinite(ocupacao) && ocupacao > 0 ? ocupacao : alunos.length;
 

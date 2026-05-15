@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, Trash2, Check, Settings, Plus } from "lucide-react";
+import { BookOpen, Trash2, Check, Settings, Plus, Info, Eraser, Users, X } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
@@ -15,6 +15,13 @@ import {
   getTypeLabel,
   type CourseType,
 } from "@/lib/courseTypes";
+
+import { Button } from "@/components/ui/Button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Spinner as UISpinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
 
 import ConfirmDialog from "./ConfirmDialog";
 import CourseCreateModal from "./CourseCreateModal";
@@ -31,6 +38,7 @@ import { DisciplinaModal, type DisciplinaForm } from "./_components/DisciplinaMo
  */
 
 // ---------- Types ----------
+// ... (rest of types)
 export type ActiveCourse = {
   id: string;
   nome: string;
@@ -132,7 +140,7 @@ function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-function Spinner({ label = "Carregando..." }: { label?: string }) {
+function SpinnerLabel({ label = "Carregando..." }: { label?: string }) {
   return (
     <div className="flex items-center gap-2 text-slate-500 text-sm">
       <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-200 border-t-slate-600 animate-spin" />
@@ -158,7 +166,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const escolaParam = escolaSlug || escolaId;
   const apiEscolaId = escolaParam;
   const supabase = useMemo(() => createClient(), []);
-  const { success, error, warning, toast: rawToast } = useToast();
+  const { success, error, warning } = useToast();
   const searchParams = useSearchParams();
   const resolvePendenciasRequested = searchParams?.get("resolvePendencias") === "1";
   const courseIdFromQuery = searchParams?.get("cursoId") || searchParams?.get("curso_id");
@@ -183,6 +191,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [draft, setDraft] = useState<CourseDraft | null>(null);
   const [installing, setInstalling] = useState(false);
   const [quickInstallingKey, setQuickInstallingKey] = useState<string | null>(null);
+  const [preparingCourseId, setPreparingCourseId] = useState<string | null>(null);
 
   const [disciplinaModalOpen, setDisciplinaModalOpen] = useState(false);
   const [disciplinaModalMode, setDisciplinaModalMode] = useState<"create" | "edit">("create");
@@ -274,7 +283,6 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setCourses(data || []);
     } catch (e: any) {
       console.error(e);
-      error(e?.message || "Erro ao carregar cursos.");
     } finally {
       setLoadingCourses(false);
     }
@@ -285,35 +293,27 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     fetchCourses();
   }, [fetchCourses]);
 
+  const loadCurriculoStatus = useCallback(async () => {
+    const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, {
+      cache: "no-store",
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok) {
+      throw new Error(json?.error || "Falha ao carregar status do currículo.");
+    }
+    const map: Record<string, CurriculoStatus[]> = {};
+    (json.curriculos ?? []).forEach((row: CurriculoStatus) => {
+      const bucket = map[row.curso_id] ?? [];
+      bucket.push(row);
+      map[row.curso_id] = bucket;
+    });
+    setCurriculoStatusByCurso(map);
+    setCurriculoAnoLetivo(json.ano_letivo ?? null);
+  }, [escolaParam]);
+
   useEffect(() => {
-    let active = true;
-    const loadCurriculoStatus = async () => {
-      try {
-        const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, {
-          cache: "no-store",
-        });
-        const json = await res.json().catch(() => null);
-        if (!res.ok || !json?.ok) {
-          throw new Error(json?.error || "Falha ao carregar status do currículo.");
-        }
-        if (!active) return;
-        const map: Record<string, CurriculoStatus[]> = {};
-        (json.curriculos ?? []).forEach((row: CurriculoStatus) => {
-          const bucket = map[row.curso_id] ?? [];
-          bucket.push(row);
-          map[row.curso_id] = bucket;
-        });
-        setCurriculoStatusByCurso(map);
-        setCurriculoAnoLetivo(json.ano_letivo ?? null);
-      } catch (e: any) {
-        console.warn(e);
-      }
-    };
-    loadCurriculoStatus();
-    return () => {
-      active = false;
-    };
-  }, [escolaId]);
+    loadCurriculoStatus().catch((e: any) => console.warn(e));
+  }, [loadCurriculoStatus]);
 
   // -------- Details --------
   const fetchCourseDetails = useCallback(
@@ -553,56 +553,90 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     [courses, selectedCourseId]
   );
 
+  const getCourseCurriculoStatus = useCallback(
+    (courseId: string): CurriculoStatus["status"] | "none" => {
+      const curriculos = curriculoStatusByCurso[courseId] ?? [];
+      if (curriculos.length === 0) return "none";
+      if (curriculos.every((row) => row.status === "published")) return "published";
+      if (curriculos.some((row) => row.status === "draft")) return "draft";
+      return curriculos[0]?.status ?? "none";
+    },
+    [curriculoStatusByCurso]
+  );
+
   // -------- CRUD (UI-safe stubs, sem prompt/confirm) --------
-  const handleAddTurma = useCallback(
+  const generateTurmasForCourse = useCallback(
     async (cursoId: string) => {
       const curriculos = curriculoStatusByCurso[cursoId] ?? [];
       const hasPublished = curriculos.length > 0 && curriculos.every((c) => c.status === "published");
       if (!hasPublished) {
         error("Publique o currículo antes de gerar turmas.");
-        return;
+        return false;
       }
       if (!curriculoAnoLetivo?.ano) {
         error("Ano letivo ativo não encontrado.");
-        return;
+        return false;
       }
 
+      setPreparingCourseId(cursoId);
+      try {
+        const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/generate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            cursoId,
+            anoLetivo: curriculoAnoLetivo.ano,
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || json?.ok === false) {
+          throw new Error(json?.error || "Falha ao gerar turmas.");
+        }
+        const nextDetails = await fetchCourseDetails(cursoId);
+        if (selectedCourseId === cursoId) {
+          setDetails(nextDetails);
+        }
+        await fetchCourses();
+        await loadCurriculoStatus();
+        success("Turmas preparadas.");
+        return true;
+      } catch (e: any) {
+        error(e?.message || "Falha ao gerar turmas.");
+        return false;
+      } finally {
+        setPreparingCourseId(null);
+      }
+    },
+    [
+      curriculoAnoLetivo,
+      curriculoStatusByCurso,
+      escolaParam,
+      error,
+      fetchCourseDetails,
+      fetchCourses,
+      loadCurriculoStatus,
+      selectedCourseId,
+      success,
+    ]
+  );
+
+  const handleAddTurma = useCallback(
+    async (cursoId: string) => {
       setConfirmState({
         open: true,
-        title: "Gerar turmas",
-        desc: "A geração de turmas usa a factory/ RPC para também criar turma_disciplinas.",
-        confirmLabel: "Gerar",
+        title: "Preparar turmas",
+        desc: "Será criada a primeira turma de cada classe e as disciplinas serão vinculadas automaticamente.",
+        confirmLabel: "Preparar",
         onConfirm: async () => {
           closeConfirm();
-          try {
-            const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/generate`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Idempotency-Key": crypto.randomUUID(),
-              },
-              body: JSON.stringify({
-                cursoId,
-                anoLetivo: curriculoAnoLetivo.ano,
-              }),
-            });
-            const json = await res.json().catch(() => null);
-            if (!res.ok || json?.ok === false) {
-              throw new Error(json?.error || "Falha ao gerar turmas.");
-            }
-            const nextDetails = await fetchCourseDetails(cursoId);
-            if (selectedCourseId === cursoId) {
-              setDetails(nextDetails);
-            }
-            fetchCourses();
-            success("Turmas geradas com sucesso.");
-          } catch (e: any) {
-            error(e?.message || "Falha ao gerar turmas.");
-          }
+          await generateTurmasForCourse(cursoId);
         },
       });
     },
-    [curriculoAnoLetivo, curriculoStatusByCurso, escolaId, fetchCourseDetails, fetchCourses, selectedCourseId]
+    [generateTurmasForCourse]
   );
 
   // -------- Presets helpers --------
@@ -711,7 +745,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       }
       return { ...prev, subjects: [...prev.subjects, disciplina] };
     });
-  }, []);
+  }, [error]);
 
   const handleRemoveDisciplina = useCallback((name: string) => {
     setDraft((prev) => {
@@ -729,7 +763,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             presetKey,
-            options: { autoPublish: false, generateTurmas: false },
+            options: { autoPublish: true, generateTurmas: true },
           }),
         });
         const json = await res.json().catch(() => null);
@@ -742,16 +776,18 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             json?.applied?.message || "Já existe currículo publicado para este curso/ano letivo."
           );
         } else {
-          success("Instalação concluída.");
+          success("Curso instalado e turmas preparadas.");
         }
-        fetchCourses();
+        await fetchCourses();
+        await loadCurriculoStatus();
+        setActiveTab("my_courses");
       } catch (e: any) {
         error(e?.message || "Falha ao instalar preset.");
       } finally {
         setQuickInstallingKey(null);
       }
     },
-    [escolaId, fetchCourses]
+    [error, escolaParam, fetchCourses, loadCurriculoStatus, success, warning]
   );
 
   const handleSave = useCallback(async () => {
@@ -893,7 +929,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     } finally {
       setInstalling(false);
     }
-  }, [apiEscolaId, draft, error, fetchCourses, success, warning]);
+  }, [apiEscolaId, draft, error, escolaParam, fetchCourses, success, warning]);
 
   const handleRemoveCourse = useCallback((id: string, totalAlunos: number) => {
     if (!apiEscolaId) {
@@ -1062,9 +1098,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       disciplinaEditingMatrixByClass,
       disciplinaEditingMatrixIds,
       disciplinaModalMode,
+      error,
       apiEscolaId,
       fetchCourseDetails,
       selectedCourseId,
+      success,
     ]
   );
 
@@ -1275,6 +1313,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           onUpdateAvaliacao={handleUpdateAvaliacao}
           onTabChange={setManagerTab}
           onGenerateTurmas={handleAddTurma}
+          generatingTurmas={selectedCourseId ? preparingCourseId === selectedCourseId : false}
           onCreateDisciplina={openCreateDisciplina}
           onEditDisciplina={openEditDisciplina}
           onDeleteDisciplina={handleDeleteDisciplina}
@@ -1314,92 +1353,90 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Default view (tabs) --------
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
-        <p className="font-semibold">Dica Angola</p>
-        <p className="text-xs text-klasse-gold-700 mt-1">
+      <Alert className="bg-klasse-gold-50 border-klasse-gold-200 text-klasse-gold-800">
+        <Info className="h-4 w-4 text-klasse-gold-600" />
+        <AlertTitle className="text-sm font-semibold">Dica Angola</AlertTitle>
+        <AlertDescription className="text-xs text-klasse-gold-700">
           No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
           Edite por classe e use trimestres para refletir a realidade.
-        </p>
-      </div>
-      {/* Tabs */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("my_courses")}
-          className={cx(
-            "rounded-full px-4 py-2 text-xs font-semibold border transition",
-            activeTab === "my_courses"
-              ? "bg-slate-900 text-white border-slate-900"
-              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-          )}
-        >
-          Cursos ativos
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("catalog")}
-          className={cx(
-            "rounded-full px-4 py-2 text-xs font-semibold border transition",
-            activeTab === "catalog"
-              ? "bg-klasse-gold text-white border-klasse-gold"
-              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-          )}
-        >
-          Catálogo
-        </button>
-      </div>
+        </AlertDescription>
+      </Alert>
 
-      {/* My courses */}
-      {activeTab === "my_courses" && (
-        <div>
+      <Tabs
+        defaultValue="my_courses"
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as ActiveTab)}
+        className="w-full"
+      >
+        <TabsList className="bg-slate-100 p-1">
+          <TabsTrigger value="my_courses" className="rounded-full px-6">
+            Cursos ativos
+          </TabsTrigger>
+          <TabsTrigger value="catalog" className="rounded-full px-6">
+            Catálogo
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="my_courses" className="mt-6">
           {loadingCourses ? (
-            <div className="py-12 flex justify-center">
-              <Spinner label="Carregando cursos..." />
+            <div className="py-20 flex flex-col items-center justify-center gap-4">
+              <UISpinner size={24} className="text-slate-400" />
+              <p className="text-sm text-slate-500 animate-pulse">Carregando seus cursos...</p>
             </div>
           ) : courses.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-              <p className="text-sm font-semibold text-slate-900">Nenhum curso ativo</p>
-              <p className="text-xs text-slate-500 mt-1">Instale um preset no catálogo.</p>
-              <button
-                type="button"
-                onClick={() => setActiveTab("catalog")}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
-              >
-                <Settings className="w-4 h-4" />
-                Ir ao catálogo
-              </button>
-            </div>
+            <Card className="border-dashed border-2 bg-slate-50/50">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="rounded-full bg-slate-100 p-4 mb-4">
+                  <Settings className="w-8 h-8 text-slate-400" />
+                </div>
+                <CardTitle className="text-lg">Nenhum curso ativo</CardTitle>
+                <CardDescription className="max-w-xs mt-2">
+                  Você ainda não possui cursos configurados. Explore o catálogo para instalar um preset ou crie um do zero.
+                </CardDescription>
+                <Button
+                  onClick={() => setActiveTab("catalog")}
+                  tone="gold"
+                  className="mt-6 rounded-full"
+                >
+                  Ir ao catálogo
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {courses.map((curso) => (
                 <CourseCard
                   key={curso.id}
                   curso={curso}
+                  curriculoStatus={getCourseCurriculoStatus(curso.id)}
+                  isPreparing={preparingCourseId === curso.id}
                   onOpen={() => handleOpenManager(curso.id)}
+                  onPrepareTurmas={() => handleAddTurma(curso.id)}
                   onCleanup={() => openTurmaCleanup(curso)}
                   onRemove={() => handleRemoveCourse(curso.id, curso.total_alunos)}
                 />
               ))}
             </div>
           )}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* Catalog */}
-      {activeTab === "catalog" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              type="button"
+        <TabsContent value="catalog" className="mt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Catálogo de Cursos</h3>
+              <p className="text-sm text-slate-500">Selecione um currículo pré-definido para começar rapidamente.</p>
+            </div>
+            <Button
               onClick={openCustomConfig}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+              tone="slate"
+              className="rounded-full"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 mr-2" />
               Criar do zero
-            </button>
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {presetsList.map((preset) => {
               const isInstalled = courses.some(
                 (c) => c.nome.toLowerCase() === preset.label.toLowerCase()
@@ -1416,64 +1453,83 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 });
 
               return (
-                <div
+                <Card
                   key={preset.key}
                   className={cx(
-                    "rounded-xl border p-5 bg-white",
-                    isInstalled ? "border-slate-200 opacity-70" : "border-slate-200"
+                    "transition-all duration-200 hover:shadow-md",
+                    isInstalled ? "opacity-75 grayscale-[0.5]" : ""
                   )}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cx(
-                            "h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold border",
-                            isInstalled ? "bg-slate-100 border-slate-200 text-slate-500" : `${colors.bgLight} ${colors.text} ${colors.border}`
-                          )}
-                        >
-                          {preset.label?.[0] ?? "C"}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
-                            {preset.label}
-                          </p>
-                          <p className="text-xs text-slate-500">{getTypeLabel(tipo)}</p>
-                        </div>
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={cx(
+                          "h-12 w-12 rounded-2xl flex items-center justify-center text-lg font-bold border shadow-sm",
+                          isInstalled ? "bg-slate-100 border-slate-200 text-slate-400" : `${colors.bgLight} ${colors.text} ${colors.border}`
+                        )}
+                      >
+                        {preset.label?.[0] ?? "C"}
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{preset.label}</CardTitle>
+                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                          {getTypeLabel(tipo)}
+                        </p>
                       </div>
                     </div>
-
-                    {isInstalled ? (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700">
-                        <Check className="w-4 h-4" />
+                    {isInstalled && (
+                      <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-slate-200">
+                        <Check className="w-3 h-3 mr-1" />
                         Instalado
-                      </span>
+                      </Badge>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-slate-600 line-clamp-2 min-h-[2.5rem]">
+                      {preset.description || "Currículo oficial estruturado com disciplinas e classes padrão."}
+                    </p>
+                  </CardContent>
+                  <CardFooter className="flex gap-2">
+                    {isInstalled ? (
+                      <Button
+                        variant="outline"
+                        fullWidth
+                        onClick={() => {
+                          const existing = courses.find(c => c.nome.toLowerCase() === preset.label.toLowerCase());
+                          if (existing) handleOpenManager(existing.id);
+                        }}
+                        className="rounded-full"
+                      >
+                        Gerir curso
+                      </Button>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
+                      <>
+                        <Button
+                          variant="outline"
+                          fullWidth
                           onClick={() => handleQuickInstall(preset.key)}
-                          disabled={!!quickInstallingKey}
-                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          loading={quickInstallingKey === preset.key}
+                          className="rounded-full"
                         >
-                          {quickInstallingKey === preset.key ? "Instalando..." : "Instalar"}
-                        </button>
-                        <button
-                          type="button"
+                          Instalar padrão
+                        </Button>
+                        <Button
+                          fullWidth
+                          tone="gold"
                           onClick={() => void openPresetConfig(preset.key)}
-                          className="rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
+                          className="rounded-full"
                         >
                           Configurar
-                        </button>
-                      </div>
+                        </Button>
+                      </>
                     )}
-                  </div>
-                </div>
+                  </CardFooter>
+                </Card>
               );
             })}
           </div>
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
 
       {/* Create course modal */}
       {showModal && draft && (
@@ -1531,87 +1587,117 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 // ---------- Subcomponents ----------
 function CourseCard({
   curso,
+  curriculoStatus,
+  isPreparing,
   onOpen,
+  onPrepareTurmas,
   onCleanup,
   onRemove,
 }: {
   curso: ActiveCourse;
+  curriculoStatus: CurriculoStatus["status"] | "none";
+  isPreparing: boolean;
   onOpen: () => void;
+  onPrepareTurmas: () => void;
   onCleanup: () => void;
   onRemove: () => void;
 }) {
+  const needsTurmas = curso.total_classes > 0 && curso.total_turmas === 0;
+  const canPrepareTurmas = curriculoStatus === "published";
+
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onOpen();
-        }
-      }}
-      className="text-left rounded-xl border border-slate-200 bg-white p-5 hover:bg-slate-50 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-klasse-gold/40"
-    >
-      <div className="flex items-start justify-between gap-3">
+    <Card className="flex flex-col h-full transition-all duration-200 hover:shadow-md">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-slate-400" />
-            <p className="text-sm font-semibold text-slate-900 truncate">{curso.nome}</p>
+            <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+            <CardTitle className="text-base truncate">{curso.nome}</CardTitle>
           </div>
           <p className="text-xs text-slate-500 font-mono mt-1 truncate">{curso.codigo}</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCleanup();
-            }}
-            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCleanup}
+            className="h-8 w-8 text-slate-400 hover:text-slate-900"
             title="Excluir turmas excedentes"
           >
-            Excluir turmas excedentes
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            <Eraser className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            className="h-8 w-8 text-slate-400 hover:text-red-600"
             title="Remover curso"
           >
-            <Trash2 className="w-4 h-4 text-red-600" />
-          </button>
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-600">
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-slate-500">Classes</p>
-          <p className="text-sm font-semibold text-slate-900">{curso.total_classes}</p>
+      <CardContent className="flex-grow">
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Classes</p>
+            <p className="text-xl font-bold text-slate-900">{curso.total_classes}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Turmas</p>
+            <p className="text-xl font-bold text-slate-900">{curso.total_turmas}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-slate-500">Turmas</p>
-          <p className="text-sm font-semibold text-slate-900">{curso.total_turmas}</p>
-        </div>
-      </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen();
-          }}
-          className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+        {needsTurmas && (
+          <div
+            className={cx(
+              "rounded-xl border p-4 mb-4",
+              canPrepareTurmas
+                ? "border-klasse-gold-200 bg-klasse-gold-50/50"
+                : "border-slate-200 bg-slate-50/50"
+            )}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900">
+                  {canPrepareTurmas ? "Falta preparar turmas" : "Currículo pendente"}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                  {canPrepareTurmas
+                    ? "Estrutura publicada. Crie as turmas iniciais para liberar matrículas."
+                    : "O currículo deste curso ainda não foi finalizado."}
+                </p>
+              </div>
+            </div>
+            {canPrepareTurmas && (
+              <Button
+                size="sm"
+                tone="gold"
+                fullWidth
+                onClick={onPrepareTurmas}
+                loading={isPreparing}
+                className="mt-3 rounded-full h-8 text-xs"
+              >
+                Preparar agora
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+
+      <CardFooter className="pt-0">
+        <Button
+          fullWidth
+          tone="slate"
+          onClick={onOpen}
+          className="rounded-full shadow-sm"
         >
-          Gerir turmas
-        </button>
-      </div>
-    </div>
+          Gerir turmas e currículo
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -1643,67 +1729,78 @@ function TurmaCleanupModal({
   const canConfirm = selectedCount > 0 && !running;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Excluir turmas excedentes</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Curso: <span className="font-semibold text-slate-700">{courseName || "-"}</span>
+            <h3 className="text-base font-bold text-slate-900">Excluir turmas excedentes</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Curso: <span className="font-bold text-slate-700">{courseName || "—"}</span>
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={running}
-            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-60"
-          >
-            Fechar
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} disabled={running} className="rounded-full h-8 w-8 text-slate-400">
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
         <div className="p-6 space-y-4">
-          <p className="text-xs text-slate-600">
-            Selecione apenas turmas criadas a mais. Turmas com alunos ativos ficam bloqueadas.
-          </p>
+          <Alert className="bg-blue-50 border-blue-100 text-blue-800 py-3">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-xs font-medium">
+              Selecione apenas as turmas que foram criadas por engano. Turmas com alunos ativos (<Users className="inline w-3 h-3 mb-0.5" />) não podem ser excluídas por segurança.
+            </AlertDescription>
+          </Alert>
 
           {loading ? (
-            <Spinner label="Carregando turmas..." />
+            <div className="py-12 flex justify-center">
+              <UISpinner size={24} className="text-slate-300" />
+            </div>
           ) : items.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
-              Nenhuma turma encontrada para este curso.
+            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+              <p className="text-sm text-slate-400">Nenhuma turma encontrada para este curso.</p>
             </div>
           ) : (
-            <div className="max-h-80 overflow-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+            <div className="max-h-80 overflow-auto rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-inner">
               {items.map((turma) => {
                 const blocked = turma.total_alunos > 0;
+                const isSelected = selectedSet.has(turma.id);
                 return (
                   <label
                     key={turma.id}
                     className={cx(
-                      "flex items-center justify-between gap-3 px-4 py-3 text-xs",
-                      blocked ? "bg-rose-50/60" : "bg-white hover:bg-slate-50",
+                      "flex items-center justify-between gap-4 px-5 py-4 transition-colors cursor-pointer",
+                      blocked ? "bg-rose-50/30 opacity-60 grayscale-[0.5] cursor-not-allowed" : "bg-white hover:bg-slate-50",
+                      isSelected && !blocked ? "bg-slate-50" : ""
                     )}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={selectedSet.has(turma.id)}
-                        onChange={() => onToggle(turma.id)}
-                        disabled={blocked || running}
-                      />
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className={cx(
+                        "w-5 h-5 rounded border flex items-center justify-center transition-colors",
+                        isSelected ? "bg-slate-900 border-slate-900" : "bg-white border-slate-300",
+                        blocked ? "opacity-50" : ""
+                      )}>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={isSelected}
+                          onChange={() => onToggle(turma.id)}
+                          disabled={blocked || running}
+                        />
+                      </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{turma.nome}</p>
-                        <p className="text-slate-500 truncate">
+                        <p className="text-sm font-bold text-slate-900 truncate">{turma.nome}</p>
+                        <p className="text-[11px] text-slate-500 truncate font-medium uppercase tracking-wider">
                           {turma.classe} · {turma.turno}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={cx("font-semibold", blocked ? "text-rose-700" : "text-slate-700")}>
-                        {turma.total_alunos} aluno(s)
-                      </p>
-                      {blocked && <p className="text-[11px] text-rose-600">bloqueada</p>}
+                    <div className="text-right shrink-0">
+                      <Badge variant={blocked ? "destructive" : "outline"} className={cx("font-bold text-[10px]", !blocked && "text-slate-500 border-slate-200")}>
+                        <Users className="w-3 h-3 mr-1" />
+                        {turma.total_alunos} {turma.total_alunos === 1 ? "aluno" : "alunos"}
+                      </Badge>
+                      {blocked && <p className="text-[9px] text-red-600 font-bold uppercase mt-1 tracking-tighter">Bloqueada</p>}
                     </div>
                   </label>
                 );
@@ -1712,19 +1809,36 @@ function TurmaCleanupModal({
           )}
         </div>
 
-        <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 flex items-center justify-between">
-          <p className="text-xs text-slate-600">
-            Selecionadas: <span className="font-semibold text-slate-900">{selectedCount}</span> ·
-            Bloqueadas com alunos: <span className="font-semibold text-slate-900"> {blockedCount}</span>
-          </p>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={!canConfirm}
-            className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
-          >
-            {running ? "Excluindo..." : "Excluir selecionadas"}
-          </button>
+        <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-slate-900" />
+              {selectedCount} selecionadas
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              {blockedCount} bloqueadas
+            </span>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={running}
+              className="rounded-full px-6 h-10"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={!canConfirm}
+              loading={running}
+              tone="red"
+              className="rounded-full px-8 h-10 shadow-md"
+            >
+              Excluir selecionadas
+            </Button>
+          </div>
         </div>
       </div>
     </div>
