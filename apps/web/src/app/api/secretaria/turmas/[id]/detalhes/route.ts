@@ -212,15 +212,59 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const { data: periodosRows } = await disciplinaClient
       .from('turma_disciplinas')
-      .select('curso_matriz_id, periodos_ativos, curso_matriz(disciplina_id)')
+      .select('id, curso_matriz_id, carga_horaria_semanal, periodos_ativos, curso_matriz(disciplina_id)')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId);
 
     const periodosByDisciplinaId = new Map<string, number[] | null>();
+    const metaByTurmaDisciplinaId = new Map<string, { curso_matriz_id: string | null; carga_horaria_semanal: number | null }>();
+    const metaByDisciplinaId = new Map<string, { curso_matriz_id: string | null; carga_horaria_semanal: number | null }>();
     for (const row of periodosRows || []) {
       const disciplinaId = (row as any)?.curso_matriz?.disciplina_id as string | undefined;
+      const turmaDisciplinaId = String((row as any)?.id ?? '');
+      const cursoMatrizId = ((row as any)?.curso_matriz_id as string | null) ?? null;
+      const cargaHorariaSemanalRaw = Number((row as any)?.carga_horaria_semanal ?? 0);
+      const cargaHorariaSemanal = Number.isFinite(cargaHorariaSemanalRaw) ? cargaHorariaSemanalRaw : null;
+      if (turmaDisciplinaId) {
+        metaByTurmaDisciplinaId.set(turmaDisciplinaId, {
+          curso_matriz_id: cursoMatrizId,
+          carga_horaria_semanal: cargaHorariaSemanal,
+        });
+      }
       if (disciplinaId) {
         periodosByDisciplinaId.set(disciplinaId, (row as any).periodos_ativos ?? null);
+        metaByDisciplinaId.set(disciplinaId, {
+          curso_matriz_id: cursoMatrizId,
+          carga_horaria_semanal: cargaHorariaSemanal,
+        });
+      }
+    }
+
+    const disciplinaIdsForQuadro = Array.from(
+      new Set(
+        (periodosRows || [])
+          .map((row: any) => row?.curso_matriz?.disciplina_id)
+          .filter(Boolean)
+      )
+    ) as string[];
+    const quadroCountByDisciplinaId = new Map<string, number>();
+
+    if (disciplinaIdsForQuadro.length > 0) {
+      const { data: quadroRows, error: quadroError } = await supabase
+        .from('quadro_horarios')
+        .select('disciplina_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .in('disciplina_id', disciplinaIdsForQuadro);
+
+      if (quadroError) {
+        console.error('Error fetching quadro_horarios status:', quadroError);
+      } else {
+        for (const row of quadroRows || []) {
+          const disciplinaId = String((row as any)?.disciplina_id ?? '');
+          if (!disciplinaId) continue;
+          quadroCountByDisciplinaId.set(disciplinaId, (quadroCountByDisciplinaId.get(disciplinaId) ?? 0) + 1);
+        }
       }
     }
 
@@ -331,14 +375,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       curso_tipo: turmaResult.cursos?.tipo || null,
     };
 
-    const disciplinas = (disciplinasData || []).map(td => ({
-      id: td.syllabi?.id || td.disciplina?.id || td.disciplina_id || '',
-      turma_disciplina_id: td.turma_disciplina_id || td.id || null,
-      nome: td.syllabi?.nome || td.disciplina?.nome || 'Disciplina Desconhecida',
-      sigla: '',
-      professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
-      periodos_ativos: td.periodos_ativos ?? periodosByDisciplinaId.get(td.disciplina?.id || td.disciplina_id) ?? null,
-    }));
+    const disciplinas = (disciplinasData || []).map(td => {
+      const turmaDisciplinaId = td.turma_disciplina_id || td.id || null;
+      const disciplinaId = td.disciplina?.id || td.disciplina_id || null;
+      const turmaMeta = turmaDisciplinaId ? metaByTurmaDisciplinaId.get(String(turmaDisciplinaId)) : null;
+      const disciplinaMeta = disciplinaId ? metaByDisciplinaId.get(String(disciplinaId)) : null;
+
+      return {
+        id: td.syllabi?.id || td.disciplina?.id || td.disciplina_id || '',
+        turma_disciplina_id: turmaDisciplinaId,
+        curso_matriz_id: turmaMeta?.curso_matriz_id ?? disciplinaMeta?.curso_matriz_id ?? null,
+        disciplina_id: disciplinaId,
+        nome: td.syllabi?.nome || td.disciplina?.nome || 'Disciplina Desconhecida',
+        sigla: '',
+        professor: td.professores?.profiles?.nome || td.professores?.apelido || null,
+        carga_horaria_semanal: turmaMeta?.carga_horaria_semanal ?? disciplinaMeta?.carga_horaria_semanal ?? null,
+        quadro_slots_count: disciplinaId ? quadroCountByDisciplinaId.get(String(disciplinaId)) ?? 0 : 0,
+        periodos_ativos: td.periodos_ativos ?? periodosByDisciplinaId.get(td.disciplina?.id || td.disciplina_id) ?? null,
+      };
+    });
 
     const responseData = {
       turma,

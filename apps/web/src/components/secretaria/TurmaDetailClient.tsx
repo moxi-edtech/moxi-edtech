@@ -66,10 +66,26 @@ type TurmaData = {
   disciplinas: Array<{
     id:               string;
     nome:             string;
-    professor?:       string;
+    professor?:       string | null;
     periodos_ativos?: number[] | null;
     turma_disciplina_id?: string | null;
+    curso_matriz_id?: string | null;
+    disciplina_id?: string | null;
+    carga_horaria_semanal?: number | null;
+    quadro_slots_count?: number;
   }>;
+};
+
+type ProfessorOption = {
+  user_id: string;
+  teacher_id?: string | null;
+  nome?: string | null;
+  email?: string | null;
+  disciplinas_ids?: string[];
+  disciplinas?: string[];
+  turnos_disponiveis?: Array<"Manhã" | "Tarde" | "Noite">;
+  carga_horaria_maxima?: number | null;
+  carga_horaria_real?: number | null;
 };
 
 type Periodo = {
@@ -78,6 +94,22 @@ type Periodo = {
   tipo:        string;
   data_inicio: string;
   data_fim:    string;
+};
+
+type ProfessorAssignmentPreview = {
+  versao_id: string | null;
+  versao_status: string | null;
+  disciplina_slots_count: number;
+  same_turma_slots_count: number;
+  conflict_slots_count: number;
+  has_quadro_for_disciplina: boolean;
+  conflicting_items: Array<{
+    slot_id: string;
+    turma_id: string;
+    turma_nome: string;
+    disciplina_id: string | null;
+    disciplina_nome: string;
+  }>;
 };
 
 type PautaDetalhadaRow = {
@@ -416,7 +448,15 @@ export default function TurmaDetailClient({
     | null
     | {
         type: "notas" | "professor";
-        disciplina: { id: string; nome: string; professor?: string | null; turma_disciplina_id?: string | null };
+        disciplina: {
+          id: string;
+          nome: string;
+          professor?: string | null;
+          turma_disciplina_id?: string | null;
+          curso_matriz_id?: string | null;
+          disciplina_id?: string | null;
+          carga_horaria_semanal?: number | null;
+        };
       }
   >(null);
   const [notasPeriodoNumero, setNotasPeriodoNumero] = useState<number>(1);
@@ -427,6 +467,19 @@ export default function TurmaDetailClient({
   const [notasSaving, setNotasSaving] = useState(false);
   const [notasPesoPorTipo, setNotasPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [notasComponentes, setNotasComponentes] = useState<string[]>([]);
+  const [professoresDisponiveis, setProfessoresDisponiveis] = useState<ProfessorOption[]>([]);
+  const [professoresLoading, setProfessoresLoading] = useState(false);
+  const [professorSearch, setProfessorSearch] = useState("");
+  const [selectedProfessorUserId, setSelectedProfessorUserId] = useState("");
+  const [assigningProfessor, setAssigningProfessor] = useState(false);
+  const [assignProfessorError, setAssignProfessorError] = useState<string | null>(null);
+  const [assignPreview, setAssignPreview] = useState<ProfessorAssignmentPreview | null>(null);
+  const [assignPreviewLoading, setAssignPreviewLoading] = useState(false);
+  const [showOnlySemProfessor, setShowOnlySemProfessor] = useState(false);
+  const [quickAssigningDisciplinaId, setQuickAssigningDisciplinaId] = useState<string | null>(null);
+  const [bulkAssigningRecommended, setBulkAssigningRecommended] = useState(false);
+  const [bulkProfessorUserId, setBulkProfessorUserId] = useState("");
+  const [bulkAssigningProfessor, setBulkAssigningProfessor] = useState(false);
   const pathname = usePathname();
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
@@ -436,6 +489,23 @@ export default function TurmaDetailClient({
   const escolaId = data?.turma.escola_id;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaId;
   const isSecretariaContext = pathname?.includes("/secretaria/") ?? false;
+
+  const loadProfessoresDisponiveis = useCallback(async () => {
+    if (!escolaId) return [] as ProfessorOption[];
+    const params = new URLSearchParams();
+    params.set("escola_id", escolaId);
+    params.set("cargo", "professor");
+    params.set("pageSize", "50");
+    params.set("days", "36500");
+    const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { cache: "no-store" });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok || !Array.isArray(json.items)) {
+      throw new Error(json?.error || "Falha ao carregar professores");
+    }
+    const items = (json.items as ProfessorOption[]).filter((item) => Boolean(item.user_id));
+    setProfessoresDisponiveis(items);
+    return items;
+  }, [escolaId]);
 
   const alunosVirtualizer = useVirtualizer({
     count:            alunos.length,
@@ -576,6 +646,100 @@ export default function TurmaDetailClient({
       active = false;
     };
   }, [actionModal, turmaId, notasPeriodoNumero]);
+
+  useEffect(() => {
+    if (actionModal?.type !== "professor" || !escolaId) return;
+
+    let active = true;
+    setProfessoresLoading(true);
+    setAssignProfessorError(null);
+    setProfessorSearch("");
+    setSelectedProfessorUserId("");
+
+    async function loadProfessores() {
+      try {
+        const items = await loadProfessoresDisponiveis();
+        if (!active) return;
+        if (items[0]?.user_id) setSelectedProfessorUserId(items[0].user_id);
+      } catch (e: any) {
+        if (!active) return;
+        setProfessoresDisponiveis([]);
+        setAssignProfessorError(e?.message || "Falha ao carregar professores");
+      } finally {
+        if (active) setProfessoresLoading(false);
+      }
+    }
+
+    loadProfessores();
+    return () => {
+      active = false;
+    };
+  }, [actionModal, escolaId, loadProfessoresDisponiveis]);
+
+  useEffect(() => {
+    if (actionModal?.type !== "professor") {
+      setAssignPreview(null);
+      setAssignPreviewLoading(false);
+      return;
+    }
+
+    const disciplinaId = actionModal.disciplina.disciplina_id;
+    const professorUserId = selectedProfessorUserId || "";
+    if (typeof disciplinaId !== "string" || !disciplinaId || !professorUserId) {
+      setAssignPreview(null);
+      setAssignPreviewLoading(false);
+      return;
+    }
+    const resolvedDisciplinaId = disciplinaId;
+
+    let active = true;
+    setAssignPreviewLoading(true);
+
+    async function loadPreview() {
+      try {
+        const params = new URLSearchParams({
+          disciplina_id: resolvedDisciplinaId,
+          professor_user_id: professorUserId,
+        });
+        const res = await fetch(
+          `/api/secretaria/turmas/${turmaId}/atribuir-professor/preview?${params.toString()}`,
+          { cache: "no-store" }
+        );
+        const json = await res.json().catch(() => null);
+        if (!active) return;
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || "Falha ao validar conflito no quadro");
+        }
+        setAssignPreview((json.data ?? null) as ProfessorAssignmentPreview | null);
+      } catch {
+        if (!active) return;
+        setAssignPreview(null);
+      } finally {
+        if (active) setAssignPreviewLoading(false);
+      }
+    }
+
+    loadPreview();
+    return () => {
+      active = false;
+    };
+  }, [actionModal, selectedProfessorUserId, turmaId]);
+
+  useEffect(() => {
+    if (activeTab !== "pedagogico" || !escolaId || professoresDisponiveis.length > 0) return;
+    let active = true;
+    setProfessoresLoading(true);
+    loadProfessoresDisponiveis()
+      .catch(() => {
+        if (active) setProfessoresDisponiveis([]);
+      })
+      .finally(() => {
+        if (active) setProfessoresLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeTab, escolaId, professoresDisponiveis.length, loadProfessoresDisponiveis]);
 
   useEffect(() => {
     if (!escolaParam || !turmaId || !periodoId) { setPeriodoClosed(false); return; }
@@ -734,6 +898,211 @@ export default function TurmaDetailClient({
     }
   }, [periodoId, turmaId])
 
+  const executeProfessorAssignment = useCallback(async (cursoMatrizId: string, professorUserId: string) => {
+    try {
+      const res = await fetch(`/api/secretaria/turmas/${turmaId}/atribuir-professor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          curso_matriz_id: cursoMatrizId,
+          professor_user_id: professorUserId,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao atribuir professor");
+      }
+
+      const selectedProfessor = professoresDisponiveis.find((item) => item.user_id === professorUserId);
+      const professorNome = selectedProfessor?.nome || selectedProfessor?.email || null;
+
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          disciplinas: prev.disciplinas.map((disciplina) =>
+            disciplina.curso_matriz_id === cursoMatrizId
+              ? { ...disciplina, professor: professorNome }
+              : disciplina
+          ),
+        };
+      });
+      return professorNome;
+    } catch (e: any) {
+      throw new Error(e?.message || "Falha ao atribuir professor");
+    }
+  }, [professoresDisponiveis, turmaId]);
+
+  const handleAssignProfessor = useCallback(async () => {
+    if (actionModal?.type !== "professor") return;
+    if (!selectedProfessorUserId) {
+      setAssignProfessorError("Selecione um professor para continuar.");
+      return;
+    }
+
+    const cursoMatrizId = actionModal.disciplina.curso_matriz_id ?? null;
+    if (!cursoMatrizId) {
+      setAssignProfessorError("Não foi possível identificar a disciplina desta turma.");
+      return;
+    }
+
+    setAssigningProfessor(true);
+    setAssignProfessorError(null);
+    try {
+      await executeProfessorAssignment(cursoMatrizId, selectedProfessorUserId);
+      setToast({ message: "Professor atribuído com sucesso.", type: "success" });
+      setActionModal(null);
+    } catch (e: any) {
+      setAssignProfessorError(e?.message || "Falha ao atribuir professor");
+    } finally {
+      setAssigningProfessor(false);
+    }
+  }, [actionModal, executeProfessorAssignment, selectedProfessorUserId]);
+
+  const handleQuickAssignRecommended = useCallback(async (disciplina: TurmaData["disciplinas"][number]) => {
+    const cursoMatrizId = disciplina.curso_matriz_id ?? null;
+    if (!cursoMatrizId) {
+      setToast({ message: "Disciplina sem contexto suficiente para atribuição rápida.", type: "error" });
+      return;
+    }
+
+    setQuickAssigningDisciplinaId(cursoMatrizId);
+    try {
+      const items = professoresDisponiveis.length > 0 ? professoresDisponiveis : await loadProfessoresDisponiveis();
+      const recomendados = rankProfessoresForDisciplina(disciplina, "", items);
+      const recomendado = recomendados[0];
+      if (!recomendado?.user_id) {
+        throw new Error("Nenhum professor disponível para recomendação.");
+      }
+
+      await executeProfessorAssignment(cursoMatrizId, recomendado.user_id);
+      setToast({
+        message: `Professor ${recomendado.nome || recomendado.email || "selecionado"} atribuído com sucesso.`,
+        type: "success",
+      });
+    } catch (e: any) {
+      setToast({ message: e?.message || "Falha ao atribuir professor.", type: "error" });
+    } finally {
+      setQuickAssigningDisciplinaId(null);
+    }
+  }, [executeProfessorAssignment, loadProfessoresDisponiveis, professoresDisponiveis, rankProfessoresForDisciplina]);
+
+  const handleBulkAssignRecommended = useCallback(async (disciplinasPendentes: TurmaData["disciplinas"]) => {
+    if (disciplinasPendentes.length === 0) {
+      setToast({ message: "Não há disciplinas pendentes para atribuir.", type: "error" });
+      return;
+    }
+
+    setBulkAssigningRecommended(true);
+    try {
+      const items = professoresDisponiveis.length > 0 ? professoresDisponiveis : await loadProfessoresDisponiveis();
+      let successCount = 0;
+      let skippedCount = 0;
+      const failedNames: string[] = [];
+
+      for (const disciplina of disciplinasPendentes) {
+        const cursoMatrizId = disciplina.curso_matriz_id ?? null;
+        if (!cursoMatrizId) {
+          skippedCount += 1;
+          failedNames.push(disciplina.nome);
+          continue;
+        }
+
+        const recomendados = rankProfessoresForDisciplina(disciplina, "", items);
+        const recomendado = recomendados[0];
+        if (!recomendado?.user_id) {
+          skippedCount += 1;
+          failedNames.push(disciplina.nome);
+          continue;
+        }
+
+        try {
+          await executeProfessorAssignment(cursoMatrizId, recomendado.user_id);
+          successCount += 1;
+        } catch {
+          skippedCount += 1;
+          failedNames.push(disciplina.nome);
+        }
+      }
+
+      if (successCount > 0 && skippedCount === 0) {
+        setToast({ message: `${successCount} disciplinas atribuídas com o recomendado.`, type: "success" });
+        return;
+      }
+
+      if (successCount > 0) {
+        const sample = failedNames.slice(0, 2).join(", ");
+        setToast({
+          message: `${successCount} atribuídas, ${skippedCount} pendentes${sample ? `: ${sample}` : ""}.`,
+          type: "success",
+        });
+        return;
+      }
+
+      throw new Error("Nenhuma disciplina pôde ser atribuída automaticamente.");
+    } catch (e: any) {
+      setToast({ message: e?.message || "Falha ao atribuir recomendados.", type: "error" });
+    } finally {
+      setBulkAssigningRecommended(false);
+    }
+  }, [executeProfessorAssignment, loadProfessoresDisponiveis, professoresDisponiveis, rankProfessoresForDisciplina]);
+
+  const handleBulkAssignSelectedProfessor = useCallback(async (professorUserId: string, disciplinasPendentes: TurmaData["disciplinas"]) => {
+    if (!professorUserId) {
+      setToast({ message: "Selecione um professor para aplicar nas compatíveis.", type: "error" });
+      return;
+    }
+
+    const professor = professoresDisponiveis.find((item) => item.user_id === professorUserId);
+    if (!professor) {
+      setToast({ message: "Professor selecionado não encontrado.", type: "error" });
+      return;
+    }
+
+    const compativeis = disciplinasPendentes.filter((disciplina) => {
+      const ranked = rankProfessoresForDisciplina(disciplina, "", [professor]);
+      return ranked[0]?._meta.rank <= 1;
+    });
+
+    if (compativeis.length === 0) {
+      setToast({ message: "Nenhuma disciplina compatível encontrada para este professor.", type: "error" });
+      return;
+    }
+
+    setBulkAssigningProfessor(true);
+    try {
+      let successCount = 0;
+      const failedNames: string[] = [];
+
+      for (const disciplina of compativeis) {
+        const cursoMatrizId = disciplina.curso_matriz_id ?? null;
+        if (!cursoMatrizId) {
+          failedNames.push(disciplina.nome);
+          continue;
+        }
+        try {
+          await executeProfessorAssignment(cursoMatrizId, professorUserId);
+          successCount += 1;
+        } catch {
+          failedNames.push(disciplina.nome);
+        }
+      }
+
+      if (successCount === 0) {
+        throw new Error("Nenhuma disciplina pôde ser atribuída ao professor selecionado.");
+      }
+
+      setToast({
+        message: `${successCount} disciplinas atribuídas para ${professor.nome || professor.email || "o professor"}${failedNames.length ? `, ${failedNames.length} pendentes.` : "."}`,
+        type: "success",
+      });
+    } catch (e: any) {
+      setToast({ message: e?.message || "Falha ao aplicar professor nas compatíveis.", type: "error" });
+    } finally {
+      setBulkAssigningProfessor(false);
+    }
+  }, [executeProfessorAssignment, professoresDisponiveis, rankProfessoresForDisciplina]);
+
   // ── States ────────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -752,10 +1121,90 @@ export default function TurmaDetailClient({
 
   const { turma, disciplinas } = data;
 
+  function rankProfessoresForDisciplina(
+    disciplina: TurmaData["disciplinas"][number] | null | undefined,
+    searchTerm = "",
+    items = professoresDisponiveis
+  ) {
+    if (!disciplina) return [] as Array<ProfessorOption & { _meta: { rank: number; disciplinaMatch: boolean; turnoMatch: boolean; cargaAtual: number; cargaMax: number; cargaProjetada: number; cargaExcedida: boolean } }>;
+    return items
+      .filter((professor) => {
+        if (!searchTerm.trim()) return true;
+        const term = searchTerm.trim().toLowerCase();
+        return [professor.nome, professor.email, ...(professor.disciplinas || [])]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(term));
+      })
+      .map((professor) => {
+        const disciplinaMatch = Boolean(
+          disciplina.disciplina_id &&
+            Array.isArray(professor.disciplinas_ids) &&
+            professor.disciplinas_ids.includes(disciplina.disciplina_id)
+        );
+        const turnoMatch =
+          !turma.turno ||
+          !Array.isArray(professor.turnos_disponiveis) ||
+          professor.turnos_disponiveis.length === 0 ||
+          professor.turnos_disponiveis.includes(turma.turno as "Manhã" | "Tarde" | "Noite");
+        const cargaAtual = Number(professor.carga_horaria_real ?? 0);
+        const cargaMax = Number(professor.carga_horaria_maxima ?? 0);
+        const cargaDisciplina = Number(disciplina.carga_horaria_semanal ?? 0);
+        const cargaProjetada = cargaAtual + cargaDisciplina;
+        const cargaExcedida = cargaMax > 0 && cargaProjetada > cargaMax;
+
+        let rank = 4;
+        if (disciplinaMatch && turnoMatch && !cargaExcedida) rank = 0;
+        else if (disciplinaMatch && !cargaExcedida) rank = 1;
+        else if (disciplinaMatch) rank = 2;
+        else if (!cargaExcedida) rank = 3;
+
+        return {
+          ...professor,
+          _meta: { rank, disciplinaMatch, turnoMatch, cargaAtual, cargaMax, cargaProjetada, cargaExcedida },
+        };
+      })
+      .sort((a, b) => {
+        if (a._meta.rank !== b._meta.rank) return a._meta.rank - b._meta.rank;
+        if (a._meta.cargaProjetada !== b._meta.cargaProjetada) return a._meta.cargaProjetada - b._meta.cargaProjetada;
+        return String(a.nome || a.email || "").localeCompare(String(b.nome || b.email || ""), "pt", { sensitivity: "base" });
+      });
+  }
+
   const disciplinasFiltradas = disciplinas.filter((d) => {
+    if (showOnlySemProfessor && d.professor) return false;
     if (!d.periodos_ativos?.length) return true;
     return d.periodos_ativos.includes(periodoNumero);
   });
+  const disciplinaAtiva = actionModal?.type === "professor" ? actionModal.disciplina : null;
+  const professoresRanqueados = rankProfessoresForDisciplina(disciplinaAtiva, professorSearch);
+  const effectiveSelectedProfessorUserId = selectedProfessorUserId || professoresRanqueados[0]?.user_id || "";
+  const selectedProfessorOption = professoresRanqueados.find(
+    (professor) => professor.user_id === effectiveSelectedProfessorUserId
+  ) ?? null;
+  const disciplinasPendentes = disciplinas.filter((d) => {
+    if (d.professor) return false;
+    if (!d.periodos_ativos?.length) return true;
+    return d.periodos_ativos.includes(periodoNumero);
+  });
+  const bulkProfessorOption = professoresDisponiveis.find((professor) => professor.user_id === bulkProfessorUserId) ?? null;
+  const bulkProfessorDisciplinasCompativeis = bulkProfessorOption
+    ? disciplinasPendentes.filter((disciplina) => {
+        const ranked = rankProfessoresForDisciplina(disciplina, "", [bulkProfessorOption]);
+        return ranked[0]?._meta.rank <= 1;
+      })
+    : [];
+  const selectedProfessorStatus = selectedProfessorOption
+    ? selectedProfessorOption._meta.rank === 0
+      ? "Melhor opção para esta disciplina."
+      : selectedProfessorOption._meta.cargaExcedida
+        ? "Esta escolha tende a exceder a carga horária do professor."
+        : !selectedProfessorOption._meta.disciplinaMatch
+          ? "O professor não está habilitado nesta disciplina."
+          : !selectedProfessorOption._meta.turnoMatch
+            ? "O professor não atende ao turno desta turma."
+            : "Atribuição possível com ressalvas."
+    : null;
+  const assignPreviewConflictSample = assignPreview?.conflicting_items.slice(0, 2) ?? [];
 
   const max         = Math.max(turma.capacidade, 1);
   const ocupacaoPct = Math.min((turma.ocupacao / max) * 100, 100);
@@ -1054,7 +1503,63 @@ export default function TurmaDetailClient({
                 <p className="text-sm text-slate-400">Nenhuma disciplina ativa neste período.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
+                <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Ações rápidas</p>
+                    <p className="text-xs text-slate-500">Filtre pendências, use recomendados ou aplique o mesmo professor nas disciplinas compatíveis da turma.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    <Link
+                      href={`/escola/${escolaParam}/horarios/quadro?turmaId=${turma.id}`}
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      Ver no quadro
+                    </Link>
+                    <button
+                      onClick={() => setShowOnlySemProfessor((prev) => !prev)}
+                      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                        showOnlySemProfessor
+                          ? "bg-[#1F6B3B] text-white"
+                          : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {showOnlySemProfessor ? "Mostrando só sem professor" : "Ver apenas sem professor"}
+                    </button>
+                    <button
+                      onClick={() => handleBulkAssignRecommended(disciplinasPendentes)}
+                      disabled={bulkAssigningRecommended || disciplinasPendentes.length === 0}
+                      className="inline-flex items-center justify-center rounded-xl bg-[#E3B23C] px-4 py-2 text-sm font-bold text-white transition-colors hover:brightness-95 disabled:opacity-60"
+                    >
+                      {bulkAssigningRecommended ? "Atribuindo recomendados…" : `Atribuir recomendados (${disciplinasPendentes.length})`}
+                    </button>
+                    <div className="flex flex-col gap-2 sm:min-w-[280px]">
+                      <select
+                        value={bulkProfessorUserId}
+                        onChange={(e) => setBulkProfessorUserId(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+                      >
+                        <option value="">Escolha um professor para aplicar</option>
+                        {professoresDisponiveis.map((professor) => (
+                          <option key={professor.user_id} value={professor.user_id}>
+                            {professor.nome || professor.email || "Professor"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => handleBulkAssignSelectedProfessor(bulkProfessorUserId, disciplinasPendentes)}
+                        disabled={bulkAssigningProfessor || !bulkProfessorUserId || bulkProfessorDisciplinasCompativeis.length === 0}
+                        className="inline-flex items-center justify-center rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/10 px-4 py-2 text-sm font-bold text-[#1F6B3B] transition-colors hover:bg-[#1F6B3B]/15 disabled:opacity-60"
+                      >
+                        {bulkAssigningProfessor
+                          ? "Aplicando professor…"
+                          : `Aplicar nas compatíveis (${bulkProfessorDisciplinasCompativeis.length})`}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {disciplinasFiltradas.map((d) => (
                   <div key={d.id}
                     className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-[#1F6B3B]/30 hover:shadow-md transition-all group cursor-pointer">
@@ -1069,7 +1574,32 @@ export default function TurmaDetailClient({
                         : <span className="text-[#9a7010] font-semibold">Professor N/D</span>
                       }
                     </p>
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                        d.professor ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" : "bg-[#E3B23C]/15 text-[#9a7010]"
+                      }`}>
+                        {d.professor ? "Professor atribuído" : "Sem professor"}
+                      </span>
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                        (d.quadro_slots_count ?? 0) > 0
+                          ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
+                          : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {(d.quadro_slots_count ?? 0) > 0 ? `No quadro (${d.quadro_slots_count})` : "Sem slots"}
+                      </span>
+                      {d.carga_horaria_semanal ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          {d.carga_horaria_semanal}h/semana
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="flex flex-col gap-2">
+                      <Link
+                        href={`/escola/${escolaParam}/horarios/quadro?turmaId=${turma.id}`}
+                        className="w-full py-2 text-center text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+                      >
+                        Ver no quadro
+                      </Link>
                       <button
                         className="w-full py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-lg group-hover:bg-[#E3B23C] group-hover:text-white transition-colors"
                         onClick={() =>
@@ -1080,33 +1610,47 @@ export default function TurmaDetailClient({
                               nome: d.nome,
                               professor: d.professor ?? null,
                               turma_disciplina_id: d.turma_disciplina_id ?? null,
+                              curso_matriz_id: d.curso_matriz_id ?? null,
+                              disciplina_id: d.disciplina_id ?? null,
+                              carga_horaria_semanal: d.carga_horaria_semanal ?? null,
                             },
                           })
                         }
                       >
                         Gerenciar Notas
                       </button>
+                      <button
+                        className="w-full py-2 text-xs font-bold bg-[#E3B23C]/10 text-[#9a7010] rounded-lg border border-[#E3B23C]/20 hover:bg-[#E3B23C]/20 transition-colors"
+                        onClick={() =>
+                          setActionModal({
+                            type: "professor",
+                            disciplina: {
+                              id: d.id,
+                              nome: d.nome,
+                              professor: d.professor ?? null,
+                              turma_disciplina_id: d.turma_disciplina_id ?? null,
+                              curso_matriz_id: d.curso_matriz_id ?? null,
+                              disciplina_id: d.disciplina_id ?? null,
+                              carga_horaria_semanal: d.carga_horaria_semanal ?? null,
+                            },
+                          })
+                        }
+                      >
+                        {d.professor ? "Trocar Professor" : "Atribuir Professor"}
+                      </button>
                       {!d.professor && (
                         <button
-                          className="w-full py-2 text-xs font-bold bg-[#E3B23C]/10 text-[#9a7010] rounded-lg border border-[#E3B23C]/20 hover:bg-[#E3B23C]/20 transition-colors"
-                          onClick={() =>
-                            setActionModal({
-                              type: "professor",
-                              disciplina: {
-                                id: d.id,
-                                nome: d.nome,
-                                professor: d.professor ?? null,
-                                turma_disciplina_id: d.turma_disciplina_id ?? null,
-                              },
-                            })
-                          }
+                          className="w-full py-2 text-xs font-bold rounded-lg border border-[#1F6B3B]/20 bg-[#1F6B3B]/10 text-[#1F6B3B] hover:bg-[#1F6B3B]/15 transition-colors disabled:opacity-60"
+                          onClick={() => handleQuickAssignRecommended(d)}
+                          disabled={quickAssigningDisciplinaId === (d.curso_matriz_id ?? null)}
                         >
-                          Atribuir Professor
+                          {quickAssigningDisciplinaId === (d.curso_matriz_id ?? null) ? "Atribuindo recomendado…" : "Usar recomendado"}
                         </button>
                       )}
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             )}
           </div>
@@ -1298,24 +1842,254 @@ export default function TurmaDetailClient({
                 </div>
               </div>
             ) : (
-              <div className="space-y-4 px-6 py-5">
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Abra a gestão de professores para atribuir um docente a esta disciplina.
-                </p>
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => setActionModal(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                  >
-                    Fechar
-                  </button>
-                  <Link
-                    href={`/escola/${escolaParam}/professores?tab=atribuir`}
-                    onClick={() => setActionModal(null)}
-                    className="px-4 py-2 rounded-xl bg-[#E3B23C] text-white text-sm font-bold hover:brightness-95"
-                  >
-                    Atribuir agora
-                  </Link>
+              <div className="grid gap-0 md:grid-cols-[280px_minmax(0,1fr)]">
+                <div className="border-b border-slate-100 bg-slate-50 p-6 md:border-b-0 md:border-r">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Contexto</p>
+                  <h4 className="mt-3 text-lg font-black text-slate-900">{actionModal.disciplina.nome}</h4>
+                  <div className="mt-4 space-y-2 text-sm text-slate-600">
+                    <p><span className="font-semibold text-slate-900">Turma:</span> {turma.nome}</p>
+                    <p><span className="font-semibold text-slate-900">Turno:</span> {turma.turno}</p>
+                    <p><span className="font-semibold text-slate-900">Curso:</span> {turma.curso_nome || turma.classe_nome}</p>
+                    <p><span className="font-semibold text-slate-900">Carga semanal:</span> {actionModal.disciplina.carga_horaria_semanal ?? "—"}h</p>
+                  </div>
+                  <div className="mt-5 rounded-2xl border border-[#E3B23C]/20 bg-[#E3B23C]/10 p-4 text-xs text-[#9a7010]">
+                    A lista prioriza compatibilidade de disciplina, turno e carga disponível.
+                  </div>
+                </div>
+
+                <div className="space-y-4 px-6 py-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Escolha o professor</p>
+                      <p className="text-xs text-slate-500">A atribuição será concluída sem sair desta turma.</p>
+                    </div>
+                    <input
+                      value={professorSearch}
+                      onChange={(e) => setProfessorSearch(e.target.value)}
+                      placeholder="Buscar professor"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20 sm:max-w-xs"
+                    />
+                  </div>
+
+                  {assignProfessorError && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                      {assignProfessorError}
+                    </div>
+                  )}
+
+                  {professoresLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <RefreshCw className="h-4 w-4 animate-spin" /> Carregando professores…
+                    </div>
+                  ) : professoresRanqueados.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+                      Nenhum professor encontrado para esta pesquisa.
+                    </div>
+                  ) : (
+                    <div className="max-h-[55vh] space-y-3 overflow-auto pr-1">
+                      {professoresRanqueados.map((professor) => {
+                        const selected = effectiveSelectedProfessorUserId === professor.user_id;
+                        const statusLabel = professor._meta.rank === 0
+                          ? "Recomendado"
+                          : professor._meta.disciplinaMatch
+                            ? professor._meta.turnoMatch
+                              ? "Compatível"
+                              : "Fora do turno"
+                            : "Sem habilitação";
+
+                        return (
+                          <button
+                            key={professor.user_id}
+                            type="button"
+                            onClick={() => setSelectedProfessorUserId(professor.user_id)}
+                            className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                              selected
+                                ? "border-[#1F6B3B] bg-[#1F6B3B]/5 shadow-sm"
+                                : "border-slate-200 bg-white hover:border-slate-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{professor.nome || professor.email || "Professor sem nome"}</p>
+                                <p className="text-xs text-slate-500">{professor.email || "Sem email"}</p>
+                              </div>
+                              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                                professor._meta.rank === 0
+                                  ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
+                                  : professor._meta.disciplinaMatch
+                                    ? "bg-[#E3B23C]/15 text-[#9a7010]"
+                                    : "bg-slate-100 text-slate-500"
+                              }`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                              <span className={`rounded-full px-2 py-1 ${professor._meta.disciplinaMatch ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" : "bg-rose-50 text-rose-700"}`}>
+                                {professor._meta.disciplinaMatch ? "Disciplina OK" : "Sem habilitação"}
+                              </span>
+                              <span className={`rounded-full px-2 py-1 ${professor._meta.turnoMatch ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" : "bg-rose-50 text-rose-700"}`}>
+                                {professor._meta.turnoMatch ? `Turno ${turma.turno}` : "Turno incompatível"}
+                              </span>
+                              <span className={`rounded-full px-2 py-1 ${professor._meta.cargaExcedida ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
+                                Carga {professor._meta.cargaAtual}h / {professor._meta.cargaMax || "—"}h
+                              </span>
+                            </div>
+
+                            {Array.isArray(professor.disciplinas) && professor.disciplinas.length > 0 ? (
+                              <p className="mt-3 text-xs text-slate-500">
+                                Habilitações: {professor.disciplinas.slice(0, 3).join(", ")}{professor.disciplinas.length > 3 ? "…" : ""}
+                              </p>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {selectedProfessorOption && (
+                    <div className={`rounded-2xl border p-4 ${
+                      assignPreview?.conflict_slots_count
+                        ? "border-rose-200 bg-rose-50"
+                        : selectedProfessorOption._meta.rank === 0
+                        ? "border-[#1F6B3B]/20 bg-[#1F6B3B]/5"
+                        : selectedProfessorOption._meta.cargaExcedida || !selectedProfessorOption._meta.disciplinaMatch
+                          ? "border-rose-200 bg-rose-50"
+                          : "border-[#E3B23C]/20 bg-[#E3B23C]/10"
+                    }`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">
+                            Preview da atribuição
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {selectedProfessorOption.nome || selectedProfessorOption.email || "Professor selecionado"}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                          {assignPreviewLoading
+                            ? "Validando quadro…"
+                            : assignPreview?.conflict_slots_count
+                              ? "Conflito no quadro"
+                              : selectedProfessorOption._meta.rank === 0
+                                ? "Pronto para atribuir"
+                                : "Revisar"}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl bg-white/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Disciplina</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">{disciplinaAtiva?.nome}</p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Turno</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">
+                            {selectedProfessorOption._meta.turnoMatch ? `${turma.turno} compatível` : `${turma.turno} incompatível`}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Carga atual</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">{selectedProfessorOption._meta.cargaAtual}h</p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Carga após atribuição</p>
+                          <p className={`mt-1 text-sm font-semibold ${
+                            selectedProfessorOption._meta.cargaExcedida ? "text-rose-700" : "text-slate-900"
+                          }`}>
+                            {selectedProfessorOption._meta.cargaProjetada}h / {selectedProfessorOption._meta.cargaMax || "—"}h
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Quadro</p>
+                          <p className={`mt-1 text-sm font-semibold ${
+                            assignPreview?.conflict_slots_count
+                              ? "text-rose-700"
+                              : assignPreview?.has_quadro_for_disciplina
+                                ? "text-[#1F6B3B]"
+                                : "text-slate-900"
+                          }`}>
+                            {assignPreviewLoading
+                              ? "Validando conflitos…"
+                              : assignPreview?.conflict_slots_count
+                                ? `${assignPreview.conflict_slots_count} conflito(s) no mesmo slot`
+                                : assignPreview?.has_quadro_for_disciplina
+                                  ? `Sem conflito em ${assignPreview.disciplina_slots_count} slot(s)`
+                                  : "Disciplina ainda sem slots no quadro"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Mesmo slot na turma</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">
+                            {assignPreviewLoading ? "A validar…" : `${assignPreview?.same_turma_slots_count ?? 0} ocorrência(s)`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedProfessorStatus ? (
+                        <p className={`mt-4 text-xs font-medium ${
+                          assignPreview?.conflict_slots_count
+                            ? "text-rose-700"
+                            : selectedProfessorOption._meta.rank === 0
+                            ? "text-[#1F6B3B]"
+                            : selectedProfessorOption._meta.cargaExcedida || !selectedProfessorOption._meta.disciplinaMatch
+                              ? "text-rose-700"
+                              : "text-[#9a7010]"
+                        }`}>
+                          {selectedProfessorStatus}
+                        </p>
+                      ) : null}
+
+                      {!assignPreviewLoading && assignPreview?.conflict_slots_count ? (
+                        <div className="mt-4 rounded-xl border border-rose-200 bg-white/80 p-3">
+                          <p className="text-xs font-bold text-rose-700">
+                            Este professor já ocupa slot(s) desta disciplina no quadro.
+                          </p>
+                          <div className="mt-2 space-y-1 text-xs text-rose-700">
+                            {assignPreviewConflictSample.map((item) => (
+                              <p key={`${item.slot_id}-${item.turma_id}-${item.disciplina_id ?? "sem-disciplina"}`}>
+                                {item.turma_nome} · {item.disciplina_nome}
+                              </p>
+                            ))}
+                            {assignPreview.conflict_slots_count > assignPreviewConflictSample.length ? (
+                              <p>
+                                +{assignPreview.conflict_slots_count - assignPreviewConflictSample.length} conflito(s) adicional(is)
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {!assignPreviewLoading && assignPreview && !assignPreview.has_quadro_for_disciplina ? (
+                        <p className="mt-4 text-xs font-medium text-slate-500">
+                          Esta disciplina ainda não está lançada no quadro; a validação de slot ficará pendente.
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+                    <Link
+                      href={`/escola/${escolaParam}/horarios/quadro?turmaId=${turma.id}`}
+                      onClick={() => setActionModal(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Validar no quadro
+                    </Link>
+                    <button
+                      onClick={() => setActionModal(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleAssignProfessor}
+                      disabled={assigningProfessor || !effectiveSelectedProfessorUserId}
+                      className="px-4 py-2 rounded-xl bg-[#E3B23C] text-white text-sm font-bold hover:brightness-95 disabled:opacity-60"
+                    >
+                      {assigningProfessor ? "A atribuir…" : "Confirmar atribuição"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
