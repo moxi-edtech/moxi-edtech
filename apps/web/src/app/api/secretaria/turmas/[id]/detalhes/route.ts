@@ -302,6 +302,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         status_financeiro: saldoPendente > 0 ? 'atraso' : 'em_dia',
         saldo_pendente: saldoPendente,
       };
+    }).sort((a, b) => {
+      const numeroA = Number.isFinite(Number(a.numero)) ? Number(a.numero) : Number.MAX_SAFE_INTEGER;
+      const numeroB = Number.isFinite(Number(b.numero)) ? Number(b.numero) : Number.MAX_SAFE_INTEGER;
+
+      if (numeroA !== numeroB) return numeroA - numeroB;
+
+      return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt', { sensitivity: 'base' });
     });
 
     const ocupacaoFinal = Number.isFinite(ocupacao) && ocupacao > 0 ? ocupacao : alunos.length;
