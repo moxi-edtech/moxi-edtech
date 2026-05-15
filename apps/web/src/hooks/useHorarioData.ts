@@ -135,7 +135,6 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
     if (!escolaId) return;
     const controller = new AbortController();
     const requestId = ++requestRef.current;
-    const anoAtual = new Date().getFullYear();
     const cacheKey = `horarios:base:${escolaId}`;
     const now = Date.now();
 
@@ -172,7 +171,7 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
       fetchJson(`/api/escolas/${escolaId}/horarios/slots`, controller.signal, "no-store"),
       fetchJson(`/api/escolas/${escolaId}/salas`, controller.signal, "no-store"),
       fetchJson(
-        `/api/secretaria/turmas-simples?ano=${anoAtual}&escola_id=${encodeURIComponent(escolaId)}`,
+        `/api/secretaria/turmas-simples?escola_id=${encodeURIComponent(escolaId)}`,
         controller.signal,
         "no-store"
       ),
