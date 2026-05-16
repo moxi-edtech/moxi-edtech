@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import { 
   Search, 
   Filter, 
@@ -32,6 +34,8 @@ type Professor = {
 };
 
 export default function ProfessoresListClient() {
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const [q, setQ] = useState("");
   const [days, setDays] = useState("30");
   const [cargoFilter, setCargoFilter] = useState<string>("");
@@ -393,14 +397,14 @@ export default function ProfessoresListClient() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center gap-1">
                           <Link
-                            href={`professores/${professor.user_id || professor.id}`}
+                            href={buildPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}`)}
                             className="text-slate-600 hover:text-white hover:bg-slate-600 p-2 rounded-lg transition-all"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
                           <Link
-                            href={`professores/${professor.user_id || professor.id}/editar`}
+                            href={buildPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}/editar`)}
                             className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
                             title="Editar professor"
                           >

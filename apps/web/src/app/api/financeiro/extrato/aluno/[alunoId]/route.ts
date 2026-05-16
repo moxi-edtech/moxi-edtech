@@ -63,10 +63,6 @@ export async function GET(
       .eq("escola_id", escolaId)
       .maybeSingle();
 
-    if (alunoError || !aluno) {
-      return NextResponse.json({ ok: false, error: "Aluno não encontrado ou sem permissão." }, { status: 404 });
-    }
-
     // 2. Buscar Movimentos do Ledger (SSOT)
     const { data: movimentos, error: ledgerError } = await (supabase as any)
       .from("financeiro_ledger")
@@ -79,6 +75,23 @@ export async function GET(
     if (ledgerError) {
       console.error("[EXTRATO-LEDGER] Erro ao buscar movimentos:", ledgerError);
       return NextResponse.json({ ok: false, error: "Falha ao carregar extrato financeiro." }, { status: 500 });
+    }
+
+    if (alunoError) {
+      return NextResponse.json({ ok: false, error: "Falha ao carregar dados do aluno." }, { status: 500 });
+    }
+
+    const alunoBasico = aluno ?? {
+      id: alunoId,
+      nome_completo: null,
+      bi_numero: null,
+      telefone_responsavel: null,
+      escola_id: escolaId,
+      matriculas: [],
+    };
+
+    if (!aluno && (movimentos?.length ?? 0) === 0) {
+      return NextResponse.json({ ok: false, error: "Aluno não encontrado ou sem permissão." }, { status: 404 });
     }
 
     // 3. Calcular Saldo Consolidado e Totais
@@ -99,7 +112,8 @@ export async function GET(
     const saldoConsolidado = totalDebitos - totalCreditos;
 
     // 4. Normalizar Turma
-    const matriculaAtiva = aluno.matriculas?.find((m: any) => m.status === "ativa") || aluno.matriculas?.[0];
+    const matriculaAtiva =
+      alunoBasico.matriculas?.find((m: any) => m.status === "ativa") || alunoBasico.matriculas?.[0];
     const turmaInfo = matriculaAtiva?.turma 
       ? `${(matriculaAtiva.turma as any).nome} (${(matriculaAtiva.turma as any).classe}ª Classe)` 
       : "Sem turma definida";
@@ -107,12 +121,12 @@ export async function GET(
     return NextResponse.json({
       ok: true,
       aluno: {
-        id: aluno.id,
-        nome: aluno.nome_completo,
-        bi: aluno.bi_numero,
-        telefone: aluno.telefone_responsavel,
+        id: alunoBasico.id,
+        nome: alunoBasico.nome_completo ?? "Aluno",
+        bi: alunoBasico.bi_numero,
+        telefone: alunoBasico.telefone_responsavel,
         turma: turmaInfo,
-        escola_id: aluno.escola_id
+        escola_id: alunoBasico.escola_id
       },
       resumo: {
         saldo_consolidado: saldoConsolidado,
@@ -132,4 +146,3 @@ export async function GET(
     }, { status: 500 });
   }
 }
-

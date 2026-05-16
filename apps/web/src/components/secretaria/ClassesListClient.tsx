@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import Link from "next/link";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
+import { buildPortalHref } from "@/lib/navigation";
 
 type Classe = {
   id: string;
@@ -17,7 +18,7 @@ export default function ClassesListClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [classes, setClasses] = useState<Classe[]>([]);
-  const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
+  const { escolaId, escolaSlug, isLoading: escolaLoading, error: escolaError } = useEscolaId();
 
   useEffect(() => {
     const loadData = async () => {
@@ -87,7 +88,7 @@ export default function ClassesListClient() {
                     {classe.nome}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link href={`classes/${classe.id}`} className="text-klasse-green-600 hover:text-klasse-green-900">
+                    <Link href={buildPortalHref(escolaSlug || escolaId, `/secretaria/classes/${classe.id}`)} className="text-klasse-green-600 hover:text-klasse-green-900">
                         Ver Disciplinas
                     </Link>
                   </td>
