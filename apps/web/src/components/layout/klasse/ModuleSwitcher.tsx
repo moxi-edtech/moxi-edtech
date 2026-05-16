@@ -22,17 +22,30 @@ function resolveModule(pathname: string): ModuleKey | null {
 }
 
 export default function ModuleSwitcher() {
+  return <ModuleSwitcherInner />;
+}
+
+type ModuleSwitcherProps = {
+  escolaId?: string | null;
+  escolaParam?: string | null;
+};
+
+export function ModuleSwitcherInner({
+  escolaId: explicitEscolaId,
+  escolaParam: explicitEscolaParam,
+}: ModuleSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const { escolaId, escolaSlug } = useEscolaId();
-  const { papel, loading } = usePapel(escolaId);
+  const resolvedEscolaId = explicitEscolaId || escolaId;
+  const { papel, loading } = usePapel(resolvedEscolaId);
 
   const currentModule = useMemo(() => resolveModule(pathname), [pathname]);
   const escolaIdFromPath = useMemo(() => {
     const match = pathname.match(/\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
-  const escolaParam = escolaSlug || escolaIdFromPath || escolaId;
+  const escolaParam = explicitEscolaParam || escolaSlug || escolaIdFromPath || resolvedEscolaId;
 
   const modules = useMemo<ModuleKey[]>(() => {
     if (papel === "admin_financeiro") return ["admin", "financeiro"];
@@ -65,12 +78,12 @@ export default function ModuleSwitcher() {
   };
 
   return (
-    <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1">
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Módulo</span>
       <select
         value={currentModule}
         onChange={(event) => handleChange(event.target.value as ModuleKey)}
-        className="text-xs font-semibold text-slate-700 bg-transparent focus:outline-none"
+        className="min-w-[108px] text-xs font-semibold text-slate-700 bg-transparent focus:outline-none"
         aria-label="Seletor de módulo"
       >
         {modules.map((moduleKey) => (

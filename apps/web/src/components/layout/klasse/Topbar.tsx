@@ -5,7 +5,7 @@ import { ChevronDown, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
-import ModuleSwitcher from "@/components/layout/klasse/ModuleSwitcher";
+import { ModuleSwitcherInner } from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
 
@@ -21,6 +21,7 @@ type TopbarProps = {
   escolaNome?: string | null;
   planoNome?: string | null;
   escolaId?: string | null;
+  escolaParam?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
@@ -32,6 +33,7 @@ export default function Topbar({
   escolaNome: _escolaNome,
   planoNome: _planoNome,
   escolaId,
+  escolaParam,
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -50,7 +52,7 @@ export default function Topbar({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <ModuleSwitcher />
+          <ModuleSwitcherInner escolaId={escolaId} escolaParam={escolaParam} />
           <NotificacoesDropdown />
           <LockScreenButton
             iconOnly

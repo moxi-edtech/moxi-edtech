@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { registrarPagamentoAction, PagamentoMetodo } from "@/features/financeiro/actions";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Loader2, CheckCircle2 } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 interface RegistoPagamentoModalProps {
   open: boolean;
@@ -26,6 +27,8 @@ const METODOS: { value: PagamentoMetodo; label: string }[] = [
   { value: "kwik", label: "Kwik" },
 ];
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function RegistoPagamentoModal({
   open,
   onClose,
@@ -42,13 +45,20 @@ export function RegistoPagamentoModal({
   const [reference, setReference] = useState("");
   const [observacao, setObservacao] = useState("");
   const { success, error } = useToast();
+  const { escolaId: resolvedEscolaId } = useEscolaId();
+
+  const escolaUuid = UUID_REGEX.test(escolaId) ? escolaId : resolvedEscolaId;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!escolaUuid) {
+      error("Erro no registo", "Não foi possível resolver a escola ativa para processar o pagamento.");
+      return;
+    }
     setLoading(true);
 
     const res = await registrarPagamentoAction({
-      escola_id: escolaId,
+      escola_id: escolaUuid,
       aluno_id: alunoId,
       mensalidade_id: mensalidadeId,
       valor,
@@ -137,7 +147,7 @@ export function RegistoPagamentoModal({
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !escolaUuid}
             className="flex items-center gap-2 bg-klasse-gold-500 hover:bg-klasse-gold-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm shadow-klasse-gold-500/20 transition-all disabled:opacity-50"
           >
             {loading ? (
