@@ -162,12 +162,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   const getResumoFinanceiro = (turmaId: string) => {
     const alunosDaTurma = data.alunos.filter(a => a.turmaId === turmaId);
     const pagas = alunosDaTurma.filter(aluno => aluno.statusFinanceiro === 'paga').length;
-    const atrasadas = alunosDaTurma.filter(aluno => aluno.valorEmDivida > 0).length;
-    const emDia = alunosDaTurma.length - atrasadas;
-    const arrecadacao = (emDia / (alunosDaTurma.length || 1)) * 100;
+    const pendentes = alunosDaTurma.filter(aluno => aluno.statusFinanceiro === 'pendente').length;
+    const atrasadas = alunosDaTurma.filter(aluno => aluno.statusFinanceiro === 'atrasada').length;
+    const arrecadacao = (pagas / (alunosDaTurma.length || 1)) * 100;
     const totalEmDivida = alunosDaTurma.reduce((acc, aluno) => acc + Number(aluno.valorEmDivida ?? 0), 0);
 
-    return { pagas, atrasadas, arrecadacao, qtdAlunos: alunosDaTurma.length, totalEmDivida };
+    return { pagas, pendentes, atrasadas, arrecadacao, qtdAlunos: alunosDaTurma.length, totalEmDivida };
   };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(val);
@@ -285,6 +285,17 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-slate-50 text-slate-500 border-slate-200">
                         {turma.turno === 'M' ? 'Manhã' : 'Tarde'}
                       </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                          stats.atrasadas > 0
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : stats.pendentes > 0
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}
+                      >
+                        {stats.atrasadas > 0 ? 'Em atraso' : stats.pendentes > 0 ? 'Pendente' : 'Regular'}
+                      </span>
                     </div>
                     
                     {/* Barra de Progresso Financeiro */}
@@ -313,6 +324,10 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                     <div className="text-center">
                       <div className={`text-xl font-bold ${stats.atrasadas > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{stats.atrasadas}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Atrasos</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-xl font-bold ${stats.pendentes > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{stats.pendentes}</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pendentes</div>
                     </div>
                     <div className={`p-2 rounded-full transition-colors ${isExpanded ? 'bg-slate-100 text-slate-600' : 'text-slate-300 group-hover:text-slate-500'}`}>
                         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}

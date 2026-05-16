@@ -266,7 +266,8 @@ export default function AppShell({
             contextLabel="Dashboard"
             escolaNome={displayedEscolaNome}
             planoNome={displayedPlanoNome}
-            escolaId={navEscolaId}
+            escolaId={escolaIdFromSession}
+            escolaParam={navEscolaId}
             portal={inferredRole ?? undefined}
           />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>
