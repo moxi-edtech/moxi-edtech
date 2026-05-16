@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 export type PortalRole = "admin" | "secretaria" | "financeiro" | "professor" | "aluno";
 
@@ -53,7 +54,7 @@ export async function assertPortalAccess(
 
   const role = String(profile?.role ?? "");
   const allowed = PORTAL_ALLOWED_ROLES[portal] ?? [];
-  if (!allowed.includes(role)) {
+  if (!roleMatchesAllowedRoles(role, allowed, "k12")) {
     return { ok: false, status: 403, error: "Sem permissão" };
   }
 

@@ -605,6 +605,7 @@ export default function MatriculasListClient() {
             />
             <span className="text-sm font-medium text-slate-700">Pendentes de Enturmação</span>
           </label>
+
         </div>
 
         {/* Active Filter Tags */}
@@ -943,6 +944,7 @@ export default function MatriculasListClient() {
 
             <TransferForm
               matriculaId={selectedMatricula.id}
+              currentTurmaId={selectedMatricula.turma_id}
               anoLetivo={anoLetivoAtivo}
               onSuccess={() => {
                 setShowTransferForm(false);
@@ -952,6 +954,7 @@ export default function MatriculasListClient() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

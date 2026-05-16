@@ -1,6 +1,7 @@
 import { supabaseServer } from '~/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { resolveEscolaIdForUser } from '~/lib/tenant/resolveEscolaIdForUser';
+import { getDefaultK12PortalPathForRole } from '@/lib/permissions';
 
 export default async function EscolaIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -43,25 +44,10 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
     return redirect('/dashboard');
   }
 
-  if (escolaUsuario.papel === 'admin' || escolaUsuario.papel === 'admin_escola') {
-    return redirect(`/escola/${escolaParam}/admin/dashboard`);
-  }
-
-  if (escolaUsuario.papel === 'secretaria_financeiro') {
-    return redirect(`/escola/${escolaParam}/secretaria`);
-  }
-
-  if (escolaUsuario.papel === 'admin_financeiro') {
-    return redirect(`/escola/${escolaParam}/admin/dashboard`);
-  }
-
-  if (escolaUsuario.papel === 'professor') {
-    return redirect(`/escola/${escolaParam}/professor`);
-  }
-
-  if (escolaUsuario.papel === 'aluno') {
+  const normalizedPapel = String(escolaUsuario.papel ?? '').trim().toLowerCase();
+  if (normalizedPapel === 'aluno') {
     return redirect(`/escola/${escolaParam}/aluno/dashboard`);
   }
 
-  return redirect(`/escola/${escolaParam}/dashboard`);
+  return redirect(getDefaultK12PortalPathForRole(normalizedPapel, escolaParam));
 }

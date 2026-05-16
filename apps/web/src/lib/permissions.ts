@@ -87,6 +87,11 @@ export type GlobalRole =
 
 export type ProductContext = 'k12' | 'formacao'
 
+const K12_COMPOSITE_ROLE_INHERITANCE: Record<string, ReadonlyArray<string>> = {
+  secretaria_financeiro: ['secretaria_financeiro', 'secretaria', 'financeiro'],
+  admin_financeiro: ['admin_financeiro', 'financeiro'],
+}
+
 export function normalizePapel(papel: Papel | string | null | undefined): Papel | null {
   if (!papel || typeof papel !== 'string') return null
 
@@ -231,6 +236,14 @@ const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
     'gerenciar_despesas',
     'visualizar_fluxo_caixa',
     'exportar_relatorios_contabeis',
+    'editar_matricula',
+    'gerenciar_transferencias',
+    'gerenciar_turmas',
+    'lançar_notas',
+    'registrar_frequencia',
+    'emitir_documentos',
+    'enviar_comunicado',
+    'visualizar_relatorios_academicos',
   ]),
 
   professor: new Set<Permission>([
@@ -295,6 +308,50 @@ export function getPermissionsForRole(papel: Papel | string | null | undefined):
   return ROLE_PERMISSIONS[normalized] ?? new Set()
 }
 
+export function expandAllowedRolesForProduct(
+  roles: ReadonlyArray<string>,
+  product: ProductContext = 'k12'
+): string[] {
+  const normalized = roles
+    .map((role) => String(role ?? '').trim().toLowerCase())
+    .filter(Boolean)
+
+  if (product !== 'k12') {
+    return Array.from(new Set(normalized))
+  }
+
+  const expanded = new Set<string>()
+  for (const role of normalized) {
+    expanded.add(role)
+    if (role === 'financeiro') {
+      expanded.add('secretaria_financeiro')
+      expanded.add('admin_financeiro')
+    }
+    if (role === 'secretaria') {
+      expanded.add('secretaria_financeiro')
+    }
+  }
+
+  return Array.from(expanded)
+}
+
+export function roleMatchesAllowedRoles(
+  role: Papel | GlobalRole | string | null | undefined,
+  allowedRoles: ReadonlyArray<string>,
+  product: ProductContext = 'k12'
+): boolean {
+  const normalizedRole = String(role ?? '').trim().toLowerCase()
+  if (!normalizedRole) return false
+
+  const expandedAllowed = new Set(expandAllowedRolesForProduct(allowedRoles, product))
+  if (expandedAllowed.has(normalizedRole)) return true
+
+  if (product !== 'k12') return false
+
+  const inherited = K12_COMPOSITE_ROLE_INHERITANCE[normalizedRole] ?? [normalizedRole]
+  return inherited.some((candidate) => expandedAllowed.has(candidate))
+}
+
 export function hasPermission(papel: Papel | string | null | undefined, perm: Permission): boolean {
   const set = getPermissionsForRole(papel)
   return set.has(perm)
@@ -309,29 +366,25 @@ export function hasAnyPermission(papel: Papel | string | null | undefined, perms
 
 
 export function temAcessoFinanceiro(role: GlobalRole | string | null | undefined): boolean {
-  return [
+  return roleMatchesAllowedRoles(role, [
     'financeiro',
-    'secretaria_financeiro',
-    'admin_financeiro',
     'formacao_financeiro',
     'formacao_admin',
     'admin',
     'super_admin',
     'global_admin',
-  ].includes(String(role ?? ''))
+  ])
 }
 
 export function temAcessoSecretaria(role: GlobalRole | string | null | undefined): boolean {
-  return [
+  return roleMatchesAllowedRoles(role, [
     'secretaria',
-    'secretaria_financeiro',
-    'admin_financeiro',
     'formacao_secretaria',
     'formacao_admin',
     'admin',
     'super_admin',
     'global_admin',
-  ].includes(String(role ?? ''))
+  ])
 }
 
 // Map papel (vínculo na escola) to global role to keep middleware/portals consistent
@@ -368,6 +421,35 @@ export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): 
       return 'formando'
     default:
       return 'guest'
+  }
+}
+
+export function getDefaultK12PortalPathForRole(
+  role: GlobalRole | Papel | string | null | undefined,
+  escolaParam?: string | null
+): string {
+  const normalized = String(role ?? '').trim().toLowerCase()
+  const escolaSegment = escolaParam ? `/escola/${escolaParam}` : null
+
+  switch (normalized) {
+    case 'super_admin':
+      return '/super-admin'
+    case 'admin':
+    case 'admin_escola':
+    case 'staff_admin':
+    case 'admin_financeiro':
+      return escolaSegment ? `${escolaSegment}/admin/dashboard` : '/admin'
+    case 'secretaria':
+    case 'secretaria_financeiro':
+      return escolaSegment ? `${escolaSegment}/secretaria` : '/secretaria'
+    case 'financeiro':
+      return escolaSegment ? `${escolaSegment}/financeiro` : '/financeiro'
+    case 'professor':
+      return escolaSegment ? `${escolaSegment}/professor` : '/professor'
+    case 'aluno':
+      return escolaSegment ? `${escolaSegment}/aluno` : '/aluno'
+    default:
+      return escolaSegment ? `${escolaSegment}/dashboard` : '/dashboard'
   }
 }
 

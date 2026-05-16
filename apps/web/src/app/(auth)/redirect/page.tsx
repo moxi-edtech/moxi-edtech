@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { shouldRouteToEscolaAdmin } from "@/lib/escola/onboardingGate";
+import { getDefaultK12PortalPathForRole } from "@/lib/permissions";
 
 function getFormacaoBaseUrl() {
   if (typeof window === "undefined") return "https://formacao.klasse.ao";
@@ -187,55 +188,22 @@ export default function RedirectPage() {
           }
 
           let finalDest = "/";
-          switch (role) {
-            case "super_admin":
-              finalDest = "/super-admin";
-              break;
-            case "admin":
-            case "admin_escola":
-            case "staff_admin":
-              if (baseEscolaId) {
-                const done = await shouldRouteToAdmin(baseEscolaId);
-                const path = done ? "admin" : "onboarding";
-                finalDest = escolaParam ? `/escola/${escolaParam}/${path}` : `/escola/${baseEscolaId}/${path}`;
-              } else {
-                finalDest = "/admin";
-              }
-              break;
-            case "professor":
-              finalDest = escolaParam ? `/escola/${escolaParam}/professor` : "/professor";
-              break;
-            case "aluno": {
-              const escolaId = baseEscolaId;
-              const alunoBase = escolaParam ? `/escola/${escolaParam}/aluno` : "/aluno";
-              if (escolaId) {
-                const { data: esc } = await supabase
-                  .from("escolas")
-                  .select("aluno_portal_enabled")
-                  .eq("id", escolaId)
-                  .limit(1);
-                const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
-                finalDest = enabled ? alunoBase : `${alunoBase}/desabilitado`;
-              } else {
-                finalDest = alunoBase;
-              }
-              break;
+          if (role === "aluno") {
+            const escolaId = baseEscolaId;
+            const alunoBase = getDefaultK12PortalPathForRole(role, escolaParam);
+            if (escolaId) {
+              const { data: esc } = await supabase
+                .from("escolas")
+                .select("aluno_portal_enabled")
+                .eq("id", escolaId)
+                .limit(1);
+              const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
+              finalDest = enabled ? alunoBase : `${alunoBase}/desabilitado`;
+            } else {
+              finalDest = alunoBase;
             }
-            case "secretaria":
-              finalDest = escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
-              break;
-            case "financeiro":
-              finalDest = "/financeiro";
-              break;
-            case "secretaria_financeiro":
-              finalDest = escolaParam ? `/escola/${escolaParam}/secretaria` : "/secretaria";
-              break;
-            case "admin_financeiro":
-              finalDest = escolaParam ? `/escola/${escolaParam}/admin/dashboard` : "/admin";
-              break;
-            default:
-              finalDest = "/";
-              break;
+          } else {
+            finalDest = getDefaultK12PortalPathForRole(role, escolaParam);
           }
           console.info(`[Redirect] Final routing destination: ${finalDest}`);
           window.location.replace(finalDest);

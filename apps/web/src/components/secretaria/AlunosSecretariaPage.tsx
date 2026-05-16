@@ -1163,7 +1163,6 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       if (isInadimplentesTab(currentTab)) {
         params.set("situacao_financeira", "em_atraso");
       }
-      params.set("order_by", "nome_asc");
       if (cursor) {
         params.set("cursor_created_at", cursor.created_at);
         params.set("cursor_id", cursor.id);

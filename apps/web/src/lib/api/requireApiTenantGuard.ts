@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveTenantContextForUser } from "@/lib/tenant/resolveTenantContext";
-import { isRoleAllowedForProduct, type ProductContext } from "@/lib/permissions";
+import { isRoleAllowedForProduct, roleMatchesAllowedRoles, type ProductContext } from "@/lib/permissions";
 import type { Database } from "~types/supabase";
 
 type TenantType = "k12" | "formacao" | "solo_creator";
@@ -105,10 +105,17 @@ export async function requireApiTenantGuard(options: GuardOptions): Promise<Guar
     };
   }
 
-  if (options.allowedRoles && options.allowedRoles.length > 0 && !options.allowedRoles.includes(role)) {
+  if (
+    options.allowedRoles &&
+    options.allowedRoles.length > 0 &&
+    !roleMatchesAllowedRoles(role, options.allowedRoles, options.productContext)
+  ) {
     return {
       ok: false,
-      response: NextResponse.json({ ok: false, error: "Sem permissão", code: "INSUFFICIENT_ROLE" }, { status: 403 }),
+      response: NextResponse.json(
+        { ok: false, error: "Sem permissão", code: "INSUFFICIENT_ROLE", role, requestedRoles: options.allowedRoles },
+        { status: 403 }
+      ),
     };
   }
 

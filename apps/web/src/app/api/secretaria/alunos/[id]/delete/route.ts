@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { recordAuditServer } from "@/lib/audit";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 
 // DELETE OU POST (estamos usando POST na UI)
@@ -63,7 +64,7 @@ export async function POST(
       "admin_financeiro",
     ];
 
-    if (!role || !allowedRoles.includes(role)) {
+    if (!roleMatchesAllowedRoles(role, allowedRoles, "k12")) {
       return NextResponse.json(
         { ok: false, error: "Sem permissão" },
         { status: 403 }

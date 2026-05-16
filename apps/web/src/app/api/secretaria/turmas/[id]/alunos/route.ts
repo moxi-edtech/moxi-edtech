@@ -69,7 +69,7 @@ export async function GET(
         id,
         turma_id,
         status,
-        numero_lista,
+        numero_chamada,
         aluno_id,
         alunos (
           id,
@@ -156,7 +156,7 @@ export async function GET(
       return {
         matricula_id: mat.id,
         aluno_id: aluno?.id ?? null,
-        numero_lista: mat.numero_lista ?? index + 1,
+        numero_lista: mat.numero_chamada ?? index + 1,
         status_matricula: mat.status ?? null,
 
         aluno_nome: aluno?.nome ?? null,

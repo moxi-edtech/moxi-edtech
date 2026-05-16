@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { recordAuditServer } from "@/lib/audit";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 export async function POST(
   req: Request,
@@ -33,7 +34,7 @@ export async function POST(
 
     // Permissões: Admin da escola e superiores
     const allowedRoles = ["super_admin", "global_admin", "admin", "staff_admin", "admin_financeiro"];
-    if (!role || !allowedRoles.includes(role)) {
+    if (!roleMatchesAllowedRoles(role, allowedRoles, "k12")) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: "Perfil não está vinculado a uma escola" }, { status: 403 });

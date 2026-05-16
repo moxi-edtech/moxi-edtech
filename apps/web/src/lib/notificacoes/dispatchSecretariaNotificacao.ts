@@ -26,7 +26,7 @@ type DispatchParams = {
   agrupamentoTTLHoras?: number;
 };
 
-const SECRETARIA_ROLES = ["secretaria", "secretaria_financeiro"];
+const SECRETARIA_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro"];
 
 const EVENTO_TIPO_MAP: Record<SecretariaNotificacaoKey, string> = {
   TURMA_APROVADA: "turma.aprovada",

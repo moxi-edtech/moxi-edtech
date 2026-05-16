@@ -13,7 +13,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const { data: pendencias } = await s
     .from('mensalidades')
-    .select('id, valor_previsto, data_vencimento, status')
+    .select('id, valor_previsto, data_vencimento, status, aluno_id, alunos(nome_completo, nome)')
     .eq('escola_id', escolaId)
     .neq('status', 'pago')
     .order('data_vencimento', { ascending: true })
@@ -49,15 +49,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <span className="text-xs text-gray-500">Máx. 5 registros</span>
           </div>
           <div className="space-y-2">
-            {pendencias.map((p) => (
-              <div key={p.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2">
-                <div>
-                  <div className="text-sm font-medium text-gray-800">{p.data_vencimento ? new Date(p.data_vencimento).toLocaleDateString('pt-PT') : 'Sem vencimento'}</div>
-                  <div className="text-xs text-gray-500">Valor: {(p.valor_previsto ?? 0).toLocaleString('pt-AO')} Kz</div>
+            {Array.isArray(pendencias) && pendencias.map((p) => {
+              const alunoNome = (p.alunos as any)?.nome_completo || (p.alunos as any)?.nome || "Aluno";
+              return (
+                <div key={p.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2">
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">{alunoNome}</div>
+                    <div className="text-xs text-gray-500">Vence: {p.data_vencimento ? new Date(p.data_vencimento).toLocaleDateString('pt-PT') : '—'} · {(p.valor_previsto ?? 0).toLocaleString('pt-AO')} Kz</div>
+                  </div>
+                  <RegistrarPagamentoButton 
+                    escolaId={escolaId}
+                    alunoId={p.aluno_id || ""}
+                    alunoNome={alunoNome}
+                    mensalidadeId={p.id}
+                    valor={p.valor_previsto ?? 0}
+                    descricao={`Propina (Configurações)`}
+                  />
                 </div>
-                <RegistrarPagamentoButton mensalidadeId={p.id} valor={p.valor_previsto ?? 0} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

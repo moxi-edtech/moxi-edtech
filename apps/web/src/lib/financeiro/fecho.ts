@@ -1,6 +1,7 @@
 import "server-only";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -86,7 +87,7 @@ export async function getFechoCaixaData({
 
   const papel = String((vinc as any)?.papel ?? "").toLowerCase();
   const allowedRoles = ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"];
-  if (!allowedRoles.includes(papel)) {
+  if (!roleMatchesAllowedRoles(papel, allowedRoles, "k12")) {
     return { ok: false, error: "Sem permissão" };
   }
 

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import PagamentosPendentesWindow from "@/components/secretaria/PagamentosPendentesWindow";
+import { FilaValidacaoPagamentos } from "@/components/financeiro/FilaValidacaoPagamentos";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,5 +22,19 @@ export default async function RecebimentosPage({ params }: { params: Promise<{ i
     redirect("/redirect");
   }
 
-  return <PagamentosPendentesWindow />;
+  return (
+    <div className="space-y-6">
+      <DashboardHeader
+        title="Janela de Recebimentos"
+        description="Validação de comprovantes enviados pelos alunos via fluxo auditável."
+        breadcrumbs={[
+          { label: "Início", href: `/escola/${escolaId}` },
+          { label: "Secretaria", href: `/escola/${escolaId}/secretaria` },
+          { label: "Recebimentos" },
+        ]}
+      />
+
+      <FilaValidacaoPagamentos escolaId={resolvedEscolaId} />
+    </div>
+  );
 }

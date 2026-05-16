@@ -59,7 +59,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const { id: turmaId } = await params;
+    const { data: turmaScope } = await supabase
+      .from("turmas")
+      .select("escola_id")
+      .eq("id", turmaId)
+      .maybeSingle();
+
+    const escolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      (turmaScope as any)?.escola_id ?? null
+    );
     if (!escolaId) return NextResponse.json({ ok: true, turma: null, total: 0, alunos: [] }, { headers });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
@@ -68,14 +79,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
-    const { id: turmaId } = await params;
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") ?? "json";
 
     if (format === "pdf") {
-      await requireFeature("doc_qr_code");
-      const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-      if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+      await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
       const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf`);
       if (forwarded) return forwarded;
     }

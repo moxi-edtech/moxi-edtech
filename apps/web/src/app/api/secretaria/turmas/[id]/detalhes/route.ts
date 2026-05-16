@@ -332,11 +332,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }));
     }
 
-    const alunos = (alunosData || []).map(m => {
+    const alunos = (alunosData || []).map((m, index) => {
       const saldoPendente = mensalidadesMap.get(m.id) ?? 0;
       return {
         matricula_id: m.id,
-        numero: m.numero_chamada,
+        numero: m.numero_chamada ?? index + 1,
         aluno_id: m.alunos?.id || '',
         nome: m.alunos?.nome || 'Nome Desconhecido',
         bi: m.alunos?.bi_numero || 'N/A',

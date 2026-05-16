@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 import ModuleSwitcher from "@/components/layout/klasse/ModuleSwitcher";
 import LockScreenButton from "@/components/session/LockScreenButton";
+import { requestSessionConfig } from "@/components/session/SessionLockProvider";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -76,11 +77,25 @@ export default function Topbar({
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 bg-white shadow-lg p-2">
-                <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1 text-sm text-slate-700 transition hover:bg-slate-50" />
+              <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white shadow-lg p-2 space-y-0.5">
+                <LockScreenButton className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50" />
+                
+                <button
+                  onClick={() => {
+                    requestSessionConfig();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Settings className="h-4 w-4 text-slate-400" />
+                  Preferências de Sessão
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+                
                 <SignOutButton
                   label="Sair"
-                  className="w-full justify-start gap-2 text-slate-700 hover:bg-slate-50"
+                  className="w-full justify-start gap-2 text-slate-700 hover:bg-slate-50 py-1.5"
                   variant="ghost"
                 />
               </div>

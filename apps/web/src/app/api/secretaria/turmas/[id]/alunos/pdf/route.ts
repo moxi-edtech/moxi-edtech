@@ -7,6 +7,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(
   req: Request,
@@ -26,7 +27,25 @@ export async function GET(
     }
 
     const { id: turmaId } = await params;
-    const { escolaId } = await requireFeature("doc_qr_code");
+    const { data: turmaScope } = await supabase
+      .from("turmas")
+      .select("escola_id")
+      .eq("id", turmaId)
+      .maybeSingle();
+
+    const escolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      (turmaScope as any)?.escola_id ?? null
+    );
+    if (!escolaId) {
+      return NextResponse.json(
+        { ok: false, error: "Escola não encontrada" },
+        { status: 400 }
+      );
+    }
+
+    await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
@@ -72,7 +91,7 @@ export async function GET(
       .select(
         `
         id,
-        numero_lista,
+        numero_chamada,
         status,
         alunos (
           id,
@@ -87,7 +106,7 @@ export async function GET(
       )
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
-      .order("numero_lista", { ascending: true })
+      .order("numero_chamada", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
@@ -104,7 +123,7 @@ export async function GET(
     const alunos = (matriculas ?? []).map((mat, index) => {
       const aluno = Array.isArray(mat.alunos) ? mat.alunos[0] : mat.alunos;
       return {
-        numero_lista: mat.numero_lista ?? index + 1,
+        numero_lista: mat.numero_chamada ?? index + 1,
         nome: aluno?.nome ?? "—",
         bi_numero: aluno?.bi_numero ?? "—",
         telefone: aluno?.telefone ?? "—",
