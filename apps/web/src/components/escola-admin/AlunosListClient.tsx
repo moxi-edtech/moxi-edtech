@@ -5,6 +5,7 @@ import React, {
   useCallback, useRef, useMemo,
 } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -709,9 +710,11 @@ export default function AlunosListClient({
   initialTurmas?: Turma[];
   initialCursor?: string | null;
 }) {
+  const pathname = usePathname();
   const { escolaSlug } = useEscolaId();
   const { success, error } = useToast();
   const escolaParam = escolaSlug || escolaId;
+  const isSecretariaContext = pathname?.includes("/secretaria/") ?? false;
 
   // ── Estado principal ────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState<"ativos" | "arquivados">("ativos");
@@ -1392,7 +1395,7 @@ export default function AlunosListClient({
                             opacity-0 group-hover:opacity-100 transition-opacity">
                             {tab === "ativos" ? (
                               <>
-                                <Link href={buildPortalHref(escolaParam, `/admin/alunos/${aluno.id}`)}
+                                <Link href={buildPortalHref(escolaParam, isSecretariaContext ? `/secretaria/alunos/${aluno.id}` : `/admin/alunos/${aluno.id}`)}
                                   className="flex items-center gap-1 rounded-lg border border-slate-200
                                     px-2 py-1.5 text-xs font-semibold text-slate-600
                                     hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"

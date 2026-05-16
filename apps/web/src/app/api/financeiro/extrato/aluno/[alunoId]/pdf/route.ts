@@ -15,6 +15,7 @@ interface PaymentRow {
 
 interface MensalidadeRow {
   id: string;
+  matricula_id?: string | null;
   ano_letivo?: number | null;
   mes_referencia?: number | null;
   ano_referencia?: number | null;
@@ -48,6 +49,23 @@ interface MatriculaRow {
 }
 
 interface EscolaRow {
+  id: string;
+  nome?: string | null;
+  nif?: string | null;
+  numero_fiscal?: string | null;
+  endereco?: string | null;
+  morada?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  logo_url?: string | null;
+  logo?: string | null;
+  validation_base_url?: string | null;
+  diretor_nome?: string | null;
+  diretor_cargo?: string | null;
+  responsavel?: string | null;
+}
+
+interface EscolaSlimRow {
   id: string;
   nome?: string | null;
   nif?: string | null;
@@ -179,27 +197,33 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
 
     const { data: alunoRow, error: alunoError } = await alunoQuery.maybeSingle<AlunoRow>();
 
-    if (alunoError || !alunoRow) {
-      return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
+    if (alunoError) {
+      return NextResponse.json({ ok: false, error: "Erro ao carregar aluno", details: alunoError.message }, { status: 500 });
+    }
+
+    let escola = alunoRow?.escolas ?? null;
+    if (!escola) {
+      const { data: escolaRow } = await supabase
+        .from("escolas")
+        .select(
+          "id, nome, nif, numero_fiscal, endereco, morada, telefone, email, logo_url, logo, validation_base_url, diretor_nome, diretor_cargo, responsavel"
+        )
+        .eq("id", userEscolaId)
+        .maybeSingle<EscolaSlimRow>();
+      escola = escolaRow ?? null;
     }
 
     // Additional check if aluno.escola_id is different from userEscolaId (should be caught by .eq above but good for defense)
-    if (alunoRow.escola_id !== userEscolaId) {
+    if (alunoRow?.escola_id && alunoRow.escola_id !== userEscolaId) {
       return NextResponse.json({ ok: false, error: "Acesso negado: Aluno não pertence à sua escola" }, { status: 403 });
     }
-
-    const aluno = alunoRow as AlunoRow;
-    const escola = aluno.escolas;
-    const profile = normalizeProfile(aluno.profiles);
-    const matriculas = normalizeMatriculas(aluno.matriculas);
-    const matriculaAtual = matriculas.sort((a, b) => (b.ano_letivo ?? 0) - (a.ano_letivo ?? 0))[0];
-    const turmaAtual = normalizeTurma(matriculaAtual?.turma);
 
     let mensalidadesQuery = supabase
       .from("mensalidades")
       .select(
         `
         id,
+        matricula_id,
         ano_letivo,
         mes_referencia,
         ano_referencia,
@@ -231,6 +255,58 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
         { status: 500 }
       );
     }
+
+    if (!alunoRow && (mensalidades?.length ?? 0) === 0) {
+      return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
+    }
+
+    let fallbackMatriculaAtual: MatriculaRow | null = null;
+    if (!alunoRow) {
+      const fallbackMatriculaId = (mensalidades ?? []).find((row) => row.matricula_id)?.matricula_id ?? null;
+      if (fallbackMatriculaId) {
+        const { data: matriculaRow } = await supabase
+          .from("matriculas")
+          .select(
+            `
+            id,
+            ano_letivo,
+            status,
+            numero_matricula,
+            turma:turmas (
+              id,
+              nome,
+              classe,
+              turno,
+              ano_letivo
+            )
+          `
+          )
+          .eq("id", fallbackMatriculaId)
+          .eq("escola_id", userEscolaId)
+          .maybeSingle<MatriculaRow>();
+        fallbackMatriculaAtual = matriculaRow ?? null;
+      }
+    }
+
+    const aluno = (alunoRow ??
+      ({
+        id: alunoId,
+        nome: "Aluno",
+        bi_numero: null,
+        telefone: null,
+        email: null,
+        responsavel: null,
+        telefone_responsavel: null,
+        escola_id: userEscolaId,
+        profiles: null,
+        matriculas: fallbackMatriculaAtual ? [fallbackMatriculaAtual] : [],
+        escolas: escola,
+      } satisfies AlunoRow)) as AlunoRow;
+
+    const profile = normalizeProfile(aluno.profiles);
+    const matriculas = normalizeMatriculas(aluno.matriculas);
+    const matriculaAtual = matriculas.sort((a, b) => (b.ano_letivo ?? 0) - (a.ano_letivo ?? 0))[0];
+    const turmaAtual = normalizeTurma(matriculaAtual?.turma);
 
     const parcelas = (mensalidades ?? []).map((m) => {
       const valorPrevisto = Number(m.valor_previsto ?? 0);
