@@ -1,6 +1,7 @@
 import SecretariaDashboardPage from "@/app/secretaria/(portal-secretaria)/page";
-import { supabaseServer } from "@/lib/supabaseServer";
 import { getDefaultK12PortalPathForRole } from "@/lib/permissions";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
 
 export default async function SecretariaLandingPage({
@@ -10,7 +11,7 @@ export default async function SecretariaLandingPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ aluno?: string; view?: string; modo?: string }>;
 }) {
-  const { id: escolaId } = await params;
+  const { id: escolaParam } = await params;
   const sp = searchParams ? await searchParams : undefined;
   const supabase = await supabaseServer();
   const {
@@ -19,10 +20,20 @@ export default async function SecretariaLandingPage({
 
   if (!user) return <SecretariaDashboardPage />;
 
+  const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+  const resolvedEscolaId = await resolveEscolaIdForUser(
+    supabase as any,
+    user.id,
+    escolaParam,
+    metaEscolaId ? String(metaEscolaId) : null
+  );
+
+  if (!resolvedEscolaId) return <SecretariaDashboardPage />;
+
   const { data: vinculo } = await supabase
     .from("escola_users")
     .select("papel")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", resolvedEscolaId)
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -32,7 +43,7 @@ export default async function SecretariaLandingPage({
   if (normalizedPapel && normalizedPapel !== "secretaria" && normalizedPapel !== "secretaria_financeiro") {
     const qp = new URLSearchParams(sp as Record<string, string> | undefined);
     const query = qp.toString();
-    const dest = getDefaultK12PortalPathForRole(normalizedPapel, escolaId);
+    const dest = getDefaultK12PortalPathForRole(normalizedPapel, escolaParam);
     redirect(`${dest}${query ? `?${query}` : ""}`);
   }
 

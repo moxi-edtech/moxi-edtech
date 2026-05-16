@@ -7,6 +7,16 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 export const dynamic = 'force-dynamic';
 
 const ACTIVE_MATRICULA_STATUSES = new Set(['ativa', 'ativo']);
+const MENSALIDADES_BATCH_SIZE = 100;
+
+const chunk = <T,>(items: T[], size: number): T[][] => {
+  if (size <= 0) return [items];
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    batches.push(items.slice(i, i + size));
+  }
+  return batches;
+};
 
 const normalizeStatus = (raw?: string | null) => {
   const value = (raw ?? 'pendente').toLowerCase();
@@ -24,12 +34,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const { searchParams } = new URL(request.url);
+    const requestedEscolaId =
+      searchParams.get('escola_id') ||
+      searchParams.get('escolaId') ||
+      null;
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 403 });
     }
-
-    const { searchParams } = new URL(request.url);
     const turmaId = searchParams.get('turmaId');
 
     let query = supabase
@@ -93,66 +107,68 @@ export async function GET(request: Request) {
     }>();
 
     if (alunoIds.length > 0) {
-      let mensalidadesQuery = supabase
-        .from('mensalidades')
-        .select('id, aluno_id, valor, status, data_vencimento')
-        .eq('escola_id', escolaId)
-        .in('aluno_id', alunoIds);
-
-      mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
-        defaultLimit: 10000,
-        maxLimit: 20000,
-        order: [{ column: 'data_vencimento', ascending: false }],
-        tieBreakerColumn: 'id',
-      });
-
-      const { data: mensalidades, error: mensalidadesError } = await mensalidadesQuery;
-      if (mensalidadesError) {
-        console.error('Erro ao resumir mensalidades por aluno:', mensalidadesError);
-        throw mensalidadesError;
-      }
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      for (const mensalidade of mensalidades ?? []) {
-        const key = String((mensalidade as any).aluno_id ?? '');
-        if (!key) continue;
+      for (const alunoIdsBatch of chunk(alunoIds, MENSALIDADES_BATCH_SIZE)) {
+        let mensalidadesQuery = supabase
+          .from('mensalidades')
+          .select('id, aluno_id, valor, status, data_vencimento')
+          .eq('escola_id', escolaId)
+          .in('aluno_id', alunoIdsBatch);
 
-        const current = resumoFinanceiro.get(key) ?? {
-          totalEmDivida: 0,
-          diasAtraso: 0,
-          qtdMensalidadesAtrasadas: 0,
-          possuiMensalidades: false,
-          possuiMensalidadePaga: false,
-          possuiMensalidadeAberta: false,
-        };
+        mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
+          defaultLimit: 5000,
+          maxLimit: 10000,
+          order: [{ column: 'data_vencimento', ascending: false }],
+          tieBreakerColumn: 'id',
+        });
 
-        current.possuiMensalidades = true;
-
-        const status = normalizeStatus((mensalidade as any).status);
-        const dataVencimento = (mensalidade as any).data_vencimento ? new Date((mensalidade as any).data_vencimento) : null;
-        if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
-
-        if (status === 'paga') {
-          current.possuiMensalidadePaga = true;
+        const { data: mensalidades, error: mensalidadesError } = await mensalidadesQuery;
+        if (mensalidadesError) {
+          console.error('Erro ao resumir mensalidades por aluno:', mensalidadesError);
+          throw mensalidadesError;
         }
 
-        const aberta = status !== 'paga' && status !== 'cancelada';
-        if (aberta) {
-          current.possuiMensalidadeAberta = true;
-        }
+        for (const mensalidade of mensalidades ?? []) {
+          const key = String((mensalidade as any).aluno_id ?? '');
+          if (!key) continue;
 
-        const vencida = aberta && !!dataVencimento && dataVencimento.getTime() < today.getTime();
-        if (vencida) {
-          const valor = Number((mensalidade as any).valor ?? 0);
-          const diasAtraso = Math.max(0, Math.floor((today.getTime() - dataVencimento.getTime()) / (1000 * 3600 * 24)));
-          current.totalEmDivida += valor;
-          current.qtdMensalidadesAtrasadas += 1;
-          current.diasAtraso = Math.max(current.diasAtraso, diasAtraso);
-        }
+          const current = resumoFinanceiro.get(key) ?? {
+            totalEmDivida: 0,
+            diasAtraso: 0,
+            qtdMensalidadesAtrasadas: 0,
+            possuiMensalidades: false,
+            possuiMensalidadePaga: false,
+            possuiMensalidadeAberta: false,
+          };
 
-        resumoFinanceiro.set(key, current);
+          current.possuiMensalidades = true;
+
+          const status = normalizeStatus((mensalidade as any).status);
+          const dataVencimento = (mensalidade as any).data_vencimento ? new Date((mensalidade as any).data_vencimento) : null;
+          if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
+
+          if (status === 'paga') {
+            current.possuiMensalidadePaga = true;
+          }
+
+          const aberta = status !== 'paga' && status !== 'cancelada';
+          if (aberta) {
+            current.possuiMensalidadeAberta = true;
+          }
+
+          const vencida = aberta && !!dataVencimento && dataVencimento.getTime() < today.getTime();
+          if (vencida) {
+            const valor = Number((mensalidade as any).valor ?? 0);
+            const diasAtraso = Math.max(0, Math.floor((today.getTime() - dataVencimento.getTime()) / (1000 * 3600 * 24)));
+            current.totalEmDivida += valor;
+            current.qtdMensalidadesAtrasadas += 1;
+            current.diasAtraso = Math.max(current.diasAtraso, diasAtraso);
+          }
+
+          resumoFinanceiro.set(key, current);
+        }
       }
     }
 

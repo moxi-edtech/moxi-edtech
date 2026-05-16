@@ -77,21 +77,36 @@ export function ModuleSwitcherInner({
     router.push(target);
   };
 
+  const alternateModule = modules.find((moduleKey) => moduleKey !== currentModule) ?? null;
+
+  if (!alternateModule) return null;
+
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Módulo</span>
-      <select
-        value={currentModule}
-        onChange={(event) => handleChange(event.target.value as ModuleKey)}
-        className="min-w-[108px] text-xs font-semibold text-slate-700 bg-transparent focus:outline-none"
-        aria-label="Seletor de módulo"
+    <button
+      type="button"
+      onClick={() => handleChange(alternateModule)}
+      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+      aria-label={`Alternar de ${LABELS[currentModule]} para ${LABELS[alternateModule]}`}
+      title={`Alternar para ${LABELS[alternateModule]}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Módulo</span>
+        <span className="text-xs font-bold text-slate-700">{LABELS[currentModule]}</span>
+      </div>
+      <div
+        className="relative h-6 w-12 rounded-full bg-slate-200 transition"
+        role="switch"
+        aria-checked={currentModule === "financeiro"}
       >
-        {modules.map((moduleKey) => (
-          <option key={moduleKey} value={moduleKey}>
-            {LABELS[moduleKey]}
-          </option>
-        ))}
-      </select>
-    </div>
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition-transform ${
+            currentModule === "financeiro" ? "translate-x-6" : "translate-x-0.5"
+          }`}
+        />
+      </div>
+      <span className="hidden text-xs font-semibold text-slate-500 sm:inline">
+        {LABELS[alternateModule]}
+      </span>
+    </button>
   );
 }

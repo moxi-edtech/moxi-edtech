@@ -88,7 +88,7 @@ const TurmaSkeleton = () => (
 
 const TurmasAlunosFinanceiro: React.FC = () => {
   const params = useParams();
-  const escolaId = params?.id as string;
+  const escolaParam = params?.id as string;
   
   // --- States ---
   const [data, setData] = useState<{ turmas: Turma[], alunos: Aluno[] }>({ turmas: [], alunos: [] });
@@ -105,13 +105,14 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
   // --- Data Fetching ---
   useEffect(() => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     const fetchData = async () => {
       setLoading(true);
       try {
+        const escolaQuery = `escola_id=${encodeURIComponent(escolaParam)}`;
         const [turmasRes, alunosRes] = await Promise.all([
-          fetch(`/api/financeiro/turmas`, { cache: 'no-store' }),
-          fetch(`/api/financeiro/alunos`, { cache: 'no-store' })
+          fetch(`/api/financeiro/turmas?${escolaQuery}`, { cache: 'no-store' }),
+          fetch(`/api/financeiro/alunos?${escolaQuery}`, { cache: 'no-store' })
         ]);
         
         const [turmas, alunos] = await Promise.all([
@@ -130,7 +131,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       }
     };
     fetchData();
-  }, [escolaId]);
+  }, [escolaParam]);
 
   // --- Logic Helpers ---
   const toggleTurma = (turmaId: string) => {
@@ -144,7 +145,10 @@ const TurmasAlunosFinanceiro: React.FC = () => {
     if (mensalidadesByAluno[aluno.id]) return;
 
     try {
-      const response = await fetch(`/api/financeiro/mensalidades?alunoId=${aluno.id}`, { cache: 'no-store' });
+      const response = await fetch(
+        `/api/financeiro/mensalidades?alunoId=${encodeURIComponent(aluno.id)}&escola_id=${encodeURIComponent(escolaParam)}`,
+        { cache: 'no-store' }
+      );
       const payload = await response.json();
       setMensalidadesByAluno(prev => ({
         ...prev,
@@ -396,7 +400,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   </button>
                                   {/* Botão Perfil: Slate (Neutro) */}
                                   <Link
-                                    href={buildPortalHref(escolaId, `/admin/alunos/${aluno.id}`)}
+                                    href={buildPortalHref(escolaParam, `/admin/alunos/${aluno.id}`)}
                                     title="Ver Perfil Completo"
                                     className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
                                   >

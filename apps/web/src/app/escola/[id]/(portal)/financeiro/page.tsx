@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { GerarMensalidadesDialog } from "@/app/financeiro/_components/GerarMensalidadesDialog";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
 import { ReciboPrintButton } from "@/components/financeiro/ReciboImprimivel";
@@ -49,11 +50,17 @@ export default async function FinanceiroDashboardPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ aluno?: string; view?: string }>;
 }) {
-  const { id: escolaId } = await params;
+  const { id: escolaParam } = await params;
   const p = (searchParams ? await searchParams : {}) as { aluno?: string; view?: string };
   const { aluno } = p;
   const view = p.view === "atrasos" || p.view === "descontos" || p.view === "fecho" ? p.view : "visao";
   const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const escolaId = user
+    ? await resolveEscolaIdForUser(supabase, user.id, escolaParam)
+    : null;
 
   const cookieHeader = (await cookies()).toString();
   const host = (await headers()).get("host");
@@ -210,7 +217,7 @@ export default async function FinanceiroDashboardPage({
     if (aluno) qp.set("aluno", aluno);
     if (id !== "visao") qp.set("view", id);
     const query = qp.toString();
-    return query ? `/escola/${escolaId}/financeiro?${query}` : `/escola/${escolaId}/financeiro`;
+    return query ? `/escola/${escolaParam}/financeiro?${query}` : `/escola/${escolaParam}/financeiro`;
   };
 
   return (
@@ -219,7 +226,7 @@ export default async function FinanceiroDashboardPage({
         title="Financeiro"
         description="Controlo total do mês em um único ecrã operacional."
         breadcrumbs={[
-          { label: "Início", href: `/escola/${escolaId}` },
+          { label: "Início", href: `/escola/${escolaParam}` },
           { label: "Financeiro" },
         ]}
         actions={
@@ -292,11 +299,11 @@ export default async function FinanceiroDashboardPage({
               <section className="space-y-4">
                 <h2 className="text-lg font-semibold text-slate-900">Acessos rápidos</h2>
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <QuickLink href={`/escola/${escolaId}/financeiro/radar`} title="Cobranças" description="Cobranças e risco por aluno." icon={<Radar className="h-6 w-6" />} />
-                  <QuickLink href={`/escola/${escolaId}/financeiro/radar`} title="Histórico de Cobranças" description="Mensagens, respostas e pagamentos." icon={<Receipt className="h-6 w-6" />} />
-                  <QuickLink href={`/escola/${escolaId}/financeiro/conciliacao`} title="Conciliação TPA" description="Concilie Multicaixa/TPA sem ruído." icon={<Scale className="h-6 w-6" />} />
-                  <QuickLink href={`/escola/${escolaId}/financeiro/relatorios`} title="Relatórios Financeiros" description="Análise completa para decisão." icon={<BarChart3 className="h-6 w-6" />} />
-                  <QuickLink href={`/escola/${escolaId}/financeiro/fiscal`} title="Fiscal & Compliance" description="Operação fiscal, SAF-T e auditoria interna." icon={<ClipboardCheck className="h-6 w-6" />} />
+                  <QuickLink href={`/escola/${escolaParam}/financeiro/radar`} title="Cobranças" description="Cobranças e risco por aluno." icon={<Radar className="h-6 w-6" />} />
+                  <QuickLink href={`/escola/${escolaParam}/financeiro/radar`} title="Histórico de Cobranças" description="Mensagens, respostas e pagamentos." icon={<Receipt className="h-6 w-6" />} />
+                  <QuickLink href={`/escola/${escolaParam}/financeiro/conciliacao`} title="Conciliação TPA" description="Concilie Multicaixa/TPA sem ruído." icon={<Scale className="h-6 w-6" />} />
+                  <QuickLink href={`/escola/${escolaParam}/financeiro/relatorios`} title="Relatórios Financeiros" description="Análise completa para decisão." icon={<BarChart3 className="h-6 w-6" />} />
+                  <QuickLink href={`/escola/${escolaParam}/financeiro/fiscal`} title="Fiscal & Compliance" description="Operação fiscal, SAF-T e auditoria interna." icon={<ClipboardCheck className="h-6 w-6" />} />
                 </div>
               </section>
             </>
@@ -309,7 +316,7 @@ export default async function FinanceiroDashboardPage({
                   <h2 className="text-lg font-semibold text-slate-900">Em Atraso</h2>
                   <p className="text-xs text-slate-500">Ação direta por linha: cobrar ou regularizar.</p>
                 </div>
-                <Link href={`/escola/${escolaId}/financeiro/radar`} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+                <Link href={`/escola/${escolaParam}/financeiro/radar`} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
                   Abrir gestão de cobranças
                 </Link>
               </div>
@@ -325,10 +332,10 @@ export default async function FinanceiroDashboardPage({
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-bold text-rose-600">{kwanza.format(Number(row.valor_em_atraso ?? 0))}</div>
-                        <Link href={`/escola/${escolaId}/financeiro/pagamentos?aluno=${row.aluno_id}`} className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
+                        <Link href={`/escola/${escolaParam}/financeiro/pagamentos?aluno=${row.aluno_id}`} className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
                           Registar
                         </Link>
-                        <Link href={`/escola/${escolaId}/financeiro/radar?aluno=${row.aluno_id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                        <Link href={`/escola/${escolaParam}/financeiro/radar?aluno=${row.aluno_id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
                           Avisar
                         </Link>
                       </div>
@@ -344,11 +351,11 @@ export default async function FinanceiroDashboardPage({
               <h2 className="text-lg font-semibold text-slate-900">Descontos e Isenções</h2>
               <p className="mt-1 text-xs text-slate-500">Ajuste de política e revisão sem sair do fluxo financeiro.</p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <Link href={`/escola/${escolaId}/financeiro/tabelas-mensalidade`} className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                <Link href={`/escola/${escolaParam}/financeiro/tabelas-mensalidade`} className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
                   Tabelas de mensalidade
                   <p className="mt-1 text-xs font-normal text-slate-500">Configurar preço-base e regras por turma.</p>
                 </Link>
-                <Link href={`/escola/${escolaId}/financeiro/configuracoes/precos`} className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                <Link href={`/escola/${escolaParam}/financeiro/configuracoes/precos`} className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
                   Preços e benefícios
                   <p className="mt-1 text-xs font-normal text-slate-500">Revisar descontos activos e pendências.</p>
                 </Link>
@@ -367,10 +374,10 @@ export default async function FinanceiroDashboardPage({
                 <ChecklistItem ok={totalPendentes === 0} label="Conciliações pendentes resolvidas" detail={`${totalPendentes} pendências`} />
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <Link href={`/escola/${escolaId}/financeiro/fecho`} className="rounded-lg bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
+                <Link href={`/escola/${escolaParam}/financeiro/fecho`} className="rounded-lg bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
                   Abrir fecho do mês
                 </Link>
-                <Link href={`/escola/${escolaId}/financeiro/relatorios/fluxo-caixa`} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                <Link href={`/escola/${escolaParam}/financeiro/relatorios/fluxo-caixa`} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
                   Relatório de fluxo
                 </Link>
               </div>
@@ -431,7 +438,7 @@ export default async function FinanceiroDashboardPage({
                             )}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            {mens.status !== "pago" ? (
+                            {mens.status !== "pago" && escolaId ? (
                               <RegistrarPagamentoButton 
                                 escolaId={escolaId}
                                 alunoId={aluno || ""}
@@ -440,6 +447,8 @@ export default async function FinanceiroDashboardPage({
                                 valor={mens.valor_previsto ?? mens.valor ?? 0}
                                 descricao={`Propina ${new Date(0, (mens.mes_referencia || 1) - 1).toLocaleString("pt-PT", { month: "short" })}/${mens.ano_referencia}`}
                               />
+                            ) : mens.status !== "pago" ? (
+                              <span className="text-xs text-slate-400">Escola indisponível</span>
                             ) : (
                               <div className="flex flex-wrap items-center justify-end gap-2">
                                 <ReciboPrintButton
@@ -470,7 +479,7 @@ export default async function FinanceiroDashboardPage({
                 <h2 className="text-lg font-semibold text-slate-900">Pagamentos do dia</h2>
                 <p className="text-xs text-slate-500">Total acumulado: {kwanza.format(totalPagamentosHoje)}</p>
               </div>
-              <Link href={`/escola/${escolaId}/financeiro/pagamentos`} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+              <Link href={`/escola/${escolaParam}/financeiro/pagamentos`} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
                 Ver todos
               </Link>
             </div>

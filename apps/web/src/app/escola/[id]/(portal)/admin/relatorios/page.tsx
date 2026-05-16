@@ -409,7 +409,7 @@ export default async function Page(props: {
   params: Promise<{ id: string }>;
   searchParams?: Promise<SearchParams>;
 }) {
-  const { id: escolaId } = await props.params;
+  const { id: escolaParam } = await props.params;
   const searchParams = (await props.searchParams) ?? {};
 
   const supabase = await supabaseServer();
@@ -418,7 +418,7 @@ export default async function Page(props: {
   } = await supabase.auth.getUser();
   if (!user) redirect("/redirect");
 
-  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaParam);
   if (!resolvedEscolaId) redirect("/redirect");
 
   const { data: escolaInfo } = await supabase
@@ -426,7 +426,7 @@ export default async function Page(props: {
     .select("slug")
     .eq("id", resolvedEscolaId)
     .maybeSingle();
-  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId;
+  const escolaSlug = escolaInfo?.slug ? String(escolaInfo.slug) : escolaParam;
 
   const q = (searchParams.q ?? "").trim();
   const portal = PORTAIS_SET.has(searchParams.portal ?? "")
@@ -436,13 +436,13 @@ export default async function Page(props: {
   const days = parseDays(searchParams.days);
   const since = sinceFromDays(days);
 
-  const basePath = buildPortalHref(escolaParam, "/admin/relatorios");
-  const adminHref = buildPortalHref(escolaParam, "/admin");
+  const basePath = buildPortalHref(escolaSlug, "/admin/relatorios");
+  const adminHref = buildPortalHref(escolaSlug, "/admin");
 
   let query = supabase
     .from("audit_logs")
     .select("id, created_at, action, entity, entity_id, details")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", resolvedEscolaId)
     .eq("portal", portal)
     .gte("created_at", since)
     .order("created_at", { ascending: false })

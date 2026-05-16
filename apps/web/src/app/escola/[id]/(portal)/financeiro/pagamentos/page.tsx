@@ -2,6 +2,8 @@ import Link from "next/link";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { PagamentosListClient } from "@/components/financeiro/PagamentosListClient";
 import { FilaValidacaoPagamentos } from "@/components/financeiro/FilaValidacaoPagamentos";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +13,15 @@ export default async function Page(props: {
   params: Promise<{ id: string }>,
   searchParams?: Promise<SearchParams> 
 }) {
-  const { id: escolaId } = await props.params;
+  const { id: escolaParam } = await props.params;
   const searchParams = (await props.searchParams) ?? ({} as SearchParams);
   const q = searchParams.q || "";
   const days = searchParams.days || "30";
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id, escolaParam) : null;
 
   return (
     <div className="space-y-8">
@@ -22,15 +29,15 @@ export default async function Page(props: {
         title="Pagamentos"
         description="Histórico e acompanhamento das transações."
         breadcrumbs={[
-          { label: "Início", href: `/escola/${escolaId}` },
-          { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+          { label: "Início", href: `/escola/${escolaParam}` },
+          { label: "Financeiro", href: `/escola/${escolaParam}/financeiro` },
           { label: "Pagamentos" },
         ]}
       />
 
       {/* Fila de Validação (Apenas aparece se houver pendentes) */}
       <section>
-        <FilaValidacaoPagamentos escolaId={escolaId} />
+        {escolaId ? <FilaValidacaoPagamentos escolaId={escolaId} /> : null}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -41,7 +48,7 @@ export default async function Page(props: {
               {["1", "7", "30", "90"].map((d) => (
                 <Link
                   key={d}
-                  href={`/escola/${escolaId}/financeiro/pagamentos?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
+                  href={`/escola/${escolaParam}/financeiro/pagamentos?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`rounded-full border px-3 py-1.5 font-semibold transition ${
                     days === d
                       ? "border-klasse-green-600 bg-klasse-green-600 text-white"
@@ -53,7 +60,7 @@ export default async function Page(props: {
               ))}
               <span className="mx-2 h-4 w-px bg-slate-200" />
               <Link
-                href={`/escola/${escolaId}/financeiro/pagamentos/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
+                href={`/escola/${escolaParam}/financeiro/pagamentos/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:border-klasse-green-200 hover:text-klasse-green-700"
                 target="_blank"
                 rel="noreferrer"
@@ -61,7 +68,7 @@ export default async function Page(props: {
                 Exportar CSV
               </Link>
               <Link
-                href={`/escola/${escolaId}/financeiro/pagamentos/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
+                href={`/escola/${escolaParam}/financeiro/pagamentos/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:border-klasse-green-200 hover:text-klasse-green-700"
                 target="_blank"
                 rel="noreferrer"
@@ -85,7 +92,7 @@ export default async function Page(props: {
         </div>
 
         <div className="mt-6">
-          <PagamentosListClient escolaId={escolaId} />
+          {escolaId ? <PagamentosListClient escolaId={escolaId} /> : null}
         </div>
       </section>
     </div>
