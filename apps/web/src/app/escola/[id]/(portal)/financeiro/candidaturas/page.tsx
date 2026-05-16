@@ -1,4 +1,5 @@
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
 import { FinanceiroCandidaturasInbox } from '@/app/financeiro/_components/CandidaturasInbox'
 
@@ -8,15 +9,21 @@ type Props = {
 }
 
 export default async function FinanceiroCandidaturasPage({ params, searchParams }: Props) {
-  const { id: escolaId } = await params;
+  const { id: escolaParam } = await params;
   const supabase = await supabaseServer()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id, escolaParam) : null
 
-  const { data } = await supabase
-    .from('candidaturas')
-    .select('id, nome_candidato, curso_id, classe_id, turma_preferencial_id, status, created_at, dados_candidato, cursos(nome)')
-    .eq('escola_id', escolaId)
-    .in('status', ['aguardando_compensacao', 'aguardando_pagamento'])
-    .order('created_at', { ascending: false })
+  const { data } = escolaId
+    ? await supabase
+        .from('candidaturas')
+        .select('id, nome_candidato, curso_id, classe_id, turma_preferencial_id, status, created_at, dados_candidato, cursos(nome)')
+        .eq('escola_id', escolaId)
+        .in('status', ['aguardando_compensacao', 'aguardando_pagamento'])
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
   const items = (data || []).map((c: any) => ({
     id: c.id,
@@ -37,16 +44,18 @@ export default async function FinanceiroCandidaturasPage({ params, searchParams 
         title="Inbox de Candidaturas"
         description="Compense pagamentos, valide comprovativos e converta em matrículas."
         breadcrumbs={[
-          { label: "Início", href: `/escola/${escolaId}` },
-          { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+          { label: "Início", href: `/escola/${escolaParam}` },
+          { label: "Financeiro", href: `/escola/${escolaParam}/financeiro` },
           { label: "Candidaturas" },
         ]}
       />
-      <FinanceiroCandidaturasInbox
-        escolaId={escolaId}
-        initialItems={items}
-        initialSelectedId={selectedId}
-      />
+      {escolaId ? (
+        <FinanceiroCandidaturasInbox
+          escolaId={escolaId}
+          initialItems={items}
+          initialSelectedId={selectedId}
+        />
+      ) : null}
     </main>
   )
 }

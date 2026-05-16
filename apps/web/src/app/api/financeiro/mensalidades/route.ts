@@ -22,12 +22,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const { searchParams } = new URL(request.url);
+    const requestedEscolaId =
+      searchParams.get('escola_id') ||
+      searchParams.get('escolaId') ||
+      null;
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 403 });
     }
-
-    const { searchParams } = new URL(request.url);
     const alunoId = searchParams.get('alunoId');
     const turmaId = searchParams.get('turmaId');
 

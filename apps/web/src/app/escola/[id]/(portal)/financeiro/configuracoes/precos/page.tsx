@@ -1,6 +1,7 @@
 import AuditPageView from "@/components/audit/AuditPageView"
 import PrecosClient from "@/app/escola/[id]/(portal)/financeiro/configuracoes/precos/PrecosClient"
 import { supabaseServer } from "@/lib/supabaseServer"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal"
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton"
 import Link from "next/link"
@@ -8,16 +9,22 @@ import Link from "next/link"
 export const dynamic = "force-dynamic"
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id: escolaId } = await params;
+  const { id: escolaParam } = await params;
   const s = await supabaseServer()
+  const {
+    data: { user },
+  } = await s.auth.getUser()
+  const escolaId = user ? await resolveEscolaIdForUser(s, user.id, escolaParam) : null
 
-  const { data: pendencias } = await s
-    .from('mensalidades')
-    .select('id, valor_previsto, data_vencimento, status, aluno_id, alunos(nome_completo, nome)')
-    .eq('escola_id', escolaId)
-    .neq('status', 'pago')
-    .order('data_vencimento', { ascending: true })
-    .limit(5)
+  const { data: pendencias } = escolaId
+    ? await s
+        .from('mensalidades')
+        .select('id, valor_previsto, data_vencimento, status, aluno_id, alunos(nome_completo, nome)')
+        .eq('escola_id', escolaId)
+        .neq('status', 'pago')
+        .order('data_vencimento', { ascending: true })
+        .limit(5)
+    : { data: [] }
 
   return (
     <>
@@ -29,9 +36,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <p className="text-sm text-slate-600">Configure valores e gere cobranças a partir desta escola.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <GerarMensalidadesModal escolaId={escolaId} />
+          {escolaId ? <GerarMensalidadesModal escolaId={escolaId} /> : null}
           <Link
-            href={`/escola/${escolaId}/financeiro`}
+            href={`/escola/${escolaParam}/financeiro`}
             className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
           >
             Ver painel financeiro
@@ -57,14 +64,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                     <div className="text-sm font-medium text-gray-800">{alunoNome}</div>
                     <div className="text-xs text-gray-500">Vence: {p.data_vencimento ? new Date(p.data_vencimento).toLocaleDateString('pt-PT') : '—'} · {(p.valor_previsto ?? 0).toLocaleString('pt-AO')} Kz</div>
                   </div>
-                  <RegistrarPagamentoButton 
-                    escolaId={escolaId}
-                    alunoId={p.aluno_id || ""}
-                    alunoNome={alunoNome}
-                    mensalidadeId={p.id}
-                    valor={p.valor_previsto ?? 0}
-                    descricao={`Propina (Configurações)`}
-                  />
+                  {escolaId ? (
+                    <RegistrarPagamentoButton 
+                      escolaId={escolaId}
+                      alunoId={p.aluno_id || ""}
+                      alunoNome={alunoNome}
+                      mensalidadeId={p.id}
+                      valor={p.valor_previsto ?? 0}
+                      descricao={`Propina (Configurações)`}
+                    />
+                  ) : null}
                 </div>
               );
             })}
@@ -73,7 +82,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       )}
 
       <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 md:p-6">
-        <PrecosClient escolaId={escolaId} />
+        {escolaId ? (
+          <PrecosClient escolaId={escolaId} />
+        ) : (
+          <div className="text-sm text-slate-500">Escola não identificada para carregar o preçário.</div>
+        )}
       </div>
     </>
   )

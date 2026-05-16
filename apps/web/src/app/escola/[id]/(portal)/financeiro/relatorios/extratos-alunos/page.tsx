@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
 
 export const dynamic = 'force-dynamic'
@@ -13,24 +14,30 @@ export default async function Page({
   params: Promise<{ id: string }>;
   searchParams?: Promise<SearchParams>;
 }) {
-  const { id: escolaId } = await params;
+  const { id: escolaParam } = await params;
   const searchParams = (await sParams) ?? ({} as SearchParams)
   const q = (searchParams.q || '').trim()
   const s = await supabaseServer()
+  const {
+    data: { user },
+  } = await s.auth.getUser()
+  const escolaId = user ? await resolveEscolaIdForUser(s, user.id, escolaParam) : null
 
   let alunos: { id: string; nome: string | null; bi_numero: string | null; responsavel: string | null; telefone_responsavel: string | null }[] = []
   
-  let query = s
-    .from('alunos')
-    .select('id, nome, bi_numero, responsavel, telefone_responsavel')
-    .eq('escola_id', escolaId)
-    .order('nome', { ascending: true })
-    .limit(50)
+  if (escolaId) {
+    let query = s
+      .from('alunos')
+      .select('id, nome, bi_numero, responsavel, telefone_responsavel')
+      .eq('escola_id', escolaId)
+      .order('nome', { ascending: true })
+      .limit(50)
 
-  if (q) query = query.ilike('nome', `%${q}%`)
+    if (q) query = query.ilike('nome', `%${q}%`)
 
-  const { data } = await query
-  alunos = (data ?? []) as any
+    const { data } = await query
+    alunos = (data ?? []) as typeof alunos
+  }
 
   return (
     <div className="space-y-4">

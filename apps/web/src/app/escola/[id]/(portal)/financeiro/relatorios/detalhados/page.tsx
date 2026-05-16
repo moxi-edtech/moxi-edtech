@@ -1,5 +1,6 @@
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import Link from "next/link";
 
@@ -15,9 +16,13 @@ export default async function Page({
   params: Promise<{ id: string }>;
   searchParams?: Promise<SearchParams>;
 }) {
-  const { id: escolaId } = await params;
+  const { id: escolaParam } = await params;
   const searchParams = (await sParams) ?? ({} as SearchParams)
   const s = await supabaseServer()
+  const {
+    data: { user },
+  } = await s.auth.getUser()
+  const escolaId = user ? await resolveEscolaIdForUser(s, user.id, escolaParam) : null
 
   const q = searchParams.q || ''
   const days = searchParams.days || '30'
@@ -30,20 +35,23 @@ export default async function Page({
     return dt.toISOString()
   })()
 
-  let query = s
-    .from('audit_logs')
-    .select('id, created_at, action, entity, entity_id, details')
-    .eq('escola_id', escolaId)
-    .eq('portal', 'financeiro')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(50)
+  let logs: Array<Database['public']['Tables']['audit_logs']['Row']> = []
+  if (escolaId) {
+    let query = s
+      .from('audit_logs')
+      .select('id, created_at, action, entity, entity_id, details')
+      .eq('escola_id', escolaId)
+      .eq('portal', 'financeiro')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(50)
 
-  if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`)
+    if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`)
 
-  const { data } = await query
-  const logs = (data ?? []) as Array<Database['public']['Tables']['audit_logs']['Row']>
+    const { data } = await query
+    logs = (data ?? []) as Array<Database['public']['Tables']['audit_logs']['Row']>
+  }
 
   return (
     <>
@@ -57,7 +65,7 @@ export default async function Page({
               {['1', '7', '30', '90'].map((d) => (
                 <Link
                   key={d}
-                  href={`/escola/${escolaId}/financeiro/relatorios/detalhados?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
+                  href={`/escola/${escolaParam}/financeiro/relatorios/detalhados?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`px-2.5 py-1 rounded border ${
                     days === d
                       ? 'bg-slate-600 text-white border-slate-600'
