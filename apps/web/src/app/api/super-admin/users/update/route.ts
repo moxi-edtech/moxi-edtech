@@ -6,6 +6,7 @@ import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { allowedPapeisSet } from '@/lib/roles'
 import { PayloadLimitError, readJsonWithLimit } from '@/lib/http/readJsonWithLimit'
+import { deriveSuperAdminSchoolRoleAssignment } from '@/lib/superAdminRoleAssignment'
 import { z } from 'zod'
 
 const SUPER_ADMIN_USERS_UPDATE_MAX_JSON_BYTES = 64 * 1024 // 64KB
@@ -21,7 +22,6 @@ const UpdateBodySchema = z.object({
   userId: z.string().uuid(),
   updates: UserUpdatesSchema.default({}),
 })
-type EscolaUserPapel = Exclude<Database['public']['Tables']['escola_users']['Insert']['papel'], null | undefined>
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 type EscolaUserLink = { escola_id: string }
 type AuthUserLookup = { user?: { id?: string | null } | null }
@@ -122,25 +122,15 @@ export async function POST(request: Request) {
     if (updates.escola_id !== undefined) profilePatch.escola_id = updates.escola_id
 
     // Manter vínculo com escola e papel
-    // Helper: normalize papel_escola to match DB constraint and validate
-    const normalizePapel = (p: string | null | undefined): EscolaUserPapel | null => {
-      if (!p) return null
-      const legacyMap: Record<string, string> = {
-        diretor: 'admin_escola',
-        administrador: 'admin',
-        secretario: 'secretaria',
-        coordenador: 'admin_escola',
-      }
-      return (legacyMap[p] || p) as EscolaUserPapel
-    }
     const allowedPapeis = allowedPapeisSet
 
     if (updates.escola_id !== undefined) {
       const escolaId = updates.escola_id
-      const normalizedRole = normalizePapel(updates.role)
-      const papel =
-        normalizePapel(updates.papel_escola) ??
-        (normalizedRole && allowedPapeis.has(normalizedRole) ? normalizedRole : null)
+      const assignment = deriveSuperAdminSchoolRoleAssignment({
+        role: updates.role,
+        papelEscola: updates.papel_escola,
+      })
+      const papel = assignment.papel
       if (papel && !allowedPapeis.has(papel)) {
         return NextResponse.json({ ok: false, error: `Papel inválido: ${papel}` }, { status: 400 })
       }
@@ -148,7 +138,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: 'Papel da escola é obrigatório.' }, { status: 400 })
       }
 
-      if (papel) profilePatch.role = papel as Database['public']['Enums']['user_role']
+      if (assignment.profileRole) profilePatch.role = assignment.profileRole
 
       // Busca vínculos existentes
       const { data: vincs, error: vErr } = await s
@@ -165,6 +155,7 @@ export async function POST(request: Request) {
           if (delV) return NextResponse.json({ ok: false, error: delV.message }, { status: 400 })
         }
         profilePatch.escola_id = null
+        profilePatch.current_escola_id = null
       } else {
         const hasSame = links.some((v) => String(v.escola_id) === String(escolaId))
         // Remove vínculos de outras escolas, mantendo/ajustando apenas a atual
@@ -192,13 +183,15 @@ export async function POST(request: Request) {
 
         // Garante escola_id no profile
         profilePatch.escola_id = escolaId
+        profilePatch.current_escola_id = escolaId
       }
     } else if (updates.papel_escola !== undefined) {
       // Se apenas papel mudar, tenta aplicar no vínculo atual (se existir)
-      const normalizedRole = normalizePapel(updates.role)
-      const papelFromPayload = normalizePapel(updates.papel_escola)
-      const papelToUse =
-        papelFromPayload ?? (normalizedRole && allowedPapeis.has(normalizedRole) ? normalizedRole : null)
+      const assignment = deriveSuperAdminSchoolRoleAssignment({
+        role: updates.role,
+        papelEscola: updates.papel_escola,
+      })
+      const papelToUse = assignment.papel
 
       const { data: vinc, error: vErr } = await s
         .from('escola_users')
@@ -211,7 +204,7 @@ export async function POST(request: Request) {
         if (papelToUse && !allowedPapeis.has(papelToUse)) {
           return NextResponse.json({ ok: false, error: `Papel inválido: ${papelToUse}` }, { status: 400 })
         }
-        if (papelToUse) profilePatch.role = papelToUse as Database['public']['Enums']['user_role']
+        if (assignment.profileRole) profilePatch.role = assignment.profileRole
         const { error: upV } = await s
           .from('escola_users')
           .update({ papel: papelToUse ?? undefined })

@@ -78,6 +78,15 @@ function formatKz(valor?: number) {
     .format(valor);
 }
 
+function useDebounce<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 function SituacaoFinanceiraChip({ situacao, meses, valor }: {
   situacao: SituacaoFinanceira;
   meses?:   number;
@@ -707,6 +716,7 @@ export default function AlunosListClient({
   // ── Estado principal ────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState<"ativos" | "arquivados">("ativos");
   const [q,            setQ]            = useState("");
+  const debouncedQ                       = useDebounce(q, 300);
   const [alunos,       setAlunos]       = useState<Aluno[]>(initialAlunos);
   const [turmas,       setTurmas]       = useState<Turma[]>(initialTurmas);
   const [nextCursor,   setNextCursor]   = useState<string | null>(initialCursor);
@@ -719,6 +729,7 @@ export default function AlunosListClient({
   // ── Filtros ─────────────────────────────────────────────────────────────────
   const [filtros,      setFiltros]      = useState<Filtros>(FILTROS_VAZIOS);
   const [showFiltros,  setShowFiltros]  = useState(false);
+  const [orderBy,      setOrderBy]      = useState<"" | "nome_asc">("");
 
   // ── Exportação ──────────────────────────────────────────────────────────────
   const [showExport,   setShowExport]   = useState(false);
@@ -745,10 +756,11 @@ export default function AlunosListClient({
     try {
       const url = new URL(`/api/escolas/${escolaId}/admin/alunos`, window.location.origin);
       url.searchParams.set("status", tab === "ativos" ? "active" : "archived");
-      if (q.trim())                        url.searchParams.set("q", q.trim());
+      if (debouncedQ.trim())               url.searchParams.set("q", debouncedQ.trim());
       if (filtros.situacao_financeira)     url.searchParams.set("situacao_financeira", filtros.situacao_financeira);
       if (filtros.turma_id)                url.searchParams.set("turma_id", filtros.turma_id);
       if (filtros.status_matricula)        url.searchParams.set("status_matricula", filtros.status_matricula);
+      if (orderBy)                         url.searchParams.set("order_by", orderBy);
       url.searchParams.set("limit", "30");
       if (opts?.cursor)                    url.searchParams.set("cursor", opts.cursor);
 
@@ -766,9 +778,10 @@ export default function AlunosListClient({
     } finally {
       opts?.append ? setLoadingMore(false) : setLoading(false);
     }
-  }, [escolaId, tab, q, filtros]);
+  }, [debouncedQ, escolaId, filtros, orderBy, tab]);
 
   const initialRender = useRef(true);
+  const searchInitialRender = useRef(true);
 
   useEffect(() => {
     if (initialRender.current && initialAlunos.length > 0) {
@@ -778,7 +791,17 @@ export default function AlunosListClient({
     setNextCursor(null);
     setSelected(new Set());
     fetchAlunos();
-  }, [tab, filtros, fetchAlunos]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, filtros, orderBy, fetchAlunos]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (searchInitialRender.current) {
+      searchInitialRender.current = false;
+      return;
+    }
+    setNextCursor(null);
+    setSelected(new Set());
+    fetchAlunos();
+  }, [debouncedQ, fetchAlunos]);
 
   useEffect(() => {
     if (initialTurmas.length > 0) return;
@@ -1107,6 +1130,15 @@ export default function AlunosListClient({
               Pesquisar
             </button>
           </form>
+
+          <select
+            value={orderBy}
+            onChange={e => { setOrderBy(e.target.value as "" | "nome_asc"); setNextCursor(null); }}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30"
+          >
+            <option value="">Mais recentes</option>
+            <option value="nome_asc">Nome A-Z</option>
+          </select>
 
           {/* Filtros */}
           <div className="relative">

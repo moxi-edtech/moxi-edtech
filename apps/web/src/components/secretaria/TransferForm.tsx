@@ -5,6 +5,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 
 interface TransferFormProps {
   matriculaId: string;
+  currentTurmaId: string;
   anoLetivo?: number | null;
   onSuccess: () => void;
 }
@@ -15,6 +16,9 @@ interface Turma {
   turma_nome?: string;
   classe_nome?: string;
   turno?: string;
+  curso_id?: string | null;
+  classe_id?: string | null;
+  ano_letivo?: number | string | null;
 }
 
 interface ImpactoTransferencia {
@@ -31,13 +35,23 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: TransferFormProps) {
+export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, onSuccess }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [impacto, setImpacto] = useState<ImpactoTransferencia | null>(null);
   const [checking, setChecking] = useState(false);
+
+  const turmaAtual = turmas.find((turma) => turma.id === currentTurmaId) ?? null;
+  const turmasCompativeis = turmaAtual
+    ? turmas.filter((turma) =>
+        turma.id !== turmaAtual.id &&
+        Number(turma.ano_letivo ?? 0) === Number(turmaAtual.ano_letivo ?? 0) &&
+        turma.curso_id === turmaAtual.curso_id &&
+        turma.classe_id === turmaAtual.classe_id
+      )
+    : [];
 
   useEffect(() => {
     const fetchTurmas = async () => {
@@ -118,7 +132,7 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
           disabled={!anoLetivo}
         >
           <option value="">Selecione uma turma</option>
-          {turmas.map((turma) => {
+          {turmasCompativeis.map((turma) => {
             const displayName = turma.turma_nome || turma.nome || "Turma sem nome";
             const details = [turma.turno, turma.classe_nome].filter(Boolean).join(" • ");
             return (
@@ -139,6 +153,18 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
       {!anoLetivo && (
         <p className="text-sm text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 rounded-lg p-3">
           Selecione um ano letivo para listar as turmas disponíveis.
+        </p>
+      )}
+
+      {anoLetivo && turmaAtual && turmasCompativeis.length === 0 && (
+        <p className="text-sm text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 rounded-lg p-3">
+          Não há outra turma disponível da mesma classe e do mesmo curso para esta transferência.
+        </p>
+      )}
+
+      {anoLetivo && !turmaAtual && (
+        <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3">
+          Não foi possível identificar a turma actual da matrícula para filtrar destinos compatíveis.
         </p>
       )}
 

@@ -5,6 +5,7 @@ import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { roleMatchesAllowedRoles } from '@/lib/permissions'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -58,7 +59,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id)
     }
     const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro','secretaria_financeiro','admin_financeiro']
-    if (!role || !allowedRoles.includes(role)) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    if (!roleMatchesAllowedRoles(role, allowedRoles, 'k12')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 
     let alunoQuery = s
@@ -194,7 +195,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const role = (prof as any)?.role as string | undefined
     const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
     const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro','secretaria_financeiro','admin_financeiro']
-    if (!role || !allowedRoles.includes(role)) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    if (!roleMatchesAllowedRoles(role, allowedRoles, 'k12')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 
     // fetch aluno to get profile_id/escola_id

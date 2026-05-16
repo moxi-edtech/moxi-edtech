@@ -432,7 +432,14 @@ export default async function FinanceiroDashboardPage({
                           </td>
                           <td className="px-6 py-4 text-right">
                             {mens.status !== "pago" ? (
-                              <RegistrarPagamentoButton mensalidadeId={mens.id} valor={mens.valor_previsto ?? mens.valor ?? 0} />
+                              <RegistrarPagamentoButton 
+                                escolaId={escolaId}
+                                alunoId={aluno || ""}
+                                alunoNome={alunoNome}
+                                mensalidadeId={mens.id}
+                                valor={mens.valor_previsto ?? mens.valor ?? 0}
+                                descricao={`Propina ${new Date(0, (mens.mes_referencia || 1) - 1).toLocaleString("pt-PT", { month: "short" })}/${mens.ano_referencia}`}
+                              />
                             ) : (
                               <div className="flex flex-wrap items-center justify-end gap-2">
                                 <ReciboPrintButton

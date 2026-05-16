@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type EscolaUserRow = Database["public"]["Tables"]["escola_users"]["Row"];
@@ -27,13 +28,19 @@ export async function canManageEscolaResources(
 
     // Perfis vinculados à escola com funções operacionais
     if (
-      (role === "admin" ||
-        role === "admin_escola" ||
-        role === "financeiro" ||
-        role === "secretaria" ||
-        role === "secretaria_financeiro" ||
-        role === "admin_financeiro" ||
-        role === "gestor") &&
+      roleMatchesAllowedRoles(
+        role,
+        [
+          "admin",
+          "admin_escola",
+          "financeiro",
+          "secretaria",
+          "secretaria_financeiro",
+          "admin_financeiro",
+          "gestor",
+        ],
+        "k12"
+      ) &&
       escolaFromProfile === escolaId
     )
       return true;

@@ -6,6 +6,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { allowedPapeisSet } from "@/lib/roles";
 import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
+import { deriveSuperAdminSchoolRoleAssignment } from "@/lib/superAdminRoleAssignment";
 import { buildCredentialsEmail, buildInviteEmail, sendMail } from "@/lib/mailer";
 import { z } from "zod";
 // ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
@@ -76,6 +77,11 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    const assignment = deriveSuperAdminSchoolRoleAssignment({
+      role: roleEnum,
+      papelEscola: papelDb,
+    });
+    const effectiveRoleEnum = assignment.profileRole ?? roleEnum;
 
     // 1) Password helpers
     const isStrongPassword = (pwd: string) => {
@@ -139,10 +145,10 @@ export async function POST(request: Request) {
           email_confirm: true,
           user_metadata: {
             nome,
-            role: roleEnum,
+            role: effectiveRoleEnum,
             must_change_password: true,
           },
-          app_metadata: { role: roleEnum, escola_id: escolaId },
+          app_metadata: { role: effectiveRoleEnum, escola_id: escolaId },
         })) as CreateAuthUserResult;
       } catch (err) {
         error = err;
@@ -202,7 +208,7 @@ export async function POST(request: Request) {
             email: email.trim().toLowerCase(),
             nome: nome.trim(),
             telefone: telefone || null,
-            role: roleEnum,
+            role: effectiveRoleEnum,
             escola_id: escolaId,
             current_escola_id: escolaId,
           },

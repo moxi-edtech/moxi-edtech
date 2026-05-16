@@ -4,6 +4,7 @@ import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { recordAuditServer } from "@/lib/audit";
 import { assertPortalAccess } from "@/lib/portalAccess";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -41,7 +42,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null;
     const allowedRoles = ["super_admin", "admin", "secretaria", "secretaria_financeiro", "admin_financeiro"];
 
-    if (!role || !allowedRoles.includes(role)) {
+    if (!roleMatchesAllowedRoles(role, allowedRoles, "k12")) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 

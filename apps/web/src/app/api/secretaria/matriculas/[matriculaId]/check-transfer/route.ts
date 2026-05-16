@@ -96,6 +96,39 @@ export async function GET(request: Request, { params }: { params: Promise<{ matr
 
     const target = targetView.data as any;
     const origin = originView.data as any;
+
+    if (!origin) {
+      return NextResponse.json({ ok: false, error: "Turma de origem não encontrada" }, { status: 404 });
+    }
+
+    if (target.id === origin.id) {
+      return NextResponse.json(
+        { ok: false, error: "Selecione uma turma destino diferente da turma actual." },
+        { status: 400 }
+      );
+    }
+
+    if (Number(target.ano_letivo ?? 0) !== Number(origin.ano_letivo ?? 0)) {
+      return NextResponse.json(
+        { ok: false, error: "Transferência interna exige o mesmo ano letivo." },
+        { status: 409 }
+      );
+    }
+
+    if ((origin.classe_id ?? null) !== (target.classe_id ?? null)) {
+      return NextResponse.json(
+        { ok: false, error: "Transferência interna exige a mesma classe." },
+        { status: 409 }
+      );
+    }
+
+    if ((origin.curso_id ?? null) !== (target.curso_id ?? null)) {
+      return NextResponse.json(
+        { ok: false, error: "Transferência interna exige o mesmo curso." },
+        { status: 409 }
+      );
+    }
+
     const capacidade = Number(target.capacidade_maxima ?? 0);
     const ocupacao = Number(target.ocupacao_atual ?? 0);
     const vagasRestantes = capacidade > 0 ? Math.max(0, capacidade - ocupacao) : 0;

@@ -519,7 +519,7 @@ export default function TurmaDetailClient({
     async function load() {
       try {
         setLoading(true);
-        const res  = await fetch(`/api/secretaria/turmas/${turmaId}/detalhes`);
+        const res  = await fetch(`/api/secretaria/turmas/${turmaId}/detalhes`, { cache: "no-store" });
         if (!res.ok) throw new Error("Falha ao carregar dados da turma.");
         const json = await res.json();
         setData(json.data);

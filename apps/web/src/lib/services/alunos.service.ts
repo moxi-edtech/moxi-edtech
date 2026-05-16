@@ -25,24 +25,13 @@ type ListResult = {
 };
 
 type MatriculaResumo = {
+  id: string;
   aluno_id: string;
   status: string | null;
   turma_id: string | null;
   created_at: string | null;
-  turmas?:
-    | {
-        nome?: string | null;
-        turma_codigo?: string | null;
-        ano_letivo?: number | null;
-        cursos?: { nome?: string | null } | { nome?: string | null }[] | null;
-      }
-    | {
-        nome?: string | null;
-        turma_codigo?: string | null;
-        ano_letivo?: number | null;
-        cursos?: { nome?: string | null } | { nome?: string | null }[] | null;
-      }[]
-    | null;
+  updated_at?: string | null;
+  numero_chamada?: number | null;
 };
 
 type MensalidadeResumo = {
@@ -249,11 +238,49 @@ export async function listAlunos(
       const { data: matriculas } = await supabase
         .from("matriculas")
         .select(
-          "id, aluno_id, status, turma_id, created_at, turmas ( nome, turma_codigo, ano_letivo, cursos ( nome ) )"
+          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada"
         )
         .eq("escola_id", escolaId)
         .in("aluno_id", alunoIds)
-        .order("created_at", { ascending: false });
+        .in("status", ["ativo", "ativa"])
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false });
+
+      const turmaIds = Array.from(
+        new Set(
+          ((matriculas as MatriculaResumo[] | null) ?? [])
+            .map((row) => row.turma_id)
+            .filter(Boolean)
+        )
+      ) as string[];
+
+      const turmaMap = new Map<
+        string,
+        {
+          nome: string | null;
+          turma_codigo: string | null;
+          ano_letivo: number | null;
+          curso_nome: string | null;
+        }
+      >();
+
+      if (turmaIds.length > 0) {
+        const { data: turmas } = await supabase
+          .from("turmas")
+          .select("id, nome, turma_codigo, ano_letivo, cursos ( nome )")
+          .eq("escola_id", escolaId)
+          .in("id", turmaIds);
+
+        (turmas ?? []).forEach((row: any) => {
+          const curso = Array.isArray(row.cursos) ? row.cursos[0] : row.cursos;
+          turmaMap.set(row.id, {
+            nome: row.nome ?? null,
+            turma_codigo: row.turma_codigo ?? null,
+            ano_letivo: row.ano_letivo ?? null,
+            curso_nome: curso?.nome ?? null,
+          });
+        });
+      }
 
       const matriculaMap = new Map<
         string,
@@ -269,15 +296,14 @@ export async function listAlunos(
 
       (matriculas as MatriculaResumo[] | null)?.forEach((row) => {
         if (!row?.aluno_id || matriculaMap.has(row.aluno_id)) return;
-        const turma = Array.isArray(row.turmas) ? row.turmas[0] : row.turmas;
-        const curso = Array.isArray(turma?.cursos) ? turma?.cursos[0] : turma?.cursos;
+        const turma = row.turma_id ? turmaMap.get(row.turma_id) : null;
         matriculaMap.set(row.aluno_id, {
           status: row.status ?? null,
           turma_id: row.turma_id ?? null,
           turma_nome: turma?.nome ?? null,
           turma_codigo: turma?.turma_codigo ?? null,
           turma_ano: turma?.ano_letivo ?? null,
-          turma_curso: curso?.nome ?? null,
+          turma_curso: turma?.curso_nome ?? null,
         });
       });
 

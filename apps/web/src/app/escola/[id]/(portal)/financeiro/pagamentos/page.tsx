@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { PagamentosListClient } from "@/components/financeiro/PagamentosListClient";
+import { FilaValidacaoPagamentos } from "@/components/financeiro/FilaValidacaoPagamentos";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function Page(props: {
   const days = searchParams.days || "30";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <DashboardHeader
         title="Pagamentos"
         description="Histórico e acompanhamento das transações."
@@ -26,6 +27,11 @@ export default async function Page(props: {
           { label: "Pagamentos" },
         ]}
       />
+
+      {/* Fila de Validação (Apenas aparece se houver pendentes) */}
+      <section>
+        <FilaValidacaoPagamentos escolaId={escolaId} />
+      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

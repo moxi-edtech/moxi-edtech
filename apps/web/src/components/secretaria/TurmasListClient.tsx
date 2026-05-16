@@ -9,7 +9,7 @@ import {
   Search, X, UsersRound, CalendarCheck, Eye, Pencil, Plus,
   AlertTriangle, CheckCircle2, GraduationCap, UserCheck, UserX,
   BookOpen, BookX, ChevronDown, LayoutGrid, List, MapPin,
-  Printer, Lock, Send,
+  Printer, Lock, Send, ArrowUpDown,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { recordAuditClient } from "@/lib/auditClient";
@@ -712,6 +712,12 @@ export default function TurmasListClient({
   const [professors,      setProfessors]      = useState<any[]>([]);
   const [loadingProfs,    setLoadingProfs]    = useState(false);
   const [selectedProf,    setSelectedProf]    = useState<string>("");
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferSourceTurmaId, setTransferSourceTurmaId] = useState<string | null>(null);
+  const [transferTargetTurmaId, setTransferTargetTurmaId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const fetchProfessors = useCallback(async () => {
     if (!escolaId || professors.length > 0) return;
@@ -767,6 +773,35 @@ export default function TurmasListClient({
       return new Set(filteredIds);
     });
   }, []);
+
+  const selectedTurmaForTransfer = useMemo(
+    () => items.find((turma) => turma.id === transferSourceTurmaId) ?? null,
+    [items, transferSourceTurmaId]
+  );
+
+  const transferTargetOptions = useMemo(() => {
+    if (!selectedTurmaForTransfer) return [];
+    return items.filter((turma) =>
+      turma.id !== selectedTurmaForTransfer.id &&
+      Number(turma.ano_letivo ?? 0) === Number(selectedTurmaForTransfer.ano_letivo ?? 0) &&
+      turma.curso_id === selectedTurmaForTransfer.curso_id &&
+      turma.classe_id === selectedTurmaForTransfer.classe_id
+    );
+  }, [items, selectedTurmaForTransfer]);
+
+  const openTransferModal = useCallback((turmaId: string) => {
+    setTransferSourceTurmaId(turmaId);
+    setTransferTargetTurmaId("");
+    setTransferReason("");
+    setTransferError(null);
+    setShowTransferModal(true);
+  }, []);
+
+  const handleTransferSelectedTurma = useCallback(() => {
+    if (selectedIds.size !== 1) return;
+    const [turmaId] = Array.from(selectedIds);
+    openTransferModal(turmaId);
+  }, [openTransferModal, selectedIds]);
 
   const handleBulkPrint = async () => {
     if (!escolaId || selectedIds.size === 0) return;
@@ -954,6 +989,34 @@ export default function TurmasListClient({
     if (!nextCursor || loadingMore) return;
     await fetchData({ cursor: nextCursor, append: true });
   }, [fetchData, nextCursor, loadingMore]);
+
+  const submitTransfer = useCallback(async () => {
+    if (!transferSourceTurmaId || !transferTargetTurmaId) return;
+    setTransferLoading(true);
+    setTransferError(null);
+    try {
+      const res = await fetch(`/api/secretaria/turmas/${transferSourceTurmaId}/transferir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target_turma_id: transferTargetTurmaId,
+          motivo: transferReason.trim() || null,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao transferir turma.");
+      }
+      success("Transferência concluída", `${json.transferred ?? 0} matrícula(s) movida(s) com sucesso.`);
+      setShowTransferModal(false);
+      setSelectedIds(new Set());
+      await fetchData();
+    } catch (err: any) {
+      setTransferError(err?.message || "Falha ao transferir turma.");
+    } finally {
+      setTransferLoading(false);
+    }
+  }, [fetchData, transferReason, transferSourceTurmaId, transferTargetTurmaId, success]);
 
   // ── Financeiro fetch — stable on itemIds ──────────────────────────────────
   const itemIds = useMemo(() => items.map((i) => i.id).join(","), [items]);
@@ -1413,7 +1476,80 @@ export default function TurmasListClient({
         </div>
       )}
 
-      {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}      {selectedIds.size > 0 && (
+      {showTransferModal && selectedTurmaForTransfer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="font-bold text-lg text-slate-800">Transferir turma</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Origem: <span className="font-semibold text-slate-700">{selectedTurmaForTransfer.nome ?? selectedTurmaForTransfer.turma_codigo}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTransferModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Turma destino</label>
+                <select
+                  value={transferTargetTurmaId}
+                  onChange={(e) => setTransferTargetTurmaId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
+                >
+                  <option value="">Selecione a turma destino</option>
+                  {transferTargetOptions.map((turma) => (
+                    <option key={turma.id} value={turma.id}>
+                      {turma.nome ?? turma.turma_codigo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Motivo</label>
+                <textarea
+                  value={transferReason}
+                  onChange={(e) => setTransferReason(e.target.value)}
+                  rows={3}
+                  placeholder="Ex.: não existe 8ª classe no período da manhã."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
+                />
+              </div>
+
+              {transferError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {transferError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowTransferModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={submitTransfer}
+                  disabled={transferLoading || !transferTargetTurmaId}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60"
+                >
+                  {transferLoading ? "Transferindo..." : "Transferir"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}
+      {selectedIds.size > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-slate-700/50 backdrop-blur-md">
           <div className="flex items-center gap-3 border-r border-slate-700 pr-8">
             <div className="w-6 h-6 rounded-full bg-klasse-gold-500 text-slate-900 flex items-center justify-center text-xs font-bold">
@@ -1423,6 +1559,15 @@ export default function TurmasListClient({
           </div>
 
           <div className="flex items-center gap-2">
+            {selectedIds.size === 1 && (
+              <button
+                onClick={handleTransferSelectedTurma}
+                className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
+              >
+                <ArrowUpDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                Transferir
+              </button>
+            )}
             <button
               onClick={handleBulkPrint}
               className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"

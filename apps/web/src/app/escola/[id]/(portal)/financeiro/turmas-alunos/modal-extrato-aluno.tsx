@@ -3,6 +3,8 @@
 import React, { useMemo } from "react";
 import { X } from "lucide-react";
 import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
+import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
+import { useParams } from "next/navigation";
 
 interface ModalExtratoAlunoProps {
   aluno: {
@@ -50,6 +52,9 @@ const formatMoney = (valor: number) =>
   valor.toLocaleString("pt-AO", { style: "currency", currency: "AOA" });
 
 const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidades, onClose }) => {
+  const params = useParams();
+  const escolaId = params?.id as string;
+
   const ordenadas = useMemo(() => {
     return [...mensalidades].sort((a, b) => {
       if (a.anoReferencia !== b.anoReferencia) return b.anoReferencia - a.anoReferencia;
@@ -59,7 +64,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
 
   return (
     <div className="fixed inset-0 bg-slate-900/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-800">Extrato do Aluno</h2>
@@ -82,6 +87,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                   <th className="px-4 py-3 font-medium">Vencimento</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium text-right">Valor</th>
+                  <th className="px-4 py-3 font-medium text-right">Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,11 +110,23 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                     <td className="px-4 py-3 text-right font-semibold text-slate-800">
                       {formatMoney(mensalidade.valor)}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      {(mensalidade.status === "pendente" || mensalidade.status === "atrasada") && (
+                        <RegistrarPagamentoButton
+                          escolaId={escolaId}
+                          alunoId={aluno.id}
+                          alunoNome={aluno.nome}
+                          mensalidadeId={mensalidade.id}
+                          valor={mensalidade.valor}
+                          descricao={`Propina ${mensalidade.mesReferencia}/${mensalidade.anoReferencia}`}
+                        />
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {ordenadas.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                       Nenhuma mensalidade encontrada.
                     </td>
                   </tr>

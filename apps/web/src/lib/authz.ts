@@ -1,7 +1,7 @@
 // apps/web/src/lib/authz.ts
 import { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { isRoleAllowedForProduct, type ProductContext } from "@/lib/permissions";
+import { isRoleAllowedForProduct, roleMatchesAllowedRoles, type ProductContext } from "@/lib/permissions";
 
 export type Role =
   | "secretaria"
@@ -98,11 +98,13 @@ export async function requireRoleInSchool({
     };
   }
 
-  if (!roles.includes(papel as Role)) {
+  const product = productContext ?? "k12";
+
+  if (!roleMatchesAllowedRoles(papel, roles, product)) {
     return {
       user: null,
       error: NextResponse.json(
-        { error: "Forbidden", reason: "insufficient_role", papel },
+        { error: "Forbidden", reason: "insufficient_role", papel, requested_roles: roles },
         { status: 403 }
       ),
     };
