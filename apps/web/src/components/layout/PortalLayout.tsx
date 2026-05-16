@@ -19,6 +19,7 @@ import { useUserRole } from "@/hooks/useUserRole"; // Import useUserRole
 import { sidebarConfig, type IconName } from "@/lib/sidebarNav"; // Import sidebarConfig and IconName
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
+import ModuleSwitcher from "@/components/layout/klasse/ModuleSwitcher";
 
 import Image from "next/image";
 import { usePathname } from "next/navigation"; // Import usePathname
@@ -299,6 +300,7 @@ export default function PortalLayout({
                   <h1 className="text-xl font-semibold text-moxinexa-dark">
                     {navItems.find(item => !!pathname && (pathname === item.href || pathname.startsWith(item.href + "/")))?.label || "Dashboard"}
                   </h1>
+                  <ModuleSwitcher />
                   {plan && (
                     <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
                   )}
