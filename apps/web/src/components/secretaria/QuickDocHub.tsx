@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   CalendarCheck,
@@ -230,6 +230,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const hasHydratedLastTurmaRef = useRef(false);
 
   useEffect(() => {
     if (!escolaId) return;
@@ -372,7 +373,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   }, [directHistory, historyStorageKey]);
 
   useEffect(() => {
-    if (!storageKey || turmas.length === 0 || turmaId) return;
+    if (!storageKey || turmas.length === 0 || turmaId || hasHydratedLastTurmaRef.current) return;
+    hasHydratedLastTurmaRef.current = true;
     try {
       const lastTurmaId = window.localStorage.getItem(storageKey);
       if (lastTurmaId && turmas.some((turma) => turma.id === lastTurmaId)) {
@@ -427,11 +429,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   );
 
   useEffect(() => {
-    if (!selectedTurma) {
-      setTurmaQuery("");
-      return;
+    if (selectedTurma) {
+      setTurmaQuery(turmaLabel(selectedTurma));
     }
-    setTurmaQuery(turmaLabel(selectedTurma));
   }, [selectedTurma]);
 
   useEffect(() => {
@@ -647,12 +647,14 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                 onChange={(event) => {
                   setTurmaPickerOpen(true);
                   setTurmaQuery(event.target.value);
-                  if (turmaId) setTurmaId("");
+                  if (turmaId) {
+                    setTurmaId("");
+                  }
                 }}
                 onBlur={() => {
                   window.setTimeout(() => {
                     setTurmaPickerOpen(false);
-                    if (!turmaId && selectedTurma) {
+                    if (selectedTurma) {
                       setTurmaQuery(turmaLabel(selectedTurma));
                     }
                   }, 120);
