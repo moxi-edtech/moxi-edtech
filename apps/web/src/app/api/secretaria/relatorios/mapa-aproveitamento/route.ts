@@ -17,12 +17,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const url = new URL(req.url);
+    const requestedEscolaId = url.searchParams.get("escola_id") || url.searchParams.get("escolaId");
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada para o utilizador." }, { status: 400 });
     }
 
-    const url = new URL(req.url);
     const turmaId = url.searchParams.get("turma_id");
     const periodoId = url.searchParams.get("periodo_letivo_id");
 
