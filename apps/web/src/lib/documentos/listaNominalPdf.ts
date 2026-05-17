@@ -44,7 +44,7 @@ type AlunoNested = {
   id: string;
   nome: string | null;
   bi_numero: string | null;
-  genero?: string | null;
+  sexo?: string | null;
   data_nascimento?: string | null;
   telefone?: string | null;
   responsavel?: string | null;
@@ -150,7 +150,7 @@ export async function renderListaNominalPdfBuffer({
         id,
         nome,
         bi_numero,
-        genero,
+        sexo,
         data_nascimento,
         telefone,
         responsavel,
@@ -210,9 +210,9 @@ export async function renderListaNominalPdfBuffer({
       numero: matricula.numero_chamada ?? index + 1,
       nome: aluno?.nome ?? "—",
       genero:
-        aluno?.genero === "masculino" || aluno?.genero === "M"
+        aluno?.sexo === "masculino" || aluno?.sexo === "M"
           ? "M"
-          : aluno?.genero === "feminino" || aluno?.genero === "F"
+          : aluno?.sexo === "feminino" || aluno?.sexo === "F"
             ? "F"
             : "—",
       bi: aluno?.bi_numero ?? "—",
