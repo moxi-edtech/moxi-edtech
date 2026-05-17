@@ -37,6 +37,9 @@ function getCentralLoginUrl() {
   return "https://auth.klasse.ao/login";
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function RedirectPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -83,8 +86,8 @@ export default function RedirectPage() {
             } catch {} 
           };
 
-          // fallback em 5s → login (aumentado para dar mais fôlego em conexões lentas)
-          timeout = setTimeout(goLogin, 5000);
+          // fallback em 3s → login (reduzido para recuperação mais rápida)
+          timeout = setTimeout(goLogin, 3000);
         } else {
           console.info("[Redirect] Active session found for user:", user.id);
           await router.refresh(); // 🔑 força sincronizar cookies no server

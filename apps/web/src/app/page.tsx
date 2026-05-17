@@ -1,5 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function resolveAuthLoginUrl(host: string, isLocalHost: boolean) {
   if (process.env.NODE_ENV !== "production") {
@@ -16,6 +20,17 @@ function resolveAuthLoginUrl(host: string, isLocalHost: boolean) {
 }
 
 export default async function Page() {
+  // 🔑 1. Verifica se já existe uma sessão ativa no servidor
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    // Se o usuário já está logado, pula o login e vai para o roteador interno
+    return redirect("/redirect");
+  }
+
   const headerStore = await headers();
   const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
     .split(",")[0]

@@ -551,6 +551,13 @@ export async function middleware(request: NextRequest) {
 
   // Força redirecionamento imediato para Central Auth se acessar /login local
   if (pathname === '/login' || pathname === '/login/') {
+    const fastAuthContext = await resolveAuthContextFromTenantCookie(request);
+    if (fastAuthContext) {
+      console.info(`[Middleware:Web] User already has session. Skipping login redirect.`);
+      const dest = getLandingPathByContext(fastAuthContext);
+      return NextResponse.redirect(new URL(dest, request.nextUrl.origin));
+    }
+
     console.info(`[Middleware:Web] Intercepted ${pathname} for host ${host}. Redirecting to Central Auth.`);
     const centralLogin = new URL(resolveUniversalLoginUrl());
     centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
