@@ -31,6 +31,7 @@ import StatCard from "@/components/shared/StatCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
+import QuickDocHub from "@/components/secretaria/QuickDocHub";
 import type { DashboardCounts, DashboardRecentes } from "./types";
 
 type BalcaoModal =
@@ -176,6 +177,8 @@ export function Dashboard({
             />
 
             <RadarOperacional alerts={alerts} role="secretaria" />
+
+            <QuickDocHub escolaId={escolaId} />
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Total Alunos" value={counts?.alunos} icon={<Users size={16} />} tone="default" />
