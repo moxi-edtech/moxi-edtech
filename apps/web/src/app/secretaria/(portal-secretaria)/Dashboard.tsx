@@ -13,6 +13,7 @@ import {
   Upload,
   UserCheck,
   KeyRound,
+  Printer,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -40,6 +41,7 @@ type BalcaoModal =
   | "cobranca"
   | "faltas"
   | "notas"
+  | "turma_docs"
   | null;
 
 export function Dashboard({
@@ -177,8 +179,6 @@ export function Dashboard({
             />
 
             <RadarOperacional alerts={alerts} role="secretaria" />
-
-            <QuickDocHub escolaId={escolaId} />
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Total Alunos" value={counts?.alunos} icon={<Users size={16} />} tone="default" />
@@ -230,7 +230,13 @@ export function Dashboard({
 
             <div>
               <SecaoLabel>Balcão de Atendimento</SecaoLabel>
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <AcaoRapidaCard
+                  icon={<Printer className="h-5 w-5" />}
+                  label="Imprimir Turma"
+                  sublabel="Mapas e Pautas"
+                  onClick={() => setBalcaoModal("turma_docs")}
+                />
                 <AcaoRapidaCard
                   icon={<Banknote className="h-5 w-5" />}
                   label="Cobrar Propina"
@@ -319,6 +325,15 @@ export function Dashboard({
           </div>
         </main>
       </div>
+      <ModalShell
+        open={balcaoModal === "turma_docs"}
+        title="Central de Documentos"
+        description="Emissão rápida de mapas, pautas e listas nominais por turma."
+        onClose={() => setBalcaoModal(null)}
+      >
+        <QuickDocHub escolaId={escolaId} />
+      </ModalShell>
+
       <FilaAtendimentoModal open={filaOpen} onClose={() => setFilaOpen(false)} />
       <ModalShell
         open={balcaoModal === "matricular"}
