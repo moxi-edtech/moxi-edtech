@@ -9,15 +9,18 @@ export function parsePlanTier(v: unknown): PlanTier {
   return PLAN_SET.has(p) ? (p as PlanTier) : "essencial";
 }
 
-export type FeatureKey =
-  | "fin_recibo_pdf"
-  | "sec_upload_docs"
-  | "sec_matricula_online"
-  | "doc_qr_code"
-  | "relatorio_avancado"
-  | "fin_extrato_completo"
-  | "app_whatsapp_auto"
-  | "suporte_prioritario";
+export const FEATURE_KEYS = [
+  "fin_recibo_pdf",
+  "sec_upload_docs",
+  "sec_matricula_online",
+  "doc_qr_code",
+  "relatorio_avancado",
+  "fin_extrato_completo",
+  "app_whatsapp_auto",
+  "suporte_prioritario",
+] as const;
+
+export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 export const PLAN_NAMES: Record<PlanTier, string> = {
   essencial: "Essencial",
@@ -28,23 +31,23 @@ export const PLAN_NAMES: Record<PlanTier, string> = {
 export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
   essencial: {
     fin_recibo_pdf: true,
-    sec_upload_docs: false,
-    sec_matricula_online: false,
-    doc_qr_code: false,
-    relatorio_avancado: false,
-    fin_extrato_completo: false,
-    app_whatsapp_auto: false,
-    suporte_prioritario: false,
+    sec_upload_docs: true,
+    sec_matricula_online: true,
+    doc_qr_code: true,
+    relatorio_avancado: true,
+    fin_extrato_completo: true,
+    app_whatsapp_auto: true,
+    suporte_prioritario: true,
   },
   profissional: {
     fin_recibo_pdf: true,
     sec_upload_docs: true,
-    sec_matricula_online: false,
-    doc_qr_code: false,
-    relatorio_avancado: false,
+    sec_matricula_online: true,
+    doc_qr_code: true,
+    relatorio_avancado: true,
     fin_extrato_completo: true,
-    app_whatsapp_auto: false,
-    suporte_prioritario: false,
+    app_whatsapp_auto: true,
+    suporte_prioritario: true,
   },
   premium: {
     fin_recibo_pdf: true,
@@ -57,3 +60,14 @@ export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
     suporte_prioritario: true,
   },
 };
+
+export function normalizePlanFeatureFlags<T extends Record<string, unknown> | null | undefined>(
+  value: T
+): T {
+  if (!value) return value;
+  const next = { ...value } as Record<string, unknown>;
+  for (const feature of FEATURE_KEYS) {
+    next[feature] = true;
+  }
+  return next as T;
+}

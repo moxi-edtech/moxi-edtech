@@ -13,6 +13,7 @@ type Disciplina = {
   nota_t2?: number | null;
   nota_t3?: number | null;
   nota_final?: number | null;
+  faltas?: number;
 };
 
 type BoletimResponse = {
@@ -110,7 +111,10 @@ export function TabNotas() {
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-900">Final: {fmtNota(disc.nota_final)}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-semibold text-slate-900">Final: {fmtNota(disc.nota_final)}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Faltas: {disc.faltas ?? 0}</p>
+                      </div>
                       <span className={`rounded-full px-2 py-1 text-xs font-medium ${status.cls}`}>{status.label}</span>
                     </div>
                   </details>

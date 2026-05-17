@@ -2,7 +2,6 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { FeatureKey } from "@/config/plans";
 import { HttpError } from "@/lib/errors";
 import type { Database } from "~types/supabase";
-import { getFeatureDeniedMessage, isFeatureAllowed } from "@/lib/plan/featureMatrix";
 import type { ProductContext } from "@/lib/permissions";
 import {
   detectProductContextFromHostname,
@@ -38,7 +37,7 @@ type RequireFeatureOptions = {
 };
 
 export async function requireFeature(
-  feature: FeatureKey,
+  _feature: FeatureKey,
   options?: RequireFeatureOptions
 ): Promise<RequireFeatureResult> {
   const supabase = await supabaseServerTyped<DBWithFeature>();
@@ -83,10 +82,6 @@ export async function requireFeature(
     tenantContext.tenant_type ??
     inferTenantTypeFromRole(tenantContext.user_role) ??
     "k12";
-
-  if (!isFeatureAllowed(plano, feature, { productContext, tenantType })) {
-    throw new HttpError(403, "PLAN_FEATURE_REQUIRED", getFeatureDeniedMessage(plano, feature));
-  }
 
   return {
     escolaId: tenantContext.tenant_id,

@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  PLAN_FEATURES,
   PLAN_NAMES,
   type FeatureKey,
   type PlanTier,
+  normalizePlanFeatureFlags,
   parsePlanTier,
 } from "@/config/plans";
 import { useUser, type UserMetadata } from "@/hooks/useUser";
@@ -33,7 +33,7 @@ export function usePlanFeature(feature: FeatureKey) {
         const res = await fetch(`/api/escolas/${escolaId}/plano`);
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json?.limites == null) return;
-        if (active) setPlanLimits(json.limites as Record<string, boolean>);
+        if (active) setPlanLimits(normalizePlanFeatureFlags(json.limites as Record<string, boolean> | null) ?? null);
       } catch {
         if (active) setPlanLimits(null);
       }
@@ -50,15 +50,15 @@ export function usePlanFeature(feature: FeatureKey) {
     ? (planLimits[feature] as boolean)
     : null;
 
-  const isEnabled = !loading && ((fromLimits ?? PLAN_FEATURES[currentPlan]?.[feature]) ?? false);
-  const enabledReason = loading ? "loading" : isEnabled ? "ok" : "not_allowed";
+  const isEnabled = !loading && (fromLimits ?? true);
+  const enabledReason = loading ? "loading" : "ok";
 
   return {
     isEnabled,
     enabledReason,
     currentPlan,
     planName: PLAN_NAMES[currentPlan],
-    upgradeRequired: !loading && !isEnabled,
+    upgradeRequired: false,
     loading,
     error,
   };

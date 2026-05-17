@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { parsePlanTier } from "@/config/plans";
+import { normalizePlanFeatureFlags, parsePlanTier } from "@/config/plans";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
@@ -39,7 +39,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
           .maybeSingle()
       : { data: null };
 
-    const limitesNormalizados = limites ? { ...limites, fin_recibo_pdf: true } : null;
+    const limitesNormalizados = normalizePlanFeatureFlags(limites);
 
     return NextResponse.json({ plano, limites: limitesNormalizados });
   } catch (e) {

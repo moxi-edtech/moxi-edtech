@@ -96,6 +96,28 @@ export default function DashboardLoader() {
     return () => controller.abort();
   }, [loadDashboard]);
 
+  const totalFaltas = useMemo(() => {
+    return (boletim?.disciplinas ?? []).reduce((acc, d) => acc + (d.faltas || 0), 0);
+  }, [boletim]);
+
+  const totalFaltasMax = useMemo(() => {
+    return (boletim?.disciplinas ?? []).reduce((acc, d) => acc + (d.faltas_max || 0), 0);
+  }, [boletim]);
+
+  const percFaltas = totalFaltasMax > 0 ? (totalFaltas / totalFaltasMax) * 100 : 0;
+
+  const attendanceColor = (perc: number) => {
+    if (perc >= 80) return "text-rose-600";
+    if (perc >= 50) return "text-klasse-gold-600";
+    return "text-klasse-green-600";
+  };
+
+  const attendanceBarColor = (perc: number) => {
+    if (perc >= 80) return "#e11d48";
+    if (perc >= 50) return "#E3B23C";
+    return "#16a34a";
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -228,6 +250,30 @@ export default function DashboardLoader() {
           </div>
         )}
       </div>
+
+      {totalFaltas > 0 && (
+        <div className="space-y-3">
+          <SectionTitle>Assiduidade e Faltas</SectionTitle>
+          <AlunoCard>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-slate-900">Resumo de Faltas</p>
+                <p className="text-xs text-slate-500">
+                  Acumulaste <span className={`font-bold ${attendanceColor(percFaltas)}`}>{totalFaltas} faltas</span>. 
+                  O limite máximo permitido é de {totalFaltasMax} faltas.
+                </p>
+              </div>
+              <div className="w-full md:w-48 space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <span>Uso do Limite</span>
+                  <span className={attendanceColor(percFaltas)}>{Math.round(percFaltas)}%</span>
+                </div>
+                <NotaBar nota={totalFaltas} max={totalFaltasMax} color={attendanceBarColor(percFaltas)} />
+              </div>
+            </div>
+          </AlunoCard>
+        </div>
+      )}
 
       <AlunoCard>
         <SectionTitle>Próxima aula</SectionTitle>

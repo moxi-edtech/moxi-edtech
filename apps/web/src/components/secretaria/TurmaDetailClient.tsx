@@ -480,6 +480,7 @@ export default function TurmaDetailClient({
   const [bulkAssigningRecommended, setBulkAssigningRecommended] = useState(false);
   const [bulkProfessorUserId, setBulkProfessorUserId] = useState("");
   const [bulkAssigningProfessor, setBulkAssigningProfessor] = useState(false);
+  const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'));
   const pathname = usePathname();
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
@@ -1659,9 +1660,36 @@ export default function TurmaDetailClient({
         {/* Documentos */}
         {activeTab === "docs" && (
           <div className="animate-in fade-in slide-in-from-bottom-1 duration-300">
-            <div className="mb-5">
-              <h3 className="text-sm font-bold text-slate-900">Central de Documentos</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Exporte documentos oficiais desta turma.</p>
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Central de Documentos</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Exporte documentos oficiais desta turma.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Mês de Ref.</span>
+                <select 
+                  className="text-xs font-bold border-none bg-slate-100 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-slate-200"
+                  value={reportMonth}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                >
+                  {[
+                    { v: '01', l: 'Janeiro' },
+                    { v: '02', l: 'Fevereiro' },
+                    { v: '03', l: 'Março' },
+                    { v: '04', l: 'Abril' },
+                    { v: '05', l: 'Maio' },
+                    { v: '06', l: 'Junho' },
+                    { v: '07', l: 'Julho' },
+                    { v: '08', l: 'Agosto' },
+                    { v: '09', l: 'Setembro' },
+                    { v: '10', l: 'Outubro' },
+                    { v: '11', l: 'Novembro' },
+                    { v: '12', l: 'Dezembro' },
+                  ].map(m => (
+                    <option key={m.v} value={m.v}>{m.l}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <DocCard
@@ -1670,6 +1698,13 @@ export default function TurmaDetailClient({
                 desc="Planilha oficial para lançamento offline de notas."
                 onClick={() => triggerDownload(`/api/secretaria/turmas/${turmaId}/pauta`)}
                 highlight
+              />
+              <DocCard
+                icon={CalendarCheck}
+                title="Mapa de Frequência"
+                desc="Consolidado mensal de presenças e faltas."
+                onClick={() => window.open(`/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf&month=${reportMonth}`, "_blank")}
+                locked={!canQrDocs}
               />
               <DocCard
                 icon={FileText}

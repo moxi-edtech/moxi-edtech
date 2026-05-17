@@ -8,44 +8,15 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { Column, drawTable } from "@/lib/pdf/table";
 
 type TurmaRow = {
   id: string;
   nome: string | null;
-  classe?: string | null;
+  classe_id?: string | null;
+  escola_id?: string | null;
   turno?: string | null;
   sala?: string | null;
-  escolas?: {
-    id: string;
-    nome: string;
-    nif?: string | null;
-    numero_fiscal?: string | null;
-    endereco?: string | null;
-    morada?: string | null;
-    telefone?: string | null;
-    email?: string | null;
-    logo_url?: string | null;
-    logo?: string | null;
-    validation_base_url?: string | null;
-    responsavel?: string | null;
-    diretor_nome?: string | null;
-    diretor_cargo?: string | null;
-  } | null;
-};
-
-type MatriculaRow = {
-  id: string;
-  status: string;
-  alunos?: {
-    id: string;
-    nome?: string | null;
-    bi_numero?: string | null;
-    naturalidade?: string | null;
-    provincia?: string | null;
-    telefone?: string | null;
-    responsavel?: string | null;
-    telefone_responsavel?: string | null;
-  } | null;
 };
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -81,10 +52,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") ?? "json";
+    const isAttendance = searchParams.get("attendance") === "true";
 
     if (format === "pdf") {
       await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
-      const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf`);
+      const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf${isAttendance ? '?attendance=true' : ''}`);
       if (forwarded) return forwarded;
     }
 
@@ -95,28 +67,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         `
         id,
         nome,
+        escola_id,
         classe_id,
         turno,
-        sala,
-        escolas (
-          id,
-          nome,
-          nif,
-          numero_fiscal,
-          endereco,
-          morada,
-          telefone,
-          email,
-          logo_url,
-          logo,
-          validation_base_url,
-          responsavel,
-          diretor_nome,
-          diretor_cargo
-        ),
-        classes (
-            nome
-        )
+        sala
       `
       )
       .eq("id", turmaId)
@@ -126,7 +80,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (turmaError || !turma) {
       return NextResponse.json({ ok: false, error: "Turma não encontrada" }, { status: 404, headers });
     }
-    const classeNome = (turma as any)?.classes?.nome || '—';
+
+    const [{ data: escola }, { data: classe }] = await Promise.all([
+      supabase
+        .from("escolas")
+        .select("id, nome, nif, numero_fiscal, endereco, morada, telefone, email, logo_url, logo, validation_base_url, responsavel, diretor_nome, diretor_cargo")
+        .eq("id", escolaId)
+        .maybeSingle(),
+      turma.classe_id
+        ? supabase
+            .from("classes")
+            .select("nome")
+            .eq("id", turma.classe_id)
+            .eq("escola_id", escolaId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    const classeNome = (classe as any)?.nome || "—";
 
     // 2) Buscar matrículas ativas + dados dos alunos
     let matriculasQuery = supabase
@@ -134,11 +104,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .select(
         `
         id,
+        numero_chamada,
         status,
         alunos (
           id,
           nome,
           bi_numero,
+          genero,
           naturalidade,
           provincia,
           telefone,
@@ -149,7 +121,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       )
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
-      .in("status", ["ativo", "ativa"]);
+      .in("status", ["ativo", "ativa"])
+      .order("numero_chamada", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 });
 
@@ -165,10 +139,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const alunosArray = Array.isArray(alunoData) ? alunoData : alunoData ? [alunoData] : [];
 
       return alunosArray.map((a) => ({
-        numero: numero++,
+        numero: m.numero_chamada ?? numero++,
         matricula_id: (m as any)?.id,
         aluno_id: a.id,
         nome: a.nome ?? "—",
+        genero: (a.genero === 'masculino' || a.genero === 'M') ? 'M' : (a.genero === 'feminino' || a.genero === 'F') ? 'F' : '—',
         bi: a.bi_numero ?? "—",
         naturalidade: a.naturalidade ?? "—",
         provincia: a.provincia ?? "—",
@@ -190,7 +165,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           classe: classeNome,
           turno: turma.turno ?? null,
           sala: turma.sala ?? null,
-          escola_nome: turma.escolas?.nome ?? null,
+          escola_nome: escola?.nome ?? null,
         },
         total: alunosOrdenados.length,
         alunos: alunosOrdenados,
@@ -198,13 +173,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 4) Geração de PDF institucional com QR
-    const escola = turma.escolas;
     const verificationToken = randomUUID();
     const validationBase =
       process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? escola?.validation_base_url ?? undefined;
 
     const pdfBytes = (await createInstitutionalPdf({
-      title: `Lista de Alunos – Turma ${turma.nome ?? ""}`,
+      title: isAttendance ? "Folha de Presença / Pauta de Chamada" : "Lista de Alunos por Turma",
+      orientation: isAttendance ? "landscape" : "portrait",
       school: {
         name: escola?.nome ?? "Escola",
         nif: escola?.nif ?? escola?.numero_fiscal,
@@ -227,86 +202,72 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         let cursorY = contentStartY;
         const lineHeight = 14;
 
-        const draw = (
-          text: string,
-          x: number,
-          y: number,
-          opts?: { bold?: boolean; size?: number }
-        ) => {
-          page.drawText(text, {
-            x,
-            y,
-            font: opts?.bold ? boldFont : font,
-            size: opts?.size ?? 10,
-          });
-        };
-
-        // Cabeçalho da turma
-        draw(
-          `Turma: ${turma.nome ?? "—"}   •   Classe: ${
-            classeNome ?? "—"
-          }   •   Turno: ${turma.turno ?? "—"}`,
-          margin,
-          cursorY,
-          { bold: true, size: 11 }
+        page.drawText(
+          `Turma: ${turma.nome ?? "—"}  •  Classe: ${classeNome}  •  Turno: ${turma.turno ?? "—"}`,
+          { x: margin, y: cursorY, font: boldFont, size: 10 }
         );
         cursorY -= lineHeight;
-
+        
         if (turma.sala) {
-          draw(`Sala: ${turma.sala}`, margin, cursorY, { size: 10 });
+          page.drawText(`Sala: ${turma.sala}`, { x: margin, y: cursorY, font, size: 10 });
           cursorY -= lineHeight;
         }
 
         cursorY -= 4;
 
-        // Cabeçalho da tabela
-        const colNumero = margin;
-        const colNome = margin + 30;
-        const colBi = margin + 220;
-        const colEncarregado = margin + 360;
-        const colTelefone = margin + 500;
+        const columns: Column[] = isAttendance 
+          ? [
+              { header: "Nº", key: "numero", width: 25, align: "center" },
+              { header: "Nome do Aluno", key: "nome", width: 220 },
+              { header: "G", key: "genero", width: 20, align: "center" },
+              { header: "", key: "d1", width: 45 },
+              { header: "", key: "d2", width: 45 },
+              { header: "", key: "d3", width: 45 },
+              { header: "", key: "d4", width: 45 },
+              { header: "", key: "d5", width: 45 },
+              { header: "", key: "d6", width: 45 },
+              { header: "", key: "d7", width: 45 },
+              { header: "", key: "d8", width: 45 },
+              { header: "", key: "d9", width: 45 },
+              { header: "Assinatura / Obs", key: "obs", width: 80 },
+            ]
+          : [
+              { header: "Nº", key: "numero", width: 30, align: "center" },
+              { header: "Nome do Aluno", key: "nome", width: 230 },
+              { header: "G", key: "genero", width: 20, align: "center" },
+              { header: "Documento (BI)", key: "bi", width: 100 },
+              { header: "Encarregado", key: "encarregado", width: 125 },
+            ];
 
-        draw("Nº", colNumero, cursorY, { bold: true });
-        draw("Nome do aluno", colNome, cursorY, { bold: true });
-        draw("BI", colBi, cursorY, { bold: true });
-        draw("Encarregado", colEncarregado, cursorY, { bold: true });
-        draw("Contacto", colTelefone, cursorY, { bold: true });
+        const { lastPage, lastY } = await drawTable(columns, alunosOrdenados, {
+          page,
+          pdfDoc,
+          font,
+          boldFont,
+          margin,
+          startY: cursorY,
+          zebra: true,
+          rowHeight: 18,
+        });
 
-        cursorY -= lineHeight;
-
-        // Linhas com os alunos (simples, sem quebra de página por enquanto)
-        for (const aluno of alunosOrdenados) {
-          if (cursorY < margin + 60) {
-            break;
-          }
-
-          draw(String(aluno.numero), colNumero, cursorY);
-          draw(aluno.nome, colNome, cursorY);
-          draw(aluno.bi, colBi, cursorY);
-          draw(aluno.encarregado, colEncarregado, cursorY);
-          draw(aluno.telefone_encarregado || aluno.telefone, colTelefone, cursorY);
-
-          cursorY -= lineHeight;
-        }
-
-        cursorY -= lineHeight;
+        cursorY = lastY - 20;
 
         // QR code + assinatura no rodapé da área útil
-        const qrSize = 80;
+        const qrSize = 70;
         if (verificationUrl) {
           const qrImage = await createQrImage(pdfDoc, verificationUrl);
           const qrX = width - margin - qrSize;
-          const qrY = Math.max(cursorY - qrSize - 10, margin + 30);
+          const qrY = Math.max(cursorY - qrSize - 10, margin + 40);
 
-          page.drawImage(qrImage, {
+          lastPage.drawImage(qrImage, {
             x: qrX,
             y: qrY,
             width: qrSize,
             height: qrSize,
           });
 
-          const sigY = qrY + qrSize + 8;
-          page.drawText(
+          const sigY = qrY + qrSize + 5;
+          lastPage.drawText(
             buildSignatureLine({
               signerName: escola?.responsavel ?? escola?.diretor_nome,
               signerRole: escola?.diretor_cargo,
@@ -320,7 +281,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           );
         } else {
           const sigY = cursorY - 10;
-          page.drawText(
+          lastPage.drawText(
             buildSignatureLine({
               signerName: escola?.responsavel ?? escola?.diretor_nome,
               signerRole: escola?.diretor_cargo,
@@ -341,7 +302,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="lista_alunos_turma_${
           turma.nome ?? turma.id
-        }.pdf"`,
+        }${isAttendance ? '_presenca' : ''}.pdf"`,
       },
     });
   } catch (e) {

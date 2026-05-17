@@ -7,6 +7,8 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from '@/components/feedback/FeedbackSystem';
 
+import { Printer } from 'lucide-react'
+
 type Atrib = { id: string; turma: { id: string; nome: string | null }; disciplina: { id: string; nome: string | null } }
 type Aluno = { id: string; nome: string }
 
@@ -20,6 +22,7 @@ export default function ProfessorFrequenciasPage() {
   const [saving, setSaving] = useState(false)
   const [statusMap, setStatusMap] = useState<Record<string, 'presente'|'falta'|'atraso'>>({})
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'saved' | 'failed'>('idle')
+  const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'))
   const { online } = useOfflineStatus()
 
   useEffect(() => {
@@ -163,6 +166,46 @@ export default function ProfessorFrequenciasPage() {
             {submitStatus === 'failed' && <div>Falha ao sincronizar presenças.</div>}
             {submitStatus === 'idle' && <div>Selecione turma, disciplina e data.</div>}
           </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3">
+            <div className="text-sm font-semibold text-slate-900">Relatório Mensal</div>
+            <select
+              value={reportMonth}
+              onChange={(e) => setReportMonth(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+            >
+              {[
+                { v: '01', l: 'Janeiro' },
+                { v: '02', l: 'Fevereiro' },
+                { v: '03', l: 'Março' },
+                { v: '04', l: 'Abril' },
+                { v: '05', l: 'Maio' },
+                { v: '06', l: 'Junho' },
+                { v: '07', l: 'Julho' },
+                { v: '08', l: 'Agosto' },
+                { v: '09', l: 'Setembro' },
+                { v: '10', l: 'Outubro' },
+                { v: '11', l: 'Novembro' },
+                { v: '12', l: 'Dezembro' },
+              ].map(m => (
+                <option key={m.v} value={m.v}>{m.l}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => {
+                if (!turmaId) return;
+                const url = `/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf&month=${reportMonth}&year=${new Date().getFullYear()}${disciplinaId ? `&disciplina_id=${disciplinaId}` : ''}`;
+                window.open(url, '_blank');
+              }}
+              disabled={!turmaId}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <Printer className="w-4 h-4" />
+              Mapa de Frequência
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={saving || !turmaId || !disciplinaId}
