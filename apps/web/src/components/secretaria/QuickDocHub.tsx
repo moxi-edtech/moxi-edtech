@@ -118,10 +118,10 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-6">
+    <div className="bg-slate-50/50 rounded-2xl border border-slate-200/60 p-5 space-y-6">
       <div className="flex items-center justify-between">
-        <SecaoLabel>Central de Documentos</SecaoLabel>
-        {(loadingTurmas || loadingPeriodos) && <Loader2 size={16} className="text-slate-400 animate-spin" />}
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Emissão Rápida por Turma</p>
+        {(loadingTurmas || loadingPeriodos) && <Loader2 size={14} className="text-slate-400 animate-spin" />}
       </div>
 
       <div className="relative">
