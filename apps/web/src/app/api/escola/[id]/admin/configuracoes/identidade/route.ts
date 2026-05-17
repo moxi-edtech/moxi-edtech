@@ -1,6 +1,7 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { normalizePlanFeatureFlags } from "@/config/plans";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
@@ -82,7 +83,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           .maybeSingle()
       : { data: null };
 
-    const limitesNormalizados = limites ? { ...limites, fin_recibo_pdf: true } : null;
+    const limitesNormalizados = normalizePlanFeatureFlags(limites);
 
     const { data: assinatura } = await supabase
       .from("assinaturas")

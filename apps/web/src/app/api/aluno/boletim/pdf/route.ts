@@ -6,7 +6,18 @@ import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/por
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type BoletimRow = { disciplina_id: string | null; disciplina_nome: string | null; trimestre: number | null; nota_final: number | null };
+type BoletimRow = { 
+  disciplina_id: string | null; 
+  disciplina_nome: string | null; 
+  trimestre: number | null; 
+  nota_final: number | null;
+};
+
+type FrequenciaRow = {
+  faltas: number | null;
+  aulas_previstas: number | null;
+  frequencia_min_percent: number | null;
+};
 
 export async function GET(request: Request) {
   try {
@@ -27,15 +38,28 @@ export async function GET(request: Request) {
 
     if (!matricula?.id) return NextResponse.json({ ok: false, error: "Sem matrícula" }, { status: 404 });
 
-    const { data: boletimRows, error } = await supabase
-      .from("vw_boletim_por_matricula")
-      .select("disciplina_id, disciplina_nome, trimestre, nota_final")
-      .eq("matricula_id", matricula.id)
-      .limit(50);
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    const [boletimRes, frequenciaRes] = await Promise.all([
+      supabase
+        .from("vw_boletim_por_matricula")
+        .select("disciplina_id, disciplina_nome, trimestre, nota_final")
+        .eq("matricula_id", matricula.id)
+        .limit(150),
+      supabase
+        .from("frequencia_status_periodo")
+        .select("faltas, aulas_previstas, frequencia_min_percent")
+        .eq("escola_id", ctx.escolaId)
+        .eq("matricula_id", matricula.id)
+    ]);
+
+    if (boletimRes.error) return NextResponse.json({ ok: false, error: boletimRes.error.message }, { status: 500 });
+
+    let totalFaltas = 0;
+    (frequenciaRes.data as FrequenciaRow[] | null)?.forEach(f => {
+      totalFaltas += (f.faltas || 0);
+    });
 
     const byDisciplina = new Map<string, { nome: string; t1: number | null; t2: number | null; t3: number | null; final: number | null }>();
-    (boletimRows as BoletimRow[] | null)?.forEach((row) => {
+    (boletimRes.data as BoletimRow[] | null)?.forEach((row) => {
       const id = row.disciplina_id ?? "";
       if (!id) return;
       const existing = byDisciplina.get(id) ?? { nome: row.disciplina_nome ?? "Disciplina", t1: null, t2: null, t3: null, final: null };
@@ -67,6 +91,9 @@ export async function GET(request: Request) {
           page.drawText(row.final == null ? "—" : row.final.toFixed(1), { x: margin + 330, y, size: 9, font: boldFont });
           y -= 13;
         }
+
+        y -= 15;
+        page.drawText(`Total de Faltas Acumuladas: ${totalFaltas}`, { x: margin, y, size: 10, font: boldFont });
       },
     });
 

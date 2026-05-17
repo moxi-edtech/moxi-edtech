@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 
 export type InstitutionalPdfOptions = {
   title: string;
+  orientation?: "portrait" | "landscape";
   school: {
     name: string;
     nif?: string | null;
@@ -35,10 +36,12 @@ export async function createInstitutionalPdf({
   title,
   school,
   verificationToken,
+  orientation = "portrait",
   content,
 }: InstitutionalPdfOptions) {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage();
+  const pageSize = orientation === "landscape" ? [841.89, 595.28] : [595.28, 841.89]; // A4
+  const page = pdfDoc.addPage(pageSize as any);
   const width = page.getWidth();
   const height = page.getHeight();
   const margin = 45;
@@ -51,58 +54,83 @@ export async function createInstitutionalPdf({
       ? `${validationBaseUrl}/${verificationToken}`
       : undefined;
 
-  let cursorY = height - margin;
-
-  // Header logo
-  if (school.logoUrl) {
-    try {
-      const logoBytes = await fetchImageBytes(school.logoUrl);
-      const isPng = school.logoUrl.toLowerCase().includes(".png");
-      const logoImage = isPng ? await pdfDoc.embedPng(logoBytes) : await pdfDoc.embedJpg(logoBytes);
-      const scale = 90 / logoImage.height;
-      const logoDims = logoImage.scale(scale);
-      page.drawImage(logoImage, {
-        x: margin,
-        y: height - margin - logoDims.height,
-        width: logoDims.width,
-        height: logoDims.height,
-      });
-    } catch (e) {
-      console.warn("Não foi possível carregar o logotipo:", e);
+  const drawHeader = async (p: any) => {
+    let cursorY = height - margin;
+    // Header logo
+    if (school.logoUrl) {
+      try {
+        const logoBytes = await fetchImageBytes(school.logoUrl);
+        const isPng = school.logoUrl.toLowerCase().includes(".png");
+        const logoImage = isPng ? await pdfDoc.embedPng(logoBytes) : await pdfDoc.embedJpg(logoBytes);
+        const scale = 70 / logoImage.height;
+        const logoDims = logoImage.scale(scale);
+        p.drawImage(logoImage, {
+          x: margin,
+          y: height - margin - logoDims.height,
+          width: logoDims.width,
+          height: logoDims.height,
+        });
+      } catch (e) {
+        console.warn("Não foi possível carregar o logotipo:", e);
+      }
     }
-  }
 
-  page.drawText(school.name, {
-    x: margin + 100,
-    y: height - margin - 10,
-    size: 14,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
+    p.drawText(school.name, {
+      x: margin + 85,
+      y: height - margin - 10,
+      size: 14,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
 
-  const details: string[] = [];
-  if (school.nif) details.push(`NIF: ${school.nif}`);
-  if (school.address) details.push(school.address);
-  if (school.contacts) details.push(school.contacts);
+    const details: string[] = [];
+    if (school.nif) details.push(`NIF: ${school.nif}`);
+    if (school.address) details.push(school.address);
+    if (school.contacts) details.push(school.contacts);
 
-  if (details.length > 0) {
-    page.drawText(details.join(" • "), {
-      x: margin + 100,
-      y: height - margin - 26,
-      size: 9,
+    if (details.length > 0) {
+      p.drawText(details.join(" • "), {
+        x: margin + 85,
+        y: height - margin - 26,
+        size: 9,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    }
+
+    p.drawLine({
+      start: { x: margin, y: height - margin - 40 },
+      end: { x: width - margin, y: height - margin - 40 },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+  };
+
+  const drawFooter = (p: any) => {
+    const footerY = margin + 20;
+    p.drawLine({
+      start: { x: margin, y: footerY },
+      end: { x: width - margin, y: footerY },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+
+    const footerText = verificationUrl
+      ? `Para verificar a autenticidade, acesse: ${verificationUrl}`
+      : "Documento gerado pelo sistema académico.";
+
+    p.drawText(footerText, {
+      x: margin,
+      y: footerY - 12,
+      size: 8,
       font,
       color: rgb(0.2, 0.2, 0.2),
     });
-  }
+  };
 
-  page.drawLine({
-    start: { x: margin, y: height - margin - 40 },
-    end: { x: width - margin, y: height - margin - 40 },
-    thickness: 1,
-    color: rgb(0.8, 0.8, 0.8),
-  });
-
-  cursorY = height - margin - 60;
+  await drawHeader(page);
+  
+  let cursorY = height - margin - 60;
 
   page.drawText(title, {
     x: margin,
@@ -128,25 +156,11 @@ export async function createInstitutionalPdf({
     verificationUrl,
   });
 
-  const footerY = margin + 20;
-  page.drawLine({
-    start: { x: margin, y: footerY },
-    end: { x: width - margin, y: footerY },
-    thickness: 0.5,
-    color: rgb(0.8, 0.8, 0.8),
-  });
-
-  const footerText = verificationUrl
-    ? `Para verificar a autenticidade, acesse: ${verificationUrl}`
-    : "Documento gerado pelo sistema académico.";
-
-  page.drawText(footerText, {
-    x: margin,
-    y: footerY - 12,
-    size: 8,
-    font,
-    color: rgb(0.2, 0.2, 0.2),
-  });
+  // Draw footer on all pages
+  const pages = pdfDoc.getPages();
+  for (const p of pages) {
+    drawFooter(p);
+  }
 
   return pdfDoc.save();
 }

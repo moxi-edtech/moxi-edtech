@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format, differenceInCalendarDays } from "date-fns";
 import { pt } from "date-fns/locale";
-import { PLAN_NAMES, type PlanTier } from "@/config/plans";
+import { normalizePlanFeatureFlags, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -121,7 +121,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
           .select('*')
           .eq('plan', normalizedAss.plano)
           .maybeSingle();
-        setPlanoLimites((limitsData as PlanoLimites) ?? null);
+        setPlanoLimites(normalizePlanFeatureFlags((limitsData as PlanoLimites | null) ?? null));
       } else {
         setPlanoLimites(null);
       }

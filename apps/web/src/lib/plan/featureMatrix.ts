@@ -95,9 +95,8 @@ export function isFeatureAllowed(
   const matrix = FEATURE_GATE_MATRIX[feature];
   if (!matrix.products.includes(productContext)) return false;
   if (!matrix.tenantTypes.includes(tenantType)) return false;
-
   const tier = parsePlanTier(plan);
-  return Boolean(PLAN_FEATURES[tier]?.[feature]);
+  return Boolean(PLAN_FEATURES[tier]?.[feature] ?? true);
 }
 
 export function getFeatureDeniedMessage(plan: string | null | undefined, feature: FeatureKey): string {

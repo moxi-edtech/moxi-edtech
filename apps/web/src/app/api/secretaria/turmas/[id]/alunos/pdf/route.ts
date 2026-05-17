@@ -8,6 +8,7 @@ import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { Column, drawTable } from "@/lib/pdf/table";
 
 export async function GET(
   req: Request,
@@ -50,10 +51,16 @@ export async function GET(
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
 
+    const { searchParams } = new URL(req.url);
+    const isAttendance = searchParams.get("attendance") === "true";
+    const month = searchParams.get("month");
+    const year = searchParams.get("year") || String(new Date().getFullYear());
+    const disciplinaId = searchParams.get("disciplina_id");
+
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
-    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf`);
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf${isAttendance ? '?attendance=true' : ''}${month ? `&month=${month}` : ''}${year ? `&year=${year}` : ''}`);
     if (forwarded) return forwarded;
 
     const { data: turma, error: turmaError } = await supabase
@@ -62,14 +69,13 @@ export async function GET(
         `
         id,
         nome,
+        escola_id,
+        curso_id,
+        session_id,
+        ano_letivo,
         classe_id,
         turno,
-        sala,
-        escolas (*),
-        school_sessions (*),
-        classes (
-            nome
-        )
+        sala
       `
       )
       .eq("id", turmaId)
@@ -82,9 +88,30 @@ export async function GET(
         { status: 404, headers }
       );
     }
-    const classeNome = (turma as any)?.classes?.nome ?? '—';
-    const escola = (turma as any).escolas;
-    const sessao = (turma as any).school_sessions;
+    const [{ data: escola }, { data: classe }, { data: sessao }] = await Promise.all([
+      supabase
+        .from("escolas")
+        .select("id, nome, nif, numero_fiscal, endereco, morada, telefone, email, logo_url, logo, validation_base_url, responsavel, diretor_nome, diretor_cargo")
+        .eq("id", escolaId)
+        .maybeSingle(),
+      (turma as any)?.classe_id
+        ? supabase
+            .from("classes")
+            .select("nome")
+            .eq("id", (turma as any).classe_id)
+            .eq("escola_id", escolaId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      (turma as any)?.session_id
+        ? supabase
+            .from("school_sessions")
+            .select("nome, ano")
+            .eq("id", (turma as any).session_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const classeNome = (classe as any)?.nome ?? "—";
 
     let matriculasQuery = supabase
       .from("matriculas")
@@ -97,6 +124,7 @@ export async function GET(
           id,
           nome,
           bi_numero,
+          genero,
           data_nascimento,
           telefone,
           responsavel,
@@ -106,6 +134,7 @@ export async function GET(
       )
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
+      .in("status", ["ativo", "ativa"])
       .order("numero_chamada", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
@@ -120,16 +149,74 @@ export async function GET(
       );
     }
 
+    // --- PHASE 2: Fetch actual attendance data ---
+    let attendanceData: any[] = [];
+    if (month && year) {
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      // Last day of month
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+      const endDate = `${year}-${month.padStart(2, '0')}-${lastDay}`;
+      
+      let query = supabase
+        .from("frequencias")
+        .select("matricula_id, data, status")
+        .eq("escola_id", escolaId)
+        .gte("data", startDate)
+        .lte("data", endDate);
+      
+      if (disciplinaId) {
+        const { data: matriz } = await supabase
+          .from("curso_matriz")
+          .select("id")
+          .eq("escola_id", escolaId)
+          .eq("curso_id", turma.curso_id)
+          .eq("classe_id", turma.classe_id)
+          .eq("disciplina_id", disciplinaId)
+          .maybeSingle();
+        
+        if (matriz) {
+          query = query.eq("curso_matriz_id", matriz.id);
+        }
+      }
+
+      const { data: fRecords } = await query;
+      attendanceData = fRecords || [];
+    }
+
+    const mapStatus = (status: string) => {
+      if (status === 'presente') return 'P';
+      if (status === 'falta') return 'F';
+      if (status === 'atraso') return 'A';
+      return '—';
+    };
+
     const alunos = (matriculas ?? []).map((mat, index) => {
       const aluno = Array.isArray(mat.alunos) ? mat.alunos[0] : mat.alunos;
-      return {
-        numero_lista: mat.numero_chamada ?? index + 1,
+      const row: any = {
+        id: mat.id,
+        numero: mat.numero_chamada ?? index + 1,
         nome: aluno?.nome ?? "—",
-        bi_numero: aluno?.bi_numero ?? "—",
+        genero: (aluno?.genero === 'masculino' || aluno?.genero === 'M') ? 'M' : (aluno?.genero === 'feminino' || aluno?.genero === 'F') ? 'F' : '—',
+        bi: aluno?.bi_numero ?? "—",
         telefone: aluno?.telefone ?? "—",
         responsavel: aluno?.responsavel ?? "—",
         telefone_responsavel: aluno?.telefone_responsavel ?? "—",
       };
+
+      if (month && year) {
+        const studentAttendance = attendanceData.filter(a => a.matricula_id === mat.id);
+        for (let d = 1; d <= 31; d++) {
+          const dateStr = `${year}-${month.padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const record = studentAttendance.find(a => a.data === dateStr);
+          if (record) {
+            row[`d${d}`] = mapStatus(record.status);
+          } else {
+            row[`d${d}`] = '';
+          }
+        }
+      }
+
+      return row;
     });
 
     const verificationToken = randomUUID();
@@ -139,7 +226,8 @@ export async function GET(
       undefined;
 
     const pdfBytes = await createInstitutionalPdf({
-      title: "Lista de Alunos por Turma",
+      title: (month) ? "Mapa de Frequência Mensal" : (isAttendance ? "Folha de Presença / Pauta de Chamada" : "Lista de Alunos por Turma"),
+      orientation: (isAttendance || month) ? "landscape" : "portrait",
       school: {
         name: escola?.nome ?? "Escola",
         nif: escola?.nif ?? escola?.numero_fiscal,
@@ -162,94 +250,89 @@ export async function GET(
         let cursorY = contentStartY;
         const lineHeight = 14;
 
-        const draw = (
-          text: string,
-          x: number,
-          size = 10,
-          isBold = false
-        ) => {
-          page.drawText(text, {
-            x,
-            y: cursorY,
-            font: isBold ? boldFont : font,
-            size,
-          });
-        };
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const periodLabel = month ? `  •  Mês: ${monthNames[parseInt(month)-1]} / ${year}` : "";
 
-        draw(
-          `Turma: ${turma.nome ?? "—"} • Classe: ${
-            classeNome ?? "—"
-          } • Turno: ${turma.turno ?? "—"}`,
-          margin,
-          10,
-          true
+        page.drawText(
+          `Turma: ${turma.nome ?? "—"}  •  Classe: ${classeNome}  •  Turno: ${turma.turno ?? "—"}${periodLabel}`,
+          { x: margin, y: cursorY, font: boldFont, size: 10 }
         );
         cursorY -= lineHeight;
-        draw(
-          `Ano letivo: ${
-            sessao?.nome ?? sessao?.ano ?? "—"
-          } • Sala: ${turma.sala ?? "—"}`,
-          margin,
-          10
+        page.drawText(
+          `Ano letivo: ${sessao?.nome ?? sessao?.ano ?? (turma as any)?.ano_letivo ?? "—"}  •  Sala: ${turma.sala ?? "—"}`,
+          { x: margin, y: cursorY, font, size: 10 }
         );
         cursorY -= lineHeight * 1.5;
 
-        const colX = {
-          num: margin,
-          nome: margin + 30,
-          bi: margin + 230,
-          tel: margin + 360,
-          resp: margin + 430,
-          telResp: margin + 560,
-        };
-
-        draw("Nº", colX.num, 9, true);
-        draw("Nome", colX.nome, 9, true);
-        draw("BI", colX.bi, 9, true);
-        draw("Telefone", colX.tel, 9, true);
-        draw("Encarregado", colX.resp, 9, true);
-        draw("Tel. Encarregado", colX.telResp, 9, true);
-        cursorY -= lineHeight;
-
-        for (const aluno of alunos) {
-          if (cursorY < 80) {
-            const newPage = pdfDoc.addPage();
-            page = newPage;
-            cursorY = newPage.getSize().height - margin - 20;
-            draw("Nº", colX.num, 9, true);
-            draw("Nome", colX.nome, 9, true);
-            draw("BI", colX.bi, 9, true);
-            draw("Telefone", colX.tel, 9, true);
-            draw("Encarregado", colX.resp, 9, true);
-            draw("Tel. Encarregado", colX.telResp, 9, true);
-            cursorY -= lineHeight;
+        let columns: Column[] = [];
+        
+        if (month) {
+          columns = [
+            { header: "Nº", key: "numero", width: 22, align: "center" },
+            { header: "Nome do Aluno", key: "nome", width: 140 },
+          ];
+          for (let d = 1; d <= 31; d++) {
+            columns.push({ header: String(d), key: `d${d}`, width: 17.5, align: "center" });
           }
-
-          draw(String(aluno.numero_lista).padStart(2, "0"), colX.num);
-          draw(aluno.nome, colX.nome);
-          draw(aluno.bi_numero, colX.bi);
-          draw(aluno.telefone, colX.tel);
-          draw(aluno.responsavel, colX.resp);
-          draw(aluno.telefone_responsavel, colX.telResp);
-          cursorY -= lineHeight;
+        } else if (isAttendance) {
+          columns = [
+            { header: "Nº", key: "numero", width: 25, align: "center" },
+            { header: "Nome do Aluno", key: "nome", width: 220 },
+            { header: "G", key: "genero", width: 20, align: "center" },
+            ...Array.from({ length: 9 }).map((_, i) => ({ header: "", key: `d${i+1}`, width: 45 })),
+            { header: "Assinatura / Obs", key: "obs", width: 80 },
+          ];
+        } else {
+          columns = [
+            { header: "Nº", key: "numero", width: 30, align: "center" },
+            { header: "Nome do Aluno", key: "nome", width: 230 },
+            { header: "G", key: "genero", width: 20, align: "center" },
+            { header: "Documento (BI)", key: "bi", width: 100 },
+            { header: "Encarregado", key: "responsavel", width: 125 },
+          ];
         }
 
-        cursorY -= lineHeight;
+        const { lastPage, lastY } = await drawTable(columns, alunos, {
+          page,
+          pdfDoc,
+          font,
+          boldFont,
+          margin,
+          startY: cursorY,
+          zebra: true,
+          rowHeight: 18,
+          fontSize: month ? 7 : 9,
+          headerFontSize: month ? 7 : 10,
+        });
 
-        const qrSize = 80;
+        cursorY = lastY - 20;
+
+        // Legends if it's a monthly map
+        if (month) {
+          lastPage.drawText("Legenda: P = Presente | F = Falta | A = Atraso | FJ = Falta Justificada", {
+            x: margin,
+            y: cursorY + 5,
+            font,
+            size: 8,
+          });
+          cursorY -= 15;
+        }
+
+        // Signature and QR Code
+        const qrSize = 70;
         if (verificationUrl) {
           const qrImage = await createQrImage(pdfDoc, verificationUrl);
           const qrX = width - margin - qrSize;
           const qrY = Math.max(cursorY - qrSize - 10, margin + 40);
-          page.drawImage(qrImage, {
+          lastPage.drawImage(qrImage, {
             x: qrX,
             y: qrY,
             width: qrSize,
             height: qrSize,
           });
 
-          const signatureY = qrY + qrSize + 8;
-          page.drawText(
+          const signatureY = qrY + qrSize + 5;
+          lastPage.drawText(
             buildSignatureLine({
               signerName: escola?.responsavel ?? escola?.diretor_nome,
               signerRole: escola?.diretor_cargo ?? "Diretor(a)",
@@ -258,12 +341,12 @@ export async function GET(
               x: margin,
               y: signatureY,
               font,
-              size: 11,
+              size: 10,
             }
           );
         } else {
-          const signatureY = cursorY - 20;
-          page.drawText(
+          const signatureY = cursorY - 10;
+          lastPage.drawText(
             buildSignatureLine({
               signerName: escola?.responsavel ?? escola?.diretor_nome,
               signerRole: escola?.diretor_cargo ?? "Diretor(a)",
@@ -272,7 +355,7 @@ export async function GET(
               x: margin,
               y: signatureY,
               font,
-              size: 11,
+              size: 10,
             }
           );
         }
@@ -282,13 +365,14 @@ export async function GET(
     headers.set("Content-Type", "application/pdf");
     headers.set(
       "Content-Disposition",
-      `attachment; filename="lista_alunos_turma_${turma.nome ?? "turma"}.pdf"`
+      `attachment; filename="mapa_frequencia_${turma.nome ?? "turma"}_${month || 'lista'}.pdf"`
     );
     return new NextResponse(pdfBytes as any, {
       headers,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    console.error("[secretaria/turmas/pdf] error:", e);
     return NextResponse.json(
       { ok: false, error: message },
       { status: 500 }
