@@ -123,7 +123,7 @@ export async function drawTable(
 
   for (let i = 0; i < data.length; i++) {
     if (cursorY < margin + 60) {
-      currentPage = pdfDoc.addPage(currentPage.getSize() as any);
+      currentPage = pdfDoc.addPage([currentPage.getWidth(), currentPage.getHeight()]);
       cursorY = currentPage.getHeight() - margin - 20;
       drawHeader(currentPage, cursorY);
       cursorY -= rowHeight;
