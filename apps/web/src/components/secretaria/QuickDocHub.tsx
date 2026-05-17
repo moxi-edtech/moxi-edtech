@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { 
   FileText, 
   CalendarCheck, 
   LayoutDashboard, 
   BookOpen, 
   Search,
-  Printer,
   Loader2,
   GraduationCap,
   Download
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 
 type TurmaItem = {
@@ -33,42 +31,59 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [anoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingTurmas, setLoadingTurmas] = useState(false);
+  const [loadingPeriodos, setLoadingPeriodos] = useState(false);
   const [turmaId, setTurmaId] = useState("");
   const [month, setMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'));
   const [periodoId, setPeriodoId] = useState("");
-  const [searchTerm, setSearch] = useState("");
 
+  // Load Turmas
   useEffect(() => {
     if (!escolaId) return;
     let active = true;
-    const load = async () => {
-      setLoading(true);
+    const loadTurmas = async () => {
+      setLoadingTurmas(true);
       try {
-        const [turmasRes, periodosRes] = await Promise.all([
-          fetch(`/api/secretaria/turmas-simples?ano=${anoLetivo}`),
-          fetch(`/api/secretaria/relatorios/mapa-aproveitamento`) // To get periods
-        ]);
-        
-        const tJson = await turmasRes.json().catch(() => ({}));
-        const pJson = await periodosRes.json().catch(() => ({}));
-
+        const res = await fetch(`/api/secretaria/turmas-simples?ano=${anoLetivo}`);
+        const json = await res.json().catch(() => ({}));
         if (!active) return;
-        if (turmasRes.ok && tJson.ok) {
-          setTurmas(tJson.items || tJson.data || []);
+        if (res.ok && json.ok) {
+          setTurmas(json.items || json.data || []);
         }
-        if (periodosRes.ok && pJson.ok) {
-          const fetchedPeriodos = pJson.filtros?.periodos || [];
-          setPeriodos(fetchedPeriodos);
-          if (fetchedPeriodos.length > 0) setPeriodoId(fetchedPeriodos[0].id);
-        }
+      } catch (e) {
+        console.error("Erro ao carregar turmas:", e);
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoadingTurmas(false);
       }
     };
-    load();
+    loadTurmas();
     return () => { active = false; };
   }, [escolaId, anoLetivo]);
+
+  // Load Periodos
+  useEffect(() => {
+    if (!escolaId) return;
+    let active = true;
+    const loadPeriodos = async () => {
+      setLoadingPeriodos(true);
+      try {
+        const res = await fetch(`/api/secretaria/relatorios/mapa-aproveitamento`);
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (res.ok && json.ok) {
+          const fetched = json.filtros?.periodos || [];
+          setPeriodos(fetched);
+          if (fetched.length > 0 && !periodoId) setPeriodoId(fetched[0].id);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar períodos:", e);
+      } finally {
+        if (active) setLoadingPeriodos(false);
+      }
+    };
+    loadPeriodos();
+    return () => { active = false; };
+  }, [escolaId]);
 
   const handlePrint = (type: 'attendance' | 'nominal' | 'blank' | 'mini' | 'pauta-geral' | 'pauta-anual' | 'mapa-aproveitamento' | 'excel') => {
     if (!turmaId) return;
@@ -106,19 +121,21 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-6">
       <div className="flex items-center justify-between">
         <SecaoLabel>Central de Documentos</SecaoLabel>
-        {loading && <Loader2 size={16} className="text-slate-400 animate-spin" />}
+        {(loadingTurmas || loadingPeriodos) && <Loader2 size={16} className="text-slate-400 animate-spin" />}
       </div>
 
-      <div className="relative group">
+      <div className="relative">
         <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
           <Search size={16} className="text-slate-400" />
         </div>
         <select
           value={turmaId}
           onChange={(e) => setTurmaId(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold outline-none transition-all appearance-none"
+          className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-klasse-gold/10 focus:border-klasse-gold outline-none transition-all cursor-pointer"
         >
-          <option value="">Selecione a turma para emissão rápida...</option>
+          <option value="">
+            {loadingTurmas ? "Carregando turmas..." : "Selecione a turma para emissão rápida..."}
+          </option>
           {turmas.map(t => (
             <option key={t.id} value={t.id}>
               {t.turma_nome || t.nome} ({t.classe_nome} • {t.turno})
@@ -135,7 +152,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             <select 
               value={month} 
               onChange={(e) => setMonth(e.target.value)}
-              className="text-[10px] font-bold bg-slate-100 rounded-md px-1.5 py-0.5 outline-none text-slate-600 border-none"
+              className="text-[10px] font-bold bg-slate-100 rounded-md px-1.5 py-0.5 outline-none text-slate-600 border-none cursor-pointer"
             >
               {[
                 { v: '01', l: 'Jan' }, { v: '02', l: 'Fev' }, { v: '03', l: 'Mar' },
@@ -169,8 +186,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             <select 
               value={periodoId} 
               onChange={(e) => setPeriodoId(e.target.value)}
-              className="text-[10px] font-bold bg-slate-100 rounded-md px-1.5 py-0.5 outline-none text-slate-600 border-none"
+              className="text-[10px] font-bold bg-slate-100 rounded-md px-1.5 py-0.5 outline-none text-slate-600 border-none cursor-pointer"
             >
+              {periodos.length === 0 && <option value="">Sem Período</option>}
               {periodos.map(p => <option key={p.id} value={p.id}>{p.numero}º {p.tipo === 'TRIMESTRE' ? 'Trim' : 'Per'}</option>)}
             </select>
           </div>

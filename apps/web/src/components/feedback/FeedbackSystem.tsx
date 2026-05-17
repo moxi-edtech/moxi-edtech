@@ -559,14 +559,14 @@ export function RadarOperacional({
     return (
       <div
         className="flex items-center gap-4 rounded-2xl border border-emerald-100
-        bg-emerald-50/50 px-6 py-5 shadow-sm border-l-4 border-l-emerald-500"
+        bg-white px-6 py-4 shadow-sm"
       >
-        <div className="bg-emerald-100 rounded-xl p-2 text-emerald-600">
+        <div className="bg-emerald-50 rounded-xl p-2.5 text-emerald-600">
           <CheckCircle2 size={20} />
         </div>
         <div>
-          <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Céu Limpo</p>
-          <p className="text-xs text-emerald-600 font-bold uppercase mt-0.5 opacity-80">Zero pendências críticas no radar actual.</p>
+          <p className="text-sm font-bold text-slate-900">Céu Limpo</p>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">Zero pendências críticas no radar actual.</p>
         </div>
       </div>
     )
