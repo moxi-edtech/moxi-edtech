@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { createClient } from "@/lib/supabaseClient";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import { FilaAtendimentoModal } from "@/components/secretaria/FilaAtendimentoModal";
@@ -56,6 +57,8 @@ export function Dashboard({
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
   const escolaParamFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
@@ -64,7 +67,29 @@ export function Dashboard({
 
   useEffect(() => {
     setNowMs(Date.now());
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      const name = data.user?.user_metadata?.full_name || data.user?.user_metadata?.name;
+      if (name) {
+        const parts = name.split(" ").filter(Boolean);
+        if (parts.length > 1) {
+          setUserName(`${parts[0]} ${parts[parts.length - 1]}`);
+        } else {
+          setUserName(parts[0]);
+        }
+      }
+    });
   }, []);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  }, []);
+
+  const dashboardTitle = userName ? `${greeting}, ${userName}!` : "Secretaria";
+
   const avisoFechoTrimestre = useMemo(() => {
     const fecho = recentes?.fecho_trimestre;
     if (!fecho?.trava_notas_em || nowMs === null) return null;
@@ -148,7 +173,7 @@ export function Dashboard({
         <main className="flex-1 p-6 lg:p-8 pb-32">
           <div className="max-w-5xl mx-auto space-y-8">
             <DashboardHeader
-              title="Secretaria"
+              title={dashboardTitle}
               description="Resumo operacional do dia"
               breadcrumbs={[
                 { label: "Início", href: "." },
@@ -197,20 +222,6 @@ export function Dashboard({
               />
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-              <SecaoLabel>Operações Acadêmicas</SecaoLabel>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate-500">
-                  Monitor único de fechamento acadêmico e lotes oficiais de documentos.
-                </p>
-                <Link
-                  href={buildPortalHref(escolaParam, "/secretaria/operacoes-academicas")}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Abrir painel
-                </Link>
-              </div>
-            </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
               <SecaoLabel>Busca rápida para atendimento</SecaoLabel>

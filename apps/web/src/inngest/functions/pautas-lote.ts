@@ -10,8 +10,9 @@ import { inngest } from "@/inngest/client"
 import { buildPautaGeralPayload, renderPautaGeralBuffer } from "@/lib/pedagogico/pauta-geral"
 import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico/pauta-anual"
 import { renderBoletimPdfBuffer, renderCertificadoPdfBuffer } from "@/lib/documentos/oficiaisBatchServer"
+import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf"
 
-type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado"
+type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado" | "lista_nominal"
 
 type PautasLoteEventData = {
   job_id: string
@@ -37,14 +38,7 @@ export const pautasLote = inngest.createFunction(
     const supabase = getSupabaseAdmin()
     const { job_id, escola_id, turma_ids, tipo, periodo_letivo_id } = event.data as PautasLoteEventData
 
-    const documentoTipo =
-      tipo === "trimestral"
-        ? "pauta_trimestral"
-        : tipo === "anual"
-          ? "pauta_anual"
-          : tipo === "boletim_trimestral"
-            ? "boletim_trimestral"
-            : "certificado"
+    const documentoTipo = resolveDocumentoTipoForLote(tipo)
 
     try {
       const { data: currentJob } = await supabase
@@ -148,6 +142,9 @@ export const pautasLote = inngest.createFunction(
                 const payload = await buildPautaAnualPayload({ supabase, escolaId: escola_id, turmaId })
                 pdfBuffer = await renderPautaAnualBuffer(payload)
                 filePrefix = "pauta_anual"
+              } else if (tipo === "lista_nominal") {
+                pdfBuffer = await renderListaNominalPdfBuffer({ supabase, escolaId: escola_id, turmaId })
+                filePrefix = "lista_nominal"
               } else if (tipo === "boletim_trimestral") {
                 pdfBuffer = await renderBoletimPdfBuffer({ supabase, escolaId: escola_id, turmaId })
                 filePrefix = "boletim"
@@ -320,3 +317,11 @@ export const pautasLote = inngest.createFunction(
     }
   }
 )
+
+export function resolveDocumentoTipoForLote(tipo: PautaLoteTipo) {
+  if (tipo === "trimestral") return "pauta_trimestral"
+  if (tipo === "anual") return "pauta_anual"
+  if (tipo === "boletim_trimestral") return "boletim_trimestral"
+  if (tipo === "lista_nominal") return "lista_nominal"
+  return "certificado"
+}
