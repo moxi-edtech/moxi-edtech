@@ -36,9 +36,9 @@ function CompactField({ label, value, clamp = "one", className = "" }: CompactFi
   const clampClass = clamp === "two" ? "line-clamp-2" : "truncate";
 
   return (
-    <div className={`min-w-0 space-y-1 ${className}`}>
-      <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`${clampClass} text-xs font-semibold leading-snug text-slate-900`} title={value}>
+    <div className={`min-w-0 space-y-0.5 ${className}`}>
+      <p className="text-[8px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`${clampClass} text-[11px] font-semibold leading-snug text-slate-900`} title={value}>
         {value || "—"}
       </p>
     </div>
