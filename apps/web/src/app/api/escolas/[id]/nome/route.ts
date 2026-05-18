@@ -13,6 +13,7 @@ type NomePayload = {
   nome?: string | null;
   plano?: string | null;
   status?: string | null;
+  logo_url?: string | null;
   error?: string;
 };
 
@@ -71,9 +72,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       (async () => {
         const queryStart = shouldLog ? performance.now() : 0;
         const { data, error } = await supabase
-          .from("vw_escola_info" as any)
-          .select("nome, plano_atual, status")
-          .eq("escola_id", targetEscolaId)
+          .from("escolas")
+          .select("nome, plano_atual, status, logo_url")
+          .eq("id", targetEscolaId)
           .maybeSingle();
         if (shouldLog) log('query', performance.now() - queryStart);
         if (error) {
@@ -85,6 +86,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
           nome: row?.nome ?? null,
           plano: row?.plano_atual ? parsePlanTier(row.plano_atual) : null,
           status: row?.status ?? null,
+          logo_url: row?.logo_url ?? null,
         } satisfies NomePayload;
       })();
 
