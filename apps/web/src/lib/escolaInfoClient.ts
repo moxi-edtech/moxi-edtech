@@ -4,13 +4,14 @@ export type EscolaInfo = {
   nome: string | null;
   plano: string | null;
   status: string | null;
+  logo_url: string | null;
 };
 
 const inFlight = new Map<string, Promise<EscolaInfo>>();
 
 export async function fetchEscolaInfo(escolaIdOrSlug: string): Promise<EscolaInfo> {
   const key = String(escolaIdOrSlug || "").trim();
-  if (!key) return { nome: null, plano: null, status: null };
+  if (!key) return { nome: null, plano: null, status: null, logo_url: null };
 
   const cacheKey = `escolas:info:${key}`;
   if (typeof sessionStorage !== "undefined") {
@@ -22,6 +23,7 @@ export async function fetchEscolaInfo(escolaIdOrSlug: string): Promise<EscolaInf
           nome: parsed?.nome ?? null,
           plano: parsed?.plano ?? null,
           status: parsed?.status ?? null,
+          logo_url: parsed?.logo_url ?? null,
         };
       } catch {
         // ignore bad cache payload
@@ -41,6 +43,7 @@ export async function fetchEscolaInfo(escolaIdOrSlug: string): Promise<EscolaInf
         nome: res.ok && json?.ok ? (json?.nome ?? null) : null,
         plano: res.ok && json?.ok ? (json?.plano ?? null) : null,
         status: res.ok && json?.ok ? (json?.status ?? null) : null,
+        logo_url: res.ok && json?.ok ? (json?.logo_url ?? null) : null,
       };
 
       if (typeof sessionStorage !== "undefined") {
