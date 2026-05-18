@@ -84,12 +84,14 @@ export function ReciboPrintButton({
   alunoNome,
   valor,
   dataPagamento,
+  logoUrl = null,
 }: {
   mensalidadeId: string;
   escolaNome: string;
   alunoNome: string;
   valor: number;
   dataPagamento: string;
+  logoUrl?: string | null;
 }) {
   const { error } = useToast();
   const [status, setStatus] = useState<"idle" | "loading" | "preparing" | "success">("idle");
@@ -222,6 +224,7 @@ export function ReciboPrintButton({
           data={dataPagamento}
           urlValidacao={recibo.url_validacao}
           publicId={recibo.doc_id}
+          logoUrl={logoUrl}
         />
       ) : null}
     </div>

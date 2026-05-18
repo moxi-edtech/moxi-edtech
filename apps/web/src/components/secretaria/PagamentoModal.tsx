@@ -17,6 +17,7 @@ type ReciboState = {
   aluno_nome: string;
   valor: number;
   data: string;
+  logo_url: string | null;
 } | null;
 
 type Props = {
@@ -53,6 +54,7 @@ export function PagamentoModal({
   const [showSuccess, setShowSuccess] = useState(false);
   const [recibo, setRecibo] = useState<ReciboState>(null);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
+  const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
 
   const { success, error } = useToast();
   const { escolaId, escolaSlug } = useEscolaId();
@@ -68,7 +70,10 @@ export function PagamentoModal({
     if (!open || !escolaId) return;
     fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
       .then(r => r.json())
-      .then(j => { if (j?.ok && j?.nome) setEscolaNome(j.nome); })
+      .then(j => {
+        if (j?.ok && j?.nome) setEscolaNome(j.nome);
+        if (j?.ok) setEscolaLogoUrl(j.logo_url ?? null);
+      })
       .catch(() => {});
   }, [escolaId, open]);
 
@@ -149,7 +154,8 @@ export function PagamentoModal({
         escola_nome: escolaNome || "Escola",
         aluno_nome: alunoNome || "Aluno",
         valor: totalKz,
-        data: new Date().toISOString()
+        data: new Date().toISOString(),
+        logo_url: escolaLogoUrl,
       });
     }
 
@@ -356,6 +362,7 @@ export function PagamentoModal({
           valor={recibo.valor}
           data={recibo.data}
           urlValidacao={recibo.url_validacao}
+          logoUrl={recibo.logo_url}
         />
       )}
     </>
