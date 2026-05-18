@@ -13,29 +13,37 @@
   box-sizing: border-box;
 }
 
+.receiptCompactSheet {
+  min-height: auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 8mm;
   }
 
   .printRoot {
+    min-height: auto !important;
     background: white !important;
   }
 
   .sheet {
     margin: 0;
     box-shadow: none;
-    padding: 12mm;
-    width: 210mm;
-    height: 297mm;
-    max-height: 297mm;
+    padding: 0;
+    width: 100%;
+    min-height: auto;
     break-inside: avoid;
     page-break-inside: avoid;
     box-sizing: border-box;
   }
 
-  .printRoot {
-    background: white !important;
+  .receiptCompactSheet {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    overflow: hidden;
   }
 }

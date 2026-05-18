@@ -5,7 +5,16 @@ import { fechamentoAcademicoRun } from "@/inngest/functions/fechamento-academico
 import { fiscalSaftExport } from "@/inngest/functions/fiscal-saft-export"
 import { fiscalFinanceiroReprocess } from "@/inngest/functions/fiscal-financeiro-reprocess"
 
+if (process.env.NODE_ENV !== "production" && !process.env.INNGEST_SIGNING_KEY) {
+  process.env.INNGEST_DEV = "1"
+}
+
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
+const functions = [pautasLote, fechamentoAcademicoRun, fiscalSaftExport, fiscalFinanceiroReprocess]
+
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [pautasLote, fechamentoAcademicoRun, fiscalSaftExport, fiscalFinanceiroReprocess],
+  functions,
 })

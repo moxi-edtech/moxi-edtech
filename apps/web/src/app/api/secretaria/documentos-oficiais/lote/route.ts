@@ -15,11 +15,24 @@ export const fetchCache = "force-no-store"
 
 const Body = z.object({
   turma_ids: z.array(z.string().uuid()).min(1),
-  tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado"]),
+  tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado", "lista_nominal", "attendance"]),
   periodo_letivo_id: z.string().uuid().optional(),
+  month: z.string().optional(),
+  year: z.string().optional(),
+  is_album: z.boolean().optional(),
+  include_all_status: z.boolean().optional(),
 })
 
 type PautasLoteJobRow = Database["public"]["Tables"]["pautas_lote_jobs"]["Row"]
+
+function resolveDocumentoTipo(tipo: z.infer<typeof Body>["tipo"]) {
+  if (tipo === "trimestral") return "pauta_trimestral"
+  if (tipo === "anual") return "pauta_anual"
+  if (tipo === "boletim_trimestral") return "boletim_trimestral"
+  if (tipo === "lista_nominal") return "lista_nominal"
+  if (tipo === "attendance") return "mapa_frequencia"
+  return "certificado"
+}
 
 export async function GET() {
   try {
@@ -129,13 +142,8 @@ export async function POST(req: Request) {
 
 
     const sortedTurmas = [...parsed.data.turma_ids].sort()
-    const documentoTipo =
-      parsed.data.tipo === "trimestral"
-        ? "pauta_trimestral"
-        : parsed.data.tipo === "anual"
-          ? "pauta_anual"
-          : parsed.data.tipo
-    const idempotencyKey = `${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${sortedTurmas.join(",")}`
+    const documentoTipo = resolveDocumentoTipo(parsed.data.tipo)
+    const idempotencyKey = `${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${sortedTurmas.join(",")}`
 
     const { data: existingByKey } = await supabase
       .from("pautas_lote_jobs")
@@ -205,6 +213,10 @@ export async function POST(req: Request) {
         tipo: parsed.data.tipo,
         documento_tipo: documentoTipo,
         periodo_letivo_id: effectivePeriodoLetivoId,
+        month: parsed.data.month,
+        year: parsed.data.year,
+        is_album: parsed.data.is_album,
+        include_all_status: parsed.data.include_all_status,
       },
     })
 
