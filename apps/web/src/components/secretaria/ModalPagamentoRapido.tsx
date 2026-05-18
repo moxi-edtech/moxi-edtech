@@ -35,7 +35,7 @@ type MetodoDetalhes = {
   gateway_ref:   string;
 };
 
-type ReciboState = { url_validacao: string | null } | null;
+type ReciboState = { url_validacao: string | null; logo_url?: string | null } | null;
 
 export interface ModalPagamentoRapidoProps {
   escolaId?:    string | null;
@@ -522,6 +522,7 @@ export function ModalPagamentoRapido({
   const [concluido, setConcluido] = useState(false);
   const [recibo,    setRecibo]    = useState<ReciboState>(null);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
+  const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
 
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
   const canEmitirRecibo = true;
@@ -568,7 +569,10 @@ export function ModalPagamentoRapido({
     if (!open || !escolaId) return;
     fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
       .then(r => r.json())
-      .then(j => { if (j?.ok && j?.nome) setEscolaNome(j.nome); })
+      .then(j => {
+        if (j?.ok && j?.nome) setEscolaNome(j.nome);
+        if (j?.ok) setEscolaLogoUrl(j.logo_url ?? null);
+      })
       .catch(() => {});
   }, [escolaId, open]);
 
@@ -584,7 +588,7 @@ export function ModalPagamentoRapido({
     aluno, mensalidade, metodo, detalhes, valorPagoNum: valorNum,
     mesAno, trocoValido, canEmitirRecibo,
     onConcluido: () => setConcluido(true),
-    onRecibo:    setRecibo,
+    onRecibo:    (payload) => setRecibo(payload ? { ...payload, logo_url: escolaLogoUrl } : null),
     safeClose, onSuccess,
   });
 
@@ -798,6 +802,7 @@ export function ModalPagamentoRapido({
           valor={mensalidade?.valor ?? 0}
           data={new Date().toISOString()}
           urlValidacao={recibo.url_validacao}
+          logoUrl={recibo.logo_url ?? escolaLogoUrl}
         />
       )}
     </>

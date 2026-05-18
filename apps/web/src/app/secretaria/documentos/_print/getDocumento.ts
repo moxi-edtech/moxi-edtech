@@ -65,6 +65,7 @@ export async function getDocumentoEmitido(docId: string) {
     .maybeSingle();
   const escolaInfoRow = escolaInfo as { nome?: string | null } | null;
   const escolaRow = escola as { validation_base_url?: string | null; logo_url?: string | null } | null;
+  const rawLogoUrl = escolaRow?.logo_url?.trim() || null;
   const rawSnapshot = doc.dados_snapshot;
   const snapshot =
     rawSnapshot && typeof rawSnapshot === "object" && !Array.isArray(rawSnapshot)
@@ -88,6 +89,6 @@ export async function getDocumentoEmitido(docId: string) {
     },
     escolaNome: escolaInfoRow?.nome ?? "Escola",
     validationBaseUrl: escolaRow?.validation_base_url ?? null,
-    logoUrl: escolaRow?.logo_url ?? null,
+    logoUrl: rawLogoUrl,
   } as const;
 }

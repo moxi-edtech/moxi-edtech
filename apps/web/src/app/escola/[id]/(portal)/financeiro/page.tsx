@@ -155,6 +155,7 @@ export default async function FinanceiroDashboardPage({
   let alunoNome = "";
   let financeNotifications: Notification[] = [];
   let escolaNome = "Escola";
+  let escolaLogoUrl: string | null = null;
   let anoLetivo = new Date().getFullYear();
 
   if (aluno) {
@@ -186,7 +187,7 @@ export default async function FinanceiroDashboardPage({
         .maybeSingle(),
       supabase
         .from("escolas")
-        .select("nome")
+        .select("nome, logo_url")
         .eq("id", escolaId)
         .maybeSingle(),
       supabase
@@ -201,6 +202,7 @@ export default async function FinanceiroDashboardPage({
 
     if (anoAtivoRes.data?.ano) anoLetivo = Number(anoAtivoRes.data.ano);
     escolaNome = escolaRes.data?.nome ?? escolaNome;
+    escolaLogoUrl = escolaRes.data?.logo_url ?? null;
     financeNotifications = (notificationsRes.data as Notification[]) || [];
   }
 
@@ -457,6 +459,7 @@ export default async function FinanceiroDashboardPage({
                                   alunoNome={alunoNome}
                                   valor={mens.valor_pago_total ?? mens.valor_previsto ?? mens.valor ?? 0}
                                   dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
+                                  logoUrl={escolaLogoUrl}
                                 />
                                 <EstornarMensalidadeButton mensalidadeId={mens.id} />
                               </div>

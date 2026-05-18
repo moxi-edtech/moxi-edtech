@@ -64,14 +64,15 @@ export default function ReciboPagamentoCompacto({
 }: ReciboPagamentoCompactoProps) {
   const classeCurso = `${classeNome}${cursoNome ? ` - ${cursoNome}` : ""}`;
   const emissao = emitidoEm || "—";
+  const effectiveLogoUrl = logoUrl?.trim() ? logoUrl.trim() : "/insignia_med.png";
 
   return (
     <div className="space-y-3 bg-white font-sans text-slate-900">
       <header className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-slate-200 pb-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={logoUrl ?? "/insignia_med.png"}
-          alt="Insígnia da República de Angola"
+          src={effectiveLogoUrl}
+          alt={logoUrl?.trim() ? `Logotipo de ${escolaNome}` : "Insígnia da República de Angola"}
           className="h-12 w-12 shrink-0 object-contain"
         />
 
