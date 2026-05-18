@@ -12,7 +12,7 @@ import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico
 import { renderBoletimPdfBuffer, renderCertificadoPdfBuffer } from "@/lib/documentos/oficiaisBatchServer"
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf"
 
-type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado" | "lista_nominal"
+type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado" | "lista_nominal" | "attendance"
 
 type PautasLoteEventData = {
   job_id: string
@@ -21,6 +21,10 @@ type PautasLoteEventData = {
   tipo: PautaLoteTipo
   documento_tipo?: string | null
   periodo_letivo_id?: string | null
+  month?: string | null
+  year?: string | null
+  is_album?: boolean
+  include_all_status?: boolean
 }
 
 const getSupabaseAdmin = () => {
@@ -142,9 +146,17 @@ export const pautasLote = inngest.createFunction(
                 const payload = await buildPautaAnualPayload({ supabase, escolaId: escola_id, turmaId })
                 pdfBuffer = await renderPautaAnualBuffer(payload)
                 filePrefix = "pauta_anual"
-              } else if (tipo === "lista_nominal") {
-                pdfBuffer = await renderListaNominalPdfBuffer({ supabase, escolaId: escola_id, turmaId })
-                filePrefix = "lista_nominal"
+              } else if (tipo === "lista_nominal" || tipo === "attendance") {
+                pdfBuffer = await renderListaNominalPdfBuffer({
+                  supabase,
+                  escolaId: escola_id,
+                  turmaId,
+                  month: event.data.month,
+                  year: event.data.year,
+                  isAlbum: event.data.is_album,
+                  includeAllStatus: event.data.include_all_status,
+                })
+                filePrefix = tipo
               } else if (tipo === "boletim_trimestral") {
                 pdfBuffer = await renderBoletimPdfBuffer({ supabase, escolaId: escola_id, turmaId })
                 filePrefix = "boletim"
@@ -323,5 +335,6 @@ export function resolveDocumentoTipoForLote(tipo: PautaLoteTipo) {
   if (tipo === "anual") return "pauta_anual"
   if (tipo === "boletim_trimestral") return "boletim_trimestral"
   if (tipo === "lista_nominal") return "lista_nominal"
+  if (tipo === "attendance") return "mapa_frequencia"
   return "certificado"
 }

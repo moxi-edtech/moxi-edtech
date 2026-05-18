@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { rgb } from "pdf-lib";
 import type { Database } from "~types/supabase";
-import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
+import { createInstitutionalPdf, fetchImageBytes } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { drawTable, type Column } from "@/lib/pdf/table";
@@ -24,17 +25,8 @@ type EscolaRow = {
   id: string;
   nome: string | null;
   nif: string | null;
-  numero_fiscal: string | null;
   endereco: string | null;
-  morada: string | null;
-  telefone: string | null;
-  email: string | null;
   logo_url: string | null;
-  logo: string | null;
-  validation_base_url: string | null;
-  responsavel: string | null;
-  diretor_nome: string | null;
-  diretor_cargo: string | null;
 };
 
 type ClasseRow = { nome: string | null };
@@ -46,14 +38,18 @@ type AlunoNested = {
   bi_numero: string | null;
   sexo?: string | null;
   data_nascimento?: string | null;
+  naturalidade?: string | null;
+  provincia?: string | null;
   telefone?: string | null;
   responsavel?: string | null;
   telefone_responsavel?: string | null;
+  profiles?: { avatar_url?: string | null } | null;
 };
 
 type MatriculaRow = {
   id: string;
   numero_chamada: number | null;
+  status: string;
   alunos: AlunoNested | AlunoNested[] | null;
 };
 
@@ -71,13 +67,52 @@ type ListaNominalPdfParams = {
   year?: string | null;
   isAttendance?: boolean;
   disciplinaId?: string | null;
+  isAlbum?: boolean;
+  includeAllStatus?: boolean;
+  fallbackLogoUrl?: string | null;
 };
 
 function mapStatus(status: string) {
   if (status === "presente") return "P";
   if (status === "falta") return "F";
   if (status === "atraso") return "A";
+  if (status === "falta_justificada" || status === "justificada") return "FJ";
   return "—";
+}
+
+function calculateAge(birthDate: string | null | undefined) {
+  if (!birthDate) return "—";
+  try {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return "—";
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  } catch {
+    return "—";
+  }
+}
+
+function fitMetaLines(parts: string[], maxWidth: number, font: any, size: number) {
+  const lines: string[] = [];
+  let current = "";
+
+  for (const part of parts.filter(Boolean)) {
+    const candidate = current ? `${current}  •  ${part}` : part;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      current = candidate;
+    } else {
+      if (current) lines.push(current);
+      current = part;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
 }
 
 export async function renderListaNominalPdfBuffer({
@@ -88,6 +123,9 @@ export async function renderListaNominalPdfBuffer({
   year,
   isAttendance = false,
   disciplinaId,
+  isAlbum = false,
+  includeAllStatus = false,
+  fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
 
@@ -116,10 +154,10 @@ export async function renderListaNominalPdfBuffer({
 
   const turma = turmaData as unknown as TurmaRow;
 
-  const [escolaRes, classeRes, sessaoRes] = await Promise.all([
+  const [escolaRes, classeRes, sessaoRes, extraDataRes] = await Promise.all([
     supabase
       .from("escolas")
-      .select("id, nome, nif, numero_fiscal, endereco, morada, telefone, email, logo_url, logo, validation_base_url, responsavel, diretor_nome, diretor_cargo")
+      .select("id, nome, nif, endereco, logo_url")
       .eq("id", escolaId)
       .maybeSingle(),
     turma.classe_id
@@ -128,6 +166,17 @@ export async function renderListaNominalPdfBuffer({
     turma.session_id
       ? supabase.from("anos_letivos").select("ano").eq("id", turma.session_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    disciplinaId
+      ? Promise.all([
+          supabase.from("disciplinas_catalogo").select("nome").eq("id", disciplinaId).maybeSingle(),
+          supabase
+            .from("turma_disciplinas_professores")
+            .select("professores(profiles(nome))")
+            .eq("turma_id", turmaId)
+            .eq("disciplina_id", disciplinaId)
+            .maybeSingle()
+        ])
+      : Promise.resolve([null, null])
   ]);
 
   if (escolaRes.error) throw new Error(escolaRes.error.message);
@@ -138,6 +187,9 @@ export async function renderListaNominalPdfBuffer({
   const classe = classeRes.data as unknown as ClasseRow | null;
   const sessao = sessaoRes.data as unknown as SessaoRow | null;
   const classeNome = classe?.nome ?? "—";
+
+  const disciplinaNome = (extraDataRes?.[0] as any)?.data?.nome || "";
+  const professorNome = (extraDataRes?.[1] as any)?.data?.professores?.profiles?.nome || "";
 
   let matriculasQuery = supabase
     .from("matriculas")
@@ -152,17 +204,25 @@ export async function renderListaNominalPdfBuffer({
         bi_numero,
         sexo,
         data_nascimento,
+        naturalidade,
+        provincia,
         telefone,
         responsavel,
-        telefone_responsavel
+        telefone_responsavel,
+        profiles!alunos_profile_id_fkey (
+          avatar_url
+        )
       )
     `
     )
     .eq("turma_id", turmaId)
     .eq("escola_id", escolaId)
-    .in("status", ["ativo", "ativa"])
     .order("numero_chamada", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
+
+  if (!includeAllStatus) {
+    matriculasQuery = matriculasQuery.in("status", ["ativo", "ativa"]);
+  }
 
   matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
 
@@ -216,42 +276,67 @@ export async function renderListaNominalPdfBuffer({
             ? "F"
             : "—",
       bi: aluno?.bi_numero ?? "—",
+      data_nascimento: aluno?.data_nascimento ?? "—",
+      idade: calculateAge(aluno?.data_nascimento),
+      naturalidade: aluno?.naturalidade ?? "—",
+      provincia: aluno?.provincia ?? "—",
       telefone: aluno?.telefone ?? "—",
       responsavel: aluno?.responsavel ?? "—",
       telefone_responsavel: aluno?.telefone_responsavel ?? "—",
+      status: matricula.status,
     };
+
+    if (aluno?.profiles?.avatar_url) {
+      row.foto_url = aluno.profiles.avatar_url;
+    }
 
     if (month && normalizedYear) {
       const studentAttendance = attendanceData.filter((item) => item.matricula_id === matricula.id);
+      let totalP = 0;
+      let totalF = 0;
+      let totalA = 0;
+      let totalFJ = 0;
+
       for (let day = 1; day <= 31; day += 1) {
         const dateStr = `${normalizedYear}-${month.padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         const record = studentAttendance.find((item) => item.data === dateStr);
-        row[`d${day}`] = record ? mapStatus(record.status) : "";
+        const status = record ? mapStatus(record.status) : "";
+        row[`d${day}`] = status;
+
+        if (status === "P") totalP++;
+        else if (status === "F") totalF++;
+        else if (status === "A") totalA++;
+        else if (status === "FJ") totalFJ++;
       }
+      row.totalP = totalP || "";
+      row.totalF = totalF || "";
+      row.totalA = totalA || "";
+      row.totalFJ = totalFJ || "";
     }
 
     return row;
   });
 
   const verificationToken = randomUUID();
-  const validationBase =
-    process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ??
-    escola?.validation_base_url ??
-    undefined;
+  const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? undefined;
 
   const pdfBytes = await createInstitutionalPdf({
-    title: month
-      ? "Mapa de Frequência Mensal"
-      : isAttendance
-        ? "Folha de Presença / Pauta de Chamada"
-        : "Lista de Alunos por Turma",
+    title: isAlbum
+      ? "Álbum Visual da Turma"
+      : month
+        ? "Mapa de Frequência Mensal"
+        : isAttendance
+          ? "Folha de Presença / Pauta de Chamada"
+          : "Lista Nominal de Alunos",
+    subtitle: "Documento Académico Oficial",
     orientation: isAttendance || month ? "landscape" : "portrait",
     school: {
       name: escola?.nome ?? "Escola",
-      nif: escola?.nif ?? escola?.numero_fiscal,
-      address: escola?.endereco ?? escola?.morada,
-      contacts: [escola?.telefone, escola?.email].filter(Boolean).join(" • "),
-      logoUrl: escola?.logo_url ?? escola?.logo,
+      nif: escola?.nif,
+      address: escola?.endereco,
+      contacts: "",
+      logoUrl: escola?.logo_url,
+      fallbackLogoUrl,
       validationBaseUrl: validationBase,
     },
     verificationToken,
@@ -265,8 +350,10 @@ export async function renderListaNominalPdfBuffer({
       verificationUrl,
       width,
     }) => {
+      let currentPage = page;
       let cursorY = contentStartY;
-      const lineHeight = 14;
+      const lineHeight = 16;
+      const metaFontSize = 10;
       const monthNames = [
         "Janeiro",
         "Fevereiro",
@@ -281,63 +368,228 @@ export async function renderListaNominalPdfBuffer({
         "Novembro",
         "Dezembro",
       ];
-      const periodLabel = month ? `  •  Mês: ${monthNames[parseInt(month, 10) - 1]} / ${normalizedYear}` : "";
-
-      page.drawText(
-        `Turma: ${turma.nome ?? "—"}  •  Classe: ${classeNome}  •  Turno: ${turma.turno ?? "—"}${periodLabel}`,
-        { x: margin, y: cursorY, font: boldFont, size: 10 }
+      const metaLineOne = fitMetaLines(
+        [
+          `Turma: ${turma.nome ?? "—"}`,
+          `Classe: ${classeNome}`,
+          `Turno: ${turma.turno ?? "—"}`,
+          month ? `Mês: ${monthNames[parseInt(month, 10) - 1]} / ${normalizedYear}` : "",
+        ],
+        width - 2 * margin,
+        boldFont,
+        metaFontSize
       );
-      cursorY -= lineHeight;
-      page.drawText(
-        `Ano letivo: ${sessao?.ano ?? turma.ano_letivo ?? "—"}  •  Sala: ${turma.sala ?? "—"}`,
-        { x: margin, y: cursorY, font, size: 10 }
+      const metaLineTwo = fitMetaLines(
+        [
+          `Ano letivo: ${sessao?.ano ?? turma.ano_letivo ?? "—"}`,
+          `Sala: ${turma.sala ?? "—"}`,
+          disciplinaNome ? `Disciplina: ${disciplinaNome}` : "",
+          professorNome ? `Prof: ${professorNome}` : "",
+        ],
+        width - 2 * margin,
+        font,
+        metaFontSize
       );
-      cursorY -= lineHeight * 1.5;
 
-      let columns: Column[] = [];
-      if (month) {
-        columns = [
-          { header: "Nº", key: "numero", width: 22, align: "center" },
-          { header: "Nome do Aluno", key: "nome", width: 140 },
-        ];
-        for (let day = 1; day <= 31; day += 1) {
-          columns.push({ header: String(day), key: `d${day}`, width: 17.5, align: "center" });
-        }
-      } else if (isAttendance) {
-        columns = [
-          { header: "Nº", key: "numero", width: 25, align: "center" },
-          { header: "Nome do Aluno", key: "nome", width: 220 },
-          { header: "G", key: "genero", width: 20, align: "center" },
-          ...Array.from({ length: 9 }).map((_, index) => ({ header: "", key: `d${index + 1}`, width: 45 })),
-          { header: "Assinatura / Obs", key: "obs", width: 80 },
-        ];
-      } else {
-        columns = [
-          { header: "Nº", key: "numero", width: 30, align: "center" },
-          { header: "Nome do Aluno", key: "nome", width: 230 },
-          { header: "G", key: "genero", width: 20, align: "center" },
-          { header: "Documento (BI)", key: "bi", width: 100 },
-          { header: "Encarregado", key: "responsavel", width: 125 },
-        ];
+      for (const line of metaLineOne) {
+        currentPage.drawText(line, { x: margin, y: cursorY, font: boldFont, size: metaFontSize });
+        cursorY -= lineHeight;
       }
 
-      const { lastPage, lastY } = await drawTable(columns, alunos, {
-        page,
-        pdfDoc,
-        font,
-        boldFont,
-        margin,
-        startY: cursorY,
-        zebra: true,
-        rowHeight: 18,
-        fontSize: month ? 7 : 9,
-        headerFontSize: month ? 7 : 10,
-      });
+      for (const line of metaLineTwo) {
+        currentPage.drawText(line, { x: margin, y: cursorY, font, size: metaFontSize });
+        cursorY -= lineHeight;
+      }
 
-      cursorY = lastY - 20;
+      cursorY -= 8;
+
+      if (isAlbum) {
+        // ALBUM MODE: Grid layout
+        const cols = 5;
+        const cardWidth = (width - 2 * margin) / cols;
+        const cardHeight = 120;
+        const photoSize = 70;
+        let colIndex = 0;
+        
+        for (const aluno of alunos) {
+          if (cursorY < margin + cardHeight) {
+            currentPage = pdfDoc.addPage([page.getWidth(), page.getHeight()]);
+            cursorY = currentPage.getHeight() - margin - 20;
+            colIndex = 0;
+          }
+
+          const x = margin + colIndex * cardWidth;
+          const centerX = x + cardWidth / 2;
+
+          // Photo area
+          let photoDrawn = false;
+          const fotoUrl = aluno.foto_url as string | undefined;
+          if (fotoUrl) {
+            try {
+              const photoBytes = await fetchImageBytes(fotoUrl);
+              const isPng = fotoUrl.toLowerCase().includes(".png");
+              const photoImage = isPng ? await pdfDoc.embedPng(photoBytes) : await pdfDoc.embedJpg(photoBytes);
+              const scale = photoSize / Math.max(photoImage.width, photoImage.height);
+              const dims = photoImage.scale(scale);
+              
+              currentPage.drawImage(photoImage, {
+                x: centerX - dims.width / 2,
+                y: cursorY - photoSize + (photoSize - dims.height) / 2,
+                width: dims.width,
+                height: dims.height,
+              });
+              photoDrawn = true;
+            } catch (e) {
+              console.warn("Could not load student photo:", e);
+            }
+          }
+
+          if (!photoDrawn) {
+            currentPage.drawRectangle({
+              x: centerX - photoSize / 2,
+              y: cursorY - photoSize,
+              width: photoSize,
+              height: photoSize,
+              color: rgb(0.95, 0.95, 0.95),
+              borderColor: rgb(0.8, 0.8, 0.8),
+              borderWidth: 0.5,
+            });
+
+            const initials = (aluno.nome as string).split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
+            currentPage.drawText(initials, {
+              x: centerX - font.widthOfTextAtSize(initials, 16) / 2,
+              y: cursorY - photoSize / 2 - 6,
+              size: 16,
+              font: boldFont,
+              color: rgb(0.7, 0.7, 0.7),
+            });
+          }
+
+          // Aluno labels
+          const numeroStr = String(aluno.numero).padStart(2, "0");
+          currentPage.drawText(numeroStr, {
+            x: x + 10,
+            y: cursorY - photoSize - 12,
+            size: 8,
+            font: boldFont,
+          });
+
+          const nomeCurto = (aluno.nome as string).split(" ").slice(0, 2).join(" ");
+          currentPage.drawText(nomeCurto, {
+            x: centerX - font.widthOfTextAtSize(nomeCurto, 8) / 2,
+            y: cursorY - photoSize - 12,
+            size: 8,
+            font: boldFont,
+          });
+
+          const biText = `BI: ${aluno.bi}`;
+          currentPage.drawText(biText, {
+            x: centerX - font.widthOfTextAtSize(biText, 7) / 2,
+            y: cursorY - photoSize - 22,
+            size: 7,
+            font,
+          });
+
+          if (aluno.status !== "ativo" && aluno.status !== "ativa") {
+            const statusText = `(${String(aluno.status).toUpperCase()})`;
+            currentPage.drawText(statusText, {
+              x: centerX - font.widthOfTextAtSize(statusText, 7) / 2,
+              y: cursorY - photoSize - 32,
+              size: 7,
+              font: boldFont,
+              color: rgb(0.8, 0, 0),
+            });
+          }
+
+          colIndex++;
+          if (colIndex >= cols) {
+            colIndex = 0;
+            cursorY -= cardHeight;
+          }
+        }
+        if (colIndex > 0) cursorY -= cardHeight;
+      } else {
+        // TABLE MODE
+        let columns: Column[] = [];
+        if (month) {
+          columns = [
+            { header: "Nº", key: "numero", width: 22, align: "center" },
+            { header: "Nome do Aluno", key: "nome", width: 130 },
+          ];
+
+          const lastDayOfMonth = new Date(parseInt(normalizedYear, 10), parseInt(month, 10), 0).getDate();
+
+          for (let day = 1; day <= 31; day += 1) {
+            let bgColor: Column["bgColor"] | undefined = undefined;
+            if (day <= lastDayOfMonth) {
+              const date = new Date(parseInt(normalizedYear, 10), parseInt(month, 10) - 1, day);
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              if (isWeekend) {
+                bgColor = { r: 0.9, g: 0.9, b: 0.9 };
+              }
+            }
+            columns.push({ 
+              header: String(day), 
+              key: `d${day}`, 
+              width: 16.5, 
+              align: "center",
+              bgColor
+            });
+          }
+          
+          columns.push({ header: "P", key: "totalP", width: 18, align: "center" });
+          columns.push({ header: "F", key: "totalF", width: 18, align: "center" });
+          columns.push({ header: "A", key: "totalA", width: 18, align: "center" });
+          columns.push({ header: "FJ", key: "totalFJ", width: 18, align: "center" });
+        } else if (isAttendance) {
+          columns = [
+            { header: "Nº", key: "numero", width: 25, align: "center" },
+            { header: "Nome do Aluno", key: "nome", width: 220 },
+            { header: "G", key: "genero", width: 20, align: "center" },
+            ...Array.from({ length: 9 }).map((_, idx) => ({ header: "", key: `d${idx + 1}`, width: 45 })),
+            { header: "Assinatura / Obs", key: "obs", width: 80 },
+          ];
+        } else {
+          // NOMINAL LIST: Extended Academic Data
+          columns = [
+            { header: "Nº", key: "numero", width: 25, align: "center" },
+            { header: "Nome do Aluno", key: "nome", width: 180 },
+            { header: "G", key: "genero", width: 20, align: "center" },
+            { header: "Nascimento", key: "data_nascimento", width: 70 },
+            { header: "Idade", key: "idade", width: 35, align: "center" },
+            { header: "Naturalidade", key: "naturalidade", width: 90 },
+            { header: "Documento (BI)", key: "bi", width: 80 },
+          ];
+
+          // If showing all status, highlight the non-active ones
+          if (includeAllStatus) {
+            alunos.forEach(a => {
+              if (a.status !== "ativo" && a.status !== "ativa") {
+                a.nome = `${a.nome} [${String(a.status).toUpperCase()}]`;
+              }
+            });
+          }
+        }
+
+        const { lastPage, lastY } = await drawTable(columns, alunos, {
+          page: currentPage,
+          pdfDoc,
+          font,
+          boldFont,
+          margin,
+          startY: cursorY,
+          zebra: true,
+          rowHeight: 18,
+          fontSize: month ? 7 : 9,
+          headerFontSize: month ? 7 : 10,
+        });
+
+        cursorY = lastY - 20;
+        currentPage = lastPage;
+      }
 
       if (month) {
-        lastPage.drawText("Legenda: P = Presente | F = Falta | A = Atraso | FJ = Falta Justificada", {
+        currentPage.drawText("Legenda: P = Presente | F = Falta | A = Atraso | FJ = Falta Justificada", {
           x: margin,
           y: cursorY + 5,
           font,
@@ -346,30 +598,69 @@ export async function renderListaNominalPdfBuffer({
         cursorY -= 15;
       }
 
-      const qrSize = 70;
+      const qrSize = 65;
       const signatureText = buildSignatureLine({
-        signerName: escola?.responsavel ?? escola?.diretor_nome,
-        signerRole: escola?.diretor_cargo ?? "Diretor(a)",
+        signerName: undefined,
+        signerRole: "Diretor(a)",
       });
 
       if (verificationUrl) {
         const qrImage = await createQrImage(pdfDoc, verificationUrl);
-        const qrX = width - margin - qrSize;
-        const qrY = Math.max(cursorY - qrSize - 10, margin + 40);
-        lastPage.drawImage(qrImage, {
+        const qrX = width - margin - qrSize - 10;
+        const qrY = Math.max(cursorY - qrSize - 15, margin + 40);
+        
+        // Authenticity Box/Seal
+        currentPage.drawRectangle({
+          x: margin,
+          y: qrY - 5,
+          width: width - 2 * margin,
+          height: qrSize + 20,
+          borderColor: rgb(0.85, 0.85, 0.85),
+          borderWidth: 0.5,
+          color: rgb(0.98, 0.98, 0.98),
+        });
+
+        currentPage.drawImage(qrImage, {
           x: qrX,
-          y: qrY,
+          y: qrY + 5,
           width: qrSize,
           height: qrSize,
         });
-        lastPage.drawText(signatureText, {
-          x: margin,
+
+        currentPage.drawText("AUTENTICIDADE DIGITAL", {
+          x: margin + 10,
           y: qrY + qrSize + 5,
-          font,
+          font: boldFont,
+          size: 7,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+
+        currentPage.drawText(signatureText, {
+          x: margin + 10,
+          y: qrY + qrSize - 15,
+          font: boldFont,
           size: 10,
         });
+
+        const infoText = "Este documento foi gerado pelo Sistema de Gestão Escolar e possui validade jurídica mediante verificação via QR Code.";
+        currentPage.drawText(infoText, {
+          x: margin + 10,
+          y: qrY + qrSize - 30,
+          font,
+          size: 7,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+
+        const dateText = `Emitido em: ${new Date().toLocaleString("pt-PT")}`;
+        currentPage.drawText(dateText, {
+          x: margin + 10,
+          y: qrY + qrSize - 40,
+          font,
+          size: 7,
+          color: rgb(0.5, 0.5, 0.5),
+        });
       } else {
-        lastPage.drawText(signatureText, {
+        currentPage.drawText(signatureText, {
           x: margin,
           y: cursorY - 10,
           font,

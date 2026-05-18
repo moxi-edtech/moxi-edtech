@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { rgb } from "pdf-lib";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { requireFeature } from "@/lib/plan/requireFeature";
@@ -35,7 +36,7 @@ interface ProfileRow {
 interface TurmaRow {
   id: string;
   nome?: string | null;
-  classe?: string | null;
+  classe?: { nome?: string | null } | null;
   turno?: string | null;
   ano_letivo?: number | null;
 }
@@ -52,34 +53,10 @@ interface EscolaRow {
   id: string;
   nome?: string | null;
   nif?: string | null;
-  numero_fiscal?: string | null;
   endereco?: string | null;
-  morada?: string | null;
-  telefone?: string | null;
-  email?: string | null;
   logo_url?: string | null;
-  logo?: string | null;
-  validation_base_url?: string | null;
-  diretor_nome?: string | null;
-  diretor_cargo?: string | null;
   responsavel?: string | null;
-}
-
-interface EscolaSlimRow {
-  id: string;
-  nome?: string | null;
-  nif?: string | null;
-  numero_fiscal?: string | null;
-  endereco?: string | null;
-  morada?: string | null;
-  telefone?: string | null;
-  email?: string | null;
-  logo_url?: string | null;
-  logo?: string | null;
-  validation_base_url?: string | null;
   diretor_nome?: string | null;
-  diretor_cargo?: string | null;
-  responsavel?: string | null;
 }
 
 interface AlunoRow {
@@ -116,274 +93,91 @@ function normalizePagamentos(pagamentos: PaymentRow | PaymentRow[] | null | unde
   return Array.isArray(pagamentos) ? pagamentos : [pagamentos];
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ alunoId: string }> }
+) {
   try {
-    const guard = await requireApiTenantGuard({
-      productContext: "k12",
-      requireTenantType: "k12",
-      allowedRoles: [
-        "financeiro",
-        "secretaria_financeiro",
-        "admin_financeiro",
-        "admin",
-        "admin_escola",
-        "staff_admin",
-        "super_admin",
-        "global_admin",
-      ],
-    });
+    const { alunoId } = await params;
+    const guard = await requireApiTenantGuard({ productContext: "k12" });
     if (!guard.ok) return guard.response;
 
-    const supabase = guard.supabase;
-    const userEscolaId = guard.tenantId;
+    const { supabase, tenantId: escolaId } = guard;
 
     await requireFeature("doc_qr_code");
 
-    const { alunoId } = await params;
-
-    let alunoQuery = supabase
+    // 1. Buscar dados do aluno e escola
+    const { data: alunoData, error: alunoError } = await supabase
       .from("alunos")
-      .select(
-        `
-        id,
-        nome,
-        bi_numero,
-        telefone,
-        email,
-        responsavel,
-        telefone_responsavel,
-        escola_id,
-        profiles:profiles!alunos_profile_id_fkey (
-          id,
-          numero_processo_login
+      .select(`
+        id, nome, bi_numero, telefone, email, responsavel, telefone_responsavel, escola_id,
+        profiles(numero_processo_login),
+        matriculas(
+          id, ano_letivo, status, numero_matricula,
+          turma:turmas(id, nome, classe:classes(nome), turno, ano_letivo)
         ),
-        matriculas:matriculas (
-          id,
-          ano_letivo,
-          status,
-          numero_matricula,
-          turma:turmas (
-            id,
-            nome,
-            classe,
-            turno,
-            ano_letivo
-          )
-        ),
-        escolas:escolas (
-          id,
-          nome,
-          nif,
-          numero_fiscal,
-          endereco,
-          morada,
-          telefone,
-          email,
-          logo_url,
-          logo,
-          validation_base_url,
-          diretor_nome,
-          diretor_cargo,
-          responsavel
-        )
-      `
-      )
+        escolas(id, nome, nif, endereco, logo_url, responsavel, diretor_nome)
+      `)
       .eq("id", alunoId)
-      .eq("escola_id", userEscolaId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .eq("escola_id", escolaId)
+      .single();
 
-    alunoQuery = applyKf2ListInvariants(alunoQuery, { defaultLimit: 1 });
-
-    const { data: alunoRow, error: alunoError } = await alunoQuery.maybeSingle<AlunoRow>();
-
-    if (alunoError) {
-      return NextResponse.json({ ok: false, error: "Erro ao carregar aluno", details: alunoError.message }, { status: 500 });
-    }
-
-    let escola = alunoRow?.escolas ?? null;
-    if (!escola) {
-      const { data: escolaRow } = await supabase
-        .from("escolas")
-        .select(
-          "id, nome, nif, numero_fiscal, endereco, morada, telefone, email, logo_url, logo, validation_base_url, diretor_nome, diretor_cargo, responsavel"
-        )
-        .eq("id", userEscolaId)
-        .maybeSingle<EscolaSlimRow>();
-      escola = escolaRow ?? null;
-    }
-
-    // Additional check if aluno.escola_id is different from userEscolaId (should be caught by .eq above but good for defense)
-    if (alunoRow?.escola_id && alunoRow.escola_id !== userEscolaId) {
-      return NextResponse.json({ ok: false, error: "Acesso negado: Aluno não pertence à sua escola" }, { status: 403 });
-    }
-
-    let mensalidadesQuery = supabase
-      .from("mensalidades")
-      .select(
-        `
-        id,
-        matricula_id,
-        ano_letivo,
-        mes_referencia,
-        ano_referencia,
-        data_vencimento,
-        data_pagamento_efetiva,
-        valor_previsto,
-        valor_pago_total,
-        status,
-        observacoes,
-        pagamentos:pagamentos (
-          id,
-          valor_pago,
-          metodo_pagamento,
-          data_pagamento,
-          referencia_externa
-        )
-      `
-      )
-      .eq("aluno_id", alunoId)
-      .order("data_vencimento", { ascending: true });
-
-    mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 50 });
-
-    const { data: mensalidades, error: mensError } = await mensalidadesQuery.returns<MensalidadeRow[]>();
-
-    if (mensError) {
+    if (alunoError || !alunoData) {
       return NextResponse.json(
-        { ok: false, error: "Erro ao carregar mensalidades", details: mensError.message },
+        { ok: false, error: "Aluno não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const aluno = alunoData as unknown as AlunoRow;
+    const escola = aluno.escolas;
+
+    // 2. Buscar histórico de pagamentos/mensalidades
+    let query = supabase
+      .from("mensalidades")
+      .select(`
+        id, matricula_id, ano_letivo, mes_referencia, ano_referencia,
+        data_vencimento, data_pagamento_efetiva, valor_previsto, valor_pago_total,
+        status, observacoes,
+        pagamentos:financeiro_pagamentos(valor_pago, metodo_pagamento, data_pagamento, referencia_externa)
+      `)
+      .eq("escola_id", escolaId)
+      .in(
+        "matricula_id",
+        normalizeMatriculas(aluno.matriculas).map((m) => m.id)
+      )
+      .order("ano_referencia", { ascending: false })
+      .order("mes_referencia", { ascending: false });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+
+    const { data: mensalidadesData, error: mensalidadesError } = await query;
+
+    if (mensalidadesError) {
+      return NextResponse.json(
+        { ok: false, error: mensalidadesError.message },
         { status: 500 }
       );
     }
 
-    if (!alunoRow && (mensalidades?.length ?? 0) === 0) {
-      return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
-    }
+    const mensalidades = (mensalidadesData ?? []) as unknown as MensalidadeRow[];
 
-    let fallbackMatriculaAtual: MatriculaRow | null = null;
-    if (!alunoRow) {
-      const fallbackMatriculaId = (mensalidades ?? []).find((row) => row.matricula_id)?.matricula_id ?? null;
-      if (fallbackMatriculaId) {
-        const { data: matriculaRow } = await supabase
-          .from("matriculas")
-          .select(
-            `
-            id,
-            ano_letivo,
-            status,
-            numero_matricula,
-            turma:turmas (
-              id,
-              nome,
-              classe,
-              turno,
-              ano_letivo
-            )
-          `
-          )
-          .eq("id", fallbackMatriculaId)
-          .eq("escola_id", userEscolaId)
-          .maybeSingle<MatriculaRow>();
-        fallbackMatriculaAtual = matriculaRow ?? null;
-      }
-    }
-
-    const aluno = (alunoRow ??
-      ({
-        id: alunoId,
-        nome: "Aluno",
-        bi_numero: null,
-        telefone: null,
-        email: null,
-        responsavel: null,
-        telefone_responsavel: null,
-        escola_id: userEscolaId,
-        profiles: null,
-        matriculas: fallbackMatriculaAtual ? [fallbackMatriculaAtual] : [],
-        escolas: escola,
-      } satisfies AlunoRow)) as AlunoRow;
-
-    const profile = normalizeProfile(aluno.profiles);
-    const matriculas = normalizeMatriculas(aluno.matriculas);
-    const matriculaAtual = matriculas.sort((a, b) => (b.ano_letivo ?? 0) - (a.ano_letivo ?? 0))[0];
-    const turmaAtual = normalizeTurma(matriculaAtual?.turma);
-
-    const parcelas = (mensalidades ?? []).map((m) => {
-      const valorPrevisto = Number(m.valor_previsto ?? 0);
-      const valorPago = Number(m.valor_pago_total ?? 0);
-      const emAberto = Math.max(0, valorPrevisto - valorPago);
-
-      const pagamentos = normalizePagamentos(m.pagamentos);
-      const ultimoPagamento = pagamentos
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(b.data_pagamento ?? 0).getTime() - new Date(a.data_pagamento ?? 0).getTime()
-        )[0];
-
-      return {
-        id: m.id,
-        anoLetivo: m.ano_letivo,
-        mesReferencia: m.mes_referencia,
-        anoReferencia: m.ano_referencia,
-        dataVencimento: m.data_vencimento,
-        dataPagamentoEfetiva: m.data_pagamento_efetiva,
-        valorPrevisto,
-        valorPagoTotal: valorPago,
-        valorEmAberto: emAberto,
-        status: m.status,
-        observacoes: m.observacoes,
-        ultimoPagamento: ultimoPagamento
-          ? {
-              valorPago: Number(ultimoPagamento.valor_pago ?? 0),
-              metodoPagamento: ultimoPagamento.metodo_pagamento,
-              dataPagamento: ultimoPagamento.data_pagamento,
-              referenciaExterna: ultimoPagamento.referencia_externa,
-            }
-          : null,
-      };
-    });
-
-    const resumo = parcelas.reduce(
-      (acc, p) => {
-        acc.totalPrevisto += p.valorPrevisto;
-        acc.totalPago += p.valorPagoTotal;
-        acc.totalEmAberto += p.valorEmAberto;
-        if (p.status === "pendente" || p.status === "pago_parcial") {
-          acc.qtdEmAberto += 1;
-        }
-        if (p.status === "pago") {
-          acc.qtdQuitadas += 1;
-        }
-        return acc;
-      },
-      {
-        totalPrevisto: 0,
-        totalPago: 0,
-        totalEmAberto: 0,
-        qtdEmAberto: 0,
-        qtdQuitadas: 0,
-      }
-    );
-
+    // 3. Gerar PDF
     const verificationToken = randomUUID();
-    const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? escola?.validation_base_url ?? undefined;
-
-    const pdfBytes = (await (createInstitutionalPdf as any)({
-      title: "Extrato de Pagamentos / Propinas",
+    const pdfBytes = (await createInstitutionalPdf({
+      title: "Extrato Financeiro do Aluno",
       school: {
         name: escola?.nome ?? "Escola",
-        nif: escola?.nif ?? escola?.numero_fiscal,
-        address: escola?.endereco ?? escola?.morada,
-        contacts: [escola?.telefone, escola?.email].filter(Boolean).join(" • "),
-        logoUrl: escola?.logo_url ?? escola?.logo,
-        validationBaseUrl: validationBase,
+        nif: escola?.nif,
+        address: escola?.endereco,
+        logoUrl: escola?.logo_url,
       },
       verificationToken,
       content: async ({
         page,
         pdfDoc,
         width,
+        height,
         margin,
         contentStartY,
         font,
@@ -391,141 +185,124 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
         verificationUrl,
       }) => {
         let cursorY = contentStartY;
-        const lineHeight = 14;
+        const lineHeight = 16;
 
-        const draw = (text: string, opts?: { bold?: boolean; size?: number }) => {
-          const size = opts?.size ?? 11;
-          const isBold = opts?.bold ?? false;
-          page.drawText(text, {
-            x: margin,
-            y: cursorY,
-            font: isBold ? boldFont : font,
-            size,
-          });
-          cursorY -= lineHeight;
-        };
+        // Info do Aluno
+        const profile = normalizeProfile(aluno.profiles);
+        const matriculaAtiva = normalizeMatriculas(aluno.matriculas).find(
+          (m) => m.status === "ativo" || m.status === "ativa"
+        );
+        const turma = normalizeTurma(matriculaAtiva?.turma);
 
-        draw("Dados do aluno", { bold: true, size: 12 });
-        draw(`Nome: ${aluno.nome ?? "—"}`);
-        if (profile?.numero_processo_login) {
-          draw(`Número de processo: ${profile.numero_processo_login}`);
-        }
-        if (aluno.bi_numero) {
-          draw(`Documento: ${aluno.bi_numero}`);
-        }
-        if (aluno.responsavel) {
-          draw(
-            `Encarregado: ${aluno.responsavel}${
-              aluno.telefone_responsavel ? " • " + aluno.telefone_responsavel : ""
-            }`
-          );
-        }
-
-        cursorY -= lineHeight / 2;
-        if (matriculaAtual) {
-          draw("Dados acadêmicos", { bold: true, size: 12 });
-          draw(`Turma: ${turmaAtual?.nome ?? "—"} • Classe: ${turmaAtual?.classe ?? "—"}`);
-          draw(
-            `Ano letivo: ${
-              turmaAtual?.ano_letivo != null
-                ? `${turmaAtual.ano_letivo}/${(turmaAtual.ano_letivo as number) + 1}`
-                : matriculaAtual.ano_letivo ??
-                  "—"
-            }`
-          );
-          draw(`Status da matrícula: ${matriculaAtual.status ?? "—"}`);
-        }
-
+        page.drawText(`Aluno: ${aluno.nome ?? "—"}`, {
+          x: margin,
+          y: cursorY,
+          font: boldFont,
+          size: 11,
+        });
         cursorY -= lineHeight;
 
-        draw("Resumo financeiro", { bold: true, size: 12 });
-        draw(
-          `Total previsto: ${resumo.totalPrevisto.toLocaleString("pt-AO", {
-            style: "currency",
-            currency: "AOA",
-          })}`
+        page.drawText(
+          `Processo: ${profile?.numero_processo_login ?? "—"}  •  Documento: ${aluno.bi_numero ?? "—"}`,
+          { x: margin, y: cursorY, font, size: 10 }
         );
-        draw(
-          `Total pago: ${resumo.totalPago.toLocaleString("pt-AO", {
-            style: "currency",
-            currency: "AOA",
-          })}`
-        );
-        draw(
-          `Em aberto: ${resumo.totalEmAberto.toLocaleString("pt-AO", {
-            style: "currency",
-            currency: "AOA",
-          })}`
-        );
-        draw(`Parcelas quitadas: ${resumo.qtdQuitadas} • Em aberto: ${resumo.qtdEmAberto}`);
-
         cursorY -= lineHeight;
 
-        draw("Detalhe das mensalidades", { bold: true, size: 12 });
-        cursorY -= 4;
-
-        const headerY = cursorY;
-        const colX = {
-          competencia: margin,
-          vencimento: margin + 130,
-          valor: margin + 220,
-          pago: margin + 320,
-          status: margin + 420,
-        };
-
-        const drawSmall = (text: string, x: number, y: number, bold = false) => {
-          page.drawText(text, {
-            x,
-            y,
-            font: bold ? boldFont : font,
-            size: 9,
-          });
-        };
-
-        drawSmall("Comp.", colX.competencia, headerY, true);
-        drawSmall("Venc.", colX.vencimento, headerY, true);
-        drawSmall("Valor", colX.valor, headerY, true);
-        drawSmall("Pago", colX.pago, headerY, true);
-        drawSmall("Status", colX.status, headerY, true);
-
-        cursorY = headerY - lineHeight;
-
-        const maxRows = 22;
-        const rows = parcelas.slice(0, maxRows);
-
-        for (const p of rows) {
-          if (cursorY < margin + 40) break;
-
-          const competenciaLabel =
-            (p.mesReferencia ? String(p.mesReferencia).padStart(2, "0") + "/" : "") +
-            (p.anoReferencia ?? p.anoLetivo ?? "");
-          const venc = p.dataVencimento
-            ? new Date(p.dataVencimento).toLocaleDateString("pt-AO")
-            : "—";
-
-          drawSmall(competenciaLabel || "—", colX.competencia, cursorY);
-          drawSmall(venc, colX.vencimento, cursorY);
-          drawSmall(
-            p.valorPrevisto.toLocaleString("pt-AO", {
-              style: "currency",
-              currency: "AOA",
-            }),
-            colX.valor,
-            cursorY
+        if (turma) {
+          page.drawText(
+            `Turma: ${turma.nome ?? "—"}  •  Classe: ${turma.classe?.nome ?? "—"}  •  Turno: ${turma.turno ?? "—"}`,
+            { x: margin, y: cursorY, font, size: 10 }
           );
-          drawSmall(
-            p.valorPagoTotal.toLocaleString("pt-AO", {
-              style: "currency",
-              currency: "AOA",
-            }),
-            colX.pago,
-            cursorY
-          );
-          drawSmall(p.status ?? "—", colX.status, cursorY);
-
           cursorY -= lineHeight;
         }
 
+        cursorY -= 20;
+
+        // Tabela de Mensalidades
+        const tableHeaderY = cursorY;
+        const colWidths = [60, 180, 80, 80, 100];
+        const headers = ["Mês/Ano", "Descrição", "Vencimento", "Valor", "Status"];
+
+        const drawRow = (y: number, cols: string[], isHeader = false) => {
+          let currentX = margin;
+          cols.forEach((text, i) => {
+            page.drawText(text, {
+              x: currentX,
+              y: y,
+              font: isHeader ? boldFont : font,
+              size: 9,
+            });
+            currentX += colWidths[i];
+          });
+        };
+
+        drawRow(tableHeaderY, headers, true);
+        page.drawLine({
+          start: { x: margin, y: tableHeaderY - 5 },
+          end: { x: width - margin, y: tableHeaderY - 5 },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+
+        cursorY -= 20;
+
+        const formatCurrency = (val: number | null | undefined) =>
+          val ? new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(val) : "—";
+
+        const mesNome = (m: number | null | undefined) => {
+          if (!m) return "";
+          return [
+            "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+            "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+          ][m - 1];
+        };
+
+        mensalidades.forEach((m) => {
+          if (cursorY < margin + 100) return; // Simplified pagination skip for this prototype
+
+          const row = [
+            `${mesNome(m.mes_referencia)}/${m.ano_referencia ?? "—"}`,
+            m.observacoes || "Propina Mensal",
+            m.data_vencimento ? new Date(m.data_vencimento).toLocaleDateString("pt-PT") : "—",
+            formatCurrency(m.valor_previsto),
+            (m.status ?? "Pendente").toUpperCase(),
+          ];
+
+          drawRow(cursorY, row);
+          cursorY -= 14;
+        });
+
+        cursorY -= 30;
+
+        // Resumo
+        const totalPago = mensalidades.reduce((acc, m) => acc + (m.valor_pago_total ?? 0), 0);
+        const totalPendente = mensalidades
+          .filter((m) => m.status !== "pago" && m.status !== "liquidado")
+          .reduce((acc, m) => acc + (m.valor_previsto ?? 0), 0);
+
+        page.drawText(`Resumo Financeiro`, {
+          x: margin,
+          y: cursorY,
+          font: boldFont,
+          size: 11,
+        });
+        cursorY -= lineHeight;
+
+        page.drawText(`Total Pago: ${formatCurrency(totalPago)}`, {
+          x: margin,
+          y: cursorY,
+          font,
+          size: 10,
+        });
+        cursorY -= lineHeight;
+
+        page.drawText(`Total em Aberto: ${formatCurrency(totalPendente)}`, {
+          x: margin,
+          y: cursorY,
+          font,
+          size: 10,
+          color: totalPendente > 0 ? rgb(0.8, 0, 0) : rgb(0, 0, 0),
+        });
         cursorY -= lineHeight;
 
         if (verificationUrl) {
@@ -545,7 +322,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
           page.drawText(
             buildSignatureLine({
               signerName: escola?.responsavel ?? escola?.diretor_nome ?? undefined,
-              signerRole: escola?.diretor_cargo ?? undefined,
+              signerRole: undefined,
             }),
             {
               x: margin,
@@ -558,8 +335,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
           const signatureY = cursorY - 10;
           page.drawText(
             buildSignatureLine({
-              signerName: escola?.responsavel ?? escola?.diretor_nome ?? undefined,
-              signerRole: escola?.diretor_cargo ?? undefined,
+              signerName: undefined,
+              signerRole: undefined,
             }),
             {
               x: margin,
@@ -580,7 +357,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[financeiro/extrato/aluno/pdf] fatal", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

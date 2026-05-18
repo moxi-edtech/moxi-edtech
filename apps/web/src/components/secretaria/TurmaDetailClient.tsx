@@ -755,10 +755,25 @@ export default function TurmaDetailClient({
     fetchStatus();
   }, [escolaParam, turmaId, periodoId]);
 
+  const [includeAllStatus, setIncludeAllStatus] = useState(false);
+  const [isAlbum, setIsAlbum] = useState(false);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleListaPdf = () => {
     if (!canQrDocs) { setUpgradeOpen(true); return; }
-    window.open(`/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf`, "_blank");
+    const params = new URLSearchParams();
+    if (isAlbum) params.set("album", "true");
+    if (includeAllStatus) params.set("all_status", "true");
+    const extra = params.toString() ? `?${params.toString()}` : "";
+    window.open(`/api/secretaria/turmas/${turmaId}/alunos/pdf${extra}`, "_blank");
+  };
+
+  const handleFrequenciaPdf = () => {
+    if (!canQrDocs) { setUpgradeOpen(true); return; }
+    const params = new URLSearchParams({ month: reportMonth });
+    if (isAlbum) params.set("album", "true");
+    if (includeAllStatus) params.set("all_status", "true");
+    window.open(`/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`, "_blank");
   };
 
   const handleClosePeriodoConfirmed = useCallback(async () => {
@@ -1691,6 +1706,33 @@ export default function TurmaDetailClient({
                 </select>
               </div>
             </div>
+
+            <div className="flex flex-wrap items-center gap-4 mb-6 p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={includeAllStatus} 
+                  onChange={e => setIncludeAllStatus(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                />
+                <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-wider">
+                  Incluir todos os estados
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={isAlbum} 
+                  onChange={e => setIsAlbum(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                />
+                <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-wider">
+                  Versão Álbum Visual
+                </span>
+              </label>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <DocCard
                 icon={Download}
@@ -1703,7 +1745,7 @@ export default function TurmaDetailClient({
                 icon={CalendarCheck}
                 title="Mapa de Frequência"
                 desc="Consolidado mensal de presenças e faltas."
-                onClick={() => window.open(`/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf&month=${reportMonth}`, "_blank")}
+                onClick={handleFrequenciaPdf}
                 locked={!canQrDocs}
               />
               <DocCard

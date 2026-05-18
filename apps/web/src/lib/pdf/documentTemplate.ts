@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 
 export type InstitutionalPdfOptions = {
   title: string;
+  subtitle?: string;
   orientation?: "portrait" | "landscape";
   school: {
     name: string;
@@ -9,6 +10,7 @@ export type InstitutionalPdfOptions = {
     address?: string | null;
     contacts?: string | null;
     logoUrl?: string | null;
+    fallbackLogoUrl?: string | null;
     validationBaseUrl?: string | null;
   };
   verificationToken?: string;
@@ -25,7 +27,31 @@ export type InstitutionalPdfOptions = {
   }) => Promise<void>;
 };
 
-async function fetchImageBytes(url: string) {
+// Official Brand Colors
+const KLASSE_GREEN = rgb(0.1216, 0.4196, 0.2314); // #1F6B3B
+const SLATE_500 = rgb(0.3922, 0.4549, 0.5451); // #64748B
+const SLATE_900 = rgb(0.0588, 0.0902, 0.1647); // #0F172A
+
+function wrapText(text: string, maxWidth: number, font: PDFFont, size: number) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      current = candidate;
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+export async function fetchImageBytes(url: string) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Erro ao carregar imagem: ${response.status}`);
   const arrayBuffer = await response.arrayBuffer();
@@ -34,6 +60,7 @@ async function fetchImageBytes(url: string) {
 
 export async function createInstitutionalPdf({
   title,
+  subtitle,
   school,
   verificationToken,
   orientation = "portrait",
@@ -44,7 +71,7 @@ export async function createInstitutionalPdf({
   const page = pdfDoc.addPage(pageSize as any);
   const width = page.getWidth();
   const height = page.getHeight();
-  const margin = 45;
+  const margin = 40;
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
@@ -55,14 +82,15 @@ export async function createInstitutionalPdf({
       : undefined;
 
   const drawHeader = async (p: any) => {
-    let cursorY = height - margin;
-    // Header logo
-    if (school.logoUrl) {
+    const effectiveLogoUrl = school.logoUrl ?? school.fallbackLogoUrl ?? null;
+    
+    // Header Row with Branding Green for the School Name
+    if (effectiveLogoUrl) {
       try {
-        const logoBytes = await fetchImageBytes(school.logoUrl);
-        const isPng = school.logoUrl.toLowerCase().includes(".png");
+        const logoBytes = await fetchImageBytes(effectiveLogoUrl);
+        const isPng = effectiveLogoUrl.toLowerCase().includes(".png");
         const logoImage = isPng ? await pdfDoc.embedPng(logoBytes) : await pdfDoc.embedJpg(logoBytes);
-        const scale = 70 / logoImage.height;
+        const scale = 50 / logoImage.height;
         const logoDims = logoImage.scale(scale);
         p.drawImage(logoImage, {
           x: margin,
@@ -75,12 +103,15 @@ export async function createInstitutionalPdf({
       }
     }
 
-    p.drawText(school.name, {
-      x: margin + 85,
-      y: height - margin - 10,
+    const textStartX = effectiveLogoUrl ? margin + 70 : margin;
+    const textWidth = width - textStartX - margin;
+
+    p.drawText(school.name.toUpperCase(), {
+      x: textStartX,
+      y: height - margin - 12,
       size: 14,
       font: boldFont,
-      color: rgb(0, 0, 0),
+      color: KLASSE_GREEN,
     });
 
     const details: string[] = [];
@@ -89,58 +120,75 @@ export async function createInstitutionalPdf({
     if (school.contacts) details.push(school.contacts);
 
     if (details.length > 0) {
-      p.drawText(details.join(" • "), {
-        x: margin + 85,
-        y: height - margin - 26,
-        size: 9,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
+      const detailLines = wrapText(details.join("  •  "), textWidth, font, 8).slice(0, 2);
+      let detailsY = height - margin - 28;
+      for (const line of detailLines) {
+        p.drawText(line, {
+          x: textStartX,
+          y: detailsY,
+          size: 8,
+          font,
+          color: SLATE_500,
+        });
+        detailsY -= 11;
+      }
     }
 
     p.drawLine({
-      start: { x: margin, y: height - margin - 40 },
-      end: { x: width - margin, y: height - margin - 40 },
+      start: { x: margin, y: height - margin - 57 },
+      end: { x: width - margin, y: height - margin - 57 },
       thickness: 1,
-      color: rgb(0.8, 0.8, 0.8),
+      color: rgb(0.9, 0.9, 0.9),
     });
   };
 
   const drawFooter = (p: any) => {
-    const footerY = margin + 20;
+    const footerY = margin + 15;
     p.drawLine({
       start: { x: margin, y: footerY },
       end: { x: width - margin, y: footerY },
       thickness: 0.5,
-      color: rgb(0.8, 0.8, 0.8),
+      color: rgb(0.9, 0.9, 0.9),
     });
 
     const footerText = verificationUrl
-      ? `Para verificar a autenticidade, acesse: ${verificationUrl}`
-      : "Documento gerado pelo sistema académico.";
+      ? `Autenticidade verificável via QR Code ou em: ${verificationUrl}`
+      : "Documento oficial gerado pelo sistema de gestão académica.";
 
     p.drawText(footerText, {
       x: margin,
       y: footerY - 12,
-      size: 8,
+      size: 7,
       font,
-      color: rgb(0.2, 0.2, 0.2),
+      color: SLATE_500,
     });
   };
 
   await drawHeader(page);
   
-  let cursorY = height - margin - 60;
+  let cursorY = height - margin - 92;
 
+  // Type Label (Small caps look)
+  if (subtitle) {
+    page.drawText(subtitle.toUpperCase(), {
+      x: margin,
+      y: cursorY + 14,
+      size: 8,
+      font: boldFont,
+      color: SLATE_500,
+    });
+  }
+
+  // Document Title in Slate 900
   page.drawText(title, {
     x: margin,
     y: cursorY,
-    size: 13,
+    size: 16,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: SLATE_900,
   });
 
-  cursorY -= 12;
+  cursorY -= 20;
 
   const contentStartY = cursorY - 10;
 
