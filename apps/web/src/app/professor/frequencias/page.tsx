@@ -195,7 +195,7 @@ export default function ProfessorFrequenciasPage() {
               type="button"
               onClick={() => {
                 if (!turmaId) return;
-                const url = `/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf&month=${reportMonth}&year=${new Date().getFullYear()}${disciplinaId ? `&disciplina_id=${disciplinaId}` : ''}`;
+                const url = `/api/secretaria/turmas/${turmaId}/alunos/pdf?month=${reportMonth}&year=${new Date().getFullYear()}${disciplinaId ? `&disciplina_id=${disciplinaId}` : ''}`;
                 window.open(url, '_blank');
               }}
               disabled={!turmaId}

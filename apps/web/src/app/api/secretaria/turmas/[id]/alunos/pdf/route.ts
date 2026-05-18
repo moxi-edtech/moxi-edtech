@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
-import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
@@ -52,12 +51,12 @@ export async function GET(
     const month = searchParams.get("month");
     const year = searchParams.get("year") || String(new Date().getFullYear());
     const disciplinaId = searchParams.get("disciplina_id");
+    const isAlbum = searchParams.get("album") === "true";
+    const includeAllStatus = searchParams.get("all_status") === "true";
+    const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
-
-    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf${isAttendance ? '?attendance=true' : ''}${month ? `&month=${month}` : ''}${year ? `&year=${year}` : ''}`);
-    if (forwarded) return forwarded;
 
     const pdfBytes = await renderListaNominalPdfBuffer({
       supabase: supabase as any,
@@ -67,6 +66,9 @@ export async function GET(
       year,
       isAttendance,
       disciplinaId,
+      isAlbum,
+      includeAllStatus,
+      fallbackLogoUrl,
     });
 
     headers.set("Content-Type", "application/pdf");

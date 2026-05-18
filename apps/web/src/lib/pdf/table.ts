@@ -5,6 +5,7 @@ export interface Column {
   key: string;
   width: number;
   align?: "left" | "center" | "right";
+  bgColor?: { r: number; g: number; b: number };
 }
 
 export interface TableOptions {
@@ -53,6 +54,9 @@ export async function drawTable(
     });
 
     for (const col of columns) {
+      // If column has a custom background, we might want to respect it in header too?
+      // For now, header stays dark.
+
       let x = currentX;
       if (col.align === "center") {
         x += col.width / 2;
@@ -82,6 +86,21 @@ export async function drawTable(
         height: rowHeight,
         color: rgb(0.95, 0.95, 0.95),
       });
+    }
+
+    // Draw column-specific background colors (e.g. for weekends)
+    let tempX = margin;
+    for (const col of columns) {
+      if (col.bgColor) {
+        page.drawRectangle({
+          x: tempX,
+          y: y - rowHeight + 2,
+          width: col.width,
+          height: rowHeight,
+          color: rgb(col.bgColor.r, col.bgColor.g, col.bgColor.b),
+        });
+      }
+      tempX += col.width;
     }
 
     // Draw bottom border

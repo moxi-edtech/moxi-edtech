@@ -161,7 +161,14 @@ const formatLabels: Record<FormatKey, string> = {
   excel: "Excel",
 };
 
-const queueDocKeys = new Set<DocKey>(["nominal", "pauta-geral", "pauta-anual"]);
+const queueDocKeys = new Set<DocKey>(["nominal", "attendance", "pauta-geral", "pauta-anual"]);
+
+function buildClientHistoryId() {
+  if (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return `hist-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function turmaLabel(turma: TurmaItem) {
   return turma.turma_nome || turma.nome || "Turma sem nome";
@@ -184,14 +191,22 @@ function buildDocUrl(
   type: DocKey,
   turmaId: string,
   month: string,
+  year: number | null,
   periodoId: string,
-  periodoNumero: number | null
+  periodoNumero: number | null,
+  isAlbum: boolean = false,
+  includeAllStatus: boolean = false
 ) {
+  const params = new URLSearchParams();
+  if (isAlbum) params.set("album", "true");
+  if (includeAllStatus) params.set("all_status", "true");
+  const extra = params.toString() ? `&${params.toString()}` : "";
+
   switch (type) {
     case "attendance":
-      return `/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf&month=${month}`;
+      return `/api/secretaria/turmas/${turmaId}/alunos/pdf?month=${month}${year ? `&year=${year}` : ""}${extra}`;
     case "nominal":
-      return `/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf`;
+      return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
     case "blank":
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
     case "mini":
@@ -225,11 +240,14 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [turnoFiltro, setTurnoFiltro] = useState("");
   const [turmaQuery, setTurmaQuery] = useState("");
   const [turmaPickerOpen, setTurmaPickerOpen] = useState(false);
-  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>(["nominal"]);
+  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>([]);
   const [format, setFormat] = useState<FormatKey>("pdf_individual");
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [includeAllStatus, setIncludeAllStatus] = useState(false);
+  const [isAlbum, setIsAlbum] = useState(false);
+  const [processAllTurmas, setProcessAllTurmas] = useState(false);
   const hasHydratedLastTurmaRef = useRef(false);
 
   useEffect(() => {
@@ -459,17 +477,17 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           ? "Este documento não tem versão Excel."
           : "Este documento ainda não suporta PDF consolidado.";
       }
-      if (!selectedTurma) return "Selecione uma turma.";
+      if (!selectedTurma && !processAllTurmas) return "Selecione uma turma.";
       if (doc.requiresPeriodo && !periodoId) return "Selecione um período.";
       return null;
     },
-    [format, periodoId, selectedTurma]
+    [format, periodoId, processAllTurmas, selectedTurma]
   );
 
   const addDirectHistory = useCallback((entry: Omit<DirectHistoryItem, "id" | "createdAt">) => {
     setDirectHistory((current) => [
       {
-        id: crypto.randomUUID(),
+        id: buildClientHistoryId(),
         createdAt: new Date().toISOString(),
         ...entry,
       },
@@ -480,7 +498,16 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const runDirectDownloads = useCallback(() => {
     if (!selectedTurma) return;
     for (const doc of selectedDocDefs) {
-      const url = buildDocUrl(doc.key, selectedTurma.id, month, periodoId, selectedPeriodo?.numero ?? null);
+      const url = buildDocUrl(
+        doc.key,
+        selectedTurma.id,
+        month,
+        anoLetivo,
+        periodoId,
+        selectedPeriodo?.numero ?? null,
+        isAlbum,
+        includeAllStatus
+      );
       window.open(url, "_blank");
       addDirectHistory({
         label: `${doc.label} • ${turmaLabel(selectedTurma)}`,
@@ -488,18 +515,38 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         href: url,
       });
     }
-  }, [addDirectHistory, format, month, periodoId, selectedDocDefs, selectedPeriodo?.numero, selectedTurma]);
+  }, [
+    addDirectHistory,
+    anoLetivo,
+    format,
+    includeAllStatus,
+    isAlbum,
+    month,
+    periodoId,
+    selectedDocDefs,
+    selectedPeriodo?.numero,
+    selectedTurma,
+  ]);
 
   const runQueuedEmission = useCallback(async () => {
-    if (!selectedTurma || !escolaId) return;
+    if ((!selectedTurma && !processAllTurmas) || !escolaId) return;
+    const targetTurmaIds = processAllTurmas ? turmasFiltradas.map((t) => t.id) : [selectedTurma!.id];
+
     for (const doc of selectedDocDefs) {
       if (!queueDocKeys.has(doc.key)) continue;
 
-      if (doc.key === "nominal") {
-        await fetch(`/api/escola/${encodeURIComponent(escolaId)}/admin/turmas/bulk-print`, {
+      if (doc.key === "nominal" || doc.key === "attendance") {
+        await fetch("/api/secretaria/documentos-oficiais/lote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ turma_ids: [selectedTurma.id] }),
+          body: JSON.stringify({
+            turma_ids: targetTurmaIds,
+            tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
+            month,
+            year: String(anoLetivo),
+            is_album: isAlbum,
+            include_all_status: includeAllStatus,
+          }),
         });
         continue;
       }
@@ -507,8 +554,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       const tipo = doc.key === "pauta-geral" ? "trimestral" : "anual";
       const body =
         tipo === "trimestral"
-          ? { turma_ids: [selectedTurma.id], tipo, periodo_letivo_id: periodoId }
-          : { turma_ids: [selectedTurma.id], tipo };
+          ? { turma_ids: targetTurmaIds, tipo, periodo_letivo_id: periodoId }
+          : { turma_ids: targetTurmaIds, tipo };
 
       await fetch("/api/secretaria/documentos-oficiais/lote", {
         method: "POST",
@@ -516,7 +563,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         body: JSON.stringify(body),
       });
     }
-  }, [escolaId, periodoId, selectedDocDefs, selectedTurma]);
+  }, [anoLetivo, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&
@@ -545,7 +592,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   };
 
   const recentJobs = jobs
-    .filter((job) => ["lista_nominal", "pauta_trimestral", "pauta_anual"].includes(String(job.documento_tipo ?? "")))
+    .filter((job) => ["lista_nominal", "mapa_frequencia", "pauta_trimestral", "pauta_anual"].includes(String(job.documento_tipo ?? "")))
     .slice(0, 6);
 
   return (
@@ -738,6 +785,46 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             </Field>
           </div>
 
+          <div className="flex flex-wrap items-center gap-4 py-2">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={includeAllStatus} 
+                onChange={e => setIncludeAllStatus(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+              />
+              <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+                Incluir todos os estados (pendentes/transferidos)
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                checked={isAlbum} 
+                onChange={e => setIsAlbum(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+              />
+              <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+                Versão Álbum Visual (Grid com Fotos)
+              </span>
+            </label>
+
+            {format === "pdf_consolidado" && (
+              <label className="flex items-center gap-2 cursor-pointer group bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
+                <input 
+                  type="checkbox" 
+                  checked={processAllTurmas} 
+                  onChange={e => setProcessAllTurmas(e.target.checked)}
+                  className="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                />
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-tighter">
+                  Processar para TODAS as turmas da lista
+                </span>
+              </label>
+            )}
+          </div>
+
           <Field label="Formato de saída">
             <div className="grid gap-2 md:grid-cols-3">
               {(Object.keys(formatLabels) as FormatKey[]).map((item) => (
@@ -796,7 +883,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos</p>
           <p className="text-xs text-slate-500">
-            {selectedDocs.length} selecionado{selectedDocs.length !== 1 ? "s" : ""}
+            {selectedDocs.length} selecionado{selectedDocs.length !== 1 ? "s" : ""} • clique simples seleciona um, `Ctrl/Cmd` acumula
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -807,10 +894,16 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               <button
                 key={doc.key}
                 type="button"
-                onClick={() =>
-                  setSelectedDocs((current) =>
-                    current.includes(doc.key) ? current.filter((item) => item !== doc.key) : [...current, doc.key]
-                  )
+                onClick={(event) =>
+                  setSelectedDocs((current) => {
+                    if (event.metaKey || event.ctrlKey) {
+                      return current.includes(doc.key)
+                        ? current.filter((item) => item !== doc.key)
+                        : [...current, doc.key];
+                    }
+
+                    return current.length === 1 && current[0] === doc.key ? [] : [doc.key];
+                  })
                 }
                 className={`rounded-xl border px-3 py-3 text-left transition ${
                   selected

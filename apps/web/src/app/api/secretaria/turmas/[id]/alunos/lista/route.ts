@@ -1,14 +1,10 @@
-import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
-import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
-import { Column, drawTable } from "@/lib/pdf/table";
+import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
 
 type TurmaRow = {
   id: string;
@@ -42,25 +38,52 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       user.id,
       (turmaScope as any)?.escola_id ?? null
     );
-    if (!escolaId) return NextResponse.json({ ok: true, turma: null, total: 0, alunos: [] }, { headers });
+    if (!escolaId) {
+      return NextResponse.json({ ok: true, turma: null, total: 0, alunos: [] }, { headers });
+    }
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+    if (!authz.allowed) {
+      return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
+    }
 
-    headers.set('Deprecation', 'true');
-    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
+    headers.set("Deprecation", "true");
+    headers.set("Link", `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") ?? "json";
     const isAttendance = searchParams.get("attendance") === "true";
+    const month = searchParams.get("month");
+    const year = searchParams.get("year") || String(new Date().getFullYear());
+    const disciplinaId = searchParams.get("disciplina_id");
+    const isAlbum = searchParams.get("album") === "true";
+    const includeAllStatus = searchParams.get("all_status") === "true";
+    const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     if (format === "pdf") {
       await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
-      const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf${isAttendance ? '?attendance=true' : ''}`);
-      if (forwarded) return forwarded;
+
+      const pdfBytes = await renderListaNominalPdfBuffer({
+        supabase: supabase as any,
+        escolaId,
+        turmaId,
+        month,
+        year,
+        isAttendance,
+        disciplinaId,
+        isAlbum,
+        includeAllStatus,
+        fallbackLogoUrl,
+      });
+
+      headers.set("Content-Type", "application/pdf");
+      headers.set(
+        "Content-Disposition",
+        `attachment; filename="mapa_frequencia_${turmaId}_${month || "lista"}.pdf"`
+      );
+      return new NextResponse(pdfBytes as any, { headers });
     }
 
-    // 1) Carregar turma + escola (RLS garante escola correta)
     const { data: turma, error: turmaError } = await supabase
       .from("turmas")
       .select(
@@ -82,23 +105,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const [{ data: escola }, { data: classe }] = await Promise.all([
-      supabase
-        .from("escolas")
-        .select("id, nome, nif, numero_fiscal, endereco, morada, telefone, email, logo_url, logo, validation_base_url, responsavel, diretor_nome, diretor_cargo")
-        .eq("id", escolaId)
-        .maybeSingle(),
+      supabase.from("escolas").select("id, nome").eq("id", escolaId).maybeSingle(),
       turma.classe_id
-        ? supabase
-            .from("classes")
-            .select("nome")
-            .eq("id", turma.classe_id)
-            .eq("escola_id", escolaId)
-            .maybeSingle()
+        ? supabase.from("classes").select("nome").eq("id", turma.classe_id).eq("escola_id", escolaId).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
     const classeNome = (classe as any)?.nome || "—";
 
-    // 2) Buscar matrículas ativas + dados dos alunos
     let matriculasQuery = supabase
       .from("matriculas")
       .select(
@@ -128,7 +141,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 });
 
     const { data: matriculas, error: matriculasError } = await matriculasQuery;
-
     if (matriculasError) {
       return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 500, headers });
     }
@@ -143,7 +155,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         matricula_id: (m as any)?.id,
         aluno_id: a.id,
         nome: a.nome ?? "—",
-        genero: (a.sexo === 'masculino' || a.sexo === 'M') ? 'M' : (a.sexo === 'feminino' || a.sexo === 'F') ? 'F' : '—',
+        genero: a.sexo === "masculino" || a.sexo === "M" ? "M" : a.sexo === "feminino" || a.sexo === "F" ? "F" : "—",
         bi: a.bi_numero ?? "—",
         naturalidade: a.naturalidade ?? "—",
         provincia: a.provincia ?? "—",
@@ -154,9 +166,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }));
     });
 
-    // 3) Resposta JSON (default)
-    if (format !== "pdf") {
-      return NextResponse.json({
+    return NextResponse.json(
+      {
         ok: true,
         turma: {
           id: turma.id,
@@ -169,142 +180,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         },
         total: alunosOrdenados.length,
         alunos: alunosOrdenados,
-      }, { headers });
-    }
-
-    // 4) Geração de PDF institucional com QR
-    const verificationToken = randomUUID();
-    const validationBase =
-      process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? escola?.validation_base_url ?? undefined;
-
-    const pdfBytes = (await createInstitutionalPdf({
-      title: isAttendance ? "Folha de Presença / Pauta de Chamada" : "Lista de Alunos por Turma",
-      orientation: isAttendance ? "landscape" : "portrait",
-      school: {
-        name: escola?.nome ?? "Escola",
-        nif: escola?.nif ?? escola?.numero_fiscal,
-        address: escola?.endereco ?? escola?.morada,
-        contacts: [escola?.telefone, escola?.email].filter(Boolean).join(" • "),
-        logoUrl: escola?.logo_url ?? escola?.logo,
-        validationBaseUrl: validationBase,
       },
-      verificationToken,
-      content: async ({
-        page,
-        pdfDoc,
-        width,
-        margin,
-        contentStartY,
-        font,
-        boldFont,
-        verificationUrl,
-      }) => {
-        let cursorY = contentStartY;
-        const lineHeight = 14;
-
-        page.drawText(
-          `Turma: ${turma.nome ?? "—"}  •  Classe: ${classeNome}  •  Turno: ${turma.turno ?? "—"}`,
-          { x: margin, y: cursorY, font: boldFont, size: 10 }
-        );
-        cursorY -= lineHeight;
-        
-        if (turma.sala) {
-          page.drawText(`Sala: ${turma.sala}`, { x: margin, y: cursorY, font, size: 10 });
-          cursorY -= lineHeight;
-        }
-
-        cursorY -= 4;
-
-        const columns: Column[] = isAttendance 
-          ? [
-              { header: "Nº", key: "numero", width: 25, align: "center" },
-              { header: "Nome do Aluno", key: "nome", width: 220 },
-              { header: "G", key: "genero", width: 20, align: "center" },
-              { header: "", key: "d1", width: 45 },
-              { header: "", key: "d2", width: 45 },
-              { header: "", key: "d3", width: 45 },
-              { header: "", key: "d4", width: 45 },
-              { header: "", key: "d5", width: 45 },
-              { header: "", key: "d6", width: 45 },
-              { header: "", key: "d7", width: 45 },
-              { header: "", key: "d8", width: 45 },
-              { header: "", key: "d9", width: 45 },
-              { header: "Assinatura / Obs", key: "obs", width: 80 },
-            ]
-          : [
-              { header: "Nº", key: "numero", width: 30, align: "center" },
-              { header: "Nome do Aluno", key: "nome", width: 230 },
-              { header: "G", key: "genero", width: 20, align: "center" },
-              { header: "Documento (BI)", key: "bi", width: 100 },
-              { header: "Encarregado", key: "encarregado", width: 125 },
-            ];
-
-        const { lastPage, lastY } = await drawTable(columns, alunosOrdenados, {
-          page,
-          pdfDoc,
-          font,
-          boldFont,
-          margin,
-          startY: cursorY,
-          zebra: true,
-          rowHeight: 18,
-        });
-
-        cursorY = lastY - 20;
-
-        // QR code + assinatura no rodapé da área útil
-        const qrSize = 70;
-        if (verificationUrl) {
-          const qrImage = await createQrImage(pdfDoc, verificationUrl);
-          const qrX = width - margin - qrSize;
-          const qrY = Math.max(cursorY - qrSize - 10, margin + 40);
-
-          lastPage.drawImage(qrImage, {
-            x: qrX,
-            y: qrY,
-            width: qrSize,
-            height: qrSize,
-          });
-
-          const sigY = qrY + qrSize + 5;
-          lastPage.drawText(
-            buildSignatureLine({
-              signerName: escola?.responsavel ?? escola?.diretor_nome,
-              signerRole: escola?.diretor_cargo,
-            }),
-            {
-              x: margin,
-              y: sigY,
-              font,
-              size: 10,
-            }
-          );
-        } else {
-          const sigY = cursorY - 10;
-          lastPage.drawText(
-            buildSignatureLine({
-              signerName: escola?.responsavel ?? escola?.diretor_nome,
-              signerRole: escola?.diretor_cargo,
-            }),
-            {
-              x: margin,
-              y: sigY,
-              font,
-              size: 10,
-            }
-          );
-        }
-      },
-    })) as Uint8Array;
-
-    return new NextResponse(pdfBytes as any, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="lista_alunos_turma_${
-          turma.nome ?? turma.id
-        }${isAttendance ? '_presenca' : ''}.pdf"`,
-      },
-    });
+      { headers }
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
