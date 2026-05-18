@@ -155,3 +155,22 @@ export default function ReciboPagamentoCompacto({
     </div>
   );
 }
+
+
+export function ReciboPagamentoDuasVias(props: ReciboPagamentoCompactoProps) {
+  const vias = ["Via da Secretaria", "Via do Aluno/Encarregado"];
+
+  return (
+    <div className="space-y-4 bg-white font-sans text-slate-900 print:space-y-3">
+      {vias.map((via, index) => (
+        <section key={via} className="break-inside-avoid bg-white">
+          <p className="mb-2 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500">
+            {via}
+          </p>
+          <ReciboPagamentoCompacto {...props} />
+          {index === 0 ? <div className="mt-4 border-t border-dashed border-slate-300 print:mt-3" /> : null}
+        </section>
+      ))}
+    </div>
+  );
+}

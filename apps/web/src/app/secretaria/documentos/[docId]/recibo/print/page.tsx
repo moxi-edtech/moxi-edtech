@@ -1,7 +1,7 @@
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
-import ReciboPagamentoCompacto from "@/components/financeiro/ReciboPagamentoCompacto";
+import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 
 export const dynamic = "force-dynamic";
@@ -95,7 +95,7 @@ export default async function ReciboPrintPage({
     <div className={`min-h-screen ${styles.printRoot} text-slate-900`}>
       <PrintTrigger />
       <div className={`${styles.sheet} ${styles.receiptCompactSheet} shadow-lg`}>
-        <ReciboPagamentoCompacto
+        <ReciboPagamentoDuasVias
           escolaNome={escolaNome}
           alunoNome={alunoNome}
           alunoBi={alunoBi}
