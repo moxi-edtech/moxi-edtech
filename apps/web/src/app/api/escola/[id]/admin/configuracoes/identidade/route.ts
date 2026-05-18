@@ -35,7 +35,7 @@ async function authorize(
 
   const { data: hasRole, error: rolesError } = await supabase.rpc("user_has_role_in_school", {
     p_escola_id: userEscolaId,
-    p_roles: ["admin_escola", "admin", "secretaria"],
+    p_roles: ["admin_escola", "admin"],
   });
 
   if (rolesError) {
@@ -175,11 +175,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .update(patch)
       .eq("id", escolaId)
       .select("id, nome, nif, endereco, logo_url, cor_primaria, plano_atual, created_at, status, aluno_portal_enabled")
-      .single();
+      .maybeSingle();
 
     if (error) {
       return withNoStore(
         NextResponse.json({ ok: false, error: error.message || "Falha ao atualizar identidade." }, { status: 500 }),
+        start
+      );
+    }
+
+    if (!data) {
+      return withNoStore(
+        NextResponse.json(
+          { ok: false, error: "Sem permissão para atualizar a identidade da escola." },
+          { status: 403 }
+        ),
         start
       );
     }
