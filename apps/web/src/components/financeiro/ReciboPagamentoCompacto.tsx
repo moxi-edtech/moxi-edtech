@@ -16,6 +16,7 @@ export type ReciboPagamentoCompactoProps = {
   urlValidacao: string | null;
   logoUrl: string | null;
   emitidoEm?: string | null;
+  viaLabel?: string;
 };
 
 type CompactFieldProps = {
@@ -61,6 +62,7 @@ export default function ReciboPagamentoCompacto({
   urlValidacao,
   logoUrl,
   emitidoEm,
+  viaLabel,
 }: ReciboPagamentoCompactoProps) {
   const classeCurso = `${classeNome}${cursoNome ? ` - ${cursoNome}` : ""}`;
   const emissao = emitidoEm || "—";
@@ -83,6 +85,11 @@ export default function ReciboPagamentoCompacto({
         </div>
 
         <div className="min-w-[92px] max-w-[150px] space-y-1 text-right text-[10px] leading-tight text-slate-500">
+          {viaLabel ? (
+            <p className="inline-flex rounded-full border border-klasse-gold/30 bg-klasse-gold/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-klasse-gold">
+              {viaLabel}
+            </p>
+          ) : null}
           <p className="font-bold uppercase tracking-wide text-slate-400">Nº / Emitido</p>
           <p className="truncate font-semibold text-slate-900" title={numero || "Sem número"}>
             {numero ? `Nº ${numero}` : "Sem número"}
@@ -152,6 +159,26 @@ export default function ReciboPagamentoCompacto({
           </section>
         </div>
       </section>
+    </div>
+  );
+}
+
+
+export function ReciboPagamentoDuasVias(props: Omit<ReciboPagamentoCompactoProps, "viaLabel">) {
+  const vias = ["Via da Secretaria", "Via do Aluno/Encarregado"];
+
+  return (
+    <div className="grid gap-4 bg-white font-sans text-slate-900 print:gap-3">
+      {vias.map((via, index) => (
+        <section
+          key={via}
+          className={`break-inside-avoid rounded-xl border border-slate-200 bg-white p-3 print:rounded-none print:border-slate-200 print:p-2 ${
+            index === 0 ? "border-b-2 border-dashed" : ""
+          }`}
+        >
+          <ReciboPagamentoCompacto {...props} viaLabel={via} />
+        </section>
+      ))}
     </div>
   );
 }
