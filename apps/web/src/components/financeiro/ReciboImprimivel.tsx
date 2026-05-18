@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Printer, Loader2, Check } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
-import ReciboPagamentoCompacto from "@/components/financeiro/ReciboPagamentoCompacto";
+import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
 
 type ReciboImprimivelProps = {
   escolaNome: string;
@@ -56,7 +56,7 @@ export function ReciboImprimivel({
   return (
     <div className="hidden print:block">
       <div className="w-full max-w-none bg-white text-slate-900">
-        <ReciboPagamentoCompacto
+        <ReciboPagamentoDuasVias
           escolaNome={escolaNome}
           alunoNome={alunoNome}
           alunoBi={alunoBi}
