@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import QRCode from "react-qr-code";
 import { Eye } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
-
-const formatKz = (valor: number) =>
-  new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(
-    valor || 0
-  );
+import ReciboPagamentoCompacto from "@/components/financeiro/ReciboPagamentoCompacto";
 
 type ReciboImprimivelProps = {
   escolaNome: string;
@@ -16,6 +11,16 @@ type ReciboImprimivelProps = {
   valor: number;
   data: string;
   urlValidacao: string | null;
+  alunoBi?: string;
+  classeNome?: string;
+  cursoNome?: string;
+  turmaNome?: string;
+  referencia?: string;
+  metodo?: string;
+  numero?: string | null;
+  publicId?: string;
+  logoUrl?: string | null;
+  emitidoEm?: string | null;
 };
 
 type ReciboPayload = {
@@ -29,6 +34,16 @@ export function ReciboImprimivel({
   valor,
   data,
   urlValidacao,
+  alunoBi = "—",
+  classeNome = "—",
+  cursoNome = "",
+  turmaNome = "—",
+  referencia = "Mensalidade",
+  metodo = "—",
+  numero = null,
+  publicId = "—",
+  logoUrl = null,
+  emitidoEm = null,
 }: ReciboImprimivelProps) {
   const dataFormatada = useMemo(() => {
     if (!data) return "—";
@@ -38,57 +53,25 @@ export function ReciboImprimivel({
   }, [data]);
 
   return (
-    <div className="hidden print:block print:p-10">
-      <div className="w-[210mm] min-h-[297mm] bg-white text-slate-900 text-sm">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-slate-400">Recibo</p>
-            <h1 className="text-2xl font-semibold text-slate-900">{escolaNome}</h1>
-            <p className="mt-1 text-slate-500">Comprovativo oficial de pagamento</p>
-          </div>
-          <div className="flex flex-col items-center gap-2 text-xs text-slate-500">
-            {urlValidacao ? (
-              <QRCode value={urlValidacao} size={96} className="h-24 w-24" />
-            ) : (
-              <div className="h-24 w-24 rounded-xl border border-dashed border-slate-200 flex items-center justify-center text-[11px] text-slate-400">
-                QR indisponível
-              </div>
-            )}
-            <span>Validar Autenticidade</span>
-          </div>
-        </div>
-
-        <div className="mt-10 grid grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Aluno</p>
-            <p className="text-lg font-semibold text-slate-900">{alunoNome}</p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Data</p>
-            <p className="text-lg font-semibold text-slate-900">{dataFormatada}</p>
-          </div>
-        </div>
-
-        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-6">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Valor Recebido</p>
-          <p className="mt-2 text-3xl font-semibold text-klasse-gold">
-            {formatKz(valor)}
-          </p>
-        </div>
-
-        <div className="mt-12 space-y-2 text-slate-500">
-          <p>
-            Confirmamos o recebimento do valor acima referente à mensalidade do aluno.
-          </p>
-          <p className="text-xs">
-            Este recibo possui autenticidade verificada via QR Code.
-          </p>
-        </div>
-
-        <div className="mt-16 flex items-center justify-between text-xs text-slate-400">
-          <span>Emitido eletronicamente pela secretaria.</span>
-          {urlValidacao ? <span>{urlValidacao}</span> : <span>URL não configurada</span>}
-        </div>
+    <div className="hidden print:block">
+      <div className="w-full max-w-none bg-white text-slate-900">
+        <ReciboPagamentoCompacto
+          escolaNome={escolaNome}
+          alunoNome={alunoNome}
+          alunoBi={alunoBi}
+          classeNome={classeNome}
+          cursoNome={cursoNome}
+          turmaNome={turmaNome}
+          referencia={referencia}
+          metodo={metodo}
+          valorPago={valor}
+          dataPagamento={dataFormatada}
+          numero={numero}
+          publicId={publicId}
+          urlValidacao={urlValidacao}
+          logoUrl={logoUrl}
+          emitidoEm={emitidoEm ?? dataFormatada}
+        />
       </div>
     </div>
   );
@@ -140,7 +123,7 @@ export function ReciboPrintButton({
         url_validacao: json.url_validacao ?? null,
       });
       setPrintRequested(true);
-    } catch (err) {
+    } catch (_err) {
       error("Erro na emissão", "Não conseguimos gerar o recibo para impressão no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
@@ -166,6 +149,7 @@ export function ReciboPrintButton({
           valor={valor}
           data={dataPagamento}
           urlValidacao={recibo.url_validacao}
+          publicId={recibo.doc_id}
         />
       ) : null}
     </div>
