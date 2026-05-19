@@ -45,6 +45,8 @@ type DadosPagamento = {
   iban?: string;
   banco?: string;
   titular?: string;
+  titular_conta?: string;
+  kwik_chave?: string;
 };
 
 type DatabaseWithHorarioVersoes = Database & {
@@ -222,6 +224,8 @@ export async function GET() {
               iban: typeof raw.iban === "string" ? raw.iban : undefined,
               banco: typeof raw.banco === "string" ? raw.banco : undefined,
               titular: typeof raw.titular === "string" ? raw.titular : undefined,
+              titular_conta: typeof raw.titular_conta === "string" ? raw.titular_conta : undefined,
+              kwik_chave: typeof raw.kwik_chave === "string" ? raw.kwik_chave : undefined,
             } as DadosPagamento;
           }
         } catch (e) {

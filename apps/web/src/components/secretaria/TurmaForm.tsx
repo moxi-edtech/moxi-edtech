@@ -67,6 +67,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
   const [capacidade, setCapacidade] = useState(initialData?.capacidade_maxima || 70);
   const [cursoId, setCursoId] = useState(initialData?.curso_id || "");
   const [classeId, setClasseId] = useState(initialData?.classe_id || "");
+  const [isClasseExame, setIsClasseExame] = useState(initialData?.is_classe_exame || false);
   const [skipMatricula, setSkipMatricula] = useState(false);
   const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
 
@@ -117,6 +118,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     setCapacidade(initialData?.capacidade_maxima || 70);
     setCursoId(initialData?.curso_id || "");
     setClasseId(initialData?.classe_id || "");
+    setIsClasseExame(initialData?.is_classe_exame || false);
     if (initialData?.metadata?.importacao_config) {
       setSkipMatricula(Boolean(initialData.metadata.importacao_config.skip_matricula));
       const mes = Number(initialData.metadata.importacao_config.mes_inicio);
@@ -243,6 +245,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     let nextTurno = turno;
     let nextNome = nome;
     let nextSessionId = sessionId;
+    let nextIsClasseExame = isClasseExame;
 
     // 1) Curso
     if (!nextCursoId || force) {
@@ -260,6 +263,14 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         nextClasseId = foundId;
         corrections++;
       }
+    }
+
+    // 2.1) Sugestão automática de Classe de Exame (6ª, 9ª e 12ª)
+    if (info.classeNum === "6" || info.classeNum === "9" || info.classeNum === "12") {
+       if (!nextIsClasseExame) {
+         nextIsClasseExame = true;
+         corrections++;
+       }
     }
 
     // 3) Turno
@@ -315,6 +326,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     setTurno(nextTurno);
     setNome(nextNome);
     setSessionId(nextSessionId);
+    setIsClasseExame(nextIsClasseExame);
 
     const hadParserHints = Boolean(info && (info.cursoSugeridoNome || info.classeNum || info.curriculumKey));
     if (corrections > 0) {
@@ -433,6 +445,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         ano_letivo: anoLetivoStr,
 
         turma_codigo: codigoNorm,
+        is_classe_exame: isClasseExame,
 
         migracao_financeira: isDraft
           ? {
@@ -689,6 +702,19 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             <span className="leading-tight">
               Considerar matrícula já paga (migração)
               <span className="block text-xs text-klasse-gold-700">Abona/zera a taxa de matrícula para alunos existentes.</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2 text-sm text-klasse-gold-900">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-klasse-gold-300 text-klasse-gold-600 focus:ring-klasse-gold-500"
+              checked={isClasseExame}
+              onChange={(e) => setIsClasseExame(e.target.checked)}
+            />
+            <span className="leading-tight font-bold">
+              Classe de Exame (cobra mês final)
+              <span className="block text-xs font-normal text-klasse-gold-700">Se desligado, o motor não gera a mensalidade do mês final para esta turma.</span>
             </span>
           </label>
 

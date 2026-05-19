@@ -33,9 +33,27 @@ type MetodoDetalhes = {
   referencia:    string;
   evidencia_url: string;
   gateway_ref:   string;
+  partial_reason?: string;
+  promise_date?:   string;
 };
 
 type ReciboState = { url_validacao: string | null; logo_url?: string | null } | null;
+
+type MensalidadeOption = {
+  id: string;
+  mes: number;
+  ano: number;
+  valor: number;
+  vencimento?: string;
+  status: string;
+};
+
+type ReciboBatchItem = {
+  id: string;
+  url_validacao: string | null;
+  valor: number;
+  referencia: string;
+};
 
 export interface ModalPagamentoRapidoProps {
   escolaId?:    string | null;
@@ -45,14 +63,9 @@ export interface ModalPagamentoRapidoProps {
     turma?: string;
     bi?:    string;
   };
-  mensalidade: {
-    id:          string;
-    mes:         number;
-    ano:         number;
-    valor:       number;
-    vencimento?: string;
-    status:      string;
-  } | null;
+  mensalidade: MensalidadeOption | null;
+  mensalidades?: MensalidadeOption[];
+  initialSelectedIds?: string[];
   open:       boolean;
   onClose:    () => void;
   onSuccess?: () => void;
@@ -72,7 +85,7 @@ const METODOS_CONFIG = [
 ] as const;
 
 const DETALHES_VAZIOS: MetodoDetalhes = {
-  referencia: "", evidencia_url: "", gateway_ref: "",
+  referencia: "", evidencia_url: "", gateway_ref: "", partial_reason: "", promise_date: "",
 };
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -91,6 +104,13 @@ function mesAnoLabel(mes?: number | null, ano?: number | null): string {
   return `${MESES[mes - 1]}/${ano}`;
 }
 
+function sortMensalidades(items: MensalidadeOption[]) {
+  return [...items].sort((a, b) => {
+    if (a.ano !== b.ano) return a.ano - b.ano;
+    return a.mes - b.mes;
+  });
+}
+
 function statusConfig(status?: string | null) {
   const s = (status ?? "").toLowerCase();
   if (s === "pago")
@@ -102,6 +122,76 @@ function statusConfig(status?: string | null) {
   if (s === "em_atraso" || s === "atraso")
     return { label: "Em atraso", cls: "bg-rose-50 text-rose-700 border-rose-200" };
   return { label: status ?? "—", cls: "bg-slate-100 text-slate-600 border-slate-200" };
+}
+
+function MensalidadesSelector({
+  mensalidades,
+  selectedIds,
+  onToggle,
+  disabled,
+}: {
+  mensalidades: MensalidadeOption[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          Mensalidades
+        </p>
+        <span className="text-[11px] font-semibold text-slate-400">
+          {selectedIds.length} selecionada(s)
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {mensalidades.map((item) => {
+          const checked = selectedIds.includes(item.id);
+          const { cls, label } = statusConfig(item.status);
+          const vencimentoLabel = item.vencimento
+            ? new Date(item.vencimento).toLocaleDateString("pt-PT")
+            : null;
+
+          return (
+            <label
+              key={item.id}
+              className={[
+                "flex items-start gap-3 rounded-2xl border px-3 py-3 transition-all",
+                checked ? "border-[#E3B23C] bg-white ring-2 ring-[#E3B23C]/10" : "border-slate-200 bg-white",
+                disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-slate-300",
+              ].join(" ")}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(item.id)}
+                disabled={disabled}
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#E3B23C] focus:ring-[#E3B23C]"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{mesAnoLabel(item.mes, item.ano)}</p>
+                    {vencimentoLabel ? (
+                      <p className="text-[11px] text-slate-500">Venc. {vencimentoLabel}</p>
+                    ) : null}
+                  </div>
+                  <p className="text-sm font-black text-slate-900">{moneyAOA.format(item.valor)}</p>
+                </div>
+                <div className="mt-2">
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${cls}`}>
+                    {label}
+                  </span>
+                </div>
+              </div>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
@@ -320,6 +410,9 @@ function ResumoCard({
   troco:       number;
   trocoValido: boolean;
 }) {
+  const isPartial = valorPago > 0 && valorPago < valorDevido;
+  const saldoRestante = valorDevido - valorPago;
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -335,16 +428,30 @@ function ResumoCard({
             <span className="font-semibold text-slate-900">{value}</span>
           </div>
         ))}
-        <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
-          <span className="font-bold text-slate-900">Troco</span>
-          <span className="font-black text-slate-900">{moneyAOA.format(troco)}</span>
-        </div>
+        {isPartial ? (
+          <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+            <span className="font-bold text-amber-600">Saldo restante</span>
+            <span className="font-black text-amber-600">{moneyAOA.format(saldoRestante)}</span>
+          </div>
+        ) : (
+          <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+            <span className="font-bold text-slate-900">Troco</span>
+            <span className="font-black text-slate-900">{moneyAOA.format(troco)}</span>
+          </div>
+        )}
       </div>
 
-      {!trocoValido && (
+      {!trocoValido && !isPartial && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2
           text-xs text-rose-700 font-medium">
           O valor recebido deve ser igual ou superior ao valor da mensalidade.
+        </div>
+      )}
+
+      {isPartial && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2
+          text-xs text-amber-800 font-medium">
+          Pagamento parcial detectado. Justificativa e promessa são obrigatórias.
         </div>
       )}
     </div>
@@ -405,28 +512,24 @@ function EstadoConcluido({
 
 function usePagamentoSubmit({
   aluno,
-  mensalidade,
+  mensalidadesSelecionadas,
   metodo,
   detalhes,
   valorPagoNum,
-  mesAno,
   trocoValido,
-  canEmitirRecibo,
   onConcluido,
-  onRecibo,
+  onRecibos,
   safeClose,
   onSuccess,
 }: {
   aluno:          ModalPagamentoRapidoProps["aluno"];
-  mensalidade:    ModalPagamentoRapidoProps["mensalidade"];
+  mensalidadesSelecionadas: MensalidadeOption[];
   metodo:         MetodoPagamento;
   detalhes:       MetodoDetalhes;
   valorPagoNum:   number;
-  mesAno:         string;
   trocoValido:    boolean;
-  canEmitirRecibo: boolean;
   onConcluido:    () => void;
-  onRecibo:       (r: ReciboState) => void;
+  onRecibos:      (r: ReciboBatchItem[]) => void;
   safeClose:      () => void;
   onSuccess?:     () => void;
 }) {
@@ -437,7 +540,7 @@ function usePagamentoSubmit({
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const submit = useCallback(async () => {
-    if (!mensalidade || !trocoValido || processando) return;
+    if (mensalidadesSelecionadas.length === 0 || !trocoValido || processando) return;
 
     if (metodo === "tpa" && !detalhes.referencia.trim()) {
       error("Referência obrigatória para TPA."); return;
@@ -451,40 +554,64 @@ function usePagamentoSubmit({
     abortRef.current = new AbortController();
 
     try {
-      const idempotencyKey = crypto.randomUUID?.() ??
-        `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const recibos: ReciboBatchItem[] = [];
 
-      const res = await fetch("/api/financeiro/pagamentos/registrar", {
-        method:  "POST",
-        headers: {
-          "Content-Type":    "application/json",
-          "Idempotency-Key": idempotencyKey,
-        },
-        signal: abortRef.current.signal,
-        body: JSON.stringify({
-          aluno_id:       aluno.id,
-          mensalidade_id: mensalidade.id,
-          valor:          valorPagoNum || mensalidade.valor,
-          metodo,
-          reference:      detalhes.referencia    || null,
-          evidence_url:   detalhes.evidencia_url || null,
-          meta: {
-            observacao:  `Pagamento rápido - ${mesAno}`,
-            origem:      "pagamento_rapido",
-            gateway_ref: detalhes.gateway_ref || null,
+      for (const mensalidade of mensalidadesSelecionadas) {
+        const idempotencyKey = crypto.randomUUID?.() ??
+          `${Date.now()}-${Math.random().toString(16).slice(2)}-${mensalidade.id}`;
+
+        const referencia = mesAnoLabel(mensalidade.mes, mensalidade.ano);
+        const valor = mensalidadesSelecionadas.length === 1
+          ? (valorPagoNum || mensalidade.valor)
+          : mensalidade.valor;
+
+        const res = await fetch("/api/secretaria/balcao/pagamentos", {
+          method:  "POST",
+          headers: {
+            "Content-Type":    "application/json",
+            "Idempotency-Key": idempotencyKey,
           },
-        }),
-      });
+          signal: abortRef.current.signal,
+          body: JSON.stringify({
+            aluno_id:       aluno.id,
+            mensalidade_id: mensalidade.id,
+            valor,
+            metodo,
+            reference:      detalhes.referencia    || null,
+            evidence_url:   detalhes.evidencia_url || null,
+            meta: {
+              observacao:      `Pagamento rápido - ${referencia}`,
+              origem:          "pagamento_rapido",
+              gateway_ref:     detalhes.gateway_ref || null,
+              partial_reason:  detalhes.partial_reason || null,
+              promise_date:    detalhes.promise_date || null,
+            },
+          }),
+        });
 
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok)
-        throw new Error(json?.error || "Falha ao registar pagamento.");
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || `Falha ao registar pagamento de ${referencia}.`);
+        }
 
-      // Já recebe os dados fiscais de forma atômica no registro
-      if (json.fiscal?.ok) {
-        onRecibo({ url_validacao: json.fiscal.url_validacao ?? null });
+        if (json.fiscal?.ok) {
+          recibos.push({
+            id: String(json.fiscal.documento_id ?? mensalidade.id),
+            url_validacao: json.fiscal.url_validacao ?? null,
+            valor,
+            referencia,
+          });
+        } else {
+          recibos.push({
+            id: mensalidade.id,
+            url_validacao: null,
+            valor,
+            referencia,
+          });
+        }
       }
 
+      onRecibos(recibos);
       onConcluido();
       if (onSuccess) onSuccess();
 
@@ -495,9 +622,9 @@ function usePagamentoSubmit({
       setProcessando(false);
     }
   }, [
-    mensalidade, trocoValido, processando, metodo, detalhes,
-    valorPagoNum, mesAno, canEmitirRecibo, aluno.id,
-    onConcluido, onRecibo, onSuccess, error,
+    mensalidadesSelecionadas, trocoValido, processando, metodo, detalhes,
+    valorPagoNum, aluno.id,
+    onConcluido, onRecibos, onSuccess, error,
   ]);
 
   return { processando, submit };
@@ -511,6 +638,8 @@ export function ModalPagamentoRapido({
   escolaId,
   aluno,
   mensalidade,
+  mensalidades,
+  initialSelectedIds,
   open,
   onClose,
   onSuccess,
@@ -520,35 +649,59 @@ export function ModalPagamentoRapido({
   const [detalhes, setDetalhes] = useState<MetodoDetalhes>(DETALHES_VAZIOS);
   const [valor,    setValor]    = useState("");
   const [concluido, setConcluido] = useState(false);
-  const [recibo,    setRecibo]    = useState<ReciboState>(null);
+  const [recibos,   setRecibos]   = useState<ReciboBatchItem[]>([]);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
-  const canEmitirRecibo = true;
+  const availableMensalidades = useMemo(() => {
+    if (mensalidades?.length) return sortMensalidades(mensalidades);
+    return mensalidade ? [mensalidade] : [];
+  }, [mensalidade, mensalidades]);
+  const isBatchMode = availableMensalidades.length > 1;
+  const mensalidadesSelecionadas = useMemo(
+    () => availableMensalidades.filter((item) => selectedIds.includes(item.id)),
+    [availableMensalidades, selectedIds]
+  );
+  const mensalidadePrincipal = mensalidadesSelecionadas[0] ?? availableMensalidades[0] ?? null;
 
   // ── Derivados ────────────────────────────────────────────────────────────
   const valorNum   = useMemo(() => safeNumber(valor), [valor]);
-  const valorDevido = mensalidade?.valor ?? 0;
+  const valorDevido = useMemo(
+    () => mensalidadesSelecionadas.reduce((sum, item) => sum + item.valor, 0),
+    [mensalidadesSelecionadas]
+  );
   const troco      = valorNum - valorDevido;
-  const trocoValido = Number.isFinite(troco) && troco >= 0;
+  const trocoValido = isBatchMode
+    ? mensalidadesSelecionadas.length > 0
+    : Number.isFinite(troco) && troco >= 0;
+  const isPartial = !isBatchMode && valorNum > 0 && valorNum < valorDevido;
   const mesAno     = useMemo(
-    () => mesAnoLabel(mensalidade?.mes, mensalidade?.ano),
-    [mensalidade?.mes, mensalidade?.ano]
+    () => {
+      if (mensalidadesSelecionadas.length > 1) return `${mensalidadesSelecionadas.length} mensalidades`;
+      return mesAnoLabel(mensalidadePrincipal?.mes, mensalidadePrincipal?.ano);
+    },
+    [mensalidadePrincipal?.mes, mensalidadePrincipal?.ano, mensalidadesSelecionadas.length]
   );
 
   const sugestoes = useMemo(() => {
-    if (metodo !== "cash" || valorDevido <= 0) return [];
+    if (isBatchMode || metodo !== "cash" || valorDevido <= 0) return [];
     return Array.from(new Set([
       valorDevido,
       Math.ceil(valorDevido / 100) * 100,
       Math.ceil(valorDevido / 500) * 500,
     ])).sort((a, b) => a - b);
-  }, [metodo, valorDevido]);
+  }, [isBatchMode, metodo, valorDevido]);
 
-  const canConfirm = !!mensalidade && trocoValido;
+  const canConfirm = mensalidadesSelecionadas.length > 0 && (trocoValido || (isPartial && !!detalhes.partial_reason?.trim() && !!detalhes.promise_date));
 
   const safeClose = useCallback(() => { onClose(); }, [onClose]);
+  const toggleMensalidade = useCallback((id: string) => {
+    setSelectedIds((prev) => (
+      prev.includes(id) ? prev.filter((currentId) => currentId !== id) : [...prev, id]
+    ));
+  }, []);
 
   // ── Reset ao abrir ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -556,13 +709,28 @@ export function ModalPagamentoRapido({
     setConcluido(false);
     setMetodo("cash");
     setDetalhes(DETALHES_VAZIOS);
-    setValor(mensalidade?.valor != null ? String(mensalidade.valor) : "");
-    setRecibo(null);
+    const fallbackSelectedIds = initialSelectedIds?.length
+      ? initialSelectedIds.filter((id) => availableMensalidades.some((item) => item.id === id))
+      : availableMensalidades[0]?.id
+        ? [availableMensalidades[0].id]
+        : [];
+    setSelectedIds(fallbackSelectedIds);
+    const initialTotal = fallbackSelectedIds.reduce((sum, id) => {
+      const item = availableMensalidades.find((mens) => mens.id === id);
+      return sum + Number(item?.valor ?? 0);
+    }, 0);
+    setValor(initialTotal > 0 ? String(initialTotal) : "");
+    setRecibos([]);
     setTimeout(() => confirmBtnRef.current?.focus(), 50);
-  }, [open, mensalidade?.id, mensalidade?.valor]);
+  }, [open, initialSelectedIds, availableMensalidades]);
 
   // ── Reset detalhes ao mudar método ──────────────────────────────────────
   useEffect(() => { setDetalhes(DETALHES_VAZIOS); }, [metodo]);
+
+  useEffect(() => {
+    if (!isBatchMode) return;
+    setValor(valorDevido > 0 ? String(valorDevido) : "");
+  }, [isBatchMode, valorDevido]);
 
   // ── Buscar nome da escola ────────────────────────────────────────────────
   useEffect(() => {
@@ -578,17 +746,17 @@ export function ModalPagamentoRapido({
 
   // ── Print pós-pagamento ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!recibo) return;
+    if (recibos.length === 0) return;
     const t = setTimeout(() => window.print(), 300);
     return () => clearTimeout(t);
-  }, [recibo]);
+  }, [recibos]);
 
   // ── Submissão ────────────────────────────────────────────────────────────
   const { processando, submit } = usePagamentoSubmit({
-    aluno, mensalidade, metodo, detalhes, valorPagoNum: valorNum,
-    mesAno, trocoValido, canEmitirRecibo,
+    aluno, mensalidadesSelecionadas, metodo, detalhes, valorPagoNum: valorNum,
+    trocoValido,
     onConcluido: () => setConcluido(true),
-    onRecibo:    (payload) => setRecibo(payload ? { ...payload, logo_url: escolaLogoUrl } : null),
+    onRecibos:   (payload) => setRecibos(payload),
     safeClose, onSuccess,
   });
 
@@ -609,9 +777,9 @@ export function ModalPagamentoRapido({
 
   if (!open) return null;
 
-  const { label: statusLabel, cls: statusCls } = statusConfig(mensalidade?.status);
-  const vencimentoLabel = mensalidade?.vencimento
-    ? new Date(mensalidade.vencimento).toLocaleDateString("pt-PT")
+  const { label: statusLabel, cls: statusCls } = statusConfig(mensalidadePrincipal?.status);
+  const vencimentoLabel = mensalidadePrincipal?.vencimento
+    ? new Date(mensalidadePrincipal.vencimento).toLocaleDateString("pt-PT")
     : null;
 
   return (
@@ -644,7 +812,7 @@ export function ModalPagamentoRapido({
                     <h2 className="text-base font-black text-slate-900">
                       {concluido ? "Pagamento concluído" : "Pagamento rápido"}
                     </h2>
-                    {mensalidade && (
+                    {mensalidadePrincipal && (
                       <span className={`inline-flex items-center rounded-full border
                         px-2 py-0.5 text-[10px] font-bold ${statusCls}`}>
                         {statusLabel}
@@ -683,8 +851,8 @@ export function ModalPagamentoRapido({
           <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-5">
             {concluido ? (
               <EstadoConcluido 
-                aluno={aluno} 
-                valor={valorNum || valorDevido} 
+                aluno={aluno}
+                valor={valorNum || valorDevido}
                 mesAno={mesAno} 
                 escolaId={escolaId ?? null}
                 onClose={safeClose}
@@ -692,28 +860,37 @@ export function ModalPagamentoRapido({
             ) : (
               <>
                 {/* Card da mensalidade */}
-                {mensalidade ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          Mensalidade
-                        </p>
-                        <p className="mt-1 text-base font-bold text-slate-900">{mesAno}</p>
-                        {vencimentoLabel && (
-                          <p className="mt-0.5 text-xs text-slate-500">
-                            Venc. <span className="font-semibold text-slate-700">{vencimentoLabel}</span>
+                {availableMensalidades.length > 0 ? (
+                  isBatchMode ? (
+                    <MensalidadesSelector
+                      mensalidades={availableMensalidades}
+                      selectedIds={selectedIds}
+                      onToggle={toggleMensalidade}
+                      disabled={processando}
+                    />
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                            Mensalidade
                           </p>
-                        )}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-[10px] text-slate-400">Valor</p>
-                        <p className="text-xl font-black text-slate-900">
-                          {moneyAOA.format(mensalidade.valor)}
-                        </p>
+                          <p className="mt-1 text-base font-bold text-slate-900">{mesAno}</p>
+                          {vencimentoLabel && (
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              Venc. <span className="font-semibold text-slate-700">{vencimentoLabel}</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[10px] text-slate-400">Valor</p>
+                          <p className="text-xl font-black text-slate-900">
+                            {moneyAOA.format(mensalidadePrincipal?.valor ?? 0)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )
                 ) : (
                   <div className="rounded-2xl border border-[#E3B23C]/20 bg-[#E3B23C]/5
                     p-4 text-sm text-slate-600">
@@ -737,15 +914,66 @@ export function ModalPagamentoRapido({
                 </div>
 
                 {/* Valor recebido */}
-                <ValorInput
-                  valor={valor}
-                  onChange={setValor}
-                  sugestoes={sugestoes}
-                  disabled={processando}
-                />
+                {isBatchMode ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          Total automático
+                        </p>
+                        <p className="mt-1 text-base font-bold text-slate-900">
+                          {mensalidadesSelecionadas.length} mensalidade(s)
+                        </p>
+                      </div>
+                      <p className="text-2xl font-black text-slate-900">{moneyAOA.format(valorDevido)}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ValorInput
+                    valor={valor}
+                    onChange={setValor}
+                    sugestoes={sugestoes}
+                    disabled={processando}
+                  />
+                )}
+
+                {/* Bloco de Justificativa para Pagamento Parcial */}
+                {isPartial && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">
+                      Justificativa do Pagamento Parcial
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                          Motivo <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                          value={detalhes.partial_reason}
+                          onChange={e => setDetalhes(prev => ({ ...prev, partial_reason: e.target.value }))}
+                          disabled={processando}
+                          placeholder="Ex: Aluno esqueceu parte do valor..."
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 min-h-[60px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                          Próximo pagamento (Promessa) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={detalhes.promise_date}
+                          onChange={e => setDetalhes(prev => ({ ...prev, promise_date: e.target.value }))}
+                          disabled={processando}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Troco (só cash) */}
-                {metodo === "cash" && valorNum > 0 && (
+                {!isBatchMode && metodo === "cash" && valorNum > 0 && (
                   <TrocoCard troco={troco} valido={trocoValido} />
                 )}
 
@@ -785,7 +1013,7 @@ export function ModalPagamentoRapido({
                       A processar…
                     </span>
                   ) : (
-                    `Confirmar — ${moneyAOA.format(valorNum || valorDevido)}`
+                    `Confirmar — ${moneyAOA.format(isBatchMode ? valorDevido : (valorNum || valorDevido))}`
                   )}
                 </Button>
               </div>
@@ -795,16 +1023,18 @@ export function ModalPagamentoRapido({
       </div>
 
       {/* Recibo (imprimível, fora do modal) */}
-      {recibo && (
+      {recibos.map((recibo) => (
         <ReciboImprimivel
+          key={recibo.id}
           escolaNome={escolaNome ?? "Escola"}
           alunoNome={aluno.nome}
-          valor={mensalidade?.valor ?? 0}
+          valor={recibo.valor}
           data={new Date().toISOString()}
           urlValidacao={recibo.url_validacao}
-          logoUrl={recibo.logo_url ?? escolaLogoUrl}
+          logoUrl={escolaLogoUrl}
+          referencia={recibo.referencia}
         />
-      )}
+      ))}
     </>
   );
 }

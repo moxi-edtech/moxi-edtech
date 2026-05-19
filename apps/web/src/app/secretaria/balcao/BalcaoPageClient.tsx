@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
+import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +30,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
       </header>
 
       <main className="max-w-7xl mx-auto px-6 mt-8">
+        <ResumoCaixaSecretaria escolaId={escolaId} />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[600px]">
           <BalcaoAtendimento 
             escolaId={escolaId} 

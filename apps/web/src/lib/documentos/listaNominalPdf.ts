@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 import { rgb } from "pdf-lib";
 import type { Database } from "~types/supabase";
-import { createInstitutionalPdf, fetchImageBytes } from "@/lib/pdf/documentTemplate";
+import { createInstitutionalPdf, detectImageFormat, fetchImageBytes } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { drawTable, type Column } from "@/lib/pdf/table";
@@ -426,9 +426,10 @@ export async function renderListaNominalPdfBuffer({
           const fotoUrl = aluno.foto_url as string | undefined;
           if (fotoUrl) {
             try {
-              const photoBytes = await fetchImageBytes(fotoUrl);
-              const isPng = fotoUrl.toLowerCase().includes(".png");
-              const photoImage = isPng ? await pdfDoc.embedPng(photoBytes) : await pdfDoc.embedJpg(photoBytes);
+              const { bytes: photoBytes, contentType } = await fetchImageBytes(fotoUrl);
+              const photoFormat = detectImageFormat(photoBytes, contentType, fotoUrl);
+              const photoImage =
+                photoFormat === "png" ? await pdfDoc.embedPng(photoBytes) : await pdfDoc.embedJpg(photoBytes);
               const scale = photoSize / Math.max(photoImage.width, photoImage.height);
               const dims = photoImage.scale(scale);
               

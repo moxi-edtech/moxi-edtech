@@ -156,6 +156,12 @@ export default async function FinanceiroDashboardPage({
   let financeNotifications: Notification[] = [];
   let escolaNome = "Escola";
   let escolaLogoUrl: string | null = null;
+  let escolaDadosPagamento: {
+    banco: string | null;
+    titular_conta: string | null;
+    iban: string | null;
+    kwik_chave: string | null;
+  } | null = null;
   let anoLetivo = new Date().getFullYear();
 
   if (aluno) {
@@ -187,7 +193,7 @@ export default async function FinanceiroDashboardPage({
         .maybeSingle(),
       supabase
         .from("escolas")
-        .select("nome, logo_url")
+        .select("nome, logo_url, dados_pagamento")
         .eq("id", escolaId)
         .maybeSingle(),
       supabase
@@ -203,6 +209,15 @@ export default async function FinanceiroDashboardPage({
     if (anoAtivoRes.data?.ano) anoLetivo = Number(anoAtivoRes.data.ano);
     escolaNome = escolaRes.data?.nome ?? escolaNome;
     escolaLogoUrl = escolaRes.data?.logo_url ?? null;
+    const rawPagamento = (escolaRes.data?.dados_pagamento as Record<string, unknown> | null) ?? null;
+    escolaDadosPagamento = rawPagamento
+      ? {
+          banco: typeof rawPagamento.banco === "string" ? rawPagamento.banco : null,
+          titular_conta: typeof rawPagamento.titular_conta === "string" ? rawPagamento.titular_conta : null,
+          iban: typeof rawPagamento.iban === "string" ? rawPagamento.iban : null,
+          kwik_chave: typeof rawPagamento.kwik_chave === "string" ? rawPagamento.kwik_chave : null,
+        }
+      : null;
     financeNotifications = (notificationsRes.data as Notification[]) || [];
   }
 
@@ -460,6 +475,10 @@ export default async function FinanceiroDashboardPage({
                                   valor={mens.valor_pago_total ?? mens.valor_previsto ?? mens.valor ?? 0}
                                   dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
                                   logoUrl={escolaLogoUrl}
+                                  banco={escolaDadosPagamento?.banco ?? null}
+                                  titularConta={escolaDadosPagamento?.titular_conta ?? null}
+                                  iban={escolaDadosPagamento?.iban ?? null}
+                                  kwikChave={escolaDadosPagamento?.kwik_chave ?? null}
                                 />
                                 <EstornarMensalidadeButton mensalidadeId={mens.id} />
                               </div>

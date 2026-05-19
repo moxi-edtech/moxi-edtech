@@ -22,7 +22,7 @@ export default async function ReciboPrintPage({
 
   if ("error" in data) return <div className="p-8">{data.error}</div>;
 
-  const { doc, escolaNome, validationBaseUrl, logoUrl } = data;
+  const { doc, escolaNome, validationBaseUrl, logoUrl, dadosPagamento } = data;
   if (String(doc.tipo) !== "recibo") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
@@ -111,6 +111,10 @@ export default async function ReciboPrintPage({
           urlValidacao={urlValidacao}
           logoUrl={logoUrl}
           emitidoEm={emitidoEm}
+          banco={dadosPagamento?.banco ?? null}
+          titularConta={dadosPagamento?.titular_conta ?? null}
+          iban={dadosPagamento?.iban ?? null}
+          kwikChave={dadosPagamento?.kwik_chave ?? null}
         />
       </div>
     </div>

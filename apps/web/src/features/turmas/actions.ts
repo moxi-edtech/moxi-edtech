@@ -25,6 +25,7 @@ interface ValidateTurmaPayload {
   ano_letivo: string;
 
   turma_codigo: string; // "TEC_GEST-10-M-A"
+  is_classe_exame?: boolean;
 
   migracao_financeira?: {
     skip_matricula: boolean;
@@ -218,6 +219,7 @@ export async function saveAndValidateTurma(payload: ValidateTurmaPayload) {
     turno: payload.turno, // Já deve vir M, T ou N
     sala: payload.sala || null,
     capacidade_maxima: payload.capacidade,
+    is_classe_exame: payload.is_classe_exame ?? false,
     ano_letivo: Number(payload.ano_letivo),
     turma_codigo: payload.turma_codigo,
     status_validacao: 'ativo', // APROVAÇÃO!

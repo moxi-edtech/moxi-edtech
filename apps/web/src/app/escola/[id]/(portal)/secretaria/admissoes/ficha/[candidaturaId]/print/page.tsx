@@ -48,6 +48,7 @@ async function getCandidaturaData(id: string) {
   const dadosPagamento = rawPagamento ? {
     iban: typeof rawPagamento.iban === 'string' ? rawPagamento.iban : undefined,
     banco: typeof rawPagamento.banco === 'string' ? rawPagamento.banco : undefined,
+    kwik_chave: typeof rawPagamento.kwik_chave === 'string' ? rawPagamento.kwik_chave : undefined,
   } : null;
 
   return {
@@ -136,6 +137,7 @@ export default async function FichaPreInscricaoPrintPage({
             <div className="rounded-lg border border-slate-200 px-5 py-4 text-sm">
               <p className="text-slate-700">IBAN: {dadosPagamento?.iban || "AO06 0000 0000 0000 0000 0000 0"}</p>
               <p className="text-slate-700">Banco: {dadosPagamento?.banco || "Banco Parceiro"}</p>
+              {dadosPagamento?.kwik_chave ? <p className="text-slate-700">KWIK: {dadosPagamento.kwik_chave}</p> : null}
               <p className="text-slate-700">Referência: Pré-inscrição</p>
             </div>
           </section>

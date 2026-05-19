@@ -16,6 +16,10 @@ export type ReciboPagamentoCompactoProps = {
   urlValidacao: string | null;
   logoUrl: string | null;
   emitidoEm?: string | null;
+  banco?: string | null;
+  titularConta?: string | null;
+  iban?: string | null;
+  kwikChave?: string | null;
 };
 
 type CompactFieldProps = {
@@ -61,6 +65,10 @@ export default function ReciboPagamentoCompacto({
   urlValidacao,
   logoUrl,
   emitidoEm,
+  banco = null,
+  titularConta = null,
+  iban = null,
+  kwikChave = null,
 }: ReciboPagamentoCompactoProps) {
   const classeCurso = `${classeNome}${cursoNome ? ` - ${cursoNome}` : ""}`;
   const emissao = emitidoEm || "—";
@@ -118,6 +126,15 @@ export default function ReciboPagamentoCompacto({
             </p>
           </div>
         </div>
+
+        {banco || titularConta || iban || kwikChave ? (
+          <div className="grid grid-cols-2 gap-3 border-b border-slate-200 p-3">
+            <CompactField label="Banco" value={banco || "—"} />
+            <CompactField label="Titular" value={titularConta || "—"} />
+            <CompactField label="IBAN" value={iban || "—"} clamp="two" />
+            <CompactField label="KWIK" value={kwikChave || "—"} />
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-4 p-3">
           <section className="min-w-0 space-y-2">

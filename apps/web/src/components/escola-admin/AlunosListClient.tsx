@@ -16,7 +16,7 @@ import {
   FileSpreadsheet, MessageSquare, ArrowUpDown, CheckSquare,
   Square, Minus, DollarSign, AlertCircle,
   ChevronRight, CreditCard, Banknote, Smartphone, Receipt,
-  SlidersHorizontal, XCircle,
+  SlidersHorizontal, XCircle, Flame,
 } from "lucide-react";
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -749,6 +749,36 @@ export default function AlunosListClient({
     open: false, title: "", message: "", confirm: "", action: async () => {},
   });
 
+  // ── Modal de prioridade com nota ────────────────────────────────────────────
+  const [priorityModal, setPriorityModal] = useState<{ open: boolean, aluno: Aluno | null, note: string }>({
+    open: false, aluno: null, note: ""
+  });
+
+  const handleSetPriority = async () => {
+    if (!priorityModal.aluno) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/secretaria/prioridade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity: 'alunos',
+          entity_id: priorityModal.aluno.id,
+          escolaId: escolaId,
+          reason: priorityModal.note || 'Prioridade definida pelo Admin'
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao definir prioridade.");
+      success("Prioridade solicitada", `A secretaria verá ${priorityModal.aluno.nome} com destaque.`);
+      setPriorityModal({ open: false, aluno: null, note: "" });
+    } catch (e: any) {
+      error("Erro", e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filtrosActivos = useMemo(() =>
     Object.values(filtros).filter(Boolean).length, [filtros]);
 
@@ -1000,6 +1030,52 @@ export default function AlunosListClient({
     <>
       <ConfirmModal cfg={modal} onConfirm={runModal}
         onCancel={() => setModal(m => ({ ...m, open: false }))} />
+
+      {priorityModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPriorityModal({ open: false, aluno: null, note: "" })} />
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 p-2.5 rounded-xl bg-rose-100">
+                <Flame size={20} className="text-rose-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-900">Definir Prioridade</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Marcar <span className="font-bold text-slate-800">{priorityModal.aluno?.nome}</span> como prioridade para a secretaria?
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-5">
+               <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                 Nota / Instrução para a Secretaria
+               </label>
+               <textarea 
+                value={priorityModal.note}
+                onChange={e => setPriorityModal(p => ({ ...p, note: e.target.value }))}
+                placeholder="Ex: Aluno precisa deste BI para o exame. Ou: Pai prometeu pagar amanhã."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all min-h-[100px]"
+               />
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button 
+                onClick={() => setPriorityModal({ open: false, aluno: null, note: "" })}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSetPriority}
+                className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2 text-sm font-bold text-white hover:bg-rose-700 transition-colors"
+              >
+                Marcar Prioridade
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <PagamentoDrawer
         aluno={drawerAluno}
@@ -1413,6 +1489,13 @@ export default function AlunosListClient({
                                     <DollarSign size={12} />
                                   </button>
                                 )}
+                                <button onClick={() => setPriorityModal({ open: true, aluno, note: "" })}
+                                  className="flex items-center gap-1 rounded-lg border border-slate-200
+                                    px-2 py-1.5 text-xs font-semibold text-slate-500
+                                    hover:border-rose-400 hover:text-rose-600 transition-colors"
+                                  title="Pedir Prioridade">
+                                  <Flame size={12} />
+                                </button>
                                 <button onClick={() => archiveOne(aluno)}
                                   className="flex items-center gap-1 rounded-lg border border-slate-200
                                     px-2 py-1.5 text-xs font-semibold text-slate-500

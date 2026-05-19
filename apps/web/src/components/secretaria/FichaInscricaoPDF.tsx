@@ -41,6 +41,7 @@ interface FichaInscricaoPDFProps {
   dadosPagamento?: {
     iban?: string;
     banco?: string;
+    kwik_chave?: string;
   } | null;
   valorMatricula?: number | null;
 }
@@ -73,6 +74,9 @@ export const FichaInscricaoPDF = ({ candidatura, dadosPagamento, valorMatricula 
                 <Text style={styles.text}>Por favor, efectue o pagamento da taxa de matrícula para a seguinte conta:</Text>
                 <Text style={styles.text}><Text style={styles.bold}>Banco:</Text> {dadosPagamento?.banco || "Banco Parceiro"}</Text>
                 <Text style={styles.text}><Text style={styles.bold}>IBAN:</Text> {dadosPagamento?.iban || "AO06 0000 0000 0000 0000 0000 0"}</Text>
+                {dadosPagamento?.kwik_chave ? (
+                  <Text style={styles.text}><Text style={styles.bold}>KWIK:</Text> {dadosPagamento.kwik_chave}</Text>
+                ) : null}
                 <Text style={styles.text}>
                   <Text style={styles.bold}>Valor:</Text> {valorMatricula != null ? `${new Intl.NumberFormat('pt-AO').format(valorMatricula)} Kz` : "Consultar Secretaria"}
                 </Text>
