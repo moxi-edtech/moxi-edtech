@@ -53,6 +53,7 @@ type ReciboBatchItem = {
   url_validacao: string | null;
   valor: number;
   referencia: string;
+  referenciasDetalhadas?: string[];
 };
 
 export interface ModalPagamentoRapidoProps {
@@ -122,6 +123,13 @@ function statusConfig(status?: string | null) {
   if (s === "em_atraso" || s === "atraso")
     return { label: "Em atraso", cls: "bg-rose-50 text-rose-700 border-rose-200" };
   return { label: status ?? "—", cls: "bg-slate-100 text-slate-600 border-slate-200" };
+}
+
+function summarizeReferencias(referencias: string[]) {
+  const limpas = referencias.filter((item) => item && item.trim().length > 0);
+  if (limpas.length <= 1) return limpas[0] ?? "Mensalidade";
+  if (limpas.length === 2) return limpas.join(" + ");
+  return `${limpas[0]} + ${limpas.length - 1} meses`;
 }
 
 function MensalidadesSelector({
@@ -554,7 +562,7 @@ function usePagamentoSubmit({
     abortRef.current = new AbortController();
 
     try {
-      const recibos: ReciboBatchItem[] = [];
+      const recibosGerados: ReciboBatchItem[] = [];
 
       for (const mensalidade of mensalidadesSelecionadas) {
         const idempotencyKey = crypto.randomUUID?.() ??
@@ -595,14 +603,14 @@ function usePagamentoSubmit({
         }
 
         if (json.fiscal?.ok) {
-          recibos.push({
+          recibosGerados.push({
             id: String(json.fiscal.documento_id ?? mensalidade.id),
             url_validacao: json.fiscal.url_validacao ?? null,
             valor,
             referencia,
           });
         } else {
-          recibos.push({
+          recibosGerados.push({
             id: mensalidade.id,
             url_validacao: null,
             valor,
@@ -611,7 +619,20 @@ function usePagamentoSubmit({
         }
       }
 
-      onRecibos(recibos);
+      if (recibosGerados.length > 1) {
+        const referenciasDetalhadas = recibosGerados.map((item) => item.referencia);
+        onRecibos([
+          {
+            id: `batch:${mensalidadesSelecionadas.map((item) => item.id).join(",")}`,
+            url_validacao: null,
+            valor: recibosGerados.reduce((sum, item) => sum + Number(item.valor || 0), 0),
+            referencia: summarizeReferencias(referenciasDetalhadas),
+            referenciasDetalhadas,
+          },
+        ]);
+      } else {
+        onRecibos(recibosGerados);
+      }
       onConcluido();
       if (onSuccess) onSuccess();
 
@@ -1033,6 +1054,7 @@ export function ModalPagamentoRapido({
           urlValidacao={recibo.url_validacao}
           logoUrl={escolaLogoUrl}
           referencia={recibo.referencia}
+          referenciasDetalhadas={recibo.referenciasDetalhadas}
         />
       ))}
     </>

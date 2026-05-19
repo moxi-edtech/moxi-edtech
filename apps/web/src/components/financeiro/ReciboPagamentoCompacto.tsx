@@ -8,6 +8,7 @@ export type ReciboPagamentoCompactoProps = {
   cursoNome: string;
   turmaNome: string;
   referencia: string;
+  referenciasDetalhadas?: string[];
   metodo: string;
   valorPago: number;
   dataPagamento: string;
@@ -57,6 +58,7 @@ export default function ReciboPagamentoCompacto({
   cursoNome,
   turmaNome,
   referencia,
+  referenciasDetalhadas = [],
   metodo,
   valorPago,
   dataPagamento,
@@ -73,6 +75,8 @@ export default function ReciboPagamentoCompacto({
   const classeCurso = `${classeNome}${cursoNome ? ` - ${cursoNome}` : ""}`;
   const emissao = emitidoEm || "—";
   const effectiveLogoUrl = logoUrl?.trim() ? logoUrl.trim() : "/insignia_med.png";
+  const referencias = referenciasDetalhadas.filter((item) => item && item.trim().length > 0);
+  const hasReferenciaDetalhada = referencias.length > 1;
 
   return (
     <div className="space-y-3 bg-white font-sans text-slate-900">
@@ -108,9 +112,21 @@ export default function ReciboPagamentoCompacto({
           <CompactField label="Classe / Curso" value={classeCurso} />
           <CompactField label="Turma" value={turmaNome} />
           <CompactField label="NIF / BI" value={alunoBi} />
-          <CompactField label="Referência" value={referencia} />
+          <CompactField label="Referência" value={referencia} clamp={hasReferenciaDetalhada ? "two" : "one"} />
           <CompactField label="Método" value={metodo} />
         </div>
+
+        {hasReferenciaDetalhada ? (
+          <div className="border-b border-slate-200 p-3">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Competências Liquidadas</p>
+            <p
+              className="mt-1 text-xs font-semibold leading-snug text-slate-900"
+              title={referencias.join(", ")}
+            >
+              {referencias.join(", ")}
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-slate-200 p-3">
           <div className="min-w-0">

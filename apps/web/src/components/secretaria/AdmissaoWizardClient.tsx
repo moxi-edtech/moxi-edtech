@@ -2129,16 +2129,18 @@ function Step3Pagamento(props: {
 export default function AdmissaoWizardClient({
   escolaId,
   escolaSlug,
+  initialCandidaturaId,
 }: {
   escolaId: string;
   escolaSlug?: string | null;
+  initialCandidaturaId?: string | null;
 }) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
   const pathname = usePathname();
   const [step, setStep] = useState(1);
-  const [candidaturaId, setCandidaturaId] = useState<string | null>(null);
+  const [candidaturaId, setCandidaturaId] = useState<string | null>(initialCandidaturaId || null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [cursoId, setCursoId] = useState<string | null>(null);
   const [classeId, setClasseId] = useState<string | null>(null);
@@ -2171,8 +2173,7 @@ export default function AdmissaoWizardClient({
   const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!searchParams) return;
-    const candId = searchParams.get("candidaturaId");
+    const candId = initialCandidaturaId || (searchParams ? searchParams.get("candidaturaId") : null);
     
     if (candId === lastCandidaturaIdRef.current) return;
     lastCandidaturaIdRef.current = candId;
