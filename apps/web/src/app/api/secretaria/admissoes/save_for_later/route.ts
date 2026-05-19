@@ -132,6 +132,7 @@ export async function POST(request: Request) {
         const dadosPagamento = rawPagamento ? {
           iban: typeof rawPagamento.iban === 'string' ? rawPagamento.iban : undefined,
           banco: typeof rawPagamento.banco === 'string' ? rawPagamento.banco : undefined,
+          kwik_chave: typeof rawPagamento.kwik_chave === 'string' ? rawPagamento.kwik_chave : undefined,
         } : null;
 
         const { data: preco } = await supabase

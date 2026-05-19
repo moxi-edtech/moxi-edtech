@@ -24,6 +24,8 @@ type DadosPagamento = {
   iban?: string;
   banco?: string;
   titular?: string;
+  titular_conta?: string;
+  kwik_chave?: string;
 };
 type ApiResponse = {
   ok: boolean;
@@ -288,4 +290,3 @@ export function TabFinanceiro() {
     </div>
   );
 }
-

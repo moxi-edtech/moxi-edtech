@@ -16,7 +16,7 @@ import {
   Printer,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { createClient } from "@/lib/supabaseClient";
@@ -34,6 +34,9 @@ import SecaoLabel from "@/components/shared/SecaoLabel";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import QuickDocHub from "@/components/secretaria/QuickDocHub";
+import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
+import { MinhaProdutividade } from "@/components/secretaria/MinhaProdutividade";
+import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
 import type { DashboardCounts, DashboardRecentes } from "./types";
 
 type BalcaoModal =
@@ -52,12 +55,24 @@ export function Dashboard({
   counts: DashboardCounts | null;
   recentes: DashboardRecentes | null;
 }) {
+  const router = useRouter();
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const pathname = usePathname();
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs, setNowMs] = useState<number | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [produtividadeAlerts, setProdutividadeAlerts] = useState<any[]>([]);
+  const [totalPendentesFicha, setTotalPendentesFicha] = useState(0);
+  const [selectedAlunoIdForFicha, setSelectedAlunoIdForFicha] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleProdutividadeData = (data: any) => {
+    if (data.alertas_notificacoes) setProdutividadeAlerts(data.alertas_notificacoes);
+    if (data.documentos_pendentes !== undefined) setTotalPendentesFicha(data.documentos_pendentes);
+  };
+
+  const refreshProdutividade = () => setRefreshKey(prev => prev + 1);
 
   const escolaParamFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
@@ -89,6 +104,24 @@ export function Dashboard({
   }, []);
 
   const dashboardTitle = userName ? `${greeting}, ${userName}!` : "Secretaria";
+
+  const handleNoticeAction = (item: any) => {
+    if (item.type === 'FICHA_RAPIDA' && item.aluno_id) {
+       setSelectedAlunoIdForFicha(item.aluno_id);
+    } else if (item.type === 'BIRTHDAY_WHATSAPP') {
+       const msg = encodeURIComponent(`Olá! A Escola ${escolaSlug || ''} deseja um feliz aniversário ao aluno ${item.nome_aluno}! Que este dia seja repleto de alegria.`);
+       const phone = item.telefone_whatsapp?.replace(/\D/g, '');
+       if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+    } else if (item.type === 'DEBT_PAYMENT') {
+       // Abre o balcão rápido para este aluno
+       router.push(buildPortalHref(escolaParam, `/secretaria/balcao?aluno=${item.aluno_id}`));
+    } else if (item.type === 'CANDIDATURA_PENDENTE') {
+       // Abre o wizard de admissão com a candidatura selecionada
+       router.push(buildPortalHref(escolaParam, `/secretaria/admissoes/nova?candidaturaId=${item.candidatura_id}`));
+    } else if (item.action_href) {
+       window.location.href = item.action_href;
+    }
+  };
 
   const avisoFechoTrimestre = useMemo(() => {
     const fecho = recentes?.fecho_trimestre;
@@ -132,8 +165,12 @@ export function Dashboard({
   const avisos = useMemo(() => {
     const base = recentes?.avisos_recentes ?? [];
     const extras = [avisoFechoTrimestre, avisoImportacao].filter(Boolean);
-    return extras.length > 0 ? [...(extras as typeof base), ...base] : base;
-  }, [avisoFechoTrimestre, avisoImportacao, recentes?.avisos_recentes]);
+    const prodAlerts = produtividadeAlerts.map(a => ({
+       ...a,
+       action_href: buildPortalHref(escolaParam, `/secretaria/alunos?id=${a.aluno_id}`)
+    }));
+    return [...(extras as typeof base), ...prodAlerts, ...base];
+  }, [avisoFechoTrimestre, avisoImportacao, recentes?.avisos_recentes, produtividadeAlerts, escolaParam]);
   const alerts = useMemo(() => {
     const items: OperationalAlert[] = [];
     const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
@@ -164,8 +201,22 @@ export function Dashboard({
       });
     }
 
+    if (totalPendentesFicha > 0) {
+      items.push({
+        id: "fichas-incompletas",
+        severity: totalPendentesFicha > 20 ? "critical" : "warning",
+        categoria: "documentos",
+        titulo: `${totalPendentesFicha} alunos com ficha incompleta`,
+        descricao: "Existem alunos ativos com falta de BI, Data de Nasc. ou Documentos.",
+        count: totalPendentesFicha,
+        link: buildPortalHref(escolaParam, "/secretaria/alunos"),
+        link_label: "Regularizar Fichas",
+      });
+    }
+
     return items;
-  }, [counts?.pendencias, escolaParam, recentes?.avisos_recentes?.length, recentes?.pendencias]);
+    }, [counts?.pendencias, escolaParam, recentes?.avisos_recentes?.length, recentes?.pendencias, totalPendentesFicha]);
+
 
   return (
     <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
@@ -205,6 +256,8 @@ export function Dashboard({
 
             <RadarOperacional alerts={alerts} role="secretaria" />
             
+            {escolaId && <ResumoCaixaSecretaria escolaId={escolaId} />}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Total Alunos" value={counts?.alunos} icon={<Users size={16} />} tone="default" />
               <StatCard
@@ -283,17 +336,13 @@ export function Dashboard({
 
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between mb-4">
-                  <SecaoLabel>Matrículas recentes</SecaoLabel>
-                  <Link
-                    href={buildPortalHref(escolaParam, "/secretaria/admissoes")}
-                    className="text-xs font-semibold text-[#1F6B3B] hover:underline"
-                  >
-                    Ver tudo
-                  </Link>
-                </div>
-
-                <TaskList items={recentes?.novas_matriculas ?? []} />
+                {escolaId && (
+                  <MinhaProdutividade 
+                    key={refreshKey}
+                    escolaId={escolaId} 
+                    onData={handleProdutividadeData} 
+                  />
+                )}
 
                 <div>
                   <SecaoLabel>Gestão</SecaoLabel>
@@ -328,7 +377,12 @@ export function Dashboard({
                 <div>
                   <SecaoLabel>Avisos gerais</SecaoLabel>
                   <div className="mt-4">
-                    <NoticePanel items={avisos} showHeader={false} />
+                    <NoticePanel 
+                      items={avisos} 
+                      showHeader={false} 
+                      onAction={handleNoticeAction} 
+                      onSnooze={refreshProdutividade}
+                    />
                   </div>
                 </div>
               </div>
@@ -336,6 +390,17 @@ export function Dashboard({
           </div>
         </main>
       </div>
+
+      {selectedAlunoIdForFicha && (
+        <FichaRapidaModal 
+          alunoId={selectedAlunoIdForFicha}
+          onClose={() => setSelectedAlunoIdForFicha(null)}
+          onSuccess={() => {
+             // Opcional: recarregar dados ou apenas deixar o aviso sumir no próximo refresh
+          }}
+        />
+      )}
+
       <ModalShell
         open={balcaoModal === "turma_docs"}
         title="Central de Documentos"

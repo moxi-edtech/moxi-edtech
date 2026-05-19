@@ -71,7 +71,15 @@ export async function GET(request: Request) {
     // 3. Dados de pagamento da escola
     let dados_pagamento: Json | null = null;
     const { data: escola } = await supabase.from('escolas').select('dados_pagamento').eq('id', ctx.escolaId).maybeSingle();
-    if (escola?.dados_pagamento) dados_pagamento = escola.dados_pagamento;
+    if (escola?.dados_pagamento) {
+      const raw = escola.dados_pagamento as Record<string, unknown>;
+      dados_pagamento = {
+        banco: typeof raw.banco === "string" ? raw.banco : null,
+        iban: typeof raw.iban === "string" ? raw.iban : null,
+        titular_conta: typeof raw.titular_conta === "string" ? raw.titular_conta : null,
+        kwik_chave: typeof raw.kwik_chave === "string" ? raw.kwik_chave : null,
+      } satisfies Record<string, string | null>;
+    }
 
     // 4. Mapear status pendente real baseado no Ledger (opcional, ou manter o flag da tabela legada)
     const hoje = new Date().toISOString().slice(0, 10);

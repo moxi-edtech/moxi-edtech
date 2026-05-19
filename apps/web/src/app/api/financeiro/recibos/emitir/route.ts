@@ -25,6 +25,133 @@ type ReciboResponse = {
   } | null;
 };
 
+type EscolaBrandingRow = {
+  nome: string | null;
+  logo_url: string | null;
+  dados_pagamento: {
+    banco?: string | null;
+    titular_conta?: string | null;
+    iban?: string | null;
+    kwik_chave?: string | null;
+  } | null;
+};
+
+type ExistingSnapshotRow = {
+  dados_snapshot?: Json | null;
+} | null;
+
+function normalizeSnapshotObject(value: Json | Record<string, unknown> | null | undefined) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+async function enrichReciboSnapshot({
+  supabase,
+  docId,
+  escolaId,
+  alunoId,
+}: {
+  supabase: any;
+  docId: string;
+  escolaId: string;
+  alunoId: string | null;
+}) {
+  if (!docId) return;
+
+  const [
+    { data: escolaRow },
+    { data: alunoRow },
+    { data: matriculaRow },
+    { data: existingDoc },
+  ] = await Promise.all([
+    supabase
+      .from("escolas")
+      .select("nome, logo_url, dados_pagamento")
+      .eq("id", escolaId)
+      .maybeSingle(),
+    alunoId
+      ? supabase
+          .from("alunos")
+          .select("nome, nome_completo, bi_numero")
+          .eq("id", alunoId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    alunoId
+      ? supabase
+          .from("matriculas")
+          .select(`
+            aluno_id,
+            turmas (
+              id,
+              nome,
+              turno,
+              ano_letivo,
+              classes ( nome ),
+              cursos ( nome )
+            )
+          `)
+          .eq("aluno_id", alunoId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("documentos_emitidos")
+      .select("dados_snapshot")
+      .eq("id", docId)
+      .maybeSingle(),
+  ]);
+
+  const branding = (escolaRow ?? null) as EscolaBrandingRow | null;
+  const rawPagamento = branding?.dados_pagamento ?? null;
+  const existingSnapshot = normalizeSnapshotObject((existingDoc as ExistingSnapshotRow)?.dados_snapshot ?? null);
+  const aluno = (alunoRow ?? null) as
+    | {
+        nome?: string | null;
+        nome_completo?: string | null;
+        bi_numero?: string | null;
+      }
+    | null;
+  const turma = ((matriculaRow as any)?.turmas ?? null) as
+    | {
+        nome?: string | null;
+        turno?: string | null;
+        ano_letivo?: number | null;
+        classes?: { nome?: string | null } | null;
+        cursos?: { nome?: string | null } | null;
+      }
+    | null;
+
+  const patch = {
+    escola_nome: branding?.nome ?? null,
+    escola_logo_url: branding?.logo_url ?? null,
+    escola_banco: rawPagamento?.banco ?? null,
+    escola_titular_conta: rawPagamento?.titular_conta ?? null,
+    escola_iban: rawPagamento?.iban ?? null,
+    escola_kwik_chave: rawPagamento?.kwik_chave ?? null,
+    aluno_nome: aluno?.nome_completo ?? aluno?.nome ?? null,
+    aluno_bi: aluno?.bi_numero ?? null,
+    turma_nome: turma?.nome ?? null,
+    turma_turno: turma?.turno ?? null,
+    classe_nome: turma?.classes?.nome ?? null,
+    curso_nome: turma?.cursos?.nome ?? null,
+    ano_letivo: turma?.ano_letivo ?? null,
+  } satisfies Record<string, unknown>;
+
+  await supabase
+    .from("documentos_emitidos")
+    .update({
+      dados_snapshot: {
+        ...existingSnapshot,
+        ...patch,
+      } as Json,
+    })
+    .eq("id", docId);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const idempotencyKey =
@@ -153,6 +280,17 @@ export async function POST(req: NextRequest) {
           url_validacao: null,
           fiscal: null,
         };
+
+        const legacyDocId = String(legacy.doc_id ?? "");
+        if (legacyDocId) {
+          await enrichReciboSnapshot({
+            supabase,
+            docId: legacyDocId,
+            escolaId,
+            alunoId: mensalidade.aluno_id ?? null,
+          });
+        }
+
         return NextResponse.json(response, { status: 200 });
       }
       throw ctxErr;
@@ -301,6 +439,13 @@ export async function POST(req: NextRequest) {
         key_version: fiscal.key_version,
       },
     };
+
+    await enrichReciboSnapshot({
+      supabase,
+      docId: fiscal.documento_id,
+      escolaId,
+      alunoId: mensalidade.aluno_id ?? null,
+    });
 
     await supabaseAny.from("idempotency_keys").upsert(
       {

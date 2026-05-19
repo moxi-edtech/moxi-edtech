@@ -22,6 +22,10 @@ type ReciboImprimivelProps = {
   publicId?: string;
   logoUrl?: string | null;
   emitidoEm?: string | null;
+  banco?: string | null;
+  titularConta?: string | null;
+  iban?: string | null;
+  kwikChave?: string | null;
 };
 
 type ReciboPayload = {
@@ -45,6 +49,10 @@ export function ReciboImprimivel({
   publicId = "—",
   logoUrl = null,
   emitidoEm = null,
+  banco = null,
+  titularConta = null,
+  iban = null,
+  kwikChave = null,
 }: ReciboImprimivelProps) {
   const dataFormatada = useMemo(() => {
     if (!data) return "—";
@@ -72,6 +80,10 @@ export function ReciboImprimivel({
           urlValidacao={urlValidacao}
           logoUrl={logoUrl}
           emitidoEm={emitidoEm ?? dataFormatada}
+          banco={banco}
+          titularConta={titularConta}
+          iban={iban}
+          kwikChave={kwikChave}
         />
       </div>
     </div>
@@ -85,6 +97,10 @@ export function ReciboPrintButton({
   valor,
   dataPagamento,
   logoUrl = null,
+  banco = null,
+  titularConta = null,
+  iban = null,
+  kwikChave = null,
 }: {
   mensalidadeId: string;
   escolaNome: string;
@@ -92,6 +108,10 @@ export function ReciboPrintButton({
   valor: number;
   dataPagamento: string;
   logoUrl?: string | null;
+  banco?: string | null;
+  titularConta?: string | null;
+  iban?: string | null;
+  kwikChave?: string | null;
 }) {
   const { error } = useToast();
   const [status, setStatus] = useState<"idle" | "loading" | "preparing" | "success">("idle");
@@ -225,6 +245,10 @@ export function ReciboPrintButton({
           urlValidacao={recibo.url_validacao}
           publicId={recibo.doc_id}
           logoUrl={logoUrl}
+          banco={banco}
+          titularConta={titularConta}
+          iban={iban}
+          kwikChave={kwikChave}
         />
       ) : null}
     </div>

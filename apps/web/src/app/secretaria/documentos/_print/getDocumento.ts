@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export type DocumentoSnapshot = {
+  escola_nome?: string | null;
   aluno_id: string;
   aluno_nome?: string | null;
   aluno_bi?: string | null;
@@ -16,6 +17,11 @@ export type DocumentoSnapshot = {
   tipo_documento?: string | null;
   numero_sequencial?: number | null;
   hash_validacao?: string | null;
+  escola_logo_url?: string | null;
+  escola_banco?: string | null;
+  escola_titular_conta?: string | null;
+  escola_iban?: string | null;
+  escola_kwik_chave?: string | null;
 };
 
 export type DocumentoEmitido = {
@@ -53,24 +59,54 @@ export async function getDocumentoEmitido(docId: string) {
     return { error: "Sem permissão" } as const;
   }
 
-  const { data: escolaInfo } = await supabase
-    .from("vw_escola_info" as any)
-    .select("nome")
-    .eq("escola_id", doc.escola_id)
-    .maybeSingle();
-  const { data: escola } = await supabase
-    .from("escolas")
-    .select("validation_base_url, logo_url")
-    .eq("id", doc.escola_id)
-    .maybeSingle();
-  const escolaInfoRow = escolaInfo as { nome?: string | null } | null;
-  const escolaRow = escola as { validation_base_url?: string | null; logo_url?: string | null } | null;
-  const rawLogoUrl = escolaRow?.logo_url?.trim() || null;
   const rawSnapshot = doc.dados_snapshot;
   const snapshot =
     rawSnapshot && typeof rawSnapshot === "object" && !Array.isArray(rawSnapshot)
       ? (rawSnapshot as DocumentoSnapshot)
       : ({} as DocumentoSnapshot);
+
+  const hasSnapshotBranding =
+    Boolean(snapshot.escola_logo_url?.trim()) ||
+    Boolean(snapshot.escola_banco?.trim()) ||
+    Boolean(snapshot.escola_titular_conta?.trim()) ||
+    Boolean(snapshot.escola_iban?.trim()) ||
+    Boolean(snapshot.escola_kwik_chave?.trim());
+  const needsLiveBranding = !hasSnapshotBranding;
+  const needsLiveSchoolName = !snapshot.escola_nome?.trim();
+
+  const [escolaInfoResult, brandingResult] = await Promise.all([
+    needsLiveSchoolName
+      ? supabase
+          .from("vw_escola_info" as any)
+          .select("nome")
+          .eq("escola_id", doc.escola_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    needsLiveBranding
+      ? (supabase as any).rpc("get_escola_document_branding", {
+          p_escola_id: doc.escola_id,
+        })
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const escolaInfoRow = (escolaInfoResult?.data ?? null) as { nome?: string | null } | null;
+  const brandingRow = brandingResult?.data ?? null;
+  const escolaRow = (Array.isArray(brandingRow) ? brandingRow[0] : brandingRow) as {
+    escola_id?: string | null;
+    validation_base_url?: string | null;
+    logo_url?: string | null;
+    dados_pagamento?: Record<string, unknown> | null;
+  } | null;
+  const rawLogoUrl =
+    escolaRow?.logo_url?.trim() || snapshot.escola_logo_url?.trim() || null;
+  const rawPagamento =
+    (escolaRow?.dados_pagamento as Record<string, unknown> | null) ??
+    ({
+      banco: snapshot.escola_banco ?? null,
+      titular_conta: snapshot.escola_titular_conta ?? null,
+      iban: snapshot.escola_iban ?? null,
+      kwik_chave: snapshot.escola_kwik_chave ?? null,
+    } as Record<string, unknown>);
 
   return {
     doc: {
@@ -87,8 +123,16 @@ export async function getDocumentoEmitido(docId: string) {
         numero_sequencial: doc.numero_sequencial ?? snapshot.numero_sequencial ?? null,
       },
     },
-    escolaNome: escolaInfoRow?.nome ?? "Escola",
+    escolaNome: snapshot.escola_nome?.trim() || escolaInfoRow?.nome || "Escola",
     validationBaseUrl: escolaRow?.validation_base_url ?? null,
     logoUrl: rawLogoUrl,
+    dadosPagamento: rawPagamento
+      ? {
+          banco: typeof rawPagamento.banco === "string" ? rawPagamento.banco : null,
+          titular_conta: typeof rawPagamento.titular_conta === "string" ? rawPagamento.titular_conta : null,
+          iban: typeof rawPagamento.iban === "string" ? rawPagamento.iban : null,
+          kwik_chave: typeof rawPagamento.kwik_chave === "string" ? rawPagamento.kwik_chave : null,
+        }
+      : null,
   } as const;
 }

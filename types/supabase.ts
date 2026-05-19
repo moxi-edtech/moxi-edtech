@@ -4832,6 +4832,227 @@ export type Database = {
           },
         ]
       }
+      financeiro_cobranca_cases: {
+        Row: {
+          aluno_id: string
+          created_at: string
+          escola_id: string
+          id: string
+          last_contact_at: string | null
+          next_action_at: string | null
+          owner_user_id: string | null
+          sla_at: string | null
+          status_operacional: string
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          created_at?: string
+          escola_id: string
+          id?: string
+          last_contact_at?: string | null
+          next_action_at?: string | null
+          owner_user_id?: string | null
+          sla_at?: string | null
+          status_operacional?: string
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          created_at?: string
+          escola_id?: string
+          id?: string
+          last_contact_at?: string | null
+          next_action_at?: string | null
+          owner_user_id?: string | null
+          sla_at?: string | null
+          status_operacional?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_cobranca_cases_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_cases_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      financeiro_cobranca_events: {
+        Row: {
+          aluno_id: string
+          case_id: string
+          created_at: string
+          created_by: string | null
+          escola_id: string
+          event_type: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          aluno_id: string
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          escola_id: string
+          event_type: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          aluno_id?: string
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          escola_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_cobranca_events_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_cobranca_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobranca_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       financeiro_cobrancas: {
         Row: {
           aluno_id: string
@@ -12495,6 +12716,13 @@ export type Database = {
             foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
             columns: ["pagamento_id"]
             isOneToOne: false
+            referencedRelation: "vw_pagamentos_recentes_humanized"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
+            columns: ["pagamento_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_pagamentos"
             referencedColumns: ["id"]
           },
@@ -18692,6 +18920,22 @@ export type Database = {
           },
         ]
       }
+      vw_mensalidades_operacional_status_ano_ativo: {
+        Row: {
+          escola_id: string | null
+          status_operacional: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      vw_mensalidades_status_ano_ativo: {
+        Row: {
+          escola_id: string | null
+          status: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
       vw_migracao_cursos_lookup: {
         Row: {
           codigo: string | null
@@ -18780,6 +19024,22 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vw_pagamentos_recentes_humanized: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          created_at: string | null
+          day_key: string | null
+          escola_id: string | null
+          id: string | null
+          metodo: string | null
+          metodo_label: string | null
+          status: string | null
+          status_label: string | null
+          valor_pago: number | null
+        }
+        Relationships: []
       }
       vw_pagamentos_status: {
         Row: {
@@ -20201,10 +20461,10 @@ export type Database = {
         | {
             Args: {
               p_ano_letivo_id: string
-              p_classe_id?: string
+              p_classe_id: string
               p_curso_id: string
               p_escola_id: string
-              p_rebuild_turmas?: boolean
+              p_rebuild_turmas: boolean
               p_version: number
             }
             Returns: {
@@ -20343,6 +20603,14 @@ export type Database = {
       cutover_ano_letivo_v2: {
         Args: {
           p_conflict_strategy?: string
+          p_escola_id: string
+          p_from_session_id: string
+          p_to_session_id: string
+        }
+        Returns: Json
+      }
+      cutover_ano_letivo_v3: {
+        Args: {
           p_escola_id: string
           p_from_session_id: string
           p_to_session_id: string
@@ -21110,6 +21378,15 @@ export type Database = {
           professor_id: string
         }[]
       }
+      get_escola_document_branding: {
+        Args: { p_escola_id: string }
+        Returns: {
+          dados_pagamento: Json
+          escola_id: string
+          logo_url: string
+          validation_base_url: string
+        }[]
+      }
       get_escola_sigla: { Args: { p_escola_id: string }; Returns: string }
       get_estado_academico: {
         Args: {
@@ -21479,6 +21756,10 @@ export type Database = {
       }
       next_documento_numero: { Args: { p_escola_id: string }; Returns: number }
       next_matricula_number: { Args: { p_escola_id: string }; Returns: number }
+      next_numero_chamada_for_turma: {
+        Args: { p_turma_id: string }
+        Returns: number
+      }
       next_numero_counter: {
         Args: { p_escola_id: string; p_start?: number; p_tipo: string }
         Returns: number
@@ -21721,6 +22002,14 @@ export type Database = {
           inserted: Json
           skipped: Json
         }[]
+      }
+      remediate_cutover_gaps: {
+        Args: { p_action: string; p_dry_run?: boolean; p_escola_id: string }
+        Returns: Json
+      }
+      renumerar_matriculas_turma: {
+        Args: { p_turma_id: string }
+        Returns: number
       }
       request_liberar_acesso: {
         Args: { p_aluno_ids: string[]; p_canal?: string; p_escola_id: string }

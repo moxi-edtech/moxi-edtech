@@ -8,6 +8,8 @@ type DadosPagamento = {
   iban?: string;
   banco?: string;
   titular?: string;
+  titular_conta?: string;
+  kwik_chave?: string;
 };
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -137,7 +139,10 @@ export function PaymentDrawer({
           <p className="font-medium text-slate-900">Coordenadas bancárias</p>
           <p>Banco: {dadosPagamento?.banco || "Consultar secretaria"}</p>
           <p>IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
-          {dadosPagamento?.titular && <p>Titular: {dadosPagamento.titular}</p>}
+          {(dadosPagamento?.titular_conta || dadosPagamento?.titular) && (
+            <p>Titular: {dadosPagamento?.titular_conta || dadosPagamento?.titular}</p>
+          )}
+          {dadosPagamento?.kwik_chave && <p>KWIK: {dadosPagamento.kwik_chave}</p>}
           <p>Referência: MENS-{mensalidade.id.slice(0, 8).toUpperCase()}</p>
         </div>
         <label className="mt-4 block">

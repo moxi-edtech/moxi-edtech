@@ -51,11 +51,62 @@ function wrapText(text: string, maxWidth: number, font: PDFFont, size: number) {
   return lines;
 }
 
-export async function fetchImageBytes(url: string) {
+type FetchedImage = {
+  bytes: Uint8Array;
+  contentType: string | null;
+};
+
+export async function fetchImageBytes(url: string): Promise<FetchedImage> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Erro ao carregar imagem: ${response.status}`);
   const arrayBuffer = await response.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
+  return {
+    bytes: new Uint8Array(arrayBuffer),
+    contentType: response.headers.get("content-type"),
+  };
+}
+
+export function detectImageFormat(bytes: Uint8Array, contentType: string | null, url: string) {
+  const normalizedType = contentType?.toLowerCase() ?? "";
+  if (normalizedType.includes("png")) return "png" as const;
+  if (normalizedType.includes("jpeg") || normalizedType.includes("jpg")) return "jpg" as const;
+
+  if (bytes.length >= 8) {
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47];
+    if (pngSignature.every((byte, index) => bytes[index] === byte)) return "png" as const;
+  }
+
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    return "jpg" as const;
+  }
+
+  const normalizedUrl = url.toLowerCase();
+  if (normalizedUrl.includes(".png")) return "png" as const;
+  if (normalizedUrl.includes(".jpeg") || normalizedUrl.includes(".jpg")) return "jpg" as const;
+
+  throw new Error(`Formato de imagem não suportado: ${contentType ?? "desconhecido"}`);
+}
+
+async function embedSchoolLogo(
+  pdfDoc: PDFDocument,
+  school: InstitutionalPdfOptions["school"]
+) {
+  const candidates = [school.logoUrl, school.fallbackLogoUrl]
+    .map((value) => value?.trim() || null)
+    .filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
+
+  for (const candidate of candidates) {
+    try {
+      const { bytes, contentType } = await fetchImageBytes(candidate);
+      const format = detectImageFormat(bytes, contentType, candidate);
+      const image = format === "png" ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+      return { image, sourceUrl: candidate };
+    } catch (error) {
+      console.warn("Não foi possível carregar o logotipo:", candidate, error);
+    }
+  }
+
+  return null;
 }
 
 export async function createInstitutionalPdf({
@@ -82,28 +133,21 @@ export async function createInstitutionalPdf({
       : undefined;
 
   const drawHeader = async (p: any) => {
-    const effectiveLogoUrl = school.logoUrl ?? school.fallbackLogoUrl ?? null;
+    const embeddedLogo = await embedSchoolLogo(pdfDoc, school);
     
     // Header Row with Branding Green for the School Name
-    if (effectiveLogoUrl) {
-      try {
-        const logoBytes = await fetchImageBytes(effectiveLogoUrl);
-        const isPng = effectiveLogoUrl.toLowerCase().includes(".png");
-        const logoImage = isPng ? await pdfDoc.embedPng(logoBytes) : await pdfDoc.embedJpg(logoBytes);
-        const scale = 50 / logoImage.height;
-        const logoDims = logoImage.scale(scale);
-        p.drawImage(logoImage, {
+    if (embeddedLogo) {
+        const scale = 50 / embeddedLogo.image.height;
+        const logoDims = embeddedLogo.image.scale(scale);
+        p.drawImage(embeddedLogo.image, {
           x: margin,
           y: height - margin - logoDims.height,
           width: logoDims.width,
           height: logoDims.height,
         });
-      } catch (e) {
-        console.warn("Não foi possível carregar o logotipo:", e);
-      }
     }
 
-    const textStartX = effectiveLogoUrl ? margin + 70 : margin;
+    const textStartX = embeddedLogo ? margin + 70 : margin;
     const textWidth = width - textStartX - margin;
 
     p.drawText(school.name.toUpperCase(), {

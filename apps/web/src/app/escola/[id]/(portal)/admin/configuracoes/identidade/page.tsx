@@ -19,6 +19,13 @@ type IdentidadeForm = {
   created_at: string | null;
   status: string | null;
   aluno_portal_enabled: boolean;
+  dados_pagamento: {
+    banco: string;
+    titular_conta: string;
+    iban: string;
+    numero_conta: string;
+    kwik_chave: string;
+  };
 };
 
 type PlanoLimites = {
@@ -56,6 +63,7 @@ export default function IdentidadePage({ params }: Props) {
   const { error, success } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [savingBanking, setSavingBanking] = useState(false);
   const [formData, setFormData] = useState<IdentidadeForm>({
     nome: "",
     nif: null,
@@ -66,6 +74,13 @@ export default function IdentidadePage({ params }: Props) {
     created_at: null,
     status: null,
     aluno_portal_enabled: false,
+    dados_pagamento: {
+      banco: "",
+      titular_conta: "",
+      iban: "",
+      numero_conta: "",
+      kwik_chave: "",
+    },
   });
   const [planoLimites, setPlanoLimites] = useState<PlanoLimites | null>(null);
   const [assinatura, setAssinatura] = useState<AssinaturaResumo | null>(null);
@@ -130,6 +145,42 @@ export default function IdentidadePage({ params }: Props) {
     }
   }
 
+  async function saveBankingData() {
+    setSavingBanking(true);
+    try {
+      const fd = new FormData();
+      fd.set("banco", formData.dados_pagamento.banco);
+      fd.set("titular_conta", formData.dados_pagamento.titular_conta);
+      fd.set("iban", formData.dados_pagamento.iban);
+      fd.set("numero_conta", formData.dados_pagamento.numero_conta);
+      fd.set("kwik_chave", formData.dados_pagamento.kwik_chave);
+      const res = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/identidade`, {
+        method: "PUT",
+        body: fd,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        error(json?.error || "Falha ao guardar dados bancários.");
+        return;
+      }
+      setFormData((prev) => ({
+        ...prev,
+        dados_pagamento: {
+          banco: json.data?.dados_pagamento?.banco ?? "",
+          titular_conta: json.data?.dados_pagamento?.titular_conta ?? "",
+          iban: json.data?.dados_pagamento?.iban ?? "",
+          numero_conta: json.data?.dados_pagamento?.numero_conta ?? "",
+          kwik_chave: json.data?.dados_pagamento?.kwik_chave ?? "",
+        },
+      }));
+      success("Dados bancários actualizados com sucesso.");
+    } catch {
+      error("Erro ao guardar dados bancários.");
+    } finally {
+      setSavingBanking(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -153,6 +204,13 @@ export default function IdentidadePage({ params }: Props) {
           created_at: json?.data?.created_at ?? null,
           status: json?.data?.status ?? null,
           aluno_portal_enabled: !!json?.data?.aluno_portal_enabled,
+          dados_pagamento: {
+            banco: json?.data?.dados_pagamento?.banco ?? "",
+            titular_conta: json?.data?.dados_pagamento?.titular_conta ?? "",
+            iban: json?.data?.dados_pagamento?.iban ?? "",
+            numero_conta: json?.data?.dados_pagamento?.numero_conta ?? "",
+            kwik_chave: json?.data?.dados_pagamento?.kwik_chave ?? "",
+          },
         });
         setPlanoLimites(json?.limites ?? null);
         setAssinatura(json?.assinatura ?? null);
@@ -286,6 +344,98 @@ export default function IdentidadePage({ params }: Props) {
                     placeholder="#E3B23C"
                   />
                   <p className="text-xs text-slate-400 mt-2 italic">* Definido automaticamente para o portal da sua escola.</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
+                  <div>
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Dados Bancários</h3>
+                    <p className="mt-1 text-xs text-slate-400">Usados em documentos e instruções de pagamento da escola.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-klasse-green px-3 py-2 text-xs font-bold text-white hover:bg-klasse-green-700 disabled:opacity-50"
+                    disabled={savingBanking}
+                    onClick={() => void saveBankingData()}
+                  >
+                    {savingBanking ? "A guardar..." : "Guardar"}
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Banco</label>
+                  <input
+                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    value={formData.dados_pagamento.banco}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dados_pagamento: { ...prev.dados_pagamento, banco: e.target.value },
+                      }))
+                    }
+                    placeholder="Ex.: BAI"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Titular da conta</label>
+                  <input
+                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    value={formData.dados_pagamento.titular_conta}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dados_pagamento: { ...prev.dados_pagamento, titular_conta: e.target.value },
+                      }))
+                    }
+                    placeholder="Nome do titular"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">IBAN</label>
+                  <input
+                    className={`${inputClass.replace("bg-slate-50", "bg-white")} font-mono uppercase`}
+                    value={formData.dados_pagamento.iban}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dados_pagamento: { ...prev.dados_pagamento, iban: e.target.value.toUpperCase() },
+                      }))
+                    }
+                    placeholder="AO06..."
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Chave KWIK</label>
+                  <input
+                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    value={formData.dados_pagamento.kwik_chave}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dados_pagamento: { ...prev.dados_pagamento, kwik_chave: e.target.value },
+                      }))
+                    }
+                    placeholder="Telefone ou chave KWIK"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Número da conta</label>
+                  <input
+                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    value={formData.dados_pagamento.numero_conta}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dados_pagamento: { ...prev.dados_pagamento, numero_conta: e.target.value },
+                      }))
+                    }
+                    placeholder="Opcional"
+                  />
                 </div>
               </div>
             </div>

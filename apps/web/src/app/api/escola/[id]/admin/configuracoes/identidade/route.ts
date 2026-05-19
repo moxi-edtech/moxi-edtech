@@ -8,6 +8,30 @@ import type { Database } from "~types/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type DadosPagamento = {
+  banco: string;
+  titular_conta: string;
+  iban: string;
+  numero_conta: string;
+  kwik_chave: string;
+};
+
+function cleanText(value: FormDataEntryValue | null, maxLength: number) {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
+function normalizeDadosPagamento(input: unknown): DadosPagamento {
+  const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+  return {
+    banco: typeof raw.banco === "string" ? raw.banco.trim().slice(0, 160) : "",
+    titular_conta: typeof raw.titular_conta === "string" ? raw.titular_conta.trim().slice(0, 180) : "",
+    iban: typeof raw.iban === "string" ? raw.iban.trim().slice(0, 90).toUpperCase() : "",
+    numero_conta: typeof raw.numero_conta === "string" ? raw.numero_conta.trim().slice(0, 90) : "",
+    kwik_chave: typeof raw.kwik_chave === "string" ? raw.kwik_chave.trim().slice(0, 120) : "",
+  };
+}
+
 const withNoStore = (response: NextResponse, start?: number) => {
   response.headers.set("Cache-Control", "no-store");
   if (start !== undefined) {
@@ -62,7 +86,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     const { data, error } = await supabase
       .from("escolas")
-      .select("id, nome, nif, endereco, logo_url, cor_primaria, plano_atual, created_at, status, aluno_portal_enabled")
+      .select("id, nome, nif, endereco, logo_url, cor_primaria, plano_atual, created_at, status, aluno_portal_enabled, dados_pagamento")
       .eq("id", effectiveEscolaId)
       .maybeSingle();
 
@@ -94,7 +118,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       .maybeSingle();
 
     return withNoStore(
-      NextResponse.json({ ok: true, data, limites: limitesNormalizados, assinatura: assinatura ?? null }),
+      NextResponse.json({
+        ok: true,
+        data: {
+          ...data,
+          dados_pagamento: normalizeDadosPagamento((data as { dados_pagamento?: unknown } | null)?.dados_pagamento),
+        },
+        limites: limitesNormalizados,
+        assinatura: assinatura ?? null,
+      }),
       start
     );
   } catch (e) {
@@ -121,6 +153,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const corPrimariaRaw = form.get("cor_primaria");
     const corPrimaria =
       typeof corPrimariaRaw === "string" && corPrimariaRaw.trim() ? corPrimariaRaw.trim() : null;
+    const banco = cleanText(form.get("banco"), 160);
+    const titularConta = cleanText(form.get("titular_conta"), 180);
+    const iban = cleanText(form.get("iban"), 90).toUpperCase();
+    const numeroConta = cleanText(form.get("numero_conta"), 90);
+    const kwikChave = cleanText(form.get("kwik_chave"), 120);
+    const hasDadosPagamentoFields =
+      form.has("banco") || form.has("titular_conta") || form.has("iban") || form.has("numero_conta") || form.has("kwik_chave");
 
     let nextLogoUrl: string | null | undefined;
 
@@ -165,6 +204,32 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const patch: Record<string, unknown> = {};
     if (typeof nextLogoUrl !== "undefined") patch.logo_url = nextLogoUrl;
     if (corPrimaria) patch.cor_primaria = corPrimaria;
+    if (hasDadosPagamentoFields) {
+      const { data: escolaAtual, error: escolaAtualError } = await supabase
+        .from("escolas")
+        .select("dados_pagamento")
+        .eq("id", escolaId)
+        .maybeSingle();
+
+      if (escolaAtualError) {
+        return withNoStore(
+          NextResponse.json({ ok: false, error: "Falha ao carregar os dados bancários actuais." }, { status: 500 }),
+          start
+        );
+      }
+
+      const dadosPagamentoAtual = normalizeDadosPagamento(
+        (escolaAtual as { dados_pagamento?: unknown } | null)?.dados_pagamento
+      );
+      patch.dados_pagamento = {
+        ...dadosPagamentoAtual,
+        banco,
+        titular_conta: titularConta,
+        iban,
+        numero_conta: numeroConta,
+        kwik_chave: kwikChave,
+      };
+    }
 
     if (Object.keys(patch).length === 0) {
       return withNoStore(NextResponse.json({ ok: false, error: "Nada para atualizar." }, { status: 400 }), start);
@@ -174,7 +239,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .from("escolas")
       .update(patch)
       .eq("id", escolaId)
-      .select("id, nome, nif, endereco, logo_url, cor_primaria, plano_atual, created_at, status, aluno_portal_enabled")
+      .select("id, nome, nif, endereco, logo_url, cor_primaria, plano_atual, created_at, status, aluno_portal_enabled, dados_pagamento")
       .maybeSingle();
 
     if (error) {
@@ -193,8 +258,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         start
       );
     }
-
-    return withNoStore(NextResponse.json({ ok: true, data }), start);
+    return withNoStore(
+      NextResponse.json({
+        ok: true,
+        data: {
+          ...data,
+          dados_pagamento: normalizeDadosPagamento((data as { dados_pagamento?: unknown } | null)?.dados_pagamento),
+        },
+      }),
+      start
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return withNoStore(NextResponse.json({ ok: false, error: message }, { status: 500 }), start);

@@ -14,6 +14,7 @@ export interface TurmaItem {
   session_id?: string;
   curso_id?: string;
   classe_id?: string;
+  is_classe_exame?: boolean;
   
   // Properties from TurmasListClient
   ocupacao_atual?: number;
