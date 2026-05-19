@@ -1,21 +1,18 @@
-import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import RelatorioMensalidadesClient from "@/components/secretaria/RelatorioMensalidadesClient";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
-export default function Page() {
-  return (
-    <div className="space-y-4">
-      <DashboardHeader
-        title="Relatório de Mensalidades"
-        breadcrumbs={[
-          { label: "Início", href: "/" },
-          { label: "Secretaria", href: "/secretaria" },
-          { label: "Relatórios", href: "/secretaria/relatorios" },
-          { label: "Mensalidades" },
-        ]}
-      />
-      <RelatorioMensalidadesClient />
-    </div>
-  );
+export default async function Page() {
+  const s = await supabaseServer();
+  const { data: sess } = await s.auth.getUser();
+  const user = sess?.user;
+  const escolaId = user ? await resolveEscolaIdForUser(s, user.id) : null;
+
+  if (!escolaId) {
+    redirect("/secretaria/relatorios");
+  }
+
+  redirect(`/escola/${escolaId}/financeiro/relatorios/propinas`);
 }
