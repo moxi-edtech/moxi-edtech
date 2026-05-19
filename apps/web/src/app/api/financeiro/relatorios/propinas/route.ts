@@ -32,18 +32,20 @@ export async function GET(req: Request) {
       );
     }
 
-    const metaEscolaId = (userRes?.user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const { searchParams } = new URL(req.url);
+    const requestedEscolaId =
+      searchParams.get("escolaId") ||
+      searchParams.get("escola_id") ||
+      null;
     const escolaId = await resolveEscolaIdForUser(
       supabase,
       userRes.user.id,
-      null,
-      metaEscolaId ? String(metaEscolaId) : null
+      requestedEscolaId
     );
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
-    const { searchParams } = new URL(req.url);
     const anoParam = searchParams.get("ano");
     const anoLetivo = anoParam ? parseInt(anoParam, 10) : new Date().getFullYear();
 

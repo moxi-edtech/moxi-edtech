@@ -104,10 +104,10 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                 Abrir Mapa de Aproveitamento
               </a>
               <a
-                href="/secretaria/relatorios/mensalidades"
+                href={`/escola/${escolaId}/financeiro/relatorios/propinas`}
                 className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
               >
-                Abrir Relatório de Mensalidades
+                Abrir Relatório de Propinas
               </a>
             </div>
           </div>
