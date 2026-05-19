@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { AlertCircle, Save, WifiOff, Printer, FileDown } from "lucide-react";
+import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2 } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
@@ -15,6 +15,8 @@ import { pdf } from "@react-pdf/renderer";
 import { QuadroHorarioPdf } from "@/templates/pdf/horarios/QuadroHorario";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { HorarioWizard } from "@/components/escola/horarios/HorarioWizard";
+import { Button } from "@/components/ui/Button";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
@@ -29,6 +31,7 @@ export default function QuadroHorariosPage() {
   const confirm = useConfirm();
   const [isMounted, setIsMounted] = useState(false);
 
+  const [showWizard, setShowWizard] = useState(false);
   const [versaoId, setVersaoId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -96,6 +99,13 @@ export default function QuadroHorariosPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Mostrar wizard se não houver salas ou slots (e não estiver carregando)
+  useEffect(() => {
+    if (isMounted && !baseLoading && (salas.length === 0 || slots.length === 0)) {
+      setShowWizard(true);
+    }
+  }, [isMounted, baseLoading, salas.length, slots.length]);
 
   useEffect(() => {
     if (!autoDraftDirty) return;
@@ -1049,6 +1059,32 @@ export default function QuadroHorariosPage() {
     );
   }
 
+  if (showWizard) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4 flex flex-col items-center">
+        <div className="w-full max-w-6xl">
+          <div className="mb-8 flex justify-between items-center">
+            <Link href={`/escola/${escolaParam}/admin/dashboard`} className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-all">
+              ← Voltar ao Dashboard
+            </Link>
+            <Button variant="ghost" onClick={() => setShowWizard(false)} className="text-slate-500 font-bold">
+              Pular Assistente
+            </Button>
+          </div>
+          <HorarioWizard 
+            escolaId={escolaId} 
+            turmaId={turmaId} 
+            onFinish={() => {
+              setShowWizard(false);
+              setBaseRefreshToken(prev => prev + 1);
+              setRefreshToken(prev => prev + 1);
+            }} 
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
@@ -1069,6 +1105,14 @@ export default function QuadroHorariosPage() {
                 Quadro
               </Link>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowWizard(true)} 
+              className="rounded-full gap-2 text-[10px] font-black uppercase tracking-widest border-2 border-slate-200 h-9"
+            >
+              <Wand2 className="w-3.5 h-3.5" /> Setup
+            </Button>
             <Select
               value={turmaId ?? ""}
               options={turmaOptions}

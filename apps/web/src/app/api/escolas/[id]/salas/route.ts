@@ -88,3 +88,41 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
+
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const start = Date.now()
+    const supabase = await supabaseServerTyped<any>()
+    const { data: userRes } = await supabase.auth.getUser()
+    const user = userRes?.user
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+
+    const { id: escolaId } = await ctx.params
+    const { searchParams } = new URL(req.url)
+    const salaId = searchParams.get('id')
+
+    if (!salaId) return NextResponse.json({ ok: false, error: 'ID da sala é obrigatório' }, { status: 400 })
+
+    const escolaIdResolved = await resolveEscolaIdForUser(supabase as any, user.id, escolaId, escolaId)
+    if (!escolaIdResolved) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaIdResolved, user.id)
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+
+    const { error } = await supabase
+      .from('salas')
+      .delete()
+      .eq('id', salaId)
+      .eq('escola_id', escolaIdResolved)
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    const response = NextResponse.json({ ok: true })
+    response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
+    return response
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+  }
+}
+
