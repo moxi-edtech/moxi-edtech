@@ -103,9 +103,21 @@ export default function QuadroHorariosPage() {
   // Mostrar wizard se não houver salas ou slots (e não estiver carregando)
   useEffect(() => {
     if (isMounted && !baseLoading && (salas.length === 0 || slots.length === 0)) {
-      setShowWizard(true);
+      const skipKey = `horarios:wizard-skipped:${escolaId}`;
+      const wasSkipped = typeof window !== "undefined" ? window.sessionStorage.getItem(skipKey) : null;
+      if (!wasSkipped) {
+        setShowWizard(true);
+      }
     }
-  }, [isMounted, baseLoading, salas.length, slots.length]);
+  }, [isMounted, baseLoading, salas.length, slots.length, escolaId]);
+
+  const handleSkipWizard = () => {
+    const skipKey = `horarios:wizard-skipped:${escolaId}`;
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(skipKey, "true");
+    }
+    setShowWizard(false);
+  };
 
   useEffect(() => {
     if (!autoDraftDirty) return;
@@ -1067,7 +1079,7 @@ export default function QuadroHorariosPage() {
             <Link href={`/escola/${escolaParam}/admin/dashboard`} className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-all">
               ← Voltar ao Dashboard
             </Link>
-            <Button variant="ghost" onClick={() => setShowWizard(false)} className="text-slate-500 font-bold">
+            <Button variant="ghost" onClick={handleSkipWizard} className="text-slate-500 font-bold">
               Pular Assistente
             </Button>
           </div>
@@ -1075,7 +1087,7 @@ export default function QuadroHorariosPage() {
             escolaId={escolaId} 
             turmaId={turmaId} 
             onFinish={() => {
-              setShowWizard(false);
+              handleSkipWizard(); // Também salva que terminou para não reabrir
               setBaseRefreshToken(prev => prev + 1);
               setRefreshToken(prev => prev + 1);
             }} 
