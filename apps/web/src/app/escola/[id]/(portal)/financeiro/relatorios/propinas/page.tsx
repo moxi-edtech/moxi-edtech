@@ -11,8 +11,12 @@ type Mensal = {
   competenciaMes: string;
   qtdMensalidades: number;
   qtdEmAtraso: number;
+  qtdPagasAdiantadas: number;
+  qtdParciais: number;
   totalPrevisto: number;
   totalPago: number;
+  totalPagoAdiantado: number;
+  totalParcialEmAberto: number;
   totalEmAtraso: number;
   inadimplenciaPct: number;
 };
@@ -25,8 +29,12 @@ type PorTurma = {
   anoLetivo: number;
   qtdMensalidades: number;
   qtdEmAtraso: number;
+  qtdPagasAdiantadas: number;
+  qtdParciais: number;
   totalPrevisto: number;
   totalPago: number;
+  totalPagoAdiantado: number;
+  totalParcialEmAberto: number;
   totalEmAtraso: number;
   inadimplenciaPct: number;
 };
@@ -170,6 +178,9 @@ export default function Page() {
                   <th className="py-2 pr-4">Competência</th>
                   <th className="py-2 pr-4 text-right">Previsto</th>
                   <th className="py-2 pr-4 text-right">Pago</th>
+                  <th className="py-2 pr-4 text-right">Adiantado</th>
+                  <th className="py-2 pr-4 text-right">Parciais</th>
+                  <th className="py-2 pr-4 text-right">Saldo parcial</th>
                   <th className="py-2 pr-4 text-right">Em atraso</th>
                   <th className="py-2 pr-4 text-right">Inadimplência %</th>
                 </tr>
@@ -180,12 +191,15 @@ export default function Page() {
                     <td className="py-2 pr-4">{m.labelMes}</td>
                     <td className="py-2 pr-4 text-right">{m.totalPrevisto.toLocaleString()}</td>
                     <td className="py-2 pr-4 text-right">{m.totalPago.toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-right">{m.totalPagoAdiantado.toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-right">{m.qtdParciais}</td>
+                    <td className="py-2 pr-4 text-right">{m.totalParcialEmAberto.toLocaleString()}</td>
                     <td className="py-2 pr-4 text-right">{m.totalEmAtraso.toLocaleString()}</td>
                     <td className="py-2 pr-4 text-right">{m.inadimplenciaPct.toFixed(1)}%</td>
                   </tr>
                 ))}
                 {mensal.length === 0 && (
-                  <tr><td className="py-4 text-gray-500" colSpan={5}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
+                  <tr><td className="py-4 text-gray-500" colSpan={8}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
                 )}
               </tbody>
             </table>
@@ -201,7 +215,10 @@ export default function Page() {
                   <th className="py-2 pr-4">Turno</th>
                   <th className="py-2 pr-4 text-right">Mensalidades</th>
                   <th className="py-2 pr-4 text-right">Em atraso</th>
+                  <th className="py-2 pr-4 text-right">Adiantadas</th>
+                  <th className="py-2 pr-4 text-right">Parciais</th>
                   <th className="py-2 pr-4 text-right">Total atraso</th>
+                  <th className="py-2 pr-4 text-right">Saldo parcial</th>
                   <th className="py-2 pr-4 text-right">Inadimplência %</th>
                 </tr>
               </thead>
@@ -213,12 +230,15 @@ export default function Page() {
                     <td className="py-2 pr-4">{t.turno || '—'}</td>
                     <td className="py-2 pr-4 text-right">{t.qtdMensalidades}</td>
                     <td className="py-2 pr-4 text-right">{t.qtdEmAtraso}</td>
+                    <td className="py-2 pr-4 text-right">{t.qtdPagasAdiantadas}</td>
+                    <td className="py-2 pr-4 text-right">{t.qtdParciais}</td>
                     <td className="py-2 pr-4 text-right">{t.totalEmAtraso.toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-right">{t.totalParcialEmAberto.toLocaleString()}</td>
                     <td className="py-2 pr-4 text-right">{t.inadimplenciaPct.toFixed(1)}%</td>
                   </tr>
                 ))}
                 {porTurma.length === 0 && (
-                  <tr><td className="py-4 text-gray-500" colSpan={7}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
+                  <tr><td className="py-4 text-gray-500" colSpan={9}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
                 )}
               </tbody>
             </table>

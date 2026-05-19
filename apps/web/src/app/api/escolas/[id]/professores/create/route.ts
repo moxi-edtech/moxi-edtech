@@ -131,16 +131,48 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     let userId: string | undefined
     const { data: prof } = await supabase
       .from('profiles')
-      .select('user_id')
+      .select('user_id, role, nome')
       .eq('email', email)
       .limit(1)
 
-    userId = prof?.[0]?.user_id as string | undefined
+    const existingProfile = prof?.[0] as { user_id?: string | null; role?: string | null; nome?: string | null } | undefined
+    userId = existingProfile?.user_id as string | undefined
+
+    if (userId) {
+      emitObs('error', 409, {
+        error_code: 'EMAIL_ALREADY_REGISTERED',
+        existing_role: existingProfile?.role ?? null,
+        existing_user_id: userId,
+      })
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Já existe um utilizador com este e-mail. Use outro e-mail para o professor.',
+          code: 'EMAIL_ALREADY_REGISTERED',
+        },
+        { status: 409 },
+      )
+    }
 
     if (!userId) {
       const existing = await callAuthAdminJob(req, 'findUserByEmail', { email })
       const existingUser = existing as { user?: { id?: string | null } | null } | null
       userId = existingUser?.user?.id ?? undefined
+    }
+
+    if (userId) {
+      emitObs('error', 409, {
+        error_code: 'EMAIL_ALREADY_REGISTERED_AUTH',
+        existing_user_id: userId,
+      })
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Já existe um utilizador com este e-mail. Use outro e-mail para o professor.',
+          code: 'EMAIL_ALREADY_REGISTERED',
+        },
+        { status: 409 },
+      )
     }
 
     let tempPassword: string | null = null
