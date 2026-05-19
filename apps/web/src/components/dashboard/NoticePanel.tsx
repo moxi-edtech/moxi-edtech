@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Megaphone, Clock, Flame, ChevronDown } from "lucide-react";
@@ -156,7 +158,10 @@ function NoticeItem({
   };
 
   return (
-    <div className={`p-4 hover:bg-slate-50 transition relative group ${snoozing ? 'opacity-50 pointer-events-none' : ''} ${item.is_priority ? 'bg-rose-50/40' : ''}`}>
+    <div 
+      onClick={handleAction}
+      className={`p-4 hover:bg-slate-50 transition relative group cursor-pointer ${snoozing ? 'opacity-50 pointer-events-none' : ''} ${item.is_priority ? 'bg-rose-50/40' : ''}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0">
           {item.is_priority && (
@@ -177,7 +182,10 @@ function NoticeItem({
            
            <div className="relative" ref={menuRef}>
               <button 
-                onClick={() => setMenuOpen(!menuOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
                 className="h-6 w-6 rounded-md hover:bg-slate-200 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Clock size={12} />
@@ -193,14 +201,20 @@ function NoticeItem({
                   ].map(opt => (
                     <button
                       key={opt.days}
-                      onClick={() => handleSnooze(opt.days)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSnooze(opt.days);
+                      }}
                       className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                     >
                       {opt.label}
                     </button>
                   ))}
                   <button
-                    onClick={() => handleSnooze(30)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSnooze(30);
+                    }}
                     className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-50"
                   >
                     Próximo mês

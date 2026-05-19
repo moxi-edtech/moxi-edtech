@@ -59,10 +59,12 @@ function ActivityIcon({ act }: { act: any }) {
 
 export function MinhaProdutividade({ 
   escolaId, 
-  onData 
+  onData,
+  onAtenderAluno
 }: { 
   escolaId: string, 
-  onData?: (data: any) => void 
+  onData?: (data: any) => void,
+  onAtenderAluno?: (alunoId: string) => void
 }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -206,10 +208,21 @@ export function MinhaProdutividade({
                <DetailCard icon={<Calendar size={16}/>} label="Entidade" value={selectedActivity.entity} />
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+               {selectedActivity.aluno_id && onAtenderAluno && (
+                 <button 
+                  onClick={() => {
+                    onAtenderAluno(selectedActivity.aluno_id);
+                    setSelectedActivity(null);
+                  }}
+                  className="px-4 py-2.5 bg-klasse-gold text-white rounded-xl text-sm font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                 >
+                   Atender Aluno
+                 </button>
+               )}
                <button 
                 onClick={() => setSelectedActivity(null)}
-                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 active:scale-95 transition-all"
                >
                  Fechar Detalhes
                </button>

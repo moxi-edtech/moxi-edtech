@@ -11,6 +11,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { BalcaoServicoModal, type BalcaoDecision } from "@/components/secretaria/BalcaoServicoModal";
 import { MotivoBloqueioModal } from "@/components/secretaria/MotivoBloqueioModal";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -58,6 +59,14 @@ details: Record<string, unknown> | null;
 interface MetodoDetalhes { referencia: string; evidencia_url: string; gateway_ref: string; }
 
 type ItemCarrinho = Mensalidade | Servico;
+
+type ReciboBatchItem = {
+id: string;
+url_validacao: string | null;
+valor: number;
+referencia: string;
+referenciasDetalhadas?: string[];
+};
 
 export interface BalcaoAtendimentoProps {
 escolaId:         string;
@@ -113,6 +122,21 @@ cartao_estudante:      "cartao",
 ficha_inscricao:       "ficha",
 };
 return `/secretaria/documentos/${docId}/${seg[tipo]}/print`;
+}
+
+function summarizeReferencias(referencias: string[]): string {
+const limpas = referencias.filter((item) => item && item.trim().length > 0);
+if (limpas.length <= 1) return limpas[0] ?? "Mensalidade";
+if (limpas.length === 2) return limpas.join(" + ");
+return `${limpas[0]} + ${limpas.length - 1} meses`;
+}
+
+function labelMetodo(metodo: MetodoPagamento): string {
+if (metodo === "cash") return "Dinheiro";
+if (metodo === "tpa") return "TPA";
+if (metodo === "transfer") return "Transferência";
+if (metodo === "mcx") return "Multicaixa";
+return "KWIK";
 }
 
 // ─── Hook: serviços ───────────────────────────────────────────────────────────
@@ -361,6 +385,32 @@ const { success, error } = useToast();
 const [isSubmitting,  setIsSubmitting]  = useState(false);
 const [printQueue,    setPrintQueue]    = useState<Array<{ label: string; url: string }>>([]);
 const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
+const [recibosParaImpressao, setRecibosParaImpressao] = useState<ReciboBatchItem[]>([]);
+const [escolaNome, setEscolaNome] = useState("Escola");
+const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
+
+useEffect(() => {
+let alive = true;
+fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
+  .then((res) => res.json().catch(() => ({})))
+  .then((json) => {
+    if (!alive) return;
+    if (json?.ok && typeof json.nome === "string" && json.nome.trim()) {
+      setEscolaNome(json.nome);
+    }
+    if (json?.ok) {
+      setEscolaLogoUrl(typeof json.logo_url === "string" ? json.logo_url : null);
+    }
+  })
+  .catch(() => null);
+return () => { alive = false; };
+}, [escolaId]);
+
+useEffect(() => {
+if (recibosParaImpressao.length === 0) return;
+const timer = window.setTimeout(() => window.print(), 300);
+return () => window.clearTimeout(timer);
+}, [recibosParaImpressao]);
 
 const emitirDocumento = useCallback(async (servico: Servico): Promise<string | null> => {
 if (!aluno?.id) { error("Aluno não seleccionado."); return null; }
@@ -406,6 +456,9 @@ const servicosCarrinho     = itens.filter((i): i is Servico     => i.tipo === "s
 
 setIsSubmitting(true);
 try {
+  setRecibosParaImpressao([]);
+  const recibosMensalidades: ReciboBatchItem[] = [];
+
   // 1. Pagar mensalidades
   for (const m of mensalidadesCarrinho) {
     const res  = await fetch("/api/secretaria/balcao/pagamentos", {
@@ -438,7 +491,13 @@ try {
         error("Pagamento registado, mas recibo pendente", reciboJson?.error || "Não foi possível emitir o recibo agora.");
       } else {
         const docId = typeof reciboJson?.doc_id === "string" ? reciboJson.doc_id : null;
-        if (docId) {
+        recibosMensalidades.push({
+          id: docId ?? m.id,
+          url_validacao: null,
+          valor: m.preco,
+          referencia: formatMesAno(m.mes_referencia, m.ano_referencia),
+        });
+        if (docId && mensalidadesCarrinho.length === 1) {
           const printUrl = `/secretaria/documentos/${docId}/recibo/print`;
           setPrintQueue(prev => [{ label: "Recibo de pagamento", url: printUrl }, ...prev]);
           window.open(printUrl, "_blank", "noopener,noreferrer");
@@ -447,6 +506,19 @@ try {
     } catch {
       error("Pagamento registado, mas recibo pendente", "Não foi possível emitir o recibo agora.");
     }
+  }
+
+  if (recibosMensalidades.length > 1) {
+    const referenciasDetalhadas = recibosMensalidades.map((item) => item.referencia);
+    setRecibosParaImpressao([
+      {
+        id: `batch:${mensalidadesCarrinho.map((item) => item.id).join(",")}`,
+        url_validacao: null,
+        valor: recibosMensalidades.reduce((sum, item) => sum + Number(item.valor || 0), 0),
+        referencia: summarizeReferencias(referenciasDetalhadas),
+        referenciasDetalhadas,
+      },
+    ]);
   }
 
   // 2. Pagar serviços com valor
@@ -499,7 +571,17 @@ try {
 
 }, [aluno, carrinho, emitirDocumento, success, error, onSuccess]);
 
-return { isSubmitting, printQueue, setPrintQueue, emittingDocId, checkout, emitirDocumento };
+return {
+  isSubmitting,
+  printQueue,
+  setPrintQueue,
+  emittingDocId,
+  recibosParaImpressao,
+  escolaNome,
+  escolaLogoUrl,
+  checkout,
+  emitirDocumento,
+};
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1271,6 +1353,25 @@ return (
       </div>
     </div>
   </div>
+
+  {checkout.recibosParaImpressao.map((recibo) => (
+    <ReciboImprimivel
+      key={recibo.id}
+      escolaNome={checkout.escolaNome}
+      alunoNome={dossier.aluno?.nome ?? "Aluno"}
+      alunoBi={dossier.aluno?.bi_numero ?? "—"}
+      turmaNome={dossier.aluno?.turma ?? "—"}
+      classeNome={dossier.aluno?.classe ?? "—"}
+      cursoNome={dossier.aluno?.curso ?? ""}
+      valor={recibo.valor}
+      data={new Date().toISOString()}
+      urlValidacao={recibo.url_validacao}
+      logoUrl={checkout.escolaLogoUrl}
+      referencia={recibo.referencia}
+      referenciasDetalhadas={recibo.referenciasDetalhadas}
+      metodo={labelMetodo(carrinho.metodo)}
+    />
+  ))}
 
   <BalcaoServicoModal
     open={servicoModalOpen}

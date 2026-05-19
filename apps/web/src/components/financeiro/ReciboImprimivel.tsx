@@ -17,6 +17,7 @@ type ReciboImprimivelProps = {
   cursoNome?: string;
   turmaNome?: string;
   referencia?: string;
+  referenciasDetalhadas?: string[];
   metodo?: string;
   numero?: string | null;
   publicId?: string;
@@ -44,6 +45,7 @@ export function ReciboImprimivel({
   cursoNome = "",
   turmaNome = "—",
   referencia = "Mensalidade",
+  referenciasDetalhadas = [],
   metodo = "—",
   numero = null,
   publicId = "—",
@@ -72,6 +74,7 @@ export function ReciboImprimivel({
           cursoNome={cursoNome}
           turmaNome={turmaNome}
           referencia={referencia}
+          referenciasDetalhadas={referenciasDetalhadas}
           metodo={metodo}
           valorPago={valor}
           dataPagamento={dataFormatada}

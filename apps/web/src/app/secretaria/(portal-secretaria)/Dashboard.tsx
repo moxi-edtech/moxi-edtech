@@ -37,6 +37,7 @@ import QuickDocHub from "@/components/secretaria/QuickDocHub";
 import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
 import { MinhaProdutividade } from "@/components/secretaria/MinhaProdutividade";
 import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
+import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import type { DashboardCounts, DashboardRecentes } from "./types";
 
 type BalcaoModal =
@@ -46,6 +47,7 @@ type BalcaoModal =
   | "faltas"
   | "notas"
   | "turma_docs"
+  | "atendimento_aluno"
   | null;
 
 export function Dashboard({
@@ -65,6 +67,8 @@ export function Dashboard({
   const [produtividadeAlerts, setProdutividadeAlerts] = useState<any[]>([]);
   const [totalPendentesFicha, setTotalPendentesFicha] = useState(0);
   const [selectedAlunoIdForFicha, setSelectedAlunoIdForFicha] = useState<string | null>(null);
+  const [selectedAlunoIdForBalcao, setSelectedAlunoIdForBalcao] = useState<string | null>(null);
+  const [selectedCandidaturaId, setSelectedCandidaturaId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleProdutividadeData = (data: any) => {
@@ -113,11 +117,15 @@ export function Dashboard({
        const phone = item.telefone_whatsapp?.replace(/\D/g, '');
        if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
     } else if (item.type === 'DEBT_PAYMENT') {
-       // Abre o balcão rápido para este aluno
-       router.push(buildPortalHref(escolaParam, `/secretaria/balcao?aluno=${item.aluno_id}`));
+       // Abre o balcão de atendimento no modal para este aluno
+       setSelectedAlunoIdForBalcao(item.aluno_id);
+       setBalcaoModal("atendimento_aluno");
     } else if (item.type === 'CANDIDATURA_PENDENTE') {
-       // Abre o wizard de admissão com a candidatura selecionada
-       router.push(buildPortalHref(escolaParam, `/secretaria/admissoes/nova?candidaturaId=${item.candidatura_id}`));
+       // Abre o wizard de admissão no modal com a candidatura selecionada
+       setSelectedCandidaturaId(item.candidatura_id);
+       setBalcaoModal("matricular");
+    } else if (item.id === 'fecho-trimestre') {
+       setBalcaoModal("notas");
     } else if (item.action_href) {
        window.location.href = item.action_href;
     }
@@ -341,6 +349,10 @@ export function Dashboard({
                     key={refreshKey}
                     escolaId={escolaId} 
                     onData={handleProdutividadeData} 
+                    onAtenderAluno={(alunoId) => {
+                       setSelectedAlunoIdForBalcao(alunoId);
+                       setBalcaoModal("atendimento_aluno");
+                    }}
                   />
                 )}
 
@@ -415,22 +427,71 @@ export function Dashboard({
         open={balcaoModal === "matricular"}
         title="Nova matrícula"
         description="Admissão rápida sem sair do dashboard."
-        onClose={() => setBalcaoModal(null)}
+        onClose={() => {
+          setBalcaoModal(null);
+          setSelectedCandidaturaId(null);
+        }}
       >
         {escolaId ? (
           <div className="space-y-4">
-            <AdmissaoWizardClient escolaId={escolaId} />
-            <Link
-              href={buildPortalHref(escolaParam, "/secretaria/admissoes")}
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              Abrir admissões completas
-            </Link>
+            <AdmissaoWizardClient 
+              escolaId={escolaId} 
+              initialCandidaturaId={selectedCandidaturaId} 
+            />
+            {!selectedCandidaturaId && (
+              <Link
+                href={buildPortalHref(escolaParam, "/secretaria/admissoes")}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Abrir admissões completas
+              </Link>
+            )}
           </div>
         ) : (
           <div className="text-sm text-slate-500">Escola não identificada.</div>
         )}
       </ModalShell>
+
+      <div className={balcaoModal === "atendimento_aluno" ? "block" : "hidden"}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => {
+            setBalcaoModal(null);
+            setSelectedAlunoIdForBalcao(null);
+          }} />
+          <div className="relative flex w-full max-w-6xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl">
+             <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur flex items-center justify-between">
+                <div>
+                   <h2 className="text-lg font-bold text-slate-900">Atendimento ao Aluno</h2>
+                   <p className="text-xs text-slate-500">Gestão financeira e documental rápida.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBalcaoModal(null);
+                    setSelectedAlunoIdForBalcao(null);
+                  }}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Fechar
+                </button>
+             </header>
+             <div className="flex-1 overflow-y-auto p-6">
+                {escolaId && selectedAlunoIdForBalcao ? (
+                  <BalcaoAtendimento 
+                    escolaId={escolaId} 
+                    selectedAlunoId={selectedAlunoIdForBalcao}
+                    showSearch={false}
+                    embedded
+                  />
+                ) : (
+                  <div className="p-12 text-center text-slate-500">
+                    Nenhum aluno selecionado ou escola inválida.
+                  </div>
+                )}
+             </div>
+          </div>
+        </div>
+      </div>
       <ModalShell
         open={balcaoModal === "documentos"}
         title="Emitir declaração"
