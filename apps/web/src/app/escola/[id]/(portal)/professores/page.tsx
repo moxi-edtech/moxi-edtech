@@ -739,6 +739,56 @@ export default function ProfessoresPage() {
     setToast({ type, message })
   }, [])
 
+  const loadBootstrapData = useCallback(async () => {
+    if (!escolaId) return
+    const [profRes, turmasRes, cursosRes] = await Promise.all([
+      fetch(`/api/secretaria/professores?cargo=professor&days=36500&pageSize=200&escola_id=${escolaId}`, { cache: "no-store" }),
+      fetch(`/api/escolas/${escolaId}/turmas`, { cache: "no-store" }),
+      fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
+    ])
+
+    const profJson   = await profRes.json().catch(() => null)
+    const turmasJson = await turmasRes.json().catch(() => null)
+    const cursosJson = await cursosRes.json().catch(() => null)
+
+    if (!profRes.ok || !profJson?.ok) throw new Error(profJson?.error || "Falha ao carregar professores")
+
+    const profs: Professor[] = (profJson?.items || []).map((pp: any) => ({
+      user_id: pp.user_id, email: pp.email || "", nome: pp.nome || "",
+      last_login: pp.last_login ?? null,
+      disciplinas: Array.isArray(pp.disciplinas) ? pp.disciplinas : [],
+      disciplinas_ids: Array.isArray(pp.disciplinas_ids) ? pp.disciplinas_ids : [],
+      teacher_id: pp.teacher_id ?? null,
+      genero: pp.genero ?? null, data_nascimento: pp.data_nascimento ?? null,
+      numero_bi: pp.numero_bi ?? null,
+      carga_horaria_maxima: pp.carga_horaria_maxima ?? null,
+      turnos_disponiveis: Array.isArray(pp.turnos_disponiveis) ? pp.turnos_disponiveis : [],
+      telefone_principal: pp.telefone_principal ?? null,
+      habilitacoes: pp.habilitacoes ?? null, area_formacao: pp.area_formacao ?? null,
+      vinculo_contratual: pp.vinculo_contratual ?? null,
+      is_diretor_turma: pp.is_diretor_turma ?? false,
+      atribuicoes: Array.isArray(pp.atribuicoes) ? pp.atribuicoes : [],
+      carga_horaria_real: pp.carga_horaria_real ?? null,
+      compliance_status: pp.compliance_status ?? null,
+      pendencias_total: typeof pp.pendencias_total === "number" ? pp.pendencias_total : 0,
+    }))
+
+    const turmasList: { id: string; nome: string }[] = turmasRes.ok && Array.isArray(turmasJson?.items ?? turmasJson?.data)
+      ? (turmasJson.items ?? turmasJson.data).map((t: any) => ({
+          id: t.id, nome: t.nome ?? t.turma_nome ?? t.turma_codigo ?? "Sem nome",
+        }))
+      : []
+
+    const cursosList: { id: string; nome: string }[] = cursosRes.ok && Array.isArray(cursosJson?.data)
+      ? cursosJson.data.map((c: any) => ({ id: c.id, nome: c.nome }))
+      : []
+
+    setProfessores(profs)
+    setTurmas(turmasList)
+    setTodasTurmas(turmasList)
+    setCursos(cursosList)
+  }, [escolaId])
+
   // ── Load data ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!escolaId) return
@@ -746,54 +796,7 @@ export default function ProfessoresPage() {
     const load = async () => {
       try {
         setLoading(true)
-        const [profRes, turmasRes, cursosRes] = await Promise.all([
-          fetch(`/api/secretaria/professores?cargo=professor&days=36500&pageSize=200&escola_id=${escolaId}`, { cache: "no-store" }),
-          fetch(`/api/escolas/${escolaId}/turmas`, { cache: "no-store" }),
-          fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
-        ])
-
-        const profJson   = await profRes.json().catch(() => null)
-        const turmasJson = await turmasRes.json().catch(() => null)
-        const cursosJson = await cursosRes.json().catch(() => null)
-
-        if (!profRes.ok || !profJson?.ok) throw new Error(profJson?.error || "Falha ao carregar professores")
-
-        const profs: Professor[] = (profJson?.items || []).map((pp: any) => ({
-          user_id: pp.user_id, email: pp.email || "", nome: pp.nome || "",
-          last_login: pp.last_login ?? null,
-          disciplinas: Array.isArray(pp.disciplinas) ? pp.disciplinas : [],
-          disciplinas_ids: Array.isArray(pp.disciplinas_ids) ? pp.disciplinas_ids : [],
-          teacher_id: pp.teacher_id ?? null,
-          genero: pp.genero ?? null, data_nascimento: pp.data_nascimento ?? null,
-          numero_bi: pp.numero_bi ?? null,
-          carga_horaria_maxima: pp.carga_horaria_maxima ?? null,
-          turnos_disponiveis: Array.isArray(pp.turnos_disponiveis) ? pp.turnos_disponiveis : [],
-          telefone_principal: pp.telefone_principal ?? null,
-          habilitacoes: pp.habilitacoes ?? null, area_formacao: pp.area_formacao ?? null,
-          vinculo_contratual: pp.vinculo_contratual ?? null,
-          is_diretor_turma: pp.is_diretor_turma ?? false,
-          atribuicoes: Array.isArray(pp.atribuicoes) ? pp.atribuicoes : [],
-          carga_horaria_real: pp.carga_horaria_real ?? null,
-          compliance_status: pp.compliance_status ?? null,
-          pendencias_total: typeof pp.pendencias_total === "number" ? pp.pendencias_total : 0,
-        }))
-
-        const turmasList: { id: string; nome: string }[] = turmasRes.ok && Array.isArray(turmasJson?.items ?? turmasJson?.data)
-          ? (turmasJson.items ?? turmasJson.data).map((t: any) => ({
-              id: t.id, nome: t.nome ?? t.turma_nome ?? t.turma_codigo ?? "Sem nome",
-            }))
-          : []
-
-        const cursosList: { id: string; nome: string }[] = cursosRes.ok && Array.isArray(cursosJson?.data)
-          ? cursosJson.data.map((c: any) => ({ id: c.id, nome: c.nome }))
-          : []
-
-        if (!cancelled) {
-          setProfessores(profs)
-          setTurmas(turmasList)
-          setTodasTurmas(turmasList)
-          setCursos(cursosList)
-        }
+        await loadBootstrapData()
       } catch (e) {
         if (!cancelled) showToast(e instanceof Error ? e.message : "Falha ao carregar dados", "error")
       } finally {
@@ -802,7 +805,7 @@ export default function ProfessoresPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [escolaId, showToast])
+  }, [escolaId, loadBootstrapData, showToast])
 
   // ── Load disciplinas catalogo ─────────────────────────────────────────────
   useEffect(() => {
@@ -934,7 +937,6 @@ export default function ProfessoresPage() {
     if (step === 2) {
       if (!teacherForm.carga_horaria_maxima || teacherForm.carga_horaria_maxima <= 0) return "Informe a carga horária máxima"
       if (teacherForm.turnos_disponiveis.length === 0) return "Selecione ao menos um turno"
-      if (teacherForm.disciplinas_habilitadas.length === 0) return "Selecione ao menos uma disciplina"
     }
     return null
   }
@@ -957,6 +959,7 @@ export default function ProfessoresPage() {
       showToast("Professor criado com sucesso!", "success")
       setTeacherForm(TEACHER_FORM_DEFAULT)
       setTeacherStep(0)
+      await loadBootstrapData()
       setTab("gerenciar")
     } catch (e) { showToast(e instanceof Error ? e.message : "Falha ao criar professor", "error") }
     finally { setTeacherSubmitting(false) }
@@ -998,6 +1001,7 @@ export default function ProfessoresPage() {
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar professor")
       showToast("Professor atualizado.", "success")
+      await loadBootstrapData()
       setEditOpen(false)
       setEditTarget(null)
     } catch (e) { showToast(e instanceof Error ? e.message : "Falha ao atualizar professor", "error") }
@@ -1191,7 +1195,8 @@ export default function ProfessoresPage() {
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">Disciplinas habilitadas</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1">Disciplinas recomendadas</p>
+                <p className="mb-3 text-xs text-slate-500">Opcional. Use para melhorar as recomendações automáticas de atribuição.</p>
                 {disciplinasCatalogo.length === 0
                   ? <p className="text-xs text-slate-400">Nenhuma disciplina disponível.</p>
                   : <div className="grid gap-2 md:grid-cols-2">
@@ -1592,7 +1597,8 @@ export default function ProfessoresPage() {
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">Disciplinas habilitadas</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1">Disciplinas recomendadas</p>
+                <p className="mb-3 text-xs text-slate-500">Opcional. Ajuste isto para melhorar sugestões futuras.</p>
                 <div className="grid gap-2 md:grid-cols-2">
                   {disciplinasCatalogo.map((d) => (
                     <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer">

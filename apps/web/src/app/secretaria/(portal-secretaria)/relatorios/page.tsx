@@ -103,6 +103,12 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               >
                 Abrir Mapa de Aproveitamento
               </a>
+              <a
+                href="/secretaria/relatorios/mensalidades"
+                className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
+              >
+                Abrir Relatório de Mensalidades
+              </a>
             </div>
           </div>
           <form action="" className="flex gap-2 text-sm">

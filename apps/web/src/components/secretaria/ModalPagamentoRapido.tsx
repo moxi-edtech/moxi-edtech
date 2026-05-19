@@ -128,8 +128,7 @@ function statusConfig(status?: string | null) {
 function summarizeReferencias(referencias: string[]) {
   const limpas = referencias.filter((item) => item && item.trim().length > 0);
   if (limpas.length <= 1) return limpas[0] ?? "Mensalidade";
-  if (limpas.length === 2) return limpas.join(" + ");
-  return `${limpas[0]} + ${limpas.length - 1} meses`;
+  return `${limpas.length} mensalidades liquidadas`;
 }
 
 function MensalidadesSelector({

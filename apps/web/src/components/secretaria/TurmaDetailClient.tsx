@@ -1215,7 +1215,7 @@ export default function TurmaDetailClient({
       : selectedProfessorOption._meta.cargaExcedida
         ? "Esta escolha tende a exceder a carga horária do professor."
         : !selectedProfessorOption._meta.disciplinaMatch
-          ? "O professor não está habilitado nesta disciplina."
+          ? "Esta disciplina não está marcada entre as recomendadas do professor."
           : !selectedProfessorOption._meta.turnoMatch
             ? "O professor não atende ao turno desta turma."
             : "Atribuição possível com ressalvas."
@@ -1972,7 +1972,7 @@ export default function TurmaDetailClient({
                             ? professor._meta.turnoMatch
                               ? "Compatível"
                               : "Fora do turno"
-                            : "Sem habilitação";
+                            : "Fora das recomendadas";
 
                         return (
                           <button
@@ -2002,8 +2002,8 @@ export default function TurmaDetailClient({
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                              <span className={`rounded-full px-2 py-1 ${professor._meta.disciplinaMatch ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" : "bg-rose-50 text-rose-700"}`}>
-                                {professor._meta.disciplinaMatch ? "Disciplina OK" : "Sem habilitação"}
+                              <span className={`rounded-full px-2 py-1 ${professor._meta.disciplinaMatch ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" : "bg-slate-100 text-slate-600"}`}>
+                                {professor._meta.disciplinaMatch ? "Disciplina recomendada" : "Disciplina não recomendada"}
                               </span>
                               <span className={`rounded-full px-2 py-1 ${professor._meta.turnoMatch ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" : "bg-rose-50 text-rose-700"}`}>
                                 {professor._meta.turnoMatch ? `Turno ${turma.turno}` : "Turno incompatível"}

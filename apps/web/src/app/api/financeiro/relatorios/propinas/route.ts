@@ -59,8 +59,12 @@ export async function GET(req: Request) {
         competencia_mes,
         qtd_mensalidades,
         qtd_em_atraso,
+        qtd_pagas_adiantadas,
+        qtd_parciais,
         total_previsto,
         total_pago,
+        total_pago_adiantado,
+        total_parcial_em_aberto,
         total_em_atraso,
         inadimplencia_pct
       `
@@ -116,8 +120,12 @@ export async function GET(req: Request) {
         turno,
         qtd_mensalidades,
         qtd_em_atraso,
+        qtd_pagas_adiantadas,
+        qtd_parciais,
         total_previsto,
         total_pago,
+        total_pago_adiantado,
+        total_parcial_em_aberto,
         total_em_atraso,
         inadimplencia_pct
       `
@@ -170,8 +178,12 @@ export async function GET(req: Request) {
       competenciaMes: row.competencia_mes,
       qtdMensalidades: Number(row.qtd_mensalidades ?? 0),
       qtdEmAtraso: Number(row.qtd_em_atraso ?? 0),
+      qtdPagasAdiantadas: Number(row.qtd_pagas_adiantadas ?? 0),
+      qtdParciais: Number(row.qtd_parciais ?? 0),
       totalPrevisto: Number(row.total_previsto ?? 0),
       totalPago: Number(row.total_pago ?? 0),
+      totalPagoAdiantado: Number(row.total_pago_adiantado ?? 0),
+      totalParcialEmAberto: Number(row.total_parcial_em_aberto ?? 0),
       totalEmAtraso: Number(row.total_em_atraso ?? 0),
       inadimplenciaPct: Number(row.inadimplencia_pct ?? 0),
     }));
@@ -184,8 +196,12 @@ export async function GET(req: Request) {
       anoLetivo: row.ano_letivo,
       qtdMensalidades: Number(row.qtd_mensalidades ?? 0),
       qtdEmAtraso: Number(row.qtd_em_atraso ?? 0),
+      qtdPagasAdiantadas: Number(row.qtd_pagas_adiantadas ?? 0),
+      qtdParciais: Number(row.qtd_parciais ?? 0),
       totalPrevisto: Number(row.total_previsto ?? 0),
       totalPago: Number(row.total_pago ?? 0),
+      totalPagoAdiantado: Number(row.total_pago_adiantado ?? 0),
+      totalParcialEmAberto: Number(row.total_parcial_em_aberto ?? 0),
       totalEmAtraso: Number(row.total_em_atraso ?? 0),
       inadimplenciaPct: Number(row.inadimplencia_pct ?? 0),
     }));
