@@ -14,5 +14,5 @@ export default async function Page() {
     redirect("/secretaria/relatorios");
   }
 
-  redirect(`/escola/${escolaId}/financeiro/relatorios/propinas`);
+  redirect(`/escola/${escolaId}/secretaria/relatorios/propinas`);
 }

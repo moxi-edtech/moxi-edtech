@@ -100,35 +100,35 @@ export default function ReciboPagamentoCompacto({
   const referenciasAgrupadas = groupReferenciasByAno(referencias);
 
   return (
-    <div className="space-y-4 bg-white font-sans text-slate-900">
-      <header className="grid grid-cols-[auto_1fr_auto] items-start gap-4 border-b border-slate-200 pb-4">
+    <div className="space-y-4 bg-white font-sans text-slate-900 print:space-y-2">
+      <header className="grid grid-cols-[auto_1fr_auto] items-start gap-4 border-b border-slate-200 pb-4 print:pb-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={effectiveLogoUrl}
           alt={logoUrl?.trim() ? `Logotipo de ${escolaNome}` : "Insígnia da República de Angola"}
-          className="h-12 w-12 shrink-0 object-contain"
+          className="h-12 w-12 shrink-0 object-contain print:h-10 print:w-10"
         />
 
-        <div className="min-w-0 space-y-1.5">
-          <p className="line-clamp-2 text-[10px] font-bold uppercase leading-snug tracking-[0.14em] text-slate-500" title={escolaNome}>
+        <div className="min-w-0 space-y-1.5 print:space-y-0.5">
+          <p className="line-clamp-2 text-[10px] font-bold uppercase leading-snug tracking-[0.14em] text-slate-500 print:text-[9px]" title={escolaNome}>
             {escolaNome}
           </p>
-          <h1 className="text-lg font-bold uppercase tracking-tight text-slate-900">Recibo de Pagamento</h1>
+          <h1 className="text-lg font-bold uppercase tracking-tight text-slate-900 print:text-base">Recibo de Pagamento</h1>
         </div>
 
-        <div className="min-w-[92px] max-w-[150px] space-y-1.5 text-right text-[10px] leading-tight text-slate-500">
-          <p className="font-bold uppercase tracking-wide text-slate-400">Nº / Emitido</p>
-          <p className="truncate font-semibold text-slate-900" title={numero || "Sem número"}>
+        <div className="min-w-[92px] max-w-[150px] space-y-1.5 text-right text-[10px] leading-tight text-slate-500 print:space-y-0.5">
+          <p className="font-bold uppercase tracking-wide text-slate-400 print:text-[8px]">Nº / Emitido</p>
+          <p className="truncate font-semibold text-slate-900 print:text-[9px]" title={numero || "Sem número"}>
             {numero ? `Nº ${numero}` : "Sem número"}
           </p>
-          <p className="line-clamp-1 font-medium text-slate-600" title={emissao}>
+          <p className="line-clamp-1 font-medium text-slate-600 print:text-[8px]" title={emissao}>
             {emissao}
           </p>
         </div>
       </header>
 
-      <section className="rounded-2xl border border-slate-200 bg-white">
-        <div className="grid grid-cols-3 gap-4 border-b border-slate-200 px-4 py-4">
+      <section className="rounded-2xl border border-slate-200 bg-white print:rounded-xl">
+        <div className="grid grid-cols-3 gap-4 border-b border-slate-200 px-4 py-4 print:gap-2 print:px-3 print:py-2">
           <CompactField label="Aluno" value={alunoNome} clamp="two" className="col-span-3 sm:col-span-1" />
           <CompactField label="Classe / Curso" value={classeCurso} />
           <CompactField label="Turma" value={turmaNome} />
@@ -138,18 +138,18 @@ export default function ReciboPagamentoCompacto({
         </div>
 
         {hasReferenciaDetalhada ? (
-          <div className="space-y-3 border-b border-slate-200 px-4 py-4">
+          <div className="space-y-3 border-b border-slate-200 px-4 py-4 print:space-y-1 print:px-3 print:py-2">
             <div className="space-y-1">
-              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">Competências Liquidadas</p>
-              <p className="text-[11px] font-medium text-slate-400">
+              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500 print:text-[8px]">Competências Liquidadas</p>
+              <p className="text-[11px] font-medium text-slate-400 print:hidden">
                 {referencias.length} {referencias.length === 1 ? "competência" : "competências"} incluídas neste recibo
               </p>
             </div>
-            <div className="flex flex-wrap gap-2.5" title={referencias.join(", ")}>
+            <div className="flex flex-wrap gap-2.5 print:gap-1.5" title={referencias.join(", ")}>
               {referenciasAgrupadas.map((item) => (
                 <span
                   key={`${item.ano}-${item.label}`}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700"
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700 print:px-2 print:py-0.5 print:text-[9px]"
                 >
                   {item.label}
                 </span>
@@ -158,23 +158,23 @@ export default function ReciboPagamentoCompacto({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-slate-200 px-4 py-4">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-slate-200 px-4 py-4 print:px-3 print:py-2">
           <div className="min-w-0">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Valor Pago</p>
-            <p className="truncate text-xl font-bold leading-tight text-klasse-gold" title={formatMoney(valorPago)}>
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500 print:text-[8px]">Valor Pago</p>
+            <p className="truncate text-xl font-bold leading-tight text-klasse-gold print:text-lg" title={formatMoney(valorPago)}>
               {formatMoney(valorPago)}
             </p>
           </div>
           <div className="min-w-[120px] text-right">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Data Pagamento</p>
-            <p className="truncate text-xs font-semibold text-slate-900" title={dataPagamento}>
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500 print:text-[8px]">Data Pagamento</p>
+            <p className="truncate text-xs font-semibold text-slate-900 print:text-[10px]" title={dataPagamento}>
               {dataPagamento}
             </p>
           </div>
         </div>
 
         {banco || titularConta || iban || kwikChave ? (
-          <div className="grid grid-cols-2 gap-4 border-b border-slate-200 px-4 py-4">
+          <div className="grid grid-cols-2 gap-4 border-b border-slate-200 px-4 py-4 print:gap-2 print:px-3 print:py-2">
             <CompactField label="Banco" value={banco || "—"} />
             <CompactField label="Titular" value={titularConta || "—"} />
             <CompactField label="IBAN" value={iban || "—"} clamp="two" />
@@ -182,27 +182,27 @@ export default function ReciboPagamentoCompacto({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-5 px-4 py-4">
-          <section className="min-w-0 space-y-3">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Validação</p>
+        <div className="grid grid-cols-2 gap-5 px-4 py-4 print:px-3 print:py-2">
+          <section className="min-w-0 space-y-3 print:space-y-1">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500 print:text-[8px]">Validação</p>
             {urlValidacao ? (
-              <div className="flex min-w-0 items-center gap-4">
-                <QRCode value={urlValidacao} size={60} />
-                <div className="min-w-0 space-y-1">
-                  <p className="line-clamp-2 max-w-[170px] text-[8px] leading-tight text-slate-500">
+              <div className="flex min-w-0 items-center gap-4 print:gap-2">
+                <QRCode value={urlValidacao} size={60} className="print:h-12 print:w-12" />
+                <div className="min-w-0 space-y-1 print:space-y-0">
+                  <p className="line-clamp-2 max-w-[170px] text-[8px] leading-tight text-slate-500 print:text-[7px]">
                     Valide este recibo no portal oficial através do QR Code.
                   </p>
-                  <p className="max-w-[170px] truncate font-mono text-[8px] text-slate-500" title={publicId}>
+                  <p className="max-w-[170px] truncate font-mono text-[8px] text-slate-500 print:text-[7px]" title={publicId}>
                     ID: {publicId || "—"}
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="flex min-w-0 items-center gap-4">
-                <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-200 text-center text-[8px] text-slate-500">
+              <div className="flex min-w-0 items-center gap-4 print:gap-2">
+                <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-200 text-center text-[8px] text-slate-500 print:h-10 print:w-10 print:text-[7px]">
                   QR indisponível
                 </div>
-                <p className="max-w-[170px] truncate font-mono text-[8px] text-slate-500" title={publicId}>
+                <p className="max-w-[170px] truncate font-mono text-[8px] text-slate-500 print:text-[7px]" title={publicId}>
                   ID: {publicId || "—"}
                 </p>
               </div>
@@ -211,11 +211,12 @@ export default function ReciboPagamentoCompacto({
 
           <section className="flex min-w-0 flex-col justify-end text-center">
             <div className="border-b border-slate-200 pb-1" />
-            <p className="mt-2 text-[10px] font-bold uppercase text-slate-900">A Secretaria</p>
-            <p className="line-clamp-1 text-[8px] italic text-slate-500">Documento processado por computador</p>
+            <p className="mt-2 text-[10px] font-bold uppercase text-slate-900 print:mt-1 print:text-[9px]">A Secretaria</p>
+            <p className="line-clamp-1 text-[8px] italic text-slate-500 print:text-[7px]">Documento processado por computador</p>
           </section>
         </div>
       </section>
+
     </div>
   );
 }
@@ -225,16 +226,17 @@ export function ReciboPagamentoDuasVias(props: ReciboPagamentoCompactoProps) {
   const vias = ["Via da Secretaria", "Via do Aluno/Encarregado"];
 
   return (
-    <div className="space-y-6 bg-white font-sans text-slate-900 print:space-y-5">
+    <div className="space-y-6 bg-white font-sans text-slate-900 print:space-y-4">
       {vias.map((via, index) => (
         <section key={via} className="break-inside-avoid bg-white">
-          <p className="mb-3 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500">
+          <p className="mb-3 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500 print:mb-1">
             {via}
           </p>
           <ReciboPagamentoCompacto {...props} />
-          {index === 0 ? <div className="mt-5 border-t border-dashed border-slate-300 print:mt-4" /> : null}
+          {index === 0 ? <div className="mt-5 border-t border-dashed border-slate-300 print:mt-3" /> : null}
         </section>
       ))}
     </div>
   );
 }
+

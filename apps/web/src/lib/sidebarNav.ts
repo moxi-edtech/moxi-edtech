@@ -131,7 +131,8 @@ export const sidebarConfig: SidebarConfig = {
       icon: "BarChart3",
       children: [
         { href: "/escola/[escolaId]/secretaria/relatorios", label: "Auditoria" },
-        { href: "/escola/[escolaId]/financeiro/relatorios/mensal-escolar", label: "Mensal Escolar" },
+        { href: "/escola/[escolaId]/secretaria/relatorios/mensal-escolar", label: "Mensal Escolar" },
+        { href: "/escola/[escolaId]/secretaria/relatorios/propinas", label: "Propinas" },
         { href: "/escola/[escolaId]/secretaria/relatorios/mapa-aproveitamento", label: "Mapa de Aproveitamento" },
       ],
     },

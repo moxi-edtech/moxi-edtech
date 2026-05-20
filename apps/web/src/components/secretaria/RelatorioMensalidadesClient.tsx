@@ -24,6 +24,21 @@ type Mensal = {
   inadimplenciaPct: number;
 };
 
+type CaptacaoItem = {
+  label: string;
+  matriculas: number;
+  confirmacoes: number;
+  bolsistas: number;
+  total: number;
+  detalhes_mensais: Record<string, { matriculas: number; confirmacoes: number; bolsistas: number }>;
+};
+
+type DespesaItem = {
+  label: string;
+  total: number;
+  qtd: number;
+};
+
 type PorTurma = {
   turmaId: string;
   turmaNome: string;
@@ -88,6 +103,9 @@ export default function RelatorioMensalidadesClient() {
   const [error, setError] = useState<string | null>(null);
   const [mensal, setMensal] = useState<Mensal[]>([]);
   const [porTurma, setPorTurma] = useState<PorTurma[]>([]);
+  const [captacao, setCaptacao] = useState<CaptacaoItem[]>([]);
+  const [despesas, setDespesas] = useState<DespesaItem[]>([]);
+  const [totalDespesas, setTotalDespesas] = useState(0);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>("");
 
@@ -536,6 +554,41 @@ export default function RelatorioMensalidadesClient() {
     };
   }, [selectedSession, anoLetivoAtivo, escolaId]);
 
+  useEffect(() => {
+    if (!selectedSession || !escolaId) return;
+
+    async function loadCaptacao() {
+      try {
+        const res = await fetch(`/api/financeiro/relatorios/captacao?ano=${encodeURIComponent(anoLetivoAtivo)}&escolaId=${escolaId}`, { cache: 'no-store' });
+        if (res.ok) {
+          const j = await res.json();
+          setCaptacao(j.items || []);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar captação", e);
+      }
+    }
+    void loadCaptacao();
+  }, [selectedSession, anoLetivoAtivo, escolaId]);
+
+  useEffect(() => {
+    if (!selectedSession || !escolaId) return;
+
+    async function loadDespesas() {
+      try {
+        const res = await fetch(`/api/financeiro/relatorios/despesas?ano=${encodeURIComponent(anoLetivoAtivo)}&escolaId=${escolaId}`, { cache: 'no-store' });
+        if (res.ok) {
+          const j = await res.json();
+          setDespesas(j.items || []);
+          setTotalDespesas(j.totalGeral || 0);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar despesas", e);
+      }
+    }
+    void loadDespesas();
+  }, [selectedSession, anoLetivoAtivo, escolaId]);
+
   const exportCsv = () => {
     const mensalRows = mensal.map((row) => ({
       secao: "serie_mensal",
@@ -681,6 +734,166 @@ export default function RelatorioMensalidadesClient() {
               <p className="mt-1 text-xs text-slate-500">Sobre o total de mensalidades do período</p>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 print:grid-cols-2">
+            {/* Bloco de Captação Acadêmica */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none">
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Captação por Classe</h2>
+                  <p className="text-xs text-slate-500">Matrículas e confirmações efetuadas no ano.</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm print:text-[10px]">
+                  <thead>
+                    <tr className="border-b text-left text-slate-500">
+                      <th className="py-2 pr-4">Classe</th>
+                      <th className="py-2 pr-4 text-right">Matrículas</th>
+                      <th className="py-2 pr-4 text-right">Confirmações</th>
+                      <th className="py-2 pr-0 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {captacao.map((c) => (
+                      <tr key={c.label} className="border-b last:border-b-0">
+                        <td className="py-2 pr-4 font-medium">{c.label}</td>
+                        <td className="py-2 pr-4 text-right">{c.matriculas}</td>
+                        <td className="py-2 pr-4 text-right">{c.confirmacoes}</td>
+                        <td className="py-2 pr-0 text-right font-bold">{c.total}</td>
+                      </tr>
+                    ))}
+                    {captacao.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-slate-500 text-center italic">
+                          Sem dados de captação.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bloco de Bolsistas */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none">
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Inscritos e Bolsistas</h2>
+                  <p className="text-xs text-slate-500">Resumo de alunos com benefícios ou descontos.</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm print:text-[10px]">
+                  <thead>
+                    <tr className="border-b text-left text-slate-500">
+                      <th className="py-2 pr-4">Classe</th>
+                      <th className="py-2 pr-4 text-right">Alunos</th>
+                      <th className="py-2 pr-4 text-right">Bolsistas</th>
+                      <th className="py-2 pr-0 text-right">% Bolsistas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {captacao.map((c) => (
+                      <tr key={`${c.label}-bolsas`} className="border-b last:border-b-0">
+                        <td className="py-2 pr-4 font-medium">{c.label}</td>
+                        <td className="py-2 pr-4 text-right">{c.total}</td>
+                        <td className="py-2 pr-4 text-right text-blue-600 font-medium">{c.bolsistas}</td>
+                        <td className="py-2 pr-0 text-right">
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                            {c.total > 0 ? ((c.bolsistas / c.total) * 100).toFixed(1) : "0.0"}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {captacao.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-slate-500 text-center italic">
+                          Sem dados institucionais.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 print:grid-cols-2">
+            {/* Bloco de Despesas (Saídas) */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none">
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Saídas e Despesas</h2>
+                  <p className="text-xs text-slate-500">Resumo de débitos registrados no ledger.</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Total Despesas</p>
+                  <p className="text-lg font-bold text-rose-600">{kwanza.format(totalDespesas)}</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm print:text-[10px]">
+                  <thead>
+                    <tr className="border-b text-left text-slate-500">
+                      <th className="py-2 pr-4">Categoria / Evento</th>
+                      <th className="py-2 pr-4 text-right">Qtd</th>
+                      <th className="py-2 pr-0 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {despesas.map((d) => (
+                      <tr key={d.label} className="border-b last:border-b-0">
+                        <td className="py-2 pr-4 font-medium">{d.label}</td>
+                        <td className="py-2 pr-4 text-right text-slate-500">{d.qtd}</td>
+                        <td className="py-2 pr-0 text-right font-bold text-rose-600">{kwanza.format(d.total)}</td>
+                      </tr>
+                    ))}
+                    {despesas.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="py-4 text-slate-500 text-center italic">
+                          Nenhuma despesa registrada para este período.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bloco de Resultado Financeiro (Resumo Geral) */}
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-emerald-300 print:p-0 print:shadow-none">
+              <div className="mb-4">
+                <h2 className="text-base font-semibold text-emerald-900">Resultado do Período</h2>
+                <p className="text-xs text-emerald-700">Balanço entre arrecadação (propinas) e despesas.</p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+                  <span className="text-sm text-emerald-800">Total Entradas (Pago)</span>
+                  <span className="font-bold text-emerald-700">{kwanza.format(resumo.pago)}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+                  <span className="text-sm text-rose-800">Total Saídas (Despesas)</span>
+                  <span className="font-bold text-rose-700">-{kwanza.format(totalDespesas)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-base font-bold text-slate-900">Saldo Final</span>
+                  <span className={`text-xl font-black ${resumo.pago - totalDespesas >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
+                    {kwanza.format(resumo.pago - totalDespesas)}
+                  </span>
+                </div>
+
+                <div className="mt-6 rounded-xl bg-white/60 p-3 border border-emerald-100 print:hidden">
+                  <p className="text-[10px] uppercase font-bold text-emerald-600 mb-1">Informação de Gestão</p>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Este balanço considera apenas as receitas de propinas pagas e as despesas registradas no sistema. 
+                    Para um fluxo de caixa completo (incluindo vendas, taxas e emolumentos), consulte o relatório de Fluxo de Caixa.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -765,33 +978,41 @@ export default function RelatorioMensalidadesClient() {
                     <th className="py-2 pr-4">Classe</th>
                     <th className="py-2 pr-4">Turno</th>
                     <th className="py-2 pr-4 text-right">Mensalidades</th>
+                    <th className="py-2 pr-4 text-right">Pagas (Alunos)</th>
                     <th className="py-2 pr-4 text-right">Em atraso</th>
                     <th className="py-2 pr-4 text-right">Adiantadas</th>
-                    <th className="py-2 pr-4 text-right">Parciais</th>
-                    <th className="py-2 pr-4 text-right">Previsto</th>
-                    <th className="py-2 pr-4 text-right">Pago</th>
-                    <th className="py-2 pr-4 text-right">Pago adiantado</th>
-                    <th className="py-2 pr-4 text-right">Saldo parcial</th>
-                    <th className="py-2 pr-4 text-right">Atraso</th>
+                    <th className="py-2 pr-4 text-right">Parciais (Metade)</th>
+                    <th className="py-2 pr-4 text-right">Pago (Arrecadado)</th>
+                    <th className="py-2 pr-4 text-right">Atraso (Valor)</th>
+                    <th className="py-2 pr-4 text-right">Pend. Parcial</th>
                     <th className="py-2 pr-0 text-right">Inadimplência</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rankingTurmasOrdenado.map((t) => (
                     <tr key={t.turmaId} className="border-b last:border-b-0">
-                      <td className="py-2 pr-4 whitespace-nowrap">{t.turmaNome}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap font-medium">{t.turmaNome}</td>
                       <td className="py-2 pr-4">{t.classe || "—"}</td>
                       <td className="py-2 pr-4">{t.turno || "—"}</td>
                       <td className="py-2 pr-4 text-right">{t.qtdMensalidades}</td>
-                      <td className="py-2 pr-4 text-right">{t.qtdEmAtraso}</td>
-                      <td className="py-2 pr-4 text-right">{t.qtdPagasAdiantadas}</td>
-                      <td className="py-2 pr-4 text-right">{t.qtdParciais}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(t.totalPrevisto)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(t.totalPago)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(t.totalPagoAdiantado)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(t.totalParcialEmAberto)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(t.totalEmAtraso)}</td>
-                      <td className="py-2 pr-0 text-right">{t.inadimplenciaPct.toFixed(1)}%</td>
+                      <td className="py-2 pr-4 text-right text-emerald-600 font-semibold">
+                        {t.qtdMensalidades - t.qtdEmAtraso - t.qtdParciais}
+                      </td>
+                      <td className="py-2 pr-4 text-right text-rose-600">{t.qtdEmAtraso}</td>
+                      <td className="py-2 pr-4 text-right text-sky-600">{t.qtdPagasAdiantadas}</td>
+                      <td className="py-2 pr-4 text-right text-amber-600 font-medium">
+                        {t.qtdParciais}
+                      </td>
+                      <td className="py-2 pr-4 text-right text-emerald-700 font-bold">
+                        {kwanza.format(t.totalPago + t.totalPagoAdiantado)}
+                      </td>
+                      <td className="py-2 pr-4 text-right text-rose-700">
+                        {kwanza.format(t.totalEmAtraso)}
+                      </td>
+                      <td className="py-2 pr-4 text-right text-amber-700">
+                        {kwanza.format(t.totalParcialEmAberto)}
+                      </td>
+                      <td className="py-2 pr-0 text-right font-medium">{t.inadimplenciaPct.toFixed(1)}%</td>
                     </tr>
                   ))}
                   {porTurma.length === 0 ? (

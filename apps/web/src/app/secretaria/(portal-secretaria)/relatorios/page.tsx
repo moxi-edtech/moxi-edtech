@@ -98,19 +98,19 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                 Exportar JSON
               </a>
               <a
-                href="/secretaria/relatorios/mapa-aproveitamento"
+                href={`/escola/${escolaId}/secretaria/relatorios/mapa-aproveitamento`}
                 className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
               >
                 Abrir Mapa de Aproveitamento
               </a>
               <a
-                href={`/escola/${escolaId}/financeiro/relatorios/mensal-escolar`}
+                href={`/escola/${escolaId}/secretaria/relatorios/mensal-escolar`}
                 className="px-2.5 py-1 rounded-xl border border-blue-200 bg-blue-50/30 text-blue-700 hover:text-blue-900 font-semibold"
               >
                 Relatório Mensal Escolar
               </a>
               <a
-                href={`/escola/${escolaId}/financeiro/relatorios/propinas`}
+                href={`/escola/${escolaId}/secretaria/relatorios/propinas`}
                 className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
               >
                 Abrir Relatório de Propinas
