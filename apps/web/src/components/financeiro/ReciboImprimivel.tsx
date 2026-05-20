@@ -65,7 +65,21 @@ export function ReciboImprimivel({
 
   return (
     <div className="hidden print:block">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+          }
+        }
+      ` }} />
       <div className="w-full max-w-none bg-white text-slate-900">
+
         <ReciboPagamentoDuasVias
           escolaNome={escolaNome}
           alunoNome={alunoNome}
