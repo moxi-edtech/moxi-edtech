@@ -14941,6 +14941,144 @@ export type Database = {
           },
         ]
       }
+      secretaria_avisos_snooze: {
+        Row: {
+          aviso_id: string
+          aviso_type: string
+          created_at: string | null
+          escola_id: string
+          id: string
+          snoozed_until: string
+          user_id: string
+        }
+        Insert: {
+          aviso_id: string
+          aviso_type: string
+          created_at?: string | null
+          escola_id: string
+          id?: string
+          snoozed_until: string
+          user_id: string
+        }
+        Update: {
+          aviso_id?: string
+          aviso_type?: string
+          created_at?: string | null
+          escola_id?: string
+          id?: string
+          snoozed_until?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "secretaria_avisos_snooze_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secretaria_avisos_snooze_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secretaria_avisos_snooze_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "secretaria_avisos_snooze_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "secretaria_avisos_snooze_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      secretaria_prioridades: {
+        Row: {
+          created_at: string | null
+          entity: string
+          entity_id: string
+          escola_id: string
+          id: string
+          reason: string | null
+          requested_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity: string
+          entity_id: string
+          escola_id: string
+          id?: string
+          reason?: string | null
+          requested_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity?: string
+          entity_id?: string
+          escola_id?: string
+          id?: string
+          reason?: string | null
+          requested_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "secretaria_prioridades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secretaria_prioridades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secretaria_prioridades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "secretaria_prioridades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "secretaria_prioridades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       servico_pedidos: {
         Row: {
           aluno_id: string
@@ -16151,6 +16289,7 @@ export type Database = {
           escola_id: string
           id: string
           import_id: string | null
+          is_classe_exame: boolean
           letra: string | null
           nome: string
           sala: string | null
@@ -16175,6 +16314,7 @@ export type Database = {
           escola_id: string
           id?: string
           import_id?: string | null
+          is_classe_exame?: boolean
           letra?: string | null
           nome: string
           sala?: string | null
@@ -16199,6 +16339,7 @@ export type Database = {
           escola_id?: string
           id?: string
           import_id?: string | null
+          is_classe_exame?: boolean
           letra?: string | null
           nome?: string
           sala?: string | null
@@ -17626,15 +17767,19 @@ export type Database = {
       vw_financeiro_propinas_mensal_escola: {
         Row: {
           ano: number | null
-          ano_letivo: string | null
+          ano_letivo: number | null
           competencia_mes: string | null
           escola_id: string | null
           inadimplencia_pct: number | null
           mes: number | null
           qtd_em_atraso: number | null
           qtd_mensalidades: number | null
+          qtd_pagas_adiantadas: number | null
+          qtd_parciais: number | null
           total_em_atraso: number | null
           total_pago: number | null
+          total_pago_adiantado: number | null
+          total_parcial_em_aberto: number | null
           total_previsto: number | null
         }
         Relationships: []
@@ -17647,8 +17792,12 @@ export type Database = {
           inadimplencia_pct: number | null
           qtd_em_atraso: number | null
           qtd_mensalidades: number | null
+          qtd_pagas_adiantadas: number | null
+          qtd_parciais: number | null
           total_em_atraso: number | null
           total_pago: number | null
+          total_pago_adiantado: number | null
+          total_parcial_em_aberto: number | null
           total_previsto: number | null
           turma_id: string | null
           turma_nome: string | null
@@ -20381,6 +20530,7 @@ export type Database = {
           escola_id: string
           id: string
           import_id: string | null
+          is_classe_exame: boolean
           letra: string | null
           nome: string
           sala: string | null
@@ -21473,6 +21623,14 @@ export type Database = {
           status: string
         }[]
       }
+      get_secretaria_caixa_hoje: {
+        Args: { p_escola_id: string }
+        Returns: Json
+      }
+      get_secretaria_produtividade_hoje: {
+        Args: { p_escola_id: string }
+        Returns: Json
+      }
       get_setup_state: {
         Args: { p_ano_letivo: number; p_escola_id: string }
         Returns: Json
@@ -21965,14 +22123,25 @@ export type Database = {
       refresh_mv_top_turmas_hoje: { Args: never; Returns: undefined }
       refresh_mv_total_em_aberto_por_mes: { Args: never; Returns: undefined }
       refresh_mv_turmas_para_matricula: { Args: never; Returns: undefined }
-      registrar_pagamento: {
-        Args: {
-          p_mensalidade_id: string
-          p_metodo_pagamento: string
-          p_observacao?: string
-        }
-        Returns: Json
-      }
+      registrar_pagamento:
+        | {
+            Args: {
+              p_mensalidade_id: string
+              p_metodo_pagamento: string
+              p_observacao?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_mensalidade_id: string
+              p_metodo_pagamento: string
+              p_observacao?: string
+              p_promessa_liquidacao?: string
+              p_valor_pago?: number
+            }
+            Returns: Json
+          }
       registrar_venda_avulsa: {
         Args: {
           p_aluno_id: string
@@ -22151,12 +22320,31 @@ export type Database = {
           updated_at: string
         }[]
       }
+      set_secretaria_priority: {
+        Args: {
+          p_entity: string
+          p_entity_id: string
+          p_escola_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       setup_active_ano_letivo: {
         Args: { p_ano_data: Json; p_escola_id: string }
         Returns: Json
       }
       slugify: { Args: { v_text: string }; Returns: string }
       slugify_escola_nome: { Args: { input: string }; Returns: string }
+      snooze_secretaria_aviso: {
+        Args: {
+          p_aviso_id: string
+          p_aviso_type: string
+          p_custom_date?: string
+          p_days?: number
+          p_escola_id: string
+        }
+        Returns: Json
+      }
       soft_delete_aluno: {
         Args: { p_deleted_by: string; p_id: string; p_reason: string }
         Returns: undefined

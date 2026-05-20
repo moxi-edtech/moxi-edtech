@@ -80,6 +80,7 @@ export async function GET(req: Request) {
         { column: "ano", ascending: true },
         { column: "mes", ascending: true },
       ],
+      tieBreakerColumn: "competencia_mes",
     });
 
     const { data: mensal, error: mensalError } = await mensalQuery;
@@ -142,6 +143,7 @@ export async function GET(req: Request) {
         { column: "total_em_atraso", ascending: false },
         { column: "turma_id", ascending: true },
       ],
+      tieBreakerColumn: "turma_id",
     });
 
     const { data: porTurma, error: turmaError } = await turmaQuery;

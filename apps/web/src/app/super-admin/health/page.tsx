@@ -117,7 +117,12 @@ export default function AdminHealthDashboard() {
             />
           </TabsContent>
           <TabsContent value="infra">
-            <InfraTab infraMetrics={infraMetrics} />
+            <InfraTab
+              infraMetrics={infraMetrics}
+              onRefresh={loadHealthData}
+              onRunWorker={handleRunOutboxWorker}
+              onRecalcAggregates={handleRecalcAggregates}
+            />
           </TabsContent>
         </Tabs>
         

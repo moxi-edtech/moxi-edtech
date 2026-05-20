@@ -2,6 +2,7 @@
 
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import MaintenanceBanner from "./MaintenanceBanner";
 import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -270,6 +271,7 @@ export default function AppShell({
             escolaParam={navEscolaId}
             portal={inferredRole ?? undefined}
           />
+          <MaintenanceBanner />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>
         </div>
       </div>

@@ -36,16 +36,16 @@ export async function POST(req: Request) {
       .select("aluno_portal_enabled")
       .eq("id", escolaId)
       .maybeSingle();
-    if (escolaCfgErr) return NextResponse.json({ ok: false, error: escolaCfgErr.message }, { status: 400 });
+    if (escolaCfgErr) return NextResponse.json({ ok: false, error: `Erro ao buscar config da escola: ${escolaCfgErr.message}` }, { status: 400 });
     if (!escolaCfg?.aluno_portal_enabled) {
       return NextResponse.json(
-        { ok: false, error: "Portal do aluno não concedido para esta escola" },
+        { ok: false, error: "O Portal do Aluno não está habilitado para esta escola nas configurações globais." },
         { status: 409 }
       );
     }
 
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: `Sem permissão: ${authz.reason || "Ação não autorizada"}` }, { status: 403 });
 
     const { data: rpcRes, error: rpcErr } = await (s as any).rpc("request_liberar_acesso", {
       p_escola_id: escolaId,
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       p_canal: canal || "whatsapp",
     });
 
-    if (rpcErr) return NextResponse.json({ ok: false, error: rpcErr.message }, { status: 400 });
+    if (rpcErr) return NextResponse.json({ ok: false, error: `Erro no banco de dados (RPC): ${rpcErr.message}` }, { status: 400 });
 
     const rows = Array.isArray(rpcRes) ? rpcRes : [];
     const alunoIdsLiberados = rows.map((row: any) => row.aluno_id).filter(Boolean);

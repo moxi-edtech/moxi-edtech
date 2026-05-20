@@ -45,12 +45,11 @@ Critério DoD:
 ## Sprint 3 — Cutover Atômico
 
 ## Épico E5: Serviço de virada transacional
-- [x] T5.1 SQL/RPC: criar `cutover_ano_letivo_v3(...)` com etapas auditáveis. (Migration 20260510000014)
-- [x] T5.2 Etapa pré-check: calendário, períodos, pendências financeiras/acadêmicas, cobertura de sessão.
-- [x] T5.3 Etapa snapshot obrigatório: bloqueia cutover sem `historico_snapshot_locks` fechado.
-- [x] T5.4 Etapa ativação + rematrícula por sessão.
+- [ ] T5.1 SQL/RPC: criar `cutover_ano_letivo(...)` com etapas auditáveis.
+- [ ] T5.2 Etapa pré-check: calendário, períodos, pendências financeiras/acadêmicas, cobertura de sessão.
+- [ ] T5.3 Etapa snapshot obrigatório: integração com `historico_set_snapshot_state`.
+- [ ] T5.4 Etapa ativação + rematrícula por sessão.
 - [ ] T5.5 Etapa pós-validação: reconciliação de contagens por domínio.
-- [ ] T5.6 Testes de integração para sucesso, rollback e blockers reais.
 
 Critério DoD:
 - Cutover finaliza consistente ou aborta com rollback e relatório.
@@ -66,10 +65,9 @@ Critério DoD:
 ## Sprint 4 — Observabilidade e Gate
 
 ## Épico E7: Painel de saúde da virada
-- [x] T7.1 Helper SSOT de métricas por escola: ano ativo, sessão, nulos, distribuição por sessão.
-- [x] T7.2 API `GET /api/secretaria/operacoes-academicas/virada/health` com status `OK|WARN|BLOCKED`.
-- [x] T7.3 UI operacional em `admin/operacoes-academicas` com cartões de métricas e ações corretivas.
-- [ ] T7.4 Persistir evidência de cada resolução executada pelo painel.
+- [ ] T7.1 View/materialização de métricas por escola: ano ativo, sessão, nulos, distribuição por sessão.
+- [ ] T7.2 API `GET /admin/cutover/health` com status `OK|WARN|BLOCKED`.
+- [ ] T7.3 UI operacional com drill-down por escola.
 
 Critério DoD:
 - Time operacional consegue validar prontidão sem query manual.
@@ -100,22 +98,17 @@ Critério DoD:
   - Script de backfill E3 preparado para execução em produção.
   - Base SSOT de monitoramento em `operacoes-academicas`.
   - Health SSOT ajustado para contagens sem limites artificiais e com erros técnicos bloqueantes.
-  - Ações corretivas adicionadas ao painel: sessões, mensalidades órfãs, competência financeira, currículo, pautas e snapshots.
-  - RPC `remediate_cutover_gaps` aplicada para remediar gaps financeiros/temporais com dry-run.
-  - RPC `cutover_ano_letivo_v3` aplicada para virada transacional com pré-checks acadêmicos e preservação histórica.
-  - Worker de pautas anuais corrigido para usar período letivo real e evitar duplicados por `periodo_letivo_id` inválido/nulo.
 - Em aberto:
   - T1.3/T1.4 e T2.4: propagação padronizada de erro e testes de integração.
-  - T5.5/T5.6: reconciliação pós-cutover e testes de integração.
-  - E6: lock operacional contra escritas concorrentes durante a janela crítica.
-  - KLASSE ainda bloqueada por 30 pautas anuais sem período correto, 19 status finais de matrículas e 19 snapshots históricos pendentes.
+  - Execução de backfill em produção e validação final de dados órfãos.
+  - Fase 3: Cutover atômico e Lock operacional.
 
 ## Plano de execução KLASSE (piloto)
-- P1: rodar diagnóstico no painel `admin/operacoes-academicas`.
-- P2: executar ações corretivas disponíveis no painel até `BLOCKED = 0`.
-- P3: validar pautas anuais oficiais, status final de matrículas e snapshots históricos.
+- P1: rodar diagnóstico E3.1.
+- P2: executar backfill E3.2/E3.3.
+- P3: validar contagens por sessão/tabela.
 - P4: simular cutover dry-run (sem escrita final).
-- P5: executar `cutover_ano_letivo_v3` assistido com auditoria.
+- P5: executar cutover assistido com auditoria.
 
 ## Checklist de aceite final por escola
 1. Ano ativo único e coerente com operação viva.
