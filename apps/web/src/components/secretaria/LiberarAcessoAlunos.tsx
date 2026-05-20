@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useAlunosSemAcesso } from "@/hooks/useAlunosSemAcesso";
 // Nota do CTO: Vais precisar de criar este hook para ler os limites do plano do Supabase
 import { useLimitesPlano } from "@/hooks/useLimitesPlano"; 
-import { AlertCircle, Check, Loader2, Key, Users, ShieldAlert } from "lucide-react";
+import { AlertCircle, Check, Loader2, Key, Users, ShieldAlert, Copy, ClipboardCheck } from "lucide-react";
 
 type Props = {
   escolaId: string;
@@ -27,6 +27,7 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [liberados, setLiberados] = useState<any[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const toggleSelecionar = (id: string) => {
     setSelecionados((prev) =>
@@ -41,6 +42,25 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
   };
 
   const limparSelecao = () => setSelecionados([]);
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleCopyAll = () => {
+    const text = liberados
+      .filter(item => item.login && item.senha)
+      .map(item => `Aluno: ${item.nome}\nLogin: ${item.login}\nSenha: ${item.senha}\n---`)
+      .join('\n');
+    
+    if (text) {
+      navigator.clipboard.writeText(text);
+      setCopiedId('all');
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
 
   const handleLiberar = async () => {
     if (selecionados.length === 0) return;
@@ -131,20 +151,48 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
         {/* Bloco de Credenciais Geradas */}
         {liberados.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Key className="w-4 h-4 text-[#E3B23C]" />
-              <h3 className="font-semibold text-slate-900 text-sm">Credenciais Prontas para Envio</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-[#E3B23C]" />
+                <h3 className="font-semibold text-slate-900 text-sm">Credenciais Prontas</h3>
+              </div>
+              <button
+                onClick={handleCopyAll}
+                className="text-[10px] uppercase font-bold tracking-wider text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
+              >
+                {copiedId === 'all' ? (
+                  <><ClipboardCheck className="w-3 h-3 text-green-600" /> Copiado</>
+                ) : (
+                  <><Copy className="w-3 h-3" /> Copiar Tudo</>
+                )}
+              </button>
             </div>
             <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
               {liberados.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                  <div className="min-w-0">
+                <div key={item.id} className="group relative flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-[#E3B23C]/30 transition-all">
+                  <div className="min-w-0 pr-8">
                     <p className="text-sm font-semibold text-slate-900 truncate">{item.nome ?? "Aluno"}</p>
-                    {item.status === "bi_missing" && <p className="text-xs text-red-600 mt-1">Falha: BI não cadastrado.</p>}
+                    {item.status === "bi_missing" && <p className="text-xs text-red-600 mt-1 font-medium">Falha: BI não cadastrado.</p>}
+                    {item.status === "activation_failed" && <p className="text-xs text-amber-600 mt-1 font-medium">Acesso liberado, mas falha ao ativar credenciais.</p>}
                   </div>
-                  <div className="text-right font-geist text-sm">
-                    <p className="text-slate-900 font-medium">{item.login || "—"}</p>
-                    <p className="text-slate-500 text-xs">{item.senha || "Senha definida"}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right font-geist text-sm">
+                      <p className="text-slate-900 font-medium">{item.login || "—"}</p>
+                      <p className="text-slate-500 text-xs">{item.senha || "Senha definida"}</p>
+                    </div>
+                    {(item.login && item.senha) && (
+                      <button
+                        onClick={() => handleCopy(`Aluno: ${item.nome}\nLogin: ${item.login}\nSenha: ${item.senha}`, item.id)}
+                        className="p-2 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-[#E3B23C] transition-all"
+                        title="Copiar credenciais"
+                      >
+                        {copiedId === item.id ? (
+                          <ClipboardCheck className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

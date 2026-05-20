@@ -41,10 +41,24 @@ export function useHealthData() {
   const [infraMetrics, setInfraMetrics] = useState<InfraMetrics>({
     db_size_mb: 0,
     db_size_limit_mb: 500, // Free tier
-    api_calls_24h: 0,
-    api_calls_limit: 50000,
+    storage_mb: 0,
+    storage_limit_mb: 1024,
+    api_calls_24h: null,
+    api_calls_limit: null,
     bandwidth_mb: 0,
-    bandwidth_limit_mb: 1024
+    bandwidth_limit_mb: 5120,
+    top_tables: [],
+    cron_job_run_details_mb: 0,
+    cron_runs_total: 0,
+    cron_failed_total: 0,
+    cron_oldest_at: null,
+    cron_newest_at: null,
+    audit_logs_mb: 0,
+    audit_logs_total: 0,
+    audit_oldest_at: null,
+    audit_newest_at: null,
+    audit_by_portal: [],
+    recommendations: [],
   });
   
   const [alertas, setAlertas] = useState<Alerta[]>([]);
@@ -156,10 +170,15 @@ export function useHealthData() {
       });
       setEscolas(escolasComMetricas);
 
-      const { data: outboxData } = await supabase
-        .from('outbox_events')
-        .select('status, created_at')
-        .in('status', ['pending', 'processing', 'failed']);
+      const [outboxRes, infraRes] = await Promise.all([
+        supabase
+          .from('outbox_events')
+          .select('status, created_at')
+          .in('status', ['pending', 'processing', 'failed']),
+        fetch('/api/super-admin/infra/usage', { cache: 'no-store' }).then((res) => res.json().catch(() => null)),
+      ]);
+
+      const outboxData = outboxRes.data;
 
       const pending = outboxData?.filter(e => e.status === 'pending').length || 0;
       const processing = outboxData?.filter(e => e.status === 'processing').length || 0;
@@ -172,6 +191,10 @@ export function useHealthData() {
       const oldestPendingMinutes = oldestPending ? Math.floor((Date.now() - new Date(oldestPending.created_at).getTime()) / 60000) : 0;
 
       setOutboxMetrics({ pending, processing, retry, failed, oldest_pending_minutes: oldestPendingMinutes });
+
+      if (infraRes?.ok && infraRes.metrics) {
+        setInfraMetrics(infraRes.metrics as InfraMetrics);
+      }
 
       const alunosTotais = escolasComMetricas.reduce((sum, escola) => sum + escola.alunos_ativos, 0);
       const professoresTotais = escolasComMetricas.reduce((sum, escola) => sum + escola.professores, 0);
@@ -200,6 +223,15 @@ export function useHealthData() {
 
 
       const novosAlertas: Alerta[] = [];
+      if (infraRes?.ok && infraRes.metrics?.db_size_mb >= infraRes.metrics?.db_size_limit_mb * 0.9) {
+        novosAlertas.push({
+          id: 'infra-db-quota',
+          nivel: 'critico',
+          titulo: 'Base de dados próxima ou acima do limite',
+          descricao: `Uso atual ${Math.round(infraRes.metrics.db_size_mb)} MB de ${infraRes.metrics.db_size_limit_mb} MB.`,
+          criado_em: new Date().toISOString(),
+        });
+      }
       if (oldestPendingMinutes > 30) {
         novosAlertas.push({
           id: 'outbox-stuck',

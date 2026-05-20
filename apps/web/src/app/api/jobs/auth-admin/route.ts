@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "~types/supabase";
 import crypto from "node:crypto";
+import { generateFriendlyPassword } from "@/lib/auth/passwords";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -359,7 +360,7 @@ export async function POST(req: Request) {
           : `aluno_${(aluno as any).id}@klasse.ao`
         ).toLowerCase();
         let login = loginCandidate;
-        let senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
+        let senha = generateFriendlyPassword();
         let created = false;
 
         let userId = (aluno as any).usuario_auth_id as string | null;
@@ -442,7 +443,7 @@ export async function POST(req: Request) {
           return NextResponse.json({ ok: false, error: userError?.message || "User not found" }, { status: 404 });
         }
 
-        const senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
+        const senha = generateFriendlyPassword();
         const metadata = userData.user.user_metadata || {};
         const { error: updateError } = await admin.auth.admin.updateUserById(targetUserId, {
           password: senha,

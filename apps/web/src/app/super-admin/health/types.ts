@@ -48,10 +48,30 @@ export interface OutboxMetrics {
 export interface InfraMetrics {
   db_size_mb: number;
   db_size_limit_mb: number;
-  api_calls_24h: number;
-  api_calls_limit: number;
+  storage_mb: number;
+  storage_limit_mb: number;
+  api_calls_24h: number | null;
+  api_calls_limit: number | null;
   bandwidth_mb: number;
   bandwidth_limit_mb: number;
+  top_tables: Array<{
+    name: string;
+    size_mb: number;
+  }>;
+  cron_job_run_details_mb: number;
+  cron_runs_total: number;
+  cron_failed_total: number;
+  cron_oldest_at: string | null;
+  cron_newest_at: string | null;
+  audit_logs_mb: number;
+  audit_logs_total: number;
+  audit_oldest_at: string | null;
+  audit_newest_at: string | null;
+  audit_by_portal: Array<{
+    portal: string;
+    total: number;
+  }>;
+  recommendations: string[];
 }
 
 export interface Alerta {
