@@ -45,6 +45,7 @@ export type RawDossierMensalidade = {
   vencimento?: string | null;
   data_vencimento?: string | null;
   pago_em?: string | null;
+  recibo_id?: string | null;
 };
 
 export type RawDossierFinanceiro = {
@@ -100,6 +101,7 @@ export type DossierMensalidade = {
   saldo: number;
   vencimento: string | null;
   pago_em: string | null;
+  recibo_id: string | null;
   atrasada: boolean;
 };
 

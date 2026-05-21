@@ -18,7 +18,7 @@ export default async function ReciboPrintPage({
   params: Promise<{ docId: string }>;
 }) {
   const { docId } = await params;
-  const data = await getDocumentoEmitido(docId);
+  const data = await getDocumentoEmitido(docId, { incrementPrintCount: true });
 
   if ("error" in data) return <div className="p-8">{data.error}</div>;
 
@@ -91,10 +91,19 @@ export default async function ReciboPrintPage({
   const classeNome = getSnapshotString(snapshot.classe_nome, fallbackClasseNome ?? "—");
   const cursoNome = getSnapshotString(snapshot.curso_nome, fallbackCursoNome ?? "");
 
+  const printCount = Number(doc.print_count ?? 0);
+  const showSecondVia = printCount >= 2;
+  const currentDateLabel = new Date().toLocaleDateString("pt-PT");
+
   return (
     <div className={`min-h-screen ${styles.printRoot} text-slate-900`}>
       <PrintTrigger />
       <div className={`${styles.sheet} ${styles.receiptCompactSheet} shadow-lg`}>
+        {showSecondVia ? (
+          <p className="mb-2 text-right text-[10px] text-slate-400">
+            2ª Via — Emitido em {currentDateLabel}
+          </p>
+        ) : null}
         <ReciboPagamentoDuasVias
           escolaNome={escolaNome}
           alunoNome={alunoNome}

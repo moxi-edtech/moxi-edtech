@@ -32,7 +32,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
         <DossierTabs
           aluno={aluno}
           slotPerfil={<DossierPerfilSection aluno={aluno} />}
-          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} />}
+          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
         />
