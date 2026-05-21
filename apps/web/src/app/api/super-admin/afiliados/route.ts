@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 import { buildAffiliateCredentialsEmail, sendMail } from "@/lib/mailer";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ const ToggleAfiliadoSchema = z.object({
   id: z.string().uuid("ID inválido"),
   ativo: z.boolean(),
 });
+
+type AfiliadoAdminListItem = Database["public"]["Functions"]["list_afiliados_admin"]["Returns"][number];
+type AfiliadoAdminCreateItem = Database["public"]["Functions"]["create_afiliado_admin"]["Returns"][number];
+type AfiliadoAdminToggleItem = Database["public"]["Functions"]["toggle_afiliado_admin"]["Returns"][number];
 
 async function requireSuperAdmin() {
   const supabase = await supabaseRouteClient();
@@ -45,12 +50,12 @@ export async function GET() {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.response;
 
-  const { data, error } = await (auth.supabase as any).rpc("list_afiliados_admin");
+  const { data, error } = await auth.supabase.rpc("list_afiliados_admin");
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, items: data ?? [] });
+  return NextResponse.json({ ok: true, items: (data ?? []) as AfiliadoAdminListItem[] });
 }
 
 export async function POST(request: Request) {
@@ -63,7 +68,7 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
-  const { data, error } = await (auth.supabase as any).rpc("create_afiliado_admin", {
+  const { data, error } = await auth.supabase.rpc("create_afiliado_admin", {
     p_nome: payload.nome,
     p_codigo: payload.codigo,
     p_email: payload.email,
@@ -75,7 +80,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: error.message }, { status });
   }
 
-  const afiliado = Array.isArray(data) ? data[0] : data;
+  const afiliado = (Array.isArray(data) ? data[0] : null) as AfiliadoAdminCreateItem | null;
   const portalUrl = "https://app.klasse.ao/afiliados";
   const mail = buildAffiliateCredentialsEmail({
     nome: payload.nome,
@@ -107,7 +112,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Payload inválido" }, { status: 400 });
   }
 
-  const { data, error } = await (auth.supabase as any).rpc("toggle_afiliado_admin", {
+  const { data, error } = await auth.supabase.rpc("toggle_afiliado_admin", {
     p_id: parsed.data.id,
     p_ativo: parsed.data.ativo,
   });
@@ -116,5 +121,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, afiliado: Array.isArray(data) ? data[0] : data });
+  return NextResponse.json({
+    ok: true,
+    afiliado: (Array.isArray(data) ? data[0] : null) as AfiliadoAdminToggleItem | null,
+  });
 }

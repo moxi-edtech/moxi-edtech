@@ -20,15 +20,22 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { toast } from "sonner";
+import type { Database } from "~types/supabase";
 
-interface MarketingAsset {
-  id: string;
-  tipo: 'image' | 'video' | 'script' | 'document';
-  titulo: string;
-  descricao: string;
-  url: string | null;
-  conteudo: string | null;
+type MarketingAssetRow = Database["public"]["Tables"]["marketing_assets"]["Row"];
+type MarketingAssetInsert = Database["public"]["Tables"]["marketing_assets"]["Insert"];
+type MarketingAsset = Omit<MarketingAssetRow, "tipo" | "is_active"> & {
+  tipo: "image" | "video" | "script" | "document";
   is_active: boolean;
+};
+type MarketingAssetType = MarketingAsset["tipo"];
+
+function isMarketingAssetType(value: string): value is MarketingAssetType {
+  return ["image", "video", "script", "document"].includes(value);
+}
+
+function isMarketingAsset(row: MarketingAssetRow): row is MarketingAsset {
+  return isMarketingAssetType(row.tipo) && typeof row.is_active === "boolean";
 }
 
 export default function MarketingAssetsPage() {
@@ -36,7 +43,7 @@ export default function MarketingAssetsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [formData, setFormData] = useState<Partial<MarketingAsset>>({
+  const [formData, setFormData] = useState<MarketingAssetInsert>({
     tipo: 'image',
     titulo: '',
     descricao: '',
@@ -59,7 +66,7 @@ export default function MarketingAssetsPage() {
       .order('created_at', { ascending: false });
     
     if (error) toast.error("Erro ao carregar materiais");
-    else setAssets(data || []);
+    else setAssets((data || []).filter(isMarketingAsset));
     setLoading(false);
   };
 
@@ -209,7 +216,12 @@ export default function MarketingAssetsPage() {
                       <select 
                         className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
                         value={formData.tipo}
-                        onChange={e => setFormData({ ...formData, tipo: e.target.value as any })}
+                        onChange={e => {
+                          const nextType = e.target.value;
+                          if (isMarketingAssetType(nextType)) {
+                            setFormData({ ...formData, tipo: nextType });
+                          }
+                        }}
                       >
                         <option value="image">Imagem / Banner</option>
                         <option value="script">Script (Texto)</option>
@@ -219,10 +231,10 @@ export default function MarketingAssetsPage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase text-slate-400">Título</label>
-                      <input 
+                        <input 
                         required
                         className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
-                        value={formData.titulo}
+                        value={formData.titulo ?? ''}
                         onChange={e => setFormData({ ...formData, titulo: e.target.value })}
                       />
                     </div>
@@ -232,7 +244,7 @@ export default function MarketingAssetsPage() {
                     <label className="text-[10px] font-bold uppercase text-slate-400">Descrição Curta</label>
                     <input 
                       className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
-                      value={formData.descricao}
+                      value={formData.descricao ?? ''}
                       onChange={e => setFormData({ ...formData, descricao: e.target.value })}
                     />
                   </div>
@@ -243,7 +255,7 @@ export default function MarketingAssetsPage() {
                       <textarea 
                         rows={4}
                         className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green resize-none"
-                        value={formData.conteudo}
+                        value={formData.conteudo ?? ''}
                         onChange={e => setFormData({ ...formData, conteudo: e.target.value })}
                       />
                     </div>
@@ -251,10 +263,10 @@ export default function MarketingAssetsPage() {
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase text-slate-400">Ficheiro ou Link</label>
                       <div className="flex gap-2">
-                        <input 
+                          <input 
                           className="flex-1 p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green"
                           placeholder="URL externa ou use o botão de upload"
-                          value={formData.url || ''}
+                          value={formData.url ?? ''}
                           onChange={e => setFormData({ ...formData, url: e.target.value })}
                         />
                         <div className="relative">

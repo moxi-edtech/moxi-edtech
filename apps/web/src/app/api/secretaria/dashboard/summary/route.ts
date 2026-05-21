@@ -62,7 +62,7 @@ export async function GET() {
     const endOfDay = new Date(startOfDay);
     endOfDay.setDate(endOfDay.getDate() + 1);
 
-    const [countsRes, recentesRes, escolaRes, anoLetivoRes, matriculasHojeRes] = await Promise.all([
+    const [countsRes, recentesRes, escolaRes, anoLetivoRes, matriculasHojeRes, slugRes] = await Promise.all([
       supabase
         .from("vw_secretaria_dashboard_counts")
         .select("alunos_ativos, matriculas_total, turmas_total")
@@ -92,6 +92,11 @@ export async function GET() {
         .eq("escola_id", escolaId)
         .gte("created_at", startOfDay.toISOString())
         .lt("created_at", endOfDay.toISOString()),
+      supabase
+        .from("escolas")
+        .select("slug")
+        .eq("id", escolaId)
+        .maybeSingle(),
     ]);
 
     if (countsRes.error) {
@@ -108,6 +113,9 @@ export async function GET() {
     }
     if (matriculasHojeRes.error) {
       return NextResponse.json({ ok: false, error: matriculasHojeRes.error.message }, { status: 500 });
+    }
+    if (slugRes.error) {
+      return NextResponse.json({ ok: false, error: slugRes.error.message }, { status: 500 });
     }
 
     const resumoStatus = Array.isArray(recentesRes.data?.resumo_status)
@@ -160,6 +168,7 @@ export async function GET() {
       },
       escola: {
         nome: escolaRes.data?.nome ?? null,
+        slug: slugRes.data?.slug ?? null,
         plano: escolaRes.data?.plano_atual ? parsePlanTier(escolaRes.data.plano_atual) : null,
         status: escolaRes.data?.status ?? null,
       },

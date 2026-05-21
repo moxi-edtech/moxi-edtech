@@ -105,6 +105,42 @@ export type Database = {
           },
         ]
       }
+      afiliados: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string | null
+          id: string
+          materiais_json: Json
+          nome: string | null
+          pin_hash: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          materiais_json?: Json
+          nome?: string | null
+          pin_hash: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          materiais_json?: Json
+          nome?: string | null
+          pin_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       aggregates_financeiro: {
         Row: {
           aluno_id: string | null
@@ -11476,6 +11512,90 @@ export type Database = {
           },
         ]
       }
+      marketing_assets: {
+        Row: {
+          conteudo: string | null
+          created_at: string | null
+          descricao: string | null
+          id: string
+          is_active: boolean | null
+          tipo: string
+          titulo: string
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          is_active?: boolean | null
+          tipo: string
+          titulo: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          is_active?: boolean | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
+      marketing_leads: {
+        Row: {
+          afiliado_codigo: string | null
+          created_at: string | null
+          email: string
+          escola: string
+          id: string
+          metadata_json: Json | null
+          nome: string
+          origem: string | null
+          respostas_json: Json | null
+          score: number
+          status: string | null
+          updated_at: string | null
+          whatsapp: string
+        }
+        Insert: {
+          afiliado_codigo?: string | null
+          created_at?: string | null
+          email: string
+          escola: string
+          id?: string
+          metadata_json?: Json | null
+          nome: string
+          origem?: string | null
+          respostas_json?: Json | null
+          score: number
+          status?: string | null
+          updated_at?: string | null
+          whatsapp: string
+        }
+        Update: {
+          afiliado_codigo?: string | null
+          created_at?: string | null
+          email?: string
+          escola?: string
+          id?: string
+          metadata_json?: Json | null
+          nome?: string
+          origem?: string | null
+          respostas_json?: Json | null
+          score?: number
+          status?: string | null
+          updated_at?: string | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       matricula_counters: {
         Row: {
           escola_id: string
@@ -20470,6 +20590,22 @@ export type Database = {
         }
         Returns: number
       }
+      create_afiliado_admin: {
+        Args: {
+          p_codigo: string
+          p_email: string
+          p_nome: string
+          p_pin: string
+        }
+        Returns: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          nome: string
+        }[]
+      }
       create_audit_event: {
         Args: {
           p_action: string
@@ -21501,6 +21637,11 @@ export type Database = {
             }
             Returns: Json
           }
+      get_afiliado_portal: {
+        Args: { p_codigo: string; p_pin: string }
+        Returns: Json
+      }
+      get_afiliado_stats: { Args: { p_codigo: string }; Returns: Json }
       get_aluno_dossier: {
         Args: { p_aluno_id: string; p_escola_id: string }
         Returns: Json
@@ -21829,6 +21970,17 @@ export type Database = {
           codigo_ativacao: string
           enfileirado: boolean
           request_id: string
+        }[]
+      }
+      list_afiliados_admin: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          nome: string
         }[]
       }
       list_centro_formacao_team: {
@@ -22371,6 +22523,17 @@ export type Database = {
           role: string
           telefone: string
           user_id: string
+        }[]
+      }
+      toggle_afiliado_admin: {
+        Args: { p_ativo: boolean; p_id: string }
+        Returns: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          nome: string
         }[]
       }
       transferir_aluno_turma: {
