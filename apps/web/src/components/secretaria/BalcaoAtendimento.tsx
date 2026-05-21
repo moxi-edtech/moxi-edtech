@@ -306,6 +306,11 @@ const total    = useMemo(() => itens.reduce((s, i) => s + Number(i.preco || 0), 
 const valorNum = useMemo(() => { const n = Number(valorRecebido); return isFinite(n) ? n : 0; }, [valorRecebido]);
 const troco    = useMemo(() => Math.max(0, valorNum - total), [valorNum, total]);
 
+useEffect(() => {
+if (metodo !== "cash") return;
+setValorRecebido(total > 0 ? String(total) : "");
+}, [metodo, total]);
+
 const prontoParaPagar = itens.length > 0 &&
 (total === 0 || metodo !== "cash" || (valorNum >= total && valorNum > 0));
 

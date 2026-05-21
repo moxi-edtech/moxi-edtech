@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { assertEscolaAccessAndPermissions } from "@/lib/api/assertEscolaAccessAndPermissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
 
@@ -57,19 +57,17 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    if (!userEscolaId) {
-      return NextResponse.json({ ok: false, error: "Acesso negado a esta escola." }, { status: 403 });
-    }
-
-    const { data: hasRole, error: rolesError } = await supabase.rpc('user_has_role_in_school', {
-      p_escola_id: userEscolaId,
-      p_roles: ['admin_escola', 'secretaria'],
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: ["admin", "staff_admin", "admin_escola", "secretaria"],
+      route: "/api/escolas/[id]/onboarding/core/session",
     });
-
-    if (rolesError || !hasRole) {
-      return NextResponse.json({ ok: false, error: "Você não tem permissão para executar esta ação." }, { status: 403 });
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
+    const userEscolaId = access.escolaId;
 
     const body = await req.json();
     const parseResult = postBodySchema.safeParse(body);
@@ -205,10 +203,17 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
-    if (!userEscolaId) {
-      return NextResponse.json({ ok: false, error: "Acesso negado a esta escola." }, { status: 403 });
+    const access = await assertEscolaAccessAndPermissions({
+      client: supabase,
+      userId: user.id,
+      requestedEscolaId,
+      allowedPapels: ["admin", "staff_admin", "admin_escola", "secretaria"],
+      route: "/api/escolas/[id]/onboarding/core/session",
+    });
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
     }
+    const userEscolaId = access.escolaId;
 
     let anosQuery = supabase
       .from('anos_letivos')

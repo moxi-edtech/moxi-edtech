@@ -10,6 +10,16 @@ import {
 
 test("expandAllowedRolesForProduct expande herança composta de financeiro e secretaria no k12", () => {
   assert.deepEqual(
+    expandAllowedRolesForProduct(["admin_escola"]).sort(),
+    ["admin", "admin_escola", "staff_admin"].sort()
+  );
+
+  assert.deepEqual(
+    expandAllowedRolesForProduct(["staff_admin"]).sort(),
+    ["admin", "admin_escola", "staff_admin"].sort()
+  );
+
+  assert.deepEqual(
     expandAllowedRolesForProduct(["financeiro"]).sort(),
     ["admin_financeiro", "financeiro", "secretaria_financeiro"].sort()
   );
@@ -21,6 +31,10 @@ test("expandAllowedRolesForProduct expande herança composta de financeiro e sec
 });
 
 test("roleMatchesAllowedRoles aplica herança composta do k12 sem elevar admin_financeiro a secretaria", () => {
+  assert.equal(roleMatchesAllowedRoles("admin", ["admin_escola"], "k12"), true);
+  assert.equal(roleMatchesAllowedRoles("staff_admin", ["admin_escola"], "k12"), true);
+  assert.equal(roleMatchesAllowedRoles("admin_escola", ["admin"], "k12"), true);
+  assert.equal(roleMatchesAllowedRoles("admin_escola", ["staff_admin"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("secretaria_financeiro", ["financeiro"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("secretaria_financeiro", ["secretaria"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("admin_financeiro", ["financeiro"], "k12"), true);

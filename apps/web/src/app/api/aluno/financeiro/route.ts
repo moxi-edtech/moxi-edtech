@@ -64,16 +64,15 @@ export async function GET(request: Request) {
     if (mensalidadeIds.length) {
       const { data: recibos } = await supabase
         .from("documentos_emitidos")
-        .select("id, origem_id, created_at")
+        .select("id, mensalidade_id, created_at")
         .eq("tipo", "recibo")
-        .eq("origem_tipo", "financeiro_recibos_emitir")
-        .in("origem_id", mensalidadeIds)
+        .in("mensalidade_id", mensalidadeIds)
         .order("created_at", { ascending: false });
 
       for (const recibo of recibos ?? []) {
-        const origemId = String(recibo.origem_id ?? "");
-        if (origemId && !reciboByMensalidadeId.has(origemId)) {
-          reciboByMensalidadeId.set(origemId, recibo.id);
+        const mensalidadeId = String(recibo.mensalidade_id ?? "");
+        if (mensalidadeId && !reciboByMensalidadeId.has(mensalidadeId)) {
+          reciboByMensalidadeId.set(mensalidadeId, recibo.id);
         }
       }
     }

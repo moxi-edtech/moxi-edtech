@@ -3359,8 +3359,10 @@ export type Database = {
           escola_id: string
           hash_validacao: string
           id: string
+          last_printed_at: string | null
           mensalidade_id: string | null
           numero_sequencial: number | null
+          print_count: number
           public_id: string
           revoked_at: string | null
           revoked_by: string | null
@@ -3374,8 +3376,10 @@ export type Database = {
           escola_id: string
           hash_validacao: string
           id?: string
+          last_printed_at?: string | null
           mensalidade_id?: string | null
           numero_sequencial?: number | null
+          print_count?: number
           public_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
@@ -3389,8 +3393,10 @@ export type Database = {
           escola_id?: string
           hash_validacao?: string
           id?: string
+          last_printed_at?: string | null
           mensalidade_id?: string | null
           numero_sequencial?: number | null
+          print_count?: number
           public_id?: string
           revoked_at?: string | null
           revoked_by?: string | null
@@ -21203,6 +21209,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      financeiro_validar_ordem_pagamento_mensalidade: {
+        Args: {
+          p_aluno_id: string
+          p_escola_id: string
+          p_mensalidade_id: string
+        }
+        Returns: Json
+      }
       fiscal_anular_documento: {
         Args: { p_documento_id: string; p_metadata?: Json; p_motivo: string }
         Returns: Json
@@ -21920,6 +21934,13 @@ export type Database = {
           matriculas_pendentes: number
           ok: boolean
           turmas_created: number
+        }[]
+      }
+      increment_documento_print: {
+        Args: { p_actor_email?: string; p_actor_id?: string; p_doc_id: string }
+        Returns: {
+          last_printed_at: string
+          print_count: number
         }[]
       }
       increment_pautas_lote_job: {

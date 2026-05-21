@@ -1,6 +1,7 @@
 import ControlPanelSection from "@/components/super-admin/ControlPanelSection";
 import CrmSection from "@/components/super-admin/CrmSection";
 import ManagementSection from "@/components/super-admin/ManagementSection";
+import MarketingSection from "@/components/super-admin/MarketingSection";
 import { getDashboardData, getChartsData, type ChartsData } from "@/lib/charts";
 import { getGlobalHealthSummary, getGlobalActivities } from "@/lib/super-admin/escola-saude";
 import { supabaseServer } from "@/lib/supabaseServer";
@@ -68,6 +69,7 @@ export default async function SuperAdminDashboard() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 pb-16">
       <ControlPanelSection health={health} charts={charts} activities={activities} />
+      <MarketingSection />
       <ManagementSection dashboard={dashboard} charts={charts} schools={schools} />
       <CrmSection />
     </div>
