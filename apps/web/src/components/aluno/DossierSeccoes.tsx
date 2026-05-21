@@ -1,11 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import { CheckCircle2, FileText, TrendingDown, Wallet } from "lucide-react";
+import { CheckCircle2, FileText, TrendingDown, Wallet, Printer } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
 import type { AlunoNormalizado, DossierMensalidade } from "@/lib/aluno/types";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHistoricoTimelineSection";
 import { QuickEditField } from "@/components/aluno/QuickEditField";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   const p = aluno.perfil;
@@ -105,7 +108,15 @@ export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   );
 }
 
-function MensalidadeRow({ m }: { m: DossierMensalidade }) {
+function MensalidadeRow({
+  m,
+  canReprint,
+  onMissingRecibo,
+}: {
+  m: DossierMensalidade;
+  canReprint: boolean;
+  onMissingRecibo: () => void;
+}) {
   const vencimentoLabel = m.vencimento ? formatDate(m.vencimento) : null;
   const vencimentoDate = m.vencimento ? new Date(m.vencimento) : null;
   const today = new Date();
@@ -120,7 +131,7 @@ function MensalidadeRow({ m }: { m: DossierMensalidade }) {
     : null;
 
   return (
-      <div className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] md:items-center">
+      <div className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] md:items-center">
       <div>
         <p className="font-semibold text-slate-900 capitalize">
           {monthName(m.mes)} {m.ano}
@@ -143,11 +154,37 @@ function MensalidadeRow({ m }: { m: DossierMensalidade }) {
           </p>
         )}
       </div>
+      <div className="md:justify-self-end">
+        {m.status === "pago" ? (
+          <button
+            type="button"
+            disabled={!canReprint}
+            title={
+              !canReprint
+                ? "Permissão restrita: secretaria/financeiro"
+                : m.recibo_id
+                  ? "Reimprimir recibo"
+                  : "Recibo indisponível"
+            }
+            onClick={() => {
+              if (!canReprint) return;
+              if (!m.recibo_id) return onMissingRecibo();
+              window.open(`/secretaria/documentos/${m.recibo_id}/recibo/print`, "_blank", "noopener,noreferrer");
+            }}
+            className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-klasse-gold" />
+            Reimprimir
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-export function DossierFinanceiroSection({ aluno }: { aluno: AlunoNormalizado }) {
+export function DossierFinanceiroSection({ aluno, role }: { aluno: AlunoNormalizado; role: DossierRole }) {
+  const { error } = useToast();
+  const canReprint = role === "secretaria";
   const f = aluno.financeiro;
   const atrasado = f.situacao === "inadimplente";
   return (
@@ -190,13 +227,21 @@ export function DossierFinanceiroSection({ aluno }: { aluno: AlunoNormalizado })
         </p>
         {f.mensalidades.length ? (
           <div className="space-y-2">
-            <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3">
+            <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3">
               <span>Mês</span>
               <span className="text-right">Valor</span>
               <span className="text-right">Estado</span>
+              <span className="text-right">Ação</span>
             </div>
             {f.mensalidades.map((m) => (
-              <MensalidadeRow key={m.id} m={m} />
+              <MensalidadeRow
+                key={m.id}
+                m={m}
+                canReprint={canReprint}
+                onMissingRecibo={() =>
+                  error("Recibo indisponível", "Não existe documento emitido vinculado para esta mensalidade.")
+                }
+              />
             ))}
           </div>
         ) : (
