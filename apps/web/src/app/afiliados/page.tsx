@@ -6,6 +6,15 @@ import { ArrowRight, KeyRound, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import type { Database, Json } from "~types/supabase";
+
+type AfiliadoPortalResponse = Extract<Database["public"]["Functions"]["get_afiliado_portal"]["Returns"], Record<string, Json | undefined>> & {
+  ok?: boolean;
+};
+
+function isAfiliadoPortalResponse(value: Json): value is AfiliadoPortalResponse {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && "ok" in value;
+}
 
 export default function AfiliadosEntryPage() {
   const [code, setCode] = useState("");
@@ -26,13 +35,13 @@ export default function AfiliadosEntryPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await (supabase as any).rpc("get_afiliado_portal", {
+      const { data, error } = await supabase.rpc("get_afiliado_portal", {
         p_codigo: normalizedCode,
         p_pin: normalizedPin,
       });
 
       if (error) throw error;
-      if (!(data as { ok?: boolean } | null)?.ok) {
+      if (!data || !isAfiliadoPortalResponse(data) || !data.ok) {
         throw new Error("invalid_credentials");
       }
 

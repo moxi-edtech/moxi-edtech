@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { Database, Json } from "~types/supabase";
 
 interface AfiliadoStats {
   total_diagnosticos: number;
@@ -42,13 +44,46 @@ interface AfiliadoStats {
   }[];
 }
 
-interface MarketingAsset {
-  id: string;
-  tipo: 'image' | 'video' | 'script' | 'document';
-  titulo: string;
-  descricao: string;
-  url: string | null;
-  conteudo: string | null;
+type MarketingAssetRow = Database["public"]["Tables"]["marketing_assets"]["Row"];
+type MarketingAsset = Omit<MarketingAssetRow, "tipo"> & {
+  tipo: "image" | "video" | "script" | "document";
+};
+
+type AfiliadoPortalResponse = {
+  ok: boolean;
+  codigo: string;
+  nome: string;
+  materiais: Json;
+  stats: AfiliadoStats;
+};
+
+function isMarketingAsset(value: MarketingAssetRow): value is MarketingAsset {
+  return ["image", "video", "script", "document"].includes(value.tipo);
+}
+
+function isAfiliadoStats(value: unknown): value is AfiliadoStats {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+
+  const candidate = value as Record<string, Json | undefined>;
+  return (
+    typeof candidate.total_diagnosticos === "number" &&
+    typeof candidate.novos === "number" &&
+    typeof candidate.em_contacto === "number" &&
+    typeof candidate.convertidos === "number" &&
+    Array.isArray(candidate.leads)
+  );
+}
+
+function isAfiliadoPortalResponse(value: unknown): value is AfiliadoPortalResponse {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+
+  const candidate = value as Record<string, Json | undefined>;
+  return (
+    typeof candidate.ok === "boolean" &&
+    typeof candidate.codigo === "string" &&
+    typeof candidate.nome === "string" &&
+    isAfiliadoStats(candidate.stats ?? null)
+  );
 }
 
 const STATUS_CONFIG = {
@@ -90,13 +125,13 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           supabase.from('marketing_assets').select('*').eq('is_active', true)
         ]);
 
-        if (portalRes.error || !portalRes.data?.ok) {
+        if (portalRes.error || !portalRes.data || !isAfiliadoPortalResponse(portalRes.data) || !portalRes.data.ok) {
           setAuthError(true);
           return;
         }
 
-        setStats(portalRes.data.stats as AfiliadoStats);
-        setAssets(assetsRes.data as MarketingAsset[]);
+        setStats(portalRes.data.stats);
+        setAssets((assetsRes.data || []).filter(isMarketingAsset));
       } catch (err) {
         console.error(err);
         setAuthError(true);

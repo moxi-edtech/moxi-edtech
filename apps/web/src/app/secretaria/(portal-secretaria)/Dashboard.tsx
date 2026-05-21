@@ -14,9 +14,13 @@ import {
   UserCheck,
   KeyRound,
   Printer,
+  Share2,
+  Copy,
+  MessageCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { createClient } from "@/lib/supabaseClient";
@@ -226,6 +230,25 @@ export function Dashboard({
     }, [counts?.pendencias, escolaParam, recentes?.avisos_recentes?.length, recentes?.pendencias, totalPendentesFicha]);
 
 
+  const publicLandingUrl = useMemo(() => {
+    if (!escolaSlug) return null;
+    return `https://klasse.ao/admissoes/${escolaSlug}`;
+  }, [escolaSlug]);
+
+  const copyPublicUrl = () => {
+    if (publicLandingUrl) {
+      navigator.clipboard.writeText(publicLandingUrl);
+      toast.success("Link público copiado!");
+    }
+  };
+
+  const sharePublicUrl = () => {
+    if (publicLandingUrl) {
+      const msg = encodeURIComponent(`Olá! Faça a sua inscrição online no Colégio através deste link: ${publicLandingUrl}`);
+      window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
       <div className="flex-1 flex">
@@ -264,7 +287,45 @@ export function Dashboard({
 
             <RadarOperacional alerts={alerts} role="secretaria" />
             
-            {escolaId && <ResumoCaixaSecretaria escolaId={escolaId} />}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {escolaId && <ResumoCaixaSecretaria escolaId={escolaId} />}
+              
+              {publicLandingUrl && (
+                <div className="bg-white rounded-2xl border-2 border-dashed border-emerald-100 p-5 shadow-sm flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-emerald-600">
+                      <Share2 size={16} className="shrink-0" />
+                      <SecaoLabel className="!text-emerald-700 !mt-0">Link Público da Escola</SecaoLabel>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                      Compartilhe este link com os pais para receber candidaturas e matrículas online automaticamente.
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <code className="flex-1 text-[11px] font-bold text-emerald-800 truncate px-2">
+                      {publicLandingUrl.replace('https://', '')}
+                    </code>
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={copyPublicUrl}
+                        title="Copiar Link"
+                        className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-emerald-600 transition-colors border border-transparent hover:border-slate-200"
+                      >
+                        <Copy size={14} />
+                      </button>
+                      <button 
+                        onClick={sharePublicUrl}
+                        title="Partilhar no WhatsApp"
+                        className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors border border-transparent hover:border-emerald-200"
+                      >
+                        <MessageCircle size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Total Alunos" value={counts?.alunos} icon={<Users size={16} />} tone="default" />
