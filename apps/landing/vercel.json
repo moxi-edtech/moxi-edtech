@@ -11,5 +11,19 @@
       "destination": "https://klasse.ao/:path*",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/admissoes/:path*",
+      "destination": "https://app.klasse.ao/admissoes/:path*"
+    },
+    {
+      "source": "/ativar-acesso/:path*",
+      "destination": "https://app.klasse.ao/ativar-acesso/:path*"
+    },
+    {
+      "source": "/afiliados/:path*",
+      "destination": "https://app.klasse.ao/afiliados/:path*"
+    }
   ]
 }
