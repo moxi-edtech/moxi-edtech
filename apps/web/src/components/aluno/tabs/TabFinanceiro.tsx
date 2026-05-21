@@ -2,12 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Info } from "lucide-react";
+import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Info, Printer } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
 
-type Item = { id: string; competencia: string; valor: number; status: "pago" | "pendente" | "atrasado" | "em_verificacao" };
+type Item = {
+  id: string;
+  competencia: string;
+  valor: number;
+  status: "pago" | "pendente" | "atrasado" | "em_verificacao";
+  recibo_id?: string | null;
+};
 type Movimento = {
   id: string;
   tipo: "debito" | "credito";
@@ -120,6 +126,11 @@ export function TabFinanceiro() {
     setRefreshing(false);
   };
 
+  const handleReprintRecibo = (reciboId: string | null | undefined) => {
+    if (!reciboId) return;
+    window.open(`/secretaria/documentos/${reciboId}/recibo/print`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -222,9 +233,21 @@ export function TabFinanceiro() {
                     <p className="text-xs text-slate-500">{money.format(item.valor)}</p>
                   </div>
                   {item.status === "pago" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green-50 px-3 py-1 text-xs font-medium text-klasse-green-700">
-                      <Check className="h-4 w-4" /> Pago
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green-50 px-3 py-1 text-xs font-medium text-klasse-green-700">
+                        <Check className="h-4 w-4" /> Pago
+                      </span>
+                      <button
+                        type="button"
+                        title={item.recibo_id ? "Reimprimir recibo" : "Recibo indisponível"}
+                        disabled={!item.recibo_id}
+                        onClick={() => handleReprintRecibo(item.recibo_id)}
+                        className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-klasse-gold disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-slate-600"
+                      >
+                        <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-klasse-gold" />
+                        Reimprimir
+                      </button>
+                    </div>
                   ) : item.status === "em_verificacao" ? (
                     <span className="rounded-full bg-klasse-gold-100 px-3 py-1 text-xs font-medium text-klasse-gold-700">
                       Em Verificação

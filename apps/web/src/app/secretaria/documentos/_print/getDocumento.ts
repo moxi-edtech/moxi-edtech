@@ -25,6 +25,8 @@ export type DocumentoSnapshot = {
 };
 
 export type DocumentoEmitido = {
+  print_count?: number | null;
+  last_printed_at?: string | null;
   id: string;
   public_id: string;
   escola_id: string;
@@ -35,7 +37,7 @@ export type DocumentoEmitido = {
   dados_snapshot: DocumentoSnapshot;
 };
 
-export async function getDocumentoEmitido(docId: string) {
+export async function getDocumentoEmitido(docId: string, opts?: { incrementPrintCount?: boolean }) {
   const supabase = await supabaseServerTyped();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
@@ -46,7 +48,7 @@ export async function getDocumentoEmitido(docId: string) {
 
   const { data: doc, error } = await supabase
     .from("documentos_emitidos")
-    .select("id, public_id, escola_id, aluno_id, tipo, created_at, dados_snapshot, numero_sequencial, hash_validacao")
+    .select("id, public_id, escola_id, aluno_id, tipo, created_at, dados_snapshot, numero_sequencial, hash_validacao, print_count, last_printed_at")
     .eq("id", docId)
     .single();
 
@@ -57,6 +59,24 @@ export async function getDocumentoEmitido(docId: string) {
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, doc.escola_id as string);
   if (!escolaId || escolaId !== doc.escola_id) {
     return { error: "Sem permissão" } as const;
+  }
+
+
+  let printMeta: { print_count: number; last_printed_at: string | null } | null = null;
+  if (opts?.incrementPrintCount && doc.tipo === "recibo") {
+    const { data: printData } = await (supabase as any).rpc("increment_documento_print", {
+      p_doc_id: doc.id,
+      p_actor_id: user.id,
+      p_actor_email: user.email ?? null,
+    });
+
+    const printRow = Array.isArray(printData) ? printData[0] : printData;
+    if (printRow && typeof printRow.print_count === "number") {
+      printMeta = {
+        print_count: printRow.print_count,
+        last_printed_at: typeof printRow.last_printed_at === "string" ? printRow.last_printed_at : null,
+      };
+    }
   }
 
   const rawSnapshot = doc.dados_snapshot;
@@ -117,6 +137,8 @@ export async function getDocumentoEmitido(docId: string) {
       tipo: doc.tipo,
       created_at: doc.created_at,
       hash_validacao: doc.hash_validacao ?? null,
+      print_count: printMeta?.print_count ?? doc.print_count ?? 0,
+      last_printed_at: printMeta?.last_printed_at ?? doc.last_printed_at ?? null,
       dados_snapshot: {
         ...snapshot,
         hash_validacao: snapshot.hash_validacao ?? doc.hash_validacao ?? null,
