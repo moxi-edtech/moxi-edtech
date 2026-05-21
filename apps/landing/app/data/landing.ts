@@ -268,6 +268,7 @@ export const pricingPlans: PricingPlan[] = [
 ]
 
 export const footerLinks = [
+  { href: '/diagnostico', label: 'Diagnóstico de Gestão' },
   { href: '/sistema-de-gestao-escolar', label: 'Sistema de Gestão Escolar' },
   { href: '#', label: 'Termos de Serviço' },
   { href: '#', label: 'Política de Privacidade' },

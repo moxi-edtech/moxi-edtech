@@ -399,6 +399,55 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
   `
   return { subject, html, text }
 }
+
+export function buildAffiliateCredentialsEmail(args: {
+  nome?: string | null
+  email: string
+  codigo: string
+  pin: string
+  portalUrl?: string | null
+}) {
+  const { nome, email, codigo, pin, portalUrl } = args
+  const brand = getBranding()
+  const safePortalUrl = sanitizeEmailUrl(portalUrl ?? null, "https://app.klasse.ao/afiliados")
+  const subject = `${brand.name} • Acesso ao Portal de Afiliados`
+  const text = [
+    nome ? `Olá, ${nome}.` : "Olá,",
+    `Seu acesso ao Portal de Afiliados do ${brand.name} foi criado.`,
+    safePortalUrl ? `Portal: ${safePortalUrl}` : "",
+    `Código: ${codigo}`,
+    `PIN: ${pin}`,
+    "Guarde estas credenciais em local seguro.",
+  ].filter(Boolean).join("\n")
+
+  const html = `
+  <div style="background-color:#f8fafc; margin:0; padding:24px 8px; font-family:Helvetica, Arial, sans-serif;">
+    <div style="border:1px solid #eaeaea; border-radius:16px; margin:40px auto; padding:20px; max-width:465px; background-color:#ffffff; box-shadow:0 1px 4px rgba(15,23,42,0.08); line-height:1.6; color:#0f172a;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; justify-content:center;">
+        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:32px;" />` : ""}
+        <span style="font-size:20px; font-weight:700;">${escapeHtml(brand.name)}</span>
+      </div>
+      <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Portal de Afiliados</h2>
+      ${nome ? `<p style="margin:0 0 8px 0;">Olá, <strong>${escapeHtml(nome)}</strong>.</p>` : '<p style="margin:0 0 8px 0;">Olá,</p>'}
+      <p style="margin:0 0 8px 0; color:#475569;">Seu acesso ao Portal de Afiliados foi criado.</p>
+      ${safePortalUrl ? `<p style="margin:0 0 8px 0; color:#475569;">Portal: <a href="${safePortalUrl}">${escapeHtml(safePortalUrl)}</a></p>` : ""}
+      <div style="margin:16px 0; border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:#f8fafc;">
+        <p style="margin:0 0 8px 0; color:#334155;">Código: <strong>${escapeHtml(codigo)}</strong></p>
+        <p style="margin:0; color:#334155;">PIN: <strong>${escapeHtml(pin)}</strong></p>
+      </div>
+      ${safePortalUrl ? `<div style="text-align:center; margin:24px 0;"><a href="${safePortalUrl}" style="display:inline-block; background:#E3B23C; color:#020617; text-decoration:none; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px;">Entrar no Portal</a></div>` : ""}
+      <p style="margin:0 0 8px 0; font-size:13px; color:#334155;">Guarde estas credenciais em local seguro.</p>
+      <hr style="border:0; border-top:1px solid #e2e8f0; margin:24px 0;" />
+      <p style="margin:0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(email)}.</p>
+      ${brand.supportEmail ? `<p style="margin:8px 0 0 0; font-size:12px; color:#64748b;">Suporte: <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a></p>` : ""}
+      <p style="margin:10px 0 0 0; font-size:12px; color:#64748b;">© 2026 Moxi Soluções. Todos os direitos reservados.</p>
+    </div>
+  </div>
+  `
+
+  return { subject, html, text }
+}
+
 type ResendConfig = {
   apiKey: string
   from: string

@@ -1,0 +1,15 @@
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1080" rx="48" fill="#143A23"/>
+  <circle cx="840" cy="220" r="150" fill="#F7C96C" fill-opacity="0.18"/>
+  <circle cx="222" cy="860" r="180" fill="#1F6B3B"/>
+  <rect x="110" y="128" width="216" height="56" rx="28" fill="#F3FBF6"/>
+  <text x="142" y="164" fill="#1F6B3B" font-family="Arial, sans-serif" font-size="26" font-weight="800">Portal Parceiro</text>
+  <text x="110" y="314" fill="#F7C96C" font-family="Arial, sans-serif" font-size="76" font-weight="800">Descubra onde</text>
+  <text x="110" y="402" fill="#F7C96C" font-family="Arial, sans-serif" font-size="76" font-weight="800">a escola perde</text>
+  <text x="110" y="490" fill="#F7C96C" font-family="Arial, sans-serif" font-size="76" font-weight="800">tempo e receita</text>
+  <text x="110" y="598" fill="#D8E7DD" font-family="Arial, sans-serif" font-size="32" font-weight="600">Use o diagnóstico KLASSE como primeiro passo da conversa comercial.</text>
+  <rect x="110" y="684" width="492" height="96" rx="28" fill="#F7C96C"/>
+  <text x="164" y="744" fill="#143A23" font-family="Arial, sans-serif" font-size="38" font-weight="800">Abrir diagnóstico</text>
+  <rect x="110" y="826" width="564" height="110" rx="28" fill="#F6FAF7"/>
+  <text x="150" y="892" fill="#143A23" font-family="Arial, sans-serif" font-size="30" font-weight="800">klasse.ao/diagnostico?ref=SEUCODIGO</text>
+</svg>
