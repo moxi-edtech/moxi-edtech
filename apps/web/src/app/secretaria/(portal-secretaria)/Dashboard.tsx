@@ -269,6 +269,27 @@ export function Dashboard({
                     placeholder="Buscar aluno, matrícula ou documento..."
                     disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
                   />
+                  
+                  {publicLandingUrl && (
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                      <button 
+                        onClick={copyPublicUrl}
+                        title="Copiar Link de Admissão"
+                        className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                      >
+                        <Share2 size={14} />
+                        LINK PÚBLICO
+                      </button>
+                      <button 
+                        onClick={sharePublicUrl}
+                        title="Partilhar no WhatsApp"
+                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      >
+                        <MessageCircle size={14} />
+                      </button>
+                    </div>
+                  )}
+
                   <Link
                     href={buildPortalHref(escolaParam, "/secretaria/admissoes?nova=1")}
                     className="
@@ -287,44 +308,8 @@ export function Dashboard({
 
             <RadarOperacional alerts={alerts} role="secretaria" />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {escolaId && <ResumoCaixaSecretaria escolaId={escolaId} />}
-              
-              {publicLandingUrl && (
-                <div className="bg-white rounded-2xl border-2 border-dashed border-emerald-100 p-5 shadow-sm flex flex-col justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-emerald-600">
-                      <Share2 size={16} className="shrink-0" />
-                      <SecaoLabel className="!text-emerald-700 !mt-0">Link Público da Escola</SecaoLabel>
-                    </div>
-                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                      Compartilhe este link com os pais para receber candidaturas e matrículas online automaticamente.
-                    </p>
-                  </div>
-                  
-                  <div className="mt-4 flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <code className="flex-1 text-[11px] font-bold text-emerald-800 truncate px-2">
-                      {publicLandingUrl.replace('https://', '')}
-                    </code>
-                    <div className="flex items-center gap-1">
-                      <button 
-                        onClick={copyPublicUrl}
-                        title="Copiar Link"
-                        className="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-emerald-600 transition-colors border border-transparent hover:border-slate-200"
-                      >
-                        <Copy size={14} />
-                      </button>
-                      <button 
-                        onClick={sharePublicUrl}
-                        title="Partilhar no WhatsApp"
-                        className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors border border-transparent hover:border-emerald-200"
-                      >
-                        <MessageCircle size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
