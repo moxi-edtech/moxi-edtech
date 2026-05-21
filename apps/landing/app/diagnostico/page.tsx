@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { DiagnosisPageClient } from './DiagnosisPageClient'
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <DiagnosisPageClient />
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center">Carregando...</div>}>
+      <DiagnosisPageClient />
+    </Suspense>
+  )
 }
