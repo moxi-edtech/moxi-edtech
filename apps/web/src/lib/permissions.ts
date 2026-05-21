@@ -87,7 +87,12 @@ export type GlobalRole =
 
 export type ProductContext = 'k12' | 'formacao'
 
+const K12_ADMIN_ROLE_GROUP = ['admin', 'staff_admin', 'admin_escola'] as const
+
 const K12_COMPOSITE_ROLE_INHERITANCE: Record<string, ReadonlyArray<string>> = {
+  admin: K12_ADMIN_ROLE_GROUP,
+  staff_admin: K12_ADMIN_ROLE_GROUP,
+  admin_escola: K12_ADMIN_ROLE_GROUP,
   secretaria_financeiro: ['secretaria_financeiro', 'secretaria', 'financeiro'],
   admin_financeiro: ['admin_financeiro', 'financeiro'],
 }
@@ -323,6 +328,9 @@ export function expandAllowedRolesForProduct(
   const expanded = new Set<string>()
   for (const role of normalized) {
     expanded.add(role)
+    if (K12_ADMIN_ROLE_GROUP.includes(role as (typeof K12_ADMIN_ROLE_GROUP)[number])) {
+      for (const inheritedRole of K12_ADMIN_ROLE_GROUP) expanded.add(inheritedRole)
+    }
     if (role === 'financeiro') {
       expanded.add('secretaria_financeiro')
       expanded.add('admin_financeiro')
