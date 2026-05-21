@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { 
+  BarChart3,
   School, 
   Clock, 
   CheckCircle2, 
@@ -28,6 +29,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface OnboardingRequest {
   id: string;
@@ -50,12 +53,32 @@ interface OnboardingRequest {
   escola_id: string | null;
 }
 
+interface MarketingLead {
+  id: string;
+  created_at: string;
+  nome: string;
+  escola: string;
+  whatsapp: string;
+  email: string;
+  score: number;
+  respostas_json: any;
+  status: string;
+  afiliado_codigo?: string;
+}
+
 // ─── Helpers Visuais ──────────────────────────────────────────────────────────
 const STATUS_META = {
   pendente:       { label: "Pendente",      color: "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200", dot: "bg-klasse-gold-500" },
   em_configuracao: { label: "Configuração",  color: "bg-slate-100 text-slate-700 border-slate-200",    dot: "bg-slate-500" },
   activo:         { label: "Activo",        color: "bg-klasse-green-100 text-klasse-green-700 border-klasse-green-200", dot: "bg-klasse-green-500" },
   cancelado:      { label: "Cancelado",     color: "bg-slate-100 text-slate-600 border-slate-200",  dot: "bg-slate-400" },
+};
+
+const LEAD_STATUS_META = {
+  'NOVO': { label: "Novo", color: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+  'EM_CONTACTO': { label: "Em Contacto", color: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+  'CONVERTIDO': { label: "Convertido", color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  'PERDIDO': { label: "Perdido", color: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400" },
 };
 
 // ─── Lead Scoring Helper ──────────────────────────────────────────────────────
@@ -79,49 +102,64 @@ const fmtKz = (v: number) => {
 
 export default function SuperAdminOnboardingPage() {
   const [requests, setRequests] = useState<OnboardingRequest[]>([]);
+  const [mLeads, setMLeads] = useState<MarketingLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('candidaturas');
 
   const supabase = createClient();
 
-  const loadRequests = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('onboarding_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (activeTab === 'candidaturas') {
+        let query = supabase
+          .from('onboarding_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (filter !== 'todos') {
-        query = query.eq('status', filter);
+        if (filter !== 'todos') {
+          query = query.eq('status', filter);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        setRequests(data as OnboardingRequest[] || []);
+      } else {
+        let query = (supabase as any)
+          .from('marketing_leads')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        const { data, error } = await query;
+        if (error) throw error;
+        setMLeads(data as MarketingLead[] || []);
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setRequests(data as OnboardingRequest[] || []);
     } catch (err: any) {
-      toast.error("Erro ao carregar pedidos: " + err.message);
+      toast.error("Erro ao carregar dados: " + err.message);
     } finally {
       setLoading(false);
     }
-  }, [filter, supabase]);
+  }, [filter, activeTab, supabase]);
 
   useEffect(() => {
-    loadRequests();
-  }, [loadRequests]);
+    loadData();
+    setSelectedId(null);
+  }, [loadData]);
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('onboarding_requests')
+      const table = activeTab === 'candidaturas' ? 'onboarding_requests' : 'marketing_leads';
+      const { error } = await (supabase as any)
+        .from(table)
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
       toast.success(`Status actualizado para ${newStatus}`);
-      loadRequests();
+      loadData();
     } catch (err: any) {
       toast.error("Erro ao actualizar status: " + err.message);
     }
@@ -132,7 +170,13 @@ export default function SuperAdminOnboardingPage() {
     r.director_nome?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredLeads = mLeads.filter(l => 
+    l.escola.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    l.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const selectedRequest = requests.find(r => r.id === selectedId);
+  const selectedLead = mLeads.find(l => l.id === selectedId);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans">
@@ -146,8 +190,8 @@ export default function SuperAdminOnboardingPage() {
               <ChevronRight size={10} />
               <span className="text-klasse-green">Gestão de Onboarding</span>
             </nav>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Novas Candidaturas</h1>
-            <p className="text-sm text-slate-500 font-medium">Controlo de entrada e provisionamento de novas escolas.</p>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Pipeline de Entrada</h1>
+            <p className="text-sm text-slate-500 font-medium">Controlo de leads, diagnósticos e novas escolas.</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -155,181 +199,345 @@ export default function SuperAdminOnboardingPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input 
                 type="text"
-                placeholder="Buscar escola ou director..."
+                placeholder="Buscar escola ou nome..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green/30 outline-none w-64 transition-all"
               />
             </div>
-            <select 
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-klasse-green/5"
-            >
-              <option value="todos">Todos os Status</option>
-              <option value="pendente">Pendentes</option>
-              <option value="em_configuracao">Em Configuração</option>
-              <option value="activo">Activos</option>
-            </select>
+            {activeTab === 'candidaturas' && (
+              <select 
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-klasse-green/5"
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="pendente">Pendentes</option>
+                <option value="em_configuracao">Em Configuração</option>
+                <option value="activo">Activos</option>
+              </select>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Lista de Pedidos */}
-          <div className="lg:col-span-2 space-y-4">
-            {loading && !requests.length ? (
-              <div className="flex flex-col items-center justify-center p-20 bg-white border border-slate-200 rounded-3xl space-y-4">
-                <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Carregando pedidos...</p>
-              </div>
-            ) : filteredRequests.length === 0 ? (
-              <div className="p-20 text-center bg-white border border-slate-200 rounded-3xl">
-                <School className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-                <p className="text-slate-500 font-medium">Nenhum pedido de onboarding encontrado.</p>
-              </div>
-            ) : (
-              filteredRequests.map(req => {
-                const meta = STATUS_META[req.status] || STATUS_META.pendente;
-                return (
-                  <Card 
-                    key={req.id} 
-                    className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === req.id ? 'ring-2 ring-klasse-green border-transparent bg-klasse-green/5' : 'bg-white'}`}
-                    onClick={() => setSelectedId(req.id)}
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-400 uppercase">
-                            {req.escola_nome.charAt(0)}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-slate-900">{req.escola_nome}</h3>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                              <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(req.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
-                              <span className="text-slate-200">•</span>
-                              <span className="font-bold text-klasse-green">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
+        <Tabs defaultValue="candidaturas" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-slate-200/50 p-1 rounded-xl mb-6">
+            <TabsTrigger value="candidaturas" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-klasse-green shadow-none">
+              Candidaturas ({requests.length})
+            </TabsTrigger>
+            <TabsTrigger value="leads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-klasse-green shadow-none">
+              Leads Diagnóstico ({mLeads.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Lista */}
+            <div className="lg:col-span-2 space-y-4">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center p-20 bg-white border border-slate-200 rounded-3xl space-y-4">
+                  <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Carregando dados...</p>
+                </div>
+              ) : (
+                <>
+                <TabsContent value="candidaturas" className="m-0 space-y-4">
+                  {filteredRequests.length === 0 ? (
+                    <div className="p-20 text-center bg-white border border-slate-200 rounded-3xl">
+                      <School className="w-12 h-12 mx-auto text-slate-200 mb-4" />
+                      <p className="text-slate-500 font-medium">Nenhuma candidatura encontrada.</p>
+                    </div>
+                  ) : (
+                    filteredRequests.map(req => {
+                      const meta = STATUS_META[req.status] || STATUS_META.pendente;
+                      return (
+                        <Card 
+                          key={req.id} 
+                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === req.id ? 'ring-2 ring-klasse-green border-transparent bg-klasse-green/5' : 'bg-white'}`}
+                          onClick={() => setSelectedId(req.id)}
+                        >
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-400 uppercase">
+                                  {req.escola_nome.charAt(0)}
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-slate-900">{req.escola_nome}</h3>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                                    <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(req.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
+                                    <span className="text-slate-200">•</span>
+                                    <span className="font-bold text-klasse-green">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge className={`${meta.color} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                                <span className={`w-1 h-1 rounded-full ${meta.dot} mr-1.5`} />
+                                {meta.label}
+                              </Badge>
                             </div>
-                          </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </TabsContent>
+
+                <TabsContent value="leads" className="m-0 space-y-4">
+                  {filteredLeads.length === 0 ? (
+                    <div className="p-20 text-center bg-white border border-slate-200 rounded-3xl">
+                      <BarChart3 className="w-12 h-12 mx-auto text-slate-200 mb-4" />
+                      <p className="text-slate-500 font-medium">Nenhum lead de diagnóstico encontrado.</p>
+                    </div>
+                  ) : (
+                    filteredLeads.map(lead => {
+                      const meta = LEAD_STATUS_META[lead.status as keyof typeof LEAD_STATUS_META] || LEAD_STATUS_META.NOVO;
+                      const scoreColor = lead.score >= 15 ? 'text-emerald-600' : lead.score >= 10 ? 'text-amber-600' : 'text-rose-600';
+                      return (
+                        <Card 
+                          key={lead.id} 
+                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === lead.id ? 'ring-2 ring-klasse-green border-transparent bg-klasse-green/5' : 'bg-white'}`}
+                          onClick={() => setSelectedId(lead.id)}
+                        >
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-400 uppercase">
+                                  {lead.escola.charAt(0)}
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-slate-900">{lead.escola}</h3>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                                    <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
+                                    <span className="text-slate-200">•</span>
+                                    <span className={`font-black ${scoreColor}`}>Score: {lead.score}/20</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge className={`${meta.color} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                                <span className={`w-1 h-1 rounded-full ${meta.dot} mr-1.5`} />
+                                {meta.label}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </TabsContent>
+                </>
+              )}
+            </div>
+
+            {/* Detalhes do Item Seleccionado */}
+            <div className="lg:col-span-1">
+              {activeTab === 'candidaturas' && selectedRequest && (
+                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-white animate-klasse-fade-in">
+                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-xl font-bold text-slate-900">{selectedRequest.escola_nome}</CardTitle>
+                      <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">×</button>
+                    </div>
+                    <CardDescription>Resumo dos dados de Onboarding</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    
+                    {/* Info Escola */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Informações Fiscais</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">NIF</p>
+                          <p className="text-sm font-bold text-slate-700 font-mono">{selectedRequest.escola_nif || 'Não informado'}</p>
                         </div>
-                        <Badge className={`${meta.color} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
-                          <span className={`w-1 h-1 rounded-full ${meta.dot} mr-1.5`} />
-                          {meta.label}
+                        <div>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Província</p>
+                          <p className="text-sm font-bold text-slate-700">{selectedRequest.escola_provincia}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Info Director */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto do Director</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                          <ShieldCheck size={14} className="text-klasse-green" />
+                          <span className="font-bold">{selectedRequest.director_nome}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                          <Phone size={14} className="text-slate-400" />
+                          <span>{selectedRequest.escola_tel}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                          <Mail size={14} className="text-slate-400" />
+                          <span className="truncate">{selectedRequest.escola_email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resumo Académico */}
+                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perfil Académico & Potencial</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Estimativa Alunos</p>
+                          <p className="text-sm font-bold text-slate-700">{selectedRequest.financeiro?.total_alunos || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Faturação Est.</p>
+                          <p className="text-sm font-black text-[#1F6B3B]">{fmtKz(calcEstimativa(selectedRequest.faixa_propina, selectedRequest.financeiro?.total_alunos))}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Acções de Status */}
+                    <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acções Administrativas</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl text-xs font-bold border-slate-200"
+                          onClick={() => updateStatus(selectedRequest.id, 'em_configuracao')}
+                          disabled={selectedRequest.status === 'em_configuracao'}
+                        >
+                          Mover p/ Config
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl text-xs font-bold border-slate-200 text-rose-600 hover:bg-rose-50"
+                          onClick={() => updateStatus(selectedRequest.id, 'cancelado')}
+                        >
+                          Cancelar Pedido
+                        </Button>
+                      </div>
+                      
+                      <Button 
+                        className="w-full bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-sm gap-2 shadow-lg shadow-klasse-green/10"
+                        onClick={() => toast.info("Provisionamento automático em desenvolvimento. Use o Wizard de Nova Escola por enquanto.")}
+                        disabled={selectedRequest.status === 'activo'}
+                      >
+                        <Database size={16} />
+                        PROVISIONAR ESCOLA
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === 'leads' && selectedLead && (
+                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-white animate-klasse-fade-in">
+                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-xl font-bold text-slate-900">{selectedLead.escola}</CardTitle>
+                      <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">×</button>
+                    </div>
+                    <CardDescription>Dados do Lead de Diagnóstico</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    
+                    {/* Info Contacto */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto Directo</h4>
+                        {selectedLead.afiliado_codigo && (
+                          <Badge className="bg-purple-100 text-purple-700 border-purple-200 font-bold uppercase text-[9px]">
+                            Ref: {selectedLead.afiliado_codigo}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                          <CheckCircle2 size={14} className="text-blue-500" />
+                          <span className="font-bold">{selectedLead.nome}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                          <Phone size={14} className="text-slate-400" />
+                          <span>{selectedLead.whatsapp}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                          <Mail size={14} className="text-slate-400" />
+                          <span className="truncate">{selectedLead.email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resultado Diagnóstico */}
+                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance no Diagnóstico</h4>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Score Obtido</p>
+                          <p className={`text-2xl font-black ${selectedLead.score >= 15 ? 'text-emerald-600' : 'text-amber-600'}`}>{selectedLead.score}/20</p>
+                        </div>
+                        <Badge className={`${selectedLead.score >= 15 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                          {selectedLead.score >= 15 ? 'Avançado' : selectedLead.score >= 10 ? 'Intermédio' : 'Crítico'}
                         </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
+                    </div>
 
-          {/* Detalhes do Pedido Seleccionado */}
-          <div className="lg:col-span-1">
-            {selectedRequest ? (
-              <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-white animate-klasse-fade-in">
-                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl font-bold text-slate-900">{selectedRequest.escola_nome}</CardTitle>
-                    <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">×</button>
-                  </div>
-                  <CardDescription>Resumo dos dados de Onboarding</CardDescription>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  
-                  {/* Info Escola */}
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Informações Fiscais</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">NIF</p>
-                        <p className="text-sm font-bold text-slate-700 font-mono">{selectedRequest.escola_nif || 'Não informado'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Província</p>
-                        <p className="text-sm font-bold text-slate-700">{selectedRequest.escola_provincia}</p>
+                    {/* Respostas Detalhadas */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mapeamento de Dores</h4>
+                      <div className="grid gap-2">
+                        {selectedLead.respostas_json && Object.entries(selectedLead.respostas_json).map(([key, value]: [string, any]) => (
+                          <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">{key}</span>
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase">{value}/4</Badge>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Info Director */}
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto do Director</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-sm text-slate-600">
-                        <ShieldCheck size={14} className="text-klasse-green" />
-                        <span className="font-bold">{selectedRequest.director_nome}</span>
+                    {/* Acções de Follow-up */}
+                    <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão de Lead</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl text-xs font-bold border-slate-200"
+                          onClick={() => updateStatus(selectedLead.id, 'EM_CONTACTO')}
+                          disabled={selectedLead.status === 'EM_CONTACTO'}
+                        >
+                          Marcar Contacto
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl text-xs font-bold border-slate-200"
+                          onClick={() => updateStatus(selectedLead.id, 'PERDIDO')}
+                        >
+                          Arquivar
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-slate-600">
-                        <Phone size={14} className="text-slate-400" />
-                        <span>{selectedRequest.escola_tel}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-slate-600">
-                        <Mail size={14} className="text-slate-400" />
-                        <span className="truncate">{selectedRequest.escola_email}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Resumo Académico */}
-                  <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perfil Académico & Potencial</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Estimativa Alunos</p>
-                        <p className="text-sm font-bold text-slate-700">{selectedRequest.financeiro?.total_alunos || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Faturação Est.</p>
-                        <p className="text-sm font-black text-[#1F6B3B]">{fmtKz(calcEstimativa(selectedRequest.faixa_propina, selectedRequest.financeiro?.total_alunos))}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Acções de Status */}
-                  <div className="pt-4 border-t border-slate-100 space-y-3">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acções Administrativas</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-xl text-xs font-bold border-slate-200"
-                        onClick={() => updateStatus(selectedRequest.id, 'em_configuracao')}
-                        disabled={selectedRequest.status === 'em_configuracao'}
+                      
+                      <a 
+                        href={`https://wa.me/${selectedLead.whatsapp.replace(/\D/g, '')}?text=Olá%20${selectedLead.nome},%20vi%20que%20fez%20o%20diagnóstico%20de%20gestão%20da%20escola%20${selectedLead.escola}.`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl font-black text-sm gap-2 shadow-lg shadow-green-500/10 h-10 flex items-center justify-center no-underline"
                       >
-                        Mover p/ Config
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-xl text-xs font-bold border-slate-200 text-rose-600 hover:bg-rose-50"
-                        onClick={() => updateStatus(selectedRequest.id, 'cancelado')}
-                      >
-                        Cancelar Pedido
-                      </Button>
+                        <Phone size={16} />
+                        CONTACTAR VIA WHATSAPP
+                      </a>
                     </div>
-                    
-                    <Button 
-                      className="w-full bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-sm gap-2 shadow-lg shadow-klasse-green/10"
-                      onClick={() => toast.info("Provisionamento automático em desenvolvimento. Use o Wizard de Nova Escola por enquanto.")}
-                      disabled={selectedRequest.status === 'activo'}
-                    >
-                      <Database size={16} />
-                      PROVISIONAR ESCOLA
-                    </Button>
-                  </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center bg-white/50">
-                <Eye size={32} className="text-slate-200 mb-2" />
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Seleccione um pedido para ver detalhes</p>
-              </div>
-            )}
+              {!selectedId && (
+                <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center bg-white/50">
+                  <Eye size={32} className="text-slate-200 mb-2" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Seleccione um item para ver detalhes</p>
+                </div>
+              )}
+            </div>
+
           </div>
-
-        </div>
+        </Tabs>
       </div>
     </div>
   );

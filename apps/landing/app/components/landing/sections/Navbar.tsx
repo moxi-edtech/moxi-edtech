@@ -51,7 +51,7 @@ export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps)
     <nav id="navbar">
       <div className="container">
         <div className="nav-inner">
-          <a href="#" className="nav-logo z">
+          <a href="/" className="nav-logo z">
             <span className="nav-logo-lockup">
               <img src="/logo-klasse.png" alt="KLASSE" className="nav-logo-mark" />
               <span className="nav-logo-word">KLASSE</span>
