@@ -45,6 +45,7 @@ function normalizarMensalidade(m: RawDossierMensalidade): DossierMensalidade {
     saldo,
     vencimento,
     pago_em: m.pago_em ?? null,
+    recibo_id: m.recibo_id ?? null,
     atrasada,
   };
 }

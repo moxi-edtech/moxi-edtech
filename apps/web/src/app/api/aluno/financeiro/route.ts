@@ -58,6 +58,26 @@ export async function GET(request: Request) {
 
     if (mensError) throw mensError;
 
+    const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
+    const reciboByMensalidadeId = new Map<string, string>();
+
+    if (mensalidadeIds.length) {
+      const { data: recibos } = await supabase
+        .from("documentos_emitidos")
+        .select("id, origem_id, created_at")
+        .eq("tipo", "recibo")
+        .eq("origem_tipo", "financeiro_recibos_emitir")
+        .in("origem_id", mensalidadeIds)
+        .order("created_at", { ascending: false });
+
+      for (const recibo of recibos ?? []) {
+        const origemId = String(recibo.origem_id ?? "");
+        if (origemId && !reciboByMensalidadeId.has(origemId)) {
+          reciboByMensalidadeId.set(origemId, recibo.id);
+        }
+      }
+    }
+
     // 2. Buscar Movimentos do Ledger (SSOT)
     const { data: movimentos, error: ledgerError } = await supabase
       .from("financeiro_ledger")
@@ -94,7 +114,8 @@ export async function GET(request: Request) {
         valor: Number(m.valor_previsto ?? m.valor ?? 0), 
         vencimento, 
         status, 
-        pago_em: m.data_pagamento_efetiva 
+        pago_em: m.data_pagamento_efetiva,
+        recibo_id: reciboByMensalidadeId.get(m.id) ?? null,
       };
     });
 
