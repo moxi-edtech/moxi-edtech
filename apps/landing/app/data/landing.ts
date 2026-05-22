@@ -2,6 +2,7 @@ export const navLinks = [
   { href: '#produto', label: 'Produto' },
   { href: '#portais', label: 'Portais' },
   { href: '#para-quem', label: 'Para quem é' },
+  { href: '/diagnostico', label: 'Diagnóstico' },
   { href: '#precos', label: 'Preços' },
 ]
 
@@ -11,6 +12,7 @@ export const hero = {
   subtitle:
     'Propinas sob controlo. Documentos MED prontos. Sem caos no Excel.',
   primaryCta: 'Começar agora (2 meses grátis)',
+  diagnosticCta: 'Faça o diagnóstico',
   secondaryCta: 'Fale connosco',
   note: 'Configuração assistida pela nossa equipa.',
 }

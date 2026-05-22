@@ -25,6 +25,7 @@ export function LandingPage() {
     process.env.NEXT_PUBLIC_SCHEDULE_URL ?? 'https://wa.me/244933349106?text=Quero%20saber%20mais%20sobre%20o%20KLASSE'
 
   const primaryCta = { label: hero.primaryCta, href: '#onboarding' }
+  const diagnosticCta = { label: hero.diagnosticCta, href: '/diagnostico' }
   const navPrimaryCta = { label: 'Começar', href: primaryCta.href }
   const mobilePrimaryCta = { label: 'Começar agora', href: primaryCta.href }
 
@@ -50,6 +51,7 @@ export function LandingPage() {
             eyebrow={hero.eyebrow}
             subtitle={hero.subtitle}
             primaryCta={primaryCta}
+            secondaryCta={diagnosticCta}
             note={hero.note}
           />
         </div>
@@ -82,7 +84,7 @@ export function LandingPage() {
           </div>
         ))}
         <div className="panel panel--pilot">
-          <PilotSection />
+          <PilotSection diagnosticCta={diagnosticCta} />
         </div>
         <div className="panel panel--onboarding">
           <OnboardingLeadSection scheduleUrl={scheduleUrl} />

@@ -1,3 +1,6 @@
+@config "../tailwind.config.js";
+@import "tailwindcss";
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --g:#2B6044;
@@ -1092,6 +1095,9 @@ nav.scrolled .hamburger span{background:var(--t2)}
 .piloto h2{font-family:var(--font-sora),sans-serif;font-size:clamp(24px,3vw,36px);letter-spacing:-.03em;line-height:1.2;color:#0f172a;margin-bottom:16px;font-weight:800}
 .piloto h2 em{font-style:italic;color:var(--gold)}
 .piloto p{font-size:15px;color:#1f2937;line-height:1.75;font-weight:500;margin-bottom:0}
+.piloto-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.piloto-actions .btn-s{background:rgba(245,240,232,.82);border-color:rgba(29,68,48,.18)}
+.piloto-actions .btn-s:hover{background:rgba(255,255,255,.92)}
 
 /* ── DEPOIMENTOS ─────────────────────────────────────────── */
 .depoimentos{padding:100px 0;background:var(--s1);position:relative}

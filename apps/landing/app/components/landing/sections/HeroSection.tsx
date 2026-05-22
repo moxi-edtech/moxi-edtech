@@ -9,10 +9,11 @@ interface HeroSectionProps {
   eyebrow: string
   subtitle: string
   primaryCta: { label: string; href: string }
+  secondaryCta: { label: string; href: string }
   note: string
 }
 
-export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, note }: HeroSectionProps) {
+export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, secondaryCta, note }: HeroSectionProps) {
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
@@ -70,6 +71,13 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, note }:
                 onClick={() => track('conversion_click', { section: 'hero', label: primaryCta.label })}
               >
                 {primaryCta.label}
+              </a>
+              <a
+                href={secondaryCta.href}
+                className="btn-s"
+                onClick={() => track('conversion_click', { section: 'hero', label: secondaryCta.label })}
+              >
+                {secondaryCta.label}
               </a>
             </motion.div>
             <motion.div variants={itemVariants} className="hero-proof">
