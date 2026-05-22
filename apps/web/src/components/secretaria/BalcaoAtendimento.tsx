@@ -130,6 +130,41 @@ if (limpas.length <= 1) return limpas[0] ?? "Mensalidade";
 return `${limpas.length} mensalidades liquidadas`;
 }
 
+function compareMensalidadeCompetenciaAsc(
+a: Pick<Mensalidade, "ano_referencia" | "mes_referencia">,
+b: Pick<Mensalidade, "ano_referencia" | "mes_referencia">
+) {
+if (a.ano_referencia !== b.ano_referencia) return a.ano_referencia - b.ano_referencia;
+return a.mes_referencia - b.mes_referencia;
+}
+
+function getUnlockedMensalidadeIds(mensalidades: Mensalidade[], selectedIds: string[]) {
+const unlocked = new Set<string>();
+const selected = new Set(selectedIds);
+const ordered = [...mensalidades].sort(compareMensalidadeCompetenciaAsc);
+
+for (let i = 0; i < ordered.length; i += 1) {
+  const item = ordered[i];
+  if (i === 0) {
+    unlocked.add(item.id);
+    continue;
+  }
+
+  const allPreviousSelected = ordered.slice(0, i).every((prev) => selected.has(prev.id));
+  if (allPreviousSelected) unlocked.add(item.id);
+}
+
+return unlocked;
+}
+
+function getFirstMissingPriorMensalidade(target: Mensalidade, mensalidades: Mensalidade[], selectedIds: string[]) {
+const selected = new Set(selectedIds);
+const ordered = [...mensalidades].sort(compareMensalidadeCompetenciaAsc);
+const targetIndex = ordered.findIndex((item) => item.id === target.id);
+if (targetIndex <= 0) return null;
+return ordered.slice(0, targetIndex).find((item) => !selected.has(item.id)) ?? null;
+}
+
 function labelMetodo(metodo: MetodoPagamento): string {
 if (metodo === "cash") return "Dinheiro";
 if (metodo === "tpa") return "TPA";
@@ -455,7 +490,9 @@ if (total > 0) {
   if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return error("Comprovativo obrigatório para Transferência.");
 }
 
-const mensalidadesCarrinho = itens.filter((i): i is Mensalidade => i.tipo === "mensalidade");
+const mensalidadesCarrinho = itens
+  .filter((i): i is Mensalidade => i.tipo === "mensalidade")
+  .sort(compareMensalidadeCompetenciaAsc);
 const servicosCarrinho     = itens.filter((i): i is Servico     => i.tipo === "servico");
 
 setIsSubmitting(true);
@@ -765,7 +802,7 @@ return (
 function Catalogo({
 mensalidades, servicos,
 onAdicionarMensalidade, onAdicionarServico,
-emittingDocId, addingServicoId, onServicoAvulso,
+emittingDocId, addingServicoId, onServicoAvulso, unlockedMensalidadeIds,
 }: {
 mensalidades:           Mensalidade[];
 servicos:               Servico[];
@@ -774,6 +811,7 @@ onAdicionarServico:     (s: Servico) => Promise<void>;
 emittingDocId:          string | null;
 addingServicoId:        string | null;
 onServicoAvulso:        () => void;
+unlockedMensalidadeIds: Set<string>;
 }) {
 const atrasadas  = useMemo(() => mensalidades.filter(m => m.atrasada),    [mensalidades]);
 const correntes  = useMemo(() => mensalidades.filter(m => !m.atrasada),   [mensalidades]);
@@ -804,11 +842,15 @@ className="text-[10px] font-bold text-[#E3B23C] hover:underline">
         <div className="grid gap-2">
           {atrasadas.map(m => (
             <button key={m.id} onClick={() => onAdicionarMensalidade(m)}
+              disabled={!unlockedMensalidadeIds.has(m.id)}
+              title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
               className="flex items-center justify-between p-3 rounded-xl border
-                border-rose-200 bg-rose-50 hover:border-rose-300 transition-all text-left group">
+                border-rose-200 bg-rose-50 hover:border-rose-300 transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60">
               <div>
                 <p className="text-sm font-bold text-rose-900">{m.nome}</p>
-                <p className="text-[10px] text-rose-500">Vencida</p>
+                <p className="text-[10px] text-rose-500">
+                  {!unlockedMensalidadeIds.has(m.id) ? "Bloqueada até regularizar a anterior" : "Vencida"}
+                </p>
               </div>
               <span className="text-sm font-black text-rose-800">{kwanza.format(m.preco)}</span>
             </button>
@@ -823,11 +865,15 @@ className="text-[10px] font-bold text-[#E3B23C] hover:underline">
         <div className="grid gap-2">
           {correntes.map(m => (
             <button key={m.id} onClick={() => onAdicionarMensalidade(m)}
+              disabled={!unlockedMensalidadeIds.has(m.id)}
+              title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
               className="flex items-center justify-between p-3 rounded-xl border
-                border-slate-200 bg-white hover:border-[#E3B23C] transition-all text-left group">
+                border-slate-200 bg-white hover:border-[#E3B23C] transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60">
               <div>
                 <p className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{m.nome}</p>
-                <p className="text-[10px] text-slate-400">Corrente</p>
+                <p className="text-[10px] text-slate-400">
+                  {!unlockedMensalidadeIds.has(m.id) ? "Bloqueada até regularizar a anterior" : "Corrente"}
+                </p>
               </div>
               <span className="text-sm font-bold text-slate-900">{kwanza.format(m.preco)}</span>
             </button>
@@ -1205,6 +1251,16 @@ const checkout = useCheckout({
 escolaId, aluno: dossier.aluno, carrinho, onSuccess: onCheckoutSuccess,
 });
 
+const selectedMensalidadeIds = useMemo(
+() => carrinho.itens.filter((item): item is Mensalidade => item.tipo === "mensalidade").map((item) => item.id),
+[carrinho.itens]
+);
+
+const unlockedMensalidadeIds = useMemo(
+() => getUnlockedMensalidadeIds(dossier.mensalidades, selectedMensalidadeIds),
+[dossier.mensalidades, selectedMensalidadeIds]
+);
+
 // selectedAlunoId externo (ex: navegação programática)
 useEffect(() => {
 if (!selectedAlunoId) { dossier.clear(); return; }
@@ -1267,6 +1323,20 @@ setAddingServicoId(null);
 }
 }, [dossier.aluno, supabase, handleDecision, error]);
 
+const handleAdicionarMensalidade = useCallback((mensalidade: Mensalidade) => {
+if (unlockedMensalidadeIds.has(mensalidade.id)) {
+  carrinho.adicionar(mensalidade);
+  return;
+}
+
+const missingPrior = getFirstMissingPriorMensalidade(mensalidade, dossier.mensalidades, selectedMensalidadeIds);
+error(
+  missingPrior
+    ? `Regularize primeiro ${missingPrior.nome} antes de adicionar ${mensalidade.nome}.`
+    : "Regularize primeiro as mensalidades mais antigas."
+);
+}, [unlockedMensalidadeIds, carrinho, dossier.mensalidades, selectedMensalidadeIds, error]);
+
 return (
 <>
 <div className={embedded ? "" : "min-h-screen bg-slate-50"}>
@@ -1299,7 +1369,7 @@ return (
               <Catalogo
                 mensalidades={dossier.mensalidades}
                 servicos={servicos}
-                onAdicionarMensalidade={carrinho.adicionar}
+                onAdicionarMensalidade={handleAdicionarMensalidade}
                 onAdicionarServico={handleAdicionarServico}
                 emittingDocId={checkout.emittingDocId}
                 addingServicoId={addingServicoId}
@@ -1307,6 +1377,7 @@ return (
                   setServicoModalCodigo(null);
                   setServicoModalOpen(true);
                 }}
+                unlockedMensalidadeIds={unlockedMensalidadeIds}
               />
             </div>
           ) : (
