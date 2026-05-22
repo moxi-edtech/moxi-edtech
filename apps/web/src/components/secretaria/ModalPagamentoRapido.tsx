@@ -54,6 +54,7 @@ type ReciboBatchItem = {
   valor: number;
   referencia: string;
   referenciasDetalhadas?: string[];
+  itensDetalhados?: Array<{ referencia: string; valor: number }>;
 };
 
 export interface ModalPagamentoRapidoProps {
@@ -665,6 +666,10 @@ function usePagamentoSubmit({
             valor: recibosGerados.reduce((sum, item) => sum + Number(item.valor || 0), 0),
             referencia: summarizeReferencias(referenciasDetalhadas),
             referenciasDetalhadas,
+            itensDetalhados: recibosGerados.map((item) => ({
+              referencia: item.referencia,
+              valor: Number(item.valor || 0),
+            })),
           },
         ]);
       } else {
@@ -1107,6 +1112,7 @@ export function ModalPagamentoRapido({
           logoUrl={escolaLogoUrl}
           referencia={recibo.referencia}
           referenciasDetalhadas={recibo.referenciasDetalhadas}
+          itensDetalhados={recibo.itensDetalhados}
         />
       ))}
     </>

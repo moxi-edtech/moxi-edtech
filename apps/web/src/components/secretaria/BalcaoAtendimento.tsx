@@ -66,6 +66,7 @@ url_validacao: string | null;
 valor: number;
 referencia: string;
 referenciasDetalhadas?: string[];
+itensDetalhados?: Array<{ referencia: string; valor: number }>;
 };
 
 export interface BalcaoAtendimentoProps {
@@ -558,6 +559,10 @@ try {
         valor: recibosMensalidades.reduce((sum, item) => sum + Number(item.valor || 0), 0),
         referencia: summarizeReferencias(referenciasDetalhadas),
         referenciasDetalhadas,
+        itensDetalhados: recibosMensalidades.map((item) => ({
+          referencia: item.referencia,
+          valor: Number(item.valor || 0),
+        })),
       },
     ]);
   }
@@ -1444,6 +1449,7 @@ return (
       logoUrl={checkout.escolaLogoUrl}
       referencia={recibo.referencia}
       referenciasDetalhadas={recibo.referenciasDetalhadas}
+      itensDetalhados={recibo.itensDetalhados}
       metodo={labelMetodo(carrinho.metodo)}
     />
   ))}
