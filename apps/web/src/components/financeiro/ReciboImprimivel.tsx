@@ -65,8 +65,22 @@ export function ReciboImprimivel({
     return parsed.toLocaleDateString("pt-PT");
   }, [data]);
 
+  useEffect(() => {
+    const beforePrint = () => document.body.classList.add("printing-recibo");
+    const afterPrint = () => document.body.classList.remove("printing-recibo");
+
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
+
+    return () => {
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", afterPrint);
+      document.body.classList.remove("printing-recibo");
+    };
+  }, []);
+
   return (
-    <div className="hidden print:block">
+    <div className="hidden print:block recibo-print-root">
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
@@ -77,6 +91,16 @@ export function ReciboImprimivel({
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact;
+          }
+          body.printing-recibo > * {
+            display: none !important;
+          }
+          body.printing-recibo .recibo-print-root {
+            display: block !important;
+            position: fixed;
+            inset: 0;
+            z-index: 2147483647;
+            background: white;
           }
         }
       ` }} />
