@@ -112,6 +112,33 @@ function sortMensalidades(items: MensalidadeOption[]) {
   });
 }
 
+function getUnlockedMensalidadeIds(items: MensalidadeOption[], selectedIds: string[]) {
+  const unlocked = new Set<string>();
+  const selected = new Set(selectedIds);
+  const ordered = sortMensalidades(items);
+
+  for (let i = 0; i < ordered.length; i += 1) {
+    const item = ordered[i];
+    if (i === 0) {
+      unlocked.add(item.id);
+      continue;
+    }
+
+    const allPreviousSelected = ordered.slice(0, i).every((prev) => selected.has(prev.id));
+    if (allPreviousSelected) unlocked.add(item.id);
+  }
+
+  return unlocked;
+}
+
+function getFirstMissingPriorMensalidade(items: MensalidadeOption[], targetId: string, selectedIds: string[]) {
+  const selected = new Set(selectedIds);
+  const ordered = sortMensalidades(items);
+  const targetIndex = ordered.findIndex((item) => item.id === targetId);
+  if (targetIndex <= 0) return null;
+  return ordered.slice(0, targetIndex).find((item) => !selected.has(item.id)) ?? null;
+}
+
 function statusConfig(status?: string | null) {
   const s = (status ?? "").toLowerCase();
   if (s === "pago")
@@ -135,11 +162,13 @@ function MensalidadesSelector({
   mensalidades,
   selectedIds,
   onToggle,
+  unlockedIds,
   disabled,
 }: {
   mensalidades: MensalidadeOption[];
   selectedIds: string[];
   onToggle: (id: string) => void;
+  unlockedIds: Set<string>;
   disabled?: boolean;
 }) {
   return (
@@ -152,10 +181,14 @@ function MensalidadesSelector({
           {selectedIds.length} selecionada(s)
         </span>
       </div>
+      <p className="text-[11px] text-slate-500">
+        O pagamento segue a ordem da competência mais antiga para a mais recente.
+      </p>
 
       <div className="space-y-2">
         {mensalidades.map((item) => {
           const checked = selectedIds.includes(item.id);
+          const blocked = !checked && !unlockedIds.has(item.id);
           const { cls, label } = statusConfig(item.status);
           const vencimentoLabel = item.vencimento
             ? new Date(item.vencimento).toLocaleDateString("pt-PT")
@@ -167,14 +200,14 @@ function MensalidadesSelector({
               className={[
                 "flex items-start gap-3 rounded-2xl border px-3 py-3 transition-all",
                 checked ? "border-[#E3B23C] bg-white ring-2 ring-[#E3B23C]/10" : "border-slate-200 bg-white",
-                disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-slate-300",
+                disabled || blocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-slate-300",
               ].join(" ")}
             >
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => onToggle(item.id)}
-                disabled={disabled}
+                disabled={disabled || blocked}
                 className="mt-1 h-4 w-4 rounded border-slate-300 text-[#E3B23C] focus:ring-[#E3B23C]"
               />
               <div className="min-w-0 flex-1">
@@ -191,6 +224,11 @@ function MensalidadesSelector({
                   <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${cls}`}>
                     {label}
                   </span>
+                  {blocked ? (
+                    <span className="ml-2 inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                      Regularize a anterior
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </label>
@@ -680,6 +718,10 @@ export function ModalPagamentoRapido({
     return mensalidade ? [mensalidade] : [];
   }, [mensalidade, mensalidades]);
   const isBatchMode = availableMensalidades.length > 1;
+  const unlockedMensalidadeIds = useMemo(
+    () => getUnlockedMensalidadeIds(availableMensalidades, selectedIds),
+    [availableMensalidades, selectedIds]
+  );
   const mensalidadesSelecionadas = useMemo(
     () => availableMensalidades.filter((item) => selectedIds.includes(item.id)),
     [availableMensalidades, selectedIds]
@@ -718,10 +760,15 @@ export function ModalPagamentoRapido({
 
   const safeClose = useCallback(() => { onClose(); }, [onClose]);
   const toggleMensalidade = useCallback((id: string) => {
-    setSelectedIds((prev) => (
-      prev.includes(id) ? prev.filter((currentId) => currentId !== id) : [...prev, id]
-    ));
-  }, []);
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((currentId) => currentId !== id);
+
+      const unlocked = getUnlockedMensalidadeIds(availableMensalidades, prev);
+      if (!unlocked.has(id)) return prev;
+
+      return [...prev, id];
+    });
+  }, [availableMensalidades]);
 
   // ── Reset ao abrir ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -734,8 +781,13 @@ export function ModalPagamentoRapido({
       : availableMensalidades[0]?.id
         ? [availableMensalidades[0].id]
         : [];
-    setSelectedIds(fallbackSelectedIds);
-    const initialTotal = fallbackSelectedIds.reduce((sum, id) => {
+    const orderedSelectedIds: string[] = [];
+    for (const item of availableMensalidades) {
+      if (!fallbackSelectedIds.includes(item.id)) break;
+      orderedSelectedIds.push(item.id);
+    }
+    setSelectedIds(orderedSelectedIds);
+    const initialTotal = orderedSelectedIds.reduce((sum, id) => {
       const item = availableMensalidades.find((mens) => mens.id === id);
       return sum + Number(item?.valor ?? 0);
     }, 0);
@@ -886,6 +938,7 @@ export function ModalPagamentoRapido({
                       mensalidades={availableMensalidades}
                       selectedIds={selectedIds}
                       onToggle={toggleMensalidade}
+                      unlockedIds={unlockedMensalidadeIds}
                       disabled={processando}
                     />
                   ) : (
