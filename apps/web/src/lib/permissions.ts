@@ -94,7 +94,7 @@ const K12_COMPOSITE_ROLE_INHERITANCE: Record<string, ReadonlyArray<string>> = {
   staff_admin: K12_ADMIN_ROLE_GROUP,
   admin_escola: K12_ADMIN_ROLE_GROUP,
   secretaria_financeiro: ['secretaria_financeiro', 'secretaria', 'financeiro'],
-  admin_financeiro: ['admin_financeiro', 'financeiro'],
+  admin_financeiro: ['admin_financeiro', 'financeiro', 'admin', 'staff_admin', 'admin_escola'],
 }
 
 export function normalizePapel(papel: Papel | string | null | undefined): Papel | null {
@@ -132,6 +132,7 @@ export const PAPEL_GROUP_ESCOLA_ADMIN_SETUP: ReadonlyArray<Papel> = [
   'staff_admin',
   'admin_escola',
   'secretaria',
+  'admin_financeiro',
 ]
 
 export function hasSomePapel(

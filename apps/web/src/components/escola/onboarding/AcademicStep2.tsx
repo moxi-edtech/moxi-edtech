@@ -82,6 +82,9 @@ const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
   tec_gestao_sistemas: "tecnico_serv",
 };
 
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 interface PresetOption {
   key: CurriculumKey;
   label: string;
@@ -313,7 +316,7 @@ export default function AcademicStep2({
 
     const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
     let schoolMap = new Map<string, any>();
-    if (presetIds.length > 0) {
+    if (presetIds.length > 0 && isUuid(escolaId)) {
       const { data: schoolRows, error: schoolErr } = await supabase
         .from("school_subjects")
         .select("preset_subject_id, custom_name, custom_weekly_hours, is_active")

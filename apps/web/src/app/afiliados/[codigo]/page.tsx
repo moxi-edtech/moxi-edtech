@@ -20,6 +20,19 @@ import {
   Download,
   ArrowRight
 } from "lucide-react";
+import { 
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +49,10 @@ interface AfiliadoStats {
   novos: number;
   em_contacto: number;
   convertidos: number;
+  trend: {
+    dia: string;
+    total: number;
+  }[];
   leads: {
     data: string;
     status: string;
@@ -70,7 +87,8 @@ function isAfiliadoStats(value: unknown): value is AfiliadoStats {
     typeof candidate.novos === "number" &&
     typeof candidate.em_contacto === "number" &&
     typeof candidate.convertidos === "number" &&
-    Array.isArray(candidate.leads)
+    Array.isArray(candidate.leads) &&
+    Array.isArray(candidate.trend)
   );
 }
 
@@ -258,6 +276,60 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                 </CardContent>
               </Card>
             </div>
+
+            {/* Trend Chart */}
+            <Card className="rounded-[32px] border-slate-200 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="p-8 pb-0 flex flex-row items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Tendência de Crescimento</p>
+                  <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Novos Leads (Últimos 7 dias)</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-klasse-gold animate-pulse" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Live Update</span>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-8 h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats?.trend || []}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#E3B23C" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#E3B23C" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="dia" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      dy={10}
+                    />
+                    <YAxis hide domain={[0, 'auto']} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        borderRadius: '16px', 
+                        border: 'none', 
+                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}
+                      cursor={{ stroke: '#E3B23C', strokeWidth: 2, strokeDasharray: '4 4' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="#E3B23C" 
+                      strokeWidth={4}
+                      fillOpacity={1} 
+                      fill="url(#colorTotal)" 
+                      animationDuration={2000}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Recent Activity */}

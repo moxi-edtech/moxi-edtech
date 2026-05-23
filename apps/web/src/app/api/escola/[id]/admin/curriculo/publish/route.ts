@@ -770,36 +770,63 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (shouldGenerateTurmas) {
-      const { count: turmasCount } = await supabase
-        .from('turmas')
-        .select('id', { count: 'estimated', head: true })
+      const { data: anoLetivoRow } = await supabase
+        .from('anos_letivos')
+        .select('ano')
         .eq('escola_id', resolvedEscolaId)
-        .eq('curso_id', cursoId)
-        .eq('ano_letivo_id', anoLetivoId);
+        .eq('id', anoLetivoId)
+        .maybeSingle();
 
-      if (!turmasCount || turmasCount === 0) {
-        const { data: anoLetivoRow } = await supabase
-          .from('anos_letivos')
-          .select('ano')
+      if (anoLetivoRow?.ano) {
+        const { data: publishedClassesRows } = await supabase
+          .from('curso_curriculos')
+          .select('classe_id')
           .eq('escola_id', resolvedEscolaId)
-          .eq('id', anoLetivoId)
-          .maybeSingle();
-        if (anoLetivoRow?.ano) {
-          const { data: classes } = await supabase
-            .from('classes')
-            .select('id, turno')
-            .eq('escola_id', resolvedEscolaId)
-            .eq('curso_id', cursoId);
-          const resolvedClasses = (classes || []).map((row: any) => ({
-            classeId: row.id,
+          .eq('curso_id', cursoId)
+          .eq('ano_letivo_id', anoLetivoId)
+          .eq('status', 'published');
+
+        const publishedClassIds = Array.from(
+          new Set(
+            (publishedClassesRows || [])
+              .map((row: any) => row?.classe_id)
+              .filter(Boolean)
+              .map((value: any) => String(value))
+          )
+        );
+
+        const { data: classes } = await supabase
+          .from('classes')
+          .select('id, nome, turno')
+          .eq('escola_id', resolvedEscolaId)
+          .eq('curso_id', cursoId)
+          .in('id', publishedClassIds.length > 0 ? publishedClassIds : ['']);
+
+        const { data: existingTurmasRows } = await supabase
+          .from('turmas')
+          .select('classe_id')
+          .eq('escola_id', resolvedEscolaId)
+          .eq('curso_id', cursoId)
+          .eq('ano_letivo_id', anoLetivoId);
+
+        const existingClassIds = new Set(
+          (existingTurmasRows || [])
+            .map((row: any) => row?.classe_id)
+            .filter(Boolean)
+            .map((value: any) => String(value))
+        );
+
+        const missingClassRows = (classes || []).filter(
+          (row: any) => row?.id && !existingClassIds.has(String(row.id))
+        );
+
+        if (missingClassRows.length > 0) {
+          const turmasPayload = missingClassRows.map((row: any) => ({
+            classeId: String(row.id),
+            nome: String(row.nome ?? 'Turma'),
+            turno: ((row.turno || 'M').toString().trim().toUpperCase() || 'M') as 'M' | 'T' | 'N',
             quantidade: 1,
           }));
-          const classTurnos = (classes || [])
-            .map((row: any) => (row.turno || '').toString().trim().toUpperCase())
-            .filter(Boolean);
-          const resolvedTurnos = classTurnos.length > 0
-            ? Array.from(new Set(classTurnos))
-            : ['M'];
 
           const { error: genError } = await supabase.rpc('gerar_turmas_from_curriculo', {
             p_escola_id: resolvedEscolaId,
@@ -808,23 +835,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             p_generation_params: {
               cursoId,
               anoLetivo: anoLetivoRow.ano,
-              classes: resolvedClasses,
-              turnos: resolvedTurnos,
+              turmas: turmasPayload,
             },
             p_idempotency_key: idempotencyKey,
           });
 
-          if (!genError) {
-            autoGenerateExecuted = true;
-            try {
-              await (supabase as any).rpc('refresh_mv_turmas_para_matricula');
-            } catch (refreshErr) {
-              console.warn('Falha ao atualizar mv_turmas_para_matricula:', refreshErr);
-            }
+          if (genError) {
+            return NextResponse.json({
+              ok: false,
+              error: genError.message || 'Falha ao gerar turmas para classes novas.',
+              code: 'AUTO_GENERATE_MISSING_CLASSES_FAILED',
+              details: {
+                missing_classes: turmasPayload.map((item) => item.nome),
+              },
+            }, { status: 409 });
           }
+
+          autoGenerateExecuted = true;
+          autoGenerateSkippedReason = null;
+          try {
+            await (supabase as any).rpc('refresh_mv_turmas_para_matricula');
+          } catch (refreshErr) {
+            console.warn('Falha ao atualizar mv_turmas_para_matricula:', refreshErr);
+          }
+        } else {
+          autoGenerateSkippedReason = 'all_published_classes_already_have_turmas';
         }
       } else {
-        autoGenerateSkippedReason = 'turmas_already_exist'
+        autoGenerateSkippedReason = 'ano_letivo_not_found';
       }
     } else {
       autoGenerateSkippedReason = 'not_requested'

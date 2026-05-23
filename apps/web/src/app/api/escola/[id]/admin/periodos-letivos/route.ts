@@ -59,7 +59,7 @@ export async function GET(
 
     let periodosQuery = supabase
       .from('periodos_letivos')
-      .select('id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso')
+      .select('id, ano_letivo_id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso')
       .eq('escola_id', userEscolaId)
       .eq('ano_letivo_id', anoLetivo.id)
 

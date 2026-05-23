@@ -34,7 +34,7 @@ export async function POST(
 
     const { data: hasRole, error: roleError } = await supabase.rpc('user_has_role_in_school', {
       p_escola_id: userEscolaId,
-      p_roles: ['admin_escola', 'secretaria', 'admin'],
+      p_roles: ['admin_escola', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro'],
     });
     if (roleError) {
       return respond({ ok: false, error: "Erro ao verificar permissões" }, 500);

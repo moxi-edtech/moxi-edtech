@@ -100,6 +100,20 @@ export async function requireRoleInSchool({
 
   const product = productContext ?? "k12";
 
+  if (!productContext) {
+    try {
+      const { data: hasRole, error: rpcError } = await supabase.rpc("user_has_role_in_school", {
+        p_escola_id: escolaId,
+        p_roles: roles,
+      });
+      if (!rpcError && hasRole === true) {
+        return { user };
+      }
+    } catch {
+      // Fall back to direct membership checks below when RPC context is unavailable.
+    }
+  }
+
   if (!roleMatchesAllowedRoles(papel, roles, product)) {
     return {
       user: null,

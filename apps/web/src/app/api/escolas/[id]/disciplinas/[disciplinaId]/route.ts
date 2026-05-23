@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authorizeDisciplinaManage } from "@/lib/escola/disciplinas";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { ensureEditableCurriculoForClass } from "@/lib/curriculo/ensureEditableCurriculoForClass";
 
 const resolveStatusCompletude = (payload: {
   carga_horaria_semanal?: number | null;
@@ -91,102 +92,49 @@ export async function PUT(
       .eq('id', disciplinaId)
       .maybeSingle();
 
+    if (!cmRow?.id || !cmRow?.disciplina_id || !cmRow?.classe_id || !cmRow?.curso_id) {
+      return NextResponse.json({ ok: false, error: 'Disciplina não encontrada.' }, { status: 404 });
+    }
+
     const disciplinaCatalogoId = cmRow?.disciplina_id ?? disciplinaId;
 
     let targetMatrizId = cmRow?.id ?? null;
-    if (cmRow?.curriculo?.status === 'published') {
-      const curriculo = cmRow.curriculo;
-      const { data: draftCurriculo } = await (supabase as any)
-        .from('curso_curriculos')
-        .select('id, version')
+    if (cmRow?.curriculo?.status === 'published' || !cmRow?.curso_curriculo_id) {
+      const { draftCurriculoId } = await ensureEditableCurriculoForClass({
+        supabase: supabase as any,
+        escolaId: resolvedEscolaId,
+        cursoId: String(cmRow.curso_id),
+        classeId: String(cmRow.classe_id),
+      });
+
+      const { data: draftRow, error: draftRowError } = await (supabase as any)
+        .from('curso_matriz')
+        .select('id')
         .eq('escola_id', resolvedEscolaId)
-        .eq('curso_id', curriculo.curso_id)
-        .eq('ano_letivo_id', curriculo.ano_letivo_id)
+        .eq('curso_curriculo_id', draftCurriculoId)
+        .eq('disciplina_id', cmRow.disciplina_id)
         .eq('classe_id', cmRow.classe_id)
-        .eq('status', 'draft')
-        .order('version', { ascending: false })
-        .limit(1)
         .maybeSingle();
 
-      let draftId = draftCurriculo?.id ?? null;
-      if (!draftId) {
-        const { data: last } = await (supabase as any)
-          .from('curso_curriculos')
-          .select('version')
-          .eq('escola_id', resolvedEscolaId)
-          .eq('curso_id', curriculo.curso_id)
-          .eq('ano_letivo_id', curriculo.ano_letivo_id)
-          .eq('classe_id', cmRow.classe_id)
-          .order('version', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const nextVersion = (last?.version ?? curriculo.version ?? 0) + 1;
-        const { data: createdDraft, error: draftErr } = await (supabase as any)
-          .from('curso_curriculos')
-          .insert({
-            escola_id: resolvedEscolaId,
-            curso_id: curriculo.curso_id,
-            ano_letivo_id: curriculo.ano_letivo_id,
-            version: nextVersion,
-            status: 'draft',
-            classe_id: cmRow.classe_id,
-          })
-          .select('id')
-          .single();
-        if (draftErr) {
-          return NextResponse.json({ ok: false, error: draftErr.message }, { status: 400 });
-        }
-        draftId = createdDraft?.id ?? null;
+      if (draftRowError) {
+        return NextResponse.json({ ok: false, error: draftRowError.message }, { status: 400 });
       }
 
-      if (draftId) {
-        const { data: publishedRows, error: publishedErr } = await (supabase as any)
+      if (draftRow?.id) {
+        targetMatrizId = draftRow.id;
+      } else if (!cmRow?.curso_curriculo_id) {
+        const { error: migrateLegacyError } = await (supabase as any)
           .from('curso_matriz')
-          .select('disciplina_id, classe_id, curso_id, obrigatoria, ordem, ativo, carga_horaria, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, modelo_excecao_id, status_completude')
-          .eq('escola_id', resolvedEscolaId)
-          .eq('curso_curriculo_id', curriculo.id)
-          .eq('classe_id', cmRow.classe_id);
-        if (publishedErr) {
-          return NextResponse.json({ ok: false, error: publishedErr.message }, { status: 400 });
-        }
+          .update({ curso_curriculo_id: draftCurriculoId })
+          .eq('id', cmRow.id)
+          .eq('escola_id', resolvedEscolaId);
 
-        if ((publishedRows || []).length > 0) {
-          const inserts = (publishedRows || []).map((row: any) => ({
-            ...row,
-            escola_id: resolvedEscolaId,
-            curso_curriculo_id: draftId,
-          }));
-          const { error: copyErr } = await (supabase as any)
-            .from('curso_matriz')
-            .insert(inserts);
-          if (copyErr && copyErr.code !== '23505') {
-            return NextResponse.json({ ok: false, error: copyErr.message }, { status: 400 });
-          }
+        if (migrateLegacyError) {
+          return NextResponse.json({ ok: false, error: migrateLegacyError.message }, { status: 400 });
         }
-
-        const { data: draftRow } = await (supabase as any)
-          .from('curso_matriz')
-          .select('id')
-          .eq('escola_id', resolvedEscolaId)
-          .eq('curso_curriculo_id', draftId)
-          .eq('disciplina_id', cmRow.disciplina_id)
-          .eq('classe_id', cmRow.classe_id)
-          .maybeSingle();
-        targetMatrizId = draftRow?.id ?? targetMatrizId;
-      }
-    }
-    // Fallback check if the provided ID was a catalog ID and not a matrix ID
-    if (!cmRow?.id) {
-      const { data: linkedCurriculos } = await (supabase as any)
-        .from('curso_matriz')
-        .select('id, curriculo:curso_curriculos(status)')
-        .eq('escola_id', resolvedEscolaId)
-        .eq('disciplina_id', disciplinaCatalogoId)
-        .eq('classe_id', cmRow?.classe_id)
-        .limit(25);
-      const hasPublished = (linkedCurriculos || []).some((row: any) => row.curriculo?.status === 'published');
-      if (hasPublished) {
-        return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser alterada.' }, { status: 409 });
+        targetMatrizId = cmRow.id;
+      } else {
+        return NextResponse.json({ ok: false, error: 'Falha ao preparar rascunho para edição.' }, { status: 409 });
       }
     }
     const catalogUpdates: Record<string, any> = {};
@@ -262,39 +210,6 @@ export async function PUT(
       }
     }
 
-    const turmaUpdates: Record<string, any> = {};
-    if (parsed.data.carga_horaria_semanal !== undefined) {
-      turmaUpdates.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
-    }
-    if (parsed.data.conta_para_media_med !== undefined) {
-      turmaUpdates.conta_para_media_med = parsed.data.conta_para_media_med;
-    }
-    if (parsed.data.classificacao !== undefined) turmaUpdates.classificacao = parsed.data.classificacao;
-    if (parsed.data.periodos_ativos !== undefined) turmaUpdates.periodos_ativos = parsed.data.periodos_ativos;
-    if (parsed.data.entra_no_horario !== undefined) turmaUpdates.entra_no_horario = parsed.data.entra_no_horario;
-    if (parsed.data.avaliacao_mode !== undefined) turmaUpdates.avaliacao_mode = parsed.data.avaliacao_mode;
-    if (parsed.data.avaliacao_modelo_id !== undefined) {
-      turmaUpdates.modelo_avaliacao_id = parsed.data.avaliacao_modelo_id;
-    }
-    if (parsed.data.avaliacao_disciplina_id !== undefined) {
-      turmaUpdates.avaliacao_disciplina_id = parsed.data.avaliacao_disciplina_id;
-    }
-    if (parsed.data.modelo_excecao_id !== undefined) {
-      turmaUpdates.modelo_avaliacao_id = parsed.data.modelo_excecao_id ?? null;
-    }
-
-    const turmaMatrizIds = Array.from(
-      new Set([cmRow?.id, targetMatrizId].filter((id): id is string => Boolean(id)))
-    );
-    if (turmaMatrizIds.length > 0 && Object.keys(turmaUpdates).length > 0) {
-      const { error: turmaErr } = await (supabase as any)
-        .from('turma_disciplinas')
-        .update(turmaUpdates)
-        .eq('escola_id', resolvedEscolaId)
-        .in('curso_matriz_id', turmaMatrizIds);
-      if (turmaErr) return NextResponse.json({ ok: false, error: turmaErr.message }, { status: 400 });
-    }
-
     const { data, error } = await (supabase as any)
       .from('disciplinas_catalogo')
       .select('id, nome, sigla, is_avaliavel, area')
@@ -331,19 +246,57 @@ export async function DELETE(
   try {
     const { data: cmRow } = await (supabase as any)
       .from('curso_matriz')
-      .select('id, disciplina_id, curriculo:curso_curriculos(status)')
+      .select('id, disciplina_id, classe_id, curso_id, curso_curriculo_id, curriculo:curso_curriculos(status)')
       .eq('escola_id', resolvedEscolaId)
       .eq('id', disciplinaId)
       .maybeSingle();
 
     if (cmRow?.id) {
-      if (cmRow?.curriculo?.status === 'published') {
-        return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser removida.' }, { status: 409 });
+      let targetDeleteId = cmRow.id;
+
+      if (cmRow?.curriculo?.status === 'published' || !cmRow?.curso_curriculo_id) {
+        const { draftCurriculoId } = await ensureEditableCurriculoForClass({
+          supabase: supabase as any,
+          escolaId: resolvedEscolaId,
+          cursoId: String(cmRow.curso_id),
+          classeId: String(cmRow.classe_id),
+        });
+
+        const { data: draftRow, error: draftRowError } = await (supabase as any)
+          .from('curso_matriz')
+          .select('id')
+          .eq('escola_id', resolvedEscolaId)
+          .eq('curso_curriculo_id', draftCurriculoId)
+          .eq('disciplina_id', cmRow.disciplina_id)
+          .eq('classe_id', cmRow.classe_id)
+          .maybeSingle();
+
+        if (draftRowError) {
+          return NextResponse.json({ ok: false, error: draftRowError.message }, { status: 400 });
+        }
+
+        if (draftRow?.id) {
+          targetDeleteId = draftRow.id;
+        } else if (!cmRow?.curso_curriculo_id) {
+          const { error: migrateLegacyError } = await (supabase as any)
+            .from('curso_matriz')
+            .update({ curso_curriculo_id: draftCurriculoId })
+            .eq('id', cmRow.id)
+            .eq('escola_id', resolvedEscolaId);
+
+          if (migrateLegacyError) {
+            return NextResponse.json({ ok: false, error: migrateLegacyError.message }, { status: 400 });
+          }
+          targetDeleteId = cmRow.id;
+        } else {
+          return NextResponse.json({ ok: false, error: 'Falha ao preparar rascunho para remoção.' }, { status: 409 });
+        }
       }
+
       const { error } = await (supabase as any)
         .from('curso_matriz')
         .delete()
-        .eq('id', cmRow.id)
+        .eq('id', targetDeleteId)
         .eq('escola_id', resolvedEscolaId);
       if (error) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -358,11 +311,7 @@ export async function DELETE(
       .eq('disciplina_id', disciplinaId)
       .limit(25);
 
-    const hasPublished = (links || []).some((row: any) => row.curriculo?.status === 'published');
     if ((links || []).length > 0) {
-      if (hasPublished) {
-        return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser removida.' }, { status: 409 });
-      }
       return NextResponse.json({ ok: false, error: 'Disciplina vinculada a currículos ativos.' }, { status: 409 });
     }
 
