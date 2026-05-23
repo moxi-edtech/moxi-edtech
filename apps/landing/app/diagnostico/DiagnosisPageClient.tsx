@@ -345,6 +345,7 @@ export function DiagnosisPageClient() {
 
       <main className="relative z-10 px-6 pb-20 pt-28">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
+          {/* Sidebar - Desktop Only for Progress */}
           <aside className="lg:sticky lg:top-28 lg:self-start">
             <div className="overflow-hidden rounded-[28px] border border-white/70 bg-[#143222] text-white shadow-[0_30px_80px_rgba(20,50,34,0.25)]">
               <div className="border-b border-white/10 px-6 py-6">
@@ -353,11 +354,8 @@ export function DiagnosisPageClient() {
                   Diagnóstico KLASSE
                 </div>
                 <h2 className="mt-4 text-2xl font-extrabold leading-tight" style={headingStyle}>
-                  Clareza real sobre a maturidade da sua gestão escolar.
+                  Clareza real sobre a sua gestão.
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-white/72">
-                  Um diagnóstico curto para identificar fragilidade financeira, caos operacional e falta de visibilidade da direção.
-                </p>
               </div>
 
               <div className="space-y-5 px-6 py-6">
@@ -375,8 +373,8 @@ export function DiagnosisPageClient() {
                 <div className="space-y-3 rounded-2xl bg-white/6 p-4">
                   {TRUST_POINTS.map((point) => (
                     <div key={point} className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#E0A93A]/20 text-[#E0A93A]">
-                        <Check size={14} />
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E0A93A]/20 text-[#E0A93A]">
+                        <Check size={12} />
                       </div>
                       <p className="text-sm text-white/80">{point}</p>
                     </div>
@@ -391,13 +389,6 @@ export function DiagnosisPageClient() {
                     </div>
                   ))}
                 </div>
-
-                <div className="rounded-2xl border border-[#E0A93A]/30 bg-[#E0A93A]/10 p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#F7D48C]">Para quem é</p>
-                  <p className="mt-2 text-sm leading-6 text-white/82">
-                    Diretores, administradores e secretarias que ainda dependem de Excel, papel ou processos manuais para operar.
-                  </p>
-                </div>
               </div>
             </div>
           </aside>
@@ -410,73 +401,55 @@ export function DiagnosisPageClient() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white/80 shadow-[0_30px_80px_rgba(20,34,24,0.08)] backdrop-blur-sm"
+                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
                   <div className="grid gap-10 px-8 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:px-12 lg:py-14">
                     <div className="space-y-8">
                       <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-xs font-bold uppercase tracking-widest text-emerald-800">
                         <BarChart3 size={16} />
-                        Diagnóstico de Gestão
+                        Maturidade Digital
                       </div>
                       <div className="space-y-5">
-                        <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl" style={headingStyle}>
+                        <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 md:text-5xl lg:text-6xl" style={headingStyle}>
                           O seu colégio está a <span className="text-emerald-700">crescer no escuro</span>?
                         </h1>
                         <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                          Responda a 5 perguntas rápidas e descubra o nível de maturidade da sua gestão escolar, com foco em admissões, propinas, comunicação e controlo executivo.
+                          Responda a 5 perguntas rápidas e descubra o nível de maturidade da sua gestão escolar em Angola.
                         </p>
                       </div>
                       <div className="flex flex-col gap-3 sm:flex-row">
                         <button onClick={handleNext} className="btn-p flex-1 justify-center py-5 text-lg group">
-                          Iniciar diagnóstico gratuitamente
+                          Iniciar diagnóstico agora
                           <ChevronRight className="transition-transform group-hover:translate-x-1" />
                         </button>
-                        <a
-                          href="https://wa.me/244933349106?text=Quero%20perceber%20como%20o%20diagn%C3%B3stico%20do%20KLASSE%20funciona"
-                          className="btn-s flex-1 justify-center py-5 text-base"
-                        >
-                          Tirar dúvidas no WhatsApp
-                        </a>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Tempo</p>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Tempo</p>
                           <p className="mt-2 text-lg font-black text-slate-900">2 min</p>
-                          <p className="mt-1 text-sm text-slate-500">Sem reunião, sem espera.</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Entrega</p>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Entrega</p>
                           <p className="mt-2 text-lg font-black text-slate-900">Relatório</p>
-                          <p className="mt-1 text-sm text-slate-500">Resultado acionável por WhatsApp e email.</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Foco</p>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Foco</p>
                           <p className="mt-2 text-lg font-black text-slate-900">Angola</p>
-                          <p className="mt-1 text-sm text-slate-500">Pensado para a realidade escolar local.</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="relative overflow-hidden rounded-[28px] bg-[#0f271c] p-6 text-white">
-                      <div
-                        aria-hidden="true"
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            'radial-gradient(circle at 15% 20%, rgba(224,169,58,0.22), transparent 28%), radial-gradient(circle at 85% 80%, rgba(31,107,59,0.35), transparent 34%)',
-                        }}
-                      />
                       <div className="relative space-y-5">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
-                          <ShieldAlert size={14} />
-                          O que este diagnóstico mede
+                          O que medimos
                         </div>
                         <div className="space-y-4">
                           {[
-                            ['Matrículas', 'Se a captação e o atendimento ainda travam a secretaria.'],
-                            ['Propinas', 'Se há atraso para entender inadimplência e confirmar pagamentos.'],
-                            ['Pautas e notas', 'Se o fluxo pedagógico ainda depende de retrabalho manual.'],
-                            ['Direção', 'Se a escola já opera com visibilidade ou ainda reage tarde.'],
+                            ['Matrículas', 'Gargalos no atendimento e filas.'],
+                            ['Propinas', 'Dificuldade em cobrar e conferir.'],
+                            ['Notas', 'Processos manuais e pautas tardias.'],
+                            ['Direção', 'Falta de dados para decidir hoje.'],
                           ].map(([title, copy]) => (
                             <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                               <p className="text-sm font-black text-white">{title}</p>
@@ -496,28 +469,19 @@ export function DiagnosisPageClient() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white/85 shadow-[0_30px_80px_rgba(20,34,24,0.08)] backdrop-blur-sm"
+                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="space-y-8 px-8 py-8 md:px-10 md:py-10">
-                    <div className="flex flex-col gap-5 border-b border-slate-100 pb-8 md:flex-row md:items-end md:justify-between">
-                      <div className="space-y-3">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                          Pergunta {step} de {QUESTIONS.length}
-                        </div>
-                        <h2 className="max-w-3xl text-3xl font-extrabold leading-tight text-slate-950 md:text-4xl" style={headingStyle}>
-                          {QUESTIONS[step - 1].title}
-                        </h2>
-                        <p className="max-w-2xl text-sm leading-6 text-slate-500">
-                          Escolha a opção que melhor representa a realidade atual da sua escola. O objetivo é medir maturidade operacional, não “acertar”.
-                        </p>
+                  <div className="space-y-8 px-8 py-8 md:px-12 md:py-12">
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                        Pergunta {step} de {QUESTIONS.length}
                       </div>
-                      <div className="min-w-[180px] rounded-2xl bg-slate-50 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Progresso</p>
-                        <p className="mt-2 text-2xl font-black text-slate-900">{questionProgressPercent}%</p>
-                      </div>
+                      <h2 className="max-w-3xl text-3xl font-extrabold leading-tight text-slate-950 md:text-4xl" style={headingStyle}>
+                        {QUESTIONS[step - 1].title}
+                      </h2>
                     </div>
 
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                       <motion.div className="h-full bg-emerald-600" initial={{ width: 0 }} animate={{ width: `${questionProgressPercent}%` }} />
                     </div>
 
@@ -526,23 +490,25 @@ export function DiagnosisPageClient() {
                         <button
                           key={opt.value}
                           onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
-                          className="group flex items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-600 hover:bg-emerald-50/70 hover:shadow-lg hover:shadow-emerald-100/60"
+                          className="group flex items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50"
                         >
-                          <div className="space-y-2">
-                            <p className="text-base font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
-                            <p className="text-sm leading-6 text-slate-500">{scoreHelper(opt.score)}</p>
+                          <div className="space-y-1">
+                            <p className="text-lg font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
+                            <p className="text-sm text-slate-500">{scoreHelper(opt.score)}</p>
                           </div>
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 transition-colors group-hover:border-emerald-600">
-                            <div className="h-3 w-3 rounded-full bg-emerald-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 transition-colors group-hover:border-emerald-600">
+                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-600 opacity-0 transition-opacity group-hover:opacity-100" />
                           </div>
                         </button>
                       ))}
                     </div>
 
-                    <button onClick={handleBack} className="flex items-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-slate-600">
-                      <ChevronLeft size={16} />
-                      Voltar
-                    </button>
+                    <div className="pt-4">
+                      <button onClick={handleBack} className="flex items-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-slate-600">
+                        <ChevronLeft size={16} />
+                        Voltar
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -552,30 +518,30 @@ export function DiagnosisPageClient() {
                   key="lead"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white/85 shadow-[0_30px_80px_rgba(20,34,24,0.08)] backdrop-blur-sm"
+                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="grid gap-8 px-8 py-8 md:px-10 md:py-10 lg:grid-cols-[0.9fr_1.1fr]">
+                  <div className="grid gap-10 px-8 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
                     <div className="space-y-6">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                        <Check size={40} />
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                        <Check size={32} />
                       </div>
                       <div className="space-y-3">
-                        <h2 className="text-3xl font-extrabold text-slate-950" style={headingStyle}>O seu diagnóstico está pronto.</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-950" style={headingStyle}>Quase lá!</h2>
                         <p className="text-base leading-7 text-slate-600">
-                          Falta apenas indicar para onde devemos enviar o relatório personalizado de maturidade escolar e os próximos passos recomendados.
+                          Identifique-se para gerarmos o relatório final com o nível de maturidade do seu colégio.
                         </p>
                       </div>
-                      <div className="space-y-3 rounded-[24px] bg-slate-50 p-5">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Você vai receber</p>
+                      <div className="space-y-4 rounded-[24px] bg-slate-50 p-6">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">O que vai receber:</p>
                         <div className="space-y-3">
                           {[
-                            'Classificação da maturidade operacional da escola',
-                            'Leitura prática sobre matrícula, propinas e direção',
-                            'Sugestão inicial de prioridades para modernização',
+                            'Resultado da maturidade operacional',
+                            'Diagnóstico das áreas críticas',
+                            'Próximos passos recomendados',
                           ].map((item) => (
                             <div key={item} className="flex items-start gap-3">
-                              <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                                <Check size={14} />
+                              <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                                <Check size={12} />
                               </div>
                               <p className="text-sm text-slate-600">{item}</p>
                             </div>
@@ -584,56 +550,54 @@ export function DiagnosisPageClient() {
                       </div>
                     </div>
 
-                    <form onSubmit={submitLead} className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/40">
-                      <div className="space-y-1.5">
-                        <label className="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">Seu Nome</label>
+                    <form onSubmit={submitLead} className="space-y-4 rounded-[28px] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/50">
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Seu Nome</label>
                         <input
                           required
                           type="text"
                           placeholder="Ex: Manuel dos Santos"
-                          className="w-full rounded-xl border border-slate-200 p-4 outline-none transition-all focus:border-emerald-600"
+                          className="w-full rounded-xl border border-slate-200 p-4 outline-none transition-all focus:border-emerald-600 focus:bg-emerald-50/10"
                           value={leadData.nome}
                           onChange={(e) => setLeadData({ ...leadData, nome: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">Nome do Colégio</label>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nome do Colégio</label>
                         <input
                           required
                           type="text"
                           placeholder="Ex: Colégio Esperança"
-                          className="w-full rounded-xl border border-slate-200 p-4 outline-none transition-all focus:border-emerald-600"
+                          className="w-full rounded-xl border border-slate-200 p-4 outline-none transition-all focus:border-emerald-600 focus:bg-emerald-50/10"
                           value={leadData.escola}
                           onChange={(e) => setLeadData({ ...leadData, escola: e.target.value })}
                         />
                       </div>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <label className="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">WhatsApp</label>
-                          <input
-                            required
-                            type="tel"
-                            placeholder="9XXXXXXXX"
-                            className={`w-full rounded-xl border p-4 outline-none transition-all focus:border-emerald-600 ${phoneError ? 'border-rose-500 bg-rose-50' : 'border-slate-200'}`}
-                            value={leadData.whatsapp}
-                            onChange={(e) => setLeadData({ ...leadData, whatsapp: e.target.value })}
-                          />
-                          {phoneError ? <p className="ml-1 text-[10px] font-bold text-rose-500">{phoneError}</p> : null}
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="ml-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">Email Profissional</label>
-                          <input
-                            required
-                            type="email"
-                            placeholder="nome@email.com"
-                            className="w-full rounded-xl border border-slate-200 p-4 outline-none transition-all focus:border-emerald-600"
-                            value={leadData.email}
-                            onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">WhatsApp (Angola)</label>
+                        <input
+                          required
+                          type="tel"
+                          placeholder="9XXXXXXXX"
+                          className={`w-full rounded-xl border p-4 outline-none transition-all focus:border-emerald-600 ${phoneError ? 'border-rose-500 bg-rose-50' : 'border-slate-200'}`}
+                          value={leadData.whatsapp}
+                          onChange={(e) => setLeadData({ ...leadData, whatsapp: e.target.value })}
+                        />
+                        {phoneError && <p className="text-[10px] font-bold text-rose-500 ml-1">{phoneError}</p>}
                       </div>
-                      <button disabled={isSubmitting} className="btn-p mt-6 w-full justify-center py-5 text-lg disabled:opacity-50">
-                        {isSubmitting ? 'A processar...' : 'Ver meu diagnóstico agora'}
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Email</label>
+                        <input
+                          required
+                          type="email"
+                          placeholder="nome@email.com"
+                          className="w-full rounded-xl border border-slate-200 p-4 outline-none transition-all focus:border-emerald-600 focus:bg-emerald-50/10"
+                          value={leadData.email}
+                          onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
+                        />
+                      </div>
+                      <button disabled={isSubmitting} className="btn-p mt-4 w-full justify-center py-5 text-lg disabled:opacity-50">
+                        {isSubmitting ? 'A processar...' : 'Ver meu diagnóstico'}
                         <ArrowRight size={20} />
                       </button>
                     </form>
@@ -644,80 +608,52 @@ export function DiagnosisPageClient() {
               {step === QUESTIONS.length + 2 && (
                 <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
                   <div className={`overflow-hidden rounded-[32px] border border-white/80 ${diagnosis.bg} shadow-[0_30px_80px_rgba(20,34,24,0.08)]`}>
-                    <div className="grid gap-8 px-8 py-8 md:px-10 md:py-10 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className="grid gap-8 px-8 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
                       <div className="space-y-6 text-center lg:text-left">
                         <div className="flex justify-center lg:justify-start">{diagnosis.icon}</div>
                         <div className="space-y-2">
-                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Resultado do Diagnóstico</p>
+                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Resultado</p>
                           <h2 className={`${diagnosis.color} text-4xl font-extrabold`} style={headingStyle}>{diagnosis.title}</h2>
                         </div>
-                        <p className="font-medium leading-8 text-slate-700">{diagnosis.desc}</p>
+                        <p className="text-lg font-medium leading-relaxed text-slate-700">{diagnosis.desc}</p>
                         <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-                          <button onClick={handleShare} className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold shadow-sm transition-colors hover:bg-slate-50">
+                          <button onClick={handleShare} className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold shadow-sm transition-colors hover:bg-slate-50">
                             <Share2 size={14} className="text-emerald-600" />
-                            Partilhar no WhatsApp
+                            Partilhar WhatsApp
                           </button>
-                          <button onClick={generatePDF} className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold shadow-sm transition-colors hover:bg-slate-50">
+                          <button onClick={generatePDF} className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold shadow-sm transition-colors hover:bg-slate-50">
                             <FileDown size={14} className="text-rose-600" />
-                            Descarregar PDF
+                            Baixar PDF
                           </button>
                         </div>
                       </div>
 
-                      <div className="rounded-[28px] border border-white/80 bg-white/70 p-6 shadow-lg shadow-white/30">
+                      <div className="rounded-[28px] bg-white p-8 shadow-xl shadow-slate-200/40">
                         <div className="flex items-end justify-between gap-4">
                           <div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Pontuação estimada</p>
-                            <p className="mt-2 text-5xl font-black text-slate-900">{Math.round(percentage)}%</p>
-                          </div>
-                          <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">Nível</p>
-                            <p className="mt-1 text-sm font-black">{diagnosis.title}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Pontuação</p>
+                            <p className="mt-1 text-5xl font-black text-slate-900">{Math.round(percentage)}%</p>
                           </div>
                         </div>
 
-                        <div className="relative mt-6 h-4 overflow-hidden rounded-full bg-white/70">
+                        <div className="relative mt-6 h-3 overflow-hidden rounded-full bg-slate-100">
                           <motion.div
                             className={`h-full ${diagnosis.color.replace('text-', 'bg-')}`}
                             initial={{ width: 0 }}
                             animate={{ width: `${percentage}%` }}
-                            transition={{ duration: 1, delay: 0.5 }}
+                            transition={{ duration: 1.2, ease: "easeOut" }}
                           />
                         </div>
 
-                        <div className="mt-6 grid gap-4">
+                        <div className="mt-8 space-y-4">
                           {[
-                            {
-                              title: 'Financeiro',
-                              text:
-                                percentage < 40
-                                  ? 'Risco alto de atraso na leitura de pagamentos e cobranças.'
-                                  : percentage < 75
-                                    ? 'Há alguma estrutura, mas ainda com esforço manual.'
-                                    : 'Boa base para automação e reconciliação mais rápida.',
-                            },
-                            {
-                              title: 'Operação',
-                              text:
-                                percentage < 40
-                                  ? 'Secretaria sobrecarregada e dependente de papel e WhatsApp.'
-                                  : percentage < 75
-                                    ? 'Fluxos existem, mas ainda descentralizados.'
-                                    : 'Operação mais estável, pronta para ganho de escala.',
-                            },
-                            {
-                              title: 'Direção',
-                              text:
-                                percentage < 40
-                                  ? 'Baixa previsibilidade para decidir com antecedência.'
-                                  : percentage < 75
-                                    ? 'A direção consegue ver parte do cenário, mas não em tempo real.'
-                                    : 'Bom nível de visibilidade, com espaço para refinamento executivo.',
-                            },
+                            { title: 'Financeiro', text: percentage < 40 ? 'Risco alto de inadimplência.' : percentage < 75 ? 'Esforço manual elevado.' : 'Boa base digital.' },
+                            { title: 'Operação', text: percentage < 40 ? 'Dependência total de papel.' : percentage < 75 ? 'Fluxos descentralizados.' : 'Operação estável.' },
+                            { title: 'Direção', text: percentage < 40 ? 'Visibilidade nula em tempo real.' : percentage < 75 ? 'Visão parcial dos dados.' : 'Excelente controlo.' },
                           ].map((item) => (
-                            <div key={item.title} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div key={item.title} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                               <p className="text-sm font-black text-slate-900">{item.title}</p>
-                              <p className="mt-1 text-sm leading-6 text-slate-600">{item.text}</p>
+                              <p className="mt-0.5 text-sm text-slate-600">{item.text}</p>
                             </div>
                           ))}
                         </div>
@@ -725,56 +661,51 @@ export function DiagnosisPageClient() {
                     </div>
                   </div>
 
-                  <div className="space-y-6 rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_20px_50px_rgba(20,34,24,0.06)]">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Próximo passo recomendado</p>
-                        <h3 className="mt-2 text-2xl font-bold text-slate-950" style={headingStyle}>Como o KLASSE pode ajudar a sua escola</h3>
+                  <div className="rounded-[32px] bg-slate-900 p-10 text-white shadow-2xl">
+                    <div className="max-w-3xl mx-auto space-y-8 text-center">
+                      <div className="space-y-4">
+                        <h3 className="text-3xl font-bold tracking-tight" style={headingStyle}>Pronto para modernizar a sua escola?</h3>
+                        <p className="text-slate-400 text-lg">
+                          O KLASSE ajuda a automatizar as cobranças, organizar as matrículas e dar visibilidade real à direção.
+                        </p>
                       </div>
-                      <p className="max-w-xl text-sm leading-6 text-slate-500">
-                        A plataforma entra para reduzir atrito operacional, acelerar cobrança e dar mais visibilidade para direção e secretaria.
-                      </p>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="flex items-start gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                          <Zap size={18} />
-                        </div>
-                        <p className="text-sm text-slate-600"><strong>Automatização Financeira:</strong> Acabe com a conferência manual de recibos bancários.</p>
-                      </div>
-                      <div className="flex items-start gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                          <MessageCircle size={18} />
-                        </div>
-                        <p className="text-sm text-slate-600"><strong>Comunicação WhatsApp:</strong> Envie avisos de cobrança e notas automaticamente para os pais.</p>
-                      </div>
-                      <div className="flex items-start gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                          <BarChart3 size={18} />
-                        </div>
-                        <p className="text-sm text-slate-600"><strong>Direção com dados:</strong> Veja inadimplência, crescimento e operação sem esperar consolidações manuais.</p>
-                      </div>
-                      <div className="flex items-start gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                          <Clock size={18} />
-                        </div>
-                        <p className="text-sm text-slate-600"><strong>Secretaria mais leve:</strong> Reduza retrabalho em matrícula, emissão de documentos e fluxo académico.</p>
-                      </div>
-                    </div>
 
-                    <div className="space-y-4 pt-6 text-center">
-                      <p className="text-sm italic text-slate-500">Quer transformar a gestão da sua escola hoje?</p>
-                      <a
-                        href="https://wa.me/244933349106?text=Fiz%20o%20diagnóstico%20e%20quero%20conhecer%20o%20KLASSE"
-                        className="btn-p w-full justify-center border-none bg-[#25D366] py-5 text-lg hover:bg-[#128C7E]"
-                      >
-                        <MessageCircle size={24} />
-                        Agendar Demonstração Gratuita
-                      </a>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {[
+                          ['Cobrança Automática', 'Acabe com a conferência manual de depósitos.'],
+                          ['Pautas Online', 'Notas lançadas no telemóvel pelo professor.'],
+                          ['Comunicação WhatsApp', 'Avisos e recibos automáticos para os pais.'],
+                          ['Dashboard Direção', 'Saldo de caixa e inadimplência em tempo real.'],
+                        ].map(([title, desc]) => (
+                          <div key={title} className="text-left p-5 rounded-2xl bg-white/5 border border-white/10">
+                            <p className="font-bold text-emerald-400">{title}</p>
+                            <p className="text-xs text-slate-500 mt-1">{desc}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-4">
+                        <a
+                          href="https://wa.me/244933349106?text=Fiz%20o%20diagnóstico%20e%20quero%20conhecer%20o%20KLASSE"
+                          className="btn-p w-full justify-center bg-[#25D366] hover:bg-[#128C7E] py-6 text-xl"
+                        >
+                          <MessageCircle size={24} />
+                          Agendar Demonstração Gratuita
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
               )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </main>
+
+      <FooterSection links={footerLinks} />
+    </div>
+  )
+}
             </AnimatePresence>
           </div>
         </div>
