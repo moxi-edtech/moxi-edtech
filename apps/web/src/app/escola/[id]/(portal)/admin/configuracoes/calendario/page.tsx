@@ -259,10 +259,15 @@ export default function CalendarioConfigPage({ params }: Props) {
       }
 
       // 2. Salvar Trimestres
+      const payload = periodos.map((periodo) => ({
+        ...periodo,
+        ano_letivo_id: periodo.ano_letivo_id || anoLetivo?.id || "",
+      }));
+
       const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos/upsert-bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(periodos),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Erro ao salvar trimestres");
       

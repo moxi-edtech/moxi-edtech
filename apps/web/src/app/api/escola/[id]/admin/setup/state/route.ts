@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(
@@ -35,16 +36,12 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { data: hasRole, error: roleError } = await supabase.rpc('user_has_role_in_school', {
-      p_escola_id: userEscolaId,
-      p_roles: ['admin_escola', 'secretaria', 'admin'],
+    const roleCheck = await requireRoleInSchool({
+      supabase: supabase as any,
+      escolaId: userEscolaId,
+      roles: ["admin_escola", "secretaria", "admin", "staff_admin"],
     });
-    if (roleError) {
-      return NextResponse.json({ ok: false, error: "Erro ao verificar permissões" }, { status: 500 });
-    }
-    if (!hasRole) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
-    }
+    if (roleCheck.error) return roleCheck.error;
 
     let anoLetivo = anoParam ? Number(anoParam) : null;
     if (!anoLetivo) {

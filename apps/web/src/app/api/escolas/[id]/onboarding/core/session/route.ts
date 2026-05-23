@@ -13,6 +13,14 @@ const postBodySchema = z.object({
   data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   esquemaPeriodos: z.enum(["trimestral", "semestral", "bimestral"]),
   templateId: z.string().uuid().optional(),
+  periodosConfig: z.array(
+    z.object({
+      numero: z.number().int().min(1).max(4),
+      data_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      data_fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      trava_notas_em: z.string().datetime().optional().or(z.literal("")),
+    })
+  ).optional(),
 });
 
 const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ start: string; end: string }> => {
@@ -61,7 +69,7 @@ export async function POST(
       client: supabase,
       userId: user.id,
       requestedEscolaId,
-      allowedPapels: ["admin", "staff_admin", "admin_escola", "secretaria"],
+      allowedPapels: ["admin", "staff_admin", "admin_escola", "secretaria", "admin_financeiro"],
       route: "/api/escolas/[id]/onboarding/core/session",
     });
     if (!access.ok) {
@@ -75,7 +83,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Dados inválidos.", issues: parseResult.error.issues }, { status: 400 });
     }
 
-    const { anoLetivo, data_inicio, data_fim, esquemaPeriodos, templateId } = parseResult.data;
+    const { anoLetivo, data_inicio, data_fim, esquemaPeriodos, templateId, periodosConfig } = parseResult.data;
 
     // 1. Create/Activate the Academic Year
     const { data: anoLetivoResult, error: anoError } = await supabase.rpc('setup_active_ano_letivo', {
@@ -96,7 +104,26 @@ export async function POST(
     // 2. Generate and save the periods and events
     let periodosPayload: Database['public']['Tables']['periodos_letivos']['Insert'][] = [];
     
-    if (templateId) {
+    if (Array.isArray(periodosConfig) && periodosConfig.length > 0) {
+      const sortedConfig = periodosConfig.slice().sort((a, b) => a.numero - b.numero);
+      const totalPeriodos = Math.max(sortedConfig.length, 1);
+      const basePeso = Math.floor(100 / totalPeriodos);
+      const pesoRemainder = 100 - (basePeso * totalPeriodos);
+
+      periodosPayload = periodosConfig
+        .slice()
+        .sort((a, b) => a.numero - b.numero)
+        .map((periodo, index) => ({
+          ano_letivo_id: anoLetivoId,
+          escola_id: userEscolaId,
+          tipo: 'TRIMESTRE' as const,
+          numero: periodo.numero,
+          data_inicio: periodo.data_inicio,
+          data_fim: periodo.data_fim,
+          trava_notas_em: periodo.trava_notas_em ? periodo.trava_notas_em : null,
+          peso: basePeso + (index < pesoRemainder ? 1 : 0),
+        }));
+    } else if (templateId) {
       const { data: templateItems } = await supabase
         .from('calendario_template_items')
         .select('*')
@@ -135,6 +162,8 @@ export async function POST(
       const tipoUpper = (esquemaPeriodos === 'semestral' ? 'SEMESTRE' : esquemaPeriodos === 'bimestral' ? 'BIMESTRE' : 'TRIMESTRE') as Database['public']['Enums']['periodo_tipo'];
       const parts = tipoUpper === 'SEMESTRE' ? 2 : tipoUpper === 'BIMESTRE' ? 4 : 3;
       const ranges = splitRanges(data_inicio, data_fim, parts);
+      const basePeso = Math.floor(100 / parts);
+      const pesoRemainder = 100 - (basePeso * parts);
       
       periodosPayload = ranges.map((r, idx) => ({
         ano_letivo_id: anoLetivoId,
@@ -144,7 +173,7 @@ export async function POST(
         data_inicio: r.start,
         data_fim: r.end,
         trava_notas_em: null,
-        peso: Math.floor(100 / parts)
+        peso: basePeso + (idx < pesoRemainder ? 1 : 0)
       }));
     }
 
@@ -207,7 +236,7 @@ export async function GET(
       client: supabase,
       userId: user.id,
       requestedEscolaId,
-      allowedPapels: ["admin", "staff_admin", "admin_escola", "secretaria"],
+      allowedPapels: ["admin", "staff_admin", "admin_escola", "secretaria", "admin_financeiro"],
       route: "/api/escolas/[id]/onboarding/core/session",
     });
     if (!access.ok) {

@@ -24,6 +24,7 @@ import AcademicStep2Config from "./AcademicStep2Config";
 import AcademicStepFinancial from "./AcademicStepFinancial";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { ConfirmacaoContextual } from "@/components/harmonia";
+import { invalidateSetupStateCache } from "@/lib/setupStateClient";
 
 import {
   type TurnosState,
@@ -46,6 +47,14 @@ type PeriodoConfig = {
   data_inicio: string;
   data_fim: string;
   trava_notas_em: string;
+};
+
+type PricingRule = {
+  id: string;
+  cursoNome: string;
+  classeNome: string;
+  valorMatricula: number;
+  valorMensalidade: number;
 };
 
 const toDateInput = (value?: string | null) => {
@@ -198,6 +207,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [valorMatricula, setValorMatricula] = useState<number>(0);
   const [valorMensalidade, setValorMensalidade] = useState<number>(0);
   const [diaVencimento, setDiaVencimento] = useState<number>(5);
+  const [pricingRules, setPricingRules] = useState<PricingRule[]>([]);
 
   // --- STATES (STEP 3 & 5) ---
   const [presetCategory, setPresetCategory] = useState<CurriculumCategory>("geral");
@@ -207,8 +217,31 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [appliedCursos, setAppliedCursos] = useState<Record<string, { cursoId: string; classes: string[]; version?: number | null }>>({});
   const [curriculumOverrides, setCurriculumOverrides] = useState<Record<string, number>>({});
   const [showFinalSuccess, setShowFinalSuccess] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
+
+  useEffect(() => {
+    const nextRules = matrix
+      .filter((row) => row.nome && row.cursoNome)
+      .map((row) => ({
+        id: `${row.cursoNome}::${row.nome}`,
+        cursoNome: row.cursoNome || "Curso sem nome",
+        classeNome: row.nome,
+      }));
+
+    setPricingRules((prev) => {
+      const prevMap = new Map(prev.map((rule) => [rule.id, rule]));
+      return nextRules.map((rule) => {
+        const existing = prevMap.get(rule.id);
+        return existing ?? {
+          ...rule,
+          valorMatricula,
+          valorMensalidade,
+        };
+      });
+    });
+  }, [matrix]);
 
   useEffect(() => {
     async function fn() {
@@ -270,8 +303,19 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          anoLetivo, data_inicio: dataInicio, data_fim: dataFim, esquemaPeriodos: 'trimestral',
-          templateId: selectedTemplateId || undefined
+          anoLetivo,
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+          esquemaPeriodos: 'trimestral',
+          templateId: selectedTemplateId || undefined,
+          periodosConfig: periodosConfig.map((periodo) => ({
+            numero: periodo.numero,
+            data_inicio: periodo.data_inicio,
+            data_fim: periodo.data_fim,
+            trava_notas_em: periodo.trava_notas_em
+              ? new Date(periodo.trava_notas_em).toISOString()
+              : "",
+          })),
         })
       });
       const json = await res.json();
@@ -305,24 +349,49 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     setApplyingPreset(true);
     let tid = toast({ variant: "syncing", title: "Processando...", duration: 0 });
     try {
-      // Simplificado parabrevidade
       setStep(4);
       dismiss(tid);
-      success("Estrutura criada.");
+      success("Matriz confirmada.");
     } catch (e: any) { dismiss(tid); error("Erro"); } finally { setApplyingPreset(false); }
   };
 
   const handleGenerateTurmas = async () => {
     if (!isContextReady) return;
+    setFinalizing(true);
     try {
-      await fetch(`/api/escolas/${escolaContextId}/onboarding/core/finalize`, {
+      const response = await fetch(`/api/escolas/${escolaContextId}/onboarding/core/finalize`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "academico", iban, valorMatricula, valorMensalidade, diaVencimento, anoLetivo, schoolName: schoolDisplayName })
+        body: JSON.stringify({
+          tipo: "academico",
+          iban,
+          valorMatricula,
+          valorMensalidade,
+          diaVencimento,
+          anoLetivo,
+          schoolName: schoolDisplayName,
+          pricingRules,
+          turnos,
+          matrix,
+        })
       });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao finalizar o setup.");
+      }
+      if (escolaContextId) {
+        invalidateSetupStateCache(escolaContextId);
+      }
+      if (escolaUuidResolved) {
+        invalidateSetupStateCache(escolaUuidResolved);
+      }
       success("Concluído!");
       setShowFinalSuccess(true);
       setTimeout(() => { if (onComplete) onComplete(); else window.location.href = `/escola/${escolaParam}/admin/dashboard`; }, 2000);
-    } catch (e) { error("Erro final"); }
+    } catch (e: any) {
+      error(e?.message || "Erro final");
+    } finally {
+      setFinalizing(false);
+    }
   };
 
   const handleNext = async () => {
@@ -368,7 +437,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           )}
           {step === 3 && (
             <AcademicStep2
-              escolaId={escolaContextId || ""} presetCategory={presetCategory} onPresetCategoryChange={setPresetCategory}
+              escolaId={escolaUuidResolved || ""} presetCategory={presetCategory} onPresetCategoryChange={setPresetCategory}
               matrix={matrix} onMatrixChange={setMatrix} onMatrixUpdate={(id, f, v) => setMatrix(p => p.map(r => r.id === id ? { ...r, [f]: Number(v) } : r))}
               turnos={turnos} onApplyCurriculumPreset={handleApplyCurriculumPreset} applyingPreset={applyingPreset}
               padraoNomenclatura={padraoNomenclatura} onPadraoNomenclaturaChange={setPadraoNomenclatura}
@@ -380,6 +449,21 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               valorMatricula={valorMatricula} onValorMatriculaChange={setValorMatricula}
               valorMensalidade={valorMensalidade} onValorMensalidadeChange={setValorMensalidade}
               diaVencimento={diaVencimento} onDiaVencimentoChange={setDiaVencimento}
+              pricingRules={pricingRules}
+              onPricingRuleChange={(id, field, value) =>
+                setPricingRules((prev) =>
+                  prev.map((rule) => (rule.id === id ? { ...rule, [field]: Number.isFinite(value) ? value : 0 } : rule))
+                )
+              }
+              onApplyDefaultsToAll={() =>
+                setPricingRules((prev) =>
+                  prev.map((rule) => ({
+                    ...rule,
+                    valorMatricula,
+                    valorMensalidade,
+                  }))
+                )
+              }
             />
           )}
           {step === 5 && (
@@ -394,11 +478,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-8 py-5">
-          <button onClick={() => step > 1 && setStep(p => p - 1)} disabled={step === 1 || applyingPreset} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-30">
+          <button onClick={() => step > 1 && setStep(p => p - 1)} disabled={step === 1 || applyingPreset || finalizing} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-30">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </button>
-          <button onClick={handleNext} disabled={applyingPreset || creatingSession || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 disabled:opacity-50">
-            {applyingPreset || creatingSession ? <Loader2 className="h-4 w-4 animate-spin" /> : (step === 5 ? "Finalizar" : "Continuar")}
+          <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 disabled:opacity-50">
+            {applyingPreset || creatingSession || finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : (step === 5 ? "Finalizar" : "Continuar")}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>

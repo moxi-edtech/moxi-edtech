@@ -72,6 +72,19 @@ export interface AcademicStepFinancialProps {
   onValorMensalidadeChange: (val: number) => void;
   diaVencimento: number;
   onDiaVencimentoChange: (val: number) => void;
+  pricingRules: {
+    id: string;
+    cursoNome: string;
+    classeNome: string;
+    valorMatricula: number;
+    valorMensalidade: number;
+  }[];
+  onPricingRuleChange: (
+    id: string,
+    field: "valorMatricula" | "valorMensalidade",
+    value: number
+  ) => void;
+  onApplyDefaultsToAll: () => void;
   isLoading?: boolean;
 }
 

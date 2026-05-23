@@ -59,7 +59,7 @@ async function authorize(
 
   const { data: hasRole, error: rolesError } = await supabase.rpc("user_has_role_in_school", {
     p_escola_id: userEscolaId,
-    p_roles: ["admin_escola", "admin"],
+    p_roles: ["admin_escola", "admin", "staff_admin", "admin_financeiro"],
   });
 
   if (rolesError) {

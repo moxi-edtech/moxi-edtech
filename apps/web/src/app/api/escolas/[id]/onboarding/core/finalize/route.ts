@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomUUID } from "crypto"
 import { supabaseServer } from "@/lib/supabaseServer"
 import type { Database, TablesInsert } from "~types/supabase"
 import { mapPapelToGlobalRole } from "@/lib/permissions"
@@ -9,6 +10,7 @@ import { z } from 'zod'
 import { hasPermission } from "@/lib/permissions"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { invalidateEscolaSlugCache } from "@/lib/tenant/resolveEscolaParam"
+import { supabaseServerRole } from "@/lib/supabaseServerRole"
 import { resolveUniversalLoginUrl } from "@/middleware"
 
 // POST /api/escolas/[id]/onboarding
@@ -23,6 +25,7 @@ export async function POST(
   try {
     // 1) Get current user via RLS-safe server client
     const sserver = await supabaseServer()
+    const admin = supabaseServerRole()
     const { data: userRes } = await sserver.auth.getUser()
     const user = userRes?.user
     if (!user) {
@@ -125,6 +128,28 @@ export async function POST(
       z.string().email().optional(),
     )
 
+    const PricingRuleSchema = z.object({
+      cursoNome: z.string().trim().min(1),
+      classeNome: z.string().trim().min(1),
+      valorMatricula: z.number().min(0),
+      valorMensalidade: z.number().min(0),
+    })
+
+    const MatrixRowSchema = z.object({
+      nome: z.string().trim().min(1),
+      manha: z.number().int().min(0).optional().default(0),
+      tarde: z.number().int().min(0).optional().default(0),
+      noite: z.number().int().min(0).optional().default(0),
+      cursoKey: z.string().trim().min(1),
+      cursoNome: z.string().trim().min(1).optional(),
+    })
+
+    const TurnosSchema = z.object({
+      "Manhã": z.boolean().optional(),
+      "Tarde": z.boolean().optional(),
+      "Noite": z.boolean().optional(),
+    })
+
     const PayloadSchema = z.object({
       // Novo: modo “finalizar onboarding acadêmico”
       tipo: z.enum(["academico"]).optional(),
@@ -136,6 +161,9 @@ export async function POST(
       valorMensalidade: z.number().optional(),
       diaVencimento: z.number().int().min(1).max(31).optional(),
       anoLetivo: z.number().optional(),
+      pricingRules: z.array(PricingRuleSchema).optional(),
+      matrix: z.array(MatrixRowSchema).optional(),
+      turnos: TurnosSchema.optional(),
 
       // 🔹 Campos antigos (modo “onboarding geral”)
       schoolName: z.string().trim().min(1).optional(),
@@ -165,6 +193,9 @@ export async function POST(
       valorMensalidade,
       diaVencimento,
       anoLetivo,
+      pricingRules,
+      matrix,
+      turnos,
       schoolName,
       primaryColor,
       logoUrl,
@@ -173,6 +204,25 @@ export async function POST(
       teacherEmail,
       staffEmail,
     } = payload;
+    const anoParaSetup = anoLetivo || new Date().getFullYear()
+    const normalizedPricingRules = (pricingRules ?? [])
+      .map((rule) => ({
+        cursoNome: rule.cursoNome.trim(),
+        classeNome: rule.classeNome.trim(),
+        valorMatricula: Number(rule.valorMatricula ?? 0),
+        valorMensalidade: Number(rule.valorMensalidade ?? 0),
+      }))
+      .filter((rule) => rule.cursoNome && rule.classeNome)
+    const normalizedMatrix = (matrix ?? [])
+      .map((row) => ({
+        nome: row.nome.trim(),
+        cursoKey: row.cursoKey.trim(),
+        cursoNome: row.cursoNome?.trim() || row.cursoKey.trim(),
+        manha: Number(row.manha ?? 0),
+        tarde: Number(row.tarde ?? 0),
+        noite: Number(row.noite ?? 0),
+      }))
+      .filter((row) => row.nome && row.cursoKey)
 
     // 3) Bloqueia onboarding para escolas suspensas/excluídas
     const { data: esc } = await sserver.from('escolas').select('status, dados_pagamento').eq('id', escolaIdResolved).limit(1)
@@ -186,16 +236,14 @@ export async function POST(
       const newDados = { ...currentDados, iban: iban || currentDados.iban }
       
       // Salva IBAN na escola
-      await sserver.from('escolas').update({ dados_pagamento: newDados }).eq('id', escolaIdResolved)
+      await admin.from('escolas').update({ dados_pagamento: newDados }).eq('id', escolaIdResolved)
 
       // Salva Configurações Financeiras e Tabela de Preços Base
-      if (diaVencimento || valorMatricula || valorMensalidade) {
-        const anoParaTabela = anoLetivo || new Date().getFullYear()
-
+      if (diaVencimento || valorMatricula || valorMensalidade || (pricingRules?.length ?? 0) > 0) {
         // 1. Tabela de Preços Geral
-        await sserver.from('financeiro_tabelas').upsert({
+        await admin.from('financeiro_tabelas').upsert({
           escola_id: escolaIdResolved,
-          ano_letivo: anoParaTabela,
+          ano_letivo: anoParaSetup,
           curso_id: null,
           classe_id: null,
           dia_vencimento: diaVencimento || 10,
@@ -206,13 +254,313 @@ export async function POST(
         }, { onConflict: 'escola_id,ano_letivo,curso_id,classe_id' })
 
         // 2. Configurações Globais
-        await sserver.from('configuracoes_financeiro').upsert({
+        await admin.from('configuracoes_financeiro').upsert({
           escola_id: escolaIdResolved,
           dia_vencimento_padrao: diaVencimento || 10,
           moeda: 'AOA',
           multa_atraso_percent: 0,
           juros_diarios_percent: 0,
         }, { onConflict: 'escola_id' })
+      }
+
+      const { data: anoLetivoRow, error: anoLetivoError } = await sserver
+        .from('anos_letivos')
+        .select('id')
+        .eq('escola_id', escolaIdResolved)
+        .eq('ano', anoParaSetup)
+        .maybeSingle()
+
+      if (anoLetivoError || !anoLetivoRow?.id) {
+        throw new Error('Ano letivo não encontrado para finalizar o setup académico.')
+      }
+
+      const { data: periodosRows, error: periodosError } = await sserver
+        .from('periodos_letivos')
+        .select('id, numero, peso')
+        .eq('escola_id', escolaIdResolved)
+        .eq('ano_letivo_id', anoLetivoRow.id)
+        .order('numero', { ascending: true })
+
+      if (periodosError) {
+        throw new Error(`Erro ao validar períodos letivos: ${periodosError.message}`)
+      }
+
+      const periodos = periodosRows ?? []
+      const totalPeso = periodos.reduce((sum, periodo: any) => sum + Number(periodo.peso ?? 0), 0)
+      if (periodos.length > 0 && totalPeso !== 100) {
+        const basePeso = Math.floor(100 / periodos.length)
+        const pesoRemainder = 100 - (basePeso * periodos.length)
+
+        for (const [index, periodo] of periodos.entries()) {
+          const peso = basePeso + (index < pesoRemainder ? 1 : 0)
+          const { error: periodoUpdateError } = await admin
+            .from('periodos_letivos')
+            .update({ peso })
+            .eq('id', periodo.id)
+            .eq('escola_id', escolaIdResolved)
+
+          if (periodoUpdateError) {
+            throw new Error(`Erro ao normalizar pesos dos períodos: ${periodoUpdateError.message}`)
+          }
+        }
+      }
+
+      const requestedTurmas = normalizedMatrix.reduce(
+        (sum, row) => sum + row.manha + row.tarde + row.noite,
+        0,
+      )
+
+      if (normalizedMatrix.length > 0 && requestedTurmas <= 0) {
+        throw new Error('Defina pelo menos uma turma na matriz antes de finalizar.')
+      }
+
+      const rowsByCourse = new Map<string, typeof normalizedMatrix>()
+      const resolvedCourseIds = new Map<string, string>()
+      const resolvedClassIds = new Map<string, string>()
+      const pricingClassKey = (cursoNome: string, classeNome: string) =>
+        `${cursoNome.trim().toLowerCase()}::${classeNome.trim().toLowerCase()}`
+      for (const row of normalizedMatrix) {
+        const existing = rowsByCourse.get(row.cursoKey) ?? []
+        existing.push(row)
+        rowsByCourse.set(row.cursoKey, existing)
+      }
+
+      for (const [cursoKey, courseRows] of rowsByCourse.entries()) {
+        const cursoNome = courseRows[0]?.cursoNome || cursoKey
+        const { data: presetRow, error: presetError } = await admin
+          .from('curriculum_presets')
+          .select('course_code, name')
+          .eq('id', cursoKey)
+          .maybeSingle()
+
+        if (presetError || !presetRow?.course_code) {
+          throw new Error(`Preset curricular inválido para ${cursoNome}.`)
+        }
+
+        const presetCourseCode = String(presetRow.course_code).trim().toUpperCase()
+        const { data: existingByKey } = await admin
+          .from('cursos')
+          .select('id, nome, codigo, course_code, curriculum_key')
+          .eq('escola_id', escolaIdResolved)
+          .eq('curriculum_key', cursoKey)
+          .maybeSingle()
+
+        const existingCourse =
+          existingByKey ??
+          (
+            await admin
+              .from('cursos')
+              .select('id, nome, codigo, course_code, curriculum_key')
+              .eq('escola_id', escolaIdResolved)
+              .eq('nome', cursoNome)
+              .maybeSingle()
+          ).data ??
+          null
+
+        if (existingCourse) {
+          const { data: conflictingCodeCourse } = await admin
+            .from('cursos')
+            .select('id, nome')
+            .eq('escola_id', escolaIdResolved)
+            .eq('course_code', presetCourseCode)
+            .neq('id', String((existingCourse as any).id))
+            .maybeSingle()
+
+          if (conflictingCodeCourse) {
+            throw new Error(
+              `Já existe outro curso com o código ${presetCourseCode} (${String((conflictingCodeCourse as any).nome)}).`,
+            )
+          }
+
+          const { error: existingCourseUpdateError } = await admin
+            .from('cursos')
+            .update({
+              nome: cursoNome,
+              codigo: presetCourseCode,
+              course_code: presetCourseCode,
+              curriculum_key: cursoKey,
+              status_aprovacao: 'aprovado',
+            })
+            .eq('id', String((existingCourse as any).id))
+            .eq('escola_id', escolaIdResolved)
+
+          if (existingCourseUpdateError) {
+            throw new Error(
+              `Erro ao alinhar curso existente ${cursoNome}: ${existingCourseUpdateError.message}`,
+            )
+          }
+        }
+
+        const advancedConfig = {
+          classes: Array.from(new Set(courseRows.map((row) => row.nome))),
+          turnos: {
+            manha: courseRows.some((row) => row.manha > 0) || Boolean(turnos?.["Manhã"]),
+            tarde: courseRows.some((row) => row.tarde > 0) || Boolean(turnos?.["Tarde"]),
+            noite: courseRows.some((row) => row.noite > 0) || Boolean(turnos?.["Noite"]),
+          },
+        }
+
+        const { data: installRaw, error: installError } = await (sserver as any).rpc(
+          'curriculo_install_orchestrated',
+          {
+            p_escola_id: escolaIdResolved,
+            p_preset_key: cursoKey,
+            p_ano_letivo_id: anoLetivoRow.id,
+            p_auto_publish: true,
+            p_generate_turmas: false,
+            p_custom_data: { label: cursoNome },
+            p_advanced_config: advancedConfig,
+            p_idempotency_key: randomUUID(),
+          },
+        )
+
+        if (installError) {
+          throw new Error(`Erro ao instalar currículo de ${cursoNome}: ${installError.message}`)
+        }
+
+        const installResult = Array.isArray(installRaw) ? installRaw[0] : installRaw
+        if (installResult?.ok === false && installResult?.step !== 'already_published') {
+          throw new Error(
+            installResult?.error ||
+              installResult?.message ||
+              `Falha ao publicar currículo de ${cursoNome}.`,
+          )
+        }
+
+        let cursoId = installResult?.applied?.curso_id as string | undefined
+        if (!cursoId) {
+          const { data: cursoRow, error: cursoError } = await sserver
+            .from('cursos')
+            .select('id')
+            .eq('escola_id', escolaIdResolved)
+            .eq('curriculum_key', cursoKey)
+            .maybeSingle()
+
+          if (cursoError || !cursoRow?.id) {
+            throw new Error(`Curso não resolvido após instalação do currículo ${cursoNome}.`)
+          }
+          cursoId = cursoRow.id
+        }
+        resolvedCourseIds.set(cursoNome.trim().toLowerCase(), cursoId)
+
+        const classNames = Array.from(new Set(courseRows.map((row) => row.nome)))
+        const { data: classRows, error: classError } = await sserver
+          .from('classes')
+          .select('id, nome')
+          .eq('escola_id', escolaIdResolved)
+          .eq('curso_id', cursoId)
+          .in('nome', classNames)
+
+        if (classError) {
+          throw new Error(`Erro ao carregar classes de ${cursoNome}: ${classError.message}`)
+        }
+
+        const classIdByName = new Map<string, string>(
+          (classRows ?? []).map((row: any) => [String(row.nome), String(row.id)]),
+        )
+        for (const [className, classId] of classIdByName.entries()) {
+          resolvedClassIds.set(pricingClassKey(cursoNome, className), classId)
+        }
+
+        const turmasPayload = courseRows.flatMap((row) => {
+          const classeId = classIdByName.get(row.nome)
+          if (!classeId) {
+            throw new Error(`Classe ${row.nome} não encontrada para o curso ${cursoNome}.`)
+          }
+
+          const payload: Array<{ classeId: string; nome: string; turno: 'M' | 'T' | 'N'; quantidade: number }> = []
+          if (row.manha > 0) payload.push({ classeId, nome: row.nome, turno: 'M', quantidade: row.manha })
+          if (row.tarde > 0) payload.push({ classeId, nome: row.nome, turno: 'T', quantidade: row.tarde })
+          if (row.noite > 0) payload.push({ classeId, nome: row.nome, turno: 'N', quantidade: row.noite })
+          return payload
+        })
+
+        if (turmasPayload.length === 0) {
+          continue
+        }
+
+        const { data: turmasRaw, error: turmasError } = await (sserver as any).rpc(
+          'gerar_turmas_from_curriculo',
+          {
+            p_escola_id: escolaIdResolved,
+            p_curso_id: cursoId,
+            p_ano_letivo: anoParaSetup,
+            p_generation_params: {
+              cursoId,
+              anoLetivo: anoParaSetup,
+              turmas: turmasPayload,
+            },
+            p_idempotency_key: randomUUID(),
+          },
+        )
+
+        if (turmasError) {
+          throw new Error(`Erro ao gerar turmas de ${cursoNome}: ${turmasError.message}`)
+        }
+
+        const turmasResult = Array.isArray(turmasRaw) ? turmasRaw[0] : turmasRaw
+        if (turmasResult?.ok === false) {
+          throw new Error(
+            turmasResult?.message ||
+              turmasResult?.error ||
+              `Falha ao gerar turmas de ${cursoNome}.`,
+          )
+        }
+      }
+
+      if (normalizedPricingRules.length > 0) {
+        if (normalizedMatrix.length === 0) {
+          throw new Error('Defina a matriz académica antes de gravar preços por curso e classe.')
+        }
+
+        const unresolvedPricingRules = normalizedPricingRules.filter((rule) => {
+          const cursoId = resolvedCourseIds.get(rule.cursoNome.trim().toLowerCase())
+          if (!cursoId) return true
+          return !resolvedClassIds.has(pricingClassKey(rule.cursoNome, rule.classeNome))
+        })
+
+        if (unresolvedPricingRules.length > 0) {
+          const firstMissing = unresolvedPricingRules[0]
+          throw new Error(
+            `Preço específico sem estrutura académica correspondente: ${firstMissing.cursoNome} / ${firstMissing.classeNome}.`,
+          )
+        }
+
+        const pricingRows = normalizedPricingRules.map((rule) => {
+          const cursoId = resolvedCourseIds.get(rule.cursoNome.trim().toLowerCase())
+          const classeId = resolvedClassIds.get(pricingClassKey(rule.cursoNome, rule.classeNome))
+          if (!cursoId || !classeId) {
+            throw new Error(
+              `Preço específico sem estrutura académica correspondente: ${rule.cursoNome} / ${rule.classeNome}.`,
+            )
+          }
+
+          return {
+            escola_id: escolaIdResolved,
+            ano_letivo: anoParaSetup,
+            curso_id: cursoId,
+            classe_id: classeId,
+            dia_vencimento: diaVencimento || 10,
+            valor_matricula: rule.valorMatricula,
+            valor_mensalidade: rule.valorMensalidade,
+            multa_atraso_percentual: 0,
+            multa_diaria: 0,
+          }
+        })
+
+        const { error: pricingError } = await admin
+          .from('financeiro_tabelas')
+          .upsert(pricingRows as any, { onConflict: 'escola_id,ano_letivo,curso_id,classe_id' })
+
+        if (pricingError) {
+          throw new Error(`Erro ao salvar preços por curso e classe: ${pricingError.message}`)
+        }
+      }
+
+      try {
+        await (sserver as any).rpc('refresh_mv_turmas_para_matricula')
+      } catch {
+        // best effort only
       }
     }
 
@@ -246,6 +594,27 @@ export async function POST(
 
     invalidateEscolaSlugCache(oldSlug)
     invalidateEscolaSlugCache(newSlug)
+
+    if (tipo === 'academico') {
+      recordAuditServer({
+        escolaId: escolaIdResolved,
+        portal: 'admin_escola',
+        acao: 'ONBOARDING_FINALIZADO',
+        entity: 'escolas',
+        entityId: escolaIdResolved,
+        details: {
+          tipo: 'academico',
+          sessionId: sessionId ?? null,
+          pricingRulesCount: pricingRules?.length ?? 0,
+        },
+      }).catch(() => null)
+
+      return NextResponse.json({
+        ok: true,
+        nextPath: nextPath ?? `/escola/${escolaParam}/admin/dashboard`,
+        invites: { sent: [], updated: [], failed: [] },
+      })
+    }
 
     // 3.2) Lógica de criação de turma legada removida pois não está em conformidade com o novo modelo acadêmico.
     // A criação de turmas deve ser feita via fluxo de configuração acadêmica, que exige mais contexto (currículo, ano letivo).

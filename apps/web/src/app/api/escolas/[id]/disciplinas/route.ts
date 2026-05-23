@@ -4,6 +4,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { ensureEditableCurriculoForClass } from "@/lib/curriculo/ensureEditableCurriculoForClass";
 
 const resolveStatusCompletude = (payload: {
   carga_horaria_semanal?: number | null;
@@ -253,11 +254,65 @@ export async function POST(
       modelo_excecao_id: modeloExcecaoId,
     });
 
+    const { draftCurriculoId } = await ensureEditableCurriculoForClass({
+      supabase: supabase as any,
+      escolaId: userEscolaId,
+      cursoId: parsed.data.curso_id,
+      classeId: parsed.data.classe_id,
+    });
+
+    let targetMatrizId: string | null = null;
+    const { data: existingDraftRow, error: existingDraftError } = await (supabase as any)
+      .from("curso_matriz")
+      .select("id")
+      .eq("escola_id", userEscolaId)
+      .eq("curso_id", parsed.data.curso_id)
+      .eq("classe_id", parsed.data.classe_id)
+      .eq("disciplina_id", disciplinaId)
+      .eq("curso_curriculo_id", draftCurriculoId)
+      .maybeSingle();
+
+    if (existingDraftError) {
+      return NextResponse.json({ ok: false, error: existingDraftError.message }, { status: 400 });
+    }
+
+    if (existingDraftRow?.id) {
+      targetMatrizId = String(existingDraftRow.id);
+    } else {
+      const { data: legacyRow, error: legacyError } = await (supabase as any)
+        .from("curso_matriz")
+        .select("id")
+        .eq("escola_id", userEscolaId)
+        .eq("curso_id", parsed.data.curso_id)
+        .eq("classe_id", parsed.data.classe_id)
+        .eq("disciplina_id", disciplinaId)
+        .is("curso_curriculo_id", null)
+        .maybeSingle();
+
+      if (legacyError) {
+        return NextResponse.json({ ok: false, error: legacyError.message }, { status: 400 });
+      }
+
+      if (legacyRow?.id) {
+        const { error: migrateLegacyError } = await (supabase as any)
+          .from("curso_matriz")
+          .update({ curso_curriculo_id: draftCurriculoId })
+          .eq("id", legacyRow.id)
+          .eq("escola_id", userEscolaId);
+
+        if (migrateLegacyError) {
+          return NextResponse.json({ ok: false, error: migrateLegacyError.message }, { status: 400 });
+        }
+        targetMatrizId = String(legacyRow.id);
+      }
+    }
+
     const payload: any = {
       escola_id: userEscolaId,
       curso_id: parsed.data.curso_id,
       classe_id: parsed.data.classe_id,
       disciplina_id: disciplinaId,
+      curso_curriculo_id: draftCurriculoId,
       obrigatoria: classificacao === 'core',
       classificacao,
       periodos_ativos: periodosAtivos,
@@ -277,11 +332,19 @@ export async function POST(
     }
     if (parsed.data.ordem !== undefined) payload.ordem = parsed.data.ordem;
 
-    const { data: ins, error } = await (supabase as any)
-      .from("curso_matriz")
-      .upsert(payload as any, { onConflict: 'escola_id,curso_id,classe_id,disciplina_id' } as any)
-      .select("id, curso_id, classe_id, disciplina_id, obrigatoria, carga_horaria, ordem")
-      .single();
+    const { data: ins, error } = targetMatrizId
+      ? await (supabase as any)
+          .from("curso_matriz")
+          .update(payload as any)
+          .eq("id", targetMatrizId)
+          .eq("escola_id", userEscolaId)
+          .select("id, curso_id, classe_id, disciplina_id, obrigatoria, carga_horaria, ordem")
+          .single()
+      : await (supabase as any)
+          .from("curso_matriz")
+          .insert(payload as any)
+          .select("id, curso_id, classe_id, disciplina_id, obrigatoria, carga_horaria, ordem")
+          .single();
 
     if (error) {
       // [BLINDAGEM] Tratamento de duplicidade
