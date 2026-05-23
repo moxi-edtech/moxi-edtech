@@ -706,12 +706,3 @@ export function DiagnosisPageClient() {
     </div>
   )
 }
-            </AnimatePresence>
-          </div>
-        </div>
-      </main>
-
-      <FooterSection links={footerLinks} />
-    </div>
-  )
-}
