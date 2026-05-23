@@ -344,9 +344,9 @@ export function DiagnosisPageClient() {
       />
 
       <main className="relative z-10 px-6 pb-20 pt-28">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
           {/* Sidebar - Desktop Only for Progress */}
-          <aside className="lg:sticky lg:top-28 lg:self-start">
+          <aside className="hidden xl:block xl:sticky xl:top-28 xl:self-start">
             <div className="overflow-hidden rounded-[28px] border border-white/70 bg-[#143222] text-white shadow-[0_30px_80px_rgba(20,50,34,0.25)]">
               <div className="border-b border-white/10 px-6 py-6">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-[#E8F5EE]">
@@ -403,7 +403,7 @@ export function DiagnosisPageClient() {
                   exit={{ opacity: 0, y: -20 }}
                   className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="grid gap-10 px-8 py-10 lg:grid-cols-[1.15fr_0.85fr] lg:px-12 lg:py-14">
+                  <div className="grid gap-10 px-8 py-10 xl:grid-cols-[1.2fr_0.8fr] xl:px-12 xl:py-14">
                     <div className="space-y-8">
                       <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-xs font-bold uppercase tracking-widest text-emerald-800">
                         <BarChart3 size={16} />
@@ -520,7 +520,7 @@ export function DiagnosisPageClient() {
                   animate={{ opacity: 1, y: 0 }}
                   className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="grid gap-10 px-8 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
+                  <div className="grid gap-10 px-8 py-10 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
                     <div className="space-y-6">
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
                         <Check size={32} />
@@ -608,7 +608,7 @@ export function DiagnosisPageClient() {
               {step === QUESTIONS.length + 2 && (
                 <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
                   <div className={`overflow-hidden rounded-[32px] border border-white/80 ${diagnosis.bg} shadow-[0_30px_80px_rgba(20,34,24,0.08)]`}>
-                    <div className="grid gap-8 px-8 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
+                    <div className="grid gap-8 px-8 py-10 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
                       <div className="space-y-6 text-center lg:text-left">
                         <div className="flex justify-center lg:justify-start">{diagnosis.icon}</div>
                         <div className="space-y-2">
