@@ -31,7 +31,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         loginHref={`${appUrl}/login`}
         onClose={() => setIsMenuOpen(false)}
       />
-      <main className="relative top-0 flex-1 pt-32 md:pt-40 lg:pt-44">
+      <main className="relative flex-1">
         {children}
       </main>
       <div className="relative z-10 mt-auto">
