@@ -9,6 +9,7 @@ import {
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Database, Json } from "~types/supabase";
 import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
+import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -46,6 +47,33 @@ function normalizeSnapshotObject(value: Json | Record<string, unknown> | null | 
   }
 
   return {};
+}
+
+
+async function resolveReciboValidationUrl({
+  supabase,
+  docId,
+}: {
+  supabase: any;
+  docId: string;
+}) {
+  if (!docId) return null;
+
+  const { data: doc } = await supabase
+    .from("documentos_emitidos")
+    .select("public_id, hash_validacao")
+    .eq("id", docId)
+    .maybeSingle();
+
+  const publicId = typeof doc?.public_id === "string" ? doc.public_id : "";
+  const hash = typeof doc?.hash_validacao === "string" ? doc.hash_validacao : "";
+  if (!publicId || !hash) return null;
+
+  const baseUrl = normalizeValidationBaseUrl(
+    process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? (await getRequestOrigin())
+  );
+
+  return `${String(baseUrl).replace(/\/$/, "")}/documentos/${publicId}?hash=${hash}`;
 }
 
 async function enrichReciboSnapshot({
@@ -274,14 +302,18 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        const legacyDocId = String(legacy.doc_id ?? "");
+        const legacyUrlValidacao = legacyDocId
+          ? await resolveReciboValidationUrl({ supabase, docId: legacyDocId })
+          : null;
+
         const response: ReciboResponse = {
           ok: true,
-          doc_id: String(legacy.doc_id ?? ""),
-          url_validacao: null,
+          doc_id: legacyDocId,
+          url_validacao: legacyUrlValidacao,
           fiscal: null,
         };
 
-        const legacyDocId = String(legacy.doc_id ?? "");
         if (legacyDocId) {
           await enrichReciboSnapshot({
             supabase,
@@ -429,10 +461,15 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", mensalidadeId);
 
+    const urlValidacao = await resolveReciboValidationUrl({
+      supabase,
+      docId: fiscal.documento_id,
+    });
+
     const response: ReciboResponse = {
       ok: true,
       doc_id: fiscal.documento_id,
-      url_validacao: null,
+      url_validacao: urlValidacao,
       fiscal: {
         numero_formatado: fiscal.numero_formatado,
         hash_control: fiscal.hash_control,

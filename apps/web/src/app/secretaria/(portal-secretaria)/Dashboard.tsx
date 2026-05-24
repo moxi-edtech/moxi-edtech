@@ -175,13 +175,40 @@ export function Dashboard({
     };
   }, [counts, escolaParam, recentes?.pendencias]);
   const avisos = useMemo(() => {
+    const buildNoticeId = (source: string, item: any, fallback: string) => {
+      const parts = [
+        source,
+        item?.type ?? "generic",
+        item?.aluno_id ?? item?.candidatura_id ?? item?.id ?? "no-entity",
+        item?.data ?? item?.action_href ?? fallback,
+      ];
+
+      return parts.map((part) => String(part).trim()).join(":");
+    };
+
     const base = recentes?.avisos_recentes ?? [];
-    const extras = [avisoFechoTrimestre, avisoImportacao].filter(Boolean);
+    const extras = [avisoFechoTrimestre, avisoImportacao]
+      .filter(Boolean)
+      .map((item, index) => ({
+        ...item,
+        id: buildNoticeId("extra", item, `extra-${index}`),
+      }));
     const prodAlerts = produtividadeAlerts.map(a => ({
        ...a,
+       id: buildNoticeId("prod", a, `prod-${a.type ?? "alert"}`),
        action_href: buildPortalHref(escolaParam, `/secretaria/alunos?id=${a.aluno_id}`)
     }));
-    return [...(extras as typeof base), ...prodAlerts, ...base];
+    const baseNotices = base.map((item, index) => ({
+      ...item,
+      id: buildNoticeId("base", item, `base-${index}`),
+    }));
+
+    const deduped = new Map<string, (typeof base)[number]>();
+    for (const item of [...(extras as typeof base), ...prodAlerts, ...baseNotices]) {
+      deduped.set(String(item.id), item);
+    }
+
+    return Array.from(deduped.values());
   }, [avisoFechoTrimestre, avisoImportacao, recentes?.avisos_recentes, produtividadeAlerts, escolaParam]);
   const alerts = useMemo(() => {
     const items: OperationalAlert[] = [];
