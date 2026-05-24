@@ -4,10 +4,6 @@ import { useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ChevronRight, ChevronLeft, BarChart3, Clock, ShieldAlert, Zap, ArrowRight, MessageCircle, Share2, FileDown } from 'lucide-react'
-import { Navbar } from '../../components/landing/sections/Navbar'
-import { FooterSection } from '../../components/landing/sections/FooterSection'
-import { MobileMenu } from '../../components/landing/sections/MobileMenu'
-import { footerLinks, navLinks } from '../../data/landing'
 import { jsPDF } from 'jspdf'
 
 type Question = {
@@ -111,7 +107,6 @@ export function DiagnosisPageClient() {
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [leadData, setLeadData] = useState({ nome: '', escola: '', whatsapp: '', email: '' })
   const [afiliado, setAfiliado] = useState<string | null>(null)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [phoneError, setPhoneError] = useState('')
 
@@ -120,9 +115,6 @@ export function DiagnosisPageClient() {
     if (ref) setAfiliado(ref.toUpperCase())
   }, [searchParams])
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klasse.ao'
-  const navPrimaryCta = { label: 'Começar agora', href: '/#onboarding' }
-  const navLinksWithHome = navLinks.map((link) => ({ ...link, href: `/${link.href}` }))
 
   const validatePhone = (phone: string) => {
     const clean = phone.replace(/\D/g, '')
@@ -319,7 +311,7 @@ export function DiagnosisPageClient() {
   }
 
   return (
-    <div className="diagnostico-page relative flex h-[100dvh] flex-col overflow-x-hidden overflow-y-auto bg-[#F5F0E8] text-[#1A1A1A]">
+    <div className="diagnostico-page relative bg-[#F5F0E8] text-[#1A1A1A]">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 opacity-80"
@@ -329,22 +321,7 @@ export function DiagnosisPageClient() {
         }}
       />
 
-      <Navbar
-        appUrl={appUrl}
-        links={navLinksWithHome}
-        primaryCta={navPrimaryCta}
-        onMenuToggle={() => setIsMenuOpen((prev) => !prev)}
-      />
-      <MobileMenu
-        isOpen={isMenuOpen}
-        links={navLinksWithHome}
-        primaryCta={navPrimaryCta}
-        loginHref={`${appUrl}/login`}
-        onClose={() => setIsMenuOpen(false)}
-      />
-
-      <main className="relative z-10 flex-1 px-6 pb-20 pt-[calc(var(--nav-h,96px)+1.5rem)] md:px-8 md:pt-[calc(var(--nav-h,96px)+2rem)] xl:px-10">
-        <div className="mx-auto grid max-w-[88rem] gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
           {/* Sidebar - Desktop Only for Progress */}
           <aside className="hidden xl:block xl:sticky xl:top-28 xl:self-start">
             <div className="overflow-hidden rounded-[28px] border border-white/70 bg-[#143222] text-white shadow-[0_30px_80px_rgba(20,50,34,0.25)]">
@@ -471,7 +448,7 @@ export function DiagnosisPageClient() {
                   exit={{ opacity: 0, x: -20 }}
                   className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="flex flex-col gap-8 px-8 py-8 md:px-12 md:py-12">
+                  <div className="flex flex-col gap-8 px-6 pb-8 pt-10 md:px-10 md:pb-12 md:pt-12 xl:px-12">
                     <div className="flex flex-col gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
                         Pergunta {step} de {QUESTIONS.length}
@@ -492,7 +469,7 @@ export function DiagnosisPageClient() {
                           onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
                           className="group flex items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 md:min-h-[132px]"
                         >
-                          <div className="space-y-1">
+                          <div className="flex flex-col gap-1">
                             <p className="text-lg font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
                             <p className="text-sm text-slate-500">{scoreHelper(opt.score)}</p>
                           </div>
@@ -520,20 +497,20 @@ export function DiagnosisPageClient() {
                   animate={{ opacity: 1, y: 0 }}
                   className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="grid gap-10 px-8 py-10 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
-                    <div className="space-y-6">
+                  <div className="grid gap-10 px-6 pb-10 pt-10 md:px-10 md:pb-12 md:pt-12 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
+                    <div className="flex flex-col gap-6">
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
                         <Check size={32} />
                       </div>
-                      <div className="space-y-3">
+                      <div className="flex flex-col gap-3">
                         <h2 className="text-3xl font-extrabold text-slate-950" style={headingStyle}>Quase lá!</h2>
                         <p className="text-base leading-7 text-slate-600">
                           Identifique-se para gerarmos o relatório final com o nível de maturidade do seu colégio.
                         </p>
                       </div>
-                      <div className="space-y-4 rounded-[24px] bg-slate-50 p-6">
+                      <div className="flex flex-col gap-4 rounded-[24px] bg-slate-50 p-6">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">O que vai receber:</p>
-                        <div className="space-y-3">
+                        <div className="flex flex-col gap-3">
                           {[
                             'Resultado da maturidade operacional',
                             'Diagnóstico das áreas críticas',
@@ -550,8 +527,8 @@ export function DiagnosisPageClient() {
                       </div>
                     </div>
 
-                    <form onSubmit={submitLead} className="space-y-4 rounded-[28px] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/50">
-                      <div className="space-y-2">
+                    <form onSubmit={submitLead} className="flex flex-col gap-4 rounded-[28px] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/50">
+                      <div className="flex flex-col gap-2">
                         <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Seu Nome</label>
                         <input
                           required
@@ -562,7 +539,7 @@ export function DiagnosisPageClient() {
                           onChange={(e) => setLeadData({ ...leadData, nome: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nome do Colégio</label>
                         <input
                           required
@@ -573,7 +550,7 @@ export function DiagnosisPageClient() {
                           onChange={(e) => setLeadData({ ...leadData, escola: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">WhatsApp (Angola)</label>
                         <input
                           required
@@ -585,7 +562,7 @@ export function DiagnosisPageClient() {
                         />
                         {phoneError && <p className="text-[10px] font-bold text-rose-500 ml-1">{phoneError}</p>}
                       </div>
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Email</label>
                         <input
                           required
@@ -606,12 +583,12 @@ export function DiagnosisPageClient() {
               )}
 
               {step === QUESTIONS.length + 2 && (
-                <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
+                <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-8">
                   <div className={`overflow-hidden rounded-[32px] border border-white/80 ${diagnosis.bg} shadow-[0_30px_80px_rgba(20,34,24,0.08)]`}>
-                    <div className="grid gap-8 px-8 py-10 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
-                      <div className="space-y-6 text-center lg:text-left">
+                    <div className="grid gap-8 px-6 pb-10 pt-10 md:px-10 md:pb-12 md:pt-12 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
+                      <div className="flex flex-col gap-6 text-center lg:text-left">
                         <div className="flex justify-center lg:justify-start">{diagnosis.icon}</div>
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Resultado</p>
                           <h2 className={`${diagnosis.color} text-4xl font-extrabold`} style={headingStyle}>{diagnosis.title}</h2>
                         </div>
@@ -645,7 +622,7 @@ export function DiagnosisPageClient() {
                           />
                         </div>
 
-                        <div className="mt-8 space-y-4">
+                        <div className="mt-8 flex flex-col gap-4">
                           {[
                             { title: 'Financeiro', text: percentage < 40 ? 'Risco alto de inadimplência.' : percentage < 75 ? 'Esforço manual elevado.' : 'Boa base digital.' },
                             { title: 'Operação', text: percentage < 40 ? 'Dependência total de papel.' : percentage < 75 ? 'Fluxos descentralizados.' : 'Operação estável.' },
@@ -662,8 +639,8 @@ export function DiagnosisPageClient() {
                   </div>
 
                   <div className="rounded-[32px] bg-slate-900 p-10 text-white shadow-2xl">
-                    <div className="max-w-3xl mx-auto space-y-8 text-center">
-                      <div className="space-y-4">
+                    <div className="mx-auto flex max-w-3xl flex-col gap-8 text-center">
+                      <div className="flex flex-col gap-4">
                         <h3 className="text-3xl font-bold tracking-tight" style={headingStyle}>Pronto para modernizar a sua escola?</h3>
                         <p className="text-slate-400 text-lg">
                           O KLASSE ajuda a automatizar as cobranças, organizar as matrículas e dar visibilidade real à direção.
@@ -700,9 +677,6 @@ export function DiagnosisPageClient() {
             </AnimatePresence>
           </div>
         </div>
-      </main>
-
-      <div className="relative z-10 mt-auto"><FooterSection links={footerLinks} /></div>
     </div>
   )
 }

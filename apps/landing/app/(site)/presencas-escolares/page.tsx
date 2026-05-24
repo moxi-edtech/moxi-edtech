@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PresencasEscolaresPage() {
   return (
-    <main className="seo-page">
+    <section className="seo-page">
       <div className="container">
         <div className="seo-header">
           <div className="sec-eyebrow">Presenças</div>
@@ -52,6 +52,6 @@ export default function PresencasEscolaresPage() {
           </div>
         </div>
       </div>
-    </main>
+    </section>
   )
 }

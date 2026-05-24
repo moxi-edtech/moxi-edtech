@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function MatriculasEscolaresPage() {
   return (
-    <main className="seo-page">
+    <section className="seo-page">
       <div className="container">
         <div className="seo-header">
           <div className="sec-eyebrow">Matrículas</div>
@@ -52,6 +52,6 @@ export default function MatriculasEscolaresPage() {
           </div>
         </div>
       </div>
-    </main>
+    </section>
   )
 }

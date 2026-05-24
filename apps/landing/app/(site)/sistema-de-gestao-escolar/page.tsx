@@ -66,7 +66,7 @@ export const metadata: Metadata = {
 
 export default function SistemaGestaoEscolarPage() {
   return (
-    <main className="seo-page">
+    <section className="seo-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <div className="container">
         <div className="seo-header">
@@ -228,6 +228,6 @@ export default function SistemaGestaoEscolarPage() {
           </div>
         </div>
       </div>
-    </main>
+    </section>
   )
 }
