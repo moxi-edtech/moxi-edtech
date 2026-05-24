@@ -378,7 +378,7 @@ export function DiagnosisPageClient() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
+                  className="mx-auto w-[calc(100%-2rem)] overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)] md:w-full"
                 >
                   <div className="grid gap-10 px-8 py-10 xl:grid-cols-[1.2fr_0.8fr] xl:px-12 xl:py-14">
                     <div className="flex flex-col gap-8">
@@ -446,9 +446,9 @@ export function DiagnosisPageClient() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
+                  className="mx-auto w-[calc(100%-2rem)] overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)] md:w-full"
                 >
-                  <div className="flex flex-col gap-8 px-6 pb-8 pt-10 md:px-10 md:pb-12 md:pt-12 xl:px-12">
+                  <div className="flex flex-col gap-8 px-8 pb-8 pt-10 md:px-12 md:pb-12 md:pt-12">
                     <div className="flex flex-col gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
                         Pergunta {step} de {QUESTIONS.length}
@@ -462,12 +462,12 @@ export function DiagnosisPageClient() {
                       <motion.div className="h-full bg-emerald-600" initial={{ width: 0 }} animate={{ width: `${questionProgressPercent}%` }} />
                     </div>
 
-                    <div className="mx-auto grid max-w-4xl gap-4">
+                    <div className="mx-auto grid w-[calc(100%-2rem)] max-w-4xl gap-4 md:w-full">
                       {QUESTIONS[step - 1].options.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
-                          className="group flex items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 md:min-h-[132px]"
+                          className="group flex w-full items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 md:min-h-[132px]"
                         >
                           <div className="flex flex-col gap-1">
                             <p className="text-lg font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
@@ -495,9 +495,9 @@ export function DiagnosisPageClient() {
                   key="lead"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
+                  className="mx-auto w-[calc(100%-2rem)] overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)] md:w-full"
                 >
-                  <div className="grid gap-10 px-6 pb-10 pt-10 md:px-10 md:pb-12 md:pt-12 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
+                  <div className="grid gap-10 px-8 pb-10 pt-10 md:px-12 md:pb-12 md:pt-12 xl:grid-cols-[0.88fr_1.12fr]">
                     <div className="flex flex-col gap-6">
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
                         <Check size={32} />
@@ -584,7 +584,7 @@ export function DiagnosisPageClient() {
 
               {step === QUESTIONS.length + 2 && (
                 <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-8">
-                  <div className={`overflow-hidden rounded-[32px] border border-white/80 ${diagnosis.bg} shadow-[0_30px_80px_rgba(20,34,24,0.08)]`}>
+                  <div className={`mx-auto w-[calc(100%-2rem)] overflow-hidden rounded-[32px] border border-white/80 ${diagnosis.bg} shadow-[0_30px_80px_rgba(20,34,24,0.08)] md:w-full`}>
                     <div className="grid gap-8 px-6 pb-10 pt-10 md:px-10 md:pb-12 md:pt-12 xl:grid-cols-[0.88fr_1.12fr] xl:px-12">
                       <div className="flex flex-col gap-6 text-center lg:text-left">
                         <div className="flex justify-center lg:justify-start">{diagnosis.icon}</div>
@@ -638,7 +638,7 @@ export function DiagnosisPageClient() {
                     </div>
                   </div>
 
-                  <div className="rounded-[32px] bg-slate-900 p-10 text-white shadow-2xl">
+                  <div className="mx-auto w-[calc(100%-2rem)] rounded-[32px] bg-slate-900 p-10 text-white shadow-2xl md:w-full">
                     <div className="mx-auto flex max-w-3xl flex-col gap-8 text-center">
                       <div className="flex flex-col gap-4">
                         <h3 className="text-3xl font-bold tracking-tight" style={headingStyle}>Pronto para modernizar a sua escola?</h3>
