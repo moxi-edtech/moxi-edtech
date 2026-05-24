@@ -311,7 +311,7 @@ export function DiagnosisPageClient() {
   }
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto">
+    <div className="relative w-full max-w-4xl mx-auto py-12 md:py-20 px-6">
       <div className="min-w-0">
         <AnimatePresence mode="wait">
           {step === 0 && (
@@ -341,7 +341,7 @@ export function DiagnosisPageClient() {
                     <ChevronRight className="transition-transform group-hover:translate-x-1" />
                   </button>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-6 sm:grid-cols-3">
                   <div className="rounded-3xl border border-slate-200 bg-white/60 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Tempo</p>
                     <p className="text-xl font-black text-slate-900">2 min</p>
@@ -357,8 +357,8 @@ export function DiagnosisPageClient() {
                 </div>
               </div>
 
-              <div className="rounded-[40px] bg-[#0f271c] p-8 md:p-12 text-white shadow-2xl">
-                <div className="relative flex flex-col gap-8">
+              <div className="rounded-[40px] bg-[#0f271c] p-10 md:p-12 text-white shadow-2xl">
+                <div className="relative flex flex-col gap-10">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70 self-start">
                     O que medimos
                   </div>
@@ -408,7 +408,7 @@ export function DiagnosisPageClient() {
                   <button
                     key={opt.value}
                     onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
-                    className="group flex items-start justify-between gap-6 rounded-[32px] border border-slate-200 bg-white p-10 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 hover:shadow-2xl hover:shadow-emerald-900/10"
+                    className="group flex items-start justify-between gap-6 rounded-[32px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 hover:shadow-2xl hover:shadow-emerald-900/10"
                   >
                     <div className="flex flex-col gap-3">
                       <p className="text-2xl font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
@@ -448,7 +448,7 @@ export function DiagnosisPageClient() {
                       Identifique-se para gerarmos o relatório final com o nível de maturidade do seu colégio e os próximos passos sugeridos.
                     </p>
                   </div>
-                  <div className="flex flex-col gap-4 rounded-[40px] border border-slate-200 bg-white/60 p-10 backdrop-blur-sm shadow-sm">
+                  <div className="flex flex-col gap-4 rounded-[40px] border border-slate-200 bg-white/60 p-6 backdrop-blur-sm shadow-sm">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">O que vai receber:</p>
                     <div className="flex flex-col gap-4">
                       {[
@@ -467,7 +467,7 @@ export function DiagnosisPageClient() {
                   </div>
                 </div>
 
-                <form onSubmit={submitLead} className="flex flex-col gap-8 rounded-[48px] border border-slate-200 bg-white p-10 md:p-14 shadow-2xl shadow-slate-900/5">
+                <form onSubmit={submitLead} className="flex flex-col gap-8 rounded-[48px] border border-slate-200 bg-white p-10 md:p-12 shadow-2xl shadow-slate-900/5">
                   <div className="space-y-3">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Seu Nome</label>
                     <input
@@ -524,7 +524,7 @@ export function DiagnosisPageClient() {
 
           {step === QUESTIONS.length + 2 && (
             <motion.div key="result" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-12">
-              <div className={`overflow-hidden rounded-[40px] border border-white/80 ${diagnosis.bg} p-8 md:p-12 shadow-2xl shadow-slate-900/5`}>
+              <div className={`overflow-hidden rounded-[40px] border border-white/80 ${diagnosis.bg} p-10 md:p-12 shadow-2xl shadow-slate-900/5`}>
                 <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr]">
                   <div className="flex flex-col gap-8 text-center lg:text-left">
                     <div className="flex justify-center lg:justify-start">{diagnosis.icon}</div>
@@ -545,7 +545,7 @@ export function DiagnosisPageClient() {
                     </div>
                   </div>
 
-                  <div className="rounded-[32px] bg-white p-8 md:p-10 shadow-xl shadow-slate-900/5">
+                  <div className="rounded-[32px] bg-white p-6 md:p-10 shadow-xl shadow-slate-900/5">
                     <div className="flex items-end justify-between gap-4">
                       <div className="flex flex-col gap-1">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Nível de Digitalização</p>
@@ -568,7 +568,7 @@ export function DiagnosisPageClient() {
                         { title: 'Operação', text: percentage < 40 ? 'Dependência total de papel e filas.' : percentage < 75 ? 'Fluxos descentralizados em Excel.' : 'Operação estável e organizada.' },
                         { title: 'Direção', text: percentage < 40 ? 'Visibilidade nula em tempo real.' : percentage < 75 ? 'Visão parcial dos dados diários.' : 'Excelente controlo executivo.' },
                       ].map((item) => (
-                        <div key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-5 flex flex-col gap-1">
+                        <div key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-6 flex flex-col gap-1">
                           <p className="text-base font-black text-slate-900">{item.title}</p>
                           <p className="text-sm leading-7 text-slate-600">{item.text}</p>
                         </div>
