@@ -31,7 +31,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         loginHref={`${appUrl}/login`}
         onClose={() => setIsMenuOpen(false)}
       />
-      <main className="relative z-10 flex-1 px-6 pb-20 pt-28 md:px-8 md:pt-32 xl:px-12">{children}</main>
+      <main className="relative z-10 flex-1" style={{ paddingTop: "100px", paddingBottom: "80px", paddingLeft: "24px", paddingRight: "24px", display: "block", overflowX: "clip" }}>{children}</main>
       <div className="relative z-10 mt-auto">
         <FooterSection links={footerLinks} />
       </div>
