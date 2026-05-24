@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { LandingPage } from './components/landing/LandingPage'
+import { LandingPage } from '../components/landing/LandingPage'
 
 export const metadata: Metadata = {
   title: 'KLASSE — Sistema de Gestão Escolar em Angola',

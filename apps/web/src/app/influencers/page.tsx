@@ -35,7 +35,7 @@ export default function AfiliadosEntryPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.rpc("get_afiliado_portal", {
+      const { data, error } = await (supabase.rpc as any)("get_influencer_portal", {
         p_codigo: normalizedCode,
         p_pin: normalizedPin,
       });
@@ -46,10 +46,10 @@ export default function AfiliadosEntryPage() {
       }
 
       window.sessionStorage.setItem(
-        `klasse_afiliado_auth:${normalizedCode}`,
+        `klasse_influencer_auth:${normalizedCode}`,
         JSON.stringify({ pin: normalizedPin, verifiedAt: Date.now() }),
       );
-      router.push(`/afiliados/${normalizedCode}`);
+      router.push(`/influencers/${normalizedCode}`);
     } catch (error) {
       console.error(error);
       toast.error("Código ou PIN inválido.");
@@ -65,13 +65,13 @@ export default function AfiliadosEntryPage() {
           <div className="w-20 h-20 bg-klasse-gold-100 rounded-3xl flex items-center justify-center mx-auto text-klasse-gold-600 shadow-xl shadow-klasse-gold-500/10">
             <Star size={40} fill="currentColor" />
           </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Portal de Afiliados</h1>
-          <p className="text-slate-500 font-medium">Acompanhe o desempenho dos seus cupões e comissões do KLASSE.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Área do Parceiro</h1>
+          <p className="text-slate-500 font-medium">Acompanhe a sua parceria e comissões no ecossistema KLASSE.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-2xl shadow-slate-200/50 space-y-6">
           <div className="space-y-2 text-left">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Seu Código de Afiliado</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Seu Código de Parceiro</label>
             <input 
               autoFocus
               type="text"

@@ -4,10 +4,10 @@ import { useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ChevronRight, ChevronLeft, BarChart3, Clock, ShieldAlert, Zap, ArrowRight, MessageCircle, Share2, FileDown } from 'lucide-react'
-import { Navbar } from '../components/landing/sections/Navbar'
-import { FooterSection } from '../components/landing/sections/FooterSection'
-import { MobileMenu } from '../components/landing/sections/MobileMenu'
-import { footerLinks, navLinks } from '../data/landing'
+import { Navbar } from '../../components/landing/sections/Navbar'
+import { FooterSection } from '../../components/landing/sections/FooterSection'
+import { MobileMenu } from '../../components/landing/sections/MobileMenu'
+import { footerLinks, navLinks } from '../../data/landing'
 import { jsPDF } from 'jspdf'
 
 type Question = {
@@ -319,7 +319,7 @@ export function DiagnosisPageClient() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F5F0E8] text-[#1A1A1A]">
+    <div className="diagnostico-page relative flex h-[100dvh] flex-col overflow-x-hidden overflow-y-auto bg-[#F5F0E8] text-[#1A1A1A]">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 opacity-80"
@@ -343,7 +343,7 @@ export function DiagnosisPageClient() {
         onClose={() => setIsMenuOpen(false)}
       />
 
-      <main className="relative z-10 flex-1 px-6 pb-20 pt-28">
+      <main className="relative z-10 flex-1 px-6 pb-20 pt-[calc(var(--nav-h)+1.5rem)] md:pt-[calc(var(--nav-h)+2rem)]">
         <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
           {/* Sidebar - Desktop Only for Progress */}
           <aside className="hidden xl:block xl:sticky xl:top-28 xl:self-start">
@@ -358,7 +358,7 @@ export function DiagnosisPageClient() {
                 </h2>
               </div>
 
-              <div className="space-y-5 px-6 py-6">
+              <div className="flex flex-col gap-5 px-6 py-6">
                 <div>
                   <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.2em] text-white/55">
                     <span>Etapa atual</span>
@@ -370,7 +370,7 @@ export function DiagnosisPageClient() {
                   <p className="mt-3 text-sm font-semibold text-white">{STEP_TITLES[progressStep - 1] ?? 'Resultado'}</p>
                 </div>
 
-                <div className="space-y-3 rounded-2xl bg-white/6 p-4">
+                <div className="flex flex-col gap-3 rounded-2xl bg-white/6 p-4">
                   {TRUST_POINTS.map((point) => (
                     <div key={point} className="flex items-start gap-3">
                       <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E0A93A]/20 text-[#E0A93A]">
@@ -381,7 +381,7 @@ export function DiagnosisPageClient() {
                   ))}
                 </div>
 
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                   {IMPACT_AREAS.map((area) => (
                     <div key={area.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                       <p className="text-sm font-black text-white">{area.title}</p>
@@ -404,12 +404,12 @@ export function DiagnosisPageClient() {
                   className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
                   <div className="grid gap-10 px-8 py-10 xl:grid-cols-[1.2fr_0.8fr] xl:px-12 xl:py-14">
-                    <div className="space-y-8">
+                    <div className="flex flex-col gap-8">
                       <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-xs font-bold uppercase tracking-widest text-emerald-800">
                         <BarChart3 size={16} />
                         Maturidade Digital
                       </div>
-                      <div className="space-y-5">
+                      <div className="flex flex-col gap-5">
                         <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 md:text-5xl lg:text-6xl" style={headingStyle}>
                           O seu colégio está a <span className="text-emerald-700">crescer no escuro</span>?
                         </h1>
@@ -440,11 +440,11 @@ export function DiagnosisPageClient() {
                     </div>
 
                     <div className="relative overflow-hidden rounded-[28px] bg-[#0f271c] p-6 text-white">
-                      <div className="relative space-y-5">
+                      <div className="relative flex flex-col gap-5">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
                           O que medimos
                         </div>
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                           {[
                             ['Matrículas', 'Gargalos no atendimento e filas.'],
                             ['Propinas', 'Dificuldade em cobrar e conferir.'],
@@ -471,8 +471,8 @@ export function DiagnosisPageClient() {
                   exit={{ opacity: 0, x: -20 }}
                   className="overflow-hidden rounded-[32px] border border-[#DDD8CF] bg-white shadow-[0_30px_80px_rgba(20,34,24,0.08)]"
                 >
-                  <div className="space-y-8 px-8 py-8 md:px-12 md:py-12">
-                    <div className="space-y-3">
+                  <div className="flex flex-col gap-8 px-8 py-8 md:px-12 md:py-12">
+                    <div className="flex flex-col gap-3">
                       <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
                         Pergunta {step} de {QUESTIONS.length}
                       </div>

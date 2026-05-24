@@ -67,12 +67,12 @@ export default function MarketingSection() {
         <div>
           <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-klasse-green" />
-            Marketing & Afiliados
+            Marketing & Influencers
           </h2>
           <p className="text-sm text-slate-500 font-medium">Pipeline de prospecção e suporte a influenciadores.</p>
         </div>
         <div className="flex gap-2">
-           <Link href="/super-admin/afiliados" className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+           <Link href="/super-admin/influencers" className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
               GERIR PARCEIROS
            </Link>
            <Link href="/super-admin/marketing" className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
@@ -87,8 +87,9 @@ export default function MarketingSection() {
            <p className="text-3xl font-black text-slate-900">{data.summary.total_leads}</p>
         </article>
         <article className="rounded-xl bg-slate-50 p-5 border border-slate-100">
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Afiliados Ativos</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Influencers Ativos</p>
            <p className="text-3xl font-black text-slate-900">{data.summary.active_afiliados}</p>
+
         </article>
         
         <div className="md:col-span-2 space-y-3">

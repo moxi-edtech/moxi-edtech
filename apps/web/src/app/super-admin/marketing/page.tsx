@@ -140,16 +140,17 @@ export default function MarketingAssetsPage() {
             <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
               <span>Super Admin</span>
               <ChevronRight size={10} />
-              <span className="text-klasse-green">Marketing de Afiliados</span>
-            </nav>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Materiais para Afiliados</h1>
-            <p className="text-sm text-slate-500 font-medium">Faça upload de banners, scripts e vídeos que os parceiros verão nos portais.</p>
-          </div>
-          <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl gap-2 font-bold px-6">
-            <Plus size={18} />
-            NOVO MATERIAL
-          </Button>
-        </div>
+              <span className="text-klasse-green">Marketing de Influencers</span>
+              </nav>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Materiais para Influencers</h1>
+              <p className="text-sm text-slate-500 font-medium">Banners, scripts e artes para os parceiros divulgarem o KLASSE.</p>
+              </div>
+              <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl gap-2 font-bold px-6">
+              <Plus size={18} />
+              ADICIONAR MATERIAL
+              </Button>
+              </div>
+
 
         {loading ? (
           <div className="flex items-center justify-center p-20 bg-white rounded-3xl border border-slate-200">
@@ -280,7 +281,7 @@ export default function MarketingAssetsPage() {
                   )}
 
                   <Button type="submit" className="w-full py-4 bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-black text-sm mt-4 shadow-lg shadow-klasse-green/10">
-                    PUBLICAR PARA AFILIADOS
+                    PUBLICAR PARA INFLUENCERS
                   </Button>
                 </form>
               </div>
