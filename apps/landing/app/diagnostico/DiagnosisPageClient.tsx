@@ -319,7 +319,7 @@ export function DiagnosisPageClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8] text-[#1A1A1A]">
+    <div className="flex min-h-screen flex-col bg-[#F5F0E8] text-[#1A1A1A]">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 opacity-80"
@@ -343,7 +343,7 @@ export function DiagnosisPageClient() {
         onClose={() => setIsMenuOpen(false)}
       />
 
-      <main className="relative z-10 px-6 pb-20 pt-28">
+      <main className="relative z-10 flex-1 px-6 pb-20 pt-28">
         <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
           {/* Sidebar - Desktop Only for Progress */}
           <aside className="hidden xl:block xl:sticky xl:top-28 xl:self-start">
@@ -417,8 +417,8 @@ export function DiagnosisPageClient() {
                           Responda a 5 perguntas rápidas e descubra o nível de maturidade da sua gestão escolar em Angola.
                         </p>
                       </div>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <button onClick={handleNext} className="btn-p flex-1 justify-center py-5 text-lg group">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <button onClick={handleNext} className="btn-p justify-center py-5 text-lg group sm:w-auto sm:min-w-[280px]">
                           Iniciar diagnóstico agora
                           <ChevronRight className="transition-transform group-hover:translate-x-1" />
                         </button>
@@ -485,12 +485,12 @@ export function DiagnosisPageClient() {
                       <motion.div className="h-full bg-emerald-600" initial={{ width: 0 }} animate={{ width: `${questionProgressPercent}%` }} />
                     </div>
 
-                    <div className="grid gap-4">
+                    <div className="mx-auto grid max-w-4xl gap-4">
                       {QUESTIONS[step - 1].options.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
-                          className="group flex items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50"
+                          className="group flex items-start justify-between gap-4 rounded-[24px] border border-slate-200 bg-white p-6 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 md:min-h-[132px]"
                         >
                           <div className="space-y-1">
                             <p className="text-lg font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
@@ -596,7 +596,7 @@ export function DiagnosisPageClient() {
                           onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
                         />
                       </div>
-                      <button disabled={isSubmitting} className="btn-p mt-4 w-full justify-center py-5 text-lg disabled:opacity-50">
+                      <button disabled={isSubmitting} className="btn-p mt-4 justify-center py-5 text-lg disabled:opacity-50 sm:w-auto sm:min-w-[280px]">
                         {isSubmitting ? 'A processar...' : 'Ver meu diagnóstico'}
                         <ArrowRight size={20} />
                       </button>
@@ -702,7 +702,7 @@ export function DiagnosisPageClient() {
         </div>
       </main>
 
-      <FooterSection links={footerLinks} />
+      <div className="relative z-10 mt-auto"><FooterSection links={footerLinks} /></div>
     </div>
   )
 }
