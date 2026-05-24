@@ -7,21 +7,21 @@ import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
-const CreateAfiliadoSchema = z.object({
+const CreateInfluencerSchema = z.object({
   nome: z.string().trim().min(1, "Nome obrigatório"),
   codigo: z.string().trim().min(1, "Código obrigatório"),
   email: z.string().trim().email("Email inválido"),
   pin: z.string().trim().min(4, "PIN inválido"),
 });
 
-const ToggleAfiliadoSchema = z.object({
+const ToggleInfluencerSchema = z.object({
   id: z.string().uuid("ID inválido"),
   ativo: z.boolean(),
 });
 
-type AfiliadoAdminListItem = Database["public"]["Functions"]["list_afiliados_admin"]["Returns"][number];
-type AfiliadoAdminCreateItem = Database["public"]["Functions"]["create_afiliado_admin"]["Returns"][number];
-type AfiliadoAdminToggleItem = Database["public"]["Functions"]["toggle_afiliado_admin"]["Returns"][number];
+type InfluencerAdminListItem = Database["public"]["Functions"]["list_afiliados_admin"]["Returns"][number];
+type InfluencerAdminCreateItem = Database["public"]["Functions"]["create_afiliado_admin"]["Returns"][number];
+type InfluencerAdminToggleItem = Database["public"]["Functions"]["toggle_afiliado_admin"]["Returns"][number];
 
 async function requireSuperAdmin() {
   const supabase = await supabaseRouteClient();
@@ -50,25 +50,25 @@ export async function GET() {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.response;
 
-  const { data, error } = await auth.supabase.rpc("list_afiliados_admin");
+  const { data, error } = await (auth.supabase.rpc as any)("list_influencers_admin");
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, items: (data ?? []) as AfiliadoAdminListItem[] });
+  return NextResponse.json({ ok: true, items: (data ?? []) as InfluencerAdminListItem[] });
 }
 
 export async function POST(request: Request) {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.response;
 
-  const parsed = CreateAfiliadoSchema.safeParse(await request.json());
+  const parsed = CreateInfluencerSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Payload inválido" }, { status: 400 });
   }
 
   const payload = parsed.data;
-  const { data, error } = await auth.supabase.rpc("create_afiliado_admin", {
+  const { data, error } = await (auth.supabase.rpc as any)("create_influencer_admin", {
     p_nome: payload.nome,
     p_codigo: payload.codigo,
     p_email: payload.email,
@@ -80,12 +80,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: error.message }, { status });
   }
 
-  const afiliado = (Array.isArray(data) ? data[0] : null) as AfiliadoAdminCreateItem | null;
-  const portalUrl = "https://app.klasse.ao/afiliados";
+  const influencer = (Array.isArray(data) ? data[0] : null) as InfluencerAdminCreateItem | null;
+  const portalUrl = "https://app.klasse.ao/influencers";
   const mail = buildAffiliateCredentialsEmail({
     nome: payload.nome,
     email: payload.email.toLowerCase(),
-    codigo: String(afiliado?.codigo ?? payload.codigo).toUpperCase(),
+    codigo: String(influencer?.codigo ?? payload.codigo).toUpperCase(),
     pin: payload.pin,
     portalUrl,
   });
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    afiliado,
+    influencer,
     emailStatus,
   });
 }
@@ -107,12 +107,12 @@ export async function PATCH(request: Request) {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.response;
 
-  const parsed = ToggleAfiliadoSchema.safeParse(await request.json());
+  const parsed = ToggleInfluencerSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Payload inválido" }, { status: 400 });
   }
 
-  const { data, error } = await auth.supabase.rpc("toggle_afiliado_admin", {
+  const { data, error } = await (auth.supabase.rpc as any)("toggle_influencer_admin", {
     p_id: parsed.data.id,
     p_ativo: parsed.data.ativo,
   });
@@ -123,6 +123,6 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    afiliado: (Array.isArray(data) ? data[0] : null) as AfiliadoAdminToggleItem | null,
+    influencer: (Array.isArray(data) ? data[0] : null) as InfluencerAdminToggleItem | null,
   });
 }

@@ -409,11 +409,11 @@ export function buildAffiliateCredentialsEmail(args: {
 }) {
   const { nome, email, codigo, pin, portalUrl } = args
   const brand = getBranding()
-  const safePortalUrl = sanitizeEmailUrl(portalUrl ?? null, "https://app.klasse.ao/afiliados")
-  const subject = `${brand.name} • Acesso ao Portal de Afiliados`
+  const safePortalUrl = sanitizeEmailUrl(portalUrl ?? null, "https://app.klasse.ao/influencers")
+  const subject = `${brand.name} • Acesso ao Portal de Parceiros`
   const text = [
     nome ? `Olá, ${nome}.` : "Olá,",
-    `Seu acesso ao Portal de Afiliados do ${brand.name} foi criado.`,
+    `Seu acesso ao Portal de Parceiros do ${brand.name} foi criado.`,
     safePortalUrl ? `Portal: ${safePortalUrl}` : "",
     `Código: ${codigo}`,
     `PIN: ${pin}`,
@@ -427,9 +427,9 @@ export function buildAffiliateCredentialsEmail(args: {
         ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:32px;" />` : ""}
         <span style="font-size:20px; font-weight:700;">${escapeHtml(brand.name)}</span>
       </div>
-      <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Portal de Afiliados</h2>
+      <h2 style="margin:0 0 12px 0; font-size:22px; color:#020617; text-align:center;">Portal de Parceiros</h2>
       ${nome ? `<p style="margin:0 0 8px 0;">Olá, <strong>${escapeHtml(nome)}</strong>.</p>` : '<p style="margin:0 0 8px 0;">Olá,</p>'}
-      <p style="margin:0 0 8px 0; color:#475569;">Seu acesso ao Portal de Afiliados foi criado.</p>
+      <p style="margin:0 0 8px 0; color:#475569;">Seu acesso ao Portal de Parceiros foi criado.</p>
       ${safePortalUrl ? `<p style="margin:0 0 8px 0; color:#475569;">Portal: <a href="${safePortalUrl}">${escapeHtml(safePortalUrl)}</a></p>` : ""}
       <div style="margin:16px 0; border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:#f8fafc;">
         <p style="margin:0 0 8px 0; color:#334155;">Código: <strong>${escapeHtml(codigo)}</strong></p>

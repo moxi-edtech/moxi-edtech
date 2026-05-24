@@ -22,8 +22,8 @@
       "permanent": false
     },
     {
-      "source": "/afiliados/:path*",
-      "destination": "https://app.klasse.ao/afiliados/:path*",
+      "source": "/influencers/:path*",
+      "destination": "https://app.klasse.ao/influencers/:path*",
       "permanent": false
     }
   ]

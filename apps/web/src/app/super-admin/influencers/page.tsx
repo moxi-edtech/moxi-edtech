@@ -45,16 +45,16 @@ export default function SuperAdminAfiliadosPage() {
   const loadAfiliados = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/super-admin/afiliados', { cache: 'no-store' });
+      const response = await fetch('/api/super-admin/influencers', { cache: 'no-store' });
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
-        throw new Error(result.error || 'Erro ao carregar afiliados');
+        throw new Error(result.error || 'Erro ao carregar influenciadores');
       }
 
       setAfiliados(result.items || []);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar afiliados');
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar influenciadores');
     }
     setLoading(false);
   };
@@ -65,7 +65,7 @@ export default function SuperAdminAfiliadosPage() {
     const inviteWindow = openWhatsappAfterSave ? window.open('', '_blank') : null;
 
     try {
-      const response = await fetch('/api/super-admin/afiliados', {
+      const response = await fetch('/api/super-admin/influencers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -107,26 +107,26 @@ export default function SuperAdminAfiliadosPage() {
 
   const toggleStatus = async (id: string, current: boolean) => {
     try {
-      const response = await fetch('/api/super-admin/afiliados', {
+      const response = await fetch('/api/super-admin/influencers', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, ativo: !current }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) {
-        throw new Error(result.error || 'Erro ao atualizar afiliado');
+        throw new Error(result.error || 'Erro ao atualizar influenciador');
       }
       await loadAfiliados();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar afiliado');
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar influenciador');
     }
   };
 
   const sendInvite = (afiliado: Pick<Afiliado, 'nome' | 'codigo' | 'email'> & { pin?: string }) => {
     const lines = [
-      `Olá ${afiliado.nome}! Já podes acompanhar o teu desempenho no KLASSE.`,
+      `Olá ${afiliado.nome}! Já podes acompanhar a tua parceria no KLASSE.`,
       '',
-      'Portal: https://app.klasse.ao/afiliados',
+      'Portal: https://app.klasse.ao/influencers',
       `Teu Código: *${afiliado.codigo}*`,
       afiliado.pin ? `PIN: *${afiliado.pin}*` : 'O teu PIN foi enviado por e-mail.',
       afiliado.email ? `E-mail: ${afiliado.email}` : '',
@@ -142,9 +142,9 @@ export default function SuperAdminAfiliadosPage() {
     afiliado: Pick<Afiliado, 'nome' | 'codigo' | 'email'> & { pin?: string },
   ) => {
     const lines = [
-      `Olá ${afiliado.nome}! Já podes acompanhar o teu desempenho no KLASSE.`,
+      `Olá ${afiliado.nome}! Já podes acompanhar a tua parceria no KLASSE.`,
       '',
-      'Portal: https://app.klasse.ao/afiliados',
+      'Portal: https://app.klasse.ao/influencers',
       `Teu Código: *${afiliado.codigo}*`,
       afiliado.pin ? `PIN: *${afiliado.pin}*` : 'O teu PIN foi enviado por e-mail.',
       afiliado.email ? `E-mail: ${afiliado.email}` : '',
@@ -172,12 +172,12 @@ export default function SuperAdminAfiliadosPage() {
               <ChevronRight size={10} />
               <span className="text-klasse-green">Gestão de Parceiros</span>
             </nav>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Afiliados & Influenciadores</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Digital Influencers</h1>
             <p className="text-sm text-slate-500 font-medium">Controle quem tem acesso aos portais de performance.</p>
           </div>
           <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl gap-2 font-bold px-6">
             <Plus size={18} />
-            CADASTRAR AFILIADO
+            CADASTRAR INFLUENCER
           </Button>
         </div>
 
@@ -236,7 +236,7 @@ export default function SuperAdminAfiliadosPage() {
             <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="p-8 space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-black text-slate-900 leading-tight">Novo Afiliado</h3>
+                  <h3 className="text-xl font-black text-slate-900 leading-tight">Novo Influencer</h3>
                   <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
                 </div>
 
