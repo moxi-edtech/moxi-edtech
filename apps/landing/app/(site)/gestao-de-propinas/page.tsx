@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function GestaoDePropinasPage() {
   return (
-    <main className="seo-page">
+    <section className="seo-page">
       <div className="container">
         <div className="seo-header">
           <div className="sec-eyebrow">Gestão de propinas</div>
@@ -53,6 +53,6 @@ export default function GestaoDePropinasPage() {
           </div>
         </div>
       </div>
-    </main>
+    </section>
   )
 }
