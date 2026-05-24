@@ -343,8 +343,8 @@ export function DiagnosisPageClient() {
         onClose={() => setIsMenuOpen(false)}
       />
 
-      <main className="relative z-10 flex-1 px-6 pb-20 pt-[calc(var(--nav-h)+1.5rem)] md:pt-[calc(var(--nav-h)+2rem)]">
-        <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
+      <main className="relative z-10 flex-1 px-6 pb-20 pt-[calc(var(--nav-h,96px)+1.5rem)] md:px-8 md:pt-[calc(var(--nav-h,96px)+2rem)] xl:px-10">
+        <div className="mx-auto grid max-w-[88rem] gap-8 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
           {/* Sidebar - Desktop Only for Progress */}
           <aside className="hidden xl:block xl:sticky xl:top-28 xl:self-start">
             <div className="overflow-hidden rounded-[28px] border border-white/70 bg-[#143222] text-white shadow-[0_30px_80px_rgba(20,50,34,0.25)]">
