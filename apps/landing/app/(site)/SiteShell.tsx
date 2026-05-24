@@ -17,7 +17,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   )
 
   return (
-    <div className="landing-site-shell">
+    <div className="landing-site-shell min-h-screen">
       <Navbar
         appUrl={appUrl}
         links={navLinksWithHome}
@@ -31,8 +31,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
         loginHref={`${appUrl}/login`}
         onClose={() => setIsMenuOpen(false)}
       />
-      <main className="relative z-10 flex-1" style={{ paddingTop: "100px", paddingBottom: "80px", paddingLeft: "24px", paddingRight: "24px", display: "block", overflowX: "clip" }}>{children}</main>
-      <div className="relative z-10 mt-auto">
+      <main className="relative z-10">{children}</main>
+      <div className="relative z-10">
         <FooterSection links={footerLinks} />
       </div>
     </div>
