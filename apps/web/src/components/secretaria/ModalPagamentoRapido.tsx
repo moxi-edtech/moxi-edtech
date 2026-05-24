@@ -640,21 +640,34 @@ function usePagamentoSubmit({
           throw new Error(json?.error || `Falha ao registar pagamento de ${referencia}.`);
         }
 
-        if (json.fiscal?.ok) {
-          recibosGerados.push({
-            id: String(json.fiscal.documento_id ?? mensalidade.id),
-            url_validacao: json.fiscal.url_validacao ?? null,
-            valor,
-            referencia,
+        let reciboId = mensalidade.id;
+        let reciboUrlValidacao: string | null = null;
+
+        try {
+          const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": `pagamento-rapido-recibo-${mensalidade.id}`,
+            },
+            signal: abortRef.current.signal,
+            body: JSON.stringify({ mensalidadeId: mensalidade.id }),
           });
-        } else {
-          recibosGerados.push({
-            id: mensalidade.id,
-            url_validacao: null,
-            valor,
-            referencia,
-          });
+          const reciboJson = await reciboRes.json().catch(() => ({}));
+          if (reciboRes.ok && reciboJson?.ok) {
+            reciboId = typeof reciboJson.doc_id === "string" ? reciboJson.doc_id : reciboId;
+            reciboUrlValidacao = typeof reciboJson.url_validacao === "string" ? reciboJson.url_validacao : null;
+          }
+        } catch (reciboErr: any) {
+          if (reciboErr?.name === "AbortError") throw reciboErr;
         }
+
+        recibosGerados.push({
+          id: reciboId,
+          url_validacao: reciboUrlValidacao,
+          valor,
+          referencia,
+        });
       }
 
       if (recibosGerados.length > 1) {
@@ -662,7 +675,7 @@ function usePagamentoSubmit({
         onRecibos([
           {
             id: `batch:${mensalidadesSelecionadas.map((item) => item.id).join(",")}`,
-            url_validacao: null,
+            url_validacao: recibosGerados.find((item) => item.url_validacao)?.url_validacao ?? null,
             valor: recibosGerados.reduce((sum, item) => sum + Number(item.valor || 0), 0),
             referencia: summarizeReferencias(referenciasDetalhadas),
             referenciasDetalhadas,
@@ -713,6 +726,7 @@ export function ModalPagamentoRapido({
   const [valor,    setValor]    = useState("");
   const [concluido, setConcluido] = useState(false);
   const [recibos,   setRecibos]   = useState<ReciboBatchItem[]>([]);
+  const [printReadyCount, setPrintReadyCount] = useState(0);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -798,6 +812,7 @@ export function ModalPagamentoRapido({
     }, 0);
     setValor(initialTotal > 0 ? String(initialTotal) : "");
     setRecibos([]);
+    setPrintReadyCount(0);
     setTimeout(() => confirmBtnRef.current?.focus(), 50);
   }, [open, initialSelectedIds, availableMensalidades]);
 
@@ -823,10 +838,10 @@ export function ModalPagamentoRapido({
 
   // ── Print pós-pagamento ──────────────────────────────────────────────────
   useEffect(() => {
-    if (recibos.length === 0) return;
-    const t = setTimeout(() => window.print(), 300);
+    if (recibos.length === 0 || printReadyCount < recibos.length) return;
+    const t = setTimeout(() => window.print(), 150);
     return () => clearTimeout(t);
-  }, [recibos]);
+  }, [recibos, printReadyCount]);
 
   // ── Submissão ────────────────────────────────────────────────────────────
   const { processando, submit } = usePagamentoSubmit({
@@ -1113,6 +1128,7 @@ export function ModalPagamentoRapido({
           referencia={recibo.referencia}
           referenciasDetalhadas={recibo.referenciasDetalhadas}
           itensDetalhados={recibo.itensDetalhados}
+          onPrintReady={() => setPrintReadyCount((count) => count + 1)}
         />
       ))}
     </>

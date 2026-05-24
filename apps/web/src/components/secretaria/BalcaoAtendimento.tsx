@@ -426,6 +426,7 @@ const [isSubmitting,  setIsSubmitting]  = useState(false);
 const [printQueue,    setPrintQueue]    = useState<Array<{ label: string; url: string }>>([]);
 const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
 const [recibosParaImpressao, setRecibosParaImpressao] = useState<ReciboBatchItem[]>([]);
+const [printReadyCount, setPrintReadyCount] = useState(0);
 const [escolaNome, setEscolaNome] = useState("Escola");
 const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
 
@@ -447,10 +448,10 @@ return () => { alive = false; };
 }, [escolaId]);
 
 useEffect(() => {
-if (recibosParaImpressao.length === 0) return;
-const timer = window.setTimeout(() => window.print(), 300);
+if (recibosParaImpressao.length === 0 || printReadyCount < recibosParaImpressao.length) return;
+const timer = window.setTimeout(() => window.print(), 150);
 return () => window.clearTimeout(timer);
-}, [recibosParaImpressao]);
+}, [recibosParaImpressao, printReadyCount]);
 
 const emitirDocumento = useCallback(async (servico: Servico): Promise<string | null> => {
 if (!aluno?.id) { error("Aluno não seleccionado."); return null; }
@@ -499,6 +500,7 @@ const servicosCarrinho     = itens.filter((i): i is Servico     => i.tipo === "s
 setIsSubmitting(true);
 try {
   setRecibosParaImpressao([]);
+  setPrintReadyCount(0);
   const recibosMensalidades: ReciboBatchItem[] = [];
 
   // 1. Pagar mensalidades
@@ -535,7 +537,7 @@ try {
         const docId = typeof reciboJson?.doc_id === "string" ? reciboJson.doc_id : null;
         recibosMensalidades.push({
           id: docId ?? m.id,
-          url_validacao: null,
+          url_validacao: typeof reciboJson?.url_validacao === 'string' ? reciboJson.url_validacao : null,
           valor: m.preco,
           referencia: formatMesAno(m.mes_referencia, m.ano_referencia),
         });
@@ -555,7 +557,7 @@ try {
     setRecibosParaImpressao([
       {
         id: `batch:${mensalidadesCarrinho.map((item) => item.id).join(",")}`,
-        url_validacao: null,
+        url_validacao: recibosMensalidades.find((item) => item.url_validacao)?.url_validacao ?? null,
         valor: recibosMensalidades.reduce((sum, item) => sum + Number(item.valor || 0), 0),
         referencia: summarizeReferencias(referenciasDetalhadas),
         referenciasDetalhadas,
@@ -623,6 +625,7 @@ return {
   setPrintQueue,
   emittingDocId,
   recibosParaImpressao,
+  setPrintReadyCount,
   escolaNome,
   escolaLogoUrl,
   checkout,
@@ -1450,6 +1453,7 @@ return (
       referencia={recibo.referencia}
       referenciasDetalhadas={recibo.referenciasDetalhadas}
       itensDetalhados={recibo.itensDetalhados}
+      onPrintReady={() => checkout.setPrintReadyCount((count) => count + 1)}
       metodo={labelMetodo(carrinho.metodo)}
     />
   ))}

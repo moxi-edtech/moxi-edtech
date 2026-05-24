@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Printer, Loader2, Check } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
@@ -28,6 +29,7 @@ type ReciboImprimivelProps = {
   titularConta?: string | null;
   iban?: string | null;
   kwikChave?: string | null;
+  onPrintReady?: () => void;
 };
 
 type ReciboPayload = {
@@ -57,7 +59,11 @@ export function ReciboImprimivel({
   titularConta = null,
   iban = null,
   kwikChave = null,
+  onPrintReady,
 }: ReciboImprimivelProps) {
+  const [mounted, setMounted] = useState(false);
+  const readyNotifiedRef = useRef(false);
+
   const dataFormatada = useMemo(() => {
     if (!data) return "—";
     const parsed = new Date(data);
@@ -65,7 +71,14 @@ export function ReciboImprimivel({
     return parsed.toLocaleDateString("pt-PT");
   }, [data]);
 
+  const effectiveLogoUrl = useMemo(() => {
+    const clean = logoUrl?.trim();
+    return clean ? clean : "/insignia_med.png";
+  }, [logoUrl]);
+
   useEffect(() => {
+    setMounted(true);
+
     const beforePrint = () => document.body.classList.add("printing-recibo");
     const afterPrint = () => document.body.classList.remove("printing-recibo");
 
@@ -76,11 +89,43 @@ export function ReciboImprimivel({
       window.removeEventListener("beforeprint", beforePrint);
       window.removeEventListener("afterprint", afterPrint);
       document.body.classList.remove("printing-recibo");
+      setMounted(false);
+      readyNotifiedRef.current = false;
     };
   }, []);
 
-  return (
-    <div className="hidden print:block recibo-print-root">
+  useEffect(() => {
+    if (!mounted || readyNotifiedRef.current) return;
+
+    let cancelled = false;
+    const image = new Image();
+
+    const signalReady = () => {
+      if (cancelled || readyNotifiedRef.current) return;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (cancelled || readyNotifiedRef.current) return;
+          readyNotifiedRef.current = true;
+          onPrintReady?.();
+        });
+      });
+    };
+
+    image.onload = signalReady;
+    image.onerror = signalReady;
+    image.src = effectiveLogoUrl;
+
+    if (image.complete) signalReady();
+
+    return () => {
+      cancelled = true;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [mounted, effectiveLogoUrl, onPrintReady]);
+
+  const printable = (
+    <div className="recibo-print-root pointer-events-none fixed -left-[200vw] top-0 w-[210mm] opacity-0 print:pointer-events-auto print:static print:left-auto print:top-auto print:w-auto print:opacity-100">
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
@@ -97,15 +142,16 @@ export function ReciboImprimivel({
           }
           body.printing-recibo .recibo-print-root {
             display: block !important;
-            position: fixed;
-            inset: 0;
-            z-index: 2147483647;
-            background: white;
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100% !important;
+            z-index: 2147483647 !important;
+            opacity: 1 !important;
+            background: white !important;
           }
         }
       ` }} />
       <div className="w-full max-w-none bg-white text-slate-900">
-
         <ReciboPagamentoDuasVias
           escolaNome={escolaNome}
           alunoNome={alunoNome}
@@ -122,7 +168,7 @@ export function ReciboImprimivel({
           numero={numero}
           publicId={publicId}
           urlValidacao={urlValidacao}
-          logoUrl={logoUrl}
+          logoUrl={effectiveLogoUrl}
           emitidoEm={emitidoEm ?? dataFormatada}
           banco={banco}
           titularConta={titularConta}
@@ -132,6 +178,10 @@ export function ReciboImprimivel({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(printable, document.body);
 }
 
 export function ReciboPrintButton({
