@@ -328,29 +328,29 @@ export function DiagnosisPageClient() {
                   Maturidade Digital
                 </div>
                 <div className="flex flex-col gap-5">
-                  <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 md:text-5xl lg:text-7xl" style={headingStyle}>
+                  <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 md:text-5xl lg:text-6xl leading-[1.1]" style={headingStyle}>
                     O seu colégio está a <span className="text-emerald-700">crescer no escuro</span>?
                   </h1>
-                  <p className="max-w-2xl text-xl leading-8 text-slate-600">
+                  <p className="max-w-2xl text-xl leading-relaxed text-slate-600">
                     Responda a 5 perguntas rápidas e descubra o nível de maturidade da sua gestão escolar em Angola.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <button onClick={handleNext} className="btn-p justify-center py-6 text-xl group sm:min-w-[320px]">
+                  <button onClick={handleNext} className="btn-p justify-center py-6 text-xl group sm:min-w-[320px] shadow-lg shadow-emerald-900/10">
                     Iniciar diagnóstico agora
                     <ChevronRight className="transition-transform group-hover:translate-x-1" />
                   </button>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-3xl border border-slate-200 bg-white/50 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
+                  <div className="rounded-3xl border border-slate-200 bg-white/60 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Tempo</p>
                     <p className="text-xl font-black text-slate-900">2 min</p>
                   </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white/50 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
+                  <div className="rounded-3xl border border-slate-200 bg-white/60 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Entrega</p>
                     <p className="text-xl font-black text-slate-900">Relatório</p>
                   </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white/50 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
+                  <div className="rounded-3xl border border-slate-200 bg-white/60 p-6 backdrop-blur-sm shadow-sm flex flex-col gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Foco</p>
                     <p className="text-xl font-black text-slate-900">Angola</p>
                   </div>
@@ -388,14 +388,14 @@ export function DiagnosisPageClient() {
               exit={{ opacity: 0, x: -20 }}
               className="flex flex-col gap-10"
             >
-              <div className="flex flex-col gap-6 text-center sm:text-left">
+              <div className="flex flex-col gap-8 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 self-center sm:self-start">
                     Pergunta {step} de {QUESTIONS.length}
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{Math.round((step/QUESTIONS.length)*100)}% concluído</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{Math.round((step / QUESTIONS.length) * 100)}% concluído</span>
                 </div>
-                <h2 className="text-3xl font-extrabold leading-tight text-slate-950 md:text-5xl" style={headingStyle}>
+                <h2 className="text-3xl font-extrabold leading-tight text-slate-950 md:text-5xl lg:text-6xl" style={headingStyle}>
                   {QUESTIONS[step - 1].title}
                 </h2>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-200">
@@ -403,25 +403,25 @@ export function DiagnosisPageClient() {
                 </div>
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid gap-6">
                 {QUESTIONS[step - 1].options.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
-                    className="group flex items-start justify-between gap-6 rounded-[32px] border border-slate-200 bg-white p-8 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 hover:shadow-xl hover:shadow-emerald-900/5"
+                    className="group flex items-start justify-between gap-6 rounded-[32px] border border-slate-200 bg-white p-10 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 hover:shadow-2xl hover:shadow-emerald-900/10"
                   >
-                    <div className="flex flex-col gap-2">
-                      <p className="text-xl font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
-                      <p className="text-sm text-slate-500 leading-relaxed">{scoreHelper(opt.score)}</p>
+                    <div className="flex flex-col gap-3">
+                      <p className="text-2xl font-bold text-slate-800 transition-colors group-hover:text-emerald-900">{opt.label}</p>
+                      <p className="text-base text-slate-500 leading-relaxed">{scoreHelper(opt.score)}</p>
                     </div>
-                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 transition-colors group-hover:border-emerald-600">
-                      <div className="h-3 w-3 rounded-full bg-emerald-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 transition-colors group-hover:border-emerald-600">
+                      <div className="h-4 w-4 rounded-full bg-emerald-600 opacity-0 transition-opacity group-hover:opacity-100" />
                     </div>
                   </button>
                 ))}
               </div>
 
-              <div className="pt-6">
+              <div className="pt-8">
                 <button onClick={handleBack} className="flex items-center gap-2 text-base font-bold text-slate-400 transition-colors hover:text-slate-600">
                   <ChevronLeft size={20} />
                   Voltar à pergunta anterior
@@ -437,18 +437,18 @@ export function DiagnosisPageClient() {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-12"
             >
-              <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr]">
+              <div className="grid gap-16 lg:grid-cols-[1fr_1.1fr]">
                 <div className="flex flex-col gap-8">
                   <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-600 shadow-lg shadow-emerald-900/10">
                     <Check size={40} />
                   </div>
                   <div className="flex flex-col gap-4">
-                    <h2 className="text-4xl font-extrabold text-slate-950 md:text-5xl" style={headingStyle}>O seu diagnóstico está pronto.</h2>
-                    <p className="text-lg leading-8 text-slate-600">
+                    <h2 className="text-4xl font-extrabold text-slate-950 md:text-5xl leading-tight" style={headingStyle}>O seu diagnóstico está pronto.</h2>
+                    <p className="text-xl leading-relaxed text-slate-600">
                       Identifique-se para gerarmos o relatório final com o nível de maturidade do seu colégio e os próximos passos sugeridos.
                     </p>
                   </div>
-                  <div className="flex flex-col gap-4 rounded-[32px] border border-slate-200 bg-white/50 p-8 backdrop-blur-sm shadow-sm">
+                  <div className="flex flex-col gap-4 rounded-[40px] border border-slate-200 bg-white/60 p-10 backdrop-blur-sm shadow-sm">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">O que vai receber:</p>
                     <div className="flex flex-col gap-4">
                       {[
@@ -456,66 +456,66 @@ export function DiagnosisPageClient() {
                         'Diagnóstico das áreas críticas',
                         'Próximos passos recomendados',
                       ].map((item) => (
-                        <div key={item} className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                        <div key={item} className="flex items-start gap-4">
+                          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                             <Check size={14} />
                           </div>
-                          <p className="text-base font-medium text-slate-700">{item}</p>
+                          <p className="text-lg font-medium text-slate-700">{item}</p>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <form onSubmit={submitLead} className="flex flex-col gap-6 rounded-[40px] border border-slate-200 bg-white p-8 md:p-12 shadow-2xl shadow-slate-900/5">
-                  <div className="space-y-2">
+                <form onSubmit={submitLead} className="flex flex-col gap-8 rounded-[48px] border border-slate-200 bg-white p-10 md:p-14 shadow-2xl shadow-slate-900/5">
+                  <div className="space-y-3">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Seu Nome</label>
                     <input
                       required
                       type="text"
                       placeholder="Ex: Manuel dos Santos"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-5 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg"
+                      className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50 p-6 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg font-medium"
                       value={leadData.nome}
                       onChange={(e) => setLeadData({ ...leadData, nome: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nome do Colégio</label>
                     <input
                       required
                       type="text"
                       placeholder="Ex: Colégio Esperança"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-5 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg"
+                      className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50 p-6 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg font-medium"
                       value={leadData.escola}
                       onChange={(e) => setLeadData({ ...leadData, escola: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">WhatsApp (Angola)</label>
                     <input
                       required
                       type="tel"
                       placeholder="9XXXXXXXX"
-                      className={`w-full rounded-2xl border bg-slate-50 p-5 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg ${phoneError ? 'border-rose-500 bg-rose-50' : 'border-slate-200'}`}
+                      className={`w-full rounded-2xl border-2 bg-slate-50 p-6 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg font-medium ${phoneError ? 'border-rose-500 bg-rose-50' : 'border-slate-100'}`}
                       value={leadData.whatsapp}
                       onChange={(e) => setLeadData({ ...leadData, whatsapp: e.target.value })}
                     />
                     {phoneError && <p className="text-xs font-bold text-rose-500 ml-1">{phoneError}</p>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Email Profissional</label>
                     <input
                       required
                       type="email"
                       placeholder="nome@email.com"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-5 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg"
+                      className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50 p-6 outline-none transition-all focus:border-emerald-600 focus:bg-white text-lg font-medium"
                       value={leadData.email}
                       onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
                     />
                   </div>
-                  <button disabled={isSubmitting} className="btn-p mt-4 justify-center py-6 text-xl disabled:opacity-50">
+                  <button disabled={isSubmitting} className="btn-p mt-4 justify-center py-7 text-2xl disabled:opacity-50 shadow-xl shadow-emerald-900/10">
                     {isSubmitting ? 'A processar...' : 'Ver meu diagnóstico agora'}
-                    <ArrowRight size={24} />
+                    <ArrowRight size={28} />
                   </button>
                 </form>
               </div>
