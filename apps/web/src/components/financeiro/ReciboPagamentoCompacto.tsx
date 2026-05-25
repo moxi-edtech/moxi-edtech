@@ -106,14 +106,15 @@ export default function ReciboPagamentoCompacto({
     .filter((item) => item?.referencia?.trim())
     .map((item) => ({ referencia: normalizeReferencia(item.referencia), valor: item.valor }));
   const itemCount = detailedItems.length || referencias.length;
+  const isPrintCompact = itemCount >= 2;
   const isDensePrint = itemCount >= 8;
   const isUltraDensePrint = itemCount >= 11;
   const hasReferenciaDetalhada = detailedItems.length > 1 || referencias.length > 1;
   const referenciasAgrupadas = groupReferenciasByAno(referencias);
 
   return (
-    <div className={`space-y-4 bg-white font-sans text-slate-900 ${isDensePrint ? "print:space-y-1.5" : "print:space-y-2"}`}>
-      <header className={`grid grid-cols-[auto_1fr_auto] items-start gap-4 border-b border-slate-200 pb-4 ${isDensePrint ? "print:gap-2 print:pb-1.5" : "print:pb-2"}`}>
+    <div className={`flex h-full flex-col space-y-4 bg-white font-sans text-slate-900 ${isDensePrint ? "print:space-y-1.5" : isPrintCompact ? "print:space-y-1.75" : "print:space-y-2"}`}>
+      <header className={`grid grid-cols-[auto_1fr_auto] items-start gap-4 border-b border-slate-200 pb-4 ${isDensePrint ? "print:gap-2 print:pb-1.5" : isPrintCompact ? "print:gap-2 print:pb-1.75" : "print:pb-2"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={effectiveLogoUrl}
@@ -139,8 +140,8 @@ export default function ReciboPagamentoCompacto({
         </div>
       </header>
 
-      <section className="rounded-2xl border border-slate-200 bg-white print:rounded-xl">
-        <div className={`grid grid-cols-3 gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-1.5 print:px-2.5 print:py-1.5" : isDensePrint ? "print:gap-2 print:px-3 print:py-1.5" : "print:gap-2 print:px-3 print:py-2"}`}>
+      <section className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white print:rounded-xl">
+        <div className={`grid grid-cols-3 gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-1.5 print:px-2.5 print:py-1.5" : isDensePrint ? "print:gap-2 print:px-3 print:py-1.5" : isPrintCompact ? "print:gap-2 print:px-3 print:py-1.75" : "print:gap-2 print:px-3 print:py-2"}`}>
           <CompactField label="Aluno" value={alunoNome} clamp="two" className="col-span-3 sm:col-span-1" />
           <CompactField label="Classe / Curso" value={classeCurso} />
           <CompactField label="Turma" value={turmaNome} />
@@ -150,7 +151,7 @@ export default function ReciboPagamentoCompacto({
         </div>
 
         {hasReferenciaDetalhada ? (
-          <div className={`space-y-2 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:space-y-0.5 print:px-2.5 print:py-1" : "print:space-y-1 print:px-3 print:py-1.5"}`}>
+          <div className={`space-y-2 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:space-y-0.5 print:px-2.5 print:py-1" : isPrintCompact ? "print:space-y-0.75 print:px-3 print:py-1.25" : "print:space-y-1 print:px-3 print:py-1.5"}`}>
             <div className="space-y-1">
               <p className={`text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Competências Liquidadas</p>
               <p className="text-[11px] font-medium text-slate-400 print:hidden">
@@ -190,7 +191,7 @@ export default function ReciboPagamentoCompacto({
           </div>
         ) : null}
 
-        <div className={`grid grid-cols-[1fr_auto] items-center gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-2 print:px-2.5 print:py-1.5" : "print:px-3 print:py-2"}`}>
+        <div className={`grid grid-cols-[1fr_auto] items-center gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-2 print:px-2.5 print:py-1.5" : isPrintCompact ? "print:gap-3 print:px-3 print:py-1.5" : "print:px-3 print:py-2"}`}>
           <div className="min-w-0">
             <p className={`text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Valor Pago</p>
             <p className={`truncate text-xl font-bold leading-tight text-klasse-gold ${isUltraDensePrint ? "print:text-[15px]" : "print:text-lg"}`} title={formatMoney(valorPago)}>
@@ -206,7 +207,7 @@ export default function ReciboPagamentoCompacto({
         </div>
 
         {banco || titularConta || iban || kwikChave ? (
-          <div className={`grid grid-cols-2 gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-1.5 print:px-2.5 print:py-1.5" : "print:gap-2 print:px-3 print:py-2"}`}>
+          <div className={`grid grid-cols-2 gap-4 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:gap-1.5 print:px-2.5 print:py-1.5" : isPrintCompact ? "print:gap-2 print:px-3 print:py-1.5" : "print:gap-2 print:px-3 print:py-2"}`}>
             <CompactField label="Banco" value={banco || "—"} />
             <CompactField label="Titular" value={titularConta || "—"} />
             <CompactField label="IBAN" value={iban || "—"} clamp="two" />
@@ -214,7 +215,7 @@ export default function ReciboPagamentoCompacto({
           </div>
         ) : null}
 
-        <div className={`grid grid-cols-2 gap-5 px-4 py-4 ${isUltraDensePrint ? "print:gap-3 print:px-2.5 print:py-1.5" : "print:px-3 print:py-2"}`}>
+        <div className={`mt-auto grid grid-cols-2 gap-5 px-4 py-4 ${isUltraDensePrint ? "print:gap-3 print:px-2.5 print:py-1.5" : isPrintCompact ? "print:gap-3 print:px-3 print:py-1.5" : "print:px-3 print:py-2"}`}>
           <section className={`min-w-0 space-y-3 ${isDensePrint ? "print:space-y-0.5" : "print:space-y-1"}`}>
             <p className={`text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Validação</p>
             {urlValidacao ? (
@@ -257,17 +258,18 @@ export default function ReciboPagamentoCompacto({
 export function ReciboPagamentoDuasVias(props: ReciboPagamentoCompactoProps) {
   const vias = ["Via da Secretaria", "Via do Aluno/Encarregado"];
   const itemCount = props.itensDetalhados?.length || props.referenciasDetalhadas?.length || 0;
+  const isPrintCompact = itemCount >= 2;
   const isDensePrint = itemCount >= 8;
 
   return (
-    <div className={`space-y-6 bg-white font-sans text-slate-900 ${isDensePrint ? "print:space-y-2.5" : "print:space-y-4"}`}>
+    <div className={`space-y-6 bg-white font-sans text-slate-900 print:space-y-0 ${isDensePrint ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2" : isPrintCompact ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2.5" : "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-3"}`}>
       {vias.map((via, index) => (
-        <section key={via} className="break-inside-avoid bg-white">
-          <p className={`mb-3 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isDensePrint ? "print:mb-0.5 print:text-[8px]" : "print:mb-1"}`}>
+        <section key={via} className="break-inside-avoid bg-white print:flex print:h-full print:min-h-0 print:flex-col print:overflow-hidden">
+          <p className={`mb-3 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isDensePrint ? "print:mb-0.5 print:text-[8px]" : isPrintCompact ? "print:mb-0.5 print:text-[8px]" : "print:mb-1"}`}>
             {via}
           </p>
           <ReciboPagamentoCompacto {...props} />
-          {index === 0 ? <div className={`mt-5 border-t border-dashed border-slate-300 ${isDensePrint ? "print:mt-2" : "print:mt-3"}`} /> : null}
+          {index === 0 ? <div className="mt-5 border-t border-dashed border-slate-300 print:hidden" /> : null}
         </section>
       ))}
     </div>
