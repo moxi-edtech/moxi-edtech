@@ -1,94 +1,23 @@
-# Plano — Evolução do Relatório Financeiro Escolar no KLASSE
+# Plano Técnico — Evolução do Relatório Financeiro CAC / Mensal Escolar
 
-Data: 2026-05-19
-Escopo: K12 / Financeiro / Secretaria
-Objetivo: absorver o que há de útil no ficheiro `RELATÓRIO FINANCEIRO CAC 2024-2025.xlsx` sem duplicar lógica, relatórios, views ou materialized views já existentes no KLASSE.
+Data: 2026-05-26  
+Escopo: K12 / Secretaria / Financeiro  
+Base funcional: `RELATÓRIO FINANCEIRO CAC 2024-2025.xlsx`  
+Base comparativa: [docs/RELATORIO_COMPARATIVO_CAC_VS_MENSAL_ESCOLAR_2026-05-26.md](/Users/gundja/moxi-edtech/docs/RELATORIO_COMPARATIVO_CAC_VS_MENSAL_ESCOLAR_2026-05-26.md)
 
-## 1. Validação do que já existe
+## Objetivo
 
-Antes de propor qualquer evolução, foi validado o estado actual do produto e das fontes de dados.
+Transformar o atual `/secretaria/relatorios/mensal-escolar` de um relatório de mensalidades com extensões em um relatório financeiro escolar consolidado, com base técnica clara para:
 
-### 1.1 Superfícies já existentes no portal
+- MVs e wrappers públicos
+- APIs de leitura
+- backlog de UI
+- critérios de aceite
+- sequência de implementação
 
-Em [apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/page.tsx) já existem:
+## Veredito técnico
 
-- `Propinas`
-- `Fluxo de Caixa`
-- `Pagamentos por Status`
-- `Extratos de Alunos`
-- `Relatórios Detalhados`
-
-Conclusão:
-- não faz sentido criar um relatório novo que replique `Propinas` ou `Fluxo de Caixa`
-- o caminho correcto é criar uma camada consolidada acima deles
-
-### 1.2 Lógica já existente que deve ser reaproveitada
-
-#### A. Propinas por período e por turma
-
-Já existe uma API específica em [apps/web/src/app/api/financeiro/relatorios/propinas/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/propinas/route.ts), consumindo:
-
-- `public.vw_financeiro_propinas_mensal_escola`
-- `public.vw_financeiro_propinas_por_turma`
-
-Essa API já entrega:
-
-- série mensal
-- previsto
-- pago
-- pago adiantado
-- parciais
-- saldo parcial
-- atraso
-- inadimplência %
-- ranking por turma
-
-Conclusão:
-- o futuro relatório escolar consolidado não deve recalcular propinas do zero
-- deve reutilizar esta mesma base como secção de `Previsto x Realizado`
-
-#### B. Fluxo de caixa diário
-
-Já existe uma API em [apps/web/src/app/api/financeiro/relatorios/fluxo-caixa/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/fluxo-caixa/route.ts), consumindo:
-
-- `public.vw_financeiro_escola_dia`
-
-Ela já entrega:
-
-- dia
-- quantidade total
-- quantidade paga
-- percentagem paga
-
-Conclusão:
-- não deve ser refeito como nova lógica paralela
-- deve ser evoluído para um nível mais executivo, adicionando valores financeiros quando necessário
-
-#### C. Radar de inadimplência
-
-Já existe um fluxo robusto de inadimplência em:
-
-- [apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx)
-- `public.vw_radar_inadimplencia`
-- refresh function `refresh_mv_radar_inadimplencia`
-
-Conclusão:
-- o novo relatório não deve criar uma visão paralela de cobrança
-- deve só resumir ou deep-linkar para esse radar quando o corte for `inadimplência`
-
-#### D. Financeiro por turma
-
-Já existe um recorte administrativo por turma em [apps/web/src/app/api/escolas/[id]/admin/turmas/financeiro/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/escolas/[id]/admin/turmas/financeiro/route.ts), também baseado em:
-
-- `public.vw_financeiro_propinas_por_turma`
-
-Conclusão:
-- o corte por classe/turma do relatório novo deve reutilizar esse read model
-- não deve nascer uma terceira agregação para os mesmos indicadores
-
-### 1.3 Read models / MVs já presentes e relevantes
-
-O inventário confirmou pelo menos estas fontes já disponíveis e aderentes ao problema:
+O produto atual não deve ser descartado. Ele já tem base boa em:
 
 - `public.vw_financeiro_propinas_mensal_escola`
 - `public.vw_financeiro_propinas_por_turma`
@@ -96,340 +25,762 @@ O inventário confirmou pelo menos estas fontes já disponíveis e aderentes ao 
 - `public.vw_radar_inadimplencia`
 - `public.vw_mensalidades_operacional_status_ano_ativo`
 
-Também existem MVs e funções de refresh ligadas a:
+Mas essa base está incompleta para substituir a planilha CAC, porque faltam read models e contratos próprios para:
 
-- radar de inadimplência
-- dashboard de secretaria
-- status de matrículas
+- entradas por tipo
+- fechamento mensal por ano letivo
+- propinas em atraso por classe
+- saldo anterior e saldo acumulado
+- consolidado executivo de entradas, saídas e resultado
+
+## Estado atual do produto
+
+### Superfície atual
+
+Páginas:
+
+- [apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/relatorios/mensal-escolar/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/relatorios/mensal-escolar/page.tsx)
+- [apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/mensal-escolar/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/mensal-escolar/page.tsx)
+
+Cliente compartilhado:
+
+- [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
+
+APIs atuais:
+
+- [apps/web/src/app/api/financeiro/relatorios/resumo/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/resumo/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/propinas/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/propinas/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/captacao/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/captacao/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/despesas/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/despesas/route.ts)
+- [apps/web/src/app/api/secretaria/school-sessions/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/secretaria/school-sessions/route.ts)
+
+Helper compartilhado de recorte temporal:
+
+- [apps/web/src/lib/financeiro/resolveAnoLetivoScope.ts](/Users/gundja/moxi-edtech/apps/web/src/lib/financeiro/resolveAnoLetivoScope.ts)
+
+### Cobertura atual
+
+Já existe:
+
+- resumo de propinas
+- série mensal
+- ranking por turma
+- captação por classe
+- inscritos e bolsistas
+- despesas do ledger
+- exportação `CSV`, `XLSX` e `PDF`
+
+Ainda não existe de forma correta:
+
+- fechamento mensal por sessão
+- `saldo anterior -> entradas -> saídas -> diferença -> saldo acumulado`
+- visão de entradas por tipo
+- propinas não pagas por classe em formato executivo
+- previsão de arrecadação vs realizado
+
+### Estado da Fase 1
+
+Implementado em 2026-05-26:
+
+- `propinas`, `captação` e `despesas` agora aceitam `ano_letivo_id`
+- `despesas` passou a respeitar `data_inicio` e `data_fim` do ano letivo
+- novo endpoint de resumo consolidado criado em `/api/financeiro/relatorios/resumo`
+- o client da página já usa `selectedSession` como `ano_letivo_id`
+- os cards principais da UI passaram a consumir o resumo consolidado quando disponível
+
+## Problema de dados identificado
+
+No banco remoto do CAC:
+
+- o ano letivo ativo encontrado é `2025`, com recorte `2025-09-01 -> 2026-07-31`
+- o histórico da planilha `2024-2025` não está preservado no modelo atual
+- as MVs de propinas têm dados só para `2025`
+- `mensalidades` e `financeiro_ledger` já têm massa operacional relevante, mas do ciclo posterior
 
 Conclusão:
-- já existe base suficiente para uma primeira versão sem abrir uma nova floresta de MVs
 
-## 2. O que o Excel traz de útil
+- a evolução do produto deve mirar o modelo futuro oficial
+- a reprodução exata da planilha histórica depende de backfill/importação
 
-O ficheiro `RELATÓRIO FINANCEIRO CAC 2024-2025.xlsx` tem valor como modelo de gestão escolar, não como template literal de produto.
+## Princípios técnicos
 
-### 2.1 Sinais úteis encontrados
+1. Não recalcular no endpoint o que já existe em `vw_financeiro_propinas_*`.
+2. Não filtrar despesas por ano civil quando o relatório for por ano letivo.
+3. Todo bloco executivo deve respeitar `data_inicio` e `data_fim` de `anos_letivos`.
+4. Leitura operacional consolidada deve vir de read models, não de queries grandes ad hoc.
+5. Drill-down continua nos relatórios especialistas já existentes.
 
-#### A. Previsão de arrecadação mensal por classe
+## Arquitetura alvo
 
-Na aba `Total Geral de pagamentos`, aparece o racional:
+O artefato final passa a ser um relatório consolidado com cinco blocos:
 
-- número de alunos por classe
-- valor da propina
-- total previsto
+1. Resumo Executivo
+2. Captação
+3. Propinas
+4. Despesas e Resultado
+5. Fechamento Mensal
 
-Exemplo:
+### Responsabilidade dos blocos
 
-- `1ª`: `50 x 1200 = 60000`
-- `7ª`: `105 x 2100 = 220500`
+#### Bloco 1 — Resumo Executivo
 
-Valor para o KLASSE:
-- isso deve virar um painel automático de `base prevista de arrecadação`
+Indicadores:
 
-#### B. Matrículas por classe no mês
-
-Nas abas mensais (`AGOSTO-2024`, `SETEMBRO-2024`, etc.) aparece:
-
-- `Classe`
-- `QTD`
-- `Matrícula`
-- `TOTAL`
-
-Valor para o KLASSE:
-- faz sentido como recorte de `captação/entrada`
-
-#### C. Confirmações por classe no mês
-
-Nas mesmas abas há um bloco paralelo de `ALUNOS CONFIRMAÇÃO POR CLASSES`.
-
-Valor para o KLASSE:
-- isso é um bom indicador de conversão operacional
-- conversa diretamente com secretaria/admissões
-
-#### D. Inscritos e bolsistas
-
-Na aba `resumo` há:
-
-- `QTD`
-- `BOLSEIROS`
-- `TOTAL`
-
-Valor para o KLASSE:
-- excelente como leitura institucional por classe
-
-#### E. Entradas, saídas e diferença por mês
-
-Na aba `resumo` há:
-
-- `Entrada`
-- `Saída`
-- `Diferença`
-
-Valor para o KLASSE:
-- isso deve existir como resumo executivo mensal
-
-## 3. O que não deve ser copiado do Excel
-
-Não vale transformar o KLASSE numa reprodução do ficheiro manual.
-
-### Não copiar
-
-- uma aba por mês
-- campos textuais manuais como `Luanda aos...`
-- assinaturas fixas no núcleo do relatório
-- blocos repetidos de mesmo indicador
-- cálculo manual de totais
-- saldo bancário digitado sem reconciliação/ledger
-
-### Princípio de produto
-
-No KLASSE:
-
-- filtro por sessão e período substitui abas manuais
-- read models substituem consolidação artesanal
-- PDF executivo é uma saída, não a fonte de verdade
-
-## 4. Lacuna real entre o Excel e o KLASSE
-
-Hoje o sistema já cobre bem:
-
-- propinas
+- previsto de propinas
+- recebido de propinas
+- recebido total de entradas
+- saídas do período
+- saldo do período
+- saldo acumulado
 - inadimplência
-- fluxo diário
-- extratos
 
-Mas ainda não há um `Relatório Financeiro Escolar Consolidado` que una, numa só experiência:
-
-- previsto de arrecadação
-- arrecadação realizada
-- matrículas do mês
-- confirmações do mês
-- bolsas/descontos
-- entradas
-- saídas
-- saldo / resultado do período
-
-Essa é a lacuna legítima.
-
-## 5. Direção recomendada
-
-### Nome do novo artefacto
-
-`Relatório Financeiro Mensal Escolar`
-
-### Papel do relatório
-
-Ser a visão executiva da escola por mês/sessão, consolidando:
-
-- captação
-- conversão
-- cobrança
-- arrecadação
-- resultado do período
-
-Sem substituir:
-
-- `Relatório de Propinas`
-- `Fluxo de Caixa`
-- `Radar de Inadimplência`
-
-Esses continuam como relatórios especializados.
-
-## 6. Proposta funcional sem duplicar lógica
-
-### Bloco 1 — Resumo executivo
-
-Reaproveitar / derivar de fontes existentes:
-
-- `Previsto de propinas`
-  - fonte: `vw_financeiro_propinas_mensal_escola`
-- `Pago no período`
-  - fonte: `vw_financeiro_propinas_mensal_escola`
-- `Em atraso`
-  - fonte: `vw_financeiro_propinas_mensal_escola`
-- `Saldo parcial`
-  - fonte: `vw_financeiro_propinas_mensal_escola`
-- `Taxa de inadimplência`
-  - fonte: `vw_financeiro_propinas_mensal_escola`
-
-### Bloco 2 — Captação académica do mês
-
-Novo bloco, mas sem recalcular financeiro.
+#### Bloco 2 — Captação
 
 Indicadores:
 
-- matrículas efectivadas por classe
+- matrículas por classe
 - confirmações por classe
-- total arrecadado em matrícula/confirmação
+- cartão/inscrição
+- bolsistas
+- total de entradas de captação
 
-Fonte recomendada:
-
-- primeiro tentar reaproveitar tabelas/fluxos de admissões + matrículas + pagamentos já existentes
-- se a query ficar pesada e recorrente, criar uma `vw_` ou MV própria para este bloco
-
-Observação:
-- este é o bloco mais próximo do Excel
-- hoje ele ainda não está pronto como read model único
-
-### Bloco 3 — Inscritos e bolsistas por classe
+#### Bloco 3 — Propinas
 
 Indicadores:
 
-- inscritos activos por classe
-- bolsistas por classe
-- total por classe
+- previsto vs pago
+- atraso por mês
+- atraso por classe
+- parciais
+- adiantamentos
+- ranking por turma
 
-Fonte recomendada:
-
-- alunos/matrículas/classes
-- regras de bolsa ou desconto se já existirem no financeiro
-
-Observação:
-- se `bolseiro` ainda não estiver modelado de forma estável, este bloco deve entrar depois
-
-### Bloco 4 — Resultado financeiro mensal
+#### Bloco 4 — Despesas e Resultado
 
 Indicadores:
 
-- entradas
-- saídas
+- saídas por categoria
+- total de saídas
 - diferença do mês
 - saldo acumulado
 
-Reaproveitar:
-
-- `Fluxo de Caixa`
-- `financeiro_ledger` / fecho / lançamentos, onde já houver fonte confiável
-
-Observação:
-- esse bloco deve ser baseado em ledger ou fecho, não em planilha manual
-
-### Bloco 5 — Ranking por classe / turma
-
-Reaproveitar:
-
-- `vw_financeiro_propinas_por_turma`
+#### Bloco 5 — Fechamento Mensal
 
 Indicadores:
 
-- mensalidades
-- em atraso
-- saldo parcial
-- total em atraso
-- inadimplência %
+- saldo anterior
+- entradas
+- saídas
+- diferença
+- saldo final
+
+## Proposta de read models
+
+### Reaproveitamento obrigatório
+
+Manter como fontes oficiais:
+
+- `public.vw_financeiro_propinas_mensal_escola`
+- `public.vw_financeiro_propinas_por_turma`
+- `public.vw_financeiro_escola_dia`
+- `public.vw_radar_inadimplencia`
+- `public.vw_mensalidades_operacional_status_ano_ativo`
+
+### Novos read models
+
+Criar apenas o que falta para o consolidado.
+
+#### 1. `internal.mv_relatorio_financeiro_escolar_resumo`
+
+Responsabilidade:
+
+- uma linha por `escola_id + ano_letivo`
+- consolidar entradas, saídas, saldo, previsto e inadimplência
+
+Colunas sugeridas:
+
+```sql
+escola_id uuid
+ano_letivo_id uuid
+ano_letivo integer
+data_inicio date
+data_fim date
+saldo_anterior numeric(14,2)
+entradas_total numeric(14,2)
+entradas_propinas numeric(14,2)
+entradas_matriculas numeric(14,2)
+entradas_confirmacoes numeric(14,2)
+entradas_cartao numeric(14,2)
+saidas_total numeric(14,2)
+previsto_propinas numeric(14,2)
+recebido_propinas numeric(14,2)
+atraso_propinas numeric(14,2)
+inadimplencia_pct numeric(8,2)
+saldo_periodo numeric(14,2)
+saldo_acumulado numeric(14,2)
+updated_at timestamptz
+```
+
+Wrapper:
+
+- `public.vw_relatorio_financeiro_escolar_resumo`
+
+#### 2. `internal.mv_relatorio_financeiro_escolar_capitacao_mensal`
+
+Responsabilidade:
+
+- uma linha por `escola_id + ano_letivo + mes_ref + classe_id`
+- captação mensal em formato executivo
+
+Colunas sugeridas:
+
+```sql
+escola_id uuid
+ano_letivo_id uuid
+ano_letivo integer
+mes_ref date
+classe_id uuid
+classe_label text
+matriculas_qtd integer
+matriculas_total numeric(14,2)
+confirmacoes_qtd integer
+confirmacoes_total numeric(14,2)
+cartao_qtd integer
+cartao_total numeric(14,2)
+bolsistas_qtd integer
+inscritos_total integer
+updated_at timestamptz
+```
+
+Wrapper:
+
+- `public.vw_relatorio_financeiro_escolar_capitacao_mensal`
+
+#### 3. `internal.mv_relatorio_financeiro_escolar_inadimplencia_classe`
+
+Responsabilidade:
+
+- uma linha por `escola_id + ano_letivo + mes_ref + classe_id`
+- espelhar o bloco da planilha de propinas não pagas
+
+Colunas sugeridas:
+
+```sql
+escola_id uuid
+ano_letivo_id uuid
+ano_letivo integer
+mes_ref date
+classe_id uuid
+classe_label text
+qtd_em_atraso integer
+valor_unitario_medio numeric(14,2)
+total_em_atraso numeric(14,2)
+qtd_parciais integer
+total_parcial_em_aberto numeric(14,2)
+updated_at timestamptz
+```
+
+Wrapper:
+
+- `public.vw_relatorio_financeiro_escolar_inadimplencia_classe`
+
+#### 4. `internal.mv_relatorio_financeiro_escolar_fluxo_mensal`
+
+Responsabilidade:
+
+- uma linha por `escola_id + ano_letivo + mes_ref`
+- fechamento mensal do período
+
+Colunas sugeridas:
+
+```sql
+escola_id uuid
+ano_letivo_id uuid
+ano_letivo integer
+mes_ref date
+saldo_anterior numeric(14,2)
+entradas_total numeric(14,2)
+saidas_total numeric(14,2)
+diferenca numeric(14,2)
+saldo_final numeric(14,2)
+updated_at timestamptz
+```
+
+Wrapper:
+
+- `public.vw_relatorio_financeiro_escolar_fluxo_mensal`
+
+## Fontes de verdade por domínio
+
+### Propinas
+
+Fonte:
+
+- `public.vw_financeiro_propinas_mensal_escola`
+- `public.vw_financeiro_propinas_por_turma`
+
+### Inadimplência operacional
+
+Fonte:
+
+- `public.vw_mensalidades_operacional_status_ano_ativo`
+- complementarmente `public.vw_radar_inadimplencia`
+
+### Saídas
+
+Fonte:
+
+- `public.financeiro_ledger`
+- filtro por `tipo = 'debito'`
+- recorte por intervalo da sessão
+
+### Entradas
+
+Fonte:
+
+- `public.financeiro_ledger`
+- filtro por `tipo = 'credito'`
+- classificação por `origem`, `referencia_tabela`, `tipo_evento`, `metadata`
+
+### Captação
+
+Fonte inicial:
+
+- `public.matriculas`
+- `public.classes`
+- `public.turmas`
+- descontos em `matriculas.percentagem_desconto` e `motivo_desconto`
 
 Observação:
-- aqui vale exibir filtros por `classe`, `turno`, `curso`, mas sem recomputar a base
 
-## 7. Estrutura técnica recomendada
+- se `cartão` não estiver modelado de forma explícita, o produto deve assumir a limitação e mapeá-lo via ledger/origem antes de expor o KPI.
 
-### 7.1 O que reaproveitar directamente
+## Regras de recorte temporal
 
-- manter `propinas` como fonte oficial do bloco de cobrança
-- manter `fluxo-caixa` como base do bloco de entradas/ritmo
-- manter `radar` como drill-down de inadimplência
-- manter `vw_financeiro_propinas_por_turma` como recorte por turma
+Toda API nova do relatório deve receber `ano_letivo_id` ou `session_id`, nunca apenas `ano`.
 
-### 7.2 O que merece novo read model
+Resolução:
 
-Criar apenas se necessário:
+1. obter `anos_letivos.id`, `data_inicio`, `data_fim`
+2. aplicar o intervalo em todas as leituras
+3. se o bloco depender de `ano_letivo` inteiro, derivar do mesmo `ano_letivo_id`
 
-- `captação mensal por classe`
-  - matrículas do mês
-  - confirmações do mês
-  - valor de matrícula/confirmação
+### Regra obrigatória
 
-Possível nome:
+`despesas?ano=2025` deixa de ser válido para o consolidado.  
+O correto passa a ser:
 
-- `internal.mv_financeiro_captacao_mensal_classe`
-- wrapper: `public.vw_financeiro_captacao_mensal_classe`
+```text
+despesas?ano_letivo_id=<uuid>
+```
 
-Só criar esse novo read model se a query operacional ficar pesada ou se o painel passar a ser recorrente.
+ou
 
-### 7.3 O que não fazer
+```text
+despesas?from=YYYY-MM-DD&to=YYYY-MM-DD
+```
 
-- não criar uma nova MV que replique `vw_financeiro_propinas_mensal_escola`
-- não criar uma nova MV que replique `vw_financeiro_propinas_por_turma`
-- não calcular `previsto/pago/atraso` diretamente de `mensalidades` numa tela nova se a `vw_` já atende
+com `from/to` derivados do ano letivo.
 
-## 8. Fases de implementação
+### Implementação atual do recorte
 
-### P1 — Consolidado sem novo MV (CONCLUÍDO)
+Na Fase 1 foi introduzido um resolvedor único:
 
-Entregar uma nova página `Relatório Financeiro Mensal Escolar` com:
+- `resolveAnoLetivoScope(supabase, escolaId, { anoLetivoId, ano })`
 
-- resumo executivo
-- bloco de propinas reaproveitado
-- ranking por turma/classe
-- links para `Propinas`, `Fluxo de Caixa` e `Radar`
+Esse helper:
 
-**Evidência Técnica:**
-- Página: `apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/mensal-escolar/page.tsx`
-- Link no menu: `apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/page.tsx`
+- resolve `anos_letivos.id`
+- devolve `ano`, `data_inicio`, `data_fim`
+- permite fallback controlado para ano civil quando ainda não existir `ano_letivo_id`
 
-### P2 — Bloco de captação mensal (CONCLUÍDO)
+Uso atual:
+
+- `propinas/route.ts`
+- `captacao/route.ts`
+- `despesas/route.ts`
+- `resumo/route.ts`
+
+## Contrato das APIs
+
+## Contratos já implementados
+
+### 1. `GET /api/financeiro/relatorios/resumo`
+
+Uso:
+
+- KPIs do topo
+
+Parâmetros:
+
+- `escolaId`
+- `ano_letivo_id`
+
+Resposta:
+
+```json
+{
+  "ok": true,
+  "anoLetivo": 2025,
+  "anoLetivoId": "uuid",
+  "periodo": {
+    "inicio": "2025-09-01",
+    "fim": "2026-07-31"
+  },
+  "resumo": {
+    "mensalidades": 0,
+    "emAtraso": 0,
+    "pagasAdiantadas": 0,
+    "parciais": 0,
+    "previsto": 0,
+    "pago": 0,
+    "pagoAdiantado": 0,
+    "parcialEmAberto": 0,
+    "atraso": 0,
+    "despesasTotal": 0,
+    "entradasTotal": 0,
+    "saldoAnterior": 0,
+    "saldoPeriodo": 0,
+    "saldoAcumulado": 0,
+    "taxaAtrasoPct": 0
+  }
+}
+```
+
+### 2. `GET /api/financeiro/relatorios/propinas`
+
+Parâmetros implementados:
+
+- `escolaId`
+- `ano_letivo_id`
+- fallback legado `ano`
+
+Resposta adicional introduzida na Fase 1:
+
+- `anoLetivoId`
+- `periodo`
+
+### 3. `GET /api/financeiro/relatorios/captacao`
+
+Uso:
+
+- tabela mensal por classe
+
+Parâmetros:
+
+- `escolaId`
+- `ano_letivo_id`
+- `mes_ref` opcional
+
+Resposta:
+
+```json
+{
+  "ok": true,
+  "items": [
+    {
+      "mesRef": "2025-09-01",
+      "classeId": "uuid",
+      "classeLabel": "7ª Classe",
+      "matriculasQtd": 10,
+      "matriculasTotal": 12000,
+      "confirmacoesQtd": 8,
+      "confirmacoesTotal": 9600,
+      "cartaoQtd": 18,
+      "cartaoTotal": 9000,
+      "bolsistasQtd": 2,
+      "inscritosTotal": 40
+    }
+  ]
+}
+```
+
+Parâmetros implementados:
+
+- `escolaId`
+- `ano_letivo_id`
+- fallback legado `ano`
+
+Resposta adicional introduzida na Fase 1:
+
+- `anoLetivoId`
+- `periodo`
+
+### 4. `GET /api/financeiro/relatorios/despesas`
+
+Parâmetros implementados:
+
+- `escolaId`
+- `ano_letivo_id`
+- fallback legado `ano`
+
+Resposta adicional introduzida na Fase 1:
+
+- `anoLetivo`
+- `anoLetivoId`
+- `periodo`
+
+Comportamento novo:
+
+- quando `ano_letivo_id` é fornecido, o filtro usa `data_inicio` e `data_fim` do ano letivo
+
+## Contratos previstos para próximas fases
+
+### 5. `GET /api/financeiro/relatorios/escolar/inadimplencia-classe`
+
+Uso:
+
+- bloco “propinas não pagas”
+
+Parâmetros:
+
+- `escolaId`
+- `ano_letivo_id`
+- `mes_ref` opcional
+
+### 6. `GET /api/financeiro/relatorios/escolar/fluxo-mensal`
+
+Uso:
+
+- fechamento mensal
+
+Parâmetros:
+
+- `escolaId`
+- `ano_letivo_id`
+
+### 7. `GET /api/financeiro/relatorios/escolar/full`
+
+Uso:
+
+- carregar a página com um request orquestrado
+
+Resposta:
+
+- `resumo`
+- `captacao`
+- `propinas`
+- `inadimplenciaClasse`
+- `despesas`
+- `fluxoMensal`
+
+Observação:
+
+- internamente, este endpoint pode chamar os read models diretamente
+- não deve recomputar o que já existe em `propinas/route.ts`
+
+## Backlog SQL
+
+### Fase SQL-1
+
+- criar `mv_relatorio_financeiro_escolar_resumo`
+- criar `mv_relatorio_financeiro_escolar_capitacao_mensal`
+- criar `mv_relatorio_financeiro_escolar_inadimplencia_classe`
+- criar `mv_relatorio_financeiro_escolar_fluxo_mensal`
+
+### Fase SQL-2
+
+- criar `UNIQUE INDEX` em todas as MVs
+- criar funções `refresh_mv_*`
+- criar `cron.schedule(...)`
+- criar wrappers `vw_*` públicos com `security_invoker = true`
+
+### Fase SQL-3
+
+- validar filtros por escola
+- validar dependência de `anos_letivos`
+- documentar estratégia de backfill `2024-2025`
+
+## Backlog API
+
+### Fase API-1 [CONCLUÍDA]
+
+- criar helper de recorte temporal por ano letivo
+- adaptar `propinas` para aceitar `ano_letivo_id`
+- adaptar `captacao` para aceitar `ano_letivo_id`
+- adaptar `despesas` para cortar pelo intervalo real da sessão
+- criar `/api/financeiro/relatorios/resumo`
+
+Evidência técnica:
+
+- [apps/web/src/lib/financeiro/resolveAnoLetivoScope.ts](/Users/gundja/moxi-edtech/apps/web/src/lib/financeiro/resolveAnoLetivoScope.ts)
+- [apps/web/src/app/api/financeiro/relatorios/resumo/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/resumo/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/propinas/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/propinas/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/captacao/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/captacao/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/despesas/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/despesas/route.ts)
+
+### Fase API-2
+
+Status: concluída no código local
+
+- criar `/api/financeiro/relatorios/inadimplencia-classe`
+- criar `/api/financeiro/relatorios/fluxo-mensal`
+- integrar ambos os blocos na página consolidada
+- adaptar exportadores `CSV/XLSX` para incluir `fluxo mensal` e `inadimplência por classe`
+
+Evidência técnica:
+
+- [supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql](/Users/gundja/moxi-edtech/supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql)
+- [apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts)
+- [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
+
+Pendência desta fase:
+
+- criar `/api/financeiro/relatorios/escolar/full`
+
+### Fase API-3
+
+- manter compatibilidade transitória com `/api/financeiro/relatorios/propinas`
+- manter `cache: 'no-store'` e `dynamic = 'force-dynamic'`
+
+## Backlog UI
+
+### UI-1 — Reestruturação da página
+
+Substituir a atual experiência por cinco seções:
+
+- Resumo Executivo
+- Captação
+- Propinas
+- Despesas e Resultado
+- Fechamento Mensal
+
+### UI-2 — Filtros
+
+Filtros mínimos:
+
+- sessão / ano letivo
+- mês
+- classe
+- turma
+
+### UI-3 — Tabelas novas
 
 Adicionar:
 
-- matrículas por classe no mês
-- confirmações por classe no mês
-- total de arrecadação dessas entradas
+- tabela de captação por classe
+- tabela de propinas não pagas por classe
+- tabela de fechamento mensal
 
-**Evidência Técnica:**
-- API: `apps/web/src/app/api/financeiro/relatorios/captacao/route.ts`
-- Consumo: Integrado na página de relatório mensal.
+Status:
 
-### P3 — Bolsistas + leitura institucional (CONCLUÍDO)
+- captação por classe: implementada
+- propinas não pagas por classe: implementada via bloco `Inadimplência por classe`
+- fechamento mensal: implementado via bloco `Fluxo mensal`
 
-Adicionar:
+### UI-4 — Drill-down
 
-- inscritos activos por classe
-- bolsistas por classe
-- total por classe
+Deep-links:
 
-**Evidência Técnica:**
-- Lógica de detecção de bolsista baseada em `percentagem_desconto > 0` ou `motivo_desconto`.
-- Exibição em tabela dedicada "Inscritos e Bolsistas" no relatório mensal.
+- `Propinas`
+- `Fluxo de Caixa`
+- `Radar de Inadimplência`
 
-### P4 — PDF executivo (PARCIAL/PRINT)
+### UI-5 — Exportação executiva
 
-Gerar saída em PDF/Excel com:
+Novo Excel/PDF com:
 
-- branding da escola
-- sessão académica
-- filtros aplicados
-- resumo financeiro
-- tabelas principais
+- branding
+- período
+- KPIs principais
+- captação
+- propinas não pagas
+- fluxo mensal
 
-**Status:**
-- Implementado via `window.print()` com estilos CSS específicos (`@media print`) para garantir formatação executiva.
-- Próximo passo (Opcional): Geração via `createInstitutionalPdf` no lado do servidor se necessário envio por e-mail automático.
+## Sequência recomendada
 
-## 9. Critérios para não duplicar lógica
+### Fase 1
 
-Toda implementação futura deste plano deve obedecer:
+Status: concluída
 
-1. Se o dado já existe em `vw_financeiro_propinas_*`, não recalcular em rota nova.
-2. Se o dado já existe em `vw_financeiro_escola_dia`, não abrir outra fonte para o mesmo indicador diário.
-3. Se o objectivo é drill-down de cobrança, deep-linkar para `Radar`, não recriar o radar.
-4. Novo read model só entra para `captação mensal` ou `bolsistas`, se a fonte actual não for suficiente.
-5. A nova página deve ser consolidada, não concorrente com os relatórios actuais.
+Entregue:
 
-## 10. Recomendação final
+- helper único de `ano letivo -> período`
+- recorte por ano letivo nas APIs atuais
+- endpoint `resumo`
+- adaptação da página para consumir `ano_letivo_id`
 
-O melhor caminho para o KLASSE não é copiar o Excel do CAC.
+Evidência técnica:
 
-O melhor caminho é:
+- [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
 
-- reaproveitar os relatórios e views que já existem
-- adicionar uma nova visão consolidada executiva
-- criar no máximo um novo read model para `captação mensal por classe`
-- deixar `propinas`, `fluxo` e `radar` como especialistas
+### Fase 2
+
+Status: implementada no código local
+
+Entregue:
+
+- MV de fluxo mensal
+- MV de inadimplência por classe
+- wrappers públicos `vw_*`
+- funções `refresh_mv_*`
+- cron de refresh
+- endpoints de leitura
+- integração dos dois blocos na página consolidada
+
+Evidência técnica:
+
+- [supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql](/Users/gundja/moxi-edtech/supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql)
+- [apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts)
+- [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
+
+Pendências:
+
+- futura orquestração do endpoint `/api/financeiro/relatorios/escolar/full`
+- eventual validação visual browser-side após deploy com dados autenticados
+
+### Fase 3
+
+- criar MV de captação mensal
+- substituir a lógica ad hoc de captação
+- consolidar bolsistas e cartão
+
+### Fase 4
+
+- exportação executiva
+- histórico/importação `2024-2025`
+- comparação mês contra mês
+
+## Critérios de aceite
+
+### Produto
+
+- a página deixa de parecer “relatório de mensalidades”
+- a direção consegue responder entradas, saídas, saldo e atraso sem recorrer à planilha
+
+### Dados
+
+- todas as consultas respeitam o intervalo do ano letivo
+- os totais de propinas continuam vindo das views oficiais existentes
+- saídas e saldo deixam de depender de ano civil
+
+### Arquitetura
+
+- nenhum endpoint novo recalcula `previsto/pago/atraso` diretamente de `mensalidades` se a `vw_` já cobre
+- todos os novos consolidadores operam sobre read models com refresh controlado
+
+### Operação
+
+- exportação gera um artefato reconhecível pela gestão
+- ausência de histórico `2024-2025` fica explícita até existir backfill
+
+## Não fazer
+
+- não copiar o layout literal da planilha
+- não criar uma aba por mês
+- não duplicar `vw_financeiro_propinas_mensal_escola`
+- não usar `ano` civil como eixo principal
+- não esconder a lacuna histórica do CAC
+
+## Recomendação final
+
+O caminho correto é evoluir `mensal-escolar` para um consolidado executivo, preservando os relatórios especialistas e adicionando só os read models que faltam.
 
 Resumo:
 
-- copiar o conceito: sim
-- copiar o formato da planilha: não
-- duplicar lógica existente: não
-- consolidar em camada executiva: sim
+- manter propinas como base oficial de cobrança
+- mover o relatório para ano letivo real
+- criar MVs de resumo, fluxo mensal, captação e inadimplência por classe
+- refazer a UI como relatório financeiro escolar, não como relatório de mensalidades

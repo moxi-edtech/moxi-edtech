@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +21,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
+    const anoLetivoId =
+      searchParams.get("ano_letivo_id") ||
+      searchParams.get("session_id") ||
+      searchParams.get("sessionId") ||
+      null;
     const anoParam = searchParams.get("ano");
-    const anoLetivo = anoParam ? parseInt(anoParam, 10) : new Date().getFullYear();
+    const anoScope = await resolveAnoLetivoScope(supabase, escolaId, {
+      anoLetivoId,
+      ano: anoParam ? parseInt(anoParam, 10) : null,
+    });
+    const anoLetivo = anoScope?.ano ?? new Date().getFullYear();
 
     // Buscar matrículas do ano letivo
     const { data: matriculas, error } = await supabase
@@ -60,7 +70,21 @@ export async function GET(req: Request) {
       detalhes_mensais: Record<string, { matriculas: number; confirmacoes: number; bolsistas: number }>
     }> = {};
 
+    const dataInicio = anoScope?.dataInicio ? new Date(`${anoScope.dataInicio}T00:00:00`) : null;
+    const dataFim = anoScope?.dataFim ? new Date(`${anoScope.dataFim}T23:59:59`) : null;
+
     (matriculas || []).forEach((m: any) => {
+      const dataRef = m.data_matricula || m.created_at;
+      const dataRefDate = dataRef ? new Date(dataRef) : null;
+      if (
+        dataRefDate &&
+        dataInicio &&
+        dataFim &&
+        (dataRefDate < dataInicio || dataRefDate > dataFim)
+      ) {
+        return;
+      }
+
       const classe = m.turmas?.classes?.label || "Sem Classe";
       const classeId = m.turmas?.classe_id || "sem-classe";
       
@@ -78,9 +102,8 @@ export async function GET(req: Request) {
       const isConfirmacao = m.origem_transicao_matricula_id !== null;
       const isBolsista = (Number(m.percentagem_desconto) > 0) || (!!m.motivo_desconto);
       
-      const dataRef = m.data_matricula || m.created_at;
-      const mes = dataRef ? new Date(dataRef).getMonth() + 1 : 0;
-      const ano = dataRef ? new Date(dataRef).getFullYear() : 0;
+      const mes = dataRefDate ? dataRefDate.getMonth() + 1 : 0;
+      const ano = dataRefDate ? dataRefDate.getFullYear() : 0;
       const mesKey = `${ano}-${String(mes).padStart(2, '0')}`;
 
       if (!classesMap[classeId].detalhes_mensais[mesKey]) {
@@ -109,6 +132,11 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       anoLetivo,
+      anoLetivoId: anoScope?.id ?? null,
+      periodo: {
+        inicio: anoScope?.dataInicio ?? null,
+        fim: anoScope?.dataFim ?? null,
+      },
       items
     });
   } catch (err: any) {

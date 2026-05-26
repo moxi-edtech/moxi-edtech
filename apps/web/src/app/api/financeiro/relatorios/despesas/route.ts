@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
@@ -8,6 +9,11 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const anoLetivoId =
+      searchParams.get("ano_letivo_id") ||
+      searchParams.get("session_id") ||
+      searchParams.get("sessionId") ||
+      null;
     const ano = searchParams.get("ano");
     const escolaIdParam = searchParams.get("escolaId");
 
@@ -29,6 +35,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
+    const anoScope = await resolveAnoLetivoScope(supabase, escolaId, {
+      anoLetivoId,
+      ano: ano ? parseInt(ano, 10) : null,
+    });
+
     // Buscar débitos (saídas) do ledger para o ano solicitado
     // Usamos financeiro_ledger onde tipo = 'debito'
     let query = supabase
@@ -37,10 +48,14 @@ export async function GET(req: Request) {
       .eq("escola_id", escolaId)
       .eq("tipo", "debito");
 
-    if (ano) {
-      const startDate = `${ano}-01-01`;
-      const endDate = `${ano}-12-31`;
-      query = query.gte("data_movimento", startDate).lte("data_movimento", endDate);
+    if (anoScope?.dataInicio && anoScope?.dataFim) {
+      query = query
+        .gte("data_movimento", `${anoScope.dataInicio}T00:00:00`)
+        .lte("data_movimento", `${anoScope.dataFim}T23:59:59`);
+    } else if (ano) {
+      query = query
+        .gte("data_movimento", `${ano}-01-01T00:00:00`)
+        .lte("data_movimento", `${ano}-12-31T23:59:59`);
     }
 
     const { data: ledgerData, error: ledgerError } = await query.order("data_movimento", { ascending: false });
@@ -65,6 +80,12 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      anoLetivo: anoScope?.ano ?? null,
+      anoLetivoId: anoScope?.id ?? null,
+      periodo: {
+        inicio: anoScope?.dataInicio ?? null,
+        fim: anoScope?.dataFim ?? null,
+      },
       items,
       totalGeral,
       count: ledgerData?.length ?? 0
