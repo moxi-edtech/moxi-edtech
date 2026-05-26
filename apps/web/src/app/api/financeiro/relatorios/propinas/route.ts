@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
@@ -46,8 +47,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
+    const anoLetivoId =
+      searchParams.get("ano_letivo_id") ||
+      searchParams.get("session_id") ||
+      searchParams.get("sessionId") ||
+      null;
     const anoParam = searchParams.get("ano");
-    const anoLetivo = anoParam ? parseInt(anoParam, 10) : new Date().getFullYear();
+    const anoScope = await resolveAnoLetivoScope(supabase, escolaId, {
+      anoLetivoId,
+      ano: anoParam ? parseInt(anoParam, 10) : null,
+    });
+    const anoLetivo = anoScope?.ano ?? new Date().getFullYear();
 
     // 1) Série mensal (para gráficos)
     let mensalQuery = supabase
@@ -213,7 +223,12 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         ok: true,
+        anoLetivoId: anoScope?.id ?? null,
         anoLetivo,
+        periodo: {
+          inicio: anoScope?.dataInicio ?? null,
+          fim: anoScope?.dataFim ?? null,
+        },
         mensal: mensalSeries,
         porTurma: rankingTurmas,
       },

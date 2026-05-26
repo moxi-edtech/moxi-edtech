@@ -1,0 +1,123 @@
+import { NextResponse } from "next/server";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
+import { applyKf2ListInvariants } from "@/lib/kf2";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+
+export const dynamic = "force-dynamic";
+
+function isMissingReadModelError(error: unknown): boolean {
+  const code = typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "")
+    : "";
+  const message = typeof error === "object" && error !== null && "message" in error
+    ? String((error as { message?: unknown }).message ?? "")
+    : "";
+
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    /does not exist|relation .* does not exist|schema cache|Could not find .* in the schema cache/i.test(message)
+  );
+}
+
+export async function GET(req: Request) {
+  try {
+    const supabase = await supabaseServerTyped<any>();
+    const { data: userRes } = await supabase.auth.getUser();
+
+    if (!userRes?.user) {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const requestedEscolaId =
+      searchParams.get("escolaId") ||
+      searchParams.get("escola_id") ||
+      null;
+    const escolaId = await resolveEscolaIdForUser(
+      supabase,
+      userRes.user.id,
+      requestedEscolaId
+    );
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
+    }
+
+    const anoLetivoId =
+      searchParams.get("ano_letivo_id") ||
+      searchParams.get("session_id") ||
+      searchParams.get("sessionId") ||
+      null;
+    const anoParam = searchParams.get("ano");
+    const anoScope = await resolveAnoLetivoScope(supabase, escolaId, {
+      anoLetivoId,
+      ano: anoParam ? parseInt(anoParam, 10) : null,
+    });
+
+    if (!anoScope?.id) {
+      return NextResponse.json({ ok: false, error: "Ano letivo não encontrado" }, { status: 400 });
+    }
+
+    let query = supabase
+      .from("vw_relatorio_financeiro_escolar_fluxo_mensal")
+      .select("escola_id, ano_letivo_id, ano_letivo, mes_ref, saldo_anterior, entradas_total, saidas_total, diferenca, saldo_final")
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo_id", anoScope.id);
+
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 24,
+      order: [{ column: "mes_ref", ascending: true }],
+      tieBreakerColumn: "mes_ref",
+    });
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isMissingReadModelError(error)) {
+        return NextResponse.json(
+          {
+            ok: true,
+            anoLetivo: anoScope.ano,
+            anoLetivoId: anoScope.id,
+            periodo: { inicio: anoScope.dataInicio, fim: anoScope.dataFim },
+            items: [],
+            warning: "Read model de fluxo mensal indisponível; retornado vazio.",
+          },
+          { status: 200 }
+        );
+      }
+
+      return NextResponse.json(
+        { ok: false, error: "Erro ao carregar fluxo mensal", details: error.message },
+        { status: 500 }
+      );
+    }
+
+    const items = (data ?? []).map((row) => ({
+      mesRef: row.mes_ref,
+      saldoAnterior: Number(row.saldo_anterior ?? 0),
+      entradasTotal: Number(row.entradas_total ?? 0),
+      saidasTotal: Number(row.saidas_total ?? 0),
+      diferenca: Number(row.diferenca ?? 0),
+      saldoFinal: Number(row.saldo_final ?? 0),
+    }));
+
+    return NextResponse.json(
+      {
+        ok: true,
+        anoLetivo: anoScope.ano,
+        anoLetivoId: anoScope.id,
+        periodo: {
+          inicio: anoScope.dataInicio,
+          fim: anoScope.dataFim,
+        },
+        items,
+      },
+      { status: 200 }
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erro inesperado";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
