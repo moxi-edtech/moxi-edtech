@@ -1,13 +1,33 @@
 import { NextResponse } from "next/server";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
+function parseMonthRange(monthRef: string) {
+  const match = monthRef.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return null;
+  }
+
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
+}
+
 // Radar de Inadimplência
 // Usa a view materializada vw_radar_inadimplencia que já consolida dados.
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const s = await supabaseServerTyped();
     const { data: { user } } = await s.auth.getUser();
@@ -30,6 +50,23 @@ export async function GET() {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
+
+    const { searchParams } = new URL(req.url);
+    const anoLetivoId =
+      searchParams.get("ano_letivo_id") ||
+      searchParams.get("session_id") ||
+      searchParams.get("sessionId") ||
+      null;
+    const anoParam = searchParams.get("ano");
+    const mesRef = searchParams.get("mes_ref");
+    const turmaId = searchParams.get("turma_id");
+    const classeId = searchParams.get("classe_id");
+    const anoScope = await resolveAnoLetivoScope(s, escolaId, {
+      anoLetivoId,
+      ano: anoParam ? parseInt(anoParam, 10) : null,
+    });
+
+    const monthRange = mesRef ? parseMonthRange(mesRef) : null;
     
     // A view vw_radar_inadimplencia já filtra por `escola_id = current_tenant_escola_id()`
     // Apenas precisamos garantir que a chamada é autenticada.
@@ -54,6 +91,16 @@ export async function GET() {
       )
       .eq("escola_id", escolaId)
       .not("aluno_id", "is", null);
+
+    if (monthRange) {
+      query = query
+        .gte("data_vencimento", monthRange.start)
+        .lte("data_vencimento", monthRange.end);
+    } else if (anoScope?.dataInicio && anoScope?.dataFim) {
+      query = query
+        .gte("data_vencimento", anoScope.dataInicio)
+        .lte("data_vencimento", anoScope.dataFim);
+    }
 
     query = applyKf2ListInvariants(query, {
       defaultLimit: 50,
@@ -134,21 +181,64 @@ export async function GET() {
     );
 
     const numeroPorAluno: Record<string, string | null> = {};
+    const turmaPorAluno: Record<string, string | null> = {};
+    const turmaNomePorAluno: Record<string, string | null> = {};
+    const classeIdPorAluno: Record<string, string | null> = {};
+    const classeLabelById = new Map<string, string | null>();
 
     if (alunoIds.length > 0) {
       const { data: mats, error: matsError } = await s
         .from("matriculas")
-        .select("aluno_id, numero_matricula, created_at")
+        .select("aluno_id, numero_matricula, turma_id, ano_letivo, created_at, turma:turmas(nome, classe_id)")
         .in("aluno_id", alunoIds)
         .eq("escola_id", escolaId)
+        .in("status", ["ativo", "ativa", "active"])
         .order("created_at", { ascending: false });
 
       if (matsError) {
         console.error("Erro ao buscar numeros de matrícula:", matsError.message);
       } else {
-        for (const m of mats || []) {
+        const scopedMatriculas = (mats || []).filter((m: any) => {
+          if (!anoScope?.ano) return true;
+          return Number(m.ano_letivo ?? 0) === Number(anoScope.ano);
+        });
+
+        const classIds = Array.from(
+          new Set(
+            scopedMatriculas
+              .map((m: any) => {
+                const turma = Array.isArray(m.turma) ? m.turma[0] : m.turma;
+                return turma?.classe_id ? String(turma.classe_id) : null;
+              })
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        if (classIds.length > 0) {
+          const { data: classesRows, error: classesError } = await s
+            .from("classes")
+            .select("id, nome")
+            .in("id", classIds)
+            .eq("escola_id", escolaId);
+
+          if (classesError) {
+            console.error("Erro ao buscar classes para radar:", classesError.message);
+          } else {
+            for (const classe of classesRows || []) {
+              classeLabelById.set(String(classe.id), classe.nome ?? null);
+            }
+          }
+        }
+
+        for (const m of scopedMatriculas) {
           if (!m.aluno_id) continue;
           if (numeroPorAluno[m.aluno_id]) continue;
+
+          const turma = Array.isArray((m as any).turma) ? (m as any).turma[0] : (m as any).turma;
+          turmaPorAluno[m.aluno_id] = (m as any).turma_id ?? null;
+          turmaNomePorAluno[m.aluno_id] = turma?.nome ?? null;
+          classeIdPorAluno[m.aluno_id] = turma?.classe_id ?? null;
+
           if (m.numero_matricula) {
             numeroPorAluno[m.aluno_id] = m.numero_matricula;
           }
@@ -156,10 +246,18 @@ export async function GET() {
       }
     }
 
-    const enriched = agrupadosList.map((item) => ({
-      ...item,
-      numero_matricula: item.numero_matricula ?? numeroPorAluno[item.aluno_id] ?? null,
-    }));
+    const enriched = agrupadosList
+      .map((item) => ({
+        ...item,
+        numero_matricula: item.numero_matricula ?? numeroPorAluno[item.aluno_id] ?? null,
+        turma_id: turmaPorAluno[item.aluno_id] ?? null,
+        nome_turma: turmaNomePorAluno[item.aluno_id] ?? item.nome_turma ?? null,
+        classe_id: classeIdPorAluno[item.aluno_id] ?? null,
+        classe_label:
+          (classeIdPorAluno[item.aluno_id] ? classeLabelById.get(String(classeIdPorAluno[item.aluno_id])) : null) ?? null,
+      }))
+      .filter((item) => !turmaId || turmaId === "todas" || item.turma_id === turmaId)
+      .filter((item) => !classeId || classeId === "todas" || item.classe_id === classeId);
 
     const sAny = s as any;
     const { data: cases } = await sAny
@@ -202,7 +300,16 @@ export async function GET() {
       return Number(b.valor_em_atraso ?? 0) - Number(a.valor_em_atraso ?? 0);
     });
 
-    return NextResponse.json({ ok: true, items: ordered });
+    return NextResponse.json({
+      ok: true,
+      anoLetivo: anoScope?.ano ?? null,
+      anoLetivoId: anoScope?.id ?? null,
+      periodo: {
+        inicio: monthRange?.start ?? anoScope?.dataInicio ?? null,
+        fim: monthRange?.end ?? anoScope?.dataFim ?? null,
+      },
+      items: ordered,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Erro inesperado no radar financeiro:", message);

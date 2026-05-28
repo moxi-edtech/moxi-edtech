@@ -19,6 +19,22 @@ type ReciboResponse = {
   ok: true;
   doc_id: string;
   url_validacao: string | null;
+  print: {
+    escola_nome: string;
+    aluno_nome: string;
+    aluno_bi: string | null;
+    classe_nome: string | null;
+    curso_nome: string | null;
+    turma_nome: string | null;
+    logo_url: string | null;
+    numero_sequencial: number | null;
+    public_id: string | null;
+    emitido_em: string;
+    banco: string | null;
+    titular_conta: string | null;
+    iban: string | null;
+    kwik_chave: string | null;
+  } | null;
   fiscal: {
     numero_formatado: string;
     hash_control: string;
@@ -180,6 +196,50 @@ async function enrichReciboSnapshot({
     .eq("id", docId);
 }
 
+async function resolveReciboPrintPayload({
+  supabase,
+  docId,
+}: {
+  supabase: any;
+  docId: string;
+}) {
+  if (!docId) return null;
+
+  const { data: doc } = await supabase
+    .from("documentos_emitidos")
+    .select("public_id, created_at, numero_sequencial, dados_snapshot")
+    .eq("id", docId)
+    .maybeSingle();
+
+  if (!doc) return null;
+
+  const snapshot = normalizeSnapshotObject(doc.dados_snapshot ?? null);
+
+  return {
+    escola_nome:
+      typeof snapshot.escola_nome === "string" && snapshot.escola_nome.trim()
+        ? snapshot.escola_nome
+        : "Escola",
+    aluno_nome:
+      typeof snapshot.aluno_nome === "string" && snapshot.aluno_nome.trim()
+        ? snapshot.aluno_nome
+        : "Aluno",
+    aluno_bi: typeof snapshot.aluno_bi === "string" ? snapshot.aluno_bi : null,
+    classe_nome: typeof snapshot.classe_nome === "string" ? snapshot.classe_nome : null,
+    curso_nome: typeof snapshot.curso_nome === "string" ? snapshot.curso_nome : null,
+    turma_nome: typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : null,
+    logo_url: typeof snapshot.escola_logo_url === "string" ? snapshot.escola_logo_url : null,
+    numero_sequencial: typeof doc.numero_sequencial === "number" ? doc.numero_sequencial : null,
+    public_id: typeof doc.public_id === "string" ? doc.public_id : null,
+    emitido_em: typeof doc.created_at === "string" ? doc.created_at : new Date().toISOString(),
+    banco: typeof snapshot.escola_banco === "string" ? snapshot.escola_banco : null,
+    titular_conta:
+      typeof snapshot.escola_titular_conta === "string" ? snapshot.escola_titular_conta : null,
+    iban: typeof snapshot.escola_iban === "string" ? snapshot.escola_iban : null,
+    kwik_chave: typeof snapshot.escola_kwik_chave === "string" ? snapshot.escola_kwik_chave : null,
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const idempotencyKey =
@@ -311,6 +371,7 @@ export async function POST(req: NextRequest) {
           ok: true,
           doc_id: legacyDocId,
           url_validacao: legacyUrlValidacao,
+          print: null,
           fiscal: null,
         };
 
@@ -320,6 +381,10 @@ export async function POST(req: NextRequest) {
             docId: legacyDocId,
             escolaId,
             alunoId: mensalidade.aluno_id ?? null,
+          });
+          response.print = await resolveReciboPrintPayload({
+            supabase,
+            docId: legacyDocId,
           });
         }
 
@@ -470,6 +535,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       doc_id: fiscal.documento_id,
       url_validacao: urlValidacao,
+      print: null,
       fiscal: {
         numero_formatado: fiscal.numero_formatado,
         hash_control: fiscal.hash_control,
@@ -482,6 +548,10 @@ export async function POST(req: NextRequest) {
       docId: fiscal.documento_id,
       escolaId,
       alunoId: mensalidade.aluno_id ?? null,
+    });
+    response.print = await resolveReciboPrintPayload({
+      supabase,
+      docId: fiscal.documento_id,
     });
 
     await supabaseAny.from("idempotency_keys").upsert(

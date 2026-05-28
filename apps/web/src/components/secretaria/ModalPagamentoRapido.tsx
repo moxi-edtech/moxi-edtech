@@ -53,6 +53,20 @@ type ReciboBatchItem = {
   url_validacao: string | null;
   valor: number;
   referencia: string;
+  escola_nome?: string;
+  aluno_nome?: string;
+  aluno_bi?: string | null;
+  classe_nome?: string | null;
+  curso_nome?: string | null;
+  turma_nome?: string | null;
+  logo_url?: string | null;
+  numero?: string | null;
+  public_id?: string | null;
+  emitido_em?: string | null;
+  banco?: string | null;
+  titular_conta?: string | null;
+  iban?: string | null;
+  kwik_chave?: string | null;
   referenciasDetalhadas?: string[];
   itensDetalhados?: Array<{ referencia: string; valor: number }>;
 };
@@ -657,6 +671,33 @@ function usePagamentoSubmit({
           if (reciboRes.ok && reciboJson?.ok) {
             reciboId = typeof reciboJson.doc_id === "string" ? reciboJson.doc_id : reciboId;
             reciboUrlValidacao = typeof reciboJson.url_validacao === "string" ? reciboJson.url_validacao : null;
+            const print =
+              reciboJson.print && typeof reciboJson.print === "object" ? reciboJson.print : null;
+            recibosGerados.push({
+              id: reciboId,
+              url_validacao: reciboUrlValidacao,
+              valor,
+              referencia,
+              escola_nome: typeof print?.escola_nome === "string" ? print.escola_nome : undefined,
+              aluno_nome: typeof print?.aluno_nome === "string" ? print.aluno_nome : undefined,
+              aluno_bi: typeof print?.aluno_bi === "string" ? print.aluno_bi : null,
+              classe_nome: typeof print?.classe_nome === "string" ? print.classe_nome : null,
+              curso_nome: typeof print?.curso_nome === "string" ? print.curso_nome : null,
+              turma_nome: typeof print?.turma_nome === "string" ? print.turma_nome : null,
+              logo_url: typeof print?.logo_url === "string" ? print.logo_url : null,
+              numero:
+                typeof print?.numero_sequencial === "number"
+                  ? String(print.numero_sequencial)
+                  : null,
+              public_id: typeof print?.public_id === "string" ? print.public_id : null,
+              emitido_em: typeof print?.emitido_em === "string" ? print.emitido_em : null,
+              banco: typeof print?.banco === "string" ? print.banco : null,
+              titular_conta:
+                typeof print?.titular_conta === "string" ? print.titular_conta : null,
+              iban: typeof print?.iban === "string" ? print.iban : null,
+              kwik_chave: typeof print?.kwik_chave === "string" ? print.kwik_chave : null,
+            });
+            continue;
           }
         } catch (reciboErr: any) {
           if (reciboErr?.name === "AbortError") throw reciboErr;
@@ -1119,15 +1160,26 @@ export function ModalPagamentoRapido({
       {recibos.map((recibo) => (
         <ReciboImprimivel
           key={recibo.id}
-          escolaNome={escolaNome ?? "Escola"}
-          alunoNome={aluno.nome}
+          escolaNome={recibo.escola_nome ?? escolaNome ?? "Escola"}
+          alunoNome={recibo.aluno_nome ?? aluno.nome}
           valor={recibo.valor}
-          data={new Date().toISOString()}
+          data={recibo.emitido_em ?? new Date().toISOString()}
           urlValidacao={recibo.url_validacao}
-          logoUrl={escolaLogoUrl}
+          alunoBi={recibo.aluno_bi ?? undefined}
+          classeNome={recibo.classe_nome ?? undefined}
+          cursoNome={recibo.curso_nome ?? undefined}
+          turmaNome={recibo.turma_nome ?? undefined}
+          numero={recibo.numero ?? null}
+          publicId={recibo.public_id ?? "—"}
+          logoUrl={recibo.logo_url ?? escolaLogoUrl}
           referencia={recibo.referencia}
           referenciasDetalhadas={recibo.referenciasDetalhadas}
           itensDetalhados={recibo.itensDetalhados}
+          emitidoEm={recibo.emitido_em ?? null}
+          banco={recibo.banco ?? null}
+          titularConta={recibo.titular_conta ?? null}
+          iban={recibo.iban ?? null}
+          kwikChave={recibo.kwik_chave ?? null}
           onPrintReady={() => setPrintReadyCount((count) => count + 1)}
         />
       ))}
