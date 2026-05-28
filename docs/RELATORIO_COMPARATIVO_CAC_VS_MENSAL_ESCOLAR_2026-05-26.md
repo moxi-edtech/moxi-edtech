@@ -33,9 +33,36 @@ Em termos práticos:
 - O nome `mensal-escolar` hoje promete mais do que o produto efetivamente entrega.
 - O banco remoto do CAC não preserva o histórico `2024-2025` da planilha; os dados ativos encontrados estão concentrados no ciclo `2025-2026`.
 
+## Estado atual da implementação
+
+Desde a análise inicial, a tela evoluiu materialmente e hoje cobre uma parte relevante do modelo operacional da planilha:
+
+- resumo consolidado por `ano_letivo_id`
+- fluxo mensal
+- inadimplência por classe
+- captação por classe
+- despesas e resultado do período
+- `Quick View` mensal com filtro visual
+- modo diretoria
+- drill-down contextual
+- insights automáticos
+- exports `CSV`, `XLSX` e `PDF` atualizados
+
+Arquiteturalmente, a UI também deixou de concentrar toda a lógica num único ficheiro:
+
+- `useFinanceInsights`
+- `useFinancialHealthInsights`
+- `QuickViewTimeline`
+- `FinanceInsightsPanel`
+- `FinancialHealthInsightsPanel`
+- `BoardExecutivePanel`
+- `BoardPressurePanel`
+
+Em termos práticos, o produto já não é apenas um relatório analítico de propinas. Ainda não replica a planilha CAC por completo, mas já opera como um consolidado financeiro escolar intermédio.
+
 ## O que a tela atual entrega
 
-O componente `RelatorioMensalidadesClient` consolida quatro grupos principais:
+O componente `RelatorioMensalidadesClient` agora consolida seis grupos principais:
 
 1. Resumo de propinas
 - previsto
@@ -66,6 +93,18 @@ O componente `RelatorioMensalidadesClient` consolida quatro grupos principais:
 - inscritos e bolsistas
 - despesas do ledger
 - saldo simples do período
+
+5. Fechamento e operação
+- fluxo mensal
+- inadimplência por classe
+- recorte por mês dentro do ano letivo
+
+6. Camada executiva
+- `Quick View` por competência
+- modo diretoria
+- score de saúde
+- benchmark de turmas
+- insights automáticos com CTA contextual
 
 ## O que a planilha CAC 2024-2025 entrega
 
@@ -203,37 +242,36 @@ O sistema hoje parece operar sobre um ciclo posterior, `2025-2026`, enquanto a p
 
 ## Riscos e limitações da implementação atual
 
-### 1. Recorte temporal inconsistente
+### 1. Histórico ainda incompleto
 
-O relatório usa `ano letivo` para propinas, mas despesas são filtradas por ano civil.
+O problema principal remanescente já não é o recorte temporal e sim o histórico.
 
 Impacto:
 
-- um ano letivo que cruza dois anos civis fica distorcido
-- o saldo do período pode ficar incorreto
+- a planilha `2024-2025` não pode ser reconstituída fielmente
+- comparações retroativas continuam dependentes de backfill ou importação
 
-### 2. Dependência excessiva de relatório de propinas
+### 2. Dependência parcial de lógica ad hoc em captação
 
-O produto depende fortemente de:
+O produto já ganhou read models de fluxo mensal e inadimplência por classe, mas captação ainda não passou por MV dedicada.
 
-- `vw_financeiro_propinas_mensal_escola`
-- `vw_financeiro_propinas_por_turma`
+Impacto:
 
-Mas o relatório real de gestão precisa também de:
+- a consistência de captação ainda depende de evolução adicional
+- bolsistas e cartão ainda não estão consolidados no mesmo nível das demais secções
 
-- entradas por tipo
-- atraso por classe
-- saldo anterior
-- saídas por competência
-- consolidado mensal de caixa
-
-### 3. Nome desalinhado
+### 3. Nome ainda desalinhado
 
 `Relatório Mensal Escolar` sugere uma visão institucional completa, mas o que existe é majoritariamente um relatório de mensalidades.
 
-### 4. Histórico não garantido
+### 4. Orquestração backend ainda fragmentada
 
-Sem preservação ou importação do histórico antigo, a comparação com planilhas manuais sempre ficará incompleta.
+Hoje a tela já está muito mais organizada no frontend, mas ainda consulta múltiplos endpoints especializados.
+
+Impacto:
+
+- a composição final ainda acontece no cliente
+- um endpoint consolidado `/full` continua desejável
 
 ## Recomendações de evolução
 
@@ -327,32 +365,44 @@ Sem essa decisão, sempre haverá divergência entre planilha e sistema.
 
 ## Prioridades sugeridas
 
-### Fase 1
+### Concluído
 
-- corrigir recorte por ano letivo
-- renomear e reposicionar o relatório
-- consolidar entradas, saídas e saldo num resumo executivo real
+- recorte por ano letivo nas APIs
+- resumo executivo real
+- MV de fluxo mensal
+- MV de inadimplência por classe
+- PDF/Excel atualizados
+- experiência executiva e assistida na UI
 
-### Fase 2
+### Próximo ciclo
 
-- criar MVs de captação, inadimplência por classe e fluxo mensal
-- substituir blocos ad hoc por APIs/read models consistentes
+- MV de captação mensal
+- endpoint consolidado `/api/financeiro/relatorios/escolar/full`
+- filtros por classe e turma
+- branding executivo mais forte nas exportações
 
-### Fase 3
+### Estrutural
 
-- exportação Excel executiva no formato reconhecido pela direção
-- comparação mês contra mês
-- saldo acumulado
-- previsão vs realizado
+- importação ou backfill de `2024-2025`
+- comparação mês contra mês com base histórica confiável
+- previsão vs realizado com read model dedicado
 
 ## Veredito
 
-O produto atual é uma boa base analítica para propinas, mas ainda não substitui a planilha CAC como relatório financeiro escolar de gestão.
+O produto já passou da fase de “boa base analítica para propinas” e entrou numa fase de consolidado financeiro escolar funcional.
 
-Para substituir a planilha com qualidade, o sistema precisa evoluir em três frentes:
+Hoje ele já cobre:
 
-- escopo funcional
-- consistência temporal
-- read models financeiros mais completos
+- leitura executiva
+- fechamento mensal
+- atraso por classe
+- resultado do período
+- navegação operacional com CTA
 
-Sem isso, a tela continuará útil para consulta, mas insuficiente para fechamento e prestação mensal à direção.
+O que ainda impede substituição plena da planilha CAC é principalmente:
+
+- lacuna histórica `2024-2025`
+- captação ainda sem read model dedicado
+- ausência de consolidado backend único
+
+Sem resolver esses três pontos, a tela já serve para gestão corrente, mas ainda não fecha completamente a dependência do histórico manual da direção.

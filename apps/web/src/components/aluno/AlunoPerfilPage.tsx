@@ -4,6 +4,7 @@ import { DossierHeader } from "@/components/aluno/DossierHeader";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
 import { DossierDocumentosSection, DossierFinanceiroSection, DossierHistoricoSection, DossierPerfilSection } from "@/components/aluno/DossierSeccoes";
 import { normalizeDossier, toMensalidadeAcoes } from "@/lib/aluno";
+import type { RawDossier, RawDossierMensalidade } from "@/lib/aluno/types";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
@@ -22,7 +23,49 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
   });
   if (error) return notFound();
 
-  const aluno = normalizeDossier(alunoId, raw);
+  const dossier = raw as RawDossier | null;
+  let enrichedRaw: RawDossier | unknown = raw;
+  const rawMensalidades = Array.isArray(dossier?.financeiro?.mensalidades)
+    ? (dossier?.financeiro?.mensalidades as RawDossierMensalidade[])
+    : [];
+  const mensalidadeIds = rawMensalidades
+    .map((item) => (typeof item?.id === "string" ? item.id : null))
+    .filter((item): item is string => Boolean(item));
+
+  if (mensalidadeIds.length > 0) {
+    const { data: recibos } = await supabase
+      .from("documentos_emitidos")
+      .select("id, mensalidade_id, created_at")
+      .eq("escola_id", resolvedEscolaId)
+      .eq("tipo", "recibo")
+      .in("mensalidade_id", mensalidadeIds)
+      .order("created_at", { ascending: false });
+
+    const reciboByMensalidadeId = new Map<string, string>();
+    for (const recibo of recibos ?? []) {
+      const mensalidadeId =
+        typeof recibo.mensalidade_id === "string" ? recibo.mensalidade_id : null;
+      if (mensalidadeId && !reciboByMensalidadeId.has(mensalidadeId)) {
+        reciboByMensalidadeId.set(mensalidadeId, recibo.id);
+      }
+    }
+
+    enrichedRaw = {
+      ...(dossier as RawDossier),
+      financeiro: {
+        ...(dossier?.financeiro ?? {}),
+        mensalidades: rawMensalidades.map((mensalidade) => {
+          const mensalidadeId = typeof mensalidade?.id === "string" ? mensalidade.id : null;
+          return {
+            ...mensalidade,
+            recibo_id: mensalidadeId ? reciboByMensalidadeId.get(mensalidadeId) ?? null : null,
+          };
+        }),
+      },
+    };
+  }
+
+  const aluno = normalizeDossier(alunoId, enrichedRaw);
   if (!aluno) return notFound();
 
   return (

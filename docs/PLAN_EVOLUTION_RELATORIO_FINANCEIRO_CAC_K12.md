@@ -646,6 +646,15 @@ Substituir a atual experiência por cinco seções:
 - Despesas e Resultado
 - Fechamento Mensal
 
+Status:
+
+- resumo executivo: implementado
+- captação: implementado
+- propinas: implementado
+- despesas e resultado: implementado
+- fechamento mensal: implementado
+- modo diretoria: implementado
+
 ### UI-2 — Filtros
 
 Filtros mínimos:
@@ -654,6 +663,13 @@ Filtros mínimos:
 - mês
 - classe
 - turma
+
+Status:
+
+- sessão / ano letivo: implementado
+- mês: implementado via `Quick View`
+- classe: pendente
+- turma: pendente
 
 ### UI-3 — Tabelas novas
 
@@ -677,6 +693,12 @@ Deep-links:
 - `Fluxo de Caixa`
 - `Radar de Inadimplência`
 
+Status:
+
+- drill-down contextual no card `Em atraso`: implementado
+- CTA dos insights automáticos para secções relevantes: implementado
+- deep-links dedicados para outras rotas especialistas: pendente
+
 ### UI-5 — Exportação executiva
 
 Novo Excel/PDF com:
@@ -687,6 +709,29 @@ Novo Excel/PDF com:
 - captação
 - propinas não pagas
 - fluxo mensal
+
+Status:
+
+- Excel: implementado com blocos principais e recorte mensal ativo
+- PDF: implementado com fluxo mensal e inadimplência por classe
+- branding executivo dedicado: pendente
+
+### UI-6 — Experiência assistida
+
+Objetivo:
+
+- reduzir leitura manual de tabelas
+- destacar prioridade de cobrança
+- oferecer visão executiva pronta para reunião
+
+Status:
+
+- `Quick View` mensal com linha do tempo clicável: implementado
+- hint móvel `arraste para ver mais`: implementado
+- modo diretoria: implementado
+- insights automáticos `Tesoureiro Inteligente`: implementado
+- empty states educativos: implementado
+- benchmark de turmas e score de saúde: implementado
 
 ## Sequência recomendada
 
@@ -707,7 +752,7 @@ Evidência técnica:
 
 ### Fase 2
 
-Status: implementada no código local
+Status: concluída
 
 Entregue:
 
@@ -718,6 +763,8 @@ Entregue:
 - cron de refresh
 - endpoints de leitura
 - integração dos dois blocos na página consolidada
+- migration aplicada no banco remoto
+- exportação PDF atualizada para os novos blocos
 
 Evidência técnica:
 
@@ -725,6 +772,13 @@ Evidência técnica:
 - [apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts)
 - [apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts)
 - [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
+- [apps/web/src/components/secretaria/QuickViewTimeline.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/QuickViewTimeline.tsx)
+- [apps/web/src/components/secretaria/FinanceInsightsPanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/FinanceInsightsPanel.tsx)
+- [apps/web/src/components/secretaria/FinancialHealthInsightsPanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/FinancialHealthInsightsPanel.tsx)
+- [apps/web/src/components/secretaria/BoardExecutivePanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/BoardExecutivePanel.tsx)
+- [apps/web/src/components/secretaria/BoardPressurePanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/BoardPressurePanel.tsx)
+- [apps/web/src/hooks/useFinanceInsights.ts](/Users/gundja/moxi-edtech/apps/web/src/hooks/useFinanceInsights.ts)
+- [apps/web/src/hooks/useFinancialHealthInsights.ts](/Users/gundja/moxi-edtech/apps/web/src/hooks/useFinancialHealthInsights.ts)
 
 Pendências:
 
@@ -733,6 +787,9 @@ Pendências:
 
 ### Fase 3
 
+Status: parcialmente antecipada na UI
+
+- experiência executiva e camada de insights já implementadas no frontend
 - criar MV de captação mensal
 - substituir a lógica ad hoc de captação
 - consolidar bolsistas e cartão
@@ -760,6 +817,7 @@ Pendências:
 
 - nenhum endpoint novo recalcula `previsto/pago/atraso` diretamente de `mensalidades` se a `vw_` já cobre
 - todos os novos consolidadores operam sobre read models com refresh controlado
+- a tela principal deve atuar como orquestradora de seções, com lógica derivada extraída para hooks e painéis dedicados
 
 ### Operação
 
