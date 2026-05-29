@@ -30,8 +30,8 @@ export async function GET(req: Request) {
     const type = searchParams.get("type"); // matricula | confirmacao | bolsista (para source=matriculas)
 
     if (source === "mensalidades") {
-      if ((!classeId && !turmaId) || !mes || !ano) {
-        return NextResponse.json({ ok: false, error: "Parâmetros insuficientes para mensalidades" }, { status: 400 });
+      if (!mes || !ano) {
+        return NextResponse.json({ ok: false, error: "Mês e ano são obrigatórios para mensalidades" }, { status: 400 });
       }
 
       const query = supabase
@@ -66,6 +66,10 @@ export async function GET(req: Request) {
         .eq("ano_referencia", parseInt(ano, 10))
         .eq("status", status)
         .not("turmas", "is", null);
+
+      if (status === "pendente") {
+        query.lt("data_vencimento", new Date().toISOString().split('T')[0]);
+      }
 
       if (turmaId) {
         query.eq("turma_id", turmaId);
