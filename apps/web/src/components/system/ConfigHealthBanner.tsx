@@ -8,12 +8,13 @@ type Health = {
     hasUrl?: boolean
     hasAnonKey?: boolean
     hasServiceKey?: boolean
-    mode?: string
+    mode?: "development" | "production" | "vercel"
   }
 }
 
 export default function ConfigHealthBanner() {
   const [missing, setMissing] = useState<string[]>([])
+  const [mode, setMode] = useState<"development" | "production" | "vercel">("development")
   const [hidden, setHidden] = useState<boolean>(() => {
     try {
       return typeof window !== 'undefined' && Boolean(window.localStorage.getItem('hideConfigHealthBanner'))
@@ -29,6 +30,7 @@ export default function ConfigHealthBanner() {
         const res = await fetch('/api/health')
         const json: Health = await res.json()
         if (!active) return
+        setMode(json?.env?.mode ?? "development")
         const miss: string[] = []
         if (!json?.env?.hasUrl) miss.push('NEXT_PUBLIC_SUPABASE_URL')
         if (!json?.env?.hasAnonKey) miss.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
@@ -36,6 +38,7 @@ export default function ConfigHealthBanner() {
         setMissing(miss)
       } catch {
         // If health route fails, surface generic warning
+        setMode("development")
         setMissing(['NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY'])
       }
     }
@@ -45,6 +48,11 @@ export default function ConfigHealthBanner() {
 
   if (hidden) return null
   if (missing.length === 0) return null
+
+  const isProductionLike = mode === "production" || mode === "vercel"
+  const hint = isProductionLike
+    ? "Defina estas variáveis no ambiente do deploy e reinicie a aplicação."
+    : "Edite seu arquivo .env.local e reinicie o servidor de desenvolvimento."
 
   const onClose = () => {
     setHidden(true)
@@ -61,7 +69,7 @@ export default function ConfigHealthBanner() {
             Faltando: {missing.join(', ')}
           </div>
           <div className="mt-1 text-[12px] text-slate-600">
-            Edite seu arquivo .env.local e reinicie o servidor de desenvolvimento.
+            {hint}
           </div>
         </div>
         <button onClick={onClose} className="text-slate-600 hover:text-slate-800 px-2">Fechar</button>

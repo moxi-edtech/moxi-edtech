@@ -22,8 +22,11 @@ function getEnv() {
   const anonKey = (
     process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
   ).trim();
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const hasUrl = Boolean(url);
   const hasAnonKey = !!anonKey && anonKey.length > 10 && !/YOUR-?anon-?key/i.test(anonKey);
+  const hasServiceKey =
+    !!serviceKey && serviceKey.length > 10 && !/YOUR-?service-?role-?key/i.test(serviceKey);
 
   const mode = process.env.VERCEL
     ? "vercel"
@@ -31,7 +34,7 @@ function getEnv() {
       ? "production"
       : "development";
 
-  return { url, anonKey, hasUrl, hasAnonKey, mode } as const;
+  return { url, anonKey, hasUrl, hasAnonKey, hasServiceKey, mode } as const;
 }
 
 async function checkSupabaseAuthHealth(url: string, anonKey: string) {
@@ -41,7 +44,7 @@ async function checkSupabaseAuthHealth(url: string, anonKey: string) {
     const res = await fetch(`${url}/auth/v1/health`, { headers: { apikey: anonKey } });
     status = res.status;
     ok = res.ok;
-  } catch (e) {
+  } catch {
     status = null;
     ok = false;
   }
@@ -75,6 +78,7 @@ export async function GET() {
       env: {
         hasUrl: env.hasUrl,
         hasAnonKey: env.hasAnonKey,
+        hasServiceKey: env.hasServiceKey,
         mode: env.mode,
       },
       supabase: supabaseDetails,

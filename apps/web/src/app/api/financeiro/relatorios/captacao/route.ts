@@ -33,26 +33,10 @@ export async function GET(req: Request) {
     });
     const anoLetivo = anoScope?.ano ?? new Date().getFullYear();
 
-    // Buscar matrículas do ano letivo
-    const { data: matriculas, error } = await supabase
-      .from("matriculas")
-      .select(`
-        id,
-        created_at,
-        data_matricula,
-        origem_transicao_matricula_id,
-        percentagem_desconto,
-        motivo_desconto,
-        turmas (
-          id,
-          nome,
-          classe_id,
-          classes (
-            id,
-            label
-          )
-        )
-      `)
+    // Buscar dados agregados da MV de Captação
+    const { data: rows, error } = await supabase
+      .from("vw_relatorio_financeiro_escolar_capitacao_mensal")
+      .select("*")
       .eq("escola_id", escolaId)
       .eq("ano_letivo", anoLetivo);
 
@@ -60,7 +44,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    // Agrupar por classe
+    // Agrupar por classe para o formato esperado pelo frontend
     const classesMap: Record<string, { 
       label: string; 
       matriculas: number; 
@@ -70,27 +54,13 @@ export async function GET(req: Request) {
       detalhes_mensais: Record<string, { matriculas: number; confirmacoes: number; bolsistas: number }>
     }> = {};
 
-    const dataInicio = anoScope?.dataInicio ? new Date(`${anoScope.dataInicio}T00:00:00`) : null;
-    const dataFim = anoScope?.dataFim ? new Date(`${anoScope.dataFim}T23:59:59`) : null;
+    (rows || []).forEach((row: any) => {
+      const classeId = row.classe_id;
+      const mesKey = row.mes_ref.slice(0, 7); // yyyy-mm
 
-    (matriculas || []).forEach((m: any) => {
-      const dataRef = m.data_matricula || m.created_at;
-      const dataRefDate = dataRef ? new Date(dataRef) : null;
-      if (
-        dataRefDate &&
-        dataInicio &&
-        dataFim &&
-        (dataRefDate < dataInicio || dataRefDate > dataFim)
-      ) {
-        return;
-      }
-
-      const classe = m.turmas?.classes?.label || "Sem Classe";
-      const classeId = m.turmas?.classe_id || "sem-classe";
-      
       if (!classesMap[classeId]) {
         classesMap[classeId] = { 
-          label: classe, 
+          label: row.classe_label, 
           matriculas: 0, 
           confirmacoes: 0, 
           bolsistas: 0,
@@ -99,34 +69,19 @@ export async function GET(req: Request) {
         };
       }
 
-      const isConfirmacao = m.origem_transicao_matricula_id !== null;
-      const isBolsista = (Number(m.percentagem_desconto) > 0) || (!!m.motivo_desconto);
-      
-      const mes = dataRefDate ? dataRefDate.getMonth() + 1 : 0;
-      const ano = dataRefDate ? dataRefDate.getFullYear() : 0;
-      const mesKey = `${ano}-${String(mes).padStart(2, '0')}`;
+      classesMap[classeId].matriculas += row.matriculas_qtd;
+      classesMap[classeId].confirmacoes += row.confirmacoes_qtd;
+      classesMap[classeId].bolsistas += row.bolsistas_qtd;
+      classesMap[classeId].total += row.total_qtd;
 
-      if (!classesMap[classeId].detalhes_mensais[mesKey]) {
-        classesMap[classeId].detalhes_mensais[mesKey] = { matriculas: 0, confirmacoes: 0, bolsistas: 0 };
-      }
-
-      if (isConfirmacao) {
-        classesMap[classeId].confirmacoes++;
-        classesMap[classeId].detalhes_mensais[mesKey].confirmacoes++;
-      } else {
-        classesMap[classeId].matriculas++;
-        classesMap[classeId].detalhes_mensais[mesKey].matriculas++;
-      }
-
-      if (isBolsista) {
-        classesMap[classeId].bolsistas++;
-        classesMap[classeId].detalhes_mensais[mesKey].bolsistas++;
-      }
-
-      classesMap[classeId].total++;
+      classesMap[classeId].detalhes_mensais[mesKey] = {
+        matriculas: row.matriculas_qtd,
+        confirmacoes: row.confirmacoes_qtd,
+        bolsistas: row.bolsistas_qtd
+      };
     });
 
-    // Converter para array e ordenar por classe (se possível) ou nome
+    // Converter para array e ordenar por label
     const items = Object.values(classesMap).sort((a, b) => a.label.localeCompare(b.label));
 
     return NextResponse.json({
