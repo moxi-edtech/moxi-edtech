@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "~types/supabase";
-import crypto from "node:crypto";
 import { generateFriendlyPassword } from "@/lib/auth/passwords";
 
 export const dynamic = "force-dynamic";
@@ -299,9 +298,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, data });
       }
       case "activateStudentAccess": {
-        const { codigo, bi } = payload as any;
+        const { codigo, bi, resetExistingPassword } = payload as any;
         const code = String(codigo || "").trim();
         const biInput = String(bi || "").trim();
+        const shouldResetExistingPassword = resetExistingPassword === true;
         if (!code || !biInput) {
           return NextResponse.json({ ok: false, error: "Missing codigo or bi" }, { status: 400 });
         }
@@ -386,13 +386,28 @@ export async function POST(req: Request) {
               const { data: listUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
               const existing = listUsers?.users?.find((u) => u.email === loginCandidate);
               userId = existing?.id ?? null;
-              senha = "";
+              if (!shouldResetExistingPassword) {
+                senha = "";
+              }
             } else {
               return NextResponse.json({ ok: false, error: createRes.error.message }, { status: 400 });
             }
           } else {
             userId = createRes.data.user?.id || null;
             created = true;
+          }
+        }
+
+        if (userId && !created && shouldResetExistingPassword) {
+          const { data: userData } = await admin.auth.admin.getUserById(userId);
+          const metadata = userData?.user?.user_metadata || {};
+          const { error: updatePasswordError } = await admin.auth.admin.updateUserById(userId, {
+            password: senha,
+            user_metadata: { ...metadata, must_change_password: true, primeiro_acesso: false },
+          });
+
+          if (updatePasswordError) {
+            return NextResponse.json({ ok: false, error: updatePasswordError.message }, { status: 400 });
           }
         }
 
@@ -427,6 +442,10 @@ export async function POST(req: Request) {
           .update({ acesso_liberado: true, data_ativacao: new Date().toISOString(), usuario_auth_id: userId, profile_id: userId })
           .eq("id", (aluno as any).id)
           .eq("escola_id", escolaId);
+
+        if (!created && !shouldResetExistingPassword) {
+          senha = "";
+        }
 
         const loginResposta = loginDisplay || login;
         return NextResponse.json({ ok: true, data: { login: loginResposta, senha, created } });

@@ -108,11 +108,12 @@ export async function POST(req: Request) {
             const result = await callAuthAdminJob(req, "activateStudentAccess", {
               codigo,
               bi: extra.bi_numero,
+              resetExistingPassword: true,
             });
             login = (result as any)?.login ?? null;
             senha = (result as any)?.senha ?? null;
             status = "activated";
-          } catch (error) {
+          } catch {
             status = "activation_failed";
           }
         }
