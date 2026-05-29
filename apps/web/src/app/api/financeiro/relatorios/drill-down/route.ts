@@ -42,6 +42,8 @@ export async function GET(req: Request) {
           valor_pago_total,
           status,
           data_vencimento,
+          turma_id,
+          matricula_id,
           aluno_id,
           alunos (
             id,
@@ -54,39 +56,69 @@ export async function GET(req: Request) {
               telemovel,
               email
             )
-          ),
-          turmas (
-            id,
-            nome,
-            classe_id
           )
         `)
         .eq("escola_id", escolaId)
         .eq("mes_referencia", parseInt(mes, 10))
         .eq("ano_referencia", parseInt(ano, 10))
-        .eq("status", status)
-        .not("turmas", "is", null);
+        .eq("status", status);
 
       if (status === "pendente") {
         query.lt("data_vencimento", new Date().toISOString().split('T')[0]);
       }
 
-      if (turmaId) {
-        query.eq("turma_id", turmaId);
-      } else if (classeId) {
-        query.eq("turmas.classe_id", classeId);
-      }
-
-      const { data: items, error } = await query;
+      // Fetch all installments for the month
+      const { data: rawItems, error } = await query;
       if (error) throw error;
 
-      const filtered = (items || []).filter((m: any) => {
-        if (turmaId) return m.turmas?.id === turmaId;
-        if (classeId) return m.turmas?.classe_id === classeId;
+      // Extract all necessary turma_ids (either direct or via matricula)
+      const turmaIdsToFetch = new Set<string>();
+      const matriculaIdsToFetch = new Set<string>();
+
+      (rawItems || []).forEach((m: any) => {
+        if (m.turma_id) turmaIdsToFetch.add(m.turma_id);
+        else if (m.matricula_id) matriculaIdsToFetch.add(m.matricula_id);
+      });
+
+      // Resolve matricula_id to turma_id
+      const matriculaTurmaMap: Record<string, string> = {};
+      if (matriculaIdsToFetch.size > 0) {
+        const { data: mats } = await supabase
+          .from("matriculas")
+          .select("id, turma_id")
+          .in("id", Array.from(matriculaIdsToFetch))
+          .not("turma_id", "is", null);
+        
+        (mats || []).forEach(m => {
+          matriculaTurmaMap[m.id] = m.turma_id;
+          turmaIdsToFetch.add(m.turma_id);
+        });
+      }
+
+      // Fetch turma details (nome and classe_id)
+      const turmasMap: Record<string, any> = {};
+      if (turmaIdsToFetch.size > 0) {
+         const { data: turmas } = await supabase
+          .from("turmas")
+          .select("id, nome, classe_id")
+          .in("id", Array.from(turmaIdsToFetch));
+         
+         (turmas || []).forEach(t => { turmasMap[t.id] = t; });
+      }
+
+      // Filter and map items
+      const items = (rawItems || []).map((m: any) => {
+        const resolvedTurmaId = m.turma_id || (m.matricula_id ? matriculaTurmaMap[m.matricula_id] : null);
+        const turma = resolvedTurmaId ? turmasMap[resolvedTurmaId] : null;
+        return { ...m, resolved_turma: turma };
+      }).filter((m: any) => {
+        if (!m.resolved_turma) return false;
+        if (turmaId && m.resolved_turma.id !== turmaId) return false;
+        if (classeId && m.resolved_turma.classe_id !== classeId) return false;
         return true;
       });
 
-      const students = filtered.map((m: any) => ({
+      const students = items.map((m: any) => ({
         id: m.id,
         alunoId: m.alunos?.id,
         nome: m.alunos?.nome,
@@ -96,7 +128,7 @@ export async function GET(req: Request) {
         pago: m.valor_pago_total,
         status: m.status,
         vencimento: m.data_vencimento,
-        turma: m.turmas?.nome,
+        turma: m.resolved_turma?.nome,
         encarregado: m.alunos?.encarregados?.nome,
         contacto: m.alunos?.encarregados?.telemovel,
         email: m.alunos?.encarregados?.email,
