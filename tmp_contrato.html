@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · Contrato Parceiro Fundador</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 1cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; padding-bottom: 0px; overflow: visible !important; display: block !important; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 16px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 9px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 7px; }
+  .contract-text { font-size: 8.5px !important; margin-bottom: 10px !important; }
+  .clause { margin-bottom: 8px !important; }
+  .clause h4 { font-size: 9px !important; }
+  .signatures { margin-top: 15px !important; gap: 20px !important; }
+  .sig-box { padding-top: 5px !important; }
+  
+  .footer { 
+    width: 100%; 
+    padding: 10px 35px !important;
+    background: var(--vd) !important;
+  }
+  .footer-info::after {
+    content: " | Pág. " counter(page);
+  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 28px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:10px;display:flex;align-items:center;gap:5px;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.contract-text {
+  font-size: 11px;
+  color: var(--slate);
+  margin-bottom: 20px;
+  text-align: justify;
+}
+
+.clause {
+  margin-bottom: 18px;
+}
+
+.clause h4 {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--v);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clause p {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.clause ul {
+  margin-left: 15px;
+  margin-bottom: 10px;
+}
+
+.clause li {
+  margin-bottom: 4px;
+}
+
+.signatures {
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.sig-box {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  text-align: center;
+}
+
+.sig-name {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--slate);
+}
+
+.sig-handwritten {
+  font-family: 'Dancing Script', cursive;
+  font-size: 18px;
+  color: #1a3321;
+  margin-bottom: -10px;
+  padding-bottom: 5px;
+}
+
+.sig-title {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+<table style="width: 100%; border-collapse: collapse; border: none;">
+  <tbody>
+    <tr>
+      <td style="padding: 0;">
+        <div class="content-wrapper">
+          <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">CONTRATO DE PARCERIA</div>
+    </div>
+    <div class="hd-title">Contrato de <span>Parceria</span><br>e Intermediação.</div>
+    <div class="hd-sub">Este instrumento regula a relação comercial entre a MOXI SOLUÇÕES e o PARCEIRO.</div>
+  </div>
+
+  <div class="body">
+    
+    <div class="sec-lbl">01 · Identificação das Partes</div>
+    <div class="contract-text">
+      <div class="clause">
+        <h4>Cláusula Primeira — Das Partes</h4>
+        <p>
+          Pelo presente instrumento particular, de um lado, <strong>MOXI SOLUÇÕES – COMÉRCIO GERAL E PRESTAÇÃO DE SERVIÇOS, (SU), LDA</strong>, proprietária da plataforma KLASSE, com sede em Cubango, Município de Menongue, Bairro Azul, Rua dos Bombeiros, sob o NIF: 5002637618, doravante denominada <strong>CONTRATANTE</strong>.
+        </p>
+        <p>
+          E de outro lado <strong>Elizandro Raimundo Neto Undembe</strong>, titular do BI nº 008545843HO041, residente em Casa S/N, Bairro CAMILIQUINHENTO, doravante denominado <strong>PARCEIRO</strong>, celebram o presente Contrato de Parceria e Intermediação Comercial.
+        </p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">02 · Objecto e Natureza</div>
+    <div class="contract-text">
+      <div class="clause">
+        <h4>Cláusula Segunda — Do Objecto</h4>
+        <p>O presente contrato tem por objecto a indicação, prospecção e intermediação de instituições de ensino interessadas na contratação da plataforma KLASSE, mediante remuneração por comissão nos termos deste instrumento.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Terceira — Da Natureza da Relação</h4>
+        <p>O presente contrato não estabelece vínculo laboral, societário, representação comercial exclusiva ou qualquer relação de subordinação entre as partes. O PARCEIRO actuará de forma autónoma e independente.</p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">03 · Regras de Remuneração</div>
+    <div class="contract-text">
+      <div class="clause">
+        <h4>Cláusula Quarta — Da Validação das Escolas Indicadas</h4>
+        <p>Para efeitos de remuneração, uma escola somente será considerada válida quando:</p>
+        <ul style="list-style-type: none; padding-left: 0;">
+          <li>a) tiver sido registada através dos canais oficiais da KLASSE;</li>
+          <li>b) for identificada e validada pela CONTRATANTE como originada pelo PARCEIRO;</li>
+          <li>c) assinar contrato com a CONTRATANTE;</li>
+          <li>d) efectuar o primeiro pagamento da subscrição;</li>
+          <li>e) concluir o processo de onboarding;</li>
+          <li>f) permanecer activa por período mínimo de 30 (trinta) dias.</li>
+        </ul>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Quinta — Da Remuneração</h4>
+        <p>O PARCEIRO FUNDADOR fará jus a uma comissão correspondente a 15% (quinze por cento) sobre o valor líquido efectivamente recebido pela CONTRATANTE relativamente às escolas validadas nos termos deste contrato.</p>
+        <p>A comissão será paga durante o período máximo de 60 (sessenta) meses contados da activação de cada escola.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Sexta — Do Pagamento das Comissões</h4>
+        <p>As comissões serão calculadas exclusivamente sobre valores efectivamente recebidos pela CONTRATANTE. Não haverá pagamento de comissão sobre: a) propostas não convertidas; b) contratos não pagos; c) descontos concedidos; d) impostos; e) valores em atraso ou não recebidos.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Sétima — Da Suspensão das Comissões</h4>
+        <p>As comissões serão automaticamente suspensas caso a escola: a) cancele a subscrição; b) encerre a sua conta; c) permaneça inadimplente por período superior a 30 (trinta) dias; d) deixe de utilizar os serviços da plataforma.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Oitava — Do Prazo e Renovação das Comissões</h4>
+        <p>O direito à comissão terá a duração inicial de 60 (sessenta) meses contados da activação de cada escola. Este prazo poderá ser renovado sucessivamente por períodos a acordar, mediante avaliação de desempenho do Parceiro e interesse mútuo das partes, formalizado por mútuo acordo.</p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">04 · Conduta e Marca</div>
+    <div class="contract-text">
+      <div class="clause">
+        <h4>Cláusula Nona — Da Utilização da Marca</h4>
+        <p>O PARCEIRO poderá utilizar a marca KLASSE exclusivamente para actividades relacionadas ao presente contrato. É vedado ao PARCEIRO: a) criar páginas ou domínios utilizando a marca; b) alterar logótipos; c) realizar campanhas sem autorização; d) utilizar a marca de forma que prejudique a reputação da CONTRATANTE.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima — Das Limitações de Actuação</h4>
+        <p>O PARCEIRO não possui poderes para celebrar contratos em nome da CONTRATANTE, conceder descontos, negociar condições comerciais especiais ou assumir obrigações pela plataforma.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Primeira — Da Confidencialidade</h4>
+        <p>O PARCEIRO compromete-se a manter absoluto sigilo sobre todas as informações comerciais, financeiras e estratégicas da CONTRATANTE. A obrigação permanece mesmo após o término do contrato.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Segunda — Da Não Concorrência</h4>
+        <p>Durante a vigência deste contrato, o PARCEIRO compromete-se a comunicar previamente à CONTRATANTE caso pretenda representar ou promover plataformas concorrentes de gestão escolar.</p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">05 · Disposições Gerais</div>
+    <div class="contract-text">
+      <div class="clause">
+        <h4>Cláusula Décima Terceira — Da Fraude e Má-Fé</h4>
+        <p>A CONTRATANTE poderá suspender pagamentos e rescindir este contrato caso identifique fraude, falsificação de informações, manipulação de leads ou autocontratação.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Quarta — Da Alteração do Programa</h4>
+        <p>A CONTRATANTE poderá alterar regras operacionais e condições do programa mediante comunicação prévia ao PARCEIRO, sem afectar direitos já adquiridos sobre escolas previamente activadas.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Quinta — Da Vigência e Renovação</h4>
+        <p>O presente contrato tem a vigência de 12 (doze) meses, contados a partir da data da sua assinatura, sendo renovável por períodos sucessivos de igual duração, caso não haja denúncia por qualquer das partes.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Sexta — Da Rescisão</h4>
+        <p>Qualquer das partes poderá rescindir este contrato mediante comunicação escrita com antecedência mínima de 30 (trinta) dias.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Sétima — Do Programa Parceiro Fundador</h4>
+        <p>O presente contrato integra o Programa Parceiro Fundador KLASSE, categoria limitada a parceiros estratégicos. A condição é pessoal e intransferível.</p>
+      </div>
+
+      <div class="clause">
+        <h4>Cláusula Décima Oitava — Do Foro</h4>
+        <p>Para dirimir quaisquer questões decorrentes deste contrato, as partes elegem o foro da República de Angola, com renúncia expressa a qualquer outro.</p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">06 · Assinaturas</div>
+    <div class="contract-text">
+      <p>E, por estarem de pleno acordo, assinam o presente contrato em duas vias de igual teor e forma.</p>
+      
+      <p style="margin-top: 15px; font-weight: 800;">Luanda, ____ de __________________ de 2026.</p>
+
+      <div class="signatures">
+        <div class="sig-box">
+          <div class="sig-handwritten">David Chocaliye</div>
+          <div style="width: 100%; height: 1px; background: var(--slate); margin-bottom: 8px; opacity: 0.3;"></div>
+          <div class="sig-name">MOXI SOLUÇÕES, (SU), LDA</div>
+          <div class="sig-title">Contratante</div>
+        </div>
+        <div class="sig-box">
+          <div style="width: 100%; height: 1px; background: var(--slate); margin-bottom: 8px; opacity: 0.3;"></div>
+          <div class="sig-name">Elizandro Raimundo Neto Undembe</div>
+          <div class="sig-title">Parceiro</div>
+        </div>
+      </div>
+    </div>
+  </div>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td style="padding: 0;">
+        <div class="footer-spacer" style="height: 20px;"></div>
+        <div class="footer">
+          <div class="footer-brand">
+            <img src="logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+              <span class="footer-logo-word">KLASSE</span>
+              <span class="footer-tagline">Gestão Escolar</span>
+            </div>
+          </div>
+          <div class="footer-info"><span>parcerias@klasse.ao</span> · klasse.ao<br>Confidencial · 2026</div>
+        </div>
+      </td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</body>
+</html>

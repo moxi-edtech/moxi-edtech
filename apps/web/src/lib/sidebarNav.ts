@@ -35,6 +35,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     { href: "/super-admin/subscricoes", label: "Subscrições", icon: "CreditCard", badge: "Novo" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
+    { href: "/super-admin/comunicacao", label: "Comunicação", icon: "Mail", badge: "Novo" },
   ],
   admin: [
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

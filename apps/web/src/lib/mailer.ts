@@ -9,14 +9,120 @@ import { KlasseWelcomeEmail } from '@/emails/KlasseWelcomeEmail'
 import { BillingRenewalEmail } from '@/emails/BillingRenewalEmail'
 import { KlasseLifecycleReminderEmail } from '@/emails/KlasseLifecycleReminderEmail'
 
+export const EMAIL_TEMPLATES = [
+  { id: 'onboarding', label: 'Boas-vindas (Onboarding Escola)' },
+  { id: 'invite', label: 'Convite de Colaborador (Admin/Secretaria/Financeiro)' },
+  { id: 'credentials', label: 'Dados de Acesso (Login/Senha)' },
+  { id: 'reset_password', label: 'Redefinição de Senha' },
+  { id: 'partnership_invite', label: 'Convite de Parceria (Simples)' },
+  { id: 'influencer_access', label: 'Acesso ao Portal de Parceiros (PIN/Código)' },
+] as const
+
+export type EmailTemplateId = (typeof EMAIL_TEMPLATES)[number]['id']
+
+export function getTemplatePreview(id: EmailTemplateId, args: any = {}) {
+  const brand = getBranding()
+  const signatureHtml = `
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-family: sans-serif;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${brand.name}" style="height: 24px; width: auto;" />` : ''}
+        <span style="font-size: 16px; font-weight: 700; color: #0f172a;">${brand.name}</span>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #475569; font-weight: 600;">David Chocaliye</p>
+      <p style="margin: 0; font-size: 12px; color: #64748b;">MOXI SOLUÇÕES, (SU), LDA</p>
+      <div style="margin-top: 12px; font-size: 11px; color: #94a3b8;">
+        ${brand.supportEmail ? `Suporte: <a href="mailto:${brand.supportEmail}" style="color: #1F6B3B; text-decoration: none;">${brand.supportEmail}</a>` : ''}
+        <br />© 2026 Moxi Soluções. Todos os direitos reservados.
+      </div>
+    </div>
+  `
+
+  const wrapInLayout = (content: string) => `
+    <div style="background-color: #f8fafc; padding: 40px 20px; font-family: sans-serif;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #eaeaea; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        ${content}
+        ${signatureHtml}
+      </div>
+    </div>
+  `
+
+  switch (id) {
+    case 'onboarding':
+      return buildOnboardingEmail({
+        escolaNome: 'Nome da Escola',
+        onboardingUrl: 'https://app.klasse.ao',
+        adminEmail: 'admin@escola.ao',
+        adminNome: 'Gestor',
+        plano: 'Profissional',
+      })
+    case 'invite':
+      return buildInviteEmail({
+        escolaNome: 'Nome da Escola',
+        onboardingUrl: 'https://app.klasse.ao',
+        convidadoEmail: 'user@escola.ao',
+        convidadoNome: 'Colaborador',
+        papel: 'secretaria',
+      })
+    case 'credentials':
+      return buildCredentialsEmail({
+        nome: 'Utilizador',
+        email: 'user@escola.ao',
+        senha_temp: '123456',
+        escolaNome: 'Nome da Escola',
+        loginUrl: 'https://app.klasse.ao/login',
+      })
+    case 'reset_password':
+      return buildResetPasswordEmail({
+        resetUrl: 'https://app.klasse.ao/reset',
+        expiresEm: '1 hora',
+      })
+    case 'influencer_access':
+      return buildAffiliateCredentialsEmail({
+        nome: 'Parceiro',
+        email: 'parceiro@email.com',
+        codigo: 'PARC-001',
+        pin: '1234',
+        portalUrl: 'https://app.klasse.ao/influencers',
+      })
+    case 'partnership_invite':
+      return {
+        subject: 'KLASSE · Proposta de Parceria',
+        html: wrapInLayout(`
+          <div style="line-height: 1.6; color: #334155; font-size: 15px;">
+            <p>Olá <strong>[Nome]</strong>, tudo bem?</p>
+            <p>Seguindo a nossa conversa sobre a <strong>KLASSE</strong>, estou enviando os documentos para formalizarmos a nossa parceria estratégica.</p>
+            <p>A ideia é ter você como um dos nossos Parceiros Fundadores, ajudando a levar a KLASSE para mais escolas em Angola e transformando a gestão educacional por aqui.</p>
+            <p>Estou anexando os documentos com todos os detalhes da proposta e o contrato para sua revisão.</p>
+            <p>Dê uma olhada com calma e, se tiver qualquer dúvida, é só me chamar. Podemos marcar um papo rápido para alinhar os próximos passos.</p>
+            <p>Estamos ansiosos para ter você no time!</p>
+          </div>
+        `),
+        text: 'Olá, seguem os documentos para parceria KLASSE.'
+      }
+    default:
+      return { subject: '', html: '', text: '' }
+  }
+}
+
 type SendArgs = {
-  to: string
+  to: string | string[]
+  cc?: string | string[]
+  bcc?: string | string[]
   subject: string
   html: string | Promise<string>
   text?: string | Promise<string>
+  attachments?: { filename: string; content: Buffer | string }[]
 }
 
-export async function sendMail({ to, subject, html, text }: SendArgs): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function sendMail({
+  to,
+  cc,
+  bcc,
+  subject,
+  html,
+  text,
+  attachments,
+}: SendArgs): Promise<{ ok: true } | { ok: false; error: string }> {
   const config = getResendConfig()
   if (!config) {
     return { ok: false, error: 'Resend not configured (set RESEND_API_KEY).' }
@@ -28,10 +134,13 @@ export async function sendMail({ to, subject, html, text }: SendArgs): Promise<{
     const resolvedText = text ? await Promise.resolve(text) : htmlToText(resolvedHtml)
     const { error } = await resend.emails.send({
       from: config.from,
-      to: [to],
+      to: Array.isArray(to) ? to : [to],
+      cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
+      bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : undefined,
       subject,
       html: resolvedHtml,
       text: resolvedText,
+      attachments,
     })
     if (error) return { ok: false, error: error.message }
     return { ok: true }
