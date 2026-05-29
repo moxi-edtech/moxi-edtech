@@ -44,6 +44,7 @@ export async function GET(req: Request) {
       ano: searchParams.get("ano") ? parseInt(searchParams.get("ano")!, 10) : null,
     });
     const anoLetivo = anoScope?.ano ?? new Date().getFullYear();
+    const sessionId = anoScope?.id;
 
     // Orquestração de Queries Paralelas
     const [
@@ -71,16 +72,22 @@ export async function GET(req: Request) {
       ),
 
       // 4. Captação (Nova View)
-      supabase.from("vw_relatorio_financeiro_escolar_capitacao_mensal").select("*").eq("escola_id", escolaId).eq("ano_letivo", anoLetivo),
+      sessionId 
+        ? supabase.from("vw_relatorio_financeiro_escolar_capitacao_mensal").select("*").eq("escola_id", escolaId).eq("ano_letivo", anoLetivo)
+        : Promise.resolve({ data: [], error: null }),
 
       // 5. Despesas
       supabase.from("financeiro_lancamentos").select("categoria, valor_total, status").eq("escola_id", escolaId).eq("tipo", "saida").eq("ano_referencia", anoLetivo),
 
       // 6. Fluxo Mensal
-      supabase.from("vw_relatorio_financeiro_escolar_fluxo_mensal").select("*").eq("escola_id", escolaId).eq("ano_letivo", anoLetivo),
+      sessionId 
+        ? supabase.from("vw_relatorio_financeiro_escolar_fluxo_mensal").select("*").eq("escola_id", escolaId).eq("ano_letivo_id", sessionId)
+        : Promise.resolve({ data: [], error: null }),
 
       // 7. Inadimplência por Classe
-      supabase.from("vw_relatorio_financeiro_escolar_inadimplencia_classe").select("*").eq("escola_id", escolaId).eq("ano_letivo", anoLetivo)
+      sessionId 
+        ? supabase.from("vw_relatorio_financeiro_escolar_inadimplencia_classe").select("*").eq("escola_id", escolaId).eq("ano_letivo_id", sessionId)
+        : Promise.resolve({ data: [], error: null })
     ]);
 
     // Processamento do Resumo

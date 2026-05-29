@@ -1,7 +1,10 @@
 "use client";
 
+import React, { useMemo, useState } from "react";
 import { Search, Info } from "lucide-react";
 import { FinancialDetailDrawer } from "./FinancialDetailDrawer";
+import { CaptacaoItem } from "./types";
+import { EducationalEmptyState } from "./utils";
 
 interface TabCaptacaoProps {
   captacao: CaptacaoItem[];
