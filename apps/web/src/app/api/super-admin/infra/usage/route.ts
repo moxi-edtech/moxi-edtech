@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import postgres from "postgres";
 
-import { supabaseServer } from "@/lib/supabaseServer";
-import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
-import { applyKf2ListInvariants } from "@/lib/kf2";
+import { requireSuperAdminRoute } from "@/lib/auth/requireSuperAdminRoute";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,32 +33,11 @@ type CountRow = {
 
 export async function GET() {
   let sql: postgres.Sql | null = null;
+  const auth = await requireSuperAdminRoute();
+  if (!auth.ok) return auth.response;
 
   try {
     const format = "json";
-    const s = await supabaseServer();
-    const { data: sess } = await s.auth.getUser();
-    const user = sess?.user;
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    }
-
-    let roleQuery = s
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    roleQuery = applyKf2ListInvariants(roleQuery, {
-      defaultLimit: 1,
-      order: [{ column: "created_at", ascending: false }],
-    });
-
-    const { data: rows } = await roleQuery;
-    const role = (rows?.[0] as { role?: string } | undefined)?.role;
-    if (!isSuperAdminRole(role)) {
-      return NextResponse.json({ ok: false, error: "Somente Super Admin" }, { status: 403 });
-    }
-
     sql = postgres(resolveDbUrl(), { max: 1, prepare: false });
 
     const [

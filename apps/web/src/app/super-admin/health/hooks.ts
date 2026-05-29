@@ -8,6 +8,27 @@ import { calcularSaudeEscola, gerarAlertasEscola } from '@/lib/super-admin/escol
 import { runOutboxWorker, recalcAllAggregates } from './actions';
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem';
 
+type EscolaMetaApiItem = {
+  id: string;
+  cidade: string | null;
+  estado: string | null;
+  onboarding_finalizado: boolean;
+  nota_interna: string | null;
+};
+
+type OnboardingProgressApiItem = {
+  escola_id: string;
+  last_step: number | null;
+};
+
+type ApiEnvelope<T> = {
+  status: number;
+  ok: boolean;
+  json: {
+    items?: T[];
+  } | null;
+};
+
 export function useHealthData() {
   const supabase = createClient();
   const { success, error } = useToast();
@@ -71,14 +92,14 @@ export function useHealthData() {
       if (systemHealthError) {
         console.error('Erro ao carregar health summary:', systemHealthError);
       }
-      const systemHealthData = systemHealthDataRaw as any;
+      const systemHealthData = systemHealthDataRaw as Partial<SystemHealth> & { last_updated?: string } | null;
 
       const { data: escolasComMetricasRaw, error: escolasMetricsError } = await supabase.rpc('admin_get_escola_health_metrics');
       if (escolasMetricsError) {
         console.error('Erro ao carregar métricas por escola:', escolasMetricsError);
       }
 
-      const baseEscolas = (escolasComMetricasRaw as any[] || []) as Array<{
+      const baseEscolas = ((escolasComMetricasRaw as Array<{
         id: string;
         nome: string;
         plano: 'essencial' | 'profissional';
@@ -88,44 +109,36 @@ export function useHealthData() {
         ultimo_acesso: string | null;
         sync_status: 'synced' | 'pending' | 'error';
         mrr: number;
-      }>;
+      }> | null) ?? []);
 
-      const escolaIds = baseEscolas.map((item) => item.id);
-      const { data: escolaMeta } = escolaIds.length
-        ? await supabase
-            .from('escolas')
-            .select('id, cidade, estado, onboarding_finalizado')
-            .in('id', escolaIds)
-        : { data: [] };
+      const escolaIds = new Set(baseEscolas.map((item) => item.id));
+      const [metaRes, onboardingRes] = await Promise.all([
+        fetch('/api/super-admin/health/escolas-meta', { cache: 'no-store' }).then((res) =>
+          res.json().catch(() => null).then((json) => ({ status: res.status, ok: res.ok, json }) as ApiEnvelope<EscolaMetaApiItem>),
+        ),
+        fetch('/api/super-admin/escolas/onboarding/progress', { cache: 'no-store' }).then((res) =>
+          res.json().catch(() => null).then((json) => ({ status: res.status, ok: res.ok, json }) as ApiEnvelope<OnboardingProgressApiItem>),
+        ),
+      ]);
 
-      const { data: notesRows } = escolaIds.length
-        ? await supabase
-            .from('escola_notas_internas')
-            .select('escola_id, nota')
-            .in('escola_id', escolaIds)
-        : { data: [] };
+      const metaItems: EscolaMetaApiItem[] = Array.isArray(metaRes.json?.items) ? metaRes.json.items : [];
+      const onboardingItems: OnboardingProgressApiItem[] = Array.isArray(onboardingRes.json?.items) ? onboardingRes.json.items : [];
 
-      const { data: onboardingRows } = escolaIds.length
-        ? await supabase
-            .from('onboarding_drafts')
-            .select('escola_id, step, updated_at')
-            .in('escola_id', escolaIds)
-            .order('updated_at', { ascending: false })
-        : { data: [] };
-
-      const metaById = new Map((escolaMeta || []).map((row: any) => [String(row.id), row]));
-      const notesById = new Map((notesRows || []).map((row: any) => [String(row.escola_id), row.nota as string]));
-      const onboardingById = new Map<string, number>();
-      for (const row of onboardingRows || []) {
-        const escolaId = String(row.escola_id);
-        if (!onboardingById.has(escolaId)) {
-          onboardingById.set(escolaId, Number(row.step ?? 0));
-        }
-      }
+      const metaById = new Map(
+        metaItems
+          .filter((row) => escolaIds.has(String(row.id)))
+          .map((row) => [String(row.id), row] as const),
+      );
+      const onboardingById = new Map(
+        onboardingItems
+          .filter((row) => escolaIds.has(String(row.escola_id)))
+          .map((row) => [String(row.escola_id), row] as const),
+      );
 
       const escolasComMetricas: EscolaMetricas[] = baseEscolas.map((raw) => {
         const meta = metaById.get(String(raw.id));
-        const onboardingStep = onboardingById.get(String(raw.id)) ?? 0;
+        const onboardingRow = onboardingById.get(String(raw.id));
+        const onboardingStep = Number(onboardingRow?.last_step ?? 0);
         const onboardingPct = meta?.onboarding_finalizado
           ? 100
           : onboardingStep > 0
@@ -165,7 +178,7 @@ export function useHealthData() {
           onboarding_pct: onboardingPct,
           provincia: meta?.estado ?? meta?.cidade ?? null,
           alertas,
-          nota_interna: notesById.get(String(raw.id)) ?? null,
+          nota_interna: meta?.nota_interna ?? null,
         };
       });
       setEscolas(escolasComMetricas);
@@ -175,7 +188,9 @@ export function useHealthData() {
           .from('outbox_events')
           .select('status, created_at')
           .in('status', ['pending', 'processing', 'failed']),
-        fetch('/api/super-admin/infra/usage', { cache: 'no-store' }).then((res) => res.json().catch(() => null)),
+        fetch('/api/super-admin/infra/usage', { cache: 'no-store' }).then((res) =>
+          res.json().catch(() => null).then((json) => ({ status: res.status, ok: res.ok, ...(json ?? {}) })),
+        ),
       ]);
 
       const outboxData = outboxRes.data;
@@ -284,7 +299,7 @@ export function useHealthData() {
     try {
       const result = await runOutboxWorker();
       if(result.data) {
-        const data = result.data as any[];
+        const data = result.data as Array<{ processed_count?: number; failed_count?: number }>;
         success("Worker executado", `O processamento foi concluído: ${data[0]?.processed_count || 0} eventos processados e ${data[0]?.failed_count || 0} falhas.`);
       }
       loadHealthData();

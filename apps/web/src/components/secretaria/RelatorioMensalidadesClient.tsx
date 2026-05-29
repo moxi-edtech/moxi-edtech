@@ -1,194 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { BoardExecutivePanel } from "@/components/secretaria/BoardExecutivePanel";
-import { BoardPressurePanel } from "@/components/secretaria/BoardPressurePanel";
-import { FinanceInsightsPanel } from "@/components/secretaria/FinanceInsightsPanel";
-import { FinancialHealthInsightsPanel } from "@/components/secretaria/FinancialHealthInsightsPanel";
-import { QuickViewTimeline } from "@/components/secretaria/QuickViewTimeline";
 import { useFinanceInsights } from "@/hooks/useFinanceInsights";
 import { useFinancialHealthInsights } from "@/hooks/useFinancialHealthInsights";
-import { 
-  Download, 
-  FileSpreadsheet, 
-  FileText, 
-  Printer, 
-  Activity
-} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
 import * as XLSX from "xlsx";
 
-type Mensal = {
-  anoLetivo: number;
-  ano: number;
-  mes: number;
-  labelMes: string;
-  competenciaMes: string;
-  qtdMensalidades: number;
-  qtdEmAtraso: number;
-  qtdPagasAdiantadas: number;
-  qtdParciais: number;
-  totalPrevisto: number;
-  totalPago: number;
-  totalPagoAdiantado: number;
-  totalParcialEmAberto: number;
-  totalEmAtraso: number;
-  inadimplenciaPct: number;
-};
-
-type CaptacaoItem = {
-  label: string;
-  matriculas: number;
-  confirmacoes: number;
-  bolsistas: number;
-  total: number;
-  detalhes_mensais: Record<string, { matriculas: number; confirmacoes: number; bolsistas: number }>;
-};
-
-type DespesaItem = {
-  label: string;
-  total: number;
-  qtd: number;
-};
-
-type PorTurma = {
-  turmaId: string;
-  turmaNome: string;
-  classe: string | null;
-  turno: string | null;
-  anoLetivo: number;
-  qtdMensalidades: number;
-  qtdEmAtraso: number;
-  qtdPagasAdiantadas: number;
-  qtdParciais: number;
-  totalPrevisto: number;
-  totalPago: number;
-  totalPagoAdiantado: number;
-  totalParcialEmAberto: number;
-  totalEmAtraso: number;
-  inadimplenciaPct: number;
-};
-
-type SessionItem = {
-  id: string;
-  nome?: string | null;
-  status?: string | null;
-  ano_letivo?: number | string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
-};
-
-type ResumoFinanceiro = {
-  mensalidades: number;
-  emAtraso: number;
-  pagasAdiantadas: number;
-  parciais: number;
-  previsto: number;
-  pago: number;
-  pagoAdiantado: number;
-  parcialEmAberto: number;
-  atraso: number;
-  despesasTotal: number;
-  entradasTotal: number;
-  saldoAnterior: number;
-  saldoPeriodo: number;
-  saldoAcumulado: number;
-  taxaAtrasoPct: number;
-};
-
-type FluxoMensalItem = {
-  mesRef: string;
-  saldoAnterior: number;
-  entradasTotal: number;
-  saidasTotal: number;
-  diferenca: number;
-  saldoFinal: number;
-};
-
-type InadimplenciaClasseItem = {
-  mesRef: string;
-  classeId: string;
-  classeLabel: string;
-  qtdEmAtraso: number;
-  valorUnitarioMedio: number;
-  totalEmAtraso: number;
-  qtdParciais: number;
-  totalParcialEmAberto: number;
-};
-
-const kwanza = new Intl.NumberFormat("pt-AO", {
-  style: "currency",
-  currency: "AOA",
-  maximumFractionDigits: 0,
-});
-
-function toCsv(rows: Array<Record<string, string | number | null | undefined>>) {
-  if (rows.length === 0) return "";
-  const headers = Object.keys(rows[0]);
-  const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-  return [
-    headers.map(escape).join(","),
-    ...rows.map((row) => headers.map((header) => escape(row[header])).join(",")),
-  ].join("\n");
-}
-
-function downloadText(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  downloadBlob(filename, blob);
-}
-
-function downloadBlob(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function formatMonthRef(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString("pt-PT", {
-    month: "short",
-    year: "2-digit",
-  });
-}
-
-function normalizeMonthKey(value: string) {
-  return value.slice(0, 7);
-}
-
-function EducationalEmptyState({
-  title,
-  message,
-  ctaHref,
-  ctaLabel,
-  colSpan,
-}: {
-  title: string;
-  message: string;
-  ctaHref: string;
-  ctaLabel: string;
-  colSpan: number;
-}) {
-  return (
-    <tr>
-      <td colSpan={colSpan} className="py-6">
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center">
-          <p className="text-sm font-semibold text-slate-700">{title}</p>
-          <p className="mt-1 text-sm text-slate-500">{message}</p>
-          <Link
-            href={ctaHref}
-            className="mt-3 inline-flex rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-          >
-            {ctaLabel}
-          </Link>
-        </div>
-      </td>
-    </tr>
-  );
-}
+// Subcomponentes locais
+import { RelatorioHeader } from "./relatorio-financeiro/RelatorioHeader";
+import { TabResumo } from "./relatorio-financeiro/TabResumo";
+import { TabCaptacao } from "./relatorio-financeiro/TabCaptacao";
+import { TabPropinas } from "./relatorio-financeiro/TabPropinas";
+import { TabFluxo } from "./relatorio-financeiro/TabFluxo";
+import { RecoveryCalculator } from "./relatorio-financeiro/RecoveryCalculator";
+import { 
+  Mensal, 
+  PorTurma, 
+  CaptacaoItem, 
+  DespesaItem, 
+  SessionItem, 
+  ResumoFinanceiro, 
+  FluxoMensalItem, 
+  InadimplenciaClasseItem 
+} from "./relatorio-financeiro/types";
+import { kwanza, normalizeMonthKey } from "./relatorio-financeiro/utils";
 
 export default function RelatorioMensalidadesClient() {
   const params = useParams();
@@ -207,6 +44,7 @@ export default function RelatorioMensalidadesClient() {
   const [selectedSession, setSelectedSession] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [boardMode, setBoardMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("resumo");
 
   const sessionSelecionada = useMemo(
     () => sessions.find((s) => s.id === selectedSession),
@@ -318,6 +156,12 @@ export default function RelatorioMensalidadesClient() {
 
   const availableMonths = useMemo(() => {
     const monthMap = new Map<string, { key: string; label: string; metric: number }>();
+    const formatMonthRef = (value: string) => {
+      return new Date(`${value}T00:00:00`).toLocaleDateString("pt-PT", {
+        month: "short",
+        year: "2-digit",
+      });
+    };
 
     serieMensalOrdenada.forEach((row) => {
       const key = `${row.ano}-${String(row.mes).padStart(2, "0")}`;
@@ -397,6 +241,51 @@ export default function RelatorioMensalidadesClient() {
     return Object.entries(totalsByMonth).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "all";
   }, [inadimplenciaClasseOrdenada, selectedMonth]);
 
+  const prevResumo = useMemo<ResumoFinanceiro | null>(() => {
+    if (selectedMonth === "all") return null;
+    const currentIndex = availableMonths.findIndex((m) => m.key === selectedMonth);
+    if (currentIndex <= 0) return null;
+
+    const prevMonthKey = availableMonths[currentIndex - 1].key;
+    const prevMonthData = serieMensalOrdenada.filter(
+      (row) => `${row.ano}-${String(row.mes).padStart(2, "0")}` === prevMonthKey
+    );
+
+    if (prevMonthData.length === 0) return null;
+
+    return prevMonthData.reduce(
+      (acc, item) => {
+        acc.previsto += item.totalPrevisto;
+        acc.pago += item.totalPago;
+        acc.atraso += item.totalEmAtraso;
+        acc.pagoAdiantado += item.totalPagoAdiantado;
+        acc.parcialEmAberto += item.totalParcialEmAberto;
+        acc.mensalidades += item.qtdMensalidades;
+        acc.emAtraso += item.qtdEmAtraso;
+        acc.pagasAdiantadas += item.qtdPagasAdiantadas;
+        acc.parciais += item.qtdParciais;
+        return acc;
+      },
+      {
+        previsto: 0,
+        pago: 0,
+        atraso: 0,
+        pagoAdiantado: 0,
+        parcialEmAberto: 0,
+        mensalidades: 0,
+        emAtraso: 0,
+        pagasAdiantadas: 0,
+        parciais: 0,
+        despesasTotal: 0,
+        entradasTotal: 0,
+        saldoAnterior: 0,
+        saldoPeriodo: 0,
+        saldoAcumulado: 0,
+        taxaAtrasoPct: 0,
+      }
+    );
+  }, [availableMonths, selectedMonth, serieMensalOrdenada]);
+
   const executiveHighlights = useMemo(
     () => [...inadimplenciaClasseFiltrada].sort((a, b) => b.totalEmAtraso - a.totalEmAtraso).slice(0, 5),
     [inadimplenciaClasseFiltrada]
@@ -421,9 +310,18 @@ export default function RelatorioMensalidadesClient() {
     totalSaidasResultado,
   });
 
-  const openInsight = (targetId: string, monthKey?: string) => {
+  const handleOpenInsight = (targetId: string, monthKey?: string) => {
     if (monthKey) {
       setSelectedMonth(monthKey);
+    }
+
+    // Mapear targetId para Tab
+    if (targetId.includes("inadimplencia")) {
+      setActiveTab("propinas");
+    } else if (targetId.includes("despesas") || targetId.includes("fluxo")) {
+      setActiveTab("fluxo");
+    } else if (targetId.includes("captacao")) {
+      setActiveTab("captacao");
     }
 
     window.requestAnimationFrame(() => {
@@ -440,6 +338,73 @@ export default function RelatorioMensalidadesClient() {
       setSelectedMonth("all");
     }
   }, [availableMonths, selectedMonth]);
+
+  useEffect(() => {
+    if (!escolaId) return;
+    async function fetchSessions() {
+      try {
+        const res = await fetch(`/api/secretaria/school-sessions?escolaId=${escolaId}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (json.ok) {
+          const sessionItems = Array.isArray(json.data)
+            ? (json.data as SessionItem[])
+            : Array.isArray(json.items)
+              ? (json.items as SessionItem[])
+              : [];
+          setSessions(sessionItems);
+          const activeSession = sessionItems.find((s) => s.status === "ativa");
+          if (activeSession) setSelectedSession(activeSession.id);
+          else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id);
+        }
+      } catch {}
+    }
+    void fetchSessions();
+  }, [escolaId]);
+
+  useEffect(() => {
+    if (!selectedSession || !escolaId) return;
+    let cancelled = false;
+
+    async function loadAll() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/financeiro/relatorios/escolar/full?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
+          { cache: "no-store" }
+        );
+        
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json?.error || `Erro ${res.status}`);
+        }
+        
+        const json = await res.json();
+        
+        if (!cancelled) {
+          setResumoFinanceiro(json.resumo || null);
+          setMensal(json.mensal || []);
+          setPorTurma(json.porTurma || []);
+          setCaptacao(json.captacao || []);
+          setDespesas(json.despesas || []);
+          setTotalDespesas(json.totalDespesas || 0);
+          setFluxoMensal(json.fluxoMensal || []);
+          setInadimplenciaClasse(json.inadimplenciaClasse || []);
+        }
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Erro ao carregar relatório consolidado");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSession, escolaId]);
 
   const exportExcel = async () => {
     const resumoRows = [
@@ -518,12 +483,15 @@ export default function RelatorioMensalidadesClient() {
     XLSX.utils.book_append_sheet(workbook, inadimplenciaSheet, "Inadimplencia Classe");
 
     const buffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
-    downloadBlob(
-      `relatorio_mensalidades_${anoLetivoAtivo}.xlsx`,
-      new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      })
-    );
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `relatorio_mensalidades_${anoLetivoAtivo}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const exportPdf = async () => {
@@ -819,175 +787,26 @@ export default function RelatorioMensalidadesClient() {
     const bytes = await pdfDoc.save();
     const pdfBuffer = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(pdfBuffer).set(bytes);
-    downloadBlob("relatorio_mensalidades.pdf", new Blob([pdfBuffer], { type: "application/pdf" }));
+    const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "relatorio_mensalidades.pdf";
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
-  useEffect(() => {
-    if (!escolaId) return;
-    async function fetchSessions() {
-      try {
-        const res = await fetch(`/api/secretaria/school-sessions?escolaId=${escolaId}`, {
-          cache: "no-store",
-        });
-        const json = await res.json();
-        if (json.ok) {
-          const sessionItems = Array.isArray(json.data)
-            ? (json.data as SessionItem[])
-            : Array.isArray(json.items)
-              ? (json.items as SessionItem[])
-              : [];
-          setSessions(sessionItems);
-          const activeSession = sessionItems.find((s) => s.status === "ativa");
-          if (activeSession) setSelectedSession(activeSession.id);
-          else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id);
-        }
-      } catch {}
-    }
-    void fetchSessions();
-  }, [escolaId]);
-
-  useEffect(() => {
-    if (!selectedSession || !escolaId) return;
-    let cancelled = false;
-
-    async function loadResumo() {
-      try {
-        const res = await fetch(
-          `/api/financeiro/relatorios/resumo?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!cancelled) setResumoFinanceiro(json.resumo || null);
-      } catch {
-        if (!cancelled) setResumoFinanceiro(null);
-      }
-    }
-
-    void loadResumo();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSession, escolaId]);
-
-  useEffect(() => {
-    if (!selectedSession || !escolaId) return;
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(
-          `/api/financeiro/relatorios/propinas?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json?.error || `Erro ${res.status}`);
-        }
-        const json = await res.json();
-        if (!cancelled) {
-          setMensal(json.mensal || []);
-          setPorTurma(json.porTurma || []);
-        }
-      } catch (e: unknown) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Erro ao carregar relatório");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSession, escolaId]);
-
-  useEffect(() => {
-    if (!selectedSession || !escolaId) return;
-
-    async function loadCaptacao() {
-      try {
-        const res = await fetch(
-          `/api/financeiro/relatorios/captacao?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
-          { cache: 'no-store' }
-        );
-        if (res.ok) {
-          const j = await res.json();
-          setCaptacao(j.items || []);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar captação", e);
-      }
-    }
-    void loadCaptacao();
-  }, [selectedSession, escolaId]);
-
-  useEffect(() => {
-    if (!selectedSession || !escolaId) return;
-
-    async function loadDespesas() {
-      try {
-        const res = await fetch(
-          `/api/financeiro/relatorios/despesas?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
-          { cache: 'no-store' }
-        );
-        if (res.ok) {
-          const j = await res.json();
-          setDespesas(j.items || []);
-          setTotalDespesas(j.totalGeral || 0);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar despesas", e);
-      }
-    }
-    void loadDespesas();
-  }, [selectedSession, escolaId]);
-
-  useEffect(() => {
-    if (!selectedSession || !escolaId) return;
-
-    async function loadFluxoMensal() {
-      try {
-        const res = await fetch(
-          `/api/financeiro/relatorios/fluxo-mensal?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
-          { cache: "no-store" }
-        );
-        if (res.ok) {
-          const j = await res.json();
-          setFluxoMensal(j.items || []);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar fluxo mensal", e);
-      }
-    }
-
-    void loadFluxoMensal();
-  }, [selectedSession, escolaId]);
-
-  useEffect(() => {
-    if (!selectedSession || !escolaId) return;
-
-    async function loadInadimplenciaClasse() {
-      try {
-        const res = await fetch(
-          `/api/financeiro/relatorios/inadimplencia-classe?ano_letivo_id=${encodeURIComponent(selectedSession)}&escolaId=${escolaId}`,
-          { cache: "no-store" }
-        );
-        if (res.ok) {
-          const j = await res.json();
-          setInadimplenciaClasse(j.items || []);
-        }
-      } catch (e) {
-        console.error("Erro ao carregar inadimplência por classe", e);
-      }
-    }
-
-    void loadInadimplenciaClasse();
-  }, [selectedSession, escolaId]);
-
   const exportCsv = () => {
+    const toCsv = (rows: Array<Record<string, string | number | null | undefined>>) => {
+      if (rows.length === 0) return "";
+      const headers = Object.keys(rows[0]);
+      const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      return [
+        headers.map(escape).join(","),
+        ...rows.map((row) => headers.map((header) => escape(row[header])).join(",")),
+      ].join("\n");
+    };
+
     const mensalRows = mensalFiltrado.map((row) => ({
       secao: "serie_mensal",
       competencia: row.labelMes,
@@ -1003,651 +822,104 @@ export default function RelatorioMensalidadesClient() {
       inadimplencia_pct: row.inadimplenciaPct.toFixed(1),
     }));
 
-    const turmaRows = porTurma.map((row) => ({
-      secao: "ranking_turmas",
-      turma: row.turmaNome,
-      classe: row.classe ?? "",
-      turno: row.turno ?? "",
-      mensalidades: row.qtdMensalidades,
-      em_atraso: row.qtdEmAtraso,
-      pagas_adiantadas: row.qtdPagasAdiantadas,
-      parciais: row.qtdParciais,
-      total_previsto: row.totalPrevisto,
-      total_pago: row.totalPago,
-      total_pago_adiantado: row.totalPagoAdiantado,
-      total_parcial_em_aberto: row.totalParcialEmAberto,
-      total_em_atraso: row.totalEmAtraso,
-      inadimplencia_pct: row.inadimplenciaPct.toFixed(1),
-    }));
-
-    const fluxoRows = fluxoMensalFiltrado.map((row) => ({
-      secao: "fluxo_mensal",
-      mes_ref: row.mesRef,
-      saldo_anterior: row.saldoAnterior,
-      entradas_total: row.entradasTotal,
-      saidas_total: row.saidasTotal,
-      diferenca: row.diferenca,
-      saldo_final: row.saldoFinal,
-    }));
-
-    const inadimplenciaRows = inadimplenciaClasseFiltrada.map((row) => ({
-      secao: "inadimplencia_classe",
-      mes_ref: row.mesRef,
-      classe: row.classeLabel,
-      qtd_em_atraso: row.qtdEmAtraso,
-      valor_unitario_medio: row.valorUnitarioMedio,
-      total_em_atraso: row.totalEmAtraso,
-      qtd_parciais: row.qtdParciais,
-      total_parcial_em_aberto: row.totalParcialEmAberto,
-    }));
-
-    const csv = toCsv([...mensalRows, ...turmaRows, ...fluxoRows, ...inadimplenciaRows]);
-    downloadText(
-      `relatorio_mensalidades_${anoLetivoAtivo}.csv`,
-      csv,
-      "text/csv;charset=utf-8"
-    );
+    const csv = toCsv([...mensalRows]);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `relatorio_mensalidades_${anoLetivoAtivo}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6 print:space-y-4">
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:rounded-none print:border-none print:p-0 print:shadow-none sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 print:text-3xl">
-              {boardMode ? "Painel Executivo Financeiro" : "Relatório de Mensalidades"}
-            </h1>
-            {!boardMode && (
-              <div className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider sm:flex ${
-                healthScore >= 80 ? "bg-emerald-100 text-emerald-700" :
-                healthScore >= 50 ? "bg-amber-100 text-amber-700" :
-                "bg-rose-100 text-rose-700"
-              }`}>
-                <Activity className="h-3 w-3" />
-                Saúde: {healthScore}%
-              </div>
-            )}
-          </div>
-          <p className="text-sm text-slate-500 print:text-slate-600">
-            {boardMode
-              ? "Leitura limpa para diretoria, TV ou tablet, com foco em KPIs e sinais do período."
-              : "Resumo imprimível das propinas por período e por turma."}
-          </p>
+      <RelatorioHeader
+        boardMode={boardMode}
+        setBoardMode={setBoardMode}
+        healthScore={healthScore}
+        sessions={sessions}
+        selectedSession={selectedSession}
+        setSelectedSession={setSelectedSession}
+        onPrint={() => window.print()}
+        onExportCsv={exportCsv}
+        onExportExcel={exportExcel}
+        onExportPdf={exportPdf}
+      />
+
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 print:rounded-none print:border-none print:bg-transparent print:p-0">
+          {error}
         </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <label className="text-sm text-slate-600">Sessão</label>
-          <select
-            value={selectedSession}
-            onChange={(e) => setSelectedSession(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-          >
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nome}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setBoardMode((current) => !current)}
-            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
-              boardMode
-                ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {boardMode ? "Sair do modo diretoria" : "Modo diretoria"}
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Printer className="h-4 w-4" />
-            Imprimir
-          </button>
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            <Download className="h-4 w-4" />
-            Exportar CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => void exportExcel()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Exportar Excel
-          </button>
-          <button
-            type="button"
-            onClick={() => void exportPdf()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <FileText className="h-4 w-4" />
-            Exportar PDF
-          </button>
-        </div>
-      </div>
-
-      {!loading && !error ? (
-        <div className="space-y-4">
-          <QuickViewTimeline
-            months={availableMonths}
-            selectedMonth={selectedMonth}
-            selectedMonthLabel={selectedMonthLabel}
-            onSelectMonth={setSelectedMonth}
-            onResetMonth={() => setSelectedMonth("all")}
-            formatCurrency={kwanza.format}
-          />
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Ano letivo</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{anoLetivoAtivo}</p>
-              <p className="mt-1 text-xs text-slate-500">{resumo.mensalidades} mensalidades no período</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Previsto</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{kwanza.format(resumo.previsto)}</p>
-              <p className="mt-1 text-xs text-slate-500">Base total emitida</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-[0.18em] text-emerald-700">Pago</p>
-              <p className="mt-2 text-2xl font-bold text-emerald-800">{kwanza.format(resumo.pago)}</p>
-              <p className="mt-1 text-xs text-emerald-700">Arrecadação confirmada</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (highlightedDebtMonth !== "all") setSelectedMonth(highlightedDebtMonth);
-                document.getElementById("inadimplencia-por-classe")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              }}
-              className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md print:pointer-events-none print:rounded-xl print:shadow-none"
-            >
-              <p className="text-xs uppercase tracking-[0.18em] text-rose-700">Em atraso</p>
-              <p className="mt-2 text-2xl font-bold text-rose-800">{kwanza.format(resumo.atraso)}</p>
-              <p className="mt-1 text-xs text-rose-700">{resumo.emAtraso} mensalidades em incumprimento</p>
-              <p className="mt-3 text-[11px] font-semibold text-rose-800">
-                Clique para abrir a visão de cobrança {highlightedDebtMonth !== "all" ? `em ${selectedMonthLabel}` : "mais crítica"}
-              </p>
-            </button>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Pagas adiantadas</p>
-              <p className="mt-2 text-xl font-bold text-sky-700">{resumo.pagasAdiantadas}</p>
-              <p className="mt-1 text-xs text-slate-500">{kwanza.format(resumo.pagoAdiantado)} recebidos antes do vencimento</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Parciais</p>
-              <p className="mt-2 text-xl font-bold text-amber-700">{resumo.parciais}</p>
-              <p className="mt-1 text-xs text-slate-500">Pagamentos ainda incompletos</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Saldo parcial</p>
-              <p className="mt-2 text-xl font-bold text-amber-800">{kwanza.format(resumo.parcialEmAberto)}</p>
-              <p className="mt-1 text-xs text-slate-500">Montante por liquidar nas parciais</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Taxa de atraso</p>
-              <p className="mt-2 text-xl font-bold text-slate-900">
-                {resumo.taxaAtrasoPct.toFixed(1)}%
-              </p>
-              <p className="mt-1 text-xs text-slate-500">Sobre o total de mensalidades do período</p>
-            </div>
-          </div>
-
-          <FinanceInsightsPanel insights={insights} onAction={openInsight} />
-
-          {boardMode ? (
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] print:hidden">
-              <BoardExecutivePanel
-                financialInsights={financialInsights}
-                formatCurrency={kwanza.format}
-                healthScore={healthScore}
-                saldoFinalResultado={saldoFinalResultado}
-                selectedMonthLabel={selectedMonthLabel}
-                totalEntradasResultado={totalEntradasResultado}
-                totalSaidasResultado={totalSaidasResultado}
-                totalAtraso={resumo.atraso}
-                renderInsights={<FinancialHealthInsightsPanel insights={financialInsights} />}
-              />
-
-              <BoardPressurePanel
-                diamondTurmas={diamondTurmas}
-                executiveHighlights={executiveHighlights}
-                formatCurrency={kwanza.format}
-                totalAtraso={resumo.atraso}
-              />
-            </div>
-          ) : null}
-
-          {!boardMode ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 print:grid-cols-2">
-            {/* Bloco de Captação Acadêmica */}
-            <div
-              id="despesas-operacionais"
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none"
-            >
-              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">Captação por Classe</h2>
-                  <p className="text-xs text-slate-500">Matrículas e confirmações efetuadas no ano.</p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm print:text-[10px]">
-                  <thead>
-                    <tr className="border-b text-left text-slate-500">
-                      <th className="py-2 pr-4">Classe</th>
-                      <th className="py-2 pr-4 text-right">Matrículas</th>
-                      <th className="py-2 pr-4 text-right">Confirmações</th>
-                      <th className="py-2 pr-0 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {captacao.map((c) => (
-                      <tr key={c.label} className="border-b last:border-b-0">
-                        <td className="py-2 pr-4 font-medium">{c.label}</td>
-                        <td className="py-2 pr-4 text-right">{c.matriculas}</td>
-                        <td className="py-2 pr-4 text-right">{c.confirmacoes}</td>
-                        <td className="py-2 pr-0 text-right font-bold">{c.total}</td>
-                      </tr>
-                    ))}
-                    {captacao.length === 0 ? (
-                      <EducationalEmptyState
-                        colSpan={4}
-                        title="Captação ainda não lançada"
-                        message="Parece que você ainda não registrou matrículas e confirmações deste período. Lance agora para abrir a leitura comercial."
-                        ctaHref={`/escola/${escolaId}/secretaria`}
-                        ctaLabel="Lancar agora"
-                      />
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Bloco de Bolsistas */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none">
-              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">Inscritos e Bolsistas</h2>
-                  <p className="text-xs text-slate-500">Resumo de alunos com benefícios ou descontos.</p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm print:text-[10px]">
-                  <thead>
-                    <tr className="border-b text-left text-slate-500">
-                      <th className="py-2 pr-4">Classe</th>
-                      <th className="py-2 pr-4 text-right">Alunos</th>
-                      <th className="py-2 pr-4 text-right">Bolsistas</th>
-                      <th className="py-2 pr-0 text-right">% Bolsistas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {captacao.map((c) => (
-                      <tr key={`${c.label}-bolsas`} className="border-b last:border-b-0">
-                        <td className="py-2 pr-4 font-medium">{c.label}</td>
-                        <td className="py-2 pr-4 text-right">{c.total}</td>
-                        <td className="py-2 pr-4 text-right text-blue-600 font-medium">{c.bolsistas}</td>
-                        <td className="py-2 pr-0 text-right">
-                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-                            {c.total > 0 ? ((c.bolsistas / c.total) * 100).toFixed(1) : "0.0"}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {captacao.length === 0 ? (
-                      <EducationalEmptyState
-                        colSpan={4}
-                        title="Ainda nao ha dados institucionais"
-                        message="Sem inscritos e bolsistas registrados, a diretoria perde visibilidade de acesso e bolsas. Atualize este bloco."
-                        ctaHref={`/escola/${escolaId}/secretaria`}
-                        ctaLabel="Atualizar agora"
-                      />
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          ) : null}
-
-          {!boardMode ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 print:grid-cols-2">
-            {/* Bloco de Despesas (Saídas) */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none">
-              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">Saídas e Despesas</h2>
-                  <p className="text-xs text-slate-500">Resumo de débitos registrados no ledger.</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Total Despesas</p>
-                  <p className="text-lg font-bold text-rose-600">{kwanza.format(totalDespesas)}</p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm print:text-[10px]">
-                  <thead>
-                    <tr className="border-b text-left text-slate-500">
-                      <th className="py-2 pr-4">Categoria / Evento</th>
-                      <th className="py-2 pr-4 text-right">Qtd</th>
-                      <th className="py-2 pr-0 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {despesas.map((d) => (
-                      <tr key={d.label} className="border-b last:border-b-0">
-                        <td className="py-2 pr-4 font-medium">{d.label}</td>
-                        <td className="py-2 pr-4 text-right text-slate-500">{d.qtd}</td>
-                        <td className="py-2 pr-0 text-right font-bold text-rose-600">{kwanza.format(d.total)}</td>
-                      </tr>
-                    ))}
-                    {despesas.length === 0 ? (
-                      <EducationalEmptyState
-                        colSpan={3}
-                        title="Despesas ainda nao lancadas"
-                        message="Parece que voce ainda nao lancou as despesas deste mes. Lance agora para fechar o saldo com seguranca."
-                        ctaHref={`/escola/${escolaId}/secretaria`}
-                        ctaLabel="Lancar agora"
-                      />
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Bloco de Resultado Financeiro (Resumo Geral) */}
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-emerald-300 print:p-0 print:shadow-none">
-              <div className="mb-4">
-                <h2 className="text-base font-semibold text-emerald-900">Resultado do Período</h2>
-                <p className="text-xs text-emerald-700">Balanço entre arrecadação (propinas) e despesas.</p>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                  <span className="text-sm text-emerald-800">Total Entradas</span>
-                  <span className="font-bold text-emerald-700">{kwanza.format(totalEntradasResultado)}</span>
-                </div>
-                <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                  <span className="text-sm text-rose-800">Total Saídas (Despesas)</span>
-                  <span className="font-bold text-rose-700">-{kwanza.format(totalSaidasResultado)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-base font-bold text-slate-900">Saldo Final</span>
-                  <span className={`text-xl font-black ${saldoFinalResultado >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
-                    {kwanza.format(saldoFinalResultado)}
-                  </span>
-                </div>
-
-                <div className="mt-6 rounded-xl bg-white/60 p-3 border border-emerald-100 print:hidden">
-                  <p className="text-[10px] uppercase font-bold text-emerald-600 mb-1">Informação de Gestão</p>
-                  <p className="text-[11px] text-emerald-800 leading-relaxed">
-                    Este balanço considera apenas as receitas de propinas pagas e as despesas registradas no sistema. 
-                    Para um fluxo de caixa completo (incluindo vendas, taxas e emolumentos), consulte o relatório de Fluxo de Caixa.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          ) : null}
-        </div>
-      ) : null}
+      )}
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm print:rounded-none print:border-none print:p-0 print:shadow-none">
           Carregando relatório...
         </div>
-      ) : null}
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsTrigger value="resumo">Resumo</TabsTrigger>
+            <TabsTrigger value="captacao">Captação</TabsTrigger>
+            <TabsTrigger value="propinas">Propinas</TabsTrigger>
+            <TabsTrigger value="fluxo">Fluxo</TabsTrigger>
+          </TabsList>
 
-      {error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 print:rounded-none print:border-none print:bg-transparent print:p-0">
-          {error}
-        </div>
-      ) : null}
+          <TabsContent value="resumo" className="mt-6">
+            <TabResumo
+              availableMonths={availableMonths}
+              selectedMonth={selectedMonth}
+              selectedMonthLabel={selectedMonthLabel}
+              setSelectedMonth={setSelectedMonth}
+              resumo={resumo}
+              prevResumo={prevResumo}
+              anoLetivoAtivo={anoLetivoAtivo}
+              highlightedDebtMonth={highlightedDebtMonth}
+              onOpenInsight={handleOpenInsight}
+              insights={insights}
+              boardMode={boardMode}
+              financialInsights={financialInsights}
+              healthScore={healthScore}
+              totalEntradasResultado={totalEntradasResultado}
+              totalSaidasResultado={totalSaidasResultado}
+              saldoFinalResultado={saldoFinalResultado}
+              diamondTurmas={diamondTurmas}
+              executiveHighlights={executiveHighlights}
+            />
+          </TabsContent>
 
-      {!loading && !error && !boardMode ? (
-        <>
-          <div
-            id="ranking-por-turma"
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none"
-          >
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Série mensal ({anoLetivoAtivo})</h2>
-                <p className="text-xs text-slate-500">Leitura por competência, com foco em arrecadação, adiantamentos e saldo pendente.</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm print:text-[11px]">
-                <thead>
-                  <tr className="border-b text-left text-slate-500">
-                    <th className="py-2 pr-4">Competência</th>
-                    <th className="py-2 pr-4 text-right">Mensalidades</th>
-                    <th className="py-2 pr-4 text-right">Em atraso</th>
-                    <th className="py-2 pr-4 text-right">Adiantadas</th>
-                    <th className="py-2 pr-4 text-right">Parciais</th>
-                    <th className="py-2 pr-4 text-right">Previsto</th>
-                    <th className="py-2 pr-4 text-right">Pago</th>
-                    <th className="py-2 pr-4 text-right">Pago adiantado</th>
-                    <th className="py-2 pr-4 text-right">Saldo parcial</th>
-                    <th className="py-2 pr-4 text-right">Atraso</th>
-                    <th className="py-2 pr-0 text-right">Inadimplência</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mensalFiltrado.map((m) => (
-                    <tr key={`${m.ano}-${m.mes}`} className="border-b last:border-b-0">
-                      <td className="py-2 pr-4">{m.labelMes}</td>
-                      <td className="py-2 pr-4 text-right">{m.qtdMensalidades}</td>
-                      <td className="py-2 pr-4 text-right">{m.qtdEmAtraso}</td>
-                      <td className="py-2 pr-4 text-right">{m.qtdPagasAdiantadas}</td>
-                      <td className="py-2 pr-4 text-right">{m.qtdParciais}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(m.totalPrevisto)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(m.totalPago)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(m.totalPagoAdiantado)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(m.totalParcialEmAberto)}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(m.totalEmAtraso)}</td>
-                      <td className="py-2 pr-0 text-right">{m.inadimplenciaPct.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                  {mensalFiltrado.length === 0 ? (
-                    <EducationalEmptyState
-                      colSpan={11}
-                      title="Nenhuma competencia encontrada"
-                      message={`Nao ha dados para ${selectedMonthLabel.toLowerCase()}. Verifique se as mensalidades deste recorte ja foram processadas.`}
-                      ctaHref={`/escola/${escolaId}/secretaria`}
-                      ctaLabel="Revisar lancamentos"
-                    />
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <TabsContent value="captacao" className="mt-6">
+            <TabCaptacao captacao={captacao} escolaId={escolaId} />
+          </TabsContent>
 
-          <div
-            id="fluxo-mensal"
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none"
-          >
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Ranking por turma ({anoLetivoAtivo})</h2>
-                <p className="text-xs text-slate-500">Ordenado por maior atraso, com visibilidade de adiantamentos e pagamentos parciais.</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm print:text-[11px]">
-                <thead>
-                  <tr className="border-b text-left text-slate-500">
-                    <th className="py-2 pr-4">Turma</th>
-                    <th className="py-2 pr-4">Classe</th>
-                    <th className="py-2 pr-4">Turno</th>
-                    <th className="py-2 pr-4 text-right">Mensalidades</th>
-                    <th className="py-2 pr-4 text-right">Pagas (Alunos)</th>
-                    <th className="py-2 pr-4 text-right">Em atraso</th>
-                    <th className="py-2 pr-4 text-right">Adiantadas</th>
-                    <th className="py-2 pr-4 text-right">Parciais (Metade)</th>
-                    <th className="py-2 pr-4 text-right">Pago (Arrecadado)</th>
-                    <th className="py-2 pr-4 text-right">Atraso (Valor)</th>
-                    <th className="py-2 pr-4 text-right">Pend. Parcial</th>
-                    <th className="py-2 pr-0 text-right">Inadimplência</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankingTurmasOrdenado.map((t) => (
-                    <tr key={t.turmaId} className="border-b last:border-b-0">
-                      <td className="py-2 pr-4 whitespace-nowrap font-medium">{t.turmaNome}</td>
-                      <td className="py-2 pr-4">{t.classe || "—"}</td>
-                      <td className="py-2 pr-4">{t.turno || "—"}</td>
-                      <td className="py-2 pr-4 text-right">{t.qtdMensalidades}</td>
-                      <td className="py-2 pr-4 text-right text-emerald-600 font-semibold">
-                        {t.qtdMensalidades - t.qtdEmAtraso - t.qtdParciais}
-                      </td>
-                      <td className="py-2 pr-4 text-right text-rose-600">{t.qtdEmAtraso}</td>
-                      <td className="py-2 pr-4 text-right text-sky-600">{t.qtdPagasAdiantadas}</td>
-                      <td className="py-2 pr-4 text-right text-amber-600 font-medium">
-                        {t.qtdParciais}
-                      </td>
-                      <td className="py-2 pr-4 text-right text-emerald-700 font-bold">
-                        {kwanza.format(t.totalPago + t.totalPagoAdiantado)}
-                      </td>
-                      <td className="py-2 pr-4 text-right text-rose-700">
-                        {kwanza.format(t.totalEmAtraso)}
-                      </td>
-                      <td className="py-2 pr-4 text-right text-amber-700">
-                        {kwanza.format(t.totalParcialEmAberto)}
-                      </td>
-                      <td className="py-2 pr-0 text-right font-medium">{t.inadimplenciaPct.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                  {porTurma.length === 0 ? (
-                    <EducationalEmptyState
-                      colSpan={11}
-                      title="Ranking por turma indisponivel"
-                      message="Ainda nao ha massa critica para comparar turmas. Registre os movimentos financeiros e volte a este painel."
-                      ctaHref={`/escola/${escolaId}/secretaria`}
-                      ctaLabel="Ver secretaria"
-                    />
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <TabsContent value="propinas" className="mt-6">
+            <TabPropinas
+              mensalFiltrado={mensalFiltrado}
+              rankingTurmasOrdenado={rankingTurmasOrdenado}
+              inadimplenciaClasseFiltrada={inadimplenciaClasseFiltrada}
+              selectedMonth={selectedMonth}
+              selectedMonthLabel={selectedMonthLabel}
+              setSelectedMonth={setSelectedMonth}
+              anoLetivoAtivo={anoLetivoAtivo}
+              escolaId={escolaId}
+            />
+          </TabsContent>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none">
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Fluxo mensal ({anoLetivoAtivo})</h2>
-                <p className="text-xs text-slate-500">Saldo anterior, entradas, saídas e saldo final por competência.</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm print:text-[11px]">
-                <thead>
-                  <tr className="border-b text-left text-slate-500">
-                    <th className="py-2 pr-4">Mês</th>
-                    <th className="py-2 pr-4 text-right">Saldo anterior</th>
-                    <th className="py-2 pr-4 text-right">Entradas</th>
-                    <th className="py-2 pr-4 text-right">Saídas</th>
-                    <th className="py-2 pr-4 text-right">Diferença</th>
-                    <th className="py-2 pr-0 text-right">Saldo final</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fluxoMensalFiltrado.map((item) => (
-                    <tr key={item.mesRef} className="border-b last:border-b-0">
-                      <td className="py-2 pr-4">{new Date(`${item.mesRef}T00:00:00`).toLocaleDateString("pt-PT", { month: "2-digit", year: "numeric" })}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(item.saldoAnterior)}</td>
-                      <td className="py-2 pr-4 text-right text-emerald-700">{kwanza.format(item.entradasTotal)}</td>
-                      <td className="py-2 pr-4 text-right text-rose-700">{kwanza.format(item.saidasTotal)}</td>
-                      <td className={`py-2 pr-4 text-right font-medium ${item.diferenca >= 0 ? "text-emerald-700" : "text-rose-700"}`}>{kwanza.format(item.diferenca)}</td>
-                      <td className={`py-2 pr-0 text-right font-bold ${item.saldoFinal >= 0 ? "text-slate-900" : "text-rose-800"}`}>{kwanza.format(item.saldoFinal)}</td>
-                    </tr>
-                  ))}
-                  {fluxoMensalFiltrado.length === 0 ? (
-                    <EducationalEmptyState
-                      colSpan={6}
-                      title="Fluxo mensal indisponivel"
-                      message="Sem entradas e saidas consolidadas, o fechamento desta competencia fica incompleto. Lance os movimentos para preencher este quadro."
-                      ctaHref={`/escola/${escolaId}/secretaria`}
-                      ctaLabel="Atualizar fluxo"
-                    />
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div
-            id="inadimplencia-por-classe"
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:rounded-none print:border-slate-300 print:p-0 print:shadow-none"
-          >
-            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Inadimplência por classe ({anoLetivoAtivo})</h2>
-                <p className="text-xs text-slate-500">Propinas em atraso e saldos parciais agrupados por classe e mês.</p>
-              </div>
-              {selectedMonth !== "all" ? (
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonth("all")}
-                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Limpar filtro de mês
-                </button>
-              ) : null}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm print:text-[11px]">
-                <thead>
-                  <tr className="border-b text-left text-slate-500">
-                    <th className="py-2 pr-4">Mês</th>
-                    <th className="py-2 pr-4">Classe</th>
-                    <th className="py-2 pr-4 text-right">Qtd atraso</th>
-                    <th className="py-2 pr-4 text-right">Valor unit. médio</th>
-                    <th className="py-2 pr-4 text-right">Total em atraso</th>
-                    <th className="py-2 pr-4 text-right">Parciais</th>
-                    <th className="py-2 pr-0 text-right">Saldo parcial</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inadimplenciaClasseFiltrada.map((item) => (
-                    <tr key={`${item.mesRef}-${item.classeId}`} className="border-b last:border-b-0">
-                      <td className="py-2 pr-4">{new Date(`${item.mesRef}T00:00:00`).toLocaleDateString("pt-PT", { month: "2-digit", year: "numeric" })}</td>
-                      <td className="py-2 pr-4 font-medium">{item.classeLabel}</td>
-                      <td className="py-2 pr-4 text-right">{item.qtdEmAtraso}</td>
-                      <td className="py-2 pr-4 text-right">{kwanza.format(item.valorUnitarioMedio)}</td>
-                      <td className="py-2 pr-4 text-right font-bold text-rose-700">{kwanza.format(item.totalEmAtraso)}</td>
-                      <td className="py-2 pr-4 text-right">{item.qtdParciais}</td>
-                      <td className="py-2 pr-0 text-right text-amber-700">{kwanza.format(item.totalParcialEmAberto)}</td>
-                    </tr>
-                  ))}
-                  {inadimplenciaClasseFiltrada.length === 0 ? (
-                    <EducationalEmptyState
-                      colSpan={7}
-                      title="Nenhum devedor encontrado neste recorte"
-                      message="Quando houver alunos em atraso, esta tabela vira sua fila operacional de cobranca. Ajuste o mes acima ou acompanhe o proximo fechamento."
-                      ctaHref={`/escola/${escolaId}/secretaria`}
-                      ctaLabel="Voltar para secretaria"
-                    />
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      ) : null}
+          <TabsContent value="fluxo" className="mt-6">
+            <TabFluxo
+              despesas={despesas}
+              totalDespesas={totalDespesas}
+              totalEntradasResultado={totalEntradasResultado}
+              totalSaidasResultado={totalSaidasResultado}
+              saldoFinalResultado={saldoFinalResultado}
+              fluxoMensalFiltrado={fluxoMensalFiltrado}
+              anoLetivoAtivo={anoLetivoAtivo}
+              escolaId={escolaId}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
