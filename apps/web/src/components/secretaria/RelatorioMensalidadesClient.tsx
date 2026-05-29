@@ -890,7 +890,7 @@ export default function RelatorioMensalidadesClient() {
           </TabsContent>
 
           <TabsContent value="captacao" className="mt-6">
-            <TabCaptacao captacao={captacao} escolaId={escolaId} />
+            <TabCaptacao captacao={captacao} escolaId={escolaId} anoLetivoAtivo={anoLetivoAtivo} />
           </TabsContent>
 
           <TabsContent value="propinas" className="mt-6">

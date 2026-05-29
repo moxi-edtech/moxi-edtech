@@ -3,7 +3,8 @@
 import React, { useMemo, useState } from "react";
 import { Mensal, PorTurma, InadimplenciaClasseItem } from "./types";
 import { kwanza, formatMonthRef, normalizeMonthKey, EducationalEmptyState } from "./utils";
-import { Search } from "lucide-react";
+import { Search, Info } from "lucide-react";
+import { FinancialDetailDrawer } from "./FinancialDetailDrawer";
 
 interface TabPropinasProps {
   mensalFiltrado: Mensal[];
@@ -27,14 +28,35 @@ export function TabPropinas({
   escolaId,
 }: TabPropinasProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [drillDown, setDrillDown] = useState<{
+    isOpen: boolean;
+    classeId?: string;
+    turmaId?: string;
+    classeLabel: string;
+    mes: string;
+    ano: string;
+    status: string;
+  }>({
+    isOpen: false,
+    classeLabel: "",
+    mes: "",
+    ano: "",
+    status: "pendente",
+  });
 
   // Pivot Inadimplência: Linhas = Classe, Colunas = Mês
   const matrixData = useMemo(() => {
+    // Pegar mapeamento de Classe Label para Classe ID
+    const classIdMap: Record<string, string> = {};
+    inadimplenciaClasseFiltrada.forEach(item => {
+      classIdMap[item.classeLabel] = item.classeId;
+    });
+
     const rawClasses = Array.from(new Set(inadimplenciaClasseFiltrada.map((item) => item.classeLabel)));
     const classes = rawClasses
       .filter((c) => c.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort();
-    
+
     const months = Array.from(new Set(inadimplenciaClasseFiltrada.map((item) => normalizeMonthKey(item.mesRef)))).sort();
 
     const data: Record<string, Record<string, number>> = {};
@@ -52,8 +74,29 @@ export function TabPropinas({
       }
     });
 
-    return { classes, months, data };
+    return { classes, months, data, classIdMap };
   }, [inadimplenciaClasseFiltrada, searchTerm]);
+
+  const handleOpenDrillDown = (options: { 
+    classeLabel?: string; 
+    classeId?: string;
+    turmaId?: string;
+    turmaNome?: string;
+    monthKey: string; 
+    status?: string 
+  }) => {
+    const [ano, mes] = options.monthKey.split("-");
+
+    setDrillDown({
+      isOpen: true,
+      classeId: options.classeId || (options.classeLabel ? matrixData.classIdMap[options.classeLabel] : undefined),
+      turmaId: options.turmaId,
+      classeLabel: options.turmaNome || options.classeLabel || "Todas as Classes",
+      mes,
+      ano,
+      status: options.status || "pendente"
+    });
+  };
 
   const rankingFiltrado = useMemo(() => {
     if (!searchTerm) return rankingTurmasOrdenado;
@@ -77,6 +120,7 @@ export function TabPropinas({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-slate-900">Série mensal ({anoLetivoAtivo})</h2>
@@ -96,17 +140,30 @@ export function TabPropinas({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {mensalFiltrado.map((m) => (
-                <tr key={`${m.ano}-${m.mes}`} className="hover:bg-slate-50/50">
-                  <td className="py-1.5 px-3 font-medium text-slate-700">{m.labelMes}</td>
-                  <td className="py-1.5 px-3 text-right text-slate-600">{m.qtdMensalidades}</td>
-                  <td className="py-1.5 px-3 text-right text-rose-600">{m.qtdEmAtraso}</td>
-                  <td className="py-1.5 px-3 text-right text-slate-600">{kwanza.format(m.totalPrevisto)}</td>
-                  <td className="py-1.5 px-3 text-right text-emerald-600 font-medium">{kwanza.format(m.totalPago)}</td>
-                  <td className="py-1.5 px-3 text-right text-rose-700 font-bold">{kwanza.format(m.totalEmAtraso)}</td>
-                  <td className="py-1.5 px-3 text-right font-medium">{m.inadimplenciaPct.toFixed(1)}%</td>
-                </tr>
-              ))}
+              {mensalFiltrado.map((m) => {
+                const mKey = `${m.ano}-${String(m.mes).padStart(2, "0")}`;
+                return (
+                  <tr key={`${m.ano}-${m.mes}`} className="hover:bg-slate-50/50">
+                    <td className="py-1.5 px-3 font-medium text-slate-700">{m.labelMes}</td>
+                    <td className="py-1.5 px-3 text-right text-slate-600">{m.qtdMensalidades}</td>
+                    <td className="py-1.5 px-3 text-right text-rose-600">{m.qtdEmAtraso}</td>
+                    <td className="py-1.5 px-3 text-right text-slate-600">{kwanza.format(m.totalPrevisto)}</td>
+                    <td 
+                      className={`py-1.5 px-3 text-right text-emerald-600 font-medium ${m.totalPago > 0 ? "cursor-pointer hover:underline" : ""}`}
+                      onClick={() => m.totalPago > 0 && handleOpenDrillDown({ monthKey: mKey, status: "pago" })}
+                    >
+                      {kwanza.format(m.totalPago)}
+                    </td>
+                    <td 
+                      className={`py-1.5 px-3 text-right text-rose-700 font-bold ${m.totalEmAtraso > 0 ? "cursor-pointer hover:underline" : ""}`}
+                      onClick={() => m.totalEmAtraso > 0 && handleOpenDrillDown({ monthKey: mKey, status: "pendente" })}
+                    >
+                      {kwanza.format(m.totalEmAtraso)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-medium">{m.inadimplenciaPct.toFixed(1)}%</td>
+                  </tr>
+                );
+              })}
               {mensalFiltrado.length === 0 ? (
                 <EducationalEmptyState
                   colSpan={7}
@@ -147,8 +204,18 @@ export function TabPropinas({
                   {matrixData.months.map((m) => {
                     const val = matrixData.data[c][m];
                     return (
-                      <td key={m} className={`py-1.5 px-3 text-right ${val > 0 ? "text-rose-600 font-bold" : "text-slate-300"}`}>
+                      <td 
+                        key={m} 
+                        className={`py-1.5 px-3 text-right group relative ${val > 0 ? "text-rose-600 font-bold cursor-pointer hover:bg-rose-50" : "text-slate-300"}`}
+                        onClick={() => val > 0 && handleOpenDrillDown({ classeLabel: c, monthKey: m })}
+                        title={val > 0 ? `Clique para ver os alunos em atraso da ${c} em ${formatMonthRef(m)}` : ""}
+                      >
                         {val > 0 ? kwanza.format(val) : "—"}
+                        {val > 0 && (
+                          <div className="absolute top-0 right-0 hidden group-hover:flex">
+                            <Info className="h-2.5 w-2.5 text-rose-400" />
+                          </div>
+                        )}
                       </td>
                     );
                   })}
@@ -194,7 +261,20 @@ export function TabPropinas({
                   <td className="py-1.5 px-3 text-right text-emerald-700 font-bold">
                     {kwanza.format(t.totalPago + t.totalPagoAdiantado)}
                   </td>
-                  <td className="py-1.5 px-3 text-right text-rose-700 font-bold">{kwanza.format(t.totalEmAtraso)}</td>
+                  <td 
+                    className={`py-1.5 px-3 text-right text-rose-700 font-bold ${t.totalEmAtraso > 0 ? "cursor-pointer hover:underline" : ""}`}
+                    onClick={() => {
+                      if (t.totalEmAtraso > 0) {
+                        // Se houver mês selecionado no filtro global, usamos ele, senão pegamos o ano completo?
+                        // O drill-down precisa de um mês/ano. Se "all", talvez mostrar o mês mais crítico da turma?
+                        // Por simplicidade, vamos usar o selectedMonth se != "all", senão o mês mais recente?
+                        const mKey = selectedMonth !== "all" ? selectedMonth : `${anoLetivoAtivo}-12`; // fallback para fim do ano
+                        handleOpenDrillDown({ turmaId: t.turmaId, turmaNome: t.turmaNome, monthKey: mKey });
+                      }
+                    }}
+                  >
+                    {kwanza.format(t.totalEmAtraso)}
+                  </td>
                   <td className="py-1.5 px-3 text-right font-medium">{t.inadimplenciaPct.toFixed(1)}%</td>
                 </tr>
               ))}
@@ -211,6 +291,17 @@ export function TabPropinas({
           </table>
         </div>
       </div>
+
+      <FinancialDetailDrawer
+        isOpen={drillDown.isOpen}
+        onClose={() => setDrillDown((prev) => ({ ...prev, isOpen: false }))}
+        escolaId={escolaId}
+        classeId={drillDown.classeId}
+        classeLabel={drillDown.classeLabel}
+        mes={drillDown.mes}
+        ano={drillDown.ano}
+        status={drillDown.status}
+      />
     </div>
   );
 }
