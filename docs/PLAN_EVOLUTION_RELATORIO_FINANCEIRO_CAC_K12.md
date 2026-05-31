@@ -78,15 +78,15 @@ Ainda não existe de forma correta:
 - propinas não pagas por classe em formato executivo
 - previsão de arrecadação vs realizado
 
-### Estado da Fase 1
+### Estado do Produto e Evolução (Atualizado)
 
-Implementado em 2026-05-26:
+Implementado e concluído até o momento:
 
-- `propinas`, `captação` e `despesas` agora aceitam `ano_letivo_id`
-- `despesas` passou a respeitar `data_inicio` e `data_fim` do ano letivo
-- novo endpoint de resumo consolidado criado em `/api/financeiro/relatorios/resumo`
-- o client da página já usa `selectedSession` como `ano_letivo_id`
-- os cards principais da UI passaram a consumir o resumo consolidado quando disponível
+- **Fase 1 (Recorte Temporal):** Todas as rotas e views ajustadas para respeitar o `ano_letivo_id` (`data_inicio` e `data_fim`).
+- **Fase 2 (Read Models & Fluxo):** Criadas as MVs `fluxo_mensal` e `inadimplencia_classe`. Implementado o endpoint orquestrado `/api/financeiro/relatorios/escolar/full` que consolida todos os dados em uma única chamada.
+- **Fase 3 (Captação Robusta):** Criada a MV `capitacao_mensal`, movendo a lógica pesada de JavaScript para o PostgreSQL, garantindo consistência e performance.
+- **Evolução UX (Excel-like):** O monolito `RelatorioMensalidadesClient` foi decomposto em subcomponentes com navegação por **Abas (Tabs)**. Implementadas **Matrizes Bidimensionais** para inadimplência, com cabeçalhos e colunas fixas (sticky).
+- **Inteligência e Operação:** Implementados indicadores de tendência **Month-over-Month (MoM)**, **Filtros Rápidos** em tabelas, um **Simulador de Recuperação de Receita**, e **Drill-down Universal** (clique em células financeiras abre uma gaveta com lista de alunos e contatos dos encarregados, resolvendo falhas de Join do Supabase).
 
 ## Problema de dados identificado
 
@@ -611,23 +611,19 @@ Evidência técnica:
 
 ### Fase API-2
 
-Status: concluída no código local
+Status: concluída
 
 - criar `/api/financeiro/relatorios/inadimplencia-classe`
 - criar `/api/financeiro/relatorios/fluxo-mensal`
 - integrar ambos os blocos na página consolidada
 - adaptar exportadores `CSV/XLSX` para incluir `fluxo mensal` e `inadimplência por classe`
+- criar `/api/financeiro/relatorios/escolar/full` (Concluído: Endpoint orquestrador integrado na UI reduzindo de 6 requests para 1).
 
 Evidência técnica:
 
 - [supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql](/Users/gundja/moxi-edtech/supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql)
-- [apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts)
-- [apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/escolar/full/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/escolar/full/route.ts)
 - [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
-
-Pendência desta fase:
-
-- criar `/api/financeiro/relatorios/escolar/full`
 
 ### Fase API-3
 
@@ -668,8 +664,7 @@ Status:
 
 - sessão / ano letivo: implementado
 - mês: implementado via `Quick View`
-- classe: pendente
-- turma: pendente
+- classe/turma: implementado via pesquisa rápida em tabelas na tela.
 
 ### UI-3 — Tabelas novas
 
@@ -682,7 +677,7 @@ Adicionar:
 Status:
 
 - captação por classe: implementada
-- propinas não pagas por classe: implementada via bloco `Inadimplência por classe`
+- propinas não pagas por classe: implementada via bloco `Inadimplência por classe` (Formato Matriz Pivot)
 - fechamento mensal: implementado via bloco `Fluxo mensal`
 
 ### UI-4 — Drill-down
@@ -697,7 +692,7 @@ Status:
 
 - drill-down contextual no card `Em atraso`: implementado
 - CTA dos insights automáticos para secções relevantes: implementado
-- deep-links dedicados para outras rotas especialistas: pendente
+- Drill-down Universal na Matriz Pivot e Captação com `FinancialDetailDrawer` para ver detalhes e contato de alunos: implementado.
 
 ### UI-5 — Exportação executiva
 
@@ -761,38 +756,26 @@ Entregue:
 - wrappers públicos `vw_*`
 - funções `refresh_mv_*`
 - cron de refresh
-- endpoints de leitura
-- integração dos dois blocos na página consolidada
+- endpoints de leitura e o endpoint orquestrador consolidado `/full`
+- integração dos blocos na página consolidada
 - migration aplicada no banco remoto
 - exportação PDF atualizada para os novos blocos
 
 Evidência técnica:
 
 - [supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql](/Users/gundja/moxi-edtech/supabase/migrations/20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql)
-- [apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/fluxo-mensal/route.ts)
-- [apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/inadimplencia-classe/route.ts)
+- [apps/web/src/app/api/financeiro/relatorios/escolar/full/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/financeiro/relatorios/escolar/full/route.ts)
 - [apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx)
-- [apps/web/src/components/secretaria/QuickViewTimeline.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/QuickViewTimeline.tsx)
-- [apps/web/src/components/secretaria/FinanceInsightsPanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/FinanceInsightsPanel.tsx)
-- [apps/web/src/components/secretaria/FinancialHealthInsightsPanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/FinancialHealthInsightsPanel.tsx)
-- [apps/web/src/components/secretaria/BoardExecutivePanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/BoardExecutivePanel.tsx)
-- [apps/web/src/components/secretaria/BoardPressurePanel.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/secretaria/BoardPressurePanel.tsx)
-- [apps/web/src/hooks/useFinanceInsights.ts](/Users/gundja/moxi-edtech/apps/web/src/hooks/useFinanceInsights.ts)
-- [apps/web/src/hooks/useFinancialHealthInsights.ts](/Users/gundja/moxi-edtech/apps/web/src/hooks/useFinancialHealthInsights.ts)
-
-Pendências:
-
-- futura orquestração do endpoint `/api/financeiro/relatorios/escolar/full`
-- eventual validação visual browser-side após deploy com dados autenticados
 
 ### Fase 3
 
-Status: parcialmente antecipada na UI
+Status: concluída
 
-- experiência executiva e camada de insights já implementadas no frontend
-- criar MV de captação mensal
-- substituir a lógica ad hoc de captação
-- consolidar bolsistas e cartão
+Entregue:
+
+- MV de captação mensal `mv_relatorio_financeiro_escolar_capitacao_mensal` e view pública.
+- endpoint orquestrador ajustado para capturar captação por ano letivo id.
+- UX refinado com Drill-down Universal em Captação (Matrículas, Confirmações e Bolsistas).
 
 ### Fase 4
 

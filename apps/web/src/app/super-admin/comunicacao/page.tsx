@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
@@ -118,9 +117,11 @@ export default function ComunicacaoPage() {
         <CardContent>
           <div className="max-w-md">
             <Select 
-              options={templates.map(t => ({ value: t.id, label: t.label }))}
-              placeholder="Escolha um template..."
-              onChange={(val) => handleTemplateSelect(val as string)}
+              options={[
+                { value: "", label: "Escolha um template..." },
+                ...templates.map(t => ({ value: t.id, label: t.label })),
+              ]}
+              onChange={(event) => handleTemplateSelect(event.target.value)}
             />
           </div>
         </CardContent>
@@ -138,8 +139,9 @@ export default function ComunicacaoPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="to">Para (To) <span className="text-red-500">*</span></Label>
-                <Input 
+                <input
                   id="to" 
+                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-gray-300 focus:ring-teal-500 focus:border-teal-500"
                   placeholder="email@exemplo.com, outro@exemplo.com" 
                   value={formData.to}
                   onChange={(e) => setFormData({ ...formData, to: e.target.value })}
@@ -147,8 +149,9 @@ export default function ComunicacaoPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cc">Cópia (CC)</Label>
-                <Input 
+                <input
                   id="cc" 
+                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-gray-300 focus:ring-teal-500 focus:border-teal-500"
                   placeholder="copia@exemplo.com" 
                   value={formData.cc}
                   onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
@@ -158,8 +161,9 @@ export default function ComunicacaoPage() {
 
             <div className="space-y-2">
               <Label htmlFor="subject">Assunto <span className="text-red-500">*</span></Label>
-              <Input 
+              <input
                 id="subject" 
+                className="w-full p-3 border rounded-lg transition-colors duration-200 border-gray-300 focus:ring-teal-500 focus:border-teal-500"
                 placeholder="Assunto da mensagem" 
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
