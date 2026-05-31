@@ -49,7 +49,6 @@ export async function GET(req: Request) {
             id,
             nome,
             numero_processo,
-            foto_url,
             encarregado_nome,
             encarregado_telefone,
             encarregado_email
@@ -130,7 +129,7 @@ export async function GET(req: Request) {
           alunoId: aluno?.id,
           nome: aluno?.nome || "Aluno Desconhecido",
           processo: aluno?.numero_processo || "N/A",
-          foto: aluno?.foto_url,
+          foto: null,
           valor: m.valor,
           pago: m.valor_pago_total,
           status: m.status,
@@ -164,7 +163,6 @@ export async function GET(req: Request) {
             id,
             nome,
             numero_processo,
-            foto_url,
             encarregado_nome,
             encarregado_telefone,
             encarregado_email
@@ -215,7 +213,7 @@ export async function GET(req: Request) {
           alunoId: aluno?.id,
           nome: aluno?.nome || "Aluno Desconhecido",
           processo: aluno?.numero_processo || "N/A",
-          foto: aluno?.foto_url,
+          foto: null,
           valor: 0,
           pago: 0,
           status: m.status,
