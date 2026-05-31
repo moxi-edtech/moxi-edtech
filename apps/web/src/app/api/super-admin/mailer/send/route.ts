@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const bccList = bcc ? bcc.split(",").map(e => e.trim()).filter(Boolean) : undefined
 
     const files = formData.getAll("attachments") as File[]
-    const attachments = []
+    const attachments: { filename: string; content: Buffer }[] = []
 
     for (const file of files) {
       if (file.size > 0) {

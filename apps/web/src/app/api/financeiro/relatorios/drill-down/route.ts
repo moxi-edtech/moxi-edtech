@@ -76,36 +76,62 @@ export async function GET(req: Request) {
         else if (m.matricula_id) matriculaIdsToFetch.add(m.matricula_id);
       });
 
-      // Resolve matricula_id to turma_id
+      // Resolve matricula_id to turma_id safely (chunking to prevent URL length limits)
       const matriculaTurmaMap: Record<string, string> = {};
-      if (matriculaIdsToFetch.size > 0) {
-        const { data: mats, error: matsError } = await supabase
-          .from("matriculas")
-          .select("id, turma_id")
-          .in("id", Array.from(matriculaIdsToFetch))
-          .not("turma_id", "is", null);
-        
-        if (matsError) throw new Error(`Error fetching matriculas: ${matsError.message}`);
-        
-        (mats || []).forEach(m => {
-          if (m.turma_id) {
-             matriculaTurmaMap[m.id] = m.turma_id;
-             turmaIdsToFetch.add(m.turma_id);
-          }
+      const matriculaIdsArray = Array.from(matriculaIdsToFetch);
+      
+      if (matriculaIdsArray.length > 0) {
+        const chunkSize = 50;
+        const chunks: string[][] = [];
+        for (let i = 0; i < matriculaIdsArray.length; i += chunkSize) {
+          chunks.push(matriculaIdsArray.slice(i, i + chunkSize));
+        }
+
+        const responses = await Promise.all(
+          chunks.map((chunk) =>
+            supabase
+              .from("matriculas")
+              .select("id, turma_id")
+              .in("id", chunk)
+              .not("turma_id", "is", null)
+          )
+        );
+
+        responses.forEach(({ data, error }) => {
+          if (error) throw new Error(`Error fetching matriculas chunk: ${error.message}`);
+          (data || []).forEach(m => {
+            if (m.turma_id) {
+               matriculaTurmaMap[m.id] = m.turma_id;
+               turmaIdsToFetch.add(m.turma_id);
+            }
+          });
         });
       }
 
-      // Fetch turma details (nome and classe_id)
+      // Fetch turma details (nome and classe_id) safely
       const turmasMap: Record<string, any> = {};
-      if (turmaIdsToFetch.size > 0) {
-         const { data: turmas, error: turmasError } = await supabase
-          .from("turmas")
-          .select("id, nome, classe_id")
-          .in("id", Array.from(turmaIdsToFetch));
-         
-         if (turmasError) throw new Error(`Error fetching turmas: ${turmasError.message}`);
+      const turmaIdsArray = Array.from(turmaIdsToFetch);
+      
+      if (turmaIdsArray.length > 0) {
+        const chunkSize = 50;
+        const chunks: string[][] = [];
+        for (let i = 0; i < turmaIdsArray.length; i += chunkSize) {
+          chunks.push(turmaIdsArray.slice(i, i + chunkSize));
+        }
 
-         (turmas || []).forEach(t => { turmasMap[t.id] = t; });
+        const responses = await Promise.all(
+          chunks.map((chunk) =>
+            supabase
+              .from("turmas")
+              .select("id, nome, classe_id")
+              .in("id", chunk)
+          )
+        );
+
+        responses.forEach(({ data, error }) => {
+          if (error) throw new Error(`Error fetching turmas chunk: ${error.message}`);
+          (data || []).forEach(t => { turmasMap[t.id] = t; });
+        });
       }
 
       // Filter and map items

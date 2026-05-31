@@ -1,9 +1,39 @@
 "use client";
 import { useEffect, useState } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Dashboard } from "./Dashboard";
 import DashboardSkeleton from "./DashboardSkeleton";
 import type { DashboardCounts, DashboardRecentes, Plano } from "./types";
+
+type SummaryResponse = {
+  ok?: boolean;
+  error?: string;
+  counts?: DashboardCounts | null;
+  recentes?: DashboardRecentes | null;
+  escola?: {
+    plano?: Plano | null;
+  } | null;
+};
+
+let summaryRequest: Promise<SummaryResponse> | null = null;
+
+async function fetchDashboardSummary() {
+  if (!summaryRequest) {
+    summaryRequest = fetch("/api/secretaria/dashboard/summary", { cache: "no-store" })
+      .then(async (res) => {
+        const body = (await res.json()) as SummaryResponse;
+        if (!res.ok || !body?.ok) {
+          throw new Error(body?.error || "Falha ao carregar dados do dashboard");
+        }
+        return body;
+      })
+      .finally(() => {
+        summaryRequest = null;
+      });
+  }
+
+  return summaryRequest;
+}
 
 export default function SecretariaDashboardPage() {
   const [counts, setCounts] = useState<DashboardCounts | null>(null);
@@ -11,29 +41,20 @@ export default function SecretariaDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [plan, setPlan] = useState<Plano>('profissional');
-
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoading(true);
-        const summaryRes = await fetch('/api/secretaria/dashboard/summary', { cache: 'no-store' });
-        const summaryJson = await summaryRes.json();
+        const summaryJson = await fetchDashboardSummary();
 
         if (mounted) {
-          if (!summaryRes.ok || !summaryJson?.ok) {
-            throw new Error(summaryJson?.error || 'Falha ao carregar dados do dashboard');
-          }
           setCounts(summaryJson.counts ?? null);
           setRecentes(summaryJson.recentes ?? null);
-          if (summaryJson.escola?.plano) {
-            setPlan(summaryJson.escola.plano as Plano);
-          }
         }
-      } catch (e: any) {
+      } catch (e) {
         if (mounted) {
-          setError(e.message);
+          setError(e instanceof Error ? e.message : "Falha ao carregar dados do dashboard");
         }
       } finally {
         if (mounted) setLoading(false);

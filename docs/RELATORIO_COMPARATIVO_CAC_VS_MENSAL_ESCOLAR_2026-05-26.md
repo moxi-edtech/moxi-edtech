@@ -399,10 +399,14 @@ Hoje ele já cobre:
 - resultado do período
 - navegação operacional com CTA
 
-O que ainda impede substituição plena da planilha CAC é principalmente:
+O que impedia a substituição plena da planilha CAC foi resolvido neste ciclo:
 
-- lacuna histórica `2024-2025`
-- captação ainda sem read model dedicado
-- ausência de consolidado backend único
+- captação ganhou read model dedicado (`mv_relatorio_financeiro_escolar_capitacao_mensal`).
+- consolidado backend único implementado via endpoint orquestrador (`/full`).
+- UX "Excel-like" implementada com Abas e Matrizes Pivot para as classes.
+- Drill-down Universal adicionado, permitindo que a direção visualize alunos inadimplentes (e contactos de encarregados) com um simples clique numa célula da matriz.
 
-Sem resolver esses três pontos, a tela já serve para gestão corrente, mas ainda não fecha completamente a dependência do histórico manual da direção.
+A única lacuna estrutural que resta é a:
+- lacuna histórica `2024-2025` (necessidade de importação de legados).
+
+Com as implementações recentes, a tela já serve integralmente para gestão corrente de elite, reduzindo quase a zero a dependência do histórico manual da direção para o ciclo letivo atual.

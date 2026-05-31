@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Users,
   FileText,
@@ -15,34 +16,79 @@ import {
   KeyRound,
   Printer,
   Share2,
-  Copy,
   MessageCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
-import { FilaAtendimentoModal } from "@/components/secretaria/FilaAtendimentoModal";
-import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
-import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
-import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
-import { JustificarFaltaModal } from "@/components/secretaria/JustificarFaltaModal";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { DashboardHeader, TaskList, NoticePanel } from "@/components/dashboard";
+import { DashboardHeader, NoticePanel } from "@/components/dashboard";
 import StatCard from "@/components/shared/StatCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
-import QuickDocHub from "@/components/secretaria/QuickDocHub";
-import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
-import { MinhaProdutividade } from "@/components/secretaria/MinhaProdutividade";
 import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
-import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import type { DashboardCounts, DashboardRecentes } from "./types";
+
+const ResumoCaixaSecretaria = dynamic(
+  () => import("@/components/secretaria/ResumoCaixaSecretaria").then((mod) => mod.ResumoCaixaSecretaria),
+  {
+    ssr: false,
+    loading: () => <div className="h-20 rounded-xl border border-slate-100 bg-white animate-pulse" />,
+  }
+);
+
+const MinhaProdutividade = dynamic(
+  () => import("@/components/secretaria/MinhaProdutividade").then((mod) => mod.MinhaProdutividade),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 bg-slate-50 animate-pulse rounded-2xl" />,
+  }
+);
+
+const FilaAtendimentoModal = dynamic(
+  () => import("@/components/secretaria/FilaAtendimentoModal").then((mod) => mod.FilaAtendimentoModal),
+  { ssr: false }
+);
+
+const DocumentosEmissaoHubClient = dynamic(
+  () => import("@/components/secretaria/DocumentosEmissaoHubClient"),
+  { ssr: false, loading: () => <ModalLoading /> }
+);
+
+const AdmissaoWizardClient = dynamic(
+  () => import("@/components/secretaria/AdmissaoWizardClient"),
+  { ssr: false, loading: () => <ModalLoading /> }
+);
+
+const PautaRapidaModal = dynamic(
+  () => import("@/components/secretaria/PautaRapidaModal").then((mod) => mod.PautaRapidaModal),
+  { ssr: false, loading: () => <ModalLoading /> }
+);
+
+const JustificarFaltaModal = dynamic(
+  () => import("@/components/secretaria/JustificarFaltaModal").then((mod) => mod.JustificarFaltaModal),
+  { ssr: false, loading: () => <ModalLoading /> }
+);
+
+const QuickDocHub = dynamic(
+  () => import("@/components/secretaria/QuickDocHub"),
+  { ssr: false, loading: () => <ModalLoading /> }
+);
+
+const BalcaoAtendimento = dynamic(
+  () => import("@/components/secretaria/BalcaoAtendimento"),
+  { ssr: false, loading: () => <ModalLoading /> }
+);
+
+function ModalLoading() {
+  return <div className="h-48 rounded-xl bg-slate-50 animate-pulse" />;
+}
 
 type BalcaoModal =
   | "matricular"
@@ -61,12 +107,11 @@ export function Dashboard({
   counts: DashboardCounts | null;
   recentes: DashboardRecentes | null;
 }) {
-  const router = useRouter();
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const pathname = usePathname();
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
-  const [nowMs, setNowMs] = useState<number | null>(null);
+  const [nowMs] = useState(() => Date.now());
   const [userName, setUserName] = useState<string | null>(null);
   const [produtividadeAlerts, setProdutividadeAlerts] = useState<any[]>([]);
   const [totalPendentesFicha, setTotalPendentesFicha] = useState(0);
@@ -74,13 +119,14 @@ export function Dashboard({
   const [selectedAlunoIdForBalcao, setSelectedAlunoIdForBalcao] = useState<string | null>(null);
   const [selectedCandidaturaId, setSelectedCandidaturaId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showOperationalPanels, setShowOperationalPanels] = useState(false);
 
-  const handleProdutividadeData = (data: any) => {
+  const handleProdutividadeData = useCallback((data: any) => {
     if (data.alertas_notificacoes) setProdutividadeAlerts(data.alertas_notificacoes);
     if (data.documentos_pendentes !== undefined) setTotalPendentesFicha(data.documentos_pendentes);
-  };
+  }, []);
 
-  const refreshProdutividade = () => setRefreshKey(prev => prev + 1);
+  const refreshProdutividade = useCallback(() => setRefreshKey(prev => prev + 1), []);
 
   const escolaParamFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
@@ -89,7 +135,6 @@ export function Dashboard({
   const escolaParam = escolaSlug || escolaParamFromPath || escolaId;
 
   useEffect(() => {
-    setNowMs(Date.now());
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       const name = data.user?.user_metadata?.full_name || data.user?.user_metadata?.name;
@@ -103,6 +148,23 @@ export function Dashboard({
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!escolaId) return;
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      const id = idleWindow.requestIdleCallback(() => setShowOperationalPanels(true), { timeout: 1500 });
+      return () => idleWindow.cancelIdleCallback?.(id);
+    }
+
+    const id = window.setTimeout(() => setShowOperationalPanels(true), 300);
+    return () => window.clearTimeout(id);
+  }, [escolaId]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -336,7 +398,11 @@ export function Dashboard({
             <RadarOperacional alerts={alerts} role="secretaria" />
             
             <div className="grid grid-cols-1 gap-4">
-              {escolaId && <ResumoCaixaSecretaria escolaId={escolaId} />}
+              {escolaId && showOperationalPanels ? (
+                <ResumoCaixaSecretaria escolaId={escolaId} />
+              ) : (
+                <div className="h-20 rounded-xl border border-slate-100 bg-white animate-pulse" />
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -417,7 +483,7 @@ export function Dashboard({
 
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                {escolaId && (
+                {escolaId && showOperationalPanels ? (
                   <MinhaProdutividade 
                     key={refreshKey}
                     escolaId={escolaId} 
@@ -427,6 +493,8 @@ export function Dashboard({
                        setBalcaoModal("atendimento_aluno");
                     }}
                   />
+                ) : (
+                  <div className="h-40 bg-slate-50 animate-pulse rounded-2xl" />
                 )}
 
                 <div>

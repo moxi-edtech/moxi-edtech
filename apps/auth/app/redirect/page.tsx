@@ -4,7 +4,11 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { getUserTenants } from "@/lib/getUserTenants";
 import { logAuthEvent } from "@/lib/auth-log";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
-import { getTenantContextCookieForUser, clearTenantContextCookie } from "@/lib/tenantContextCookie";
+import {
+  clearTenantContextCookie,
+  getTenantContextCookieForUser,
+  setTenantContextCookie,
+} from "@/lib/tenantContextCookie";
 
 type GlobalRole = "super_admin" | "global_admin" | null;
 
@@ -219,13 +223,21 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     ? preferred
     : `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
 
+  await setTenantContextCookie({
+    uid: user.id,
+    tenant_id: selected.tenantId,
+    tenant_slug: selected.tenantSlug,
+    tenant_type: selected.tenantType,
+    role: selected.role,
+  });
+
   logAuthEvent({
     action: "redirect",
     route: "/redirect",
     user_id: user.id,
     tenant_id: selected.tenantId,
     tenant_type: selected.tenantType,
-    details: { destination },
+    details: { destination, source: "single_tenant_resolved" },
   });
 
   redirect(destination);

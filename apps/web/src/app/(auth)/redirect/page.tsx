@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { shouldRouteToEscolaAdmin } from "@/lib/escola/onboardingGate";
-import { getDefaultK12PortalPathForRole } from "@/lib/permissions";
+import { getDefaultK12PortalPathForRole, normalizePapel } from "@/lib/permissions";
 
 function getFormacaoBaseUrl() {
   if (typeof window === "undefined") return "https://formacao.klasse.ao";
@@ -120,10 +120,10 @@ export default function RedirectPage() {
           }
 
           const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
-          const role: string = profile?.role ?? "guest";
+          const profileRole: string = profile?.role ?? "guest";
           const escola_id: string | null = profile?.escola_id ?? null;
           
-          console.info(`[Redirect] Resolved role: ${role}, profile_escola_id: ${escola_id}`);
+          console.info(`[Redirect] Resolved profile role: ${profileRole}, profile_escola_id: ${escola_id}`);
 
           const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
           const tenantType = String(
@@ -140,8 +140,27 @@ export default function RedirectPage() {
           const baseEscolaId = escola_id || resolvedEscolaId;
           const resolvedParam = baseEscolaId ? await resolveEscolaParam(supabase, baseEscolaId) : null;
           const escolaParam = resolvedParam?.slug ? resolvedParam.slug : baseEscolaId;
+
+          const isGlobalRole = profileRole === "super_admin" || profileRole === "global_admin";
+          let role = profileRole;
+          if (baseEscolaId) {
+            const { data: vinculo, error: vinculoError } = await supabase
+              .from("escola_users")
+              .select("papel, role")
+              .eq("user_id", user.id)
+              .eq("escola_id", baseEscolaId)
+              .limit(1)
+              .maybeSingle();
+
+            if (vinculoError) {
+              console.warn("[Redirect] Failed to fetch escola_users role:", vinculoError);
+            }
+
+            const scopedRole = normalizePapel(vinculo?.papel ?? vinculo?.role ?? null);
+            if (scopedRole && !isGlobalRole) role = scopedRole;
+          }
           
-          console.info(`[Redirect] Resolved tenant context - ID: ${baseEscolaId}, Param: ${escolaParam}`);
+          console.info(`[Redirect] Resolved tenant context - ID: ${baseEscolaId}, Param: ${escolaParam}, effective_role: ${role}`);
 
           const isK12AdminRole =
             role === "admin" ||

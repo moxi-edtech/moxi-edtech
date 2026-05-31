@@ -16,7 +16,7 @@ import {
   type ProductContext,
   type TenantType,
 } from '@moxi/tenant-sdk';
-import { isRoleAllowedForProduct } from '@/lib/permissions';
+import { getDefaultK12PortalPathForRole, isRoleAllowedForProduct } from '@/lib/permissions';
 
 type AuthContext = Pick<DbAuthContext, 'userId' | 'role' | 'tenantId' | 'tenantType'> & {
   escolaId: string | null;
@@ -262,11 +262,15 @@ function getLandingPathByContext(ctx: AuthContext): string {
     return '/admin/dashboard';
   }
 
-  if (ctx.role === 'professor') return escolaParam ? `/escola/${escolaParam}/professor` : '/professor';
-  if (ctx.role === 'aluno' || ctx.role === 'encarregado') return escolaParam ? `/escola/${escolaParam}/aluno` : '/aluno';
-  if (ctx.role === 'financeiro') return escolaParam ? `/escola/${escolaParam}/financeiro` : '/financeiro';
-  if (ctx.role === 'secretaria') return escolaParam ? `/escola/${escolaParam}/secretaria` : '/secretaria';
-  return escolaParam ? `/escola/${escolaParam}/admin` : '/admin';
+  return getDefaultK12PortalPathForRole(ctx.role, escolaParam);
+}
+
+function isRedirectPath(pathname: string) {
+  return pathname === '/redirect' || pathname === '/redirect/';
+}
+
+function isInternalPath(path: string) {
+  return path.startsWith('/') && !path.startsWith('//') && !path.includes('://');
 }
 
 function pathRequiresK12Model(pathname: string): boolean {
@@ -562,6 +566,35 @@ export async function middleware(request: NextRequest) {
     const centralLogin = new URL(resolveUniversalLoginUrl());
     centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
     return NextResponse.redirect(centralLogin);
+  }
+
+  if (isRedirectPath(pathname)) {
+    const fastAuthContext = await resolveAuthContextFromTenantCookie(request);
+    if (fastAuthContext) {
+      const dest = getLandingPathByContext(fastAuthContext);
+      if (isInternalPath(dest) && !isRedirectPath(dest)) {
+        console.info(
+          JSON.stringify({
+            event: 'redirect_fast_path_used',
+            path: pathname,
+            destination: dest,
+            tenant_type: fastAuthContext.tenantType,
+            role: fastAuthContext.role,
+            timestamp: new Date().toISOString(),
+          })
+        );
+        return NextResponse.redirect(new URL(dest, request.nextUrl.origin));
+      }
+    }
+
+    console.info(
+      JSON.stringify({
+        event: 'redirect_fast_path_miss',
+        path: pathname,
+        reason: fastAuthContext ? 'invalid_destination' : 'context_unavailable',
+        timestamp: new Date().toISOString(),
+      })
+    );
   }
 
   if (
