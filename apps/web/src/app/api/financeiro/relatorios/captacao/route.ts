@@ -46,6 +46,7 @@ export async function GET(req: Request) {
 
     // Agrupar por classe para o formato esperado pelo frontend
     const classesMap: Record<string, { 
+      id: string;
       label: string; 
       matriculas: number; 
       confirmacoes: number; 
@@ -60,6 +61,7 @@ export async function GET(req: Request) {
 
       if (!classesMap[classeId]) {
         classesMap[classeId] = { 
+          id: row.classe_id,
           label: row.classe_label, 
           matriculas: 0, 
           confirmacoes: 0, 

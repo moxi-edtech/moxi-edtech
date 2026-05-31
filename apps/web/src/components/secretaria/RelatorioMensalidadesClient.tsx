@@ -890,7 +890,12 @@ export default function RelatorioMensalidadesClient() {
           </TabsContent>
 
           <TabsContent value="captacao" className="mt-6">
-            <TabCaptacao captacao={captacao} escolaId={escolaId} anoLetivoAtivo={anoLetivoAtivo} />
+            <TabCaptacao
+              captacao={captacao}
+              escolaId={escolaId}
+              anoLetivoAtivo={anoLetivoAtivo}
+              anoLetivoId={selectedSession}
+            />
           </TabsContent>
 
           <TabsContent value="propinas" className="mt-6">
@@ -902,6 +907,7 @@ export default function RelatorioMensalidadesClient() {
               selectedMonthLabel={selectedMonthLabel}
               setSelectedMonth={setSelectedMonth}
               anoLetivoAtivo={anoLetivoAtivo}
+              anoLetivoId={selectedSession}
               escolaId={escolaId}
             />
           </TabsContent>

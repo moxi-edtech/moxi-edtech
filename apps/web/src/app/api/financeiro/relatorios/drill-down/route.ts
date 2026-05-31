@@ -25,13 +25,14 @@ export async function GET(req: Request) {
     const turmaId = searchParams.get("turma_id");
     const mes = searchParams.get("mes"); // MM
     const ano = searchParams.get("ano"); // YYYY
+    const anoLetivoId = searchParams.get("ano_letivo_id") || searchParams.get("session_id");
     const status = searchParams.get("status") || "pendente"; // pendente, pago, etc. (para mensalidades)
     const source = searchParams.get("source") || "mensalidades"; // mensalidades | matriculas
     const type = searchParams.get("type"); // matricula | confirmacao | bolsista (para source=matriculas)
 
     if (source === "mensalidades") {
-      if (!mes || !ano) {
-        return NextResponse.json({ ok: false, error: "Mês e ano são obrigatórios para mensalidades" }, { status: 400 });
+      if (!ano) {
+        return NextResponse.json({ ok: false, error: "Ano é obrigatório para mensalidades" }, { status: 400 });
       }
 
       const query = supabase
@@ -55,9 +56,12 @@ export async function GET(req: Request) {
           )
         `)
         .eq("escola_id", escolaId)
-        .eq("mes_referencia", parseInt(mes, 10))
         .eq("ano_referencia", parseInt(ano, 10))
         .eq("status", status);
+
+      if (mes) {
+        query.eq("mes_referencia", parseInt(mes, 10));
+      }
 
       if (status === "pendente") {
         query.lt("data_vencimento", new Date().toISOString().split('T')[0]);
@@ -123,7 +127,7 @@ export async function GET(req: Request) {
           chunks.map((chunk) =>
             supabase
               .from("turmas")
-              .select("id, nome, classe_id")
+              .select("id, nome, classe_id, ano_letivo_id")
               .in("id", chunk)
           )
         );
@@ -141,6 +145,7 @@ export async function GET(req: Request) {
         return { ...m, resolved_turma: turma };
       }).filter((m: any) => {
         if (!m.resolved_turma) return false;
+        if (anoLetivoId && m.resolved_turma.ano_letivo_id !== anoLetivoId) return false;
         if (turmaId && m.resolved_turma.id !== turmaId) return false;
         if (classeId && m.resolved_turma.classe_id !== classeId) return false;
         return true;
@@ -181,6 +186,7 @@ export async function GET(req: Request) {
           id,
           status,
           created_at,
+          session_id,
           aluno_id,
           origem_transicao_matricula_id,
           percentagem_desconto,
@@ -196,7 +202,8 @@ export async function GET(req: Request) {
           turmas (
             id,
             nome,
-            classe_id
+            classe_id,
+            ano_letivo_id
           )
         `)
         .eq("escola_id", escolaId)
@@ -227,6 +234,10 @@ export async function GET(req: Request) {
         if (classeId) return m.turmas?.classe_id === classeId;
         return true;
       });
+
+      if (anoLetivoId) {
+        filtered = filtered.filter((m: any) => (m.session_id || m.turmas?.ano_letivo_id) === anoLetivoId);
+      }
 
       if (type === "bolsista") {
         filtered = filtered.filter((m: any) => Number(m.percentagem_desconto) > 0 || !!m.motivo_desconto);

@@ -10,9 +10,10 @@ interface TabCaptacaoProps {
   captacao: CaptacaoItem[];
   escolaId: string;
   anoLetivoAtivo: number;
+  anoLetivoId?: string;
 }
 
-export function TabCaptacao({ captacao, escolaId, anoLetivoAtivo }: TabCaptacaoProps) {
+export function TabCaptacao({ captacao, escolaId, anoLetivoAtivo, anoLetivoId }: TabCaptacaoProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [drillDown, setDrillDown] = useState<{
     isOpen: boolean;
@@ -33,16 +34,14 @@ export function TabCaptacao({ captacao, escolaId, anoLetivoAtivo }: TabCaptacaoP
     return captacao.filter((c) => c.label.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [captacao, searchTerm]);
 
-  const handleOpenDrillDown = (classeLabel: string, type: "matricula" | "confirmacao" | "bolsista") => {
-    // Para captacao, não temos o ID da classe diretamente no array de items mas temos o label.
-    // Como a API de captacao retorna itens com label, vamos passar o label e deixar o drawer resolver se precisar.
-    // Na verdade, seria melhor ter o ID. Vamos assumir que a API de drill-down pode aceitar o label se o ID for chato de pegar agora,
-    // mas já atualizamos a API para aceitar classe_id.
-    // TODO: Ajustar TabCaptacao para receber classeId no objeto CaptacaoItem.
-    
+  const handleOpenDrillDown = (
+    classeId: string,
+    classeLabel: string,
+    type: "matricula" | "confirmacao" | "bolsista"
+  ) => {
     setDrillDown({
       isOpen: true,
-      classeId: "", // Será buscado por label no drawer ou via ajuste no tipo
+      classeId,
       classeLabel,
       source: "matriculas",
       type
@@ -86,13 +85,13 @@ export function TabCaptacao({ captacao, escolaId, anoLetivoAtivo }: TabCaptacaoP
                     <td className="py-1.5 px-3 font-medium text-slate-700">{c.label}</td>
                     <td 
                       className={`py-1.5 px-3 text-right text-slate-600 ${c.matriculas > 0 ? "cursor-pointer hover:underline hover:text-indigo-600" : ""}`}
-                      onClick={() => c.matriculas > 0 && handleOpenDrillDown(c.label, "matricula")}
+                      onClick={() => c.matriculas > 0 && handleOpenDrillDown(c.id, c.label, "matricula")}
                     >
                       {c.matriculas}
                     </td>
                     <td 
                       className={`py-1.5 px-3 text-right text-slate-600 ${c.confirmacoes > 0 ? "cursor-pointer hover:underline hover:text-indigo-600" : ""}`}
-                      onClick={() => c.confirmacoes > 0 && handleOpenDrillDown(c.label, "confirmacao")}
+                      onClick={() => c.confirmacoes > 0 && handleOpenDrillDown(c.id, c.label, "confirmacao")}
                     >
                       {c.confirmacoes}
                     </td>
@@ -136,7 +135,7 @@ export function TabCaptacao({ captacao, escolaId, anoLetivoAtivo }: TabCaptacaoP
                     <td className="py-1.5 px-3 text-right text-slate-600">{c.total}</td>
                     <td 
                       className={`py-1.5 px-3 text-right text-blue-600 font-medium ${c.bolsistas > 0 ? "cursor-pointer hover:underline" : ""}`}
-                      onClick={() => c.bolsistas > 0 && handleOpenDrillDown(c.label, "bolsista")}
+                      onClick={() => c.bolsistas > 0 && handleOpenDrillDown(c.id, c.label, "bolsista")}
                     >
                       {c.bolsistas}
                     </td>
@@ -166,8 +165,10 @@ export function TabCaptacao({ captacao, escolaId, anoLetivoAtivo }: TabCaptacaoP
         isOpen={drillDown.isOpen}
         onClose={() => setDrillDown((prev) => ({ ...prev, isOpen: false }))}
         escolaId={escolaId}
+        classeId={drillDown.classeId}
         classeLabel={drillDown.classeLabel}
         ano={String(anoLetivoAtivo)}
+        anoLetivoId={anoLetivoId}
         source={drillDown.source}
         type={drillDown.type}
       />

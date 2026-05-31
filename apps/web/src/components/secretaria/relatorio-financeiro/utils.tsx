@@ -10,8 +10,8 @@ export const kwanza = new Intl.NumberFormat("pt-AO", {
 export function formatMonthRef(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString("pt-PT", {
     month: "short",
-    year: "2-digit",
-  });
+    year: "numeric",
+  }).replace(".", "").replace(" de ", "/");
 }
 
 export function normalizeMonthKey(value: string) {

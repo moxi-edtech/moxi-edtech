@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/Drawer";
 import { kwanza } from "./utils";
-import { User, Phone, Mail, FileText, ExternalLink, Loader2, X } from "lucide-react";
+import { User, Phone, Mail, ExternalLink, Loader2, X } from "lucide-react";
 import Link from "next/link";
 
 interface StudentDetail {
@@ -31,6 +31,7 @@ interface FinancialDetailDrawerProps {
   classeLabel: string;
   mes?: string; // MM
   ano: string; // YYYY
+  anoLetivoId?: string;
   status?: string; // pendente, pago
   source?: "mensalidades" | "matriculas";
   type?: "matricula" | "confirmacao" | "bolsista";
@@ -45,6 +46,7 @@ export function FinancialDetailDrawer({
   classeLabel,
   mes,
   ano,
+  anoLetivoId,
   status = "pendente",
   source = "mensalidades",
   type,
@@ -53,17 +55,23 @@ export function FinancialDetailDrawer({
   const [students, setStudents] = useState<StudentDetail[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const canLoad =
+    isOpen &&
+    ano &&
+    (source === "mensalidades" || (source === "matriculas" && (classeId || turmaId)));
+
   useEffect(() => {
-    if (isOpen && (classeId || turmaId) && ano) {
+    if (canLoad) {
       void loadDetails();
     }
-  }, [isOpen, classeId, turmaId, mes, ano, status, source, type]);
+  }, [canLoad, classeId, turmaId, mes, ano, anoLetivoId, status, source, type]);
 
   async function loadDetails() {
     setLoading(true);
     setError(null);
     try {
       let url = `/api/financeiro/relatorios/drill-down?escolaId=${escolaId}&ano=${ano}&source=${source}&status=${status}`;
+      if (anoLetivoId) url += `&ano_letivo_id=${encodeURIComponent(anoLetivoId)}`;
       if (classeId) url += `&classe_id=${classeId}`;
       if (turmaId) url += `&turma_id=${turmaId}`;
       if (mes) url += `&mes=${mes}`;
@@ -100,6 +108,8 @@ export function FinancialDetailDrawer({
     return `${status === "pago" ? "Recebimentos" : "Inadimplência"}: ${classeLabel}`;
   };
 
+  const paymentAmountLabel = status === "pago" ? "Valor recebido" : "Total devido";
+
   return (
     <Drawer open={isOpen} onOpenChange={(val) => !val && onClose()}>
       <DrawerContent className="max-h-[90vh]">
@@ -113,7 +123,9 @@ export function FinancialDetailDrawer({
                 <DrawerDescription className="text-sm text-slate-500">
                   {source === "matriculas" 
                     ? `Alunos registrados no ano letivo ${ano}.`
-                    : `Alunos com propinas ${status === "pago" ? "liquidadas" : "em atraso"} para ${formatMonth(mes, ano)}.`}
+                    : `Alunos com propinas ${status === "pago" ? "liquidadas" : "em atraso"} ${
+                        mes ? `para ${formatMonth(mes, ano)}` : `no ano letivo ${ano}`
+                      }.`}
                 </DrawerDescription>
               </div>
               <button
@@ -209,10 +221,12 @@ export function FinancialDetailDrawer({
                     <div className="mt-auto flex items-center justify-between rounded-lg bg-slate-50 p-2.5">
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                          {source === "matriculas" ? "Status Matrícula" : "Total Devido"}
+                          {source === "matriculas" ? "Status Matrícula" : paymentAmountLabel}
                         </p>
                         <p className="text-sm font-black text-slate-900 uppercase">
-                          {source === "matriculas" ? student.status : kwanza.format(student.valor)}
+                          {source === "matriculas"
+                            ? student.status
+                            : kwanza.format(status === "pago" ? student.pago : student.valor)}
                         </p>
                       </div>
                       <div className="text-right">

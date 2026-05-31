@@ -14,6 +14,7 @@ interface TabPropinasProps {
   selectedMonthLabel: string;
   setSelectedMonth: (m: string) => void;
   anoLetivoAtivo: number;
+  anoLetivoId?: string;
   escolaId: string;
 }
 
@@ -25,6 +26,7 @@ export function TabPropinas({
   selectedMonthLabel,
   setSelectedMonth,
   anoLetivoAtivo,
+  anoLetivoId,
   escolaId,
 }: TabPropinasProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,18 +84,18 @@ export function TabPropinas({
     classeId?: string;
     turmaId?: string;
     turmaNome?: string;
-    monthKey: string; 
+    monthKey?: string; 
     status?: string 
   }) => {
-    const [ano, mes] = options.monthKey.split("-");
+    const [ano, mes] = (options.monthKey || "").split("-");
 
     setDrillDown({
       isOpen: true,
       classeId: options.classeId || (options.classeLabel ? matrixData.classIdMap[options.classeLabel] : undefined),
       turmaId: options.turmaId,
       classeLabel: options.turmaNome || options.classeLabel || "Todas as Classes",
-      mes,
-      ano,
+      mes: mes || "",
+      ano: ano || String(anoLetivoAtivo),
       status: options.status || "pendente"
     });
   };
@@ -265,11 +267,11 @@ export function TabPropinas({
                     className={`py-1.5 px-3 text-right text-rose-700 font-bold ${t.totalEmAtraso > 0 ? "cursor-pointer hover:underline" : ""}`}
                     onClick={() => {
                       if (t.totalEmAtraso > 0) {
-                        // Se houver mês selecionado no filtro global, usamos ele, senão pegamos o ano completo?
-                        // O drill-down precisa de um mês/ano. Se "all", talvez mostrar o mês mais crítico da turma?
-                        // Por simplicidade, vamos usar o selectedMonth se != "all", senão o mês mais recente?
-                        const mKey = selectedMonth !== "all" ? selectedMonth : `${anoLetivoAtivo}-12`; // fallback para fim do ano
-                        handleOpenDrillDown({ turmaId: t.turmaId, turmaNome: t.turmaNome, monthKey: mKey });
+                        handleOpenDrillDown({
+                          turmaId: t.turmaId,
+                          turmaNome: t.turmaNome,
+                          monthKey: selectedMonth !== "all" ? selectedMonth : undefined,
+                        });
                       }
                     }}
                   >
@@ -300,6 +302,7 @@ export function TabPropinas({
         classeLabel={drillDown.classeLabel}
         mes={drillDown.mes}
         ano={drillDown.ano}
+        anoLetivoId={anoLetivoId}
         status={drillDown.status}
       />
     </div>

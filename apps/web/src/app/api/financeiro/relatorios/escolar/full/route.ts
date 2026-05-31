@@ -111,23 +111,30 @@ export async function GET(req: Request) {
     } : null;
 
     // Processamento Propinas
-    const mensal = (propinasMensalRes.data || []).map(row => ({
-      anoLetivo: row.ano_letivo,
-      ano: row.ano,
-      mes: row.mes,
-      labelMes: `${String(row.mes).padStart(2, "0")}/${row.ano}`,
-      competenciaMes: row.competencia_mes,
-      qtdMensalidades: Number(row.qtd_mensalidades || 0),
-      qtdEmAtraso: Number(row.qtd_em_atraso || 0),
-      qtdPagasAdiantadas: Number(row.qtd_pagas_adiantadas || 0),
-      qtdParciais: Number(row.qtd_parciais || 0),
-      totalPrevisto: Number(row.total_previsto || 0),
-      totalPago: Number(row.total_pago || 0),
-      totalPagoAdiantado: Number(row.total_pago_adiantado || 0),
-      totalParcialEmAberto: Number(row.total_parcial_em_aberto || 0),
-      totalEmAtraso: Number(row.total_em_atraso || 0),
-      inadimplenciaPct: Number(row.inadimplencia_pct || 0),
-    }));
+    const mensal = (propinasMensalRes.data || []).map(row => {
+      const date = new Date(row.ano, row.mes - 1, 1);
+      const labelMes = date.toLocaleDateString("pt-PT", { month: "short", year: "numeric" })
+        .replace(".", "")
+        .replace(" de ", "/");
+      
+      return {
+        anoLetivo: row.ano_letivo,
+        ano: row.ano,
+        mes: row.mes,
+        labelMes: labelMes.charAt(0).toUpperCase() + labelMes.slice(1),
+        competenciaMes: row.competencia_mes,
+        qtdMensalidades: Number(row.qtd_mensalidades || 0),
+        qtdEmAtraso: Number(row.qtd_em_atraso || 0),
+        qtdPagasAdiantadas: Number(row.qtd_pagas_adiantadas || 0),
+        qtdParciais: Number(row.qtd_parciais || 0),
+        totalPrevisto: Number(row.total_previsto || 0),
+        totalPago: Number(row.total_pago || 0),
+        totalPagoAdiantado: Number(row.total_pago_adiantado || 0),
+        totalParcialEmAberto: Number(row.total_parcial_em_aberto || 0),
+        totalEmAtraso: Number(row.total_em_atraso || 0),
+        inadimplenciaPct: Number(row.inadimplencia_pct || 0),
+      };
+    });
 
     const porTurma = (propinasTurmaRes.data || []).map(row => ({
       turmaId: row.turma_id,
@@ -152,7 +159,15 @@ export async function GET(req: Request) {
     (captacaoRes.data || []).forEach(row => {
       const classeId = row.classe_id;
       if (!captacaoMap[classeId]) {
-        captacaoMap[classeId] = { label: row.classe_label, matriculas: 0, confirmacoes: 0, bolsistas: 0, total: 0, detalhes_mensais: {} };
+        captacaoMap[classeId] = {
+          classeId,
+          label: row.classe_label,
+          matriculas: 0,
+          confirmacoes: 0,
+          bolsistas: 0,
+          total: 0,
+          detalhes_mensais: {},
+        };
       }
       captacaoMap[classeId].matriculas += row.matriculas_qtd;
       captacaoMap[classeId].confirmacoes += row.confirmacoes_qtd;
