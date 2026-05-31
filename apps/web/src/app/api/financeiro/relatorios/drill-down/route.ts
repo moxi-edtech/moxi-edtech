@@ -50,12 +50,9 @@ export async function GET(req: Request) {
             nome,
             numero_processo,
             foto_url,
-            encarregados (
-              id,
-              nome,
-              telemovel,
-              email
-            )
+            encarregado_nome,
+            encarregado_telefone,
+            encarregado_email
           )
         `)
         .eq("escola_id", escolaId)
@@ -83,26 +80,32 @@ export async function GET(req: Request) {
       // Resolve matricula_id to turma_id
       const matriculaTurmaMap: Record<string, string> = {};
       if (matriculaIdsToFetch.size > 0) {
-        const { data: mats } = await supabase
+        const { data: mats, error: matsError } = await supabase
           .from("matriculas")
           .select("id, turma_id")
           .in("id", Array.from(matriculaIdsToFetch))
           .not("turma_id", "is", null);
         
+        if (matsError) throw new Error(`Error fetching matriculas: ${matsError.message}`);
+        
         (mats || []).forEach(m => {
-          matriculaTurmaMap[m.id] = m.turma_id;
-          turmaIdsToFetch.add(m.turma_id);
+          if (m.turma_id) {
+             matriculaTurmaMap[m.id] = m.turma_id;
+             turmaIdsToFetch.add(m.turma_id);
+          }
         });
       }
 
       // Fetch turma details (nome and classe_id)
       const turmasMap: Record<string, any> = {};
       if (turmaIdsToFetch.size > 0) {
-         const { data: turmas } = await supabase
+         const { data: turmas, error: turmasError } = await supabase
           .from("turmas")
           .select("id, nome, classe_id")
           .in("id", Array.from(turmaIdsToFetch));
          
+         if (turmasError) throw new Error(`Error fetching turmas: ${turmasError.message}`);
+
          (turmas || []).forEach(t => { turmasMap[t.id] = t; });
       }
 
@@ -118,21 +121,26 @@ export async function GET(req: Request) {
         return true;
       });
 
-      const students = items.map((m: any) => ({
-        id: m.id,
-        alunoId: m.alunos?.id,
-        nome: m.alunos?.nome,
-        processo: m.alunos?.numero_processo,
-        foto: m.alunos?.foto_url,
-        valor: m.valor,
-        pago: m.valor_pago_total,
-        status: m.status,
-        vencimento: m.data_vencimento,
-        turma: m.resolved_turma?.nome,
-        encarregado: m.alunos?.encarregados?.nome,
-        contacto: m.alunos?.encarregados?.telemovel,
-        email: m.alunos?.encarregados?.email,
-      }));
+      const students = items.map((m: any) => {
+        // Handle case where alunos might be an array (due to foreign key definitions sometimes returning arrays in Supabase JS if not strictly many-to-one)
+        const aluno = Array.isArray(m.alunos) ? m.alunos[0] : m.alunos;
+
+        return {
+          id: m.id,
+          alunoId: aluno?.id,
+          nome: aluno?.nome || "Aluno Desconhecido",
+          processo: aluno?.numero_processo || "N/A",
+          foto: aluno?.foto_url,
+          valor: m.valor,
+          pago: m.valor_pago_total,
+          status: m.status,
+          vencimento: m.data_vencimento,
+          turma: m.resolved_turma?.nome || "Sem Turma",
+          encarregado: aluno?.encarregado_nome || "",
+          contacto: aluno?.encarregado_telefone || "",
+          email: aluno?.encarregado_email || "",
+        };
+      });
 
       return NextResponse.json({ ok: true, items: students });
     }
@@ -157,12 +165,9 @@ export async function GET(req: Request) {
             nome,
             numero_processo,
             foto_url,
-            encarregados (
-              id,
-              nome,
-              telemovel,
-              email
-            )
+            encarregado_nome,
+            encarregado_telefone,
+            encarregado_email
           ),
           turmas (
             id,
@@ -203,21 +208,24 @@ export async function GET(req: Request) {
         filtered = filtered.filter((m: any) => Number(m.percentagem_desconto) > 0 || !!m.motivo_desconto);
       }
 
-      const students = filtered.map((m: any) => ({
-        id: m.id,
-        alunoId: m.alunos?.id,
-        nome: m.alunos?.nome,
-        processo: m.alunos?.numero_processo,
-        foto: m.alunos?.foto_url,
-        valor: 0,
-        pago: 0,
-        status: m.status,
-        vencimento: m.created_at,
-        turma: m.turmas?.nome,
-        encarregado: m.alunos?.encarregados?.nome,
-        contacto: m.alunos?.encarregados?.telemovel,
-        email: m.alunos?.encarregados?.email,
-      }));
+      const students = filtered.map((m: any) => {
+        const aluno = Array.isArray(m.alunos) ? m.alunos[0] : m.alunos;
+        return {
+          id: m.id,
+          alunoId: aluno?.id,
+          nome: aluno?.nome || "Aluno Desconhecido",
+          processo: aluno?.numero_processo || "N/A",
+          foto: aluno?.foto_url,
+          valor: 0,
+          pago: 0,
+          status: m.status,
+          vencimento: m.created_at,
+          turma: m.turmas?.nome || "Sem Turma",
+          encarregado: aluno?.encarregado_nome || "",
+          contacto: aluno?.encarregado_telefone || "",
+          email: aluno?.encarregado_email || "",
+        };
+      });
 
       return NextResponse.json({ ok: true, items: students });
     }
