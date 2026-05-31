@@ -17,6 +17,7 @@ export type Mensal = {
 };
 
 export type CaptacaoItem = {
+  id: string;
   label: string;
   matriculas: number;
   confirmacoes: number;
