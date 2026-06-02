@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/Input";
 
 type BasicStatus = {
   protocolo: string;
+  protocolo_publico?: string;
   status: string;
   nome_candidato_mask: string;
   telefone_mask: string | null;
@@ -57,6 +58,14 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
   const [savingPass, setSavingPass] = useState(false);
   const [passSaved, setPassPassSaved] = useState(false);
 
+  const passwordGroups = [
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ].filter(Boolean).length;
+  const passwordMeetsPolicy = password.length >= 10 && passwordGroups >= 3;
+
   const handleProtocolSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,8 +79,8 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
 
       setBasicData(data.data);
       setStep('challenge');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao buscar candidatura");
     } finally {
       setLoading(false);
     }
@@ -94,15 +103,18 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
 
       setVault(data.vault);
       setStep('vault');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro na validação");
     } finally {
       setLoading(false);
     }
   };
 
   const handleSetPassword = async () => {
-    if (password.length < 6) return;
+    if (!passwordMeetsPolicy) {
+      setError("A senha deve ter pelo menos 10 caracteres e combinar 3 tipos: maiúsculas, minúsculas, números ou símbolos.");
+      return;
+    }
     setSavingPass(true);
     setError(null);
     try {
@@ -121,8 +133,8 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       if (!res.ok) throw new Error(data.error || "Erro ao definir senha");
 
       setPassPassSaved(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao definir senha");
     } finally {
       setSavingPass(false);
     }
@@ -333,7 +345,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Nova senha (min 6 carac.)"
+                            placeholder="Nova senha"
                             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-900 transition text-sm font-mono"
                           />
                           <button 
@@ -345,7 +357,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                         </div>
                         <Button 
                           onClick={handleSetPassword}
-                          disabled={password.length < 6 || savingPass}
+                          disabled={!passwordMeetsPolicy || savingPass}
                           loading={savingPass}
                           tone="blue" 
                           className="rounded-xl px-6 font-bold text-xs"
@@ -353,6 +365,9 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                           Salvar
                         </Button>
                       </div>
+                      <p className="text-[11px] text-slate-500">
+                        Mínimo de 10 caracteres e pelo menos 3 tipos: maiúsculas, minúsculas, números ou símbolos.
+                      </p>
                     </div>
                   )}
                 </div>

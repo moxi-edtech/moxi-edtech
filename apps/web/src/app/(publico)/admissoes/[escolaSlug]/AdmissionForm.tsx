@@ -77,7 +77,7 @@ export function AdmissionForm({ config }: { config: Config }) {
     turno: "",
     hp_field: "", // Honeypot
     documentos: {} as Record<string, string>,
-    campos_extras: {} as Record<string, any>,
+    campos_extras: {} as Record<string, string>,
   });
 
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
@@ -85,7 +85,36 @@ export function AdmissionForm({ config }: { config: Config }) {
 
   const whatsappNumber = config.escola.config_portal?.whatsapp_suporte || "244923000000";
 
+  const isDocumentNumberRequired = !["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento);
+
+  const step1Validation = () => {
+    if (formData.nome_completo.trim().length < 5) return "Informe o nome completo do estudante.";
+    if (!formData.tipo_documento) return "Selecione o tipo de documento.";
+    if (isDocumentNumberRequired && formData.numero_documento.trim().length < 3) {
+      return "Informe o número do documento.";
+    }
+    if (!formData.data_nascimento) return "Informe a data de nascimento.";
+    if (formData.telefone.replace(/\D/g, "").length < 7) return "Informe um telefone válido.";
+
+    const missingExtra = config.escola.config_portal?.campos_extras?.find(
+      (campo) => campo.required && !String(formData.campos_extras[campo.id] ?? "").trim()
+    );
+    if (missingExtra) return `Informe ${missingExtra.label}.`;
+
+    return null;
+  };
+
+  const canProceedStep1 = step1Validation() === null;
   const nextStep = () => setStep((s) => s + 1);
+  const handleStep1Next = () => {
+    const validationError = step1Validation();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
+    nextStep();
+  };
   const prevStep = () => setStep((s) => s - 1);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -125,8 +154,8 @@ export function AdmissionForm({ config }: { config: Config }) {
 
       setProtocolo(data.protocolo);
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
     } finally {
       setLoading(false);
     }
@@ -261,13 +290,13 @@ export function AdmissionForm({ config }: { config: Config }) {
                      <option value="Outro">Outro</option>
                    </select>
                    <input
-                     required={!["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento)}
+                     required={isDocumentNumberRequired}
                      type="text"
                      name="numero_documento"
                      value={formData.numero_documento}
                      onChange={handleInputChange}
                      className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition font-mono uppercase"
-                     placeholder={["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento) ? "Número (se houver)" : "Número do documento"}
+                     placeholder={isDocumentNumberRequired ? "Número do documento" : "Número (se houver)"}
                    />
                  </div>
                </label>
@@ -384,8 +413,8 @@ export function AdmissionForm({ config }: { config: Config }) {
             <div className="pt-4 flex justify-end">
               <button
                 type="button"
-                onClick={nextStep}
-                disabled={!formData.nome_completo}
+                onClick={handleStep1Next}
+                disabled={!canProceedStep1}
                 className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-50"
               >
                 Próximo Passo

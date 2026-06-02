@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
+import type { Json } from "~types/supabase";
 
 type CandidaturaStatusRow = {
   id: string;
+  protocolo_publico: string;
   status: string | null;
   aluno_id: string | null;
   nome_candidato: string | null;
@@ -12,9 +15,98 @@ type CandidaturaStatusRow = {
   documento_normalizado?: string | null;
   telefone_normalizado?: string | null;
   responsavel_contato_normalizado?: string | null;
-  dados_candidato?: any | null;
-  curso?: { nome?: string | null } | null;
+  dados_candidato?: Json | null;
+  curso_nome?: string | null;
 };
+
+const protocoloSchema = z
+  .string()
+  .trim()
+  .regex(/^ADM-[0-9A-Fa-f]{8}$/)
+  .transform((value) => value.toUpperCase());
+
+const strongPasswordSchema = z
+  .string()
+  .min(10)
+  .max(128)
+  .refine((value) => {
+    const groups = [
+      /[a-z]/.test(value),
+      /[A-Z]/.test(value),
+      /\d/.test(value),
+      /[^A-Za-z0-9]/.test(value),
+    ].filter(Boolean).length;
+    return groups >= 3;
+  }, "Senha fraca");
+
+const statusChallengeSchema = z
+  .object({
+    protocolo: protocoloSchema,
+    contato: z.string().trim().min(1).max(120),
+    action: z.literal("set_password").optional(),
+    password: strongPasswordSchema.optional(),
+  })
+  .strict();
+
+type PublicLookupClient = ReturnType<typeof supabaseServerRole>;
+
+async function lookupByProtocolo(
+  supabase: PublicLookupClient,
+  escolaId: string,
+  protocolo: string
+) {
+  const { data, error } = await supabase.rpc("admissao_public_lookup_by_protocolo", {
+    p_escola_id: escolaId,
+    p_protocolo: protocolo,
+  });
+
+  if (error) throw error;
+  return (data ?? []) as CandidaturaStatusRow[];
+}
+
+function getClientIp(req: NextRequest) {
+  const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return (
+    forwardedFor ||
+    req.headers.get("x-real-ip") ||
+    req.headers.get("cf-connecting-ip") ||
+    "unknown"
+  );
+}
+
+async function enforceRateLimit(
+  supabase: PublicLookupClient,
+  scope: string,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+  blockSeconds: number
+) {
+  const { data, error } = await supabase.rpc("check_public_rate_limit", {
+    p_scope: scope,
+    p_key: key,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+    p_block_seconds: blockSeconds,
+  });
+
+  if (error) throw error;
+  const allowed =
+    typeof data === "object" &&
+    data !== null &&
+    !Array.isArray(data) &&
+    "allowed" in data &&
+    data.allowed === true;
+
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." },
+      { status: 429 }
+    );
+  }
+
+  return null;
+}
 
 function normalizePhone(value: string | null | undefined) {
   const digits = String(value ?? "").replace(/\D/g, "");
@@ -42,6 +134,34 @@ function getString(record: Record<string, unknown>, key: string) {
   return typeof value === "string" ? value : null;
 }
 
+function normalizeComparable(value: string | null | undefined) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase();
+}
+
+function passwordContainsCandidateData(password: string, match: CandidaturaStatusRow) {
+  const dados = isRecord(match.dados_candidato) ? match.dados_candidato : {};
+  const passwordText = normalizeComparable(password);
+  const candidates = [
+    match.protocolo_publico,
+    match.nome_candidato,
+    match.responsavel_contato_normalizado,
+    getString(dados, "nome_completo"),
+    getString(dados, "numero_documento"),
+    getString(dados, "bi_numero"),
+    getString(dados, "telefone"),
+    getString(dados, "responsavel_contato"),
+    getString(dados, "data_nascimento"),
+  ]
+    .map(normalizeComparable)
+    .filter((value) => value.length >= 4);
+
+  return candidates.some((value) => passwordText.includes(value));
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ escolaSlug: string }> }
@@ -49,14 +169,15 @@ export async function GET(
   try {
     const { escolaSlug } = await params;
     const { searchParams } = new URL(req.url);
-    const protocolo = searchParams.get("protocolo")?.toUpperCase();
+    const parsedProtocolo = protocoloSchema.safeParse(searchParams.get("protocolo"));
 
-    if (!protocolo) {
+    if (!parsedProtocolo.success) {
       return NextResponse.json(
-        { ok: false, error: "Protocolo é obrigatório" },
+        { ok: false, error: "Protocolo inválido" },
         { status: 400 }
       );
     }
+    const protocolo = parsedProtocolo.data;
 
     // 1. Resolve School
     const supabase = supabaseServerRole();
@@ -66,26 +187,18 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 404 });
     }
 
-    // 2. Search Candidacy by Protocol
-    const { data: candidaturas, error: searchErr } = await supabase
-      .from("candidaturas")
-      .select(`
-        id, 
-        status, 
-        nome_candidato, 
-        responsavel_contato_normalizado,
-        dados_candidato
-      `)
-      .eq("escola_id", escolaId)
-      .filter("id", "ilike", `${protocolo.toLowerCase()}%`)
-      .limit(1);
+    const rateLimitError = await enforceRateLimit(
+      supabase,
+      "admissao_status_lookup",
+      `${escolaId}:${protocolo}:${getClientIp(req)}`,
+      10,
+      600,
+      600
+    );
+    if (rateLimitError) return rateLimitError;
 
-    if (searchErr) {
-      console.error("[Status Inquiry Search Error]:", searchErr);
-      return NextResponse.json({ ok: false, error: "Erro ao buscar candidatura" }, { status: 500 });
-    }
-
-    const match = candidaturas?.[0] as CandidaturaStatusRow | undefined;
+    const candidaturas = await lookupByProtocolo(supabase, escolaId, protocolo);
+    const match = candidaturas[0];
 
     if (!match) {
       return NextResponse.json(
@@ -117,7 +230,8 @@ export async function GET(
     return NextResponse.json({
       ok: true,
       data: {
-        protocolo: match.id.split("-")[0].toUpperCase(),
+        protocolo: match.protocolo_publico,
+        protocolo_publico: match.protocolo_publico,
         status: match.status,
         nome_candidato_mask: nomeMascarado,
         telefone_mask: telefoneMascarado,
@@ -142,11 +256,12 @@ export async function POST(
   try {
     const { escolaSlug } = await params;
     const body = await req.json().catch(() => ({}));
-    const { protocolo, contato, action, password } = body;
-    
-    if (!protocolo || !contato) {
-      return NextResponse.json({ ok: false, error: "Dados incompletos" }, { status: 400 });
+    const parsedBody = statusChallengeSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
     }
+    const { protocolo, contato, action, password } = parsedBody.data;
 
     const supabase = supabaseServerRole();
     const { escolaId } = await resolveEscolaParam(supabase, escolaSlug);
@@ -155,23 +270,18 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 404 });
     }
 
-    // 1. Buscar candidatura e contatos registrados
-    const { data: candidaturas } = await supabase
-      .from("candidaturas")
-      .select(`
-        id, 
-        status, 
-        aluno_id,
-        nome_candidato,
-        responsavel_contato_normalizado,
-        dados_candidato,
-        curso:cursos(nome)
-      `)
-      .eq("escola_id", escolaId)
-      .filter("id", "ilike", `${protocolo.toLowerCase()}%`)
-      .limit(1);
+    const rateLimitError = await enforceRateLimit(
+      supabase,
+      action === "set_password" ? "admissao_vault_password" : "admissao_vault_challenge",
+      `${escolaId}:${protocolo}:${getClientIp(req)}`,
+      action === "set_password" ? 3 : 5,
+      action === "set_password" ? 1800 : 600,
+      action === "set_password" ? 3600 : 1800
+    );
+    if (rateLimitError) return rateLimitError;
 
-    const match = candidaturas?.[0] as CandidaturaStatusRow | undefined;
+    const candidaturas = await lookupByProtocolo(supabase, escolaId, protocolo);
+    const match = candidaturas[0];
     if (!match) return NextResponse.json({ ok: false, error: "Inscrição não encontrada" }, { status: 404 });
 
     // 2. Validar Desafio (Telefone ou Email)
@@ -195,8 +305,14 @@ export async function POST(
 
     // 3. Ações Específicas (Definir Senha)
     if (action === "set_password") {
-      if (!password || password.length < 6) {
+      if (!password) {
         return NextResponse.json({ ok: false, error: "Senha inválida" }, { status: 400 });
+      }
+      if (passwordContainsCandidateData(password, match)) {
+        return NextResponse.json(
+          { ok: false, error: "A senha não pode conter nome, telefone, documento, data de nascimento ou protocolo." },
+          { status: 400 }
+        );
       }
 
       if (!match.aluno_id) {
@@ -216,7 +332,7 @@ export async function POST(
 
       // Chamar job de admin para atualizar senha
       const { callAuthAdminJob } = await import("@/lib/auth-admin-job");
-      const result = await callAuthAdminJob(req as any, "activateStudentAccess", {
+      const result = await callAuthAdminJob(req, "activateStudentAccess", {
         aluno_id: match.aluno_id,
         escola_id: escolaId,
         gerar_nova_senha: false,
@@ -295,7 +411,7 @@ export async function POST(
         aluno_id: match.aluno_id,
         nome_completo: getString(dados, "nome_completo") || match.nome_candidato,
         status: match.status,
-        curso: match.curso?.nome,
+        curso: match.curso_nome,
         ...actions
       }
     });

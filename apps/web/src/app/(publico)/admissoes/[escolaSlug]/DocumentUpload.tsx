@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, FileText, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import imageCompression from 'browser-image-compression';
 
 interface DocumentUploadProps {
@@ -15,6 +14,11 @@ interface DocumentUploadProps {
   initialPath?: string | null;
 }
 
+function getPublicCandidaturaUrl(path: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  return baseUrl ? `${baseUrl}/storage/v1/object/public/candidaturas/${encodeURIComponent(path).replace(/%2F/g, "/")}` : null;
+}
+
 export function DocumentUpload({ label, description, onUploadSuccess, onRemove, escolaId, candidaturaId, initialPath }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -22,20 +26,16 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
   const [fileUrl, setFileUrl] = useState<string | null>(initialPath ? `EXISTS` : null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (initialPath) {
-      const { data: { publicUrl } } = supabase.storage
-        .from('candidaturas')
-        .getPublicUrl(initialPath);
-      setFileUrl(publicUrl);
+      setFileUrl(getPublicCandidaturaUrl(initialPath) ?? "EXISTS");
       setCurrentPath(initialPath);
     } else {
       setFileUrl(null);
       setCurrentPath(null);
     }
-  }, [initialPath, supabase]);
+  }, [initialPath]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,23 +84,24 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
         }
       }
 
-      const fileExt = isImage ? 'webp' : file.name.split('.').pop();
-      const fileName = `${label.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`;
-      const filePath = `${escolaId}/${candidaturaId}/${fileName}`;
+      const form = new FormData();
+      form.set("escolaId", escolaId);
+      form.set("candidaturaId", candidaturaId);
+      form.set("label", label);
+      form.set("file", fileToUpload, isImage ? "documento.webp" : file.name);
 
-      const { data, error: uploadError } = await supabase.storage
-        .from('candidaturas')
-        .upload(filePath, fileToUpload);
+      const res = await fetch("/api/public/admissoes/documentos/upload", {
+        method: "POST",
+        body: form,
+      });
+      const json = await res.json().catch(() => null) as { ok?: boolean; path?: string; publicUrl?: string; error?: string } | null;
+      if (!res.ok || !json?.ok || !json.path) {
+        throw new Error(json?.error || "Erro ao enviar arquivo.");
+      }
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('candidaturas')
-        .getPublicUrl(filePath);
-
-      setFileUrl(publicUrl);
-      setCurrentPath(filePath);
-      onUploadSuccess(filePath);
+      setFileUrl(json.publicUrl ?? getPublicCandidaturaUrl(json.path) ?? "EXISTS");
+      setCurrentPath(json.path);
+      onUploadSuccess(json.path);
     } catch (err: unknown) {
       console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Erro ao enviar arquivo. Tente novamente.");
