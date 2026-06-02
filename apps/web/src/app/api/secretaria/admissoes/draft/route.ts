@@ -4,157 +4,97 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import type { Json } from "~types/supabase";
 
 const uuid = z.string().uuid();
+const emptyStringToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+const optionalString = (schema: z.ZodString) =>
+  z.preprocess(emptyStringToUndefined, schema.optional());
+const optionalUuid = z.preprocess(emptyStringToUndefined, uuid.optional());
+const optionalEmail = z.preprocess(
+  emptyStringToUndefined,
+  z.string().trim().email().max(254).optional()
+);
+const optionalNumber = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(emptyStringToUndefined, schema.optional());
 
 const draftPayloadSchema = z
   .object({
     escolaId: uuid,
-    candidaturaId: uuid.optional(),
+    candidaturaId: optionalUuid,
     source: z.enum(["walkin", "online"]).default("walkin"),
 
     // Candidate fields (use stronger validation + normalization)
-    nome_candidato: z
-      .string()
-      .trim()
-      .min(2)
-      .max(160)
-      .optional(),
+    nome_candidato: optionalString(z.string().trim().min(2).max(160)),
 
-    bi_numero: z
-      .string()
-      .trim()
-      .min(3)
-      .max(64)
-      .optional(),
+    bi_numero: optionalString(z.string().trim().min(3).max(64)),
 
-    tipo_documento: z
-      .string()
-      .trim()
-      .max(40)
-      .optional(),
+    tipo_documento: optionalString(z.string().trim().max(40)),
 
-    numero_documento: z
-      .string()
-      .trim()
-      .min(3)
-      .max(64)
-      .optional(),
+    numero_documento: optionalString(z.string().trim().min(3).max(64)),
 
-    telefone: z
-      .string()
-      .trim()
-      .min(6)
-      .max(32)
-      .optional(),
+    telefone: optionalString(z.string().trim().min(6).max(32)),
 
-    email: z
-      .string()
-      .trim()
-      .email()
-      .max(254)
-      .optional(),
+    email: optionalEmail,
 
-    data_nascimento: z.string().trim().max(32).optional(),
+    data_nascimento: optionalString(z.string().trim().max(32)),
 
     sexo: z.enum(["M", "F", "O", "N"]).optional(),
 
-    nif: z
-      .string()
-      .trim()
-      .max(64)
-      .optional(),
+    nif: optionalString(z.string().trim().max(64)),
 
-    endereco: z
-      .string()
-      .trim()
-      .max(200)
-      .optional(),
+    endereco: optionalString(z.string().trim().max(200)),
 
-    naturalidade: z
-      .string()
-      .trim()
-      .max(120)
-      .optional(),
+    naturalidade: optionalString(z.string().trim().max(120)),
 
-    provincia: z
-      .string()
-      .trim()
-      .max(120)
-      .optional(),
+    provincia: optionalString(z.string().trim().max(120)),
 
-    pai_nome: z
-      .string()
-      .trim()
-      .max(160)
-      .optional(),
+    pai_nome: optionalString(z.string().trim().max(160)),
 
-    mae_nome: z
-      .string()
-      .trim()
-      .max(160)
-      .optional(),
+    mae_nome: optionalString(z.string().trim().max(160)),
 
-    encarregado_relacao: z
-      .string()
-      .trim()
-      .max(120)
-      .optional(),
+    encarregado_relacao: optionalString(z.string().trim().max(120)),
 
-    responsavel_nome: z
-      .string()
-      .trim()
-      .max(160)
-      .optional(),
+    responsavel_nome: optionalString(z.string().trim().max(160)),
 
-    responsavel_contato: z
-      .string()
-      .trim()
-      .max(32)
-      .optional(),
+    responsavel_contato: optionalString(z.string().trim().max(32)),
 
-    encarregado_email: z
-      .string()
-      .trim()
-      .email()
-      .max(254)
-      .optional(),
+    encarregado_email: optionalEmail,
 
-    responsavel_financeiro_nome: z
-      .string()
-      .trim()
-      .max(160)
-      .optional(),
+    responsavel_financeiro_nome: optionalString(z.string().trim().max(160)),
 
-    responsavel_financeiro_nif: z
-      .string()
-      .trim()
-      .max(64)
-      .optional(),
+    responsavel_financeiro_nif: optionalString(z.string().trim().max(64)),
 
     mesmo_que_encarregado: z.boolean().optional(),
 
     documentos: z.record(z.string()).optional(),
     campos_extras: z.record(z.unknown()).optional(),
-    ano_letivo: z.coerce.number().int().optional(),
+    ano_letivo: optionalNumber(z.coerce.number().int()),
 
-    percentagem_desconto: z.number().min(0).max(100).optional(),
-    motivo_desconto: z.string().trim().max(200).optional(),
+    percentagem_desconto: optionalNumber(z.number().min(0).max(100)),
+    motivo_desconto: optionalString(z.string().trim().max(200)),
 
-    curso_id: uuid.optional(),
-    classe_id: uuid.optional(),
-    turma_preferencial_id: uuid.optional(),
+    curso_id: optionalUuid,
+    classe_id: optionalUuid,
+    turma_preferencial_id: optionalUuid,
   })
   .strict();
 
+type DraftPayload = z.infer<typeof draftPayloadSchema>;
+type DraftRpcArgs = {
+  p_escola_id: string;
+  p_dados_candidato: Json;
+  p_candidatura_id?: string;
+  p_source?: "walkin" | "online";
+};
+
+function toJson(value: unknown): Json {
+  return JSON.parse(JSON.stringify(value)) as Json;
+}
+
 function normalizeCandidateData(input: z.infer<typeof draftPayloadSchema>) {
-  // remove empty strings -> null (evita “unique” em string vazia e melhora consistência)
-  const clean = { ...input } as any;
-
-  const emptyToUndefined = (v: unknown) =>
-    typeof v === "string" && v.trim() === "" ? undefined : v;
-
-  for (const k of Object.keys(clean)) clean[k] = emptyToUndefined(clean[k]);
+  const clean: DraftPayload = { ...input };
 
   // normalizações úteis (ajuste conforme regras Angola)
   if (typeof clean.bi_numero === "string") {
@@ -244,12 +184,6 @@ export async function POST(request: Request) {
   } catch {}
 
   try {
-    const rpcArgs: any = {
-      p_escola_id: escolaId,
-      p_dados_candidato: candidateData,
-      p_candidatura_id: candidaturaId ?? null,
-    };
-
     if (candidateData.turma_preferencial_id && (!candidateData.curso_id || !candidateData.classe_id)) {
       const { data: turmaRow } = await supabase
         .from("turmas")
@@ -266,15 +200,21 @@ export async function POST(request: Request) {
       if (turmaRow?.ano_letivo && !candidateData.ano_letivo) {
         candidateData.ano_letivo = turmaRow.ano_letivo;
       }
-      rpcArgs.p_dados_candidato = candidateData;
     }
+
+    const rpcArgs: DraftRpcArgs = {
+      p_escola_id: escolaId,
+      p_dados_candidato: toJson(candidateData),
+      p_candidatura_id: candidaturaId,
+      p_source: source,
+    };
 
     let { data, error } = await supabase.rpc("admissao_upsert_draft", rpcArgs);
 
     if (error) {
       const message = String(error.message ?? "");
       if (message.includes("Candidatura não encontrada")) {
-        const retryArgs = { ...rpcArgs, p_candidatura_id: null };
+        const { p_candidatura_id: _ignored, ...retryArgs } = rpcArgs;
         const retry = await supabase.rpc("admissao_upsert_draft", retryArgs);
         data = retry.data;
         error = retry.error;
@@ -301,12 +241,15 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true, candidatura_id }, { status: 200 });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error saving draft:", e);
+    const errorCode = typeof e === "object" && e !== null && "code" in e ? String(e.code) : null;
+    const errorMessage = e instanceof Error ? e.message : null;
+    const errorConstraint = typeof e === "object" && e !== null && "constraint" in e ? String(e.constraint) : "";
 
     // mapeia unique violations sem chute
-    if (e?.code === "23505") {
-      const constraint = String(e?.constraint ?? "");
+    if (errorCode === "23505") {
+      const constraint = errorConstraint;
       const field =
         constraint.includes("bi") ? "bi_numero" :
         constraint.includes("email") ? "email" :
@@ -326,15 +269,15 @@ export async function POST(request: Request) {
         portal: "secretaria",
         acao: "admissao.draft.upsert_failed",
         entity: "admissao_candidaturas",
-        details: { code: e?.code ?? null, message: e?.message ?? null },
+        details: { code: errorCode, message: errorMessage },
       });
     } catch {}
 
     return NextResponse.json(
       {
         error: "Internal Server Error",
-        details: e?.message ?? null,
-        code: e?.code ?? null,
+        details: errorMessage,
+        code: errorCode,
       },
       { status: 500 }
     );

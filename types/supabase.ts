@@ -1712,6 +1712,7 @@ export type Database = {
           nome_candidato: string | null
           nome_normalizado: string | null
           percentagem_desconto: number | null
+          protocolo_publico: string
           responsavel_contato_normalizado: string | null
           source: string | null
           status: string | null
@@ -1737,6 +1738,7 @@ export type Database = {
           nome_candidato?: string | null
           nome_normalizado?: string | null
           percentagem_desconto?: number | null
+          protocolo_publico: string
           responsavel_contato_normalizado?: string | null
           source?: string | null
           status?: string | null
@@ -1762,6 +1764,7 @@ export type Database = {
           nome_candidato?: string | null
           nome_normalizado?: string | null
           percentagem_desconto?: number | null
+          protocolo_publico?: string
           responsavel_contato_normalizado?: string | null
           source?: string | null
           status?: string | null
@@ -14602,6 +14605,33 @@ export type Database = {
         }
         Relationships: []
       }
+      public_rate_limits: {
+        Row: {
+          blocked_until: string | null
+          count: number
+          key: string
+          scope: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          count?: number
+          key: string
+          scope: string
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          count?: number
+          key?: string
+          scope?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       quadro_horarios: {
         Row: {
           created_at: string | null
@@ -20486,6 +20516,19 @@ export type Database = {
         }
         Returns: Json
       }
+      admissao_public_lookup_by_protocolo: {
+        Args: { p_escola_id: string; p_protocolo: string }
+        Returns: {
+          aluno_id: string
+          curso_nome: string
+          dados_candidato: Json
+          id: string
+          nome_candidato: string
+          protocolo_publico: string
+          responsavel_contato_normalizado: string
+          status: string
+        }[]
+      }
       admissao_reject: {
         Args: {
           p_candidatura_id: string
@@ -20633,6 +20676,16 @@ export type Database = {
           severity: string
           total: number
         }[]
+      }
+      check_public_rate_limit: {
+        Args: {
+          p_block_seconds: number
+          p_key: string
+          p_limit: number
+          p_scope: string
+          p_window_seconds: number
+        }
+        Returns: Json
       }
       check_super_admin_role: { Args: never; Returns: boolean }
       claim_outbox_events: {
@@ -21735,6 +21788,7 @@ export type Database = {
         }[]
       }
       generate_activation_code: { Args: never; Returns: string }
+      generate_admissao_public_protocol: { Args: never; Returns: string }
       generate_escola_slug: {
         Args: { p_id?: string; p_nome: string }
         Returns: string

@@ -214,13 +214,13 @@ export async function POST(
     const dedupeBase = () =>
       supabase
         .from("candidaturas")
-        .select("id")
+        .select("id, protocolo_publico")
         .eq("escola_id", escolaId)
         .eq("ano_letivo", anoLetivo)
         .eq("curso_id", data.curso_id)
         .limit(1);
 
-    let existing: { id: string } | null = null;
+    let existing: { id: string; protocolo_publico: string | null } | null = null;
 
     if (documentoNormalizado) {
       const { data: existingByDocument } = await dedupeBase()
@@ -273,7 +273,7 @@ export async function POST(
     if (!existing) {
       const { data: existingLegacy } = await supabase
       .from("candidaturas")
-      .select("id")
+      .select("id, protocolo_publico")
       .eq("escola_id", escolaId)
       .eq("nome_candidato", data.nome_completo)
       .eq("ano_letivo", anoLetivo)
@@ -287,7 +287,7 @@ export async function POST(
       return NextResponse.json({
         ok: true,
         message: "Já recebemos uma inscrição com estes dados. Nossa secretaria entrará em contato em breve.",
-        protocolo: existing.id.split("-")[0].toUpperCase(),
+        protocolo: existing.protocolo_publico,
       }, { status: 200 });
     }
 
@@ -337,7 +337,7 @@ export async function POST(
         turno: data.turno || null,
         source: "PORTAL_PUBLICO",
       })
-      .select("id")
+      .select("id, protocolo_publico")
       .single();
 
     if (insertErr) {
@@ -365,7 +365,7 @@ export async function POST(
     return NextResponse.json({ 
       ok: true, 
       message: "Inscrição realizada com sucesso! A secretaria entrará em contato em breve.",
-      protocolo: candidatura.id.split("-")[0].toUpperCase(),
+      protocolo: candidatura.protocolo_publico,
     }, { status: 201 });
 
   } catch (err) {
