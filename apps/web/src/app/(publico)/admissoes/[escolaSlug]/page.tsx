@@ -108,6 +108,23 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
     })),
   };
 
+  if (!config.ano_letivo || config.cursos.length === 0) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center p-8">
+        <div className="h-20 w-20 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-black text-slate-900">Portal em Configuração</h1>
+        <p className="mt-2 text-slate-500 max-w-md">
+          Esta escola ainda está configurando o catálogo de cursos para o próximo ano letivo. 
+          Por favor, tente novamente em breve ou contacte a secretaria.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 md:py-20">
       <AdmissionForm config={config as any} />

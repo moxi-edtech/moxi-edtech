@@ -32,6 +32,8 @@ import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AdmissaoConversionSheet } from './AdmissaoConversionSheet'
+import { createClient } from '@/lib/supabase/client'
 
 type AdmissaoStatus =
   | 'rascunho'
@@ -89,6 +91,15 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
   matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(timer)
+  }, [value, delayMs])
+  return debounced
+}
+
 async function fetchAdmissoes(url: string): Promise<CandidaturaListItem[]> {
   const res = await fetch(url)
   const json = await res.json()
@@ -128,17 +139,21 @@ export default function AdmissoesInboxClient({
 
   const [search, setSearch] = useState(initialSearch || '')
   const [statusFilter, setStatusFilter] = useState<'novas' | 'pendentes' | 'concluidas'>('novas')
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
+  const supabase = useMemo(() => createClient(), [])
 
   
   const [viewingDoc, setViewingDoc] = useState<{ name: string; url: string } | null>(null)
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const [isConversionOpen, setIsConversionOpen] = useState(false)
 
   const listUrl = useMemo(() => {
-    const params = new URLSearchParams({ escolaId, limit: '100' })
+    const params = new URLSearchParams({ escolaId, limit: '50', status: statusFilter })
     if (turmaId) params.set('turmaId', turmaId)
+    if (debouncedSearch) params.set('q', debouncedSearch.replace(/^#/, ''))
     return `/api/secretaria/admissoes/radar?${params.toString()}`
-  }, [escolaId, turmaId])
+  }, [debouncedSearch, escolaId, statusFilter, turmaId])
 
   const {
     data: itemsData,
@@ -153,6 +168,49 @@ export default function AdmissoesInboxClient({
   const items = itemsData || []
   const loading = isLoading && items.length === 0
   const listError = swrError instanceof Error ? swrError.message : null
+
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const searchLower = search.toLowerCase()
+      const protocol = item.id.split('-')[0].toLowerCase()
+      const matchesName = item.nome_candidato.toLowerCase().includes(searchLower)
+      const matchesProtocol = item.id.toLowerCase().startsWith(searchLower.replace(/^#/, '')) || protocol.startsWith(searchLower.replace(/^#/, ''))
+      const matchesSearch = matchesName || matchesProtocol
+      
+      let matchesStatus = false
+      if (statusFilter === 'novas') {
+        matchesStatus = item.status === 'submetida' || item.status === 'pendente'
+      } else if (statusFilter === 'pendentes') {
+        matchesStatus = item.status === 'em_analise' || item.status === 'aprovada' || item.status === 'rascunho'
+      } else if (statusFilter === 'concluidas') {
+        matchesStatus = item.status === 'matriculado' || item.status === 'rejeitada'
+      }
+      
+      return matchesSearch && matchesStatus
+    })
+  }, [items, search, statusFilter])
+
+  const [wasSuccess, setWasSuccess] = useState(false)
+
+  const handleConversionSuccess = useCallback(async () => {
+    await mutate()
+    setWasSuccess(true)
+  }, [mutate])
+
+  const handleCloseConversion = useCallback(() => {
+    setIsConversionOpen(false)
+    
+    if (wasSuccess) {
+      // Find current index and select next pending if available
+      const currentIndex = filteredItems.findIndex(item => item.id === selectedId)
+      if (currentIndex !== -1 && filteredItems[currentIndex + 1]) {
+        setSelectedId(filteredItems[currentIndex + 1].id)
+      } else {
+        setSelectedId(null)
+      }
+      setWasSuccess(false)
+    }
+  }, [wasSuccess, filteredItems, selectedId])
 
   const publicLink = typeof window !== 'undefined' 
     ? `${window.location.origin}/admissoes/${escolaParam}` 
@@ -229,26 +287,9 @@ export default function AdmissoesInboxClient({
     }
   }, [selectedId, fetchDetail])
 
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      const matchesSearch = item.nome_candidato.toLowerCase().includes(search.toLowerCase())
-      
-      let matchesStatus = false
-      if (statusFilter === 'novas') {
-        matchesStatus = item.status === 'submetida' || item.status === 'pendente'
-      } else if (statusFilter === 'pendentes') {
-        matchesStatus = item.status === 'em_analise' || item.status === 'aprovada' || item.status === 'rascunho'
-      } else if (statusFilter === 'concluidas') {
-        matchesStatus = item.status === 'matriculado' || item.status === 'rejeitada'
-      }
-      
-      return matchesSearch && matchesStatus
-    })
-  }, [items, search, statusFilter])
-
   const handleApprove = async () => {
     if (!selectedId) return
-    router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`))
+    setIsConversionOpen(true)
   }
 
   const handleReject = async () => {
@@ -343,11 +384,17 @@ export default function AdmissoesInboxClient({
     window.open(`https://wa.me/${finalPhone}`, '_blank')
   }
 
-  const getDocUrl = (path: string) => {
-    // Assuming the base URL for Supabase storage
-    // You might need to adjust this based on your environment
-    const publicUrl = `https://wjtifcpxxxotsbmvbgoq.supabase.co/storage/v1/object/public/candidaturas/${path}`
-    return publicUrl
+  const handleViewDoc = async (name: string, path: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('candidaturas')
+        .createSignedUrl(path, 3600) // 1 hora de validade
+
+      if (error) throw error
+      setViewingDoc({ name, url: data.signedUrl })
+    } catch (err: any) {
+      toastError('Erro ao visualizar', 'Não foi possível gerar um link seguro para este documento.')
+    }
   }
 
   return (
@@ -404,17 +451,19 @@ export default function AdmissoesInboxClient({
               </div>
               <button 
                 onClick={handleCopyLink}
-                className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-500"
+                className="flex items-center gap-1 px-2 py-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-500 text-[10px] font-bold"
                 title="Copiar Link"
               >
                 <Copy className="h-3.5 w-3.5" />
+                <span>Copiar</span>
               </button>
               <button 
                 onClick={handleShareWhatsApp}
-                className="p-1.5 hover:bg-[#25D366]/10 rounded-lg transition-colors text-[#25D366]"
+                className="flex items-center gap-1 px-2 py-1.5 hover:bg-[#25D366]/10 rounded-lg transition-colors text-[#25D366] text-[10px] font-bold"
                 title="Partilhar no WhatsApp"
               >
                 <MessageCircle className="h-3.5 w-3.5 fill-[#25D366]/10" />
+                <span>WhatsApp</span>
               </button>
             </div>
           </div>
@@ -482,7 +531,7 @@ export default function AdmissoesInboxClient({
                       {item.nome_candidato}
                     </p>
                     <p className="font-mono text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
-                      {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
+                      #{item.id.split('-')[0].toUpperCase()} • {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
                     </p>
                   </div>
                   
@@ -522,8 +571,8 @@ export default function AdmissoesInboxClient({
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                            ID: {selectedData.id.slice(0, 8)}
+                          <Badge variant="outline" className="font-mono text-[10px] uppercase border-klasse-gold/30 text-klasse-gold-600">
+                            Protocolo: {selectedData.id.split('-')[0].toUpperCase()}
                           </Badge>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-slate-100'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-slate-500'}`}>
                             {STATUS_CONFIG[selectedData.status]?.label || selectedData.status}
@@ -548,11 +597,11 @@ export default function AdmissoesInboxClient({
                             WhatsApp
                           </button>
                         )}
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="lg"
                           className="rounded-2xl h-12"
-                          onClick={() => router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`))}
+                          onClick={() => setIsConversionOpen(true)}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
                           Editar
@@ -618,7 +667,7 @@ export default function AdmissoesInboxClient({
                             Object.entries(selectedData.dados_candidato.documentos).map(([name, path]) => (
                               <div 
                                 key={name}
-                                onClick={() => setViewingDoc({ name, url: getDocUrl(path) })}
+                                onClick={() => handleViewDoc(name, path)}
                                 className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:border-klasse-gold transition-all"
                               >
                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -663,24 +712,13 @@ export default function AdmissoesInboxClient({
                       Rejeitar
                     </button>
                     
-                    {['submetida', 'em_analise', 'pendente'].includes(selectedData.status) && (
+                    {['submetida', 'em_analise', 'pendente', 'aprovada'].includes(selectedData.status) && (
                       <button 
-                        onClick={handleApprove}
-                        disabled={!!loadingAction}
-                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
+                        onClick={() => setIsConversionOpen(true)}
+                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
                       >
                         <Check className="h-5 w-5" />
-                        Continuar Matrícula
-                      </button>
-                    )}
-
-                    {selectedData.status === 'aprovada' && (
-                      <button 
-                        onClick={() => router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${selectedId}`))}
-                        className="flex items-center gap-3 px-10 py-4 bg-klasse-green text-white rounded-2xl font-bold shadow-xl shadow-klasse-green/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        <Check className="h-5 w-5" />
-                        Finalizar Matrícula
+                        Efetivar Matrícula
                       </button>
                     )}
                   </div>
@@ -758,6 +796,14 @@ export default function AdmissoesInboxClient({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AdmissaoConversionSheet 
+        isOpen={isConversionOpen}
+        onClose={handleCloseConversion}
+        candidaturaId={selectedId}
+        escolaId={escolaId}
+        onSuccess={handleConversionSuccess}
+      />
     </div>
   )
 }

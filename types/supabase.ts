@@ -1702,6 +1702,7 @@ export type Database = {
           created_at: string | null
           curso_id: string | null
           dados_candidato: Json | null
+          documento_normalizado: string | null
           escola_id: string
           expires_at: string | null
           id: string
@@ -1709,9 +1710,12 @@ export type Database = {
           matriculado_em: string | null
           motivo_desconto: string | null
           nome_candidato: string | null
+          nome_normalizado: string | null
           percentagem_desconto: number | null
+          responsavel_contato_normalizado: string | null
           source: string | null
           status: string | null
+          telefone_normalizado: string | null
           turma_preferencial_id: string | null
           turno: string | null
           updated_at: string | null
@@ -1723,6 +1727,7 @@ export type Database = {
           created_at?: string | null
           curso_id?: string | null
           dados_candidato?: Json | null
+          documento_normalizado?: string | null
           escola_id: string
           expires_at?: string | null
           id?: string
@@ -1730,9 +1735,12 @@ export type Database = {
           matriculado_em?: string | null
           motivo_desconto?: string | null
           nome_candidato?: string | null
+          nome_normalizado?: string | null
           percentagem_desconto?: number | null
+          responsavel_contato_normalizado?: string | null
           source?: string | null
           status?: string | null
+          telefone_normalizado?: string | null
           turma_preferencial_id?: string | null
           turno?: string | null
           updated_at?: string | null
@@ -1744,6 +1752,7 @@ export type Database = {
           created_at?: string | null
           curso_id?: string | null
           dados_candidato?: Json | null
+          documento_normalizado?: string | null
           escola_id?: string
           expires_at?: string | null
           id?: string
@@ -1751,9 +1760,12 @@ export type Database = {
           matriculado_em?: string | null
           motivo_desconto?: string | null
           nome_candidato?: string | null
+          nome_normalizado?: string | null
           percentagem_desconto?: number | null
+          responsavel_contato_normalizado?: string | null
           source?: string | null
           status?: string | null
+          telefone_normalizado?: string | null
           turma_preferencial_id?: string | null
           turno?: string | null
           updated_at?: string | null
@@ -10140,6 +10152,45 @@ export type Database = {
         }
         Relationships: []
       }
+      frequencias_2026_07: {
+        Row: {
+          aula_id: string | null
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          periodo_letivo_id: string | null
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       frequencias_default: {
         Row: {
           aula_id: string | null
@@ -11410,6 +11461,39 @@ export type Database = {
         Relationships: []
       }
       lancamentos_2026_06: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      lancamentos_2026_07: {
         Row: {
           avaliacao_id: string
           criado_em: string
@@ -19433,6 +19517,51 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_relatorio_financeiro_escolar_capitacao_mensal: {
+        Row: {
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          bolsistas_qtd: number | null
+          classe_id: string | null
+          classe_label: string | null
+          confirmacoes_qtd: number | null
+          escola_id: string | null
+          matriculas_qtd: number | null
+          mes_ref: string | null
+          total_qtd: number | null
+        }
+        Relationships: []
+      }
+      vw_relatorio_financeiro_escolar_fluxo_mensal: {
+        Row: {
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          diferenca: number | null
+          entradas_total: number | null
+          escola_id: string | null
+          mes_ref: string | null
+          saidas_total: number | null
+          saldo_anterior: number | null
+          saldo_final: number | null
+        }
+        Relationships: []
+      }
+      vw_relatorio_financeiro_escolar_inadimplencia_classe: {
+        Row: {
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          classe_id: string | null
+          classe_label: string | null
+          escola_id: string | null
+          mes_ref: string | null
+          qtd_em_atraso: number | null
+          qtd_parciais: number | null
+          total_em_atraso: number | null
+          total_parcial_em_aberto: number | null
+          valor_unitario_medio: number | null
+        }
+        Relationships: []
+      }
       vw_rotinas_compat: {
         Row: {
           curso_oferta_id: string | null
@@ -20636,6 +20765,22 @@ export type Database = {
         }
         Returns: Json
       }
+      create_influencer_admin: {
+        Args: {
+          p_codigo: string
+          p_email: string
+          p_nome: string
+          p_pin: string
+        }
+        Returns: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          nome: string
+        }[]
+      }
       create_month_partition: {
         Args: { month_start: string; tbl: string }
         Returns: undefined
@@ -21703,6 +21848,10 @@ export type Database = {
         Returns: Json
       }
       get_import_summary: { Args: { p_import_id: string }; Returns: Json }
+      get_influencer_portal: {
+        Args: { p_codigo: string; p_pin: string }
+        Returns: Json
+      }
       get_metricas_acesso_alunos: {
         Args: { p_escola_id: string }
         Returns: {
@@ -22016,6 +22165,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_influencers_admin: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          nome: string
+        }[]
+      }
       lock_curriculo_install: {
         Args: {
           p_ano_letivo_id: string
@@ -22225,28 +22385,15 @@ export type Database = {
       }
       refresh_mv_admin_dashboard_counts: { Args: never; Returns: undefined }
       refresh_mv_admin_matriculas_por_mes: { Args: never; Returns: undefined }
-      refresh_mv_admin_pending_turmas_count: { Args: never; Returns: undefined }
-      refresh_mv_admissoes_counts_por_status: {
-        Args: never
-        Returns: undefined
-      }
       refresh_mv_boletim_por_matricula: { Args: never; Returns: undefined }
-      refresh_mv_cursos_reais: { Args: never; Returns: undefined }
       refresh_mv_escola_cursos_stats: { Args: never; Returns: undefined }
-      refresh_mv_escola_estrutura_counts: { Args: never; Returns: undefined }
       refresh_mv_escola_info: { Args: never; Returns: undefined }
-      refresh_mv_escola_setup_status: { Args: never; Returns: undefined }
-      refresh_mv_financeiro_cobrancas_diario: {
-        Args: never
-        Returns: undefined
-      }
       refresh_mv_financeiro_dashboard: { Args: never; Returns: undefined }
       refresh_mv_financeiro_escola_dia: { Args: never; Returns: undefined }
       refresh_mv_financeiro_inadimplencia_top: {
         Args: never
         Returns: undefined
       }
-      refresh_mv_financeiro_kpis_geral: { Args: never; Returns: undefined }
       refresh_mv_financeiro_kpis_mes: { Args: never; Returns: undefined }
       refresh_mv_financeiro_missing_pricing_count: {
         Args: never
@@ -22260,7 +22407,6 @@ export type Database = {
         Args: never
         Returns: undefined
       }
-      refresh_mv_financeiro_radar_resumo: { Args: never; Returns: undefined }
       refresh_mv_financeiro_sidebar_badges: { Args: never; Returns: undefined }
       refresh_mv_formacao_cohorts_lotacao: { Args: never; Returns: undefined }
       refresh_mv_formacao_inadimplencia_resumo: {
@@ -22269,52 +22415,45 @@ export type Database = {
       }
       refresh_mv_formacao_margem_por_edicao: { Args: never; Returns: undefined }
       refresh_mv_freq_por_turma_dia: { Args: never; Returns: undefined }
-      refresh_mv_migracao_cursos_lookup: { Args: never; Returns: undefined }
-      refresh_mv_migracao_turmas_lookup: { Args: never; Returns: undefined }
-      refresh_mv_ocupacao_turmas: { Args: never; Returns: undefined }
       refresh_mv_pagamentos_status: { Args: never; Returns: undefined }
       refresh_mv_professor_pendencias: { Args: never; Returns: undefined }
       refresh_mv_radar_inadimplencia: { Args: never; Returns: undefined }
+      refresh_mv_relatorio_financeiro_escolar_capitacao_mensal: {
+        Args: never
+        Returns: undefined
+      }
+      refresh_mv_relatorio_financeiro_escolar_fluxo_mensal: {
+        Args: never
+        Returns: undefined
+      }
+      refresh_mv_relatorio_financeiro_escolar_inadimplencia_classe: {
+        Args: never
+        Returns: undefined
+      }
       refresh_mv_secretaria_alunos_resumo: { Args: never; Returns: undefined }
       refresh_mv_secretaria_dashboard_counts: {
         Args: never
         Returns: undefined
       }
-      refresh_mv_secretaria_dashboard_kpis: { Args: never; Returns: undefined }
       refresh_mv_secretaria_matriculas_status: {
         Args: never
         Returns: undefined
       }
-      refresh_mv_secretaria_matriculas_turma_status: {
-        Args: never
-        Returns: undefined
-      }
-      refresh_mv_staging_alunos_summary: { Args: never; Returns: undefined }
       refresh_mv_super_admin_audit_metrics: { Args: never; Returns: undefined }
       refresh_mv_super_admin_escola_metrics: { Args: never; Returns: undefined }
       refresh_mv_top_cursos_media: { Args: never; Returns: undefined }
       refresh_mv_top_turmas_hoje: { Args: never; Returns: undefined }
-      refresh_mv_total_em_aberto_por_mes: { Args: never; Returns: undefined }
       refresh_mv_turmas_para_matricula: { Args: never; Returns: undefined }
-      registrar_pagamento:
-        | {
-            Args: {
-              p_mensalidade_id: string
-              p_metodo_pagamento: string
-              p_observacao?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_mensalidade_id: string
-              p_metodo_pagamento: string
-              p_observacao?: string
-              p_promessa_liquidacao?: string
-              p_valor_pago?: number
-            }
-            Returns: Json
-          }
+      registrar_pagamento: {
+        Args: {
+          p_mensalidade_id: string
+          p_metodo_pagamento: string
+          p_observacao?: string
+          p_promessa_liquidacao?: string
+          p_valor_pago?: number
+        }
+        Returns: Json
+      }
       registrar_venda_avulsa: {
         Args: {
           p_aluno_id: string
@@ -22547,6 +22686,17 @@ export type Database = {
         }[]
       }
       toggle_afiliado_admin: {
+        Args: { p_ativo: boolean; p_id: string }
+        Returns: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          email: string
+          id: string
+          nome: string
+        }[]
+      }
+      toggle_influencer_admin: {
         Args: { p_ativo: boolean; p_id: string }
         Returns: {
           ativo: boolean

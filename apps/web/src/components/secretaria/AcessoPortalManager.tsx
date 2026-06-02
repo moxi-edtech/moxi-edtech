@@ -36,6 +36,7 @@ import { useLimitesPlano } from "@/hooks/useLimitesPlano";
 import { useTurmas } from "@/hooks/useTurmas";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { createClient } from "@/lib/supabaseClient";
 
 type Props = {
   escolaId: string;
@@ -44,6 +45,7 @@ type Props = {
 type TabType = "pendentes" | "ativos" | "bloqueados";
 
 export function AcessoPortalManager({ escolaId }: Props) {
+  const supabase = createClient();
   const [activeTab, setActiveTab] = useState<TabType>("pendentes");
   const [search, setSearch] = useState("");
   const [turmaId, setTurmaId] = useState<string>("");
@@ -59,9 +61,23 @@ export function AcessoPortalManager({ escolaId }: Props) {
   const { licencasUsadas, licencasTotais, loading: loadingLimites } = useLimitesPlano(escolaId);
   const { turmas } = useTurmas(escolaId);
 
+  const [portalEnabled, setPortalEnabled] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [liberados, setLiberados] = useState<any[]>([]);
+
+  // Carregar config da escola
+  useEffect(() => {
+    async function fetchConfig() {
+      const { data } = await supabase
+        .from("escolas")
+        .select("aluno_portal_enabled")
+        .eq("id", escolaId)
+        .maybeSingle();
+      if (data) setPortalEnabled(!!data.aluno_portal_enabled);
+    }
+    fetchConfig();
+  }, [escolaId]);
 
   const licencasDisponiveis =
     licencasTotais === null ? Number.POSITIVE_INFINITY : Math.max(0, licencasTotais - licencasUsadas);
@@ -169,6 +185,19 @@ export function AcessoPortalManager({ escolaId }: Props) {
 
   return (
     <div className="space-y-6">
+      {portalEnabled === false && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-bold text-amber-900">Portal do Aluno Desativado</h4>
+            <p className="text-xs text-amber-700 mt-1">
+              O acesso ao portal está desabilitado para esta escola. Para liberar acessos e permitir login de alunos, 
+              é necessário ativar o Portal do Aluno nas <strong>Configurações Globais</strong> da escola.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header & Estatísticas */}
       <Card className="rounded-xl shadow-sm border-slate-200 overflow-hidden">
         <div className="bg-slate-50/50 border-b border-slate-100 p-6 flex flex-row items-center justify-between">
@@ -563,7 +592,12 @@ export function AcessoPortalManager({ escolaId }: Props) {
               </div>
             </div>
             <div className="flex gap-2">
-               <Button variant="outline" size="sm" className="rounded-xl border-slate-200 bg-white">
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="rounded-xl border-slate-200 bg-white"
+                 onClick={() => window.print()}
+               >
                  <Printer className="w-4 h-4 mr-2 text-[#E3B23C]" />
                  Imprimir Slips
                </Button>
@@ -593,7 +627,7 @@ export function AcessoPortalManager({ escolaId }: Props) {
                   {item.status === "bi_missing" && (
                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-rose-600 font-bold bg-rose-50 p-1.5 rounded-lg">
                       <AlertCircle className="w-3 h-3" />
-                      BI não cadastrado
+                      Documento de identificação ausente
                     </div>
                   )}
                 </div>

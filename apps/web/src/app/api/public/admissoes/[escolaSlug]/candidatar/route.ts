@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import type { Json } from "~types/supabase";
 
 const CandidaturaSchema = z.object({
   // Dados do Candidato (Aluno)
   nome_completo: z.string().trim().min(5, "Nome completo deve ter pelo menos 5 caracteres"),
+  tipo_documento: z.string().optional().default("BI"),
+  numero_documento: z.string().trim().optional().nullable(),
   email: z.string().email("Email inválido").optional().nullable(),
   telefone: z.string().trim().min(7, "Telefone inválido").optional().nullable(),
   data_nascimento: z.string().optional().nullable(),
@@ -32,6 +35,101 @@ const CandidaturaSchema = z.object({
   documentos: z.record(z.string()).optional(),
   campos_extras: z.record(z.unknown()).optional(),
 });
+
+function normalizeName(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function normalizePhone(value: string | null | undefined) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 9) return `244${digits}`;
+  if (digits.length > 9 && !digits.startsWith("244")) return `244${digits}`;
+  return digits;
+}
+
+function normalizeDocument(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase();
+  return normalized || null;
+}
+
+function toJsonObject(record: Record<string, unknown> | undefined): Json {
+  const out: { [key: string]: Json | undefined } = {};
+  for (const [key, value] of Object.entries(record ?? {})) {
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      value === null
+    ) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+type PostgrestLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+function duplicateAdmissionResponse(error: PostgrestLikeError) {
+  if (error.code !== "23505") return null;
+
+  const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
+  if (text.includes("ux_candidaturas_doc_normalizado")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "ADMISSION_DUPLICATE_DOCUMENT",
+        error: "Já existe uma candidatura com este documento para este curso e ano letivo.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (text.includes("ux_candidaturas_resp_phone_nome_normalizado")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "ADMISSION_DUPLICATE_GUARDIAN_CONTACT",
+        error: "Já existe uma candidatura com este nome e contato do encarregado para este curso e ano letivo.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (text.includes("ux_candidaturas_phone_nome_normalizado")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "ADMISSION_DUPLICATE_STUDENT_CONTACT",
+        error: "Já existe uma candidatura com este nome e telefone do aluno para este curso e ano letivo.",
+      },
+      { status: 409 }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      ok: false,
+      code: "ADMISSION_DUPLICATE",
+      error: "Já existe uma candidatura com estes dados para este curso e ano letivo.",
+    },
+    { status: 409 }
+  );
+}
 
 export async function POST(
   req: NextRequest,
@@ -59,7 +157,7 @@ export async function POST(
 
     // 2. Resolve School
     const supabase = supabaseServerRole();
-    const { escolaId } = await resolveEscolaParam(supabase as any, escolaSlug);
+    const { escolaId } = await resolveEscolaParam(supabase, escolaSlug);
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 404 });
@@ -108,8 +206,72 @@ export async function POST(
       ? activeAnoLetivo
       : data.ano_letivo;
 
-    // 4. Deduplication Check (Same student/contact for same school/year/course)
-    const { data: existing } = await supabase
+    const nomeNormalizado = normalizeName(data.nome_completo);
+    const telefoneNormalizado = normalizePhone(data.telefone);
+    const responsavelContatoNormalizado = normalizePhone(data.responsavel_contato);
+    const documentoNormalizado = normalizeDocument(data.numero_documento);
+
+    const dedupeBase = () =>
+      supabase
+        .from("candidaturas")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("ano_letivo", anoLetivo)
+        .eq("curso_id", data.curso_id)
+        .limit(1);
+
+    let existing: { id: string } | null = null;
+
+    if (documentoNormalizado) {
+      const { data: existingByDocument } = await dedupeBase()
+        .eq("documento_normalizado", documentoNormalizado)
+        .maybeSingle();
+      existing = existingByDocument;
+    }
+
+    if (!existing && responsavelContatoNormalizado) {
+      const { data: existingByGuardianPhone } = await dedupeBase()
+        .eq("responsavel_contato_normalizado", responsavelContatoNormalizado)
+        .eq("nome_normalizado", nomeNormalizado)
+        .maybeSingle();
+      existing = existingByGuardianPhone;
+    }
+
+    if (!existing && telefoneNormalizado) {
+      const { data: existingByStudentPhone } = await dedupeBase()
+        .eq("telefone_normalizado", telefoneNormalizado)
+        .eq("nome_normalizado", nomeNormalizado)
+        .maybeSingle();
+      existing = existingByStudentPhone;
+    }
+
+    // Fallback legacy para candidaturas antigas sem colunas normalizadas.
+    if (!existing && documentoNormalizado) {
+      const { data: existingByDocumentJson } = await dedupeBase()
+        .contains("dados_candidato", { documento_normalizado: documentoNormalizado })
+        .maybeSingle();
+      existing = existingByDocumentJson;
+    }
+
+    if (!existing && responsavelContatoNormalizado) {
+      const { data: existingByGuardianPhoneJson } = await dedupeBase()
+        .contains("dados_candidato", { responsavel_contato_normalizado: responsavelContatoNormalizado })
+        .contains("dados_candidato", { nome_normalizado: nomeNormalizado })
+        .maybeSingle();
+      existing = existingByGuardianPhoneJson;
+    }
+
+    if (!existing && telefoneNormalizado) {
+      const { data: existingByStudentPhoneJson } = await dedupeBase()
+        .contains("dados_candidato", { telefone_normalizado: telefoneNormalizado })
+        .contains("dados_candidato", { nome_normalizado: nomeNormalizado })
+        .maybeSingle();
+      existing = existingByStudentPhoneJson;
+    }
+
+    // Fallback legado anterior aos normalizados.
+    if (!existing) {
+      const { data: existingLegacy } = await supabase
       .from("candidaturas")
       .select("id")
       .eq("escola_id", escolaId)
@@ -118,6 +280,8 @@ export async function POST(
       .eq("curso_id", data.curso_id)
       .contains("dados_candidato", { responsavel_contato: data.responsavel_contato })
       .maybeSingle();
+      existing = existingLegacy;
+    }
 
     if (existing) {
       return NextResponse.json({
@@ -127,21 +291,32 @@ export async function POST(
       }, { status: 200 });
     }
 
-    // 5. Prepare Candidacy Data (Strict Mapping)
-    const dadosCandidato = {
+    // 6. Insert Candidacy
+    const draftId = data.draftId ?? crypto.randomUUID();
+    const tempProtocol = draftId.split("-")[0].toUpperCase();
+    const dadosCandidato: Record<string, Json> = {
       nome_completo: data.nome_completo,
+      nome_normalizado: nomeNormalizado,
+      tipo_documento: data.tipo_documento,
+      numero_documento: data.numero_documento ?? null,
+      documento_normalizado: documentoNormalizado,
+      // Fallback para bi_numero para compatibilidade com Portal do Aluno
+      // Se não houver número (ex: folha de 25 linhas), usamos o protocolo temporariamente
+      bi_numero: data.numero_documento || `TEMP-${tempProtocol}`,
       email: data.email || null,
       telefone: data.telefone || null,
+      telefone_normalizado: telefoneNormalizado,
       data_nascimento: data.data_nascimento || null,
       sexo: data.sexo || null,
       pai_nome: data.pai_nome || null,
       mae_nome: data.mae_nome || null,
       responsavel_nome: data.responsavel_nome,
       responsavel_contato: data.responsavel_contato,
+      responsavel_contato_normalizado: responsavelContatoNormalizado,
       ano_letivo: anoLetivo,
-      documentos: data.documentos || {},
-      campos_extras: data.campos_extras || {},
-      draft_id: data.draftId || null,
+      documentos: toJsonObject(data.documentos),
+      campos_extras: toJsonObject(data.campos_extras),
+      draft_id: draftId,
     };
 
     // 6. Insert Candidacy
@@ -153,8 +328,12 @@ export async function POST(
         ano_letivo: anoLetivo,
         status: "pendente",
         turma_preferencial_id: data.turma_preferencial_id || null,
-        dados_candidato: dadosCandidato as any,
+        dados_candidato: dadosCandidato,
         nome_candidato: data.nome_completo,
+        nome_normalizado: nomeNormalizado,
+        documento_normalizado: documentoNormalizado,
+        telefone_normalizado: telefoneNormalizado,
+        responsavel_contato_normalizado: responsavelContatoNormalizado,
         turno: data.turno || null,
         source: "PORTAL_PUBLICO",
       })
@@ -163,6 +342,8 @@ export async function POST(
 
     if (insertErr) {
       console.error("[Public Candidacy Insert Error]:", insertErr);
+      const duplicateResponse = duplicateAdmissionResponse(insertErr);
+      if (duplicateResponse) return duplicateResponse;
       return NextResponse.json({ ok: false, error: "Erro ao processar sua inscrição. Tente novamente." }, { status: 500 });
     }
 

@@ -34,6 +34,7 @@ type Config = {
     slug: string;
     config_portal?: {
       whatsapp_suporte?: string;
+      documentos_obrigatorios?: string[]; // IDs como 'bi_aluno', 'notas', etc.
       campos_extras?: Array<{
         id: string;
         label: string;
@@ -61,6 +62,8 @@ export function AdmissionForm({ config }: { config: Config }) {
 
   const [formData, setFormData] = useState({
     nome_completo: "",
+    tipo_documento: "BI",
+    numero_documento: "",
     email: "",
     telefone: "",
     data_nascimento: "",
@@ -238,19 +241,48 @@ export function AdmissionForm({ config }: { config: Config }) {
                   onChange={handleInputChange}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
                   placeholder="Nome completo do estudante"
-                />
-              </label>
+                  />
+                  </label>
 
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Data de Nascimento</span>
-                <input
+                  <label className="col-span-full">
+                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Documento de Identificação</span>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                   <select
+                     name="tipo_documento"
+                     value={formData.tipo_documento}
+                     onChange={handleInputChange}
+                     className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                   >
+                     <option value="BI">Bilhete de Identidade (BI)</option>
+                     <option value="Cédula Pessoal">Cédula Pessoal</option>
+                     <option value="Passaporte">Passaporte</option>
+                     <option value="Cartão de Residente">Cartão de Residente</option>
+                     <option value="Folha de 25 linhas">Folha de 25 linhas</option>
+                     <option value="Outro">Outro</option>
+                   </select>
+                   <input
+                     required={!["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento)}
+                     type="text"
+                     name="numero_documento"
+                     value={formData.numero_documento}
+                     onChange={handleInputChange}
+                     className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition font-mono uppercase"
+                     placeholder={["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento) ? "Número (se houver)" : "Número do documento"}
+                   />
+                 </div>
+               </label>
+
+                  <label>
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Data de Nascimento</span>
+                  <input
+                  required
                   type="date"
                   name="data_nascimento"
                   value={formData.data_nascimento}
                   onChange={handleInputChange}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                />
-              </label>
+                  />
+                  </label>
 
               <label>
                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Gênero</span>
@@ -283,6 +315,7 @@ export function AdmissionForm({ config }: { config: Config }) {
               <label>
                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Telefone</span>
                 <input
+                  required
                   type="tel"
                   name="telefone"
                   value={formData.telefone}
@@ -501,30 +534,35 @@ export function AdmissionForm({ config }: { config: Config }) {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
                 <FileText size={20} />
               </div>
-              <h3 className="text-lg font-black text-slate-900">Documentação (Opcional)</h3>
+              <h3 className="text-lg font-black text-slate-900">
+                Documentação {config.escola.config_portal?.documentos_obrigatorios?.length ? '' : '(Opcional)'}
+              </h3>
             </div>
 
             <p className="text-sm text-slate-500">
-              Anexar documentos ajuda a agilizar a análise da sua inscrição. Você pode pular este passo e entregar na secretaria depois.
+              {config.escola.config_portal?.documentos_obrigatorios?.length 
+                ? "Por favor, anexe os documentos obrigatórios para prosseguir com sua inscrição."
+                : "Anexar documentos ajuda a agilizar a análise da sua inscrição. Você pode pular este passo e entregar na secretaria depois."
+              }
             </p>
 
             <div className="grid gap-4">
-              <DocumentUpload 
-                label="BI ou Cédula do Aluno"
+              <DocumentUpload
+                label={`BI ou Cédula do Aluno ${config.escola.config_portal?.documentos_obrigatorios?.includes('bi_aluno') ? '*' : ''}`}
                 description="Cópia legível do documento de identidade."
                 escolaId={config.escola.id}
                 candidaturaId={draftId}
                 onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, bi_aluno: path } }))}
               />
-              <DocumentUpload 
-                label="Boletim ou Notas"
-                description="Notas do ano letivo anterior ou atual."
+              <DocumentUpload
+                label={`Certificado ou Declaração ${config.escola.config_portal?.documentos_obrigatorios?.includes('notas') ? '*' : ''}`}
+                description="Certificado de habilitações ou declaração de notas."
                 escolaId={config.escola.id}
                 candidaturaId={draftId}
                 onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, notas: path } }))}
               />
               <DocumentUpload
-                label="Folha de 25 linhas"
+                label={`Folha de 25 linhas ${config.escola.config_portal?.documentos_obrigatorios?.includes('folha_25_linhas') ? '*' : ''}`}
                 description="Documento complementar solicitado pela secretaria."
                 escolaId={config.escola.id}
                 candidaturaId={draftId}
@@ -551,7 +589,12 @@ export function AdmissionForm({ config }: { config: Config }) {
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
+                disabled={
+                  config.escola.config_portal?.documentos_obrigatorios?.some(
+                    id => !formData.documentos[id]
+                  )
+                }
+                className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Revisar Dados
                 <ArrowRight size={18} />

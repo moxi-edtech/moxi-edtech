@@ -13,7 +13,10 @@ const searchParamsSchema = z
     limit: z.string().regex(/^\d+$/).optional(),
     cursor_open: z.string().optional(),
     cursor_mat: z.string().optional(),
+    cursor: z.string().optional(),
     turmaId: z.string().uuid().optional(),
+    q: z.string().trim().max(120).optional(),
+    status: z.enum(['novas', 'pendentes', 'concluidas', 'all']).optional(),
   })
   .strict()
 
@@ -23,6 +26,8 @@ const SUBMETIDA_STATUSES = ['submetida', 'pendente']
 const EM_ANALISE_STATUSES = ['em_analise']
 const APROVADA_STATUSES = ['aprovada', 'aguardando_pagamento']
 const MATRICULADO_STATUSES = ['matriculado', 'convertida']
+const RASCUNHO_STATUSES = ['rascunho']
+const REJEITADA_STATUSES = ['rejeitada', 'arquivado']
 
 const STATUS_MAP: Record<string, Status> = {
   submetida: 'submetida',
@@ -36,6 +41,24 @@ const STATUS_MAP: Record<string, Status> = {
 
 function statusOr(statuses: string[]) {
   return statuses.map((status) => `status.ilike.${status}`).join(',')
+}
+
+function escapeIlike(value: string) {
+  return value.replace(/[%_]/g, (match) => `\\${match}`)
+}
+
+function statusesForFilter(filter: string | undefined) {
+  if (filter === 'novas') return SUBMETIDA_STATUSES
+  if (filter === 'pendentes') return [...RASCUNHO_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]
+  if (filter === 'concluidas') return [...MATRICULADO_STATUSES, ...REJEITADA_STATUSES]
+  return [
+    ...RASCUNHO_STATUSES,
+    ...SUBMETIDA_STATUSES,
+    ...EM_ANALISE_STATUSES,
+    ...APROVADA_STATUSES,
+    ...MATRICULADO_STATUSES,
+    ...REJEITADA_STATUSES,
+  ]
 }
 
 function normalizeStatus(status: string | null | undefined): Status {
@@ -71,6 +94,9 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(parsed.data.limit || 30), 1), 50)
   const cursorOpen = parsed.data.cursor_open ?? null
   const cursorMat = parsed.data.cursor_mat ?? null
+  const cursor = parsed.data.cursor ?? null
+  const q = parsed.data.q?.trim() ?? ''
+  const statusFilter = parsed.data.status
 
   try {
     // 1) Counts (canônico por status)
@@ -101,6 +127,68 @@ export async function GET(request: Request) {
       cursos(nome),
       classes(nome)
     `
+
+    if (q || statusFilter) {
+      const statuses = statusesForFilter(statusFilter)
+      let query = supabase
+        .from('candidaturas')
+        .select(baseSelect)
+        .eq('escola_id', escolaId)
+        .or(statusOr(statuses))
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+
+      if (turmaId) query = query.eq('turma_preferencial_id', turmaId)
+
+      if (q) {
+        const normalizedQ = escapeIlike(q)
+        query = query.or(
+          [
+            `nome_candidato.ilike.%${normalizedQ}%`,
+            `id.ilike.${normalizedQ.toLowerCase()}%`,
+          ].join(',')
+        )
+      }
+
+      if (cursor) {
+        const [cursorCreatedAt, cursorId] = cursor.split(',')
+        if (cursorCreatedAt && cursorId) {
+          query = query.or(
+            `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`
+          )
+        }
+      }
+
+      const { data: filteredData, error: filteredError } = await query.limit(limit)
+      if (filteredError) throw filteredError
+
+      const items = (filteredData ?? []).map((item) => ({
+        ...item,
+        status_raw: item.status,
+        status: normalizeStatus(item.status),
+      }))
+      const lastFiltered = filteredData?.[Math.max((filteredData?.length ?? 1) - 1, 0)]
+
+      return NextResponse.json(
+        {
+          ok: true,
+          counts: {
+            submetida: countsRow?.submetida_total ?? 0,
+            em_analise: countsRow?.em_analise_total ?? 0,
+            aprovada: countsRow?.aprovada_total ?? 0,
+            matriculado: countsRow?.matriculado_7d_total ?? 0,
+          },
+          items,
+          meta: { matriculados_since: sinceIso, q: q || null, status: statusFilter ?? null },
+          next_cursor: filteredData && filteredData.length === limit && lastFiltered
+            ? `${lastFiltered.created_at},${lastFiltered.id}`
+            : null,
+          next_cursor_open: null,
+          next_cursor_mat: null,
+        },
+        { status: 200 }
+      )
+    }
 
     const [openRes, matRes] = await Promise.all([
       (() => {
