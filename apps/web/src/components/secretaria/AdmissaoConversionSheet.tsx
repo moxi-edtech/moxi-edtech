@@ -333,14 +333,19 @@ export function AdmissaoConversionSheet({
 
       success('Matrícula Efetivada', `O aluno ${detail?.nome_candidato} foi matriculado com sucesso.`)
       
+      const newAlunoId = json.aluno_id || detail?.id;
       setEnrollmentResult({
         matriculaId: json.matricula_id,
-        alunoId: json.aluno_id || detail?.id, // Fallback safe
+        alunoId: newAlunoId,
         numeroMatricula: json.numero_matricula
       })
 
       onSuccess(json.matricula_id)
-      // We don't close yet to offer the onboarding CTA
+      
+      // AUTO-TRIGGER ACCESS GENERATION (Zero Friction)
+      if (newAlunoId) {
+        handleGerarAcesso(newAlunoId)
+      }
     } catch (err: unknown) {
       toastError('Falha na Matrícula', getErrorMessage(err, 'Erro ao converter matrícula'))
     } finally {
@@ -348,8 +353,9 @@ export function AdmissaoConversionSheet({
     }
   }
 
-  const handleGerarAcesso = async () => {
-    if (!enrollmentResult?.alunoId) return
+  const handleGerarAcesso = async (targetId?: string) => {
+    const aid = targetId || enrollmentResult?.alunoId
+    if (!aid) return
 
     setGeneratingAccess(true)
     try {
@@ -357,7 +363,7 @@ export function AdmissaoConversionSheet({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          alunoIds: [enrollmentResult.alunoId],
+          alunoIds: [aid],
           escolaId,
           gerarCredenciais: true,
           canal: 'whatsapp'
@@ -374,7 +380,8 @@ export function AdmissaoConversionSheet({
           senha: detalhe.senha,
           status: detalhe.status
         })
-        success('Acesso Liberado', 'As credenciais do aluno foram geradas com sucesso.')
+        // Only show toast if it wasn't the automatic trigger or if we want extra confirmation
+        success('Acesso Liberado', 'As credenciais do aluno foram geradas e enviadas.')
       }
     } catch (err: unknown) {
       toastError('Erro ao Liberar Acesso', getErrorMessage(err, 'Falha ao liberar acesso'))
@@ -391,10 +398,21 @@ export function AdmissaoConversionSheet({
     if (phone.length === 9) phone = `244${phone}`;
     else if (phone.length > 9 && !phone.startsWith('244')) phone = `244${phone}`;
 
-    const message = `Olá ${guardianData.nome}! A matrícula de *${studentData.nome}* foi efetivada com sucesso no KLASSE. 🎓\n\nProtocolo: #${detail.id.split('-')[0].toUpperCase()}\n\nJá pode aceder ao Portal do Aluno para acompanhar as notas e pagamentos.`;
+    let message = `Olá ${guardianData.nome}! A matrícula de *${studentData.nome}* foi efetivada com sucesso no KLASSE. 🎓\n\nProtocolo: #${detail.id.split('-')[0].toUpperCase()}`;
     
+    if (credentials) {
+      message += `\n\n*Dados de Acesso ao Portal:*\nLink: ${window.location.origin}/login\nUsuário: ${credentials.login}\nSenha: ${credentials.senha || '********'}`;
+    } else {
+      message += `\n\nJá pode aceder ao Portal do Aluno para acompanhar as notas e pagamentos.`;
+    }
+
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    success('Copiado', 'Informação copiada para a área de transferência.')
   }
 
   const removeDocument = async (documentKey: string, path: string) => {
@@ -482,10 +500,10 @@ export function AdmissaoConversionSheet({
                   <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Onboarding Digital</p>
                     <p className="text-xs text-slate-600 text-left">
-                      Gere as credenciais agora para que o encarregado possa aceder ao portal imediatamente.
+                      {guardianData.email ? 'O e-mail será enviado automaticamente.' : 'Nenhum e-mail detectado. Use o WhatsApp para entregar os acessos.'}
                     </p>
                     <Button
-                      onClick={handleGerarAcesso}
+                      onClick={() => handleGerarAcesso()}
                       loading={generatingAccess}
                       tone="gold"
                       variant="outline"
@@ -497,9 +515,17 @@ export function AdmissaoConversionSheet({
                   </div>
                 ) : (
                   <div className="p-6 bg-green-50 rounded-3xl border border-green-100 space-y-4">
-                    <div className="flex items-center justify-center gap-2 text-green-700 font-bold mb-1">
-                      <ShieldCheck className="w-5 h-5" />
-                      Credenciais Geradas
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-green-700 font-bold">
+                        <ShieldCheck className="w-5 h-5" />
+                        Credenciais Geradas
+                      </div>
+                      <button 
+                        onClick={() => copyToClipboard(`Login: ${credentials.login}\nSenha: ${credentials.senha}`)}
+                        className="text-[10px] font-black text-green-600 hover:text-green-800 uppercase"
+                      >
+                        Copiar Tudo
+                      </button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-left">
                       <div className="bg-white p-3 rounded-xl border border-green-200/50">

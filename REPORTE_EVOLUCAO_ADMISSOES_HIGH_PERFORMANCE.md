@@ -61,6 +61,8 @@ O fluxo atual esta dividido em cinco camadas:
 ### P1 - Notificacao e Onboarding
 - Status: **CONCLUIDO**.
 - Sucesso com WhatsApp (+244) e geracao de credenciais na Sheet.
+- **Zero Fricção:** Automação completa do onboarding; ao efetivar a matrícula, o sistema agora gera o acesso ao portal e dispara e-mail com credenciais automaticamente (se informado).
+- **Fallback Inteligente:** O backend agora prioriza o e-mail do encarregado caso o aluno não possua e-mail próprio, garantindo a entrega.
 
 ### P2 - Remocao auditavel de documentos
 - Status: **CONCLUIDO**.
