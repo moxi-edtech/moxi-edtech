@@ -1738,7 +1738,7 @@ export type Database = {
           nome_candidato?: string | null
           nome_normalizado?: string | null
           percentagem_desconto?: number | null
-          protocolo_publico: string
+          protocolo_publico?: string
           responsavel_contato_normalizado?: string | null
           source?: string | null
           status?: string | null

@@ -111,11 +111,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Erro ao enviar arquivo." }, { status: 500 });
   }
 
-  const { data: publicData } = supabase.storage.from("candidaturas").getPublicUrl(filePath);
+  const { data: signedData, error: signedError } = await supabase.storage
+    .from("candidaturas")
+    .createSignedUrl(filePath, 60 * 30);
+
+  if (signedError || !signedData?.signedUrl) {
+    return NextResponse.json({ ok: false, error: "Erro ao gerar acesso temporário ao arquivo." }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
     path: filePath,
-    publicUrl: publicData.publicUrl,
+    signedUrl: signedData.signedUrl,
   });
 }

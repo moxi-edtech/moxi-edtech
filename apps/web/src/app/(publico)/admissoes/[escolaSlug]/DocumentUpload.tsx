@@ -14,11 +14,6 @@ interface DocumentUploadProps {
   initialPath?: string | null;
 }
 
-function getPublicCandidaturaUrl(path: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
-  return baseUrl ? `${baseUrl}/storage/v1/object/public/candidaturas/${encodeURIComponent(path).replace(/%2F/g, "/")}` : null;
-}
-
 export function DocumentUpload({ label, description, onUploadSuccess, onRemove, escolaId, candidaturaId, initialPath }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -28,14 +23,30 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     if (initialPath) {
-      setFileUrl(getPublicCandidaturaUrl(initialPath) ?? "EXISTS");
+      setFileUrl("EXISTS");
       setCurrentPath(initialPath);
+      fetch("/api/public/admissoes/documentos/signed-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ escolaId, candidaturaId, path: initialPath }),
+      })
+        .then((res) => res.json())
+        .then((json: { ok?: boolean; signedUrl?: string }) => {
+          if (!cancelled && json.ok && json.signedUrl) setFileUrl(json.signedUrl);
+        })
+        .catch(() => {
+          if (!cancelled) setFileUrl("EXISTS");
+        });
     } else {
       setFileUrl(null);
       setCurrentPath(null);
     }
-  }, [initialPath]);
+    return () => {
+      cancelled = true;
+    };
+  }, [candidaturaId, escolaId, initialPath]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,12 +105,12 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
         method: "POST",
         body: form,
       });
-      const json = await res.json().catch(() => null) as { ok?: boolean; path?: string; publicUrl?: string; error?: string } | null;
+      const json = await res.json().catch(() => null) as { ok?: boolean; path?: string; signedUrl?: string; error?: string } | null;
       if (!res.ok || !json?.ok || !json.path) {
         throw new Error(json?.error || "Erro ao enviar arquivo.");
       }
 
-      setFileUrl(json.publicUrl ?? getPublicCandidaturaUrl(json.path) ?? "EXISTS");
+      setFileUrl(json.signedUrl ?? "EXISTS");
       setCurrentPath(json.path);
       onUploadSuccess(json.path);
     } catch (err: unknown) {

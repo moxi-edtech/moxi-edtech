@@ -270,7 +270,7 @@ export default function AdmissoesInboxClient({
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao carregar detalhes')
       setSelectedData(json.item)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
     } finally {
       setLoadingDetail(false)
@@ -327,7 +327,7 @@ export default function AdmissoesInboxClient({
       )
       if (selectedData) setSelectedData({ ...selectedData, status: 'rejeitada' })
       success('Candidatura rejeitada', 'A candidatura foi marcada como rejeitada. O registo permanecerá no sistema para consulta futura.')
-    } catch (err: any) {
+    } catch (err: unknown) {
       toastError('Falha na operação', 'Não foi possível rejeitar a candidatura no momento. Por favor, tente novamente.')
     } finally {
       setLoadingAction(null)
@@ -369,7 +369,7 @@ export default function AdmissoesInboxClient({
       setSelectedId(null)
       setSelectedData(null)
       success('Candidatura arquivada', 'A candidatura foi movida para o arquivo e já não aparece na fila de espera principal.')
-    } catch (err: any) {
+    } catch (err: unknown) {
       toastError('Falha ao arquivar', 'Houve um erro técnico ao tentar arquivar este registo. Por favor, tente novamente.')
     } finally {
       setLoadingAction(null)
@@ -392,7 +392,7 @@ export default function AdmissoesInboxClient({
 
       if (error) throw error
       setViewingDoc({ name, url: data.signedUrl })
-    } catch (err: any) {
+    } catch (err: unknown) {
       toastError('Erro ao visualizar', 'Não foi possível gerar um link seguro para este documento.')
     }
   }
