@@ -4,7 +4,7 @@ import { useId } from 'react';
 import type { InputHTMLAttributes, Ref } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
+  label?: string;
   error?: string;
   inputRef?: Ref<HTMLInputElement>;
 }
@@ -14,9 +14,11 @@ export function Input({ label, id, error, className = '', inputRef, ...props }: 
   const inputId = id ?? reactId;
   return (
     <div className="w-full">
-      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-      </label>
+      {label ? (
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1.5">
+          {label}
+        </label>
+      ) : null}
       <input
         id={inputId}
         ref={inputRef}

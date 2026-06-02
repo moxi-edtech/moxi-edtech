@@ -1,31 +1,53 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Upload, X, FileText, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import imageCompression from 'browser-image-compression';
 
 interface DocumentUploadProps {
   label: string;
   description: string;
   onUploadSuccess: (url: string) => void;
+  onRemove?: (path: string) => Promise<void> | void;
   escolaId: string;
   candidaturaId: string;
+  initialPath?: string | null;
 }
 
-export function DocumentUpload({ label, description, onUploadSuccess, escolaId, candidaturaId }: DocumentUploadProps) {
+export function DocumentUpload({ label, description, onUploadSuccess, onRemove, escolaId, candidaturaId, initialPath }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [currentPath, setCurrentPath] = useState<string | null>(initialPath ?? null);
+  const [fileUrl, setFileUrl] = useState<string | null>(initialPath ? `EXISTS` : null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    if (initialPath) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('candidaturas')
+        .getPublicUrl(initialPath);
+      setFileUrl(publicUrl);
+      setCurrentPath(initialPath);
+    } else {
+      setFileUrl(null);
+      setCurrentPath(null);
+    }
+  }, [initialPath, supabase]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validações básicas
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Arquivo muito grande. Limite: 5MB");
+    const MAX_SIZE_MB = 2;
+    const isImage = file.type.startsWith('image/');
+    
+    // Se não for imagem, barreira dura de 2MB
+    if (!isImage && file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setError(`O ficheiro é muito pesado. O limite é ${MAX_SIZE_MB}MB.`);
       return;
     }
 
@@ -39,13 +61,36 @@ export function DocumentUpload({ label, description, onUploadSuccess, escolaId, 
     setError(null);
 
     try {
-      const fileExt = file.name.split('.').pop();
+      let fileToUpload: File | Blob = file;
+
+      // Se for imagem, aplicamos compressão mágica no navegador
+      if (isImage) {
+        const options: Parameters<typeof imageCompression>[1] = {
+          maxSizeMB: 0.5, // Alvo de 500KB para imagens
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          fileType: 'image/webp' // Convertemos para WebP para máxima eficiência
+        };
+        
+        try {
+          fileToUpload = await imageCompression(file, options);
+          console.log(`[Compression]: Original ${file.size / 1024}KB -> Compressed ${fileToUpload.size / 1024}KB`);
+        } catch (compErr) {
+          console.error("Compression failed, using original:", compErr);
+          // Se falhar a compressão, ainda checamos o limite de 2MB
+          if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+            throw new Error(`Imagem muito grande e falhou ao comprimir. Limite: ${MAX_SIZE_MB}MB`);
+          }
+        }
+      }
+
+      const fileExt = isImage ? 'webp' : file.name.split('.').pop();
       const fileName = `${label.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`;
       const filePath = `${escolaId}/${candidaturaId}/${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('candidaturas')
-        .upload(filePath, file);
+        .upload(filePath, fileToUpload);
 
       if (uploadError) throw uploadError;
 
@@ -54,12 +99,34 @@ export function DocumentUpload({ label, description, onUploadSuccess, escolaId, 
         .getPublicUrl(filePath);
 
       setFileUrl(publicUrl);
-      onUploadSuccess(filePath); // Retornamos o path para salvar no banco
-    } catch (err: any) {
+      setCurrentPath(filePath);
+      onUploadSuccess(filePath);
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      setError("Erro ao enviar arquivo. Tente novamente.");
+      setError(err instanceof Error ? err.message : "Erro ao enviar arquivo. Tente novamente.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!currentPath) {
+      setFileUrl(null);
+      return;
+    }
+
+    setRemoving(true);
+    setError(null);
+    try {
+      await onRemove?.(currentPath);
+      setCurrentPath(null);
+      setFileUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: unknown) {
+      console.error("Remove error:", err);
+      setError(err instanceof Error ? err.message : "Erro ao remover arquivo. Tente novamente.");
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -78,11 +145,11 @@ export function DocumentUpload({ label, description, onUploadSuccess, escolaId, 
 
         <button
           type="button"
-          onClick={() => fileUrl ? setFileUrl(null) : fileInputRef.current?.click()}
-          disabled={uploading}
+          onClick={() => fileUrl ? void handleRemove() : fileInputRef.current?.click()}
+          disabled={uploading || removing}
           className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${fileUrl ? 'bg-slate-100 text-slate-400 hover:text-red-500' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
         >
-          {uploading ? <Loader2 size={18} className="animate-spin" /> : (fileUrl ? <X size={18} /> : <Upload size={18} />)}
+          {uploading || removing ? <Loader2 size={18} className="animate-spin" /> : (fileUrl ? <X size={18} /> : <Upload size={18} />)}
         </button>
       </div>
 

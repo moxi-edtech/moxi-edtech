@@ -4,6 +4,7 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { assertPortalAccess } from "@/lib/portalAccess";
+import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
 import type { Database } from "~types/supabase";
 
 export async function POST(req: Request) {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
 
     const { data: escolaCfg, error: escolaCfgErr } = await s
       .from("escolas")
-      .select("aluno_portal_enabled")
+      .select("nome, aluno_portal_enabled")
       .eq("id", escolaId)
       .maybeSingle();
     if (escolaCfgErr) return NextResponse.json({ ok: false, error: `Erro ao buscar config da escola: ${escolaCfgErr.message}` }, { status: 400 });
@@ -59,13 +60,13 @@ export async function POST(req: Request) {
     const alunoIdsLiberados = rows.map((row: any) => row.aluno_id).filter(Boolean);
     let alunosMap = new Map<
       string,
-      { nome: string | null; codigo_ativacao: string | null; bi_numero: string | null }
+      { nome: string | null; email: string | null; codigo_ativacao: string | null; bi_numero: string | null }
     >();
 
     if (alunoIdsLiberados.length > 0) {
       const { data: alunosData, error: alunosErr } = await s
         .from("alunos")
-        .select("id, nome, codigo_ativacao, bi_numero")
+        .select("id, nome, email, codigo_ativacao, bi_numero")
         .eq("escola_id", escolaId)
         .in("id", alunoIdsLiberados);
 
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
             row.id,
             {
               nome: row.nome ?? null,
+              email: row.email ?? null,
               codigo_ativacao: row.codigo_ativacao ?? null,
               bi_numero: row.bi_numero ?? null,
             },
@@ -113,6 +115,29 @@ export async function POST(req: Request) {
             login = (result as any)?.login ?? null;
             senha = (result as any)?.senha ?? null;
             status = "activated";
+
+            // Enviar e-mail se houver
+            if (extra.email && login) {
+              try {
+                const mail = buildCredentialsEmail({
+                  nome: extra.nome,
+                  email: extra.email,
+                  numero_processo_login: login,
+                  senha_temp: senha,
+                  escolaNome: escolaCfg.nome,
+                  loginUrl: process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : null
+                });
+
+                await sendMail({
+                  to: extra.email,
+                  subject: mail.subject,
+                  html: mail.html,
+                  text: mail.text
+                });
+              } catch (mailErr) {
+                console.error("[Liberar Acesso Mail Error]:", mailErr);
+              }
+            }
           } catch {
             status = "activation_failed";
           }
