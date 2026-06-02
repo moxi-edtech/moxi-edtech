@@ -234,12 +234,18 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                   </div>
                   <h4 className="font-black text-slate-900">Desafio de Segurança</h4>
                   <p className="text-sm text-slate-500 max-w-xs">
-                    Confirme o telefone ou email do encarregado registrado para acessar os documentos e criar sua senha.
+                    {basicData.email_mask 
+                      ? "Confirme o telefone ou email do encarregado registrado para acessar o cofre."
+                      : "Confirme o telefone do encarregado registrado para acessar o cofre."}
                   </p>
                   
                   <form onSubmit={handleChallengeSubmit} className="w-full space-y-4 pt-4">
                     <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
+                        <Phone size={16} />
+                        <span className="text-[10px] font-bold">/</span>
+                        <Check size={14} />
+                      </div>
                       <input
                         required
                         type="text"
@@ -249,14 +255,14 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                           basicData.telefone_mask && basicData.email_mask
                             ? `Ex: ${basicData.telefone_mask} ou ${basicData.email_mask}`
                             : basicData.telefone_mask 
-                              ? `Ex: ${basicData.telefone_mask}`
-                              : `Ex: ${basicData.email_mask ?? 'Email cadastrado'}`
+                              ? `Confirmar Telefone (Ex: ${basicData.telefone_mask})`
+                              : `Confirmar Email (Ex: ${basicData.email_mask})`
                         }
-                        className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-4 outline-none focus:border-slate-900 transition font-bold"
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-16 pr-4 py-4 outline-none focus:border-slate-900 transition font-bold"
                       />
                     </div>
                     <Button type="submit" loading={loading} fullWidth tone="gold" className="rounded-xl h-14 font-black">
-                      Abrir Cofre
+                      Abrir Cofre agora
                     </Button>
                     <button type="button" onClick={() => setStep('search')} className="text-xs font-bold text-slate-400 hover:text-slate-600">
                       Voltar e corrigir protocolo

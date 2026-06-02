@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     if (alunoIdsLiberados.length > 0) {
       const { data: alunosData, error: alunosErr } = await s
         .from("alunos")
-        .select("id, nome, email, codigo_ativacao, bi_numero")
+        .select("id, nome, email, encarregado_email, codigo_ativacao, bi_numero")
         .eq("escola_id", escolaId)
         .in("id", alunoIdsLiberados);
 
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
             row.id,
             {
               nome: row.nome ?? null,
-              email: row.email ?? null,
+              email: row.email ?? row.encarregado_email ?? null,
               codigo_ativacao: row.codigo_ativacao ?? null,
               bi_numero: row.bi_numero ?? null,
             },

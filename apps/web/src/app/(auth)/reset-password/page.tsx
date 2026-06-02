@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { ShieldCheck, Lock, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
 import BrandPanel from "../BrandPanel";
 
 type Status = "loading" | "ready" | "invalid";
@@ -18,6 +20,8 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [ok, setOk] = useState<string>("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -73,10 +77,10 @@ export default function ResetPasswordPage() {
     const rules = passwordRules(nextPwd);
     const score = rules.filter((r) => r.ok).length;
     let label = "Muito fraca";
-    let color = "bg-red-500";
+    let color = "bg-rose-500";
     if (score === 2) {
       label = "Fraca";
-      color = "bg-klasse-gold-500";
+      color = "bg-amber-500";
     }
     if (score === 3) {
       label = "Média";
@@ -84,11 +88,11 @@ export default function ResetPasswordPage() {
     }
     if (score === 4) {
       label = "Forte";
-      color = "bg-green-600";
+      color = "bg-emerald-500";
     }
     if (score >= 5) {
       label = "Excelente";
-      color = "bg-moxinexa-teal";
+      color = "bg-klasse-green";
     }
     return { score, label, color, rules };
   }, [nextPwd]);
@@ -129,47 +133,82 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2 bg-slate-50">
       <BrandPanel />
       <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
-          {status === "invalid" ? (
-            <div className="space-y-4">
-              <h1 className="text-xl font-semibold text-slate-900">Link inválido</h1>
-              <p className="text-sm text-slate-600">
-                O link de redefinição expirou ou já foi utilizado. Solicite um novo envio.
-              </p>
-              <Button onClick={() => router.replace("/redirect")} className="w-full">
+        <div className="w-full max-w-[440px] bg-white rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50 p-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {status === "loading" ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                <ShieldCheck className="w-6 h-6 text-klasse-gold animate-pulse" />
+              </div>
+              <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Validando acesso...</p>
+            </div>
+          ) : status === "invalid" ? (
+            <div className="space-y-6 text-center">
+              <div className="mx-auto h-16 w-16 rounded-3xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100">
+                <AlertCircle size={32} />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Link inválido</h1>
+                <p className="text-sm text-slate-500 leading-relaxed px-4">
+                  O link de redefinição expirou ou já foi utilizado. Por segurança, solicite um novo envio.
+                </p>
+              </div>
+              <Button 
+                onClick={() => router.replace("/redirect")} 
+                fullWidth 
+                tone="blue"
+                className="h-14 rounded-2xl font-black shadow-lg shadow-slate-200"
+              >
                 Voltar ao login
               </Button>
             </div>
           ) : (
             <>
-              <div>
-                <h1 className="text-2xl font-semibold text-slate-900">Definir nova senha</h1>
-                <p className="text-sm text-slate-600 mt-1">Crie uma senha segura para acessar a plataforma.</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-lg bg-klasse-gold/10 flex items-center justify-center text-klasse-gold">
+                    <Lock size={18} />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Segurança</span>
+                </div>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight">Definir nova senha</h1>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Crie uma senha forte para proteger seu acesso à plataforma KLASSE.
+                </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">E-mail</label>
-                  <input
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 bg-slate-50"
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Usuário (E-mail)</label>
+                  <Input
+                    className="bg-slate-50 text-slate-500 font-bold border-slate-100 rounded-2xl h-14"
                     value={email}
                     disabled
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">Nova senha</label>
-                  <input
-                    type="password"
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                    value={nextPwd}
-                    onChange={(e) => setNextPwd(e.target.value)}
-                    required
-                    disabled={status !== "ready"}
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nova Senha</label>
+                  <div className="relative">
+                    <Input
+                      type={showPwd ? "text" : "password"}
+                      className="rounded-2xl h-14 pr-12 font-mono font-bold border-slate-200 focus:border-slate-900 transition-all"
+                      value={nextPwd}
+                      onChange={(e) => setNextPwd(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPwd(!showPwd)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showPwd ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                  
                   {nextPwd && (
                     <PasswordStrength
                       score={strengthInfo.score}
@@ -180,23 +219,49 @@ export default function ResetPasswordPage() {
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">Confirmar nova senha</label>
-                  <input
-                    type="password"
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    required
-                    disabled={status !== "ready"}
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirmar Senha</label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirm ? "text" : "password"}
+                      className="rounded-2xl h-14 pr-12 font-mono font-bold border-slate-200 focus:border-slate-900 transition-all"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
                 </div>
 
-                {error && <p className="text-center text-sm text-red-500 font-medium">{error}</p>}
-                {ok && <p className="text-center text-sm text-green-600 font-medium">{ok}</p>}
+                {error && (
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 flex items-center gap-3 text-rose-600 text-xs font-bold animate-in shake-1">
+                    <AlertCircle size={16} className="shrink-0" />
+                    {error}
+                  </div>
+                )}
 
-                <Button type="submit" disabled={loading || status !== "ready"} className="w-full">
-                  {loading ? "Salvando..." : "Salvar nova senha"}
+                {ok && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center gap-3 text-emerald-600 text-xs font-bold animate-in zoom-in-95">
+                    <CheckCircle2 size={16} className="shrink-0" />
+                    {ok}
+                  </div>
+                )}
+
+                <Button 
+                  type="submit" 
+                  disabled={loading || status !== "ready"} 
+                  fullWidth
+                  tone="gold"
+                  className="h-16 rounded-[20px] font-black text-base shadow-xl shadow-klasse-gold/20 hover:scale-[1.02] transition-transform"
+                >
+                  {loading ? "Processando..." : "Atualizar Senha Agora"}
                 </Button>
               </form>
             </>
@@ -219,20 +284,21 @@ function PasswordStrength({
   rules: Array<{ ok: boolean; msg: string }>;
 }) {
   return (
-    <div className="mt-2">
-      <div className="flex items-center justify-between text-xs mb-1">
-        <span className="text-gray-600">Força da senha:</span>
-        <span className="font-medium text-gray-800">{label}</span>
+    <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 animate-in fade-in duration-300">
+      <div className="flex items-center justify-between text-[10px] mb-2 uppercase tracking-widest font-black">
+        <span className="text-slate-400">Força da senha:</span>
+        <span className={score > 0 ? "text-slate-900" : "text-slate-400"}>{label}</span>
       </div>
-      <div className="flex gap-1" aria-hidden>
+      <div className="flex gap-1.5 mb-4" aria-hidden>
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className={`h-1.5 flex-1 rounded ${i < score ? color : "bg-gray-200"}`} />
+          <div key={i} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${i < score ? color : "bg-slate-200"}`} />
         ))}
       </div>
-      <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
         {rules.map((r, idx) => (
-          <li key={idx} className={r.ok ? "text-green-600" : "text-gray-500"}>
-            {r.ok ? "✓" : "•"} {r.msg}
+          <li key={idx} className={`flex items-center gap-2 text-[10px] font-bold transition-colors ${r.ok ? "text-emerald-600" : "text-slate-400"}`}>
+            {r.ok ? <CheckCircle2 size={12} className="shrink-0" /> : <div className="h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0 ml-1" />}
+            {r.msg}
           </li>
         ))}
       </ul>
