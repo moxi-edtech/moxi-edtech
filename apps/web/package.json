@@ -5,7 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "dev": "INNGEST_DEV=1 npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next dev",
-    "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
+    "build": "NODE_OPTIONS=--max-old-space-size=6144 npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
     "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
     "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000",
     "docker:build": "docker build -t moxi-edtech .",
