@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { buildPlanLimitError, checkAlunoPlanLimit } from '@/lib/plan/limits'
+import type { Json } from '~types/supabase'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -52,13 +53,13 @@ export async function POST(req: Request) {
     
     // --- CORREÇÃO: Buscar escolaId do perfil do usuário logado ---
     const { data: prof } = await s
-      .from('profiles' as any)
+      .from('profiles')
       .select('escola_id, current_escola_id')
       .eq('user_id', user.id)
       .maybeSingle()
 
     // Tenta pegar current_escola_id (se tiver troca de contexto) ou escola_id fixo
-    escolaId = (prof as any)?.current_escola_id || (prof as any)?.escola_id
+    escolaId = prof?.current_escola_id || prof?.escola_id || null
 
     // Fallback: Checar tabela de vínculos
     if (!escolaId) {
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Usuário não vinculado a nenhuma escola.' }, { status: 403 })
     }
 
-    const limitCheck = await checkAlunoPlanLimit(s as any, escolaId, 1)
+    const limitCheck = await checkAlunoPlanLimit(s, escolaId, 1)
     if (!limitCheck.ok) {
       await s.from('notifications').insert({
         escola_id: escolaId,
@@ -142,12 +143,18 @@ export async function POST(req: Request) {
       : body.ano_letivo ?? new Date().getFullYear()
     const classeId = body.classe_id ?? turmaRow?.classe_id ?? null
 
-    const dadosCandidato = {
+    const userMetadata = user.user_metadata as Record<string, unknown>
+    const registradoPorEmail =
+      user.email ?? (typeof userMetadata.email === 'string' ? userMetadata.email : null)
+    const registradoPorNome =
+      (typeof userMetadata.nome === 'string' ? userMetadata.nome : null) ?? user.email ?? null
+
+    const dadosCandidato: Record<string, Json> = {
       nome: nomeCompleto,
       nome_completo: nomeCompleto,
-      primeiro_nome: body.primeiro_nome,
-      sobrenome: body.sobrenome,
-      email: body.email,
+      primeiro_nome: body.primeiro_nome ?? null,
+      sobrenome: body.sobrenome ?? null,
+      email: body.email ?? null,
       telefone: body.telefone ?? null,
       endereco: body.endereco ?? null,
       data_nascimento: body.data_nascimento ?? null,
@@ -164,8 +171,8 @@ export async function POST(req: Request) {
       turma_preferencial_id: body.turma_preferencial_id ?? null,
       origem_portal: 'secretaria',
       registrado_por_user_id: user.id,
-      registrado_por_email: user.email ?? (user as any)?.user_metadata?.email ?? null,
-      registrado_por_nome: (user as any)?.user_metadata?.nome || user.email || null,
+      registrado_por_email: registradoPorEmail,
+      registrado_por_nome: registradoPorNome,
       pagamento: {
         metodo: body.pagamento_metodo ?? null,
         referencia: body.pagamento_referencia ?? null,
@@ -182,10 +189,11 @@ export async function POST(req: Request) {
         ano_letivo: anoLetivo,
         status: 'pendente',
         turma_preferencial_id: body.turma_preferencial_id ?? null,
-        dados_candidato: dadosCandidato as any,
+        dados_candidato: dadosCandidato,
         nome_candidato: nomeCompleto,
         classe_id: classeId,
         turno: body.turno ?? null,
+        protocolo_publico: `SEC-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`,
       })
       .select('id')
       .single()

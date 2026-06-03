@@ -43,8 +43,11 @@ const statusChallengeSchema = z
   .object({
     protocolo: protocoloSchema,
     contato: z.string().trim().min(1).max(120),
-    action: z.literal("set_password").optional(),
+    action: z.enum(["set_password", "upload_payment", "reupload_document"]).optional(),
     password: strongPasswordSchema.optional(),
+    comprovativo_path: z.string().trim().optional(),
+    document_id: z.string().trim().optional(),
+    document_path: z.string().trim().optional(),
   })
   .strict();
 
@@ -132,6 +135,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function getString(record: Record<string, unknown>, key: string) {
   const value = record[key];
   return typeof value === "string" ? value : null;
+}
+
+function isSafeAdmissionPath(path: string, escolaId: string, candidaturaId: string) {
+  if (path.includes("..") || path.startsWith("/") || path.includes("\\")) return false;
+  return path.startsWith(`${escolaId}/${candidaturaId}/`);
 }
 
 function normalizeComparable(value: string | null | undefined) {
@@ -236,6 +244,7 @@ export async function GET(
         nome_candidato_mask: nomeMascarado,
         telefone_mask: telefoneMascarado,
         email_mask: emailMascarado,
+        escola_id: escolaId, // Adicionado para o upload seguro
       }
     });
 
@@ -261,7 +270,7 @@ export async function POST(
     if (!parsedBody.success) {
       return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
     }
-    const { protocolo, contato, action, password } = parsedBody.data;
+    const { protocolo, contato, action, password, comprovativo_path, document_id, document_path } = parsedBody.data;
 
     const supabase = supabaseServerRole();
     const { escolaId } = await resolveEscolaParam(supabase, escolaSlug);
@@ -376,11 +385,84 @@ export async function POST(
       return NextResponse.json({ ok: true, message: "Senha atualizada" });
     }
 
-    // 4. Gerar links e ações se matriculado
-    let actions: { pode_mudar_senha: boolean; pode_baixar_comprovativo: boolean; comprovativo_url: string | null } = {
+    if (action === "upload_payment") {
+      if (match.status !== "aguardando_pagamento") {
+        return NextResponse.json(
+          { ok: false, error: "Comprovativo só pode ser enviado para candidatura aguardando pagamento." },
+          { status: 409 }
+        );
+      }
+
+      if (!comprovativo_path) {
+        return NextResponse.json({ ok: false, error: "Caminho do comprovativo é obrigatório" }, { status: 400 });
+      }
+      if (!isSafeAdmissionPath(comprovativo_path, escolaId, match.id)) {
+        return NextResponse.json({ ok: false, error: "Caminho do comprovativo inválido" }, { status: 400 });
+      }
+
+      const current = isRecord(match.dados_candidato) ? match.dados_candidato : {};
+      const currentPagamento = isRecord(current.pagamento) ? current.pagamento : {};
+      
+      const merged: Json = {
+        ...current,
+        pagamento: {
+          ...currentPagamento,
+          comprovativo_path,
+          uploaded_at: new Date().toISOString(),
+          source: "PORTAL_VAULT"
+        }
+      };
+
+      const { error: updateErr } = await supabase
+        .from("candidaturas")
+        .update({ 
+          dados_candidato: merged,
+          status: "aguardando_compensacao" // Transaciona para análise financeira
+        })
+        .eq("id", match.id)
+        .eq("escola_id", escolaId);
+
+      if (updateErr) throw updateErr;
+
+      return NextResponse.json({ ok: true, message: "Comprovativo enviado para análise" });
+    }
+
+    if (action === "reupload_document") {
+      if (!document_id || !document_path) {
+        return NextResponse.json({ ok: false, error: "Dados do documento obrigatórios" }, { status: 400 });
+      }
+
+      const { error: reuploadErr } = await supabase.rpc("admissao_reupload_documento_pendente", {
+        p_escola_id: escolaId,
+        p_candidatura_id: match.id,
+        p_document_id: document_id,
+        p_document_path: document_path,
+      });
+
+      if (reuploadErr) throw reuploadErr;
+
+      return NextResponse.json({ ok: true, message: "Documento atualizado com sucesso" });
+    }
+
+    // 4. Gerar links e ações se matriculado ou reservado
+    let actions: { 
+      pode_mudar_senha: boolean; 
+      pode_baixar_comprovativo: boolean; 
+      pode_enviar_comprovativo: boolean;
+      pode_resolver_pendencia: boolean;
+      reserva_expira_at: string | null;
+      comprovativo_url: string | null;
+      pendencias: any[];
+      escola_pagamento: any | null;
+    } = {
       pode_mudar_senha: false,
       pode_baixar_comprovativo: false,
-      comprovativo_url: null
+      pode_enviar_comprovativo: false,
+      pode_resolver_pendencia: false,
+      reserva_expira_at: null,
+      comprovativo_url: null,
+      pendencias: [],
+      escola_pagamento: null
     };
 
     if (match.status === "matriculado") {
@@ -402,6 +484,31 @@ export async function POST(
           actions.comprovativo_url = `/admissoes/${escolaSlug}/consultar/print?docId=${doc.id}`;
         }
       }
+    } else if (match.status === "aguardando_pagamento") {
+      actions.pode_enviar_comprovativo = true;
+      actions.reserva_expira_at = getString(dados, "reserva_expira_at");
+      
+      // Fallback para expires_at se reserva_expira_at não estiver no JSON (casos legados)
+      if (!actions.reserva_expira_at) {
+        const { data: cand } = await supabase
+          .from("candidaturas")
+          .select("expires_at")
+          .eq("id", match.id)
+          .single();
+        actions.reserva_expira_at = cand?.expires_at ?? null;
+      }
+
+      // Buscar dados de pagamento da escola
+      const { data: escola } = await supabase
+        .from("escolas")
+        .select("dados_pagamento")
+        .eq("id", escolaId)
+        .maybeSingle();
+      
+      actions.escola_pagamento = escola?.dados_pagamento ?? null;
+    } else if (match.status === "pendente") {
+      actions.pode_resolver_pendencia = true;
+      actions.pendencias = Array.isArray(dados.pendencias) ? dados.pendencias : [];
     }
 
     return NextResponse.json({

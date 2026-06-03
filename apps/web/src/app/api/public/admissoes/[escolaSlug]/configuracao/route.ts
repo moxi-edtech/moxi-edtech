@@ -5,6 +5,16 @@ import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 
 export const dynamic = "force-dynamic";
 
+type DisponibilidadePublica = "disponivel" | "ultimas_vagas" | "lista_espera";
+
+function disponibilidadePublica(capacidade: number | null, matriculadosAtivos: number): DisponibilidadePublica {
+  if (capacidade === null) return "disponivel";
+  const vagas = capacidade - matriculadosAtivos;
+  if (vagas <= 0) return "lista_espera";
+  if (vagas <= 5) return "ultimas_vagas";
+  return "disponivel";
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ escolaSlug: string }> }
@@ -14,7 +24,7 @@ export async function GET(
     const supabase = supabaseServerRole();
 
     // 1. Resolve school
-    const { escolaId, slug } = await resolveEscolaParam(supabase as any, escolaSlug);
+    const { escolaId, slug } = await resolveEscolaParam(supabase, escolaSlug);
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 404 });
@@ -59,6 +69,23 @@ export async function GET(
       if (!Number.isFinite(activeAno)) return true;
       return Number(turma.ano_letivo) === activeAno;
     });
+    const turmaIds = turmasAtivas.map((turma) => turma.id);
+    const ocupacaoPorTurma = new Map<string, number>();
+
+    if (turmaIds.length > 0) {
+      const ocupacoes = await Promise.all(
+        turmaIds.map(async (turmaId) => {
+          const { data, error } = await supabase.rpc("admissao_turma_ocupacao_reservada", {
+            p_escola_id: escolaId,
+            p_turma_id: turmaId,
+          });
+          if (error) throw error;
+          return [turmaId, data ?? 0] as const;
+        })
+      );
+
+      for (const [turmaId, ocupacao] of ocupacoes) ocupacaoPorTurma.set(turmaId, ocupacao);
+    }
 
     return NextResponse.json({
       ok: true,
@@ -77,6 +104,10 @@ export async function GET(
           nome: t.nome,
           turno: t.turno,
           curso_id: t.curso_id,
+          disponibilidade: disponibilidadePublica(
+            t.capacidade_maxima,
+            ocupacaoPorTurma.get(t.id) || 0
+          ),
         })),
       },
     });

@@ -1712,6 +1712,7 @@ export type Database = {
           nome_candidato: string | null
           nome_normalizado: string | null
           percentagem_desconto: number | null
+          portal_reenvio_at: string | null
           protocolo_publico: string
           responsavel_contato_normalizado: string | null
           source: string | null
@@ -1738,6 +1739,7 @@ export type Database = {
           nome_candidato?: string | null
           nome_normalizado?: string | null
           percentagem_desconto?: number | null
+          portal_reenvio_at?: string | null
           protocolo_publico: string
           responsavel_contato_normalizado?: string | null
           source?: string | null
@@ -1764,6 +1766,7 @@ export type Database = {
           nome_candidato?: string | null
           nome_normalizado?: string | null
           percentagem_desconto?: number | null
+          portal_reenvio_at?: string | null
           protocolo_publico?: string
           responsavel_contato_normalizado?: string | null
           source?: string | null
@@ -17378,14 +17381,16 @@ export type Database = {
         }
         Relationships: []
       }
-      vw_admissoes_counts_por_status: {
-        Row: {
-          aprovada_total: number | null
-          em_analise_total: number | null
-          escola_id: string | null
-          matriculado_7d_total: number | null
-          submetida_total: number | null
-        }
+	    vw_admissoes_counts_por_status: {
+	        Row: {
+	          aprovada_total: number | null
+	          em_analise_total: number | null
+	          escola_id: string | null
+	          expirando_24h_total: number | null
+	          matriculado_7d_total: number | null
+	          reenviados_48h_total: number | null
+	          submetida_total: number | null
+	        }
         Relationships: []
       }
       vw_alunos_active: {
@@ -20511,6 +20516,8 @@ export type Database = {
           p_escola_id: string
           p_idempotency_key?: string
           p_observacao?: string
+          p_override_capacidade?: boolean
+          p_override_motivo?: string
           p_pagamento?: Json
           p_turma_id: string
         }
@@ -20538,6 +20545,15 @@ export type Database = {
         }
         Returns: string
       }
+      admissao_reupload_documento_pendente: {
+        Args: {
+          p_candidatura_id: string
+          p_document_id: string
+          p_document_path: string
+          p_escola_id: string
+        }
+        Returns: Json
+      }
       admissao_submit: {
         Args: {
           p_candidatura_id: string
@@ -20545,6 +20561,14 @@ export type Database = {
           p_source?: string
         }
         Returns: string
+      }
+      admissao_turma_ocupacao_reservada: {
+        Args: {
+          p_escola_id: string
+          p_excluir_candidatura_id?: string
+          p_turma_id: string
+        }
+        Returns: number
       }
       admissao_unsubmit: {
         Args: {

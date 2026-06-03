@@ -84,6 +84,16 @@ type PostgrestLikeError = {
   hint?: string | null;
 };
 
+type DisponibilidadePublica = "disponivel" | "ultimas_vagas" | "lista_espera";
+
+function disponibilidadePublica(capacidade: number | null, matriculadosAtivos: number): DisponibilidadePublica {
+  if (capacidade === null) return "disponivel";
+  const vagas = capacidade - matriculadosAtivos;
+  if (vagas <= 0) return "lista_espera";
+  if (vagas <= 5) return "ultimas_vagas";
+  return "disponivel";
+}
+
 function duplicateAdmissionResponse(error: PostgrestLikeError) {
   if (error.code !== "23505") return null;
 
@@ -181,11 +191,11 @@ export async function POST(
       data.turma_preferencial_id
         ? supabase
             .from("turmas")
-            .select("id, curso_id, ano_letivo")
+            .select("id, curso_id, ano_letivo, capacidade_maxima")
             .eq("id", data.turma_preferencial_id)
             .eq("escola_id", escolaId)
             .maybeSingle()
-        : Promise.resolve({ data: { id: "ok", curso_id: data.curso_id, ano_letivo: null }, error: null }),
+        : Promise.resolve({ data: { id: "ok", curso_id: data.curso_id, ano_letivo: null, capacidade_maxima: null }, error: null }),
     ]);
 
     if (!courseCheck.data) {
@@ -210,6 +220,28 @@ export async function POST(
     const telefoneNormalizado = normalizePhone(data.telefone);
     const responsavelContatoNormalizado = normalizePhone(data.responsavel_contato);
     const documentoNormalizado = normalizeDocument(data.numero_documento);
+    let disponibilidade: DisponibilidadePublica = "disponivel";
+
+    if (data.turma_preferencial_id) {
+      const { data: ocupacaoReservada, error: ocupacaoError } = await supabase.rpc(
+        "admissao_turma_ocupacao_reservada",
+        {
+          p_escola_id: escolaId,
+          p_turma_id: data.turma_preferencial_id,
+        }
+      );
+
+      if (ocupacaoError) {
+        console.error("[Public Admission Occupancy Error]:", ocupacaoError);
+        return NextResponse.json({ ok: false, error: "Erro ao validar disponibilidade da turma." }, { status: 500 });
+      }
+
+      disponibilidade = disponibilidadePublica(
+        turmaCheck.data.capacidade_maxima,
+        ocupacaoReservada ?? 0
+      );
+    }
+    const statusInicial = disponibilidade === "lista_espera" ? "lista_espera" : "pendente";
 
     const dedupeBase = () =>
       supabase
@@ -317,6 +349,7 @@ export async function POST(
       documentos: toJsonObject(data.documentos),
       campos_extras: toJsonObject(data.campos_extras),
       draft_id: draftId,
+      disponibilidade_submissao: disponibilidade,
     };
 
     // 6. Insert Candidacy
@@ -326,7 +359,7 @@ export async function POST(
         escola_id: escolaId,
         curso_id: data.curso_id,
         ano_letivo: anoLetivo,
-        status: "pendente",
+        status: statusInicial,
         turma_preferencial_id: data.turma_preferencial_id || null,
         dados_candidato: dadosCandidato,
         nome_candidato: data.nome_completo,
@@ -335,6 +368,7 @@ export async function POST(
         telefone_normalizado: telefoneNormalizado,
         responsavel_contato_normalizado: responsavelContatoNormalizado,
         turno: data.turno || null,
+        protocolo_publico: `ADM-${tempProtocol}`,
         source: "PORTAL_PUBLICO",
       })
       .select("id, protocolo_publico")
@@ -347,6 +381,22 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Erro ao processar sua inscrição. Tente novamente." }, { status: 500 });
     }
 
+    await supabase.from("candidaturas_status_log").insert({
+      escola_id: escolaId,
+      candidatura_id: candidatura.id,
+      from_status: null,
+      to_status: statusInicial,
+      motivo:
+        statusInicial === "lista_espera"
+          ? "Candidatura pública em lista de espera por turma lotada"
+          : "Candidatura pública submetida",
+      metadata: {
+        source: "public_form",
+        turma_id: data.turma_preferencial_id ?? null,
+        disponibilidade,
+      },
+    });
+
     // 7. Audit Log
     await supabase.from("audit_logs").insert({
       escola_id: escolaId,
@@ -357,6 +407,8 @@ export async function POST(
       details: { 
         nome: data.nome_completo, 
         curso_id: data.curso_id,
+        status: statusInicial,
+        disponibilidade,
         source: "public_form"
       }
     });
@@ -366,6 +418,7 @@ export async function POST(
       ok: true, 
       message: "Inscrição realizada com sucesso! A secretaria entrará em contato em breve.",
       protocolo: candidatura.protocolo_publico,
+      status: statusInicial,
     }, { status: 201 });
 
   } catch (err) {

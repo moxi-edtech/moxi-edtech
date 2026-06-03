@@ -51,6 +51,10 @@ function normalizeBI(value: string) {
   return value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
 }
 
+function createProtocoloPublico(prefix: string) {
+  return `${prefix}-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`
+}
+
 async function checkExistingAlunoByBi(
   supabase: Awaited<ReturnType<typeof createClient>>,
   escolaId: string,
@@ -176,6 +180,7 @@ export async function POST(request: Request) {
           curso_id: payload.curso_id ?? null,
           turma_preferencial_id: payload.turma_id ?? null,
           ano_letivo: payload.ano_letivo ?? new Date().getFullYear(),
+          protocolo_publico: createProtocoloPublico('FOR-BALCAO'),
           source: 'formacao_balcao',
           status: 'submetida',
           dados_candidato: {
@@ -223,6 +228,7 @@ export async function POST(request: Request) {
         curso_id: payload.curso_id ?? null,
         turma_preferencial_id: payload.turma_id ?? null,
         ano_letivo: payload.ano_letivo ?? new Date().getFullYear(),
+        protocolo_publico: createProtocoloPublico('FOR-B2B'),
         source: 'formacao_b2b_upload',
         status: 'submetida',
         dados_candidato: {
@@ -272,6 +278,7 @@ export async function POST(request: Request) {
         curso_id: payload.curso_id ?? null,
         turma_preferencial_id: payload.turma_id ?? null,
         ano_letivo: new Date().getFullYear(),
+        protocolo_publico: createProtocoloPublico('FOR-SELF'),
         source: 'formacao_self_service',
         status: 'submetida',
         dados_candidato: {

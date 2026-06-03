@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from "react";
 import { 
   Search, 
   Loader2, 
@@ -15,11 +14,16 @@ import {
   Phone,
   Eye,
   EyeOff,
-  Check
+  Check,
+  CreditCard,
+  Timer,
+  Copy
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { DocumentUpload } from "../DocumentUpload";
 
 type BasicStatus = {
   protocolo: string;
@@ -28,6 +32,7 @@ type BasicStatus = {
   nome_candidato_mask: string;
   telefone_mask: string | null;
   email_mask: string | null;
+  escola_id: string;
 };
 
 type VaultData = {
@@ -38,13 +43,27 @@ type VaultData = {
   curso: string;
   pode_mudar_senha: boolean;
   pode_baixar_comprovativo: boolean;
+  pode_enviar_comprovativo: boolean;
+  pode_resolver_pendencia: boolean;
+  reserva_expira_at: string | null;
   comprovativo_url?: string;
+  pendencias?: Array<{ id: string; label: string; motivo?: string }>;
+  escola_pagamento?: {
+    ativo: boolean;
+    banco: string;
+    titular_conta: string;
+    iban: string;
+    numero_conta: string;
+    kwik_chave?: string;
+    instrucoes_checkout?: string;
+  } | null;
 };
 
 export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }) {
   const [protocolo, setProtocolo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
   // States do Fluxo
   const [step, setStep] = useState<'search' | 'challenge' | 'vault'>('search');
@@ -57,6 +76,14 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
   const [showPassword, setShowPassword] = useState(false);
   const [savingPass, setSavingPass] = useState(false);
   const [passSaved, setPassPassSaved] = useState(false);
+
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const passwordGroups = [
     /[a-z]/.test(password),
@@ -140,6 +167,78 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
     }
   };
 
+  const handleReceiptUpload = async (path: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/public/admissoes/${escolaSlug}/consultar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          protocolo, 
+          contato: contactChallenge,
+          action: 'upload_payment',
+          comprovativo_path: path 
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao enviar comprovativo");
+
+      setSuccessMsg("Comprovativo enviado com sucesso! Aguarde a compensação bancária.");
+      // Atualizar o vault localmente para refletir a mudança de status
+      if (vault) {
+        setVault({ 
+          ...vault, 
+          status: 'aguardando_compensacao',
+          pode_enviar_comprovativo: false 
+        });
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar comprovativo");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDocumentReupload = async (docId: string, path: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/public/admissoes/${escolaSlug}/consultar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          protocolo, 
+          contato: contactChallenge,
+          action: 'reupload_document',
+          document_id: docId,
+          document_path: path 
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao enviar documento");
+
+      setSuccessMsg("Documento atualizado com sucesso!");
+      
+      // Atualizar o vault localmente
+      if (vault) {
+        const updatedPendencias = (vault.pendencias || []).filter(p => p.id !== docId);
+        setVault({ 
+          ...vault, 
+          pendencias: updatedPendencias,
+          status: updatedPendencias.length === 0 ? 'submetida' : 'pendente',
+          pode_resolver_pendencia: updatedPendencias.length > 0
+        });
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar documento");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusConfig = (status: string) => {
     const s = status.toLowerCase();
     if (s === 'matriculado' || s === 'aprovada') return {
@@ -148,6 +247,27 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
       border: 'border-emerald-100'
+    };
+    if (s === 'aguardando_pagamento') return {
+      label: 'Aprovação: Reserva Garantida',
+      icon: <Timer className="text-amber-500" size={24} />,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      border: 'border-amber-100'
+    };
+    if (s === 'aguardando_compensacao') return {
+      label: 'Comprovativo em Análise',
+      icon: <Clock className="text-blue-500" size={24} />,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-100'
+    };
+    if (s === 'pendente') return {
+      label: 'Pendência: Documento Rejeitado',
+      icon: <AlertCircle className="text-rose-500" size={24} />,
+      color: 'text-rose-600',
+      bg: 'bg-rose-50',
+      border: 'border-rose-100'
     };
     if (s === 'rejeitada') return {
       label: 'Não Admitido',
@@ -200,6 +320,14 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
             <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100 flex items-center gap-3">
               <AlertCircle size={18} />
               {error}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mb-6 rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700 border border-emerald-100 flex items-center gap-3 animate-in zoom-in-95">
+              <CheckCircle2 size={18} />
+              {successMsg}
+              <button onClick={() => setSuccessMsg(null)} className="ml-auto opacity-50 hover:opacity-100">✕</button>
             </div>
           )}
 
@@ -291,17 +419,133 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
               {/* Resumo do Aluno */}
               <div className="flex items-start justify-between border-b border-slate-100 pb-6">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Aluno Matriculado</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                    {vault.status === 'matriculado' ? 'Aluno Matriculado' : 'Situação do Candidato'}
+                  </p>
                   <h3 className="text-2xl font-black text-slate-900">{vault.nome_completo}</h3>
                   <p className="text-sm text-slate-500 font-medium">{vault.curso}</p>
                 </div>
-                <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                  Oficial
+                <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${vault.status === 'matriculado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {vault.status === 'matriculado' ? 'Oficial' : 'Reserva'}
                 </div>
               </div>
 
+              {/* Reserva Timer */}
+              {vault.status === 'aguardando_pagamento' && vault.reserva_expira_at && (
+                <div className="p-6 bg-amber-600 rounded-2xl flex items-center gap-5 text-white shadow-lg shadow-amber-200 animate-pulse">
+                  <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <Timer size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Atenção: Vaga em Reserva Temporária</p>
+                    <p className="text-xl font-black">
+                      Expira em: <Countdown targetDate={vault.reserva_expira_at} />
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Pendências de Documentos */}
+              {vault.status === 'pendente' && vault.pendencias && vault.pendencias.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-rose-600">
+                    <AlertCircle size={18} />
+                    <h4 className="font-black text-sm uppercase tracking-wider">Documentação Pendente</h4>
+                  </div>
+                  <div className="grid gap-4">
+                    {vault.pendencias.map((p) => (
+                      <div key={p.id} className="p-6 rounded-2xl border-2 border-rose-100 bg-rose-50/30 space-y-4">
+                        <div>
+                          <p className="text-sm font-black text-rose-900">{p.label}</p>
+                          {p.motivo && <p className="text-xs text-rose-600 font-medium mt-1">Motivo: {p.motivo}</p>}
+                        </div>
+                        <DocumentUpload 
+                          label="Substituir Documento"
+                          description="Clique para enviar a versão correta"
+                          escolaId={basicData?.escola_id || ""}
+                          candidaturaId={vault.id}
+                          onUploadSuccess={(path) => handleDocumentReupload(p.id, path)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Ações do Cofre */}
               <div className="grid gap-6">
+                {/* 0. Enviar Comprovativo (Prioridade se aguardando pagamento) */}
+                {vault.status === 'aguardando_pagamento' && (
+                  <div className="space-y-6">
+                    {/* Bank Details */}
+                    {vault.escola_pagamento && vault.escola_pagamento.ativo && (
+                      <div className="p-6 rounded-2xl bg-slate-900 text-white space-y-4 shadow-xl">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="text-amber-400" size={18} />
+                          <h4 className="font-bold text-sm">Dados Bancários para Pagamento</h4>
+                        </div>
+                        
+                        <div className="grid gap-3">
+                          <div className="flex justify-between items-center py-2 border-b border-white/10">
+                            <div>
+                              <p className="text-[10px] text-white/50 uppercase font-black">Banco</p>
+                              <p className="text-sm font-bold">{vault.escola_pagamento.banco}</p>
+                            </div>
+                            <button onClick={() => copyToClipboard(vault.escola_pagamento?.banco || '', 'banco')} className="p-2 hover:bg-white/10 rounded-lg transition">
+                              {copiedField === 'banco' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="opacity-50" />}
+                            </button>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b border-white/10">
+                            <div>
+                              <p className="text-[10px] text-white/50 uppercase font-black">Número da Conta</p>
+                              <p className="text-sm font-mono font-bold tracking-wider">{vault.escola_pagamento.numero_conta}</p>
+                            </div>
+                            <button onClick={() => copyToClipboard(vault.escola_pagamento?.numero_conta || '', 'conta')} className="p-2 hover:bg-white/10 rounded-lg transition">
+                              {copiedField === 'conta' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="opacity-50" />}
+                            </button>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b border-white/10">
+                            <div>
+                              <p className="text-[10px] text-white/50 uppercase font-black">IBAN (Padrão AO06)</p>
+                              <p className="text-sm font-mono font-bold tracking-wider">{vault.escola_pagamento.iban}</p>
+                            </div>
+                            <button onClick={() => copyToClipboard(vault.escola_pagamento?.iban || '', 'iban')} className="p-2 hover:bg-white/10 rounded-lg transition">
+                              {copiedField === 'iban' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="opacity-50" />}
+                            </button>
+                          </div>
+                          <div className="py-2">
+                            <p className="text-[10px] text-white/50 uppercase font-black">Titular</p>
+                            <p className="text-sm font-bold">{vault.escola_pagamento.titular_conta}</p>
+                          </div>
+                        </div>
+
+                        {vault.escola_pagamento.instrucoes_checkout && (
+                          <div className="mt-4 p-4 rounded-xl bg-white/5 text-xs text-white/70 leading-relaxed italic border border-white/5">
+                            {vault.escola_pagamento.instrucoes_checkout}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="text-slate-400" size={18} />
+                        <h4 className="font-bold text-slate-900 text-sm">Enviar Comprovativo</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Após efetuar o pagamento, envie o comprovativo (Talão de Depósito ou Transferência) para que a secretaria confirme sua vaga.
+                      </p>
+                      <DocumentUpload 
+                        label="Comprovativo de Pagamento"
+                        description="Foto ou PDF do talão de depósito/transferência"
+                        escolaId={basicData?.escola_id || ""}
+                        candidaturaId={vault.id}
+                        onUploadSuccess={handleReceiptUpload}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* 1. Comprovativo de Matrícula */}
                 <div className="p-6 rounded-2xl border-2 border-klasse-gold/20 bg-white hover:border-klasse-gold/40 transition-colors">
                   <div className="flex items-center justify-between gap-4">
@@ -401,4 +645,34 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       </div>
     </div>
   )
+}
+
+function Countdown({ targetDate }: { targetDate: string }) {
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    const target = new Date(targetDate).getTime();
+
+    const update = () => {
+      const now = new Date().getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft("Expirada");
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeLeft(`${hours}h ${mins}m ${secs}s`);
+    };
+
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  return <span className="font-mono">{timeLeft}</span>;
 }

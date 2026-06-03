@@ -72,6 +72,15 @@ type TurmaOption = {
   curso_id?: string | null
 }
 
+type ConvertResponse = {
+  ok?: boolean
+  error?: string
+  code?: string
+  matricula_id?: string
+  aluno_id?: string
+  numero_matricula?: string
+}
+
 const getErrorMessage = (err: unknown, fallback: string) => {
   return err instanceof Error ? err.message : fallback
 }
@@ -124,6 +133,9 @@ export function AdmissaoConversionSheet({
   
   const [priceHint, setPriceHint] = useState<string | null>(null)
   const [loadingPrice, setLoadingPrice] = useState(false)
+  const [capacityOverrideOpen, setCapacityOverrideOpen] = useState(false)
+  const [capacityOverrideMotivo, setCapacityOverrideMotivo] = useState('')
+  const [capacityOverrideError, setCapacityOverrideError] = useState<string | null>(null)
 
   // Onboarding State
   const [enrollmentResult, setEnrollmentResult] = useState<{
@@ -264,9 +276,15 @@ export function AdmissaoConversionSheet({
     }
   }
 
-  const handleEfetivar = async () => {
+  const handleEfetivar = async (override?: { capacidade: boolean; motivo: string }) => {
     if (!candidaturaId || !academic.turmaId) {
       toastError('Dados incompletos', 'Selecione uma turma para continuar.')
+      return
+    }
+
+    const overrideMotivo = override?.motivo.trim() ?? ''
+    if (override?.capacidade && overrideMotivo.length < 10) {
+      setCapacityOverrideError('Informe um motivo com pelo menos 10 caracteres.')
       return
     }
 
@@ -324,20 +342,35 @@ export function AdmissaoConversionSheet({
           referencia: payment.referencia,
           comprovativo_url: payment.comprovativo_url,
           amount: Number(payment.amount),
-          parcial: payment.parcial
+          parcial: payment.parcial,
+          override_capacidade: override?.capacidade ?? false,
+          override_motivo: override?.capacidade ? overrideMotivo : undefined,
         })
       })
 
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Erro ao converter matrícula')
+      const json = await res.json().catch(() => null) as ConvertResponse | null
+      if (!res.ok) {
+        if (!override?.capacidade && json?.code === 'TURMA_LOTADA_CAPACIDADE') {
+          setCapacityOverrideError(json.error ?? 'A turma selecionada está lotada.')
+          setCapacityOverrideOpen(true)
+          return
+        }
+        throw new Error(json?.error || 'Erro ao converter matrícula')
+      }
+      if (!json?.matricula_id) {
+        throw new Error('Matrícula efetivada sem identificador retornado.')
+      }
 
       success('Matrícula Efetivada', `O aluno ${detail?.nome_candidato} foi matriculado com sucesso.`)
+      setCapacityOverrideOpen(false)
+      setCapacityOverrideMotivo('')
+      setCapacityOverrideError(null)
       
-      const newAlunoId = json.aluno_id || detail?.id;
+      const newAlunoId = json.aluno_id ?? detail?.id ?? '';
       setEnrollmentResult({
         matriculaId: json.matricula_id,
         alunoId: newAlunoId,
-        numeroMatricula: json.numero_matricula
+        numeroMatricula: json?.numero_matricula ?? ''
       })
 
       onSuccess(json.matricula_id)
@@ -936,7 +969,7 @@ export function AdmissaoConversionSheet({
               Salvar Apenas
             </Button>
             <Button
-              onClick={handleEfetivar}
+              onClick={() => void handleEfetivar()}
               disabled={submitting || !academic.turmaId || !payment.amount}
               className="flex-[2] h-14 rounded-2xl bg-klasse-gold hover:brightness-95 text-white font-black text-base shadow-xl shadow-klasse-gold/20"
               loading={submitting}
@@ -946,6 +979,63 @@ export function AdmissaoConversionSheet({
           </SheetFooter>
         )}
       </SheetContent>
+      {capacityOverrideOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Turma acima da capacidade</h3>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">
+                  Para continuar, informe o motivo da exceção. A autorização e a auditoria serão validadas no banco.
+                </p>
+              </div>
+            </div>
+
+            {capacityOverrideError && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                {capacityOverrideError}
+              </div>
+            )}
+
+            <label className="mb-1.5 block text-xs font-bold text-slate-700">Motivo do override</label>
+            <Input
+              value={capacityOverrideMotivo}
+              onChange={(e) => {
+                setCapacityOverrideMotivo(e.target.value)
+                setCapacityOverrideError(null)
+              }}
+              placeholder="Ex: Autorização da direção para transferência de turma"
+              className="rounded-xl"
+            />
+
+            <div className="mt-6 flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCapacityOverrideOpen(false)
+                  setCapacityOverrideMotivo('')
+                  setCapacityOverrideError(null)
+                }}
+                disabled={submitting}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => void handleEfetivar({ capacidade: true, motivo: capacityOverrideMotivo })}
+                disabled={submitting || capacityOverrideMotivo.trim().length < 10}
+                loading={submitting}
+                className="flex-[2] bg-klasse-gold text-white"
+              >
+                Confirmar override
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Sheet>
   )
 }

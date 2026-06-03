@@ -16,13 +16,21 @@ const searchParamsSchema = z
     cursor: z.string().optional(),
     turmaId: z.string().uuid().optional(),
     q: z.string().trim().max(120).optional(),
-    status: z.enum(['novas', 'pendentes', 'concluidas', 'all']).optional(),
+    status: z.enum(['novas', 'lista_espera', 'pendentes', 'concluidas', 'expirando', 'reenviados', 'all']).optional(),
   })
   .strict()
 
-type Status = 'submetida' | 'em_analise' | 'aprovada' | 'matriculado'
+type Status =
+  | 'submetida'
+  | 'lista_espera'
+  | 'em_analise'
+  | 'aprovada'
+  | 'aguardando_pagamento'
+  | 'aguardando_compensacao'
+  | 'matriculado'
 
 const SUBMETIDA_STATUSES = ['submetida', 'pendente']
+const LISTA_ESPERA_STATUSES = ['lista_espera']
 const EM_ANALISE_STATUSES = ['em_analise']
 const APROVADA_STATUSES = ['aprovada', 'aguardando_pagamento']
 const MATRICULADO_STATUSES = ['matriculado', 'convertida']
@@ -32,9 +40,11 @@ const REJEITADA_STATUSES = ['rejeitada', 'arquivado']
 const STATUS_MAP: Record<string, Status> = {
   submetida: 'submetida',
   pendente: 'submetida',
+  lista_espera: 'lista_espera',
   em_analise: 'em_analise',
   aprovada: 'aprovada',
-  aguardando_pagamento: 'aprovada',
+  aguardando_pagamento: 'aguardando_pagamento',
+  aguardando_compensacao: 'aguardando_compensacao',
   matriculado: 'matriculado',
   convertida: 'matriculado',
 }
@@ -49,11 +59,15 @@ function escapeIlike(value: string) {
 
 function statusesForFilter(filter: string | undefined) {
   if (filter === 'novas') return SUBMETIDA_STATUSES
+  if (filter === 'lista_espera') return LISTA_ESPERA_STATUSES
   if (filter === 'pendentes') return [...RASCUNHO_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]
   if (filter === 'concluidas') return [...MATRICULADO_STATUSES, ...REJEITADA_STATUSES]
+  if (filter === 'expirando') return ['aguardando_pagamento']
+  if (filter === 'reenviados') return ['submetida', 'pendente']
   return [
     ...RASCUNHO_STATUSES,
     ...SUBMETIDA_STATUSES,
+    ...LISTA_ESPERA_STATUSES,
     ...EM_ANALISE_STATUSES,
     ...APROVADA_STATUSES,
     ...MATRICULADO_STATUSES,
@@ -102,7 +116,7 @@ export async function GET(request: Request) {
     // 1) Counts (canônico por status)
     let countsQuery = supabase
       .from('vw_admissoes_counts_por_status')
-      .select('submetida_total, em_analise_total, aprovada_total, matriculado_7d_total')
+      .select('submetida_total, em_analise_total, aprovada_total, matriculado_7d_total, expirando_24h_total, reenviados_48h_total')
       .eq('escola_id', escolaId)
 
     if (turmaId) {
@@ -123,6 +137,8 @@ export async function GET(request: Request) {
       created_at,
       updated_at,
       matriculado_em,
+      expires_at,
+      portal_reenvio_at,
       nome_candidato,
       cursos(nome),
       classes(nome)
@@ -139,6 +155,14 @@ export async function GET(request: Request) {
         .order('id', { ascending: false })
 
       if (turmaId) query = query.eq('turma_preferencial_id', turmaId)
+
+      if (statusFilter === 'expirando') {
+        query = query
+          .gt('expires_at', new Date().toISOString())
+          .lte('expires_at', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+      } else if (statusFilter === 'reenviados') {
+        query = query.gte('portal_reenvio_at', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
+      }
 
       if (q) {
         const normalizedQ = escapeIlike(q)
@@ -174,9 +198,12 @@ export async function GET(request: Request) {
           ok: true,
           counts: {
             submetida: countsRow?.submetida_total ?? 0,
+            lista_espera: 0,
             em_analise: countsRow?.em_analise_total ?? 0,
             aprovada: countsRow?.aprovada_total ?? 0,
             matriculado: countsRow?.matriculado_7d_total ?? 0,
+            expirando: countsRow?.expirando_24h_total ?? 0,
+            reenviados: countsRow?.reenviados_48h_total ?? 0,
           },
           items,
           meta: { matriculados_since: sinceIso, q: q || null, status: statusFilter ?? null },
@@ -196,7 +223,7 @@ export async function GET(request: Request) {
           .from('candidaturas')
           .select(baseSelect)
           .eq('escola_id', escolaId)
-          .or(statusOr([...SUBMETIDA_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]))
+          .or(statusOr([...SUBMETIDA_STATUSES, ...LISTA_ESPERA_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]))
           .order('created_at', { ascending: false })
           .order('id', { ascending: false })
 
@@ -251,11 +278,16 @@ export async function GET(request: Request) {
       .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
       .slice(0, limit * 2)
 
-    const counts: Record<Status, number> = {
+    const counts: Record<string, number> = {
       submetida: countsRow?.submetida_total ?? 0,
+      lista_espera: 0,
       em_analise: countsRow?.em_analise_total ?? 0,
       aprovada: countsRow?.aprovada_total ?? 0,
+      aguardando_pagamento: 0,
+      aguardando_compensacao: 0,
       matriculado: countsRow?.matriculado_7d_total ?? 0,
+      expirando: countsRow?.expirando_24h_total ?? 0,
+      reenviados: countsRow?.reenviados_48h_total ?? 0,
     }
 
     const lastOpen = (openRes.data ?? [])[Math.max((openRes.data?.length ?? 1) - 1, 0)]
@@ -276,10 +308,10 @@ export async function GET(request: Request) {
       },
       { status: 200 }
     )
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('radar error:', e)
     return NextResponse.json(
-      { error: 'Internal Server Error', code: e?.code ?? null },
+      { error: 'Internal Server Error', code: typeof e === 'object' && e && 'code' in e ? String(e.code ?? '') : null },
       { status: 500 }
     )
   }

@@ -69,32 +69,25 @@
 
 ## SESSÃO ATUAL — EVIDÊNCIAS
 
+- **Evolução do Portal de Admissão (KF1):**
+  - Implementação do **"Cofre do Candidato"** com Timer de Reserva de 48h.
+  - Fluxo de **Auto-serviço para Pendências** (Re-upload de documentos rejeitados via RPC segura).
+  - Integração de dados bancários da escola diretamente na tela de checkout pública.
+  - API de Radar atualizada com KPIs de Gargalo de Conversão (Expirando, Re-enviados).
+  - Dashboards via `vw_admissoes_counts_por_status` sincronizados com o banco.
 - Paginação/cursor em listagens críticas (Secretaria/Admin/Radar):
   - `apps/web/src/components/secretaria/TurmasListClient.tsx`
   - `apps/web/src/app/escola/[id]/admin/alunos/page.tsx`
-  - `apps/web/src/components/secretaria/AdmissoesRadarClient.tsx`
-  - `apps/web/src/components/secretaria/ImportacoesListClient.tsx`
-  - `apps/web/src/app/secretaria/(portal-secretaria)/importacoes/page.tsx`
-  - `apps/web/src/app/secretaria/(portal-secretaria)/importacoes/[id]/page.tsx`
-  - `apps/web/src/app/api/migracao/[importId]/route.ts`
+  - `apps/web/src/components/secretaria/AdmissoesInboxClient.tsx`
 - APIs com `limit + cursor + next_cursor`:
-  - `apps/web/src/app/api/escolas/[id]/cursos/route.ts`
-  - `apps/web/src/app/api/escolas/[id]/cursos/stats/route.ts`
-  - `apps/web/src/app/api/escolas/[id]/classes/route.ts`
-- Onboarding/Configurações com paginação e contadores via MV:
-  - `apps/web/src/components/escola/onboarding/AcademicSetupWizard.tsx`
-  - `apps/web/src/components/escola/settings/StructureMarketplace.tsx`
-  - `apps/web/src/components/escola/settings/SettingsHub.tsx`
-  - `apps/web/src/app/api/escola/[id]/admin/setup/status/route.ts`
-- MVs de setup/estrutura (com `UNIQUE INDEX`, refresh, cron):
-  - `supabase/migrations/20261101120000_mv_escola_setup_status.sql`
-  - `supabase/migrations/20261101121000_mv_escola_estrutura_counts.sql`
+  - `apps/web/src/app/api/secretaria/admissoes/radar/route.ts` (Atualizada para suportar gargalos)
 
 ## PRÓXIMOS PASSOS
 
+- **Integração de Notificações Automáticas:** Disparar WhatsApp/SMS ao transicionar para `pendente` ou `aguardando_pagamento`.
+- **Refatoração da Lógica de Capacidade:** Incluir candidatos com reserva ativa no cálculo de "Últimas Vagas".
+- **Draft Recovery Público:** Permitir que candidatos recuperem rascunhos de inscrição via telefone/email.
 - Instrumentar p95 por tela (RUM) e bloquear regressões.
-- Validar limites de payload nas novas listagens com amostras reais.
-- Rodar bateria mínima de testes de rotas paginadas.
 
 ## NOTA FINAL
 
