@@ -32,19 +32,38 @@ type WorkflowStep = {
   sla_hours?: number;
 };
 
+type DocumentoAdmissao = {
+  id: string;
+  label: string;
+};
+
+function normalizeDocumentoId(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 120);
+}
+
 export default function FluxosConfiguracaoPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const base = buildPortalHref(escolaParam, "/admin/configuracoes");
-  const { success } = useToast();
+  const { success, error: toastError } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
 
   const [saving, setSaving] = useState(false);
   const [auditStatus, setAuditStatus] = useState<string[]>([]);
   const [isSistemaModalOpen, setIsSistemaModalOpen] = useState(false);
+  const [reservaExpiracaoHoras, setReservaExpiracaoHoras] = useState(48);
+  const [pendenciaSlaHoras, setPendenciaSlaHoras] = useState(72);
+  const [documentosAdmissao, setDocumentosAdmissao] = useState<DocumentoAdmissao[]>([]);
+  const [loadingAdmissoes, setLoadingAdmissoes] = useState(true);
   
   // Estado inicial fiel à imagem do print
   const [steps, setSteps] = useState<WorkflowStep[]>([
@@ -99,6 +118,38 @@ export default function FluxosConfiguracaoPage() {
     ]);
   }, []);
 
+  useEffect(() => {
+    if (!escolaId) return;
+    let cancelled = false;
+
+    async function loadAdmissoesConfig() {
+      setLoadingAdmissoes(true);
+      try {
+        const res = await fetch(`/api/secretaria/admissoes/config?escolaId=${encodeURIComponent(escolaId as string)}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Falha ao carregar configuração de admissões");
+        if (!cancelled) {
+          setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || 48);
+          setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || 72);
+          setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          toastError("Não foi possível carregar admissões", err instanceof Error ? err.message || "Erro desconhecido" : "Erro desconhecido");
+        }
+      } finally {
+        if (!cancelled) setLoadingAdmissoes(false);
+      }
+    }
+
+    loadAdmissoesConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, [escolaId]);
+
   const toggleStep = (id: string) => {
     setSteps(prev => prev.map(step => 
       step.id === id && !step.mandatory ? { ...step, active: !step.active } : step
@@ -107,10 +158,38 @@ export default function FluxosConfiguracaoPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulação de delay de rede
-    await new Promise(r => setTimeout(r, 800));
-    success("Fluxo atualizado com sucesso.");
-    setSaving(false);
+    try {
+      if (escolaId) {
+        const normalizedReservaExpiracaoHoras = Math.min(168, Math.max(1, Math.trunc(reservaExpiracaoHoras || 48)));
+        const normalizedPendenciaSlaHoras = Math.min(720, Math.max(1, Math.trunc(pendenciaSlaHoras || 72)));
+        const normalizedDocumentos = documentosAdmissao
+          .map((doc) => ({
+            id: normalizeDocumentoId(doc.id || doc.label),
+            label: doc.label.trim(),
+          }))
+          .filter((doc) => doc.id && doc.label.length >= 2);
+        const res = await fetch("/api/secretaria/admissoes/config", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            escolaId,
+            reserva_expiracao_horas: normalizedReservaExpiracaoHoras,
+            pendencia_sla_horas: normalizedPendenciaSlaHoras,
+            documentos_admissao_catalogo: normalizedDocumentos,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Falha ao guardar configuração");
+        setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || normalizedReservaExpiracaoHoras);
+        setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || normalizedPendenciaSlaHoras);
+        setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : normalizedDocumentos);
+      }
+      success("Fluxo atualizado com sucesso.");
+    } catch (err) {
+      toastError("Não foi possível guardar", err instanceof Error ? err.message : "Erro desconhecido");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -144,6 +223,113 @@ export default function FluxosConfiguracaoPage() {
           
           {/* COLUNA DA ESQUERDA: PIPELINE */}
           <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Administração de Candidaturas</h3>
+                  <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
+                    Defina o prazo padrão de reserva mostrado no Cofre e usado quando a secretaria aprova uma candidatura para pagamento.
+                  </p>
+                </div>
+                <div className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  Reserva ativa
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Expiração da reserva
+                  </span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={168}
+                      disabled={loadingAdmissoes}
+                      value={reservaExpiracaoHoras}
+                      onChange={(event) => {
+                        const nextValue = Number(event.target.value);
+                        setReservaExpiracaoHoras(Number.isFinite(nextValue) ? nextValue : 48);
+                      }}
+                      className="h-10 w-24 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                    />
+                    <span className="text-sm font-semibold text-slate-600">horas</span>
+                  </div>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Prazo para corrigir pendência
+                  </span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={720}
+                      disabled={loadingAdmissoes}
+                      value={pendenciaSlaHoras}
+                      onChange={(event) => {
+                        const nextValue = Number(event.target.value);
+                        setPendenciaSlaHoras(Number.isFinite(nextValue) ? nextValue : 72);
+                      }}
+                      className="h-10 w-24 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                    />
+                    <span className="text-sm font-semibold text-slate-600">horas</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-500">Documentos do catálogo</h4>
+                    <p className="mt-1 text-xs text-slate-500">A secretaria deve usar estes nomes ao solicitar correções.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentosAdmissao((prev) => [...prev, { id: `documento_${prev.length + 1}`, label: "Novo documento" }])}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {documentosAdmissao.map((doc, index) => (
+                    <div key={`${doc.id}-${index}`} className="grid gap-2 sm:grid-cols-[180px_1fr_auto]">
+                      <input
+                        value={doc.id}
+                        onChange={(event) => {
+                          const id = normalizeDocumentoId(event.target.value);
+                          setDocumentosAdmissao((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, id } : item));
+                        }}
+                        className="h-10 rounded-lg border border-slate-200 px-3 text-xs font-mono text-slate-700 outline-none focus:border-[#1F6B3B]"
+                      />
+                      <input
+                        value={doc.label}
+                        onChange={(event) => {
+                          const label = event.target.value;
+                          setDocumentosAdmissao((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, label, id: item.id || normalizeDocumentoId(label) } : item));
+                        }}
+                        className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#1F6B3B]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDocumentosAdmissao((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}
+                        className="h-10 rounded-lg border border-rose-100 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-xs leading-relaxed text-slate-500">
+                  O padrão atual é aplicado em novas reservas e novas pendências. Registos já emitidos mantêm as datas gravadas.
+                </p>
+              </div>
+            </div>
+
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               
               <div className="relative space-y-0">

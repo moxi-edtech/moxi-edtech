@@ -40,6 +40,7 @@ type Props = {
 
 type CandidaturaDetail = {
   id: string
+  protocolo_publico?: string | null
   nome_candidato: string
   curso_id: string | null
   classe_id: string | null
@@ -84,6 +85,9 @@ type ConvertResponse = {
 const getErrorMessage = (err: unknown, fallback: string) => {
   return err instanceof Error ? err.message : fallback
 }
+
+const displayProtocol = (detail: Pick<CandidaturaDetail, 'id' | 'protocolo_publico'>) =>
+  detail.protocolo_publico || `#${detail.id.split('-')[0].toUpperCase()}`
 
 export function AdmissaoConversionSheet({ 
   isOpen, 
@@ -431,7 +435,7 @@ export function AdmissaoConversionSheet({
     if (phone.length === 9) phone = `244${phone}`;
     else if (phone.length > 9 && !phone.startsWith('244')) phone = `244${phone}`;
 
-    let message = `Olá ${guardianData.nome}! A matrícula de *${studentData.nome}* foi efetivada com sucesso no KLASSE. 🎓\n\nProtocolo: #${detail.id.split('-')[0].toUpperCase()}`;
+    let message = `Olá ${guardianData.nome}! A matrícula de *${studentData.nome}* foi efetivada com sucesso no KLASSE. 🎓\n\nProtocolo: ${displayProtocol(detail)}`;
     
     if (credentials) {
       message += `\n\n*Dados de Acesso ao Portal:*\nLink: ${window.location.origin}/login\nUsuário: ${credentials.login}\nSenha: ${credentials.senha || '********'}`;

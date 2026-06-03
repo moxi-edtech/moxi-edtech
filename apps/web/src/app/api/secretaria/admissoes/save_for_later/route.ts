@@ -8,6 +8,7 @@ import ReactPDF, { type DocumentProps } from '@react-pdf/renderer'
 import { FichaInscricaoPDF } from '@/components/secretaria/FichaInscricaoPDF';
 import type { ReactElement } from 'react'
 import { createElement } from 'react'
+import { getReservaExpiracaoHorasFromConfig } from '@/lib/admissoes/reserva'
 
 export const runtime = 'nodejs';
 
@@ -90,9 +91,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: escolaConfig } = await supabase
+      .from("escolas")
+      .select("config_portal_admissao")
+      .eq("id", cand.escola_id)
+      .maybeSingle();
+
+    const reservaExpiracaoHoras = getReservaExpiracaoHorasFromConfig(escolaConfig?.config_portal_admissao);
     const pdfPath = `${cand.escola_id}/${candidatura_id}.pdf`;
     const expires_at = new Date();
-    expires_at.setHours(expires_at.getHours() + 48);
+    expires_at.setHours(expires_at.getHours() + reservaExpiracaoHoras);
 
     const { data: claimed, error: claimErr } = await supabase
       .from('candidaturas')
@@ -148,7 +156,8 @@ export async function POST(request: Request) {
         const pdfComponent = createElement(
           FichaInscricaoPDF,
           { 
-            candidatura: cand as any,
+            candidatura: { ...(cand as any), expires_at: expires_at.toISOString() },
+            reservaExpiracaoHoras,
             dadosPagamento,
             valorMatricula: preco?.valor_matricula ?? null
           }
@@ -167,9 +176,10 @@ export async function POST(request: Request) {
         await recordAuditServer({
           escolaId: cand.escola_id,
           portal: 'secretaria',
-          acao: 'ADMISSION_RESERVED_48H',
+          acao: 'ADMISSION_RESERVED',
           entity: 'candidaturas',
           entityId: cand.id,
+          details: { reserva_expiracao_horas: reservaExpiracaoHoras },
         });
 
     } 

@@ -17,7 +17,8 @@ import {
   Check,
   CreditCard,
   Timer,
-  Copy
+  Copy,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -48,6 +49,22 @@ type VaultData = {
   reserva_expira_at: string | null;
   comprovativo_url?: string;
   pendencias?: Array<{ id: string; label: string; motivo?: string }>;
+  historico_pendencias?: Array<{
+    id: string;
+    created_at?: string | null;
+    tipo: string;
+    titulo: string;
+    detalhe: string;
+    pendencias?: Array<{ id?: string | null; label: string; motivo?: string | null }>;
+  }>;
+  dossier: Array<{
+    id: string;
+    label: string;
+    description: string;
+    status: "upload" | "review" | "rejected";
+    motivo?: string;
+    path?: string;
+  }>;
   escola_pagamento?: {
     ativo: boolean;
     banco: string;
@@ -58,6 +75,21 @@ type VaultData = {
     instrucoes_checkout?: string;
   } | null;
 };
+
+function formatTimelineDate(value?: string | null) {
+  if (!value) return "Agora";
+  try {
+    return new Intl.DateTimeFormat("pt-AO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+  } catch {
+    return "Agora";
+  }
+}
 
 export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }) {
   const [protocolo, setProtocolo] = useState("");
@@ -220,16 +252,29 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao enviar documento");
 
-      setSuccessMsg("Documento atualizado com sucesso!");
+      setSuccessMsg(data.message || "Documento atualizado com sucesso!");
       
       // Atualizar o vault localmente
       if (vault) {
-        const updatedPendencias = (vault.pendencias || []).filter(p => p.id !== docId);
+        const updatedDossier = vault.dossier.map(d => 
+          d.id === docId ? { ...d, status: 'review' as const, path } : d
+        );
+        const doc = vault.dossier.find(d => d.id === docId);
+        const nextHistory = [
+          {
+            id: `local-${docId}-${Date.now()}`,
+            created_at: new Date().toISOString(),
+            tipo: 'documento_reenviado',
+            titulo: 'Documento reenviado',
+            detalhe: `${doc?.label || docId.replace(/_/g, ' ')} reenviado para revisão.`,
+          },
+          ...(vault.historico_pendencias || []),
+        ];
         setVault({ 
           ...vault, 
-          pendencias: updatedPendencias,
-          status: updatedPendencias.length === 0 ? 'submetida' : 'pendente',
-          pode_resolver_pendencia: updatedPendencias.length > 0
+          dossier: updatedDossier,
+          historico_pendencias: nextHistory,
+          status: data.status || vault.status
         });
       }
     } catch (err: unknown) {
@@ -263,7 +308,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       border: 'border-blue-100'
     };
     if (s === 'pendente') return {
-      label: 'Pendência: Documento Rejeitado',
+      label: 'Dossiê: Correção Necessária',
       icon: <AlertCircle className="text-rose-500" size={24} />,
       color: 'text-rose-600',
       bg: 'bg-rose-50',
@@ -306,10 +351,10 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
             </div>
             <div>
               <h2 className="text-2xl font-black tracking-tight">
-                {step === 'vault' ? 'Cofre de Matrícula' : 'Consultar Inscrição'}
+                {step === 'vault' ? 'Área da Candidatura' : 'Consultar Inscrição'}
               </h2>
               <p className="text-white/60 text-sm">
-                {step === 'vault' ? 'Acesso seguro aos seus documentos' : 'Acompanhe o estado da sua candidatura'}
+                {step === 'vault' ? 'Acompanhe seu processo e documentos' : 'Acompanhe o estado da sua candidatura'}
               </p>
             </div>
           </div>
@@ -375,8 +420,8 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                   <h4 className="font-black text-slate-900">Desafio de Segurança</h4>
                   <p className="text-sm text-slate-500 max-w-xs">
                     {basicData.email_mask 
-                      ? "Confirme o telefone ou email do encarregado registrado para acessar o cofre."
-                      : "Confirme o telefone do encarregado registrado para acessar o cofre."}
+                      ? "Confirme o telefone ou email do encarregado registrado para acessar seus dados."
+                      : "Confirme o telefone do encarregado registrado para acessar seus dados."}
                   </p>
                   
                   <form onSubmit={handleChallengeSubmit} className="w-full space-y-4 pt-4">
@@ -402,7 +447,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                       />
                     </div>
                     <Button type="submit" loading={loading} fullWidth tone="gold" className="rounded-xl h-14 font-black">
-                      Abrir Cofre agora
+                      Entrar agora
                     </Button>
                     <button type="button" onClick={() => setStep('search')} className="text-xs font-bold text-slate-400 hover:text-slate-600">
                       Voltar e corrigir protocolo
@@ -413,7 +458,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
             </div>
           )}
 
-          {/* PASSO 3: O COFRE (VAULT) */}
+          {/* PASSO 3: ÁREA DA CANDIDATURA (VAULT) */}
           {step === 'vault' && vault && (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
               {/* Resumo do Aluno */}
@@ -445,34 +490,102 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                 </div>
               )}
 
-              {/* Pendências de Documentos */}
-              {vault.status === 'pendente' && vault.pendencias && vault.pendencias.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-rose-600">
-                    <AlertCircle size={18} />
-                    <h4 className="font-black text-sm uppercase tracking-wider">Documentação Pendente</h4>
+              {/* Dossiê de Documentos */}
+              {vault.status !== 'matriculado' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-2 text-slate-900">
+                      <FileDown size={18} />
+                      <h4 className="font-black text-sm uppercase tracking-wider">Seu Dossiê Digital</h4>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      {vault.dossier.filter(d => d.status === 'review').length} de {vault.dossier.length} enviados
+                    </span>
                   </div>
+
                   <div className="grid gap-4">
-                    {vault.pendencias.map((p) => (
-                      <div key={p.id} className="p-6 rounded-2xl border-2 border-rose-100 bg-rose-50/30 space-y-4">
-                        <div>
-                          <p className="text-sm font-black text-rose-900">{p.label}</p>
-                          {p.motivo && <p className="text-xs text-rose-600 font-medium mt-1">Motivo: {p.motivo}</p>}
+                    {vault.dossier.map((doc) => (
+                      <div 
+                        key={doc.id} 
+                        className={`p-5 rounded-2xl border-2 transition-all ${
+                          doc.status === 'rejected' ? 'border-rose-100 bg-rose-50/30' : 
+                          doc.status === 'review' ? 'border-emerald-50 bg-emerald-50/20' : 
+                          'border-slate-100 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-black text-slate-900">{doc.label}</p>
+                              {doc.status === 'review' && <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase">Enviado</span>}
+                              {doc.status === 'rejected' && <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 text-[8px] font-black uppercase">Correção Necessária</span>}
+                              {doc.status === 'upload' && <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[8px] font-black uppercase">Não Enviado</span>}
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">{doc.description}</p>
+                            {doc.motivo && (
+                              <div className="mt-3 p-3 rounded-xl bg-rose-100/50 border border-rose-100">
+                                <p className="text-[10px] font-black text-rose-900 uppercase mb-1">Motivo da Rejeição:</p>
+                                <p className="text-xs text-rose-700 font-medium italic">"{doc.motivo}"</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            doc.status === 'rejected' ? 'bg-rose-100 text-rose-600' : 
+                            doc.status === 'review' ? 'bg-emerald-100 text-emerald-600' : 
+                            'bg-slate-100 text-slate-400'
+                          }`}>
+                            {doc.status === 'review' ? <Check size={20} /> : <FileText size={20} />}
+                          </div>
                         </div>
-                        <DocumentUpload 
-                          label="Substituir Documento"
-                          description="Clique para enviar a versão correta"
-                          escolaId={basicData?.escola_id || ""}
-                          candidaturaId={vault.id}
-                          onUploadSuccess={(path) => handleDocumentReupload(p.id, path)}
-                        />
+
+                        {doc.status !== 'review' && (
+                          <DocumentUpload 
+                            label={doc.status === 'rejected' ? "Substituir Documento" : "Adicionar ao Dossiê"}
+                            description={doc.status === 'rejected' ? "Clique para enviar a versão correta" : "Clique para selecionar o arquivo"}
+                            escolaId={basicData?.escola_id || ""}
+                            candidaturaId={vault.id}
+                            onUploadSuccess={(path) => handleDocumentReupload(doc.id, path)}
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Ações do Cofre */}
+              {vault.historico_pendencias && vault.historico_pendencias.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-slate-900 border-b border-slate-100 pb-4">
+                    <Clock size={18} />
+                    <h4 className="font-black text-sm uppercase tracking-wider">Histórico da Documentação</h4>
+                  </div>
+                  <div className="space-y-3">
+                    {vault.historico_pendencias.map((item) => (
+                      <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-black text-slate-900">{item.titulo}</p>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            {formatTimelineDate(item.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.detalhe}</p>
+                        {item.pendencias && item.pendencias.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {item.pendencias.map((pendencia) => (
+                              <div key={`${item.id}-${pendencia.id || pendencia.label}`} className="rounded-xl bg-white px-3 py-2 text-xs text-slate-600">
+                                <span className="font-bold text-slate-900">{pendencia.label}</span>
+                                {pendencia.motivo ? `: ${pendencia.motivo}` : ''}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ações da Área da Candidatura */}
               <div className="grid gap-6">
                 {/* 0. Enviar Comprovativo (Prioridade se aguardando pagamento) */}
                 {vault.status === 'aguardando_pagamento' && (
@@ -575,7 +688,13 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                     <h4 className="font-bold text-slate-900 text-sm">Acesso ao Portal do Aluno</h4>
                   </div>
                   
-                  {passSaved ? (
+                  {vault.status !== 'matriculado' ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs leading-relaxed text-slate-500">
+                        O acesso ao portal será liberado após a confirmação da matrícula.
+                      </p>
+                    </div>
+                  ) : passSaved ? (
                     <div className="bg-green-100 text-green-700 p-4 rounded-xl flex items-center gap-3 text-sm font-bold animate-in zoom-in-95">
                       <CheckCircle2 size={20} />
                       Senha configurada com sucesso!

@@ -5,10 +5,36 @@ import { z } from 'zod'
 
 import { requireRoleInSchool } from '@/lib/authz';
 import { applyKf2ListInvariants } from '@/lib/kf2';
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import {
+  DEFAULT_DOCUMENTOS_ADMISSAO,
+  getDocumentosAdmissaoCatalogoFromConfig,
+  getPendenciaSlaHorasFromConfig,
+  getReservaExpiracaoHorasFromConfig,
+  normalizePendenciaSlaHoras,
+  normalizeReservaExpiracaoHoras,
+} from '@/lib/admissoes/reserva'
+import type { Json } from '~types/supabase'
 
 const searchParamsSchema = z.object({
   escolaId: z.string().uuid(),
 })
+
+const patchPayloadSchema = z.object({
+  escolaId: z.string().uuid(),
+  reserva_expiracao_horas: z.number().int().min(1).max(168).optional(),
+  pendencia_sla_horas: z.number().int().min(1).max(720).optional(),
+  documentos_admissao_catalogo: z.array(z.object({
+    id: z.string().trim().min(1).max(120).regex(/^[a-z0-9_-]+$/),
+    label: z.string().trim().min(2).max(120),
+  })).min(1).max(30).optional(),
+})
+
+type JsonObject = { [key: string]: Json | undefined }
+
+function isJsonObject(value: Json | null | undefined): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -21,10 +47,19 @@ export async function GET(request: Request) {
   const { escolaId } = validation.data
   const supabase = await createClient()
 
+  const { data: userRes } = await supabase.auth.getUser()
+  const user = userRes?.user
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId)
+  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 })
+  }
+
   const { error: authError } = await requireRoleInSchool({ 
     supabase, 
     escolaId, 
-    roles: ['secretaria', 'admin', 'admin_escola', 'staff_admin'] 
+    roles: ['secretaria', 'diretor', 'admin', 'admin_escola', 'staff_admin'] 
   });
   if (authError) return authError;
 
@@ -37,15 +72,101 @@ export async function GET(request: Request) {
       supabase.from('classes').select('id, nome, curso_id').eq('escola_id', escolaId),
       { defaultLimit: 50, order: [{ column: 'nome', ascending: true }] }
     )
+    const escolaQuery = supabase
+      .from('escolas')
+      .select('config_portal_admissao')
+      .eq('id', escolaId)
+      .maybeSingle()
 
-    const [cursos, classes] = await Promise.all([cursosQuery, classesQuery])
+    const [cursos, classes, escola] = await Promise.all([cursosQuery, classesQuery, escolaQuery])
 
     return NextResponse.json({
       cursos: cursos.data,
       classes: classes.data,
+      admissoes: {
+        reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(escola.data?.config_portal_admissao),
+        pendencia_sla_horas: getPendenciaSlaHorasFromConfig(escola.data?.config_portal_admissao),
+        documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(escola.data?.config_portal_admissao),
+      },
     })
   } catch (error) {
     console.error('Error fetching admission config:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const body = await request.json().catch(() => null)
+  const validation = patchPayloadSchema.safeParse(body)
+
+  if (!validation.success) {
+    return NextResponse.json({ error: validation.error.format() }, { status: 400 })
+  }
+
+  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, documentos_admissao_catalogo } = validation.data
+
+  const { data: userRes } = await supabase.auth.getUser()
+  const user = userRes?.user
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId)
+  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 })
+  }
+
+  const { error: authError } = await requireRoleInSchool({
+    supabase,
+    escolaId,
+    roles: ['diretor', 'admin', 'admin_escola', 'staff_admin'],
+  })
+  if (authError) return authError
+
+  try {
+    const { data: escola, error: fetchError } = await supabase
+      .from('escolas')
+      .select('config_portal_admissao')
+      .eq('id', escolaId)
+      .maybeSingle()
+
+    if (fetchError) throw fetchError
+    if (!escola) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 404 })
+
+    const currentConfig = isJsonObject(escola.config_portal_admissao) ? escola.config_portal_admissao : {}
+    const nextConfig: JsonObject = {
+      ...currentConfig,
+      ...(reserva_expiracao_horas !== undefined
+        ? { reserva_expiracao_horas: normalizeReservaExpiracaoHoras(reserva_expiracao_horas) }
+        : {}),
+      ...(pendencia_sla_horas !== undefined
+        ? { pendencia_sla_horas: normalizePendenciaSlaHoras(pendencia_sla_horas) }
+        : {}),
+      ...(documentos_admissao_catalogo !== undefined
+        ? { documentos_admissao_catalogo }
+        : {}),
+    }
+
+    if (nextConfig.documentos_admissao_catalogo === undefined) {
+      nextConfig.documentos_admissao_catalogo = [...DEFAULT_DOCUMENTOS_ADMISSAO] as unknown as Json
+    }
+
+    const { error: updateError } = await supabase
+      .from('escolas')
+      .update({ config_portal_admissao: nextConfig })
+      .eq('id', escolaId)
+
+    if (updateError) throw updateError
+
+    return NextResponse.json({
+      ok: true,
+      admissoes: {
+        reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(nextConfig),
+        pendencia_sla_horas: getPendenciaSlaHorasFromConfig(nextConfig),
+        documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(nextConfig),
+      },
+    })
+  } catch (error) {
+    console.error('Error updating admission config:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
