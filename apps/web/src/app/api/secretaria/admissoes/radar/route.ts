@@ -22,6 +22,7 @@ const searchParamsSchema = z
 
 type Status =
   | 'submetida'
+  | 'documentos_reenviados'
   | 'lista_espera'
   | 'em_analise'
   | 'aprovada'
@@ -29,7 +30,7 @@ type Status =
   | 'aguardando_compensacao'
   | 'matriculado'
 
-const SUBMETIDA_STATUSES = ['submetida', 'pendente']
+const SUBMETIDA_STATUSES = ['submetida', 'pendente', 'documentos_reenviados']
 const LISTA_ESPERA_STATUSES = ['lista_espera']
 const EM_ANALISE_STATUSES = ['em_analise']
 const APROVADA_STATUSES = ['aprovada', 'aguardando_pagamento']
@@ -40,6 +41,7 @@ const REJEITADA_STATUSES = ['rejeitada', 'arquivado']
 const STATUS_MAP: Record<string, Status> = {
   submetida: 'submetida',
   pendente: 'submetida',
+  documentos_reenviados: 'documentos_reenviados',
   lista_espera: 'lista_espera',
   em_analise: 'em_analise',
   aprovada: 'aprovada',
@@ -63,7 +65,7 @@ function statusesForFilter(filter: string | undefined) {
   if (filter === 'pendentes') return [...RASCUNHO_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]
   if (filter === 'concluidas') return [...MATRICULADO_STATUSES, ...REJEITADA_STATUSES]
   if (filter === 'expirando') return ['aguardando_pagamento']
-  if (filter === 'reenviados') return ['submetida', 'pendente']
+  if (filter === 'reenviados') return ['documentos_reenviados']
   return [
     ...RASCUNHO_STATUSES,
     ...SUBMETIDA_STATUSES,
@@ -132,6 +134,7 @@ export async function GET(request: Request) {
     // 2) Items para o Kanban (separado para evitar problemas com .or e datas ISO)
     const baseSelect = `
       id,
+      protocolo_publico,
       escola_id,
       status,
       created_at,
@@ -169,6 +172,7 @@ export async function GET(request: Request) {
         query = query.or(
           [
             `nome_candidato.ilike.%${normalizedQ}%`,
+            `protocolo_publico.ilike.${normalizedQ.toUpperCase()}%`,
             `id.ilike.${normalizedQ.toLowerCase()}%`,
           ].join(',')
         )

@@ -22,7 +22,7 @@ type CandidaturaStatusRow = {
 const protocoloSchema = z
   .string()
   .trim()
-  .regex(/^ADM-[0-9A-Fa-f]{8}$/)
+  .regex(/^(ADM-[0-9A-Fa-f]{8}|\d{2}-\d{4,})$/)
   .transform((value) => value.toUpperCase());
 
 const strongPasswordSchema = z
@@ -52,6 +52,15 @@ const statusChallengeSchema = z
   .strict();
 
 type PublicLookupClient = ReturnType<typeof supabaseServerRole>;
+
+type CandidaturaStatusLogRow = {
+  id: string;
+  created_at: string | null;
+  from_status: string | null;
+  to_status: string | null;
+  motivo: string | null;
+  metadata: Json | null;
+};
 
 async function lookupByProtocolo(
   supabase: PublicLookupClient,
@@ -135,6 +144,70 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function getString(record: Record<string, unknown>, key: string) {
   const value = record[key];
   return typeof value === "string" ? value : null;
+}
+
+function getNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" ? value : null;
+}
+
+function sanitizeAdmissionTimeline(logs: CandidaturaStatusLogRow[]) {
+  return logs.map((item) => {
+    const metadata = isRecord(item.metadata as Record<string, unknown>) ? item.metadata as Record<string, unknown> : {};
+    const tipo = getString(metadata, "tipo");
+    const pendencias = Array.isArray(metadata.pendencias)
+      ? metadata.pendencias
+          .filter((p): p is Record<string, unknown> => isRecord(p as Record<string, unknown>))
+          .map((pendencia) => ({
+            id: getString(pendencia, "id"),
+            label: getString(pendencia, "label") || getString(pendencia, "id") || "Documento",
+            motivo: getString(pendencia, "motivo"),
+          }))
+      : [];
+
+    if (tipo === "DOCUMENTOS_PENDENTES" || item.to_status === "pendente") {
+      return {
+        id: item.id,
+        created_at: item.created_at,
+        tipo: "pendencia_solicitada",
+        titulo: "Correção solicitada",
+        detalhe: item.motivo || "A secretaria solicitou correção documental.",
+        pendencias,
+      };
+    }
+
+    if (tipo === "DOCUMENTO_REENVIADO" || item.to_status === "documentos_reenviados") {
+      const documentId = getString(metadata, "document_id");
+      const restantes = getNumber(metadata, "pendencias_restantes");
+      return {
+        id: item.id,
+        created_at: item.created_at,
+        tipo: "documento_reenviado",
+        titulo: restantes === 0 ? "Documentos reenviados" : "Documento reenviado",
+        detalhe: documentId
+          ? `${documentId.replace(/_/g, " ")} reenviado.`
+          : item.motivo || "Documento reenviado pelo Cofre.",
+      };
+    }
+
+    if (tipo === "DOCUMENTOS_REENVIADOS_ACEITES") {
+      return {
+        id: item.id,
+        created_at: item.created_at,
+        tipo: "documentos_aceites",
+        titulo: "Documentos aceites",
+        detalhe: item.motivo || "A secretaria aceitou os documentos reenviados.",
+      };
+    }
+
+    return {
+      id: item.id,
+      created_at: item.created_at,
+      tipo: "atualizacao",
+      titulo: "Atualização da candidatura",
+      detalhe: item.motivo || "O estado da candidatura foi atualizado.",
+    };
+  });
 }
 
 function isSafeAdmissionPath(path: string, escolaId: string, candidaturaId: string) {
@@ -432,20 +505,60 @@ export async function POST(
         return NextResponse.json({ ok: false, error: "Dados do documento obrigatórios" }, { status: 400 });
       }
 
-      const { error: reuploadErr } = await supabase.rpc("admissao_reupload_documento_pendente", {
+      const { data: result, error: rpcErr } = await supabase.rpc("admissao_reupload_documento_pendente", {
         p_escola_id: escolaId,
         p_candidatura_id: match.id,
         p_document_id: document_id,
-        p_document_path: document_path,
+        p_document_path: document_path
       });
 
-      if (reuploadErr) throw reuploadErr;
+      if (rpcErr) {
+        // Fallback: se não estiver pendente, apenas completamos o dossiê.
+        const current = isRecord(match.dados_candidato as Record<string, unknown>) ? match.dados_candidato as Record<string, unknown> : {};
+        const currentDocs = isRecord(current.documentos as Record<string, unknown>) ? current.documentos as Record<string, unknown> : {};
+        
+        const mergedDocs: { [key: string]: string } = { ...currentDocs as Record<string, string>, [document_id]: document_path };
+        const merged = { ...current, documentos: mergedDocs } as unknown as { [key: string]: string | number | boolean | null | { [key: string]: any } | any[] };
 
-      return NextResponse.json({ ok: true, message: "Documento atualizado com sucesso" });
+        const { error: updateErr } = await supabase
+          .from("candidaturas")
+          .update({ 
+            dados_candidato: merged,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", match.id)
+          .eq("escola_id", escolaId);
+
+        if (updateErr) {
+          console.error("[Fallback upload error]:", updateErr);
+          return NextResponse.json({ ok: false, error: "Falha ao atualizar documento" }, { status: 500 });
+        }
+
+        return NextResponse.json({ ok: true, message: "Documento adicionado ao dossiê" });
+      }
+      
+      const rpcResult = result as { status?: string };
+
+      if (rpcResult?.status === "documentos_reenviados") {
+        try {
+          await supabase.from("notifications").insert({
+            escola_id: escolaId,
+            target_role: "secretaria",
+            tipo: "admissao_documentos_reenviados",
+            titulo: "Documentos re-enviados",
+            mensagem: `${match.nome_candidato || "Candidato"} reenviou todos os documentos pendentes.`,
+            link_acao: `/secretaria/admissoes?id=${match.id}&status=reenviados`,
+          });
+        } catch (notificationError) {
+          console.error("[Vault reupload notification error]:", notificationError);
+        }
+      }
+
+      return NextResponse.json({ ok: true, message: "Documento atualizado com sucesso", status: rpcResult?.status });
     }
 
     // 4. Gerar links e ações se matriculado ou reservado
-    let actions: { 
+    const actions: { 
       pode_mudar_senha: boolean; 
       pode_baixar_comprovativo: boolean; 
       pode_enviar_comprovativo: boolean;
@@ -453,6 +566,15 @@ export async function POST(
       reserva_expira_at: string | null;
       comprovativo_url: string | null;
       pendencias: any[];
+      dossier: Array<{
+        id: string;
+        label: string;
+        description: string;
+        status: "upload" | "review" | "rejected";
+        motivo?: string;
+        path?: string;
+      }>;
+      historico_pendencias: Array<ReturnType<typeof sanitizeAdmissionTimeline>[number]>;
       escola_pagamento: any | null;
     } = {
       pode_mudar_senha: false,
@@ -462,8 +584,37 @@ export async function POST(
       reserva_expira_at: null,
       comprovativo_url: null,
       pendencias: [],
+      dossier: [],
+      historico_pendencias: [],
       escola_pagamento: null
     };
+
+    // Mapeamento padrão de documentos
+    const docMap = [
+      { id: "bi_aluno", label: "BI ou Cédula do Aluno", description: "Cópia legível do documento de identidade." },
+      { id: "notas", label: "Certificado ou Declaração", description: "Certificado de habilitações ou declaração de notas." },
+      { id: "folha_25_linhas", label: "Folha de 25 linhas", description: "Documento complementar solicitado pela secretaria." },
+      { id: "outro_documento", label: "Outro documento", description: "Qualquer outro documento exigido pela escola." }
+    ];
+
+    const currentDocs = isRecord(dados.documentos as Record<string, unknown>) ? dados.documentos as Record<string, unknown> : {};
+    const currentPendencias = Array.isArray(dados.pendencias) ? dados.pendencias : [];
+
+    actions.dossier = docMap.map(doc => {
+      const path = getString(currentDocs, doc.id);
+      const pendencia = currentPendencias.find((p: unknown) => (typeof p === 'string' ? p : isRecord(p as Record<string, unknown>) ? (p as Record<string, unknown>).id : null) === doc.id);
+
+      let status: "upload" | "review" | "rejected" = "upload";
+      if (path) status = "review";
+      if (pendencia) status = "rejected";
+
+      return {
+        ...doc,
+        status,
+        path: path || undefined,
+        motivo: typeof pendencia === 'object' && pendencia !== null ? getString(pendencia as Record<string, unknown>, 'motivo') || undefined : undefined
+      };
+    });
 
     if (match.status === "matriculado") {
       actions.pode_mudar_senha = !!match.aluno_id;
@@ -509,6 +660,31 @@ export async function POST(
     } else if (match.status === "pendente") {
       actions.pode_resolver_pendencia = true;
       actions.pendencias = Array.isArray(dados.pendencias) ? dados.pendencias : [];
+    }
+
+    const { data: timelineRows, error: timelineError } = await supabase
+      .from("candidaturas_status_log")
+      .select("id, created_at, from_status, to_status, motivo, metadata")
+      .eq("candidatura_id", match.id)
+      .eq("escola_id", escolaId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (timelineError) {
+      console.error("[Vault timeline error]:", timelineError);
+    } else {
+      const relevantTimeline = ((timelineRows ?? []) as CandidaturaStatusLogRow[]).filter((item) => {
+        const metadata = isRecord(item.metadata) ? item.metadata : {};
+        const tipo = getString(metadata, "tipo");
+        return (
+          item.to_status === "pendente" ||
+          item.to_status === "documentos_reenviados" ||
+          tipo === "DOCUMENTOS_PENDENTES" ||
+          tipo === "DOCUMENTO_REENVIADO" ||
+          tipo === "DOCUMENTOS_REENVIADOS_ACEITES"
+        );
+      });
+      actions.historico_pendencias = sanitizeAdmissionTimeline(relevantTimeline);
     }
 
     return NextResponse.json({

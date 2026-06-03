@@ -222,10 +222,10 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
               className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
             >
               <ShieldCheck size={18} />
-              Acessar Cofre Agora
+              Acessar Área da Candidatura
             </Link>
             <p className="mt-4 text-[11px] text-slate-500 leading-relaxed italic">
-              * Você precisará confirmar o telefone do encarregado (<span className="font-bold">{formData.responsavel_contato}</span>) para acessar o cofre.
+              * Você precisará confirmar o telefone do encarregado (<span className="font-bold">{formData.responsavel_contato}</span>) para acessar seus dados.
             </p>
           </div>
         </div>
@@ -236,7 +236,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
             <div>
               <p className="text-sm font-bold text-blue-900">O que acontece agora?</p>
               <p className="text-xs text-blue-700 mt-1">
-                A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga de 48h</b> e poderá enviar o comprovativo de pagamento diretamente pelo cofre.
+                A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga de 48h</b> e poderá enviar o comprovativo de pagamento diretamente pela área da candidatura.
               </p>
             </div>
           </div>

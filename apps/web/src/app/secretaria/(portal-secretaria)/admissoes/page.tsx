@@ -61,6 +61,7 @@ export default async function Page({ params }: PageProps = {}) {
       .from('candidaturas')
       .select(`
         id,
+        protocolo_publico,
         escola_id,
         status,
         created_at,

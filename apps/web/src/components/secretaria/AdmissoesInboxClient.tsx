@@ -39,6 +39,7 @@ import { createClient } from '@/lib/supabase/client'
 type AdmissaoStatus =
   | 'rascunho'
   | 'submetida'
+  | 'documentos_reenviados'
   | 'em_analise'
   | 'aprovada'
   | 'aguardando_pagamento'
@@ -55,10 +56,60 @@ type AdmissoesRadarResponse = {
   meta: any;
 }
 
+type CandidaturaListItem = {
+  id: string
+  protocolo_publico?: string | null
+  nome_candidato: string
+  status: AdmissaoStatus
+  created_at: string
+  updated_at?: string | null
+  matriculado_em?: string | null
+  expires_at?: string | null
+  portal_reenvio_at?: string | null
+  cursos?: { nome?: string | null } | null
+  classes?: { nome?: string | null } | null
+}
+
+type CandidaturaDetail = CandidaturaListItem & {
+  escola_id: string
+  ano_letivo?: number | null
+  dados_candidato?: Record<string, any>
+  pendencias_historico?: CandidaturaStatusLogItem[]
+}
+
+type CandidaturaStatusLogItem = {
+  id: string
+  created_at?: string | null
+  from_status?: string | null
+  to_status?: string | null
+  motivo?: string | null
+  metadata?: Record<string, any> | null
+  actor_user_id?: string | null
+  actor?: {
+    user_id?: string | null
+    nome?: string | null
+    email?: string | null
+  } | null
+}
+
+type PendingDocumentDraft = {
+  id: string
+  label: string
+  motivo: string
+  selected: boolean
+  custom?: boolean
+}
+
+type DocumentCatalogItem = {
+  id: string
+  label: string
+}
+
 const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: string }> = {
   rascunho: { label: 'Rascunho', color: 'text-slate-500', bg: 'bg-slate-100' },
   submetida: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
-  pendente: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
+  documentos_reenviados: { label: 'Documentos Re-enviados', color: 'text-blue-700', bg: 'bg-blue-100' },
+  pendente: { label: 'Documentos Pendentes', color: 'text-rose-700', bg: 'bg-rose-50' },
   lista_espera: { label: 'Lista de Espera', color: 'text-amber-700', bg: 'bg-amber-100' },
   em_analise: { label: 'Em Análise', color: 'text-amber-600', bg: 'bg-amber-50' },
   aprovada: { label: 'Aprovada', color: 'text-klasse-green', bg: 'bg-klasse-green/10' },
@@ -75,6 +126,72 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
     return () => window.clearTimeout(timer)
   }, [value, delayMs])
   return debounced
+}
+
+function displayProtocol(item: { id: string; protocolo_publico?: string | null }) {
+  return item.protocolo_publico || `#${item.id.split('-')[0].toUpperCase()}`
+}
+
+function getReservaExpiraAt(item: CandidaturaDetail) {
+  return (
+    item.expires_at ||
+    item.dados_candidato?.reserva_expira_at ||
+    item.dados_candidato?.documentos?.reserva_expira_at ||
+    null
+  )
+}
+
+function normalizeDocumentId(value: string) {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120)
+
+  return normalized || `documento_${Date.now()}`
+}
+
+function formatLogDate(value?: string | null) {
+  if (!value) return '—'
+  try {
+    return format(new Date(value), "dd/MM/yyyy HH:mm")
+  } catch {
+    return '—'
+  }
+}
+
+function describeHistoryItem(item: CandidaturaStatusLogItem) {
+  const tipo = item.metadata?.tipo
+  if (tipo === 'DOCUMENTOS_PENDENTES' || item.to_status === 'pendente') {
+    const pendencias = Array.isArray(item.metadata?.pendencias) ? item.metadata.pendencias : []
+    return {
+      title: 'Pendência solicitada',
+      detail: pendencias.length > 0
+        ? pendencias.map((p: any) => `${p.label || p.id}: ${p.motivo || 'sem motivo'}`).join(' | ')
+        : item.motivo || 'Pendência documental solicitada',
+    }
+  }
+  if (tipo === 'DOCUMENTO_REENVIADO' || item.to_status === 'documentos_reenviados') {
+    return {
+      title: 'Documento reenviado',
+      detail: item.metadata?.document_id
+        ? `${String(item.metadata.document_id).replace(/_/g, ' ')} reenviado. Pendências restantes: ${item.metadata?.pendencias_restantes ?? '—'}`
+        : item.motivo || 'Documento reenviado pelo Cofre',
+    }
+  }
+  return {
+    title: item.to_status || 'Atualização',
+    detail: item.motivo || 'Sem observação',
+  }
+}
+
+function describeHistoryActor(item: CandidaturaStatusLogItem) {
+  if (item.actor?.nome) return item.actor.nome
+  if (item.actor?.email) return item.actor.email
+  if (item.metadata?.source === 'PORTAL_VAULT') return 'Cofre do candidato'
+  return 'Sistema'
 }
 
 async function fetchRadar(url: string): Promise<AdmissoesRadarResponse> {
@@ -124,6 +241,11 @@ export default function AdmissoesInboxClient({
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [isConversionOpen, setIsConversionOpen] = useState(false)
+  const [isPendenciasOpen, setIsPendenciasOpen] = useState(false)
+  const [pendingDraft, setPendingDraft] = useState<PendingDocumentDraft[]>([])
+  const [pendingGeneralMotivo, setPendingGeneralMotivo] = useState('')
+  const [documentCatalog, setDocumentCatalog] = useState<DocumentCatalogItem[]>([])
+  const [pendenciaSlaHoras, setPendenciaSlaHoras] = useState(72)
 
   const listUrl = useMemo(() => {
     const params = new URLSearchParams({ escolaId, limit: '50', status: statusFilter })
@@ -146,13 +268,47 @@ export default function AdmissoesInboxClient({
   const counts = radarData?.counts || {}
   const loading = isLoading && items.length === 0
   const listError = swrError instanceof Error ? swrError.message : null
+  const documentEntries = useMemo(() => {
+    const documentos = selectedData?.dados_candidato?.documentos
+    if (!documentos || typeof documentos !== 'object' || Array.isArray(documentos)) return []
+    return Object.entries(documentos).filter(([, path]) => typeof path === 'string' && path.trim())
+  }, [selectedData])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadAdmissionConfig() {
+      try {
+        const res = await fetch(`/api/secretaria/admissoes/config?escolaId=${encodeURIComponent(escolaId)}`, {
+          cache: 'no-store',
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json?.error || 'Falha ao carregar configuração')
+        if (!cancelled) {
+          setDocumentCatalog(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : [])
+          setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || 72)
+        }
+      } catch {
+        if (!cancelled) {
+          setDocumentCatalog([])
+          setPendenciaSlaHoras(72)
+        }
+      }
+    }
+
+    loadAdmissionConfig()
+    return () => {
+      cancelled = true
+    }
+  }, [escolaId])
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       const searchLower = search.toLowerCase()
-      const protocol = item.id.split('-')[0].toLowerCase()
+      const protocol = displayProtocol(item).replace(/^#/, '').toLowerCase()
       const matchesName = item.nome_candidato.toLowerCase().includes(searchLower)
-      const matchesProtocol = item.id.toLowerCase().startsWith(searchLower.replace(/^#/, '')) || protocol.startsWith(searchLower.replace(/^#/, ''))
+      const normalizedSearch = searchLower.replace(/^#/, '')
+      const matchesProtocol = item.id.toLowerCase().startsWith(normalizedSearch) || protocol.startsWith(normalizedSearch)
       const matchesSearch = matchesName || matchesProtocol
       
       let matchesStatus = false
@@ -289,7 +445,13 @@ export default function AdmissoesInboxClient({
           : 'aprovada'
 
       mutate(
-        (prev) => (prev || []).map((item) => (item.id === selectedId ? { ...item, status: nextStatus } : item)),
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((item) => (item.id === selectedId ? { ...item, status: nextStatus } : item))
+          };
+        },
         false
       )
       if (selectedData) setSelectedData({ ...selectedData, status: nextStatus })
@@ -336,7 +498,13 @@ export default function AdmissoesInboxClient({
       if (!res.ok) throw new Error(json.error || 'Falha ao rejeitar')
       
       mutate(
-        (prev) => (prev || []).map((item) => (item.id === selectedId ? { ...item, status: 'rejeitada' } : item)),
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((item) => (item.id === selectedId ? { ...item, status: 'rejeitada' } : item))
+          };
+        },
         false
       )
       if (selectedData) setSelectedData({ ...selectedData, status: 'rejeitada' })
@@ -385,6 +553,187 @@ export default function AdmissoesInboxClient({
       success('Candidatura arquivada', 'A candidatura foi movida para o arquivo e já não aparece na fila de espera principal.')
     } catch (err: unknown) {
       toastError('Falha ao arquivar', 'Houve um erro técnico ao tentar arquivar este registo. Por favor, tente novamente.')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const openPendenciasModal = () => {
+    if (!selectedData) return
+
+    const currentPendencias = Array.isArray(selectedData.dados_candidato?.pendencias)
+      ? selectedData.dados_candidato?.pendencias
+      : []
+    const currentById = new Map(
+      currentPendencias
+        .filter((item: any) => item && typeof item === 'object' && typeof item.id === 'string')
+        .map((item: any) => [item.id, item])
+    )
+
+    const catalog = documentCatalog.length > 0
+      ? documentCatalog
+      : [
+          { id: 'bi_candidato', label: 'BI do candidato' },
+          { id: 'foto_candidato', label: 'Fotografia do candidato' },
+          { id: 'certificado_habilitacoes', label: 'Certificado ou declaração' },
+          { id: 'bi_encarregado', label: 'BI do encarregado' },
+        ]
+
+    const baseDraft = catalog.map((doc) => {
+      const current = currentById.get(doc.id) as { motivo?: string; label?: string; custom?: boolean } | undefined
+      return {
+        id: doc.id,
+        label: current?.label || doc.label,
+        motivo: current?.motivo || '',
+        selected: Boolean(current),
+        custom: Boolean(current?.custom),
+      }
+    })
+
+    const customPendencias = currentPendencias
+      .filter((item: any) => item && typeof item === 'object' && item.custom === true && typeof item.id === 'string')
+      .filter((item: any) => !catalog.some((doc) => doc.id === item.id))
+      .map((item: any) => ({
+        id: item.id,
+        label: item.label || item.id,
+        motivo: item.motivo || '',
+        selected: true,
+        custom: true,
+      }))
+
+    setPendingDraft([...baseDraft, ...customPendencias])
+    setPendingGeneralMotivo('')
+    setIsPendenciasOpen(true)
+  }
+
+  const addCustomPendingDocument = () => {
+    setPendingDraft((prev) => [
+      ...prev,
+      {
+        id: `documento_${prev.length + 1}`,
+        label: 'Documento em falta',
+        motivo: '',
+        selected: true,
+        custom: true,
+      },
+    ])
+  }
+
+  const updatePendingDraft = (index: number, patch: Partial<PendingDocumentDraft>) => {
+    setPendingDraft((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item
+        const next = { ...item, ...patch }
+        if (patch.label !== undefined) next.id = normalizeDocumentId(patch.label)
+        return next
+      })
+    )
+  }
+
+  const handleSavePendencias = async () => {
+    if (!selectedId || !selectedData) return
+
+    const pendencias = pendingDraft
+      .filter((item) => item.selected)
+      .map((item) => ({
+        id: normalizeDocumentId(item.id || item.label),
+        label: item.label.trim(),
+        motivo: item.motivo.trim(),
+        custom: Boolean(item.custom),
+      }))
+      .filter((item) => item.id && item.label.length >= 2 && item.motivo.length >= 3)
+
+    const selectedCount = pendingDraft.filter((item) => item.selected).length
+    if (selectedCount === 0 || pendencias.length !== selectedCount) {
+      toastError('Pendência incompleta', 'Selecione pelo menos um documento e indique o motivo de cada correção.')
+      return
+    }
+
+    setLoadingAction('pending')
+    try {
+      const res = await fetch('/api/secretaria/admissoes/pendencias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidatura_id: selectedId,
+          motivo: pendingGeneralMotivo.trim() || undefined,
+          pendencias,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || json.details || 'Falha ao marcar pendência')
+
+      mutate(
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((item) => (item.id === selectedId ? { ...item, status: 'pendente' } : item))
+          };
+        },
+        false
+      )
+      setSelectedData({
+        ...selectedData,
+        status: 'pendente',
+        expires_at: null,
+        dados_candidato: {
+          ...(selectedData.dados_candidato || {}),
+          pendencias,
+          pendencia_motivo: pendingGeneralMotivo.trim() || null,
+        },
+      })
+      setIsPendenciasOpen(false)
+      success('Pendência enviada', 'O candidato já pode corrigir os documentos pelo Cofre.')
+    } catch (err: unknown) {
+      toastError('Falha ao marcar pendência', err instanceof Error ? err.message : 'Não foi possível atualizar a candidatura.')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleAcceptReuploadedDocuments = async () => {
+    if (!selectedId || !selectedData) return
+
+    const ok = await confirm({
+      title: 'Aceitar documentos re-enviados',
+      message: 'Confirma que a documentação re-enviada está correta? A candidatura volta para a fila de submissões para seguir aprovação.',
+      confirmLabel: 'Aceitar documentos',
+    })
+    if (!ok) return
+
+    setLoadingAction('accepting_documents')
+    try {
+      const res = await fetch('/api/secretaria/admissoes/revisar-documentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidatura_id: selectedId }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || json.details || 'Falha ao aceitar documentos')
+
+      mutate(
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((item) => (item.id === selectedId ? { ...item, status: 'submetida' } : item))
+          };
+        },
+        false
+      )
+      setSelectedData({
+        ...selectedData,
+        status: 'submetida',
+        dados_candidato: {
+          ...(selectedData.dados_candidato || {}),
+          pendencias: [],
+          pendencia_expira_at: null,
+        },
+      })
+      success('Documentos aceites', 'A candidatura voltou para a fila de submissões.')
+    } catch (err: unknown) {
+      toastError('Falha ao aceitar documentos', err instanceof Error ? err.message : 'Não foi possível concluir a revisão.')
     } finally {
       setLoadingAction(null)
     }
@@ -586,7 +935,7 @@ export default function AdmissoesInboxClient({
                       {item.nome_candidato}
                     </p>
                     <p className="font-mono text-[11px] text-slate-500 mt-1 uppercase tracking-wider">
-                      #{item.id.split('-')[0].toUpperCase()} • {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
+                      {displayProtocol(item)} • {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
                     </p>
                   </div>
                   
@@ -627,11 +976,16 @@ export default function AdmissoesInboxClient({
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <Badge variant="outline" className="font-mono text-[10px] uppercase border-klasse-gold/30 text-klasse-gold-600">
-                            Protocolo: {selectedData.id.split('-')[0].toUpperCase()}
+                            Protocolo: {displayProtocol(selectedData)}
                           </Badge>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_CONFIG[selectedData.status]?.bg || 'bg-slate-100'} ${STATUS_CONFIG[selectedData.status]?.color || 'text-slate-500'}`}>
                             {STATUS_CONFIG[selectedData.status]?.label || selectedData.status}
                           </span>
+                          {selectedData.status === 'documentos_reenviados' && (
+                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                              Revisão atribuída à Secretaria
+                            </span>
+                          )}
                         </div>
                         {selectedData.status === 'lista_espera' && (
                           <p className="mb-3 max-w-2xl rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
@@ -650,7 +1004,10 @@ export default function AdmissoesInboxClient({
                       <div className="flex items-center gap-3">
                         {selectedData.dados_candidato?.responsavel_contato && (
                           <button 
-                            onClick={() => openWhatsApp(selectedData.dados_candidato.responsavel_contato)}
+                            onClick={() => {
+                              const contato = selectedData.dados_candidato?.responsavel_contato;
+                              if (contato) openWhatsApp(contato);
+                            }}
                             className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all active:scale-95"
                           >
                             <MessageCircle className="h-5 w-5 fill-white" />
@@ -720,8 +1077,8 @@ export default function AdmissoesInboxClient({
                                 Reserva Expira em
                               </p>
                               <p className="text-sm font-bold text-amber-900">
-                                {selectedData.dados_candidato.documentos?.reserva_expira_at 
-                                  ? format(new Date(selectedData.dados_candidato.documentos.reserva_expira_at), "dd/MM/yyyy HH:mm")
+                                {getReservaExpiraAt(selectedData)
+                                  ? format(new Date(getReservaExpiraAt(selectedData) as string), "dd/MM/yyyy HH:mm")
                                   : 'Data não definida'}
                               </p>
                             </div>
@@ -736,22 +1093,29 @@ export default function AdmissoesInboxClient({
                           Documentos Anexados
                         </h3>
                         <div className="flex flex-wrap gap-4">
-                          {selectedData.dados_candidato?.documentos && Object.entries(selectedData.dados_candidato.documentos).length > 0 ? (
-                            Object.entries(selectedData.dados_candidato.documentos).map(([name, path]) => (
+                          {documentEntries.length > 0 ? (
+                            documentEntries.map(([name, path]) => (
                               <div 
                                 key={name}
-                                onClick={() => handleViewDoc(name, path)}
-                                className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:border-klasse-gold transition-all"
+                                className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden hover:border-klasse-gold transition-all"
                               >
-                                <div className="absolute inset-0 flex items-center justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewDoc(name, path as string)}
+                                  className="absolute inset-0 flex items-center justify-center"
+                                >
                                   <FileText className="h-8 w-8 text-slate-300" />
-                                </div>
+                                </button>
                                 <div className="absolute bottom-0 inset-x-0 p-2 bg-white/90 text-[8px] font-bold text-center truncate uppercase">
                                   {name.replace('_', ' ')}
                                 </div>
-                                <div className="absolute inset-0 bg-klasse-green/0 group-hover:bg-klasse-green/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewDoc(name, path as string)}
+                                  className="absolute inset-0 bg-klasse-green/0 group-hover:bg-klasse-green/10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                >
                                   <ExternalLink className="h-5 w-5 text-klasse-green" />
-                                </div>
+                                </button>
                               </div>
                             ))
                           ) : (
@@ -761,6 +1125,58 @@ export default function AdmissoesInboxClient({
                             </div>
                           )}
                         </div>
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                          <p className="text-xs text-slate-500">
+                            Se houver documento inválido ou ausente, envie a pendência para o Cofre do candidato.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={openPendenciasModal}
+                            disabled={!!loadingAction}
+                            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                          >
+                            <AlertCircle className="h-4 w-4" />
+                            Solicitar correção
+                          </button>
+                        </div>
+                      </section>
+
+                      {/* Histórico de Pendências */}
+                      <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Histórico de Pendências
+                        </h3>
+                        {selectedData.pendencias_historico && selectedData.pendencias_historico.length > 0 ? (
+                          <div className="space-y-3">
+                            {selectedData.pendencias_historico.map((item) => {
+                              const description = describeHistoryItem(item)
+                              return (
+                                <div key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <p className="text-sm font-bold text-slate-900">{description.title}</p>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                      {formatLogDate(item.created_at)}
+                                    </span>
+                                  </div>
+                                  <p className="mt-2 text-xs leading-relaxed text-slate-600">{description.detail}</p>
+                                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    Por {describeHistoryActor(item)}
+                                  </p>
+                                  {item.from_status || item.to_status ? (
+                                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                      {item.from_status || '—'} → {item.to_status || '—'}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">
+                            Nenhuma pendência documental registada.
+                          </div>
+                        )}
                       </section>
                     </div>
                   </div>
@@ -785,6 +1201,17 @@ export default function AdmissoesInboxClient({
                       Rejeitar
                     </button>
                     
+                    {selectedData.status === 'documentos_reenviados' && (
+                      <button
+                        onClick={handleAcceptReuploadedDocuments}
+                        disabled={!!loadingAction}
+                        className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
+                      >
+                        {loadingAction === 'accepting_documents' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+                        Aceitar Documentos
+                      </button>
+                    )}
+
                     {['submetida', 'em_analise', 'pendente', 'lista_espera'].includes(selectedData.status) && (
                       <button 
                         onClick={handleApprove}
@@ -875,6 +1302,105 @@ export default function AdmissoesInboxClient({
                 </Button>
                 <Button onClick={() => setViewingDoc(null)}>
                   Fechar
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isPendenciasOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 16 }}
+              className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Documentação Pendente</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Selecione documentos do catálogo oficial. Prazo padrão para correção: {pendenciaSlaHoras}h.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPendenciasOpen(false)}
+                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[65vh] space-y-4 overflow-y-auto p-6">
+                {pendingDraft.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={(event) => updatePendingDraft(index, { selected: event.target.checked })}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600"
+                      />
+                      <div className="grid flex-1 gap-3">
+                        <label className="grid gap-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Documento</span>
+                          <input
+                            value={item.label}
+                            onChange={(event) => updatePendingDraft(index, { label: event.target.value })}
+                            disabled={!item.custom}
+                            className="h-10 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400"
+                          />
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Motivo para o candidato</span>
+                          <textarea
+                            value={item.motivo}
+                            onChange={(event) => updatePendingDraft(index, { motivo: event.target.value })}
+                            rows={2}
+                            placeholder="Ex: imagem ilegível, documento vencido, falta verso do BI"
+                            className="resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addCustomPendingDocument}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar documento em falta
+                </button>
+
+                <label className="grid gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Observação interna</span>
+                  <textarea
+                    value={pendingGeneralMotivo}
+                    onChange={(event) => setPendingGeneralMotivo(event.target.value)}
+                    rows={2}
+                    placeholder="Opcional. Fica no histórico interno da candidatura."
+                    className="resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-400"
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 p-5">
+                <Button variant="outline" onClick={() => setIsPendenciasOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSavePendencias} disabled={loadingAction === 'pending'} loading={loadingAction === 'pending'}>
+                  Enviar pendência
                 </Button>
               </div>
             </motion.div>

@@ -105,6 +105,63 @@ export type Database = {
           },
         ]
       }
+      admissao_protocol_sequences: {
+        Row: {
+          ano_letivo: number
+          escola_id: string
+          last_value: number
+          updated_at: string
+        }
+        Insert: {
+          ano_letivo: number
+          escola_id: string
+          last_value?: number
+          updated_at?: string
+        }
+        Update: {
+          ano_letivo?: number
+          escola_id?: string
+          last_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admissao_protocol_sequences_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admissao_protocol_sequences_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admissao_protocol_sequences_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "admissao_protocol_sequences_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "admissao_protocol_sequences_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       afiliados: {
         Row: {
           ativo: boolean
@@ -552,7 +609,7 @@ export type Database = {
           responsavel_financeiro_nome: string | null
           responsavel_nome: string | null
           search_text: string | null
-          secretaria_search_tsv: unknown | null
+          secretaria_search_tsv: unknown
           sexo: string | null
           status: string | null
           telefone: string | null
@@ -607,7 +664,7 @@ export type Database = {
           responsavel_financeiro_nome?: string | null
           responsavel_nome?: string | null
           search_text?: string | null
-          secretaria_search_tsv?: never
+          secretaria_search_tsv?: unknown
           sexo?: string | null
           status?: string | null
           telefone?: string | null
@@ -662,7 +719,7 @@ export type Database = {
           responsavel_financeiro_nome?: string | null
           responsavel_nome?: string | null
           search_text?: string | null
-          secretaria_search_tsv?: never
+          secretaria_search_tsv?: unknown
           sexo?: string | null
           status?: string | null
           telefone?: string | null
@@ -1718,7 +1775,7 @@ export type Database = {
           portal_reenvio_at: string | null
           protocolo_publico: string
           responsavel_contato_normalizado: string | null
-          secretaria_search_tsv: unknown | null
+          secretaria_search_tsv: unknown
           source: string | null
           status: string | null
           telefone_normalizado: string | null
@@ -1746,7 +1803,7 @@ export type Database = {
           portal_reenvio_at?: string | null
           protocolo_publico: string
           responsavel_contato_normalizado?: string | null
-          secretaria_search_tsv?: never
+          secretaria_search_tsv?: unknown
           source?: string | null
           status?: string | null
           telefone_normalizado?: string | null
@@ -1774,7 +1831,7 @@ export type Database = {
           portal_reenvio_at?: string | null
           protocolo_publico?: string
           responsavel_contato_normalizado?: string | null
-          secretaria_search_tsv?: never
+          secretaria_search_tsv?: unknown
           source?: string | null
           status?: string | null
           telefone_normalizado?: string | null
@@ -17387,16 +17444,16 @@ export type Database = {
         }
         Relationships: []
       }
-	    vw_admissoes_counts_por_status: {
-	        Row: {
-	          aprovada_total: number | null
-	          em_analise_total: number | null
-	          escola_id: string | null
-	          expirando_24h_total: number | null
-	          matriculado_7d_total: number | null
-	          reenviados_48h_total: number | null
-	          submetida_total: number | null
-	        }
+      vw_admissoes_counts_por_status: {
+        Row: {
+          aprovada_total: number | null
+          em_analise_total: number | null
+          escola_id: string | null
+          expirando_24h_total: number | null
+          matriculado_7d_total: number | null
+          reenviados_48h_total: number | null
+          submetida_total: number | null
+        }
         Relationships: []
       }
       vw_alunos_active: {
@@ -20529,6 +20586,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admissao_marcar_pendencias_documentos: {
+        Args: {
+          p_candidatura_id: string
+          p_escola_id: string
+          p_motivo?: string
+          p_pendencias: Json
+        }
+        Returns: Json
+      }
       admissao_public_lookup_by_protocolo: {
         Args: { p_escola_id: string; p_protocolo: string }
         Returns: {
@@ -20557,6 +20623,14 @@ export type Database = {
           p_document_id: string
           p_document_path: string
           p_escola_id: string
+        }
+        Returns: Json
+      }
+      admissao_revisar_documentos_reenviados: {
+        Args: {
+          p_candidatura_id: string
+          p_escola_id: string
+          p_motivo?: string
         }
         Returns: Json
       }
@@ -21818,7 +21892,12 @@ export type Database = {
         }[]
       }
       generate_activation_code: { Args: never; Returns: string }
-      generate_admissao_public_protocol: { Args: never; Returns: string }
+      generate_admissao_public_protocol:
+        | { Args: never; Returns: string }
+        | {
+            Args: { p_ano_letivo: number; p_escola_id: string }
+            Returns: string
+          }
       generate_escola_slug: {
         Args: { p_id?: string; p_nome: string }
         Returns: string
@@ -22344,6 +22423,7 @@ export type Database = {
         Returns: string
       }
       normalize_date: { Args: { input_text: string }; Returns: string }
+      normalize_search_text: { Args: { p_parts: string[] }; Returns: string }
       normalize_text: { Args: { input_text: string }; Returns: string }
       normalize_turma_code: { Args: { p_code: string }; Returns: string }
       nota_para_extenso_ptao: { Args: { p_nota: number }; Returns: string }
@@ -22469,6 +22549,10 @@ export type Database = {
       }
       refresh_mv_admin_dashboard_counts: { Args: never; Returns: undefined }
       refresh_mv_admin_matriculas_por_mes: { Args: never; Returns: undefined }
+      refresh_mv_admissoes_counts_por_status: {
+        Args: never
+        Returns: undefined
+      }
       refresh_mv_boletim_por_matricula: { Args: never; Returns: undefined }
       refresh_mv_escola_cursos_stats: { Args: never; Returns: undefined }
       refresh_mv_escola_info: { Args: never; Returns: undefined }

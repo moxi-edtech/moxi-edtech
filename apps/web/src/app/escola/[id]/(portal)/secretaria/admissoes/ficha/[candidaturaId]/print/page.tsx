@@ -7,6 +7,7 @@ type CandidaturaRow = {
   escola_id: string;
   nome_candidato: string | null;
   dados_candidato: unknown;
+  expires_at: string | null;
   aluno_id: string | null;
   cursos?: { nome?: string | null } | null;
   classes?: { nome?: string | null } | null;
@@ -19,7 +20,7 @@ async function getCandidaturaData(id: string) {
 
   const { data: candidatura, error } = await supabase
     .from("candidaturas")
-    .select("id, escola_id, nome_candidato, dados_candidato, aluno_id, cursos(nome), classes(nome)")
+    .select("id, escola_id, nome_candidato, dados_candidato, expires_at, aluno_id, cursos(nome), classes(nome)")
     .eq("id", id)
     .single();
 
@@ -67,6 +68,21 @@ function formatDate(date: Date) {
   }
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) return null;
+  try {
+    return new Date(value).toLocaleString("pt-PT", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default async function FichaPreInscricaoPrintPage({
   params,
 }: {
@@ -85,6 +101,7 @@ export default async function FichaPreInscricaoPrintPage({
   const biNumero = dados?.bi_numero || aluno?.bi_numero || "—";
   const cursoNome = candidatura.cursos?.nome || "—";
   const classeNome = candidatura.classes?.nome || "—";
+  const reservaExpiraEm = formatDateTime(candidatura.expires_at);
 
   return (
     <div className={`bg-slate-100 min-h-screen print:bg-white ${styles.printRoot}`}>
@@ -143,7 +160,9 @@ export default async function FichaPreInscricaoPrintPage({
           </section>
 
           <section className="space-y-3 border-t border-slate-200 pt-6 text-sm">
-            <p className="font-semibold text-slate-800">Vaga reservada por 48h.</p>
+            <p className="font-semibold text-slate-800">
+              {reservaExpiraEm ? `Vaga reservada até ${reservaExpiraEm}.` : "Vaga reservada com prazo definido pela escola."}
+            </p>
             <p className="text-slate-600">
               Esta ficha não garante a matrícula até a confirmação do pagamento.
             </p>

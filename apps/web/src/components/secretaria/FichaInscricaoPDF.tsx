@@ -44,9 +44,10 @@ interface FichaInscricaoPDFProps {
     kwik_chave?: string;
   } | null;
   valorMatricula?: number | null;
+  reservaExpiracaoHoras?: number;
 }
 
-export const FichaInscricaoPDF = ({ candidatura, dadosPagamento, valorMatricula }: FichaInscricaoPDFProps) => (
+export const FichaInscricaoPDF = ({ candidatura, dadosPagamento, valorMatricula, reservaExpiracaoHoras = 48 }: FichaInscricaoPDFProps) => (
     <Document>
         <Page size="A4" style={styles.page}>
             <View>
@@ -81,7 +82,7 @@ export const FichaInscricaoPDF = ({ candidatura, dadosPagamento, valorMatricula 
                   <Text style={styles.bold}>Valor:</Text> {valorMatricula != null ? `${new Intl.NumberFormat('pt-AO').format(valorMatricula)} Kz` : "Consultar Secretaria"}
                 </Text>
                 <Text style={{...styles.text, marginTop: 10, fontSize: 10}}>
-                    Esta pré-inscrição é válida por 48 horas (expira em: {new Date(candidatura.expires_at).toLocaleString()}).
+                    Esta pré-inscrição é válida por {reservaExpiracaoHoras} horas (expira em: {new Date(candidatura.expires_at).toLocaleString()}).
                 </Text>
             </View>
         </Page>
