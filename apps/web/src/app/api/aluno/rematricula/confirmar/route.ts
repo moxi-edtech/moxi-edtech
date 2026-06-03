@@ -85,6 +85,7 @@ export async function POST() {
         ano_letivo: nextAno,
         status: 'submetida',
         nome_candidato: aluno.nome,
+        protocolo_publico: `REM-${crypto.randomUUID().split('-')[0].toUpperCase()}`,
         source: 'PORTAL_ALUNO_REMATRICULA',
         dados_candidato: {
           nome_completo: aluno.nome,
@@ -120,7 +121,7 @@ export async function POST() {
 
     return NextResponse.json({ ok: true, message: 'Rematrícula solicitada com sucesso!' })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Confirm Rematricula Error:', err)
     return NextResponse.json({ ok: false, error: 'Erro ao processar rematrícula' }, { status: 500 })
   }

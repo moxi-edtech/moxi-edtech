@@ -2,31 +2,30 @@
 
 ## Estado canônico
 
-O fluxo oficial de admissão é:
+O fluxo oficial de admissão evoluiu para:
 
-`rascunho -> submetida -> aprovada -> matriculado`
+`rascunho -> submetida -> [pendente] -> aguardando_pagamento (Reserva 48h) -> aguardando_compensacao -> matriculado`
 
 A finalização da matrícula deve passar por uma única operação canônica:
 
 `public.admissao_finalizar_matricula(...)`
 
-Essa RPC é a fonte de verdade para:
+### Novos Estados e Gate de Segurança (Junho 2026)
 
-- validar candidatura, escola e permissões;
-- validar a turma selecionada;
-- derivar `curso_id`, `classe_id`, `ano_letivo` e `turno` pela `turma_id`;
-- validar que a turma pertence ao ano letivo ativo;
-- resolver `valor_matricula` pela tabela de preços;
-- submeter, aprovar e converter a candidatura em matrícula na mesma transação;
-- chamar `admissao_convert_to_matricula`;
-- gerar matrícula, número de matrícula, logs de status e mensalidades.
+- **`pendente`**: Indica que um documento submetido foi rejeitado pela secretaria. O candidato pode realizar o re-upload direto via portal público ("Cofre").
+- **`aguardando_pagamento`**: Ativado após a aprovação inicial. Gera uma **Reserva de Vaga de 48 horas**. Se não houver pagamento, a vaga volta para o pool público.
+- **`aguardando_compensacao`**: O candidato enviou o comprovativo via portal público e aguarda validação do financeiro/secretaria.
+- **Hard Gate de Capacidade**: A conversão final valida em tempo real se a turma atingiu o limite. Existe um `p_override_capacidade` exclusivo para o cargo de **Diretor**.
 
-A UI não deve decidir nem exigir manualmente `curso_id`, `classe_id`, `ano_letivo` ou `valor_matricula` para pagamento total. A UI apenas envia:
+### Portal do Candidato ("O Cofre")
 
-- `candidatura_id`
-- `turma_id`
-- dados de pagamento
-- `Idempotency-Key`
+Implementado em `apps/web/src/app/(publico)/admissoes/[escolaSlug]/consultar/StatusInquiryForm.tsx`.
+Permite ao encarregado:
+1. Ver o cronômetro da reserva de 48h.
+2. Copiar dados bancários da escola (IBAN/Conta).
+3. Enviar comprovativo de pagamento.
+4. Corrigir documentos rejeitados (Auto-serviço de pendências).
+5. Definir senha do Portal do Aluno antecipadamente.
 
 ## Incidente tratado em 2026-05-07
 

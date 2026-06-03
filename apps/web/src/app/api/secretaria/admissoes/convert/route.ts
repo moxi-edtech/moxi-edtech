@@ -6,6 +6,7 @@ import { requireRoleInSchool } from '@/lib/authz';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { recordAuditServer } from '@/lib/audit';
 import { emitirComprovanteMatricula } from '@/lib/documentos/emitirComprovanteMatricula';
+import type { Json } from '~types/supabase';
 // import { enqueueOutboxEvent } from '@/lib/outbox';
 
 const convertPayloadSchema = z.object({
@@ -17,8 +18,15 @@ const convertPayloadSchema = z.object({
   amount: z.number().positive().optional(),
   parcial: z.boolean().optional(),
   referencia: z.string().trim().optional(),
-  // ... other payment details
+  override_capacidade: z.boolean().optional().default(false),
+  override_motivo: z.string().trim().optional(),
 })
+
+type JsonObject = { [key: string]: Json | undefined };
+
+function isJsonObject(value: Json | null): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
@@ -179,7 +187,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validation.error.format() }, { status: 400 })
   }
   
-  const { candidatura_id, turma_id, metodo_pagamento, comprovativo_url, comprovativo_path, amount, parcial, referencia } = validation.data
+  const {
+    candidatura_id,
+    turma_id,
+    metodo_pagamento,
+    comprovativo_url,
+    comprovativo_path,
+    amount,
+    parcial,
+    referencia,
+    override_capacidade,
+    override_motivo,
+  } = validation.data
+  const overrideMotivo = override_motivo?.trim() || null
+  if (override_capacidade && (!overrideMotivo || overrideMotivo.length < 10)) {
+    return NextResponse.json(
+      { ok: false, error: "Motivo obrigatório para override de capacidade.", code: "CAPACITY_OVERRIDE_REASON_REQUIRED" },
+      { status: 400 }
+    )
+  }
   const comprovativo = comprovativo_path ?? comprovativo_url
 
   try {
@@ -220,7 +246,7 @@ export async function POST(request: Request) {
   const user = userRes?.user;
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, candidatura.escola_id);
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id, candidatura.escola_id);
   if (!escolaId || escolaId !== candidatura.escola_id) {
     return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 });
   }
@@ -228,21 +254,22 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId: candidatura.escola_id,
-    roles: ['secretaria', 'admin', 'admin_escola', 'staff_admin', 'financeiro']
+    roles: ['secretaria', 'admin', 'admin_escola', 'staff_admin', 'financeiro', 'diretor']
   });
     if (authError) return authError;
 
     // Idempotência canônica: se já temos resultado persistido para esta chave/scope, devolvemos.
     if (idempotencyKey) {
-      const { data: existingIdempotency } = await (supabase as any)
+      const { data: existingIdempotency } = await supabase
         .from("idempotency_keys")
         .select("result")
         .eq("escola_id", escolaIdContext)
         .eq("scope", "admissao_finalizar_matricula")
         .eq("key", idempotencyKey)
         .maybeSingle();
-      if (existingIdempotency?.result && typeof existingIdempotency.result === "object") {
-        return NextResponse.json(existingIdempotency.result);
+      const idempotencyResult = existingIdempotency?.result ?? null;
+      if (isJsonObject(idempotencyResult)) {
+        return NextResponse.json(idempotencyResult);
       }
     }
 
@@ -265,7 +292,7 @@ export async function POST(request: Request) {
     } catch {}
 
     // 3. Chamada canónica: valida turma/preço e faz rascunho -> submetida -> aprovada -> matriculado numa transação.
-    const { data, error } = await (supabase as any).rpc('admissao_finalizar_matricula', {
+    const { data, error } = await supabase.rpc('admissao_finalizar_matricula', {
       p_escola_id: candidatura.escola_id,
       p_candidatura_id: candidatura_id,
       p_turma_id: turma_id,
@@ -279,6 +306,8 @@ export async function POST(request: Request) {
       },
       p_idempotency_key: idempotencyKey,
       p_observacao: 'Finalização via Nova Admissão',
+      p_override_capacidade: override_capacidade,
+      p_override_motivo: overrideMotivo ?? undefined,
     })
 
     if (error) throw error
@@ -289,6 +318,10 @@ export async function POST(request: Request) {
       valor_matricula?: number | null
       valor_pago?: number | null
       status?: string | null
+      override_capacidade?: boolean | null
+      override_motivo?: string | null
+      capacidade_maxima?: number | null
+      matriculados_antes?: number | null
     }
     const matriculaId = typeof result.matricula_id === 'string' ? result.matricula_id : null
 
@@ -298,11 +331,36 @@ export async function POST(request: Request) {
       acao: 'ADMISSAO_CONVERTIDA_MATRICULA',
       entity: 'matriculas',
       entityId: matriculaId,
-      details: { candidatura_id, turma_id, metodo_pagamento, referencia: referencia ?? null },
+      details: {
+        candidatura_id,
+        turma_id,
+        metodo_pagamento,
+        referencia: referencia ?? null,
+        override_capacidade: result.override_capacidade ?? false,
+        capacidade_maxima: result.capacidade_maxima ?? null,
+        matriculados_antes: result.matriculados_antes ?? null,
+      },
     }).catch(() => null)
 
+    if (result.override_capacidade) {
+      recordAuditServer({
+        escolaId: candidatura.escola_id,
+        portal: 'secretaria',
+        acao: 'ADMISSAO_CAPACIDADE_OVERRIDE',
+        entity: 'matriculas',
+        entityId: matriculaId,
+        details: {
+          candidatura_id,
+          turma_id,
+          capacidade_maxima: result.capacidade_maxima ?? null,
+          matriculados_antes: result.matriculados_antes ?? null,
+          override_motivo: result.override_motivo ?? overrideMotivo,
+        },
+      }).catch(() => null)
+    }
+
     try {
-      await (supabase as any).rpc('refresh_mv_turmas_para_matricula')
+      await supabase.rpc('refresh_mv_turmas_para_matricula')
     } catch (refreshError) {
       console.warn('[admissoes/convert] refresh_mv_turmas_para_matricula failed:', refreshError)
     }
@@ -352,15 +410,16 @@ export async function POST(request: Request) {
     if (isIdempotencyUniqueViolation || isAlreadyProcessedMessage) {
       // 1) Tenta recuperar resultado idempotente já gravado pela RPC.
       if (idempotencyKey && escolaIdContext) {
-        const { data: existingIdempotency } = await (supabase as any)
+        const { data: existingIdempotency } = await supabase
           .from("idempotency_keys")
           .select("result")
           .eq("escola_id", escolaIdContext)
           .eq("scope", "admissao_finalizar_matricula")
           .eq("key", idempotencyKey)
           .maybeSingle();
-        if (existingIdempotency?.result && typeof existingIdempotency.result === "object") {
-          return NextResponse.json(existingIdempotency.result);
+        const idempotencyResult = existingIdempotency?.result ?? null;
+        if (isJsonObject(idempotencyResult)) {
+          return NextResponse.json(idempotencyResult);
         }
       }
 
@@ -436,6 +495,39 @@ export async function POST(request: Request) {
         },
         { status: 409 }
       );
+    }
+    if (/TURMA_LOTADA_CAPACIDADE|Turma lotada/i.test(errorMessage)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Turma lotada. Um responsável autorizado pode efetivar com override e motivo obrigatório.",
+          details: errorMessage || null,
+          code: "TURMA_LOTADA_CAPACIDADE",
+        },
+        { status: 409 }
+      )
+    }
+    if (/Override de capacidade não autorizado/i.test(errorMessage)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Sem permissão para override de capacidade.",
+          details: errorMessage || null,
+          code: "CAPACITY_OVERRIDE_FORBIDDEN",
+        },
+        { status: 403 }
+      )
+    }
+    if (/Motivo obrigatório para override de capacidade/i.test(errorMessage)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Motivo obrigatório para override de capacidade.",
+          details: errorMessage || null,
+          code: "CAPACITY_OVERRIDE_REASON_REQUIRED",
+        },
+        { status: 400 }
+      )
     }
     if (typeof error === 'object' && error && 'code' in error && error.code === '42883') {
       const message = String((error as { message?: string }).message ?? '')

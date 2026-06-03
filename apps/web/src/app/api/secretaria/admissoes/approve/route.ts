@@ -4,6 +4,17 @@ import { createClient } from '@/lib/supabase/server'
 import { requireRoleInSchool } from '@/lib/authz'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { recordAuditServer } from '@/lib/audit'
+import type { Json } from '~types/supabase'
+
+type JsonObject = { [key: string]: Json | undefined }
+
+function isJsonObject(value: Json | null | undefined): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function getString(value: Json | undefined) {
+  return typeof value === 'string' && value.trim() ? value : null
+}
 
 const payloadSchema = z.object({
   candidatura_id: z.string().uuid(),
@@ -43,7 +54,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const resolvedEscolaId = await resolveEscolaIdForUser(
-      supabase as any,
+      supabase,
       user.id,
       head.escola_id
     );
@@ -59,16 +70,16 @@ export async function POST(request: Request) {
     if (authError) return authError
 
     if (head.status === 'rascunho' && (metodo_pagamento || comprovativo_url || amount || referencia)) {
-      const current = (head as any)?.dados_candidato ?? {}
-      const currentPagamento = (current as any)?.pagamento ?? {}
-      const pagamento = {
+      const current = isJsonObject(head.dados_candidato) ? head.dados_candidato : {}
+      const currentPagamento = isJsonObject(current.pagamento) ? current.pagamento : {}
+      const pagamento: JsonObject = {
         ...currentPagamento,
         ...(metodo_pagamento ? { metodo: metodo_pagamento } : {}),
         ...(comprovativo_url ? { comprovativo_url } : {}),
         ...(amount ? { amount } : {}),
         ...(referencia ? { referencia } : {}),
       }
-      const merged = {
+      const merged: JsonObject = {
         ...current,
         pagamento,
       }
@@ -106,9 +117,9 @@ export async function POST(request: Request) {
         )
       }
 
-      const current = (head as any)?.dados_candidato ?? {}
-      const merged = {
-        ...(current && typeof current === 'object' && !Array.isArray(current) ? current : {}),
+      const current = isJsonObject(head.dados_candidato) ? head.dados_candidato : {}
+      const merged: JsonObject = {
+        ...current,
         curso_id: turma.curso_id,
         classe_id: turma.classe_id ?? head.classe_id ?? null,
         turma_preferencial_id: turma.id,
@@ -125,7 +136,7 @@ export async function POST(request: Request) {
           ano_letivo: turma.ano_letivo,
           turno: turma.turno ?? null,
           dados_candidato: merged,
-        } as any)
+        })
         .eq('id', candidatura_id)
         .eq('escola_id', head.escola_id)
 
@@ -157,9 +168,10 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (updated?.status === 'aguardando_pagamento') {
-      const pagamento = (updated as any)?.dados_candidato?.pagamento || {}
-      const metodo = pagamento?.metodo || 'não informado'
-      const referencia = pagamento?.referencia || null
+      const dados = isJsonObject(updated.dados_candidato) ? updated.dados_candidato : {}
+      const pagamento = isJsonObject(dados.pagamento) ? dados.pagamento : {}
+      const metodo = getString(pagamento.metodo) || 'não informado'
+      const referencia = getString(pagamento.referencia)
       const mensagemParts = [
         `Método: ${metodo}`,
         referencia ? `Ref: ${referencia}` : null,
@@ -167,9 +179,9 @@ export async function POST(request: Request) {
       const mensagem = mensagemParts.join(' | ')
 
       try {
-        await supabase.from('notifications').insert({
-          escola_id: head.escola_id,
-          target_role: 'financeiro' as any,
+	        await supabase.from('notifications').insert({
+	          escola_id: head.escola_id,
+	          target_role: 'financeiro',
           tipo: 'candidatura_pagamento',
           titulo: 'Pagamento aguardando compensação',
           mensagem: mensagem || null,
@@ -187,13 +199,17 @@ export async function POST(request: Request) {
       details: { observacao: observacao ?? null, status: updated?.status ?? null },
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true })
-  } catch (error: any) {
+    return NextResponse.json({ ok: true, status: updated?.status ?? null })
+  } catch (error: unknown) {
     console.error('admissao approve error:', error)
-    const message = error?.message ?? null
-    if (error?.code === 'P0001') {
+    const message = error instanceof Error ? error.message : null
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : null
+    if (code === 'P0001') {
       return NextResponse.json(
-        { error: message ?? 'Falha de validação da candidatura.', code: error.code },
+        { error: message ?? 'Falha de validação da candidatura.', code },
         { status: 400 }
       )
     }
@@ -202,7 +218,7 @@ export async function POST(request: Request) {
       {
         error: 'Internal Server Error',
         details: message,
-        code: error?.code ?? null,
+        code,
       },
       { status: 500 }
     )

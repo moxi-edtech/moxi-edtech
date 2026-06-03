@@ -1,5 +1,5 @@
 // apps/web/src/lib/authz.ts
-import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient, type User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { isRoleAllowedForProduct, roleMatchesAllowedRoles, type ProductContext } from "@/lib/permissions";
 
@@ -12,6 +12,7 @@ export type Role =
   | "secretaria_financeiro"
   | "admin_escola"
   | "staff_admin"
+  | "diretor"
   | "formacao_admin"
   | "formacao_secretaria"
   | "formacao_financeiro"
@@ -35,7 +36,7 @@ export async function requireRoleInSchool({
   escolaId,
   roles,
   productContext,
-}: RequireRoleInSchoolParams): Promise<{ user: any; error?: NextResponse }> {
+}: RequireRoleInSchoolParams): Promise<{ user: User | null; error?: NextResponse }> {
   const { data, error: authError } = await supabase.auth.getUser();
   const user = data?.user ?? null;
 

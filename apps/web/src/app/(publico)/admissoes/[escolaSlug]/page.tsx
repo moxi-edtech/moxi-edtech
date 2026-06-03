@@ -2,10 +2,15 @@
 import { notFound } from "next/navigation";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
-import { AdmissionForm } from "./AdmissionForm";
+import { AdmissionForm, type AdmissionConfig } from "./AdmissionForm";
 import { Metadata } from "next";
+import type { Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
+
+type DisponibilidadePublica = "disponivel" | "ultimas_vagas" | "lista_espera";
+type ConfigPortal = NonNullable<AdmissionConfig["escola"]["config_portal"]>;
+type CampoExtra = NonNullable<ConfigPortal["campos_extras"]>[number];
 
 interface PageProps {
   params: Promise<{ escolaSlug: string }>;
@@ -14,7 +19,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { escolaSlug } = await params;
   const supabase = supabaseServerRole();
-  const { escolaId } = await resolveEscolaParam(supabase as any, escolaSlug);
+  const { escolaId } = await resolveEscolaParam(supabase, escolaSlug);
 
   if (!escolaId) return { title: "Escola não encontrada" };
 
@@ -26,7 +31,57 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `Admissão Online - ${escola?.nome || "Klasse"}`,
-    description: `Portal de inscrição e reserva de vaga para ${escola?.nome || "nossa escola"}.`,
+    description: `Portal de candidatura online para ${escola?.nome || "nossa escola"}.`,
+  };
+}
+
+function disponibilidadePublica(capacidade: number | null, matriculadosAtivos: number): DisponibilidadePublica {
+  if (capacidade === null) return "disponivel";
+  const vagas = capacidade - matriculadosAtivos;
+  if (vagas <= 0) return "lista_espera";
+  if (vagas <= 5) return "ultimas_vagas";
+  return "disponivel";
+}
+
+function isRecord(value: Json | undefined): value is Record<string, Json> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function parseConfigPortal(value: Json | undefined): ConfigPortal | null {
+  if (!isRecord(value)) return null;
+
+  const whatsapp = value.whatsapp_suporte;
+  const documentos = value.documentos_obrigatorios;
+  const campos = value.campos_extras;
+
+  const camposExtras: CampoExtra[] | undefined = Array.isArray(campos)
+    ? campos
+        .filter((campo): campo is Record<string, Json> => isRecord(campo))
+        .map((campo): CampoExtra => {
+          const tipo: CampoExtra["tipo"] =
+            campo.tipo === "select" || campo.tipo === "number" || campo.tipo === "text"
+              ? campo.tipo
+              : "text";
+
+          return {
+            id: typeof campo.id === "string" ? campo.id : "",
+            label: typeof campo.label === "string" ? campo.label : "",
+            tipo,
+            required: campo.required === true,
+            options: Array.isArray(campo.options)
+              ? campo.options.filter((item): item is string => typeof item === "string")
+              : undefined,
+          };
+        })
+        .filter((campo) => campo.id && campo.label)
+    : undefined;
+
+  return {
+    whatsapp_suporte: typeof whatsapp === "string" ? whatsapp : undefined,
+    documentos_obrigatorios: Array.isArray(documentos)
+      ? documentos.filter((item): item is string => typeof item === "string")
+      : undefined,
+    campos_extras: camposExtras,
   };
 }
 
@@ -35,7 +90,7 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
   const supabase = supabaseServerRole();
 
   // 1. Resolve school
-  const { escolaId, slug } = await resolveEscolaParam(supabase as any, escolaSlug);
+  const { escolaId, slug } = await resolveEscolaParam(supabase, escolaSlug);
 
   if (!escolaId) {
     return notFound();
@@ -61,7 +116,7 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
       .order("nome", { ascending: true }),
     supabase
       .from("turmas")
-      .select("id, nome, turno, curso_id, status_validacao")
+      .select("id, nome, turno, curso_id, capacidade_maxima, status_validacao, ano_letivo")
       .eq("escola_id", escolaId)
       .eq("status_validacao", "ativo"),
   ]);
@@ -89,23 +144,50 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
     );
   }
 
-  const config = {
+  const activeAno = Number(anosRes.data?.ano);
+  const turmasAtivas = (turmasRes.data || []).filter((turma) => {
+    if (!Number.isFinite(activeAno)) return true;
+    return Number(turma.ano_letivo) === activeAno;
+  });
+  const turmaIds = turmasAtivas.map((turma) => turma.id);
+  const ocupacaoPorTurma = new Map<string, number>();
+
+  if (turmaIds.length > 0) {
+    const ocupacoes = await Promise.all(
+      turmaIds.map(async (turmaId) => {
+        const { data, error } = await supabase.rpc("admissao_turma_ocupacao_reservada", {
+          p_escola_id: escolaId,
+          p_turma_id: turmaId,
+        });
+        if (error) throw error;
+        return [turmaId, data ?? 0] as const;
+      })
+    );
+
+    for (const [turmaId, ocupacao] of ocupacoes) ocupacaoPorTurma.set(turmaId, ocupacao);
+  }
+
+  const config: AdmissionConfig = {
     escola: {
       id: escolaRes.data.id,
       nome: escolaRes.data.nome,
       logo_url: escolaRes.data.logo_url,
       cor_primaria: escolaRes.data.cor_primaria,
       slug: slug || escolaSlug,
-      config_portal: (escolaRes.data.config_portal_admissao as any) || null,
+      config_portal: parseConfigPortal(escolaRes.data.config_portal_admissao) ?? undefined,
     },
     ano_letivo: anosRes.data || null,
     cursos: cursosRes.data || [],
-    turmas: (turmasRes.data || []).map(t => ({
-      id: t.id,
-      nome: t.nome,
-      turno: t.turno,
-      curso_id: t.curso_id,
-    })),
+    turmas: turmasAtivas.flatMap((t) => {
+      if (!t.curso_id) return [];
+      return [{
+        id: t.id,
+        nome: t.nome,
+        turno: t.turno || "",
+        curso_id: t.curso_id,
+        disponibilidade: disponibilidadePublica(t.capacidade_maxima, ocupacaoPorTurma.get(t.id) || 0),
+      }];
+    }),
   };
 
   if (!config.ano_letivo || config.cursos.length === 0) {
@@ -126,8 +208,8 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 md:py-20">
-      <AdmissionForm config={config as any} />
+    <main className="mx-auto max-w-6xl px-4 py-8 md:py-14">
+      <AdmissionForm config={config} />
     </main>
   );
 }

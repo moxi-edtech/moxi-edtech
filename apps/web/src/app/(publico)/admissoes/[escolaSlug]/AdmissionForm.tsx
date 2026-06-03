@@ -25,7 +25,7 @@ import Link from "next/link";
 import { DocumentUpload } from "./DocumentUpload";
 import { v4 as uuidv4 } from "uuid";
 
-type Config = {
+export type AdmissionConfig = {
   escola: {
     id: string;
     nome: string;
@@ -49,14 +49,21 @@ type Config = {
     ano: number;
   } | null;
   cursos: Array<{ id: string; nome: string }>;
-  turmas: Array<{ id: string; nome: string; turno: string; curso_id: string }>;
+  turmas: Array<{
+    id: string;
+    nome: string;
+    turno: string;
+    curso_id: string;
+    disponibilidade?: "disponivel" | "ultimas_vagas" | "lista_espera";
+  }>;
 };
 
-export function AdmissionForm({ config }: { config: Config }) {
+export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [protocolo, setProtocolo] = useState("");
+  const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draftId] = useState(() => uuidv4());
 
@@ -84,6 +91,22 @@ export function AdmissionForm({ config }: { config: Config }) {
   const TOTAL_STEPS = 5;
 
   const whatsappNumber = config.escola.config_portal?.whatsapp_suporte || "244923000000";
+  const disponibilidadeLabel: Record<NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>, string> = {
+    disponivel: "Disponível",
+    ultimas_vagas: "Últimas vagas",
+    lista_espera: "Lista de espera aberta",
+  };
+  const disponibilidadeStyle: Record<
+    NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>,
+    string
+  > = {
+    disponivel: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    ultimas_vagas: "bg-amber-50 text-amber-700 border-amber-100",
+    lista_espera: "bg-slate-100 text-slate-700 border-slate-200",
+  };
+  const selectedTurma = config.turmas.find((turma) => turma.id === formData.turma_preferencial_id) ?? null;
+  const selectedDisponibilidade = selectedTurma?.disponibilidade ?? "disponivel";
+  const visibleTurmas = config.turmas.slice(0, 8);
 
   const isDocumentNumberRequired = !["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento);
 
@@ -116,6 +139,17 @@ export function AdmissionForm({ config }: { config: Config }) {
     nextStep();
   };
   const prevStep = () => setStep((s) => s - 1);
+
+  const selectTurmaFromLanding = (turma: AdmissionConfig["turmas"][number]) => {
+    setFormData((prev) => ({
+      ...prev,
+      curso_id: turma.curso_id,
+      turma_preferencial_id: turma.id,
+      turno: turma.turno,
+    }));
+    setError(null);
+    document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -153,6 +187,7 @@ export function AdmissionForm({ config }: { config: Config }) {
       }
 
       setProtocolo(data.protocolo);
+      setSubmissionStatus(typeof data.status === "string" ? data.status : null);
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
@@ -168,22 +203,48 @@ export function AdmissionForm({ config }: { config: Config }) {
           <CheckCircle2 size={48} />
         </div>
         <h1 className="text-3xl font-black text-slate-900">Inscrição Enviada!</h1>
-        <p className="mt-4 max-w-md text-lg text-slate-600">
-          Obrigado, <span className="font-bold">{formData.nome_completo}</span>. Sua intenção de matrícula foi registrada com sucesso.
-        </p>
+        {submissionStatus === "lista_espera" ? (
+          <p className="mt-4 max-w-md text-lg text-slate-600">
+            Obrigado, <span className="font-bold">{formData.nome_completo}</span>. A turma está lotada no momento, mas a escola ainda pode contactar candidatos caso surjam novas vagas.
+          </p>
+        ) : (
+          <p className="mt-4 max-w-md text-lg text-slate-600">
+            Obrigado, <span className="font-bold">{formData.nome_completo}</span>. Sua intenção de matrícula foi registrada com sucesso.
+          </p>
+        )}
         
-        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-sm w-full">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Protocolo de Referência</p>
           <p className="mt-1 text-4xl font-black tracking-tight text-slate-900">{protocolo}</p>
+          <div className="mt-6 pt-6 border-t border-slate-100">
+            <Link
+              href={`/admissoes/${config.escola.slug}/consultar`}
+              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
+            >
+              <ShieldCheck size={18} />
+              Acessar Cofre Agora
+            </Link>
+            <p className="mt-4 text-[11px] text-slate-500 leading-relaxed italic">
+              * Você precisará confirmar o telefone do encarregado (<span className="font-bold">{formData.responsavel_contato}</span>) para acessar o cofre.
+            </p>
+          </div>
         </div>
 
-        <p className="mt-8 text-slate-500">
-          A secretaria da escola <span className="font-semibold">{config.escola.nome}</span> entrará em contato em breve através dos contatos fornecidos.
-        </p>
+        <div className="mt-10 space-y-4 max-w-md">
+          <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-left flex gap-3">
+            <Clock className="text-blue-500 shrink-0" size={20} />
+            <div>
+              <p className="text-sm font-bold text-blue-900">O que acontece agora?</p>
+              <p className="text-xs text-blue-700 mt-1">
+                A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga de 48h</b> e poderá enviar o comprovativo de pagamento diretamente pelo cofre.
+              </p>
+            </div>
+          </div>
+        </div>
         
         <button 
           onClick={() => window.location.reload()}
-          className="mt-10 text-sm font-bold text-slate-400 hover:text-slate-600 underline underline-offset-4"
+          className="mt-12 text-sm font-bold text-slate-400 hover:text-slate-600 underline underline-offset-4"
         >
           Realizar outra inscrição
         </button>
@@ -192,7 +253,95 @@ export function AdmissionForm({ config }: { config: Config }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/60 border border-slate-100">
+    <div className="space-y-8">
+      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+        <div className="space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600">
+            <GraduationCap size={14} />
+            Ano letivo {config.ano_letivo?.ano || "vigente"}
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
+              Admissão online
+              <span className="block" style={{ color: primaryColor }}>{config.escola.nome}</span>
+            </h1>
+            <p className="max-w-2xl text-base leading-7 text-slate-600">
+              Escolha a turma pretendida, preencha os dados do estudante e acompanhe a candidatura pelo protocolo.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+              <ShieldCheck size={16} className="text-emerald-600" />
+              Protocolo de consulta
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+              <MessageCircle size={16} className="text-emerald-600" />
+              Apoio da secretaria
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-950 p-5 text-white">
+          <p className="text-xs font-black uppercase tracking-widest text-white/50">Consultar candidatura</p>
+          <p className="mt-2 text-sm leading-6 text-white/75">
+            Já submeteu uma candidatura? Use o protocolo para ver o estado e documentos pendentes.
+          </p>
+          <Link
+            href={`/admissoes/${config.escola.slug}/consultar`}
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-slate-100"
+          >
+            <Search size={16} />
+            Consultar protocolo
+          </Link>
+        </div>
+      </section>
+
+      {visibleTurmas.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Turmas abertas</p>
+              <h2 className="text-xl font-black text-slate-950">Selecione uma opção para iniciar</h2>
+            </div>
+            <p className="max-w-md text-sm text-slate-500">
+              A escola avalia cada candidatura antes de confirmar a matrícula.
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {visibleTurmas.map((turma) => {
+              const disponibilidade = turma.disponibilidade ?? "disponivel";
+              const curso = config.cursos.find((item) => item.id === turma.curso_id);
+              const isWaitlist = disponibilidade === "lista_espera";
+
+              return (
+                <button
+                  key={turma.id}
+                  type="button"
+                  onClick={() => selectTurmaFromLanding(turma)}
+                  className="rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-black text-slate-950">{turma.nome}</p>
+                      <p className="mt-1 text-sm text-slate-500">{curso?.nome || "Curso"} · {turma.turno || "Turno a confirmar"}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${disponibilidadeStyle[disponibilidade]}`}>
+                      {disponibilidadeLabel[disponibilidade]}
+                    </span>
+                  </div>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-black" style={{ color: primaryColor }}>
+                    {isWaitlist ? "Entrar na lista de espera" : "Inscrever nesta turma"}
+                    <ArrowRight size={16} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+    <div id="admissao-formulario" className="overflow-hidden rounded-lg bg-white shadow-xl shadow-slate-200/60 border border-slate-100">
       {/* Header */}
       <div className="bg-slate-900 px-8 py-10 text-white relative">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -522,10 +671,20 @@ export function AdmissionForm({ config }: { config: Config }) {
                   {config.turmas
                     .filter(t => t.curso_id === formData.curso_id)
                     .map((t) => (
-                    <option key={t.id} value={t.id}>{t.nome} ({t.turno})</option>
+                    <option key={t.id} value={t.id}>
+                      {t.nome} ({t.turno}) - {disponibilidadeLabel[t.disponibilidade ?? "disponivel"]}
+                    </option>
                   ))}
                 </select>
               </label>
+
+              {formData.turma_preferencial_id &&
+                config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera" && (
+                  <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <span>A turma está lotada no momento, mas a escola ainda pode contactar candidatos caso surjam novas vagas.</span>
+                  </div>
+                )}
 
               {formData.turno && (
                 <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-4 text-sm text-blue-700">
@@ -754,6 +913,7 @@ export function AdmissionForm({ config }: { config: Config }) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

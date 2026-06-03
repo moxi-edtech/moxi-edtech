@@ -22,7 +22,8 @@ import {
   Plus,
   Share2,
   Copy,
-  Calendar
+  Calendar,
+  Timer
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
@@ -40,53 +41,29 @@ type AdmissaoStatus =
   | 'submetida'
   | 'em_analise'
   | 'aprovada'
+  | 'aguardando_pagamento'
+  | 'aguardando_compensacao'
   | 'rejeitada'
   | 'matriculado'
   | 'pendente'
+  | 'lista_espera'
 
-type CandidaturaListItem = {
-  id: string
-  escola_id: string
-  status: AdmissaoStatus
-  created_at: string
-  updated_at?: string | null
-  nome_candidato: string
-  cursos?: { nome: string } | null
-  classes?: { nome: string } | null
-}
-
-type CandidaturaDetail = CandidaturaListItem & {
-  dados_candidato: {
-    telefone?: string
-    bi_numero?: string
-    tipo_documento?: string
-    numero_documento?: string
-    email?: string
-    data_nascimento?: string
-    sexo?: string
-    nif?: string
-    endereco?: string
-    naturalidade?: string
-    provincia?: string
-    encarregado_relacao?: string
-    responsavel_nome?: string
-    responsavel_contato?: string
-    encarregado_email?: string
-    responsavel_financeiro_nome?: string
-    responsavel_financeiro_nif?: string
-    mesmo_que_encarregado?: boolean
-    documentos?: Record<string, string>
-  }
-  source?: string
-  ano_letivo?: number
+type AdmissoesRadarResponse = {
+  ok: boolean;
+  counts: Record<string, number>;
+  items: CandidaturaListItem[];
+  meta: any;
 }
 
 const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: string }> = {
   rascunho: { label: 'Rascunho', color: 'text-slate-500', bg: 'bg-slate-100' },
   submetida: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
   pendente: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
+  lista_espera: { label: 'Lista de Espera', color: 'text-amber-700', bg: 'bg-amber-100' },
   em_analise: { label: 'Em Análise', color: 'text-amber-600', bg: 'bg-amber-50' },
   aprovada: { label: 'Aprovada', color: 'text-klasse-green', bg: 'bg-klasse-green/10' },
+  aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-700', bg: 'bg-amber-100' },
+  aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-700', bg: 'bg-amber-100' },
   rejeitada: { label: 'Rejeitada', color: 'text-red-600', bg: 'bg-red-50' },
   matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
 }
@@ -100,11 +77,11 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced
 }
 
-async function fetchAdmissoes(url: string): Promise<CandidaturaListItem[]> {
+async function fetchRadar(url: string): Promise<AdmissoesRadarResponse> {
   const res = await fetch(url)
   const json = await res.json()
-  if (!res.ok) throw new Error(json?.error || 'Falha ao carregar admissões')
-  return json.items || []
+  if (!res.ok) throw new Error(json?.error || 'Falha ao carregar radar')
+  return json
 }
 
 export default function AdmissoesInboxClient({ 
@@ -138,7 +115,7 @@ export default function AdmissoesInboxClient({
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [search, setSearch] = useState(initialSearch || '')
-  const [statusFilter, setStatusFilter] = useState<'novas' | 'pendentes' | 'concluidas'>('novas')
+  const [statusFilter, setStatusFilter] = useState<'novas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const supabase = useMemo(() => createClient(), [])
 
@@ -156,16 +133,17 @@ export default function AdmissoesInboxClient({
   }, [debouncedSearch, escolaId, statusFilter, turmaId])
 
   const {
-    data: itemsData,
+    data: radarData,
     isLoading,
     error: swrError,
     mutate,
-  } = useSWR<CandidaturaListItem[]>(listUrl, fetchAdmissoes, {
-    fallbackData: initialItems,
+  } = useSWR<AdmissoesRadarResponse>(listUrl, fetchRadar, {
+    fallbackData: { ok: true, counts: {}, items: initialItems, meta: {} },
     keepPreviousData: true,
   })
 
-  const items = itemsData || []
+  const items = radarData?.items || []
+  const counts = radarData?.counts || {}
   const loading = isLoading && items.length === 0
   const listError = swrError instanceof Error ? swrError.message : null
 
@@ -180,10 +158,16 @@ export default function AdmissoesInboxClient({
       let matchesStatus = false
       if (statusFilter === 'novas') {
         matchesStatus = item.status === 'submetida' || item.status === 'pendente'
+      } else if (statusFilter === 'lista_espera') {
+        matchesStatus = item.status === 'lista_espera'
       } else if (statusFilter === 'pendentes') {
         matchesStatus = item.status === 'em_analise' || item.status === 'aprovada' || item.status === 'rascunho'
       } else if (statusFilter === 'concluidas') {
         matchesStatus = item.status === 'matriculado' || item.status === 'rejeitada'
+      } else if (statusFilter === 'expirando') {
+        matchesStatus = item.status === 'aguardando_pagamento'
+      } else if (statusFilter === 'reenviados') {
+        matchesStatus = item.status === 'submetida' || item.status === 'pendente'
       }
       
       return matchesSearch && matchesStatus
@@ -289,7 +273,37 @@ export default function AdmissoesInboxClient({
 
   const handleApprove = async () => {
     if (!selectedId) return
-    setIsConversionOpen(true)
+    setLoadingAction('approving')
+    try {
+      const res = await fetch('/api/secretaria/admissoes/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidatura_id: selectedId }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Falha ao aprovar candidatura')
+
+      const nextStatus: AdmissaoStatus =
+        typeof json.status === 'string' && json.status === 'aguardando_pagamento'
+          ? 'aguardando_pagamento'
+          : 'aprovada'
+
+      mutate(
+        (prev) => (prev || []).map((item) => (item.id === selectedId ? { ...item, status: nextStatus } : item)),
+        false
+      )
+      if (selectedData) setSelectedData({ ...selectedData, status: nextStatus })
+      success(
+        nextStatus === 'aguardando_pagamento' ? 'Reserva criada' : 'Candidatura aprovada',
+        nextStatus === 'aguardando_pagamento'
+          ? 'A candidatura ficou aguardando pagamento antes da matrícula.'
+          : 'A candidatura foi aprovada para a próxima etapa.'
+      )
+    } catch (err: unknown) {
+      toastError('Falha na aprovação', err instanceof Error ? err.message : 'Não foi possível aprovar a candidatura.')
+    } finally {
+      setLoadingAction(null)
+    }
   }
 
   const handleReject = async () => {
@@ -479,20 +493,61 @@ export default function AdmissoesInboxClient({
             />
           </div>
 
-          <div className="flex p-1 bg-slate-100 rounded-xl">
-            {(['novas', 'pendentes', 'concluidas'] as const).map((f) => (
+          <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
+            {([
+              { id: 'novas', label: 'Novas' },
+              { id: 'lista_espera', label: 'Lista' },
+              { id: 'pendentes', label: 'Pendentes' },
+              { id: 'concluidas', label: 'Concluídas' },
+            ] as const).map((f) => (
               <button
-                key={f}
-                onClick={() => setStatusFilter(f)}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  statusFilter === f 
+                key={f.id}
+                onClick={() => setStatusFilter(f.id)}
+                className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  statusFilter === f.id
                     ? 'bg-white text-klasse-green shadow-sm' 
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f.label}
               </button>
             ))}
+          </div>
+
+          {/* Gargalos de Conversão */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setStatusFilter('expirando')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                statusFilter === 'expirando' 
+                  ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-100' 
+                  : 'bg-white border-slate-100 hover:border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Timer className={`h-3 w-3 ${counts.expirando > 0 ? 'text-amber-600 animate-pulse' : 'text-slate-400'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Expirando</span>
+              </div>
+              <p className={`text-lg font-black ${counts.expirando > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                {counts.expirando || 0}
+              </p>
+            </button>
+            <button
+              onClick={() => setStatusFilter('reenviados')}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                statusFilter === 'reenviados' 
+                  ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100' 
+                  : 'bg-white border-slate-100 hover:border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <RefreshCw className={`h-3 w-3 ${counts.reenviados > 0 ? 'text-blue-600' : 'text-slate-400'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Re-enviados</span>
+              </div>
+              <p className={`text-lg font-black ${counts.reenviados > 0 ? 'text-blue-700' : 'text-slate-400'}`}>
+                {counts.reenviados || 0}
+              </p>
+            </button>
           </div>
         </div>
 
@@ -578,6 +633,11 @@ export default function AdmissoesInboxClient({
                             {STATUS_CONFIG[selectedData.status]?.label || selectedData.status}
                           </span>
                         </div>
+                        {selectedData.status === 'lista_espera' && (
+                          <p className="mb-3 max-w-2xl rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                            Esta candidatura entrou em lista de espera porque a turma selecionada estava lotada no momento da submissão.
+                          </p>
+                        )}
                         <h1 className="text-4xl font-sans font-bold text-klasse-green leading-tight">
                           {selectedData.nome_candidato}
                         </h1>
@@ -653,6 +713,19 @@ export default function AdmissoesInboxClient({
                           <DataField label="Curso" value={selectedData.cursos?.nome || '—'} />
                           <DataField label="Classe" value={selectedData.classes?.nome || '—'} />
                           <DataField label="Ano Letivo" value={selectedData.ano_letivo?.toString() || '—'} />
+                          {selectedData.status === 'aguardando_pagamento' && (
+                            <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1 flex items-center gap-1">
+                                <Timer size={10} />
+                                Reserva Expira em
+                              </p>
+                              <p className="text-sm font-bold text-amber-900">
+                                {selectedData.dados_candidato.documentos?.reserva_expira_at 
+                                  ? format(new Date(selectedData.dados_candidato.documentos.reserva_expira_at), "dd/MM/yyyy HH:mm")
+                                  : 'Data não definida'}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </section>
 
@@ -712,9 +785,21 @@ export default function AdmissoesInboxClient({
                       Rejeitar
                     </button>
                     
-                    {['submetida', 'em_analise', 'pendente', 'aprovada'].includes(selectedData.status) && (
+                    {['submetida', 'em_analise', 'pendente', 'lista_espera'].includes(selectedData.status) && (
                       <button 
+                        onClick={handleApprove}
+                        disabled={!!loadingAction}
+                        className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
+                      >
+                        {loadingAction === 'approving' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+                        Aprovar Candidatura
+                      </button>
+                    )}
+
+                    {['aprovada', 'aguardando_pagamento', 'aguardando_compensacao'].includes(selectedData.status) && (
+                      <button
                         onClick={() => setIsConversionOpen(true)}
+                        disabled={!!loadingAction}
                         className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
                       >
                         <Check className="h-5 w-5" />
