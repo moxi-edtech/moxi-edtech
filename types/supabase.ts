@@ -552,6 +552,7 @@ export type Database = {
           responsavel_financeiro_nome: string | null
           responsavel_nome: string | null
           search_text: string | null
+          secretaria_search_tsv: unknown | null
           sexo: string | null
           status: string | null
           telefone: string | null
@@ -606,6 +607,7 @@ export type Database = {
           responsavel_financeiro_nome?: string | null
           responsavel_nome?: string | null
           search_text?: string | null
+          secretaria_search_tsv?: never
           sexo?: string | null
           status?: string | null
           telefone?: string | null
@@ -660,6 +662,7 @@ export type Database = {
           responsavel_financeiro_nome?: string | null
           responsavel_nome?: string | null
           search_text?: string | null
+          secretaria_search_tsv?: never
           sexo?: string | null
           status?: string | null
           telefone?: string | null
@@ -1715,6 +1718,7 @@ export type Database = {
           portal_reenvio_at: string | null
           protocolo_publico: string
           responsavel_contato_normalizado: string | null
+          secretaria_search_tsv: unknown | null
           source: string | null
           status: string | null
           telefone_normalizado: string | null
@@ -1742,6 +1746,7 @@ export type Database = {
           portal_reenvio_at?: string | null
           protocolo_publico: string
           responsavel_contato_normalizado?: string | null
+          secretaria_search_tsv?: never
           source?: string | null
           status?: string | null
           telefone_normalizado?: string | null
@@ -1769,6 +1774,7 @@ export type Database = {
           portal_reenvio_at?: string | null
           protocolo_publico?: string
           responsavel_contato_normalizado?: string | null
+          secretaria_search_tsv?: never
           source?: string | null
           status?: string | null
           telefone_normalizado?: string | null
