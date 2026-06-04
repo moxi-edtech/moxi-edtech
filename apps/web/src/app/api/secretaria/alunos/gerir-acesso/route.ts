@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
-import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { assertPortalAccess } from "@/lib/portalAccess";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import { requireRoleInSchool } from "@/lib/authz";
 
 export async function POST(req: Request) {
   try {
@@ -31,8 +31,12 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(s as any, user.id, escolaIdParam);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
-    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
+    const { error: roleError } = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId,
+      roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
+    });
+    if (roleError) return roleError;
 
     const resultados: Array<{ id: string; status: string; data?: any; error?: string }> = [];
     if (action === "bloquear") {
@@ -72,28 +76,32 @@ export async function POST(req: Request) {
     } else if (action === "reset-senha") {
       const { data: alunos } = await s
         .from("alunos")
-        .select("id, bi_numero, codigo_ativacao")
+        .select("id, profile_id, usuario_auth_id")
         .in("id", alunoIds)
         .eq("escola_id", escolaId);
       
       if (!alunos) throw new Error("Alunos não encontrados");
 
       for (const aluno of alunos) {
-        if (!aluno.bi_numero) {
-          resultados.push({ id: aluno.id, status: "error", error: "BI ausente" });
+        const userId = aluno.usuario_auth_id || aluno.profile_id || null;
+        if (!userId) {
+          resultados.push({ id: aluno.id, status: "error", error: "Aluno sem acesso ativo" });
           continue;
         }
         try {
-          // Usando resetStudentPassword que existe no lib/auth-admin-job.ts
           const res = await callAuthAdminJob(req, "resetStudentPassword", {
-            bi: aluno.bi_numero,
+            userId,
           });
           resultados.push({ id: aluno.id, status: "success", data: res });
         } catch (err: any) {
           resultados.push({ id: aluno.id, status: "error", error: err.message });
         }
       }
-      return NextResponse.json({ ok: true, resultados });
+      const falhas = resultados.filter((resultado) => resultado.status === "error");
+      return NextResponse.json(
+        { ok: falhas.length === 0, resultados, error: falhas[0]?.error },
+        { status: falhas.length > 0 ? 400 : 200 }
+      );
     } else {
       return NextResponse.json({ ok: false, error: "Ação inválida" }, { status: 400 });
     }

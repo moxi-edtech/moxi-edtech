@@ -23,7 +23,8 @@ import {
   Share2,
   Copy,
   Calendar,
-  Timer
+  Timer,
+  CreditCard
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
@@ -45,6 +46,8 @@ type AdmissaoStatus =
   | 'aguardando_pagamento'
   | 'aguardando_compensacao'
   | 'rejeitada'
+  | 'arquivada'
+  | 'arquivado'
   | 'matriculado'
   | 'pendente'
   | 'lista_espera'
@@ -116,6 +119,8 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
   aguardando_pagamento: { label: 'Reserva (Aguardando Pagamento)', color: 'text-amber-700', bg: 'bg-amber-100' },
   aguardando_compensacao: { label: 'Reserva (Em Validação)', color: 'text-amber-700', bg: 'bg-amber-100' },
   rejeitada: { label: 'Rejeitada', color: 'text-red-600', bg: 'bg-red-50' },
+  arquivada: { label: 'Arquivada', color: 'text-slate-600', bg: 'bg-slate-100' },
+  arquivado: { label: 'Arquivado', color: 'text-slate-600', bg: 'bg-slate-100' },
   matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
 }
 
@@ -303,7 +308,7 @@ export default function AdmissoesInboxClient({
   }, [escolaId])
 
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    const list = items.filter(item => {
       const searchLower = search.toLowerCase()
       const protocol = displayProtocol(item).replace(/^#/, '').toLowerCase()
       const matchesName = item.nome_candidato.toLowerCase().includes(searchLower)
@@ -313,20 +318,27 @@ export default function AdmissoesInboxClient({
       
       let matchesStatus = false
       if (statusFilter === 'novas') {
-        matchesStatus = item.status === 'submetida' || item.status === 'pendente'
+        matchesStatus = item.status === 'submetida' || item.status === 'documentos_reenviados'
       } else if (statusFilter === 'lista_espera') {
         matchesStatus = item.status === 'lista_espera'
       } else if (statusFilter === 'pendentes') {
-        matchesStatus = item.status === 'em_analise' || item.status === 'aprovada' || item.status === 'rascunho'
+        matchesStatus = item.status === 'em_analise' || item.status === 'aprovada' || item.status === 'rascunho' || item.status === 'pendente' || item.status === 'aguardando_pagamento' || item.status === 'aguardando_compensacao'
       } else if (statusFilter === 'concluidas') {
-        matchesStatus = item.status === 'matriculado' || item.status === 'rejeitada'
+        matchesStatus = item.status === 'matriculado' || item.status === 'rejeitada' || item.status === 'arquivada' || item.status === 'arquivado'
       } else if (statusFilter === 'expirando') {
         matchesStatus = item.status === 'aguardando_pagamento'
       } else if (statusFilter === 'reenviados') {
-        matchesStatus = item.status === 'submetida' || item.status === 'pendente'
+        matchesStatus = item.status === 'documentos_reenviados'
       }
       
       return matchesSearch && matchesStatus
+    })
+
+    // PRIORIZAÇÃO: Re-uploads no topo, depois data de criação
+    return [...list].sort((a, b) => {
+      if (a.status === 'documentos_reenviados' && b.status !== 'documentos_reenviados') return -1
+      if (a.status !== 'documentos_reenviados' && b.status === 'documentos_reenviados') return 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
   }, [items, search, statusFilter])
 
@@ -511,6 +523,38 @@ export default function AdmissoesInboxClient({
       success('Candidatura rejeitada', 'A candidatura foi marcada como rejeitada. O registo permanecerá no sistema para consulta futura.')
     } catch (err: unknown) {
       toastError('Falha na operação', 'Não foi possível rejeitar a candidatura no momento. Por favor, tente novamente.')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleReopen = async () => {
+    if (!selectedId) return
+    
+    const motivo = await confirm({
+      title: 'Reabrir candidatura',
+      message: 'Deseja reabrir esta candidatura para análise? Ela voltará ao estado "Em Análise".',
+      inputType: 'text',
+      placeholder: 'Ex: Erro na rejeição anterior ou novo documento apresentado',
+      confirmLabel: 'Reabrir agora',
+    })
+
+    if (!motivo) return
+
+    setLoadingAction('reopening')
+    try {
+      const res = await fetch('/api/secretaria/admissoes/reabrir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidatura_id: selectedId, motivo: motivo.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Falha ao reabrir')
+      
+      await mutate()
+      success('Candidatura reaberta', 'A candidatura foi reaberta com sucesso e já está disponível para análise.')
+    } catch (err: unknown) {
+      toastError('Falha ao reabrir', err instanceof Error ? err.message : 'Houve um erro técnico ao tentar reabrir este registo.')
     } finally {
       setLoadingAction(null)
     }
@@ -897,6 +941,24 @@ export default function AdmissoesInboxClient({
                 {counts.reenviados || 0}
               </p>
             </button>
+            <button
+              onClick={() => setStatusFilter('lista_espera')}
+              className={`p-3 rounded-xl border text-left transition-all col-span-2 ${
+                statusFilter === 'lista_espera' 
+                  ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-100' 
+                  : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' : 'bg-white border-slate-100 hover:border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Check className={`h-3 w-3 ${counts.oportunidades_espera > 0 ? 'text-emerald-600 animate-bounce' : 'text-slate-400'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Vagas Disponíveis</span>
+              </div>
+              <p className={`text-sm font-bold ${counts.oportunidades_espera > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
+                {counts.oportunidades_espera > 0 
+                  ? `${counts.oportunidades_espera} candidatos podem ser promovidos` 
+                  : 'Nenhuma vaga aberta para espera'}
+              </p>
+            </button>
           </div>
         </div>
 
@@ -1029,6 +1091,71 @@ export default function AdmissoesInboxClient({
 
                   {/* Conteúdo Raio-X */}
                   <div className="p-8 pb-32 space-y-8">
+                    {/* Alerta de Conciliação Financeira */}
+                    {(selectedData.status === 'aguardando_compensacao' || selectedData.status === 'aguardando_pagamento') && (
+                      <section className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Conciliação Financeira
+                          </h3>
+                          <Badge className="bg-amber-200 text-amber-900 border-amber-300">
+                            {selectedData.status === 'aguardando_compensacao' ? 'Comprovativo Enviado' : 'Aguardando Talão'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <DataField 
+                              label="Valor Declarado" 
+                              value={selectedData.dados_candidato?.pagamento?.amount ? `${Number(selectedData.dados_candidato.pagamento.amount).toLocaleString('pt-AO')} Kz` : 'Não informado'} 
+                            />
+                            <DataField 
+                              label="Referência/Talão" 
+                              value={selectedData.dados_candidato?.pagamento?.referencia || 'Sem referência'} 
+                            />
+                            <DataField 
+                              label="Método" 
+                              value={selectedData.dados_candidato?.pagamento?.metodo || 'TRANSFERENCIA'} 
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Documento de Prova</p>
+                            {selectedData.dados_candidato?.pagamento?.comprovativo_url ? (
+                              <button
+                                onClick={() => handleViewDoc('Comprovativo', selectedData.dados_candidato?.pagamento?.comprovativo_url)}
+                                className="flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-dashed border-amber-300 rounded-xl text-amber-700 font-bold hover:bg-amber-100 transition-all group"
+                              >
+                                <FileText className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                                Visualizar Talão Agora
+                              </button>
+                            ) : (
+                              <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 rounded-xl text-amber-500 text-xs italic">
+                                Nenhum talão anexado pelo aluno
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-6 flex gap-3">
+                          <Button 
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-11 font-bold"
+                            onClick={() => setIsConversionOpen(true)}
+                          >
+                            Validar e Matricular
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            className="flex-1 border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl h-11 font-bold"
+                            onClick={openPendenciasModal}
+                          >
+                            Recusar Pagamento
+                          </Button>
+                        </div>
+                      </section>
+                    )}
+
                     {/* Grid de Dados */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       {/* Dados Pessoais */}
@@ -1183,6 +1310,17 @@ export default function AdmissoesInboxClient({
 
                   {/* Barra de Ação Sticky Bottom */}
                   <div className="absolute bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-200 flex items-center justify-end gap-4 z-10">
+                    {['rejeitada', 'arquivada', 'arquivado'].includes(selectedData.status) && (
+                      <button 
+                        onClick={handleReopen}
+                        disabled={!!loadingAction}
+                        className="flex items-center gap-2 px-6 py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
+                      >
+                        {loadingAction === 'reopening' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Reabrir Candidatura
+                      </button>
+                    )}
+
                     <button 
                       onClick={handleArchive}
                       disabled={!!loadingAction}

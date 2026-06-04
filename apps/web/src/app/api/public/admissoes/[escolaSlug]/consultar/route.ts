@@ -3,7 +3,17 @@ import { z } from "zod";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
+import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import type { Json } from "~types/supabase";
+
+type CandidaturaStatusLogRow = {
+  id: string;
+  created_at: string | null;
+  from_status: string | null;
+  to_status: string | null;
+  motivo: string | null;
+  metadata: Json | null;
+};
 
 type CandidaturaStatusRow = {
   id: string;
@@ -17,6 +27,9 @@ type CandidaturaStatusRow = {
   responsavel_contato_normalizado?: string | null;
   dados_candidato?: Json | null;
   curso_nome?: string | null;
+  curso_id?: string | null;
+  classe_id?: string | null;
+  ano_letivo?: number | null;
 };
 
 const protocoloSchema = z
@@ -52,15 +65,6 @@ const statusChallengeSchema = z
   .strict();
 
 type PublicLookupClient = ReturnType<typeof supabaseServerRole>;
-
-type CandidaturaStatusLogRow = {
-  id: string;
-  created_at: string | null;
-  from_status: string | null;
-  to_status: string | null;
-  motivo: string | null;
-  metadata: Json | null;
-};
 
 async function lookupByProtocolo(
   supabase: PublicLookupClient,
@@ -576,6 +580,7 @@ export async function POST(
       }>;
       historico_pendencias: Array<ReturnType<typeof sanitizeAdmissionTimeline>[number]>;
       escola_pagamento: any | null;
+      valor_esperado?: number | null;
     } = {
       pode_mudar_senha: false,
       pode_baixar_comprovativo: false,
@@ -586,7 +591,8 @@ export async function POST(
       pendencias: [],
       dossier: [],
       historico_pendencias: [],
-      escola_pagamento: null
+      escola_pagamento: null,
+      valor_esperado: null
     };
 
     // Mapeamento padrão de documentos
@@ -657,6 +663,22 @@ export async function POST(
         .maybeSingle();
       
       actions.escola_pagamento = escola?.dados_pagamento ?? null;
+
+      // Calcular preço esperado de matrícula
+      try {
+        const { tabela } = await resolveTabelaPreco(supabase, {
+          escolaId,
+          anoLetivo: match.ano_letivo || new Date().getFullYear(),
+          cursoId: match.curso_id,
+          classeId: match.classe_id,
+          allowMensalidadeFallback: true
+        });
+        if (tabela?.valor_matricula) {
+          actions.valor_esperado = tabela.valor_matricula;
+        }
+      } catch (err) {
+        console.error("[Price calculation error]:", err);
+      }
     } else if (match.status === "pendente") {
       actions.pode_resolver_pendencia = true;
       actions.pendencias = Array.isArray(dados.pendencias) ? dados.pendencias : [];

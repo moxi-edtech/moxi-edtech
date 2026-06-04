@@ -61,6 +61,13 @@ type CandidaturaDetail = {
     encarregado_email?: string
     encarregado_relacao?: string
     documentos?: Record<string, string>
+    pagamento?: {
+      metodo?: string
+      referencia?: string
+      amount?: string | number
+      parcial?: boolean
+      comprovativo_url?: string
+    }
   }
 }
 
@@ -198,6 +205,21 @@ export function AdmissaoConversionSheet({
             classeId: item.classe_id || '',
             turmaId: item.turma_preferencial_id || ''
           })
+
+          // INTELIGÊNCIA FINANCEIRA: Pré-preecher com dados da submissão pública
+          if (item.dados_candidato?.pagamento) {
+            const p = item.dados_candidato.pagamento;
+            const metodo = ['CASH', 'TPA', 'TRANSFERENCIA'].includes(p.metodo ?? '')
+              ? p.metodo as 'CASH' | 'TPA' | 'TRANSFERENCIA'
+              : 'TRANSFERENCIA';
+            setPayment({
+              metodo,
+              referencia: p.referencia || '',
+              amount: p.amount == null ? '' : String(p.amount),
+              parcial: p.parcial || false,
+              comprovativo_url: p.comprovativo_url || '',
+            })
+          }
         }
       })
       .catch(err => console.error('Fetch error:', err))

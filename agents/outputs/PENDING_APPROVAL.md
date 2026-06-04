@@ -1,7 +1,7 @@
 # Aprovação necessária — Agent 3
 run_id:    598B12B4-B6B1-461F-A4DD-026E1BDD9764
 timestamp: 2026-06-04T11:22:27Z
-status:    PENDING
+status:    APPROVED_AND_APPLIED
 
 ## Acção proposta
 
@@ -44,6 +44,15 @@ Os dados materializados podem atualizar alguns minutos depois do horário atual,
 - Migration transacional.
 - Simulação com rollback antes da aplicação.
 - Verificação pós-apply dos schedules e falhas.
+
+## Resultado
+
+- Aplicado em `2026-06-04`.
+- Migration registrada como `20260604112227`.
+- Jobs redundantes/quebrados removidos.
+- Pico observado reduzido de `25–27` para `6` jobs por minuto.
+- Zero falhas observadas após o escalonamento.
+- `pnpm --filter web typecheck` passou.
 
 ## Como aprovar
 

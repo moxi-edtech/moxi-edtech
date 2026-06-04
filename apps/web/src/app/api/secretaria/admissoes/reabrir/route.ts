@@ -5,6 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 
 const payloadSchema = z.object({
   candidatura_id: z.string().uuid(),
+  motivo: z.string().min(3).max(500).optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
   }
 
-  const { candidatura_id } = parsed.data;
+  const { candidatura_id, motivo } = parsed.data;
 
   const { data: cand, error: candErr } = await supabase
     .from("candidaturas")
@@ -40,15 +41,25 @@ export async function POST(request: Request) {
   });
   if (authError) return authError;
 
-  const allowedStatuses = ["submetida", "em_analise", "aprovada", "aguardando_pagamento"];
-  if (!allowedStatuses.includes(String(cand.status ?? "").toLowerCase())) {
-    return NextResponse.json({ ok: false, error: "Status não pode ser reaberto" }, { status: 400 });
+  // Se o status for rejeitada ou arquivada, usamos a nova admissao_reabrir
+  const currentStatus = String(cand.status ?? "").toLowerCase();
+  const isFromClosed = ["rejeitada", "arquivada", "arquivado"].includes(currentStatus);
+
+  let rpcName = "admissao_unsubmit";
+  if (isFromClosed) {
+    rpcName = "admissao_reabrir";
+  } else {
+    // Para os outros estados, verificamos se o unsubmit é permitido
+    const allowedUnsubmit = ["submetida", "em_analise", "aprovada", "aguardando_pagamento"];
+    if (!allowedUnsubmit.includes(currentStatus)) {
+      return NextResponse.json({ ok: false, error: "Status não pode ser reaberto ou revertido para rascunho" }, { status: 400 });
+    }
   }
 
-  const { error: rpcErr } = await supabase.rpc("admissao_unsubmit", {
+  const { error: rpcErr } = await supabase.rpc(rpcName as "admissao_unsubmit" | "admissao_reabrir", {
     p_escola_id: cand.escola_id,
     p_candidatura_id: candidatura_id,
-    p_motivo: "Reaberto via portal secretaria",
+    p_motivo: motivo || "Reaberto via portal secretaria",
   });
 
   if (rpcErr) {

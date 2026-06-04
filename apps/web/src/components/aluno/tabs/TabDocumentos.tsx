@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { FileText, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { Pill } from "@/components/aluno/shared/Pill";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
@@ -29,8 +28,9 @@ export function TabDocumentos() {
       if (json.url) {
         window.open(json.url, '_blank');
       }
-    } catch (err: any) {
-      error("Erro na emissão", "Não conseguimos gerar o seu documento no momento. Por favor, tente novamente em instantes.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Não conseguimos obter o documento.";
+      error("Erro no documento", message);
     } finally {
       setLoading(null);
     }
@@ -75,8 +75,8 @@ export function TabDocumentos() {
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">Declaração de Matrícula</p>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Comprovativo de vínculo ativo</p>
+              <p className="text-sm font-bold text-slate-900">Comprovante de Matrícula</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Baixar comprovativo oficial</p>
             </div>
           </div>
           {loading === 'declaracao' ? (

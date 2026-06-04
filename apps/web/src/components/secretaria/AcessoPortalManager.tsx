@@ -167,6 +167,20 @@ export function AcessoPortalManager({ escolaId }: Props) {
       if (action === 'gerar') {
         setLiberados(Array.isArray(json.detalhes) ? json.detalhes : []);
         setActionMessage({ type: 'success', text: `${json.liberados} aluno(s) tiveram acesso liberado.` });
+      } else if (action === 'reset-senha') {
+        const credenciais = Array.isArray(json.resultados)
+          ? json.resultados
+              .filter((resultado: any) => resultado.status === 'success' && resultado.data?.senha)
+              .map((resultado: any) => ({
+                id: resultado.id,
+                nome: items.find((aluno) => aluno.id === resultado.id)?.nome ?? 'Aluno',
+                login: resultado.data.login,
+                senha: resultado.data.senha,
+                status: resultado.status,
+              }))
+          : [];
+        setLiberados(credenciais);
+        setActionMessage({ type: 'success', text: `${credenciais.length} senha(s) temporária(s) gerada(s).` });
       } else {
         setActionMessage({ type: 'success', text: "Ação executada com sucesso." });
       }

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.rpc("admissao_archive", {
       p_escola_id: head.escola_id,
       p_candidatura_id: candidatura_id,
-      p_motivo: motivo ?? undefined,
+      p_motivo: motivo ?? "",
     });
 
     if (error) throw error;

@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { IdCard } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import AvisosRecentesCard from "./AvisosRecentesCard";
 import { ErrorState, StatCardsSkeleton, TableSkeleton } from "@/components/feedback/FeedbackSystem";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
@@ -185,6 +188,8 @@ export default function DashboardLoader() {
     );
   }
 
+  const router = useRouter();
+
   return (
     <div className="space-y-6">
       <AlunoCard className="bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white border-[#1f4028]">
@@ -227,6 +232,31 @@ export default function DashboardLoader() {
           </div>
         </AlunoCard>
       )}
+
+      <AlunoCard 
+        onClick={() => {
+          const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
+          router.push(buildPortalHref(escolaParam, "/aluno/identidade"));
+        }}
+        className="group border-blue-100 bg-blue-50/30"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
+              <IdCard className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">Identidade Digital</p>
+              <p className="text-xs text-slate-500">Acesse seu cartão de estudante e QR de validação.</p>
+            </div>
+          </div>
+          <div className="rounded-full bg-white p-2 shadow-sm border border-blue-100 group-hover:translate-x-1 transition-transform">
+            <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </AlunoCard>
 
       <div className="space-y-3">
         <SectionTitle action="Ver todas">Notas recentes</SectionTitle>

@@ -47,6 +47,7 @@ type VaultData = {
   pode_enviar_comprovativo: boolean;
   pode_resolver_pendencia: boolean;
   reserva_expira_at: string | null;
+  valor_esperado?: number | null;
   comprovativo_url?: string;
   pendencias?: Array<{ id: string; label: string; motivo?: string }>;
   historico_pendencias?: Array<{
@@ -161,6 +162,9 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       if (!res.ok) throw new Error(data.error || "Dado de contato incorreto");
 
       setVault(data.vault);
+      if (data.vault?.valor_esperado) {
+        setPaymentAmount(String(data.vault.valor_esperado));
+      }
       setStep('vault');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro na validação");
@@ -199,7 +203,15 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
     }
   };
 
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentRef, setPaymentRef] = useState("");
+
   const handleReceiptUpload = async (path: string) => {
+    if (!paymentAmount) {
+      setError("Por favor, informe o valor pago antes de enviar o comprovativo.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -210,7 +222,12 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
           protocolo, 
           contato: contactChallenge,
           action: 'upload_payment',
-          comprovativo_path: path 
+          comprovativo_path: path,
+          payment_data: {
+            amount: paymentAmount,
+            referencia: paymentRef,
+            metodo: 'TRANSFERENCIA'
+          }
         })
       });
 
@@ -308,7 +325,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       border: 'border-blue-100'
     };
     if (s === 'pendente') return {
-      label: 'Dossiê: Correção Necessária',
+      label: 'Ação Necessária: Corrigir Documentos',
       icon: <AlertCircle className="text-rose-500" size={24} />,
       color: 'text-rose-600',
       bg: 'bg-rose-50',
@@ -646,16 +663,65 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                         <h4 className="font-bold text-slate-900 text-sm">Enviar Comprovativo</h4>
                       </div>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        Após efetuar o pagamento, envie o comprovativo (Talão de Depósito ou Transferência) para que a secretaria confirme sua vaga.
+                        Após efetuar o pagamento, informe os dados do talão e envie o comprovativo para que a secretaria confirme sua vaga.
                       </p>
+
+                      {vault.valor_esperado && (
+                        <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="text-emerald-600" size={16} />
+                            <span className="text-xs font-bold text-emerald-900 uppercase">Valor a Pagar</span>
+                          </div>
+                          <span className="text-lg font-black text-emerald-900">
+                            {vault.valor_esperado.toLocaleString('pt-AO')} Kz
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Valor Pago (Kz)</label>
+                          <input 
+                            type="number"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400">Nº do Talão / Ref.</label>
+                          <input 
+                            type="text"
+                            value={paymentRef}
+                            onChange={(e) => setPaymentRef(e.target.value.toUpperCase())}
+                            placeholder="Ex: MCX-123"
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold uppercase"
+                          />
+                        </div>
+                      </div>
+
                       <DocumentUpload 
-                        label="Comprovativo de Pagamento"
-                        description="Foto ou PDF do talão de depósito/transferência"
+                        label="Upload do Talão"
+                        description="Foto ou PDF do comprovativo"
                         escolaId={basicData?.escola_id || ""}
                         candidaturaId={vault.id}
                         onUploadSuccess={handleReceiptUpload}
                       />
                     </div>
+                  </div>
+                )}
+
+                {/* Resumo quando em Análise */}
+                {vault.status === 'aguardando_compensacao' && (
+                  <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 space-y-4">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <CheckCircle2 size={18} />
+                      <h4 className="font-bold text-sm">Comprovativo em Validação</h4>
+                    </div>
+                    <p className="text-xs text-blue-600 leading-relaxed">
+                      Já recebemos o seu comprovativo de pagamento. A nossa equipa financeira está a validar a transação. Assim que for confirmado, a sua matrícula será efetivada automaticamente.
+                    </p>
                   </div>
                 )}
 

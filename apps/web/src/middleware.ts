@@ -58,6 +58,15 @@ const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const LOCAL_ALLOWED_ORIGINS =
+  process.env.NODE_ENV === 'production'
+    ? []
+    : [
+        process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001',
+        process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://formacao.lvh.me:3002',
+      ]
+        .map((origin) => origin.trim())
+        .filter(Boolean);
 
 async function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
   const now = Date.now();
@@ -125,7 +134,11 @@ function isApiPath(pathname: string) {
 
 function resolveAllowedOrigin(request: NextRequest, origin: string | null) {
   if (!origin) return null;
-  const allowed = new Set<string>([request.nextUrl.origin, ...CORS_ALLOWED_ORIGINS]);
+  const allowed = new Set<string>([
+    request.nextUrl.origin,
+    ...CORS_ALLOWED_ORIGINS,
+    ...LOCAL_ALLOWED_ORIGINS,
+  ]);
   return allowed.has(origin) ? origin : null;
 }
 
