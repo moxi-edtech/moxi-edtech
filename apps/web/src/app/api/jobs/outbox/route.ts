@@ -9,14 +9,14 @@ export const fetchCache = "force-no-store";
 type OutboxEvent = {
   id: string;
   escola_id: string;
-  topic: string;
-  request_id: string;
+  event_type: string;
+  dedupe_key?: string | null;
   idempotency_key?: string | null;
   payload: Record<string, any> | null;
   status: string;
   attempts: number;
   max_attempts?: number | null;
-  next_run_at: string;
+  next_attempt_at: string;
   created_at: string;
   processed_at: string | null;
   last_error: string | null;
@@ -47,7 +47,7 @@ function getAdminClient() {
 async function markEvent(
   admin: ReturnType<typeof getAdminClient>,
   event: OutboxEvent,
-  status: "processed" | "failed",
+  status: "sent" | "failed",
   lastError?: string | null
 ) {
   if (!admin) return;
@@ -55,18 +55,22 @@ async function markEvent(
   const maxAttempts = event.max_attempts ?? 5;
   const shouldDead = status === "failed" && attempts >= maxAttempts;
   const backoffMinutes = Math.min(60, Math.pow(2, Math.max(0, attempts))) * 5;
-  await admin
+  const { error } = await admin
     .from("outbox_events")
     .update({
       status: shouldDead ? "dead" : status,
-      processed_at: status === "processed" ? new Date().toISOString() : null,
+      processed_at: status === "sent" ? new Date().toISOString() : null,
       last_error: lastError ?? null,
-      next_run_at:
+      next_attempt_at:
         status === "failed" && !shouldDead
           ? new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString()
           : null,
+      locked_at: null,
+      locked_by: null,
     })
     .eq("id", event.id);
+
+  if (error) throw error;
 }
 
 async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminClient>>, event: OutboxEvent) {
@@ -98,12 +102,27 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     .eq("id", escolaId)
     .maybeSingle();
   const escolaNome = escola?.nome ?? "Escola";
-  const numeroProcessoRaw = aluno.numero_processo ? String(aluno.numero_processo).trim() : "";
-  const { data: loginLabel } = await (admin as any).rpc("build_numero_login", {
-    p_escola_id: escolaId,
-    p_numero_processo: numeroProcessoRaw,
-  });
-  const loginDisplay = String(loginLabel || numeroProcessoRaw || aluno.id);
+  let loginDisplay = "";
+  const existingProfileId = aluno.profile_id || aluno.usuario_auth_id || null;
+  if (existingProfileId) {
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("numero_processo_login")
+      .eq("user_id", existingProfileId)
+      .maybeSingle();
+    loginDisplay = String(existingProfile?.numero_processo_login || "").trim();
+  }
+  if (!loginDisplay) {
+    const numeroProcessoRaw = aluno.numero_processo ? String(aluno.numero_processo).trim() : "";
+    const { data: loginLabel, error: loginError } = await (admin as any).rpc("build_numero_login", {
+      p_escola_id: escolaId,
+      p_numero_processo: numeroProcessoRaw,
+    });
+    if (loginError || !loginLabel) {
+      throw new Error(loginError?.message || "failed to generate student login");
+    }
+    loginDisplay = String(loginLabel).trim();
+  }
   const login = `${loginDisplay}@klasse.ao`.toLowerCase();
   const telefone = aluno.responsavel_contato || aluno.telefone_responsavel || aluno.encarregado_telefone || null;
   const token = createActivationToken({
@@ -295,7 +314,7 @@ async function emitirReciboPagamento(
   }
 }
 
-export async function POST(req: Request) {
+async function runOutboxWorker(req: Request) {
   const token = resolveJobToken(req);
   const expected = process.env.OUTBOX_JOB_TOKEN || process.env.CRON_SECRET;
   if (!expected || token !== expected) {
@@ -326,8 +345,8 @@ export async function POST(req: Request) {
     for (const event of items) {
       try {
         await handler(event);
-        await markEvent(admin, event, "processed");
-        results.push({ id: event.id, status: "processed" });
+        await markEvent(admin, event, "sent");
+        results.push({ id: event.id, status: "sent" });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         await markEvent(admin, event, "failed", message);
@@ -348,4 +367,12 @@ export async function POST(req: Request) {
 
   const results = [...authResults, ...reciboResults];
   return NextResponse.json({ ok: true, processed: results.length, results });
+}
+
+export async function GET(req: Request) {
+  return runOutboxWorker(req);
+}
+
+export async function POST(req: Request) {
+  return runOutboxWorker(req);
 }
