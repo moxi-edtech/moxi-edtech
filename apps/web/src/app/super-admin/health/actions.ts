@@ -26,3 +26,14 @@ export async function runOutboxWorker() {
   }
   return { success: true, data };
 }
+
+export async function forceRefreshFinancialMVs() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('admin_force_refresh_financial_mvs');
+
+  if (error) {
+    console.error('Error calling forceRefreshFinancialMVs RPC:', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true, data };
+}

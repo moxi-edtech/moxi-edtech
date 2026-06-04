@@ -16,6 +16,7 @@ interface InfraTabProps {
   onRefresh: () => void;
   onRunWorker: () => void;
   onRecalcAggregates: () => void;
+  onForceRefreshFinancialMVs: () => void;
 }
 
 type MaintenanceWindow = {
@@ -67,7 +68,13 @@ function formatDateTime(value: string) {
   });
 }
 
-export function InfraTab({ infraMetrics, onRefresh, onRunWorker, onRecalcAggregates }: InfraTabProps) {
+export function InfraTab({ 
+  infraMetrics, 
+  onRefresh, 
+  onRunWorker, 
+  onRecalcAggregates,
+  onForceRefreshFinancialMVs
+}: InfraTabProps) {
   const confirm = useConfirm();
   const { success, error } = useToast();
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -335,6 +342,10 @@ export function InfraTab({ infraMetrics, onRefresh, onRunWorker, onRecalcAggrega
             <Button variant="outline" onClick={onRecalcAggregates}>
               <HardDrive className="h-4 w-4 mr-2" />
               Recalcular aggregates
+            </Button>
+            <Button variant="outline" onClick={onForceRefreshFinancialMVs}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Forçar Dashboards (IO High)
             </Button>
             <Button variant="outline" asChild>
               <a href="/super-admin/diagnostics">

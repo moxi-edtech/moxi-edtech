@@ -30,6 +30,7 @@ export default function AdminHealthDashboard() {
     loadHealthData,
     handleRecalcAggregates,
     handleRunOutboxWorker,
+    handleForceRefreshFinancialMVs,
   } = useHealthData();
 
   if (loading) {
@@ -122,6 +123,7 @@ export default function AdminHealthDashboard() {
               onRefresh={loadHealthData}
               onRunWorker={handleRunOutboxWorker}
               onRecalcAggregates={handleRecalcAggregates}
+              onForceRefreshFinancialMVs={handleForceRefreshFinancialMVs}
             />
           </TabsContent>
         </Tabs>

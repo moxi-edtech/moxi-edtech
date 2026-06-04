@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import type { SystemHealth, EscolaMetricas, OutboxMetrics, InfraMetrics, Alerta } from './types';
 import { calcularSaudeEscola, gerarAlertasEscola } from '@/lib/super-admin/escola-saude-utils';
-import { runOutboxWorker, recalcAllAggregates } from './actions';
+import { runOutboxWorker, recalcAllAggregates, forceRefreshFinancialMVs } from './actions';
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem';
 
 type EscolaMetaApiItem = {
@@ -308,6 +308,24 @@ export function useHealthData() {
       error("Erro no worker", "Não conseguimos executar o processamento manual da fila outbox.");
     }
   };
+
+  const handleForceRefreshFinancialMVs = async () => {
+    try {
+      setRefreshing(true);
+      const result = await forceRefreshFinancialMVs();
+      if (result.success) {
+        success("Dashboards atualizados", "Os indicadores financeiros foram actualizados com sucesso.");
+      } else {
+        throw new Error(result.error);
+      }
+      loadHealthData();
+    } catch (err: any) {
+      console.error('Erro ao atualizar MVs:', err);
+      error("Erro na atualização", err.message || "Não foi possível forçar a atualização dos dashboards.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   return {
     loading,
@@ -321,5 +339,6 @@ export function useHealthData() {
     loadHealthData,
     handleRecalcAggregates,
     handleRunOutboxWorker,
+    handleForceRefreshFinancialMVs,
   };
 }
