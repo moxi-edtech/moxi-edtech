@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, BookOpen, FileText, Home, Wallet, Clock, IdCard } from "lucide-react";
+import { Bell, BookOpen, FileText, Home, Wallet, Clock, IdCard, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
 import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
@@ -156,6 +156,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
         { path: "/aluno/identidade", label: "ID Digital", icon: IdCard },
         { path: "/aluno/documentos", label: "Documentos", icon: FileText },
         { path: "/aluno/avisos", label: "Avisos", icon: Bell },
+        { path: "/aluno/perfil", label: "Perfil", icon: Settings },
       ].map((item) => ({
         ...item,
         href: buildPortalHref(navEscolaParam, item.path),
