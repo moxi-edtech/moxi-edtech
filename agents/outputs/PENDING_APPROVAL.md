@@ -1,84 +1,54 @@
 # Aprovação necessária — Agent 3
-run_id:    88445689-61AC-42D2-A51E-8F2D9C1C0C3D
-timestamp: 2026-02-25T00:00:00Z
+run_id:    598B12B4-B6B1-461F-A4DD-026E1BDD9764
+timestamp: 2026-06-04T11:22:27Z
+status:    PENDING
 
 ## Acção proposta
-Adicionar nova tabela de pendências financeiras e políticas RLS para importação de alunos.
+
+Reduzir a saturação de compute causada por tempestade de jobs pg_cron.
+
+- Distribuir 24 refreshes de MVs ao longo dos respectivos intervalos.
+- Manter a frequência atual de cada MV.
+- Desativar `refresh_all_materialized_views()` diário, redundante com os jobs individuais.
+- Desativar `cleanup_pautas_zip()`, que falha por apagar diretamente da tabela do Storage.
+
+## Evidência
+
+- Conexões: `21/60`; sem locks.
+- `626/5326` jobs falharam nas últimas 24 horas.
+- Erro predominante: `job startup timeout`.
+- Minutos `00` e `30`: até `27` jobs iniciando simultaneamente.
+- Os refreshes de MVs dominam as consultas mais caras.
+- `get_secretaria_produtividade_hoje` é a RPC mais cara acumulada, mas não apresenta loop atual no frontend.
 
 ## Diff
-```diff
-*** Add File: supabase/migrations/20260225000000_importacao_pendencias_financeiro.sql
-+CREATE TABLE IF NOT EXISTS public.import_financeiro_pendencias (
-+  id uuid DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
-+  created_at timestamptz DEFAULT timezone('utc'::text, now()) NOT NULL,
-+  escola_id uuid NOT NULL,
-+  import_id uuid NOT NULL REFERENCES public.import_migrations(id) ON DELETE CASCADE,
-+  aluno_id uuid,
-+  matricula_id uuid,
-+  turma_id uuid,
-+  motivo text NOT NULL,
-+  mensagem text NOT NULL,
-+  detalhes jsonb,
-+  resolvido boolean DEFAULT false,
-+  resolved_at timestamptz,
-+  resolved_by uuid
-+);
-+
-+CREATE INDEX IF NOT EXISTS import_financeiro_pendencias_import_id_idx
-+  ON public.import_financeiro_pendencias (import_id);
-+
-+CREATE INDEX IF NOT EXISTS import_financeiro_pendencias_escola_id_idx
-+  ON public.import_financeiro_pendencias (escola_id);
-+
-+CREATE INDEX IF NOT EXISTS import_financeiro_pendencias_matricula_id_idx
-+  ON public.import_financeiro_pendencias (matricula_id);
-+
-+ALTER TABLE public.import_financeiro_pendencias ENABLE ROW LEVEL SECURITY;
-+
-+DROP POLICY IF EXISTS import_financeiro_pendencias_service_full ON public.import_financeiro_pendencias;
-+CREATE POLICY import_financeiro_pendencias_service_full
-+  ON public.import_financeiro_pendencias
-+  FOR ALL
-+  TO service_role
-+  USING (true)
-+  WITH CHECK (true);
-+
-+DROP POLICY IF EXISTS import_financeiro_pendencias_staff_read ON public.import_financeiro_pendencias;
-+CREATE POLICY import_financeiro_pendencias_staff_read
-+  ON public.import_financeiro_pendencias
-+  FOR SELECT
-+  TO authenticated
-+  USING (
-+    EXISTS (
-+      SELECT 1
-+      FROM public.import_migrations m
-+      WHERE m.id = import_financeiro_pendencias.import_id
-+        AND public.is_staff_escola(m.escola_id)
-+    )
-+  );
-+
-+DROP POLICY IF EXISTS import_financeiro_pendencias_staff_write ON public.import_financeiro_pendencias;
-+CREATE POLICY import_financeiro_pendencias_staff_write
-+  ON public.import_financeiro_pendencias
-+  FOR INSERT
-+  TO authenticated
-+  WITH CHECK (
-+    EXISTS (
-+      SELECT 1
-+      FROM public.import_migrations m
-+      WHERE m.id = import_financeiro_pendencias.import_id
-+        AND public.is_staff_escola(m.escola_id)
-+    )
-+  );
-+
-+GRANT ALL ON TABLE public.import_financeiro_pendencias TO anon, authenticated, service_role;
-```
+
+Migration:
+
+`supabase/migrations/20260604112227_stagger_pg_cron_compute_load.sql`
+
+Distribuição planejada:
+
+- Jobs de 10 minutos: um por minuto entre `0` e `9`.
+- Jobs de 30 minutos: um a cada 2 minutos.
+- Jobs de 15/20/60 minutos: offsets separados.
 
 ## Risco
-Políticas RLS incorretas podem bloquear acesso legítimo ou expor dados entre escolas.
+
+Os dados materializados podem atualizar alguns minutos depois do horário atual, sem alterar sua frequência máxima. Desativar o cleanup quebrado mantém arquivos de pautas até uma correção via Storage API.
+
+## Salvaguardas
+
+- Nenhuma MV obrigatória será removida.
+- Nenhuma frequência será reduzida.
+- Migration transacional.
+- Simulação com rollback antes da aplicação.
+- Verificação pós-apply dos schedules e falhas.
 
 ## Como aprovar
-Commit com mensagem: `APPROVE: 88445689-61AC-42D2-A51E-8F2D9C1C0C3D`
+
+`APPROVE: 598B12B4-B6B1-461F-A4DD-026E1BDD9764`
 
 ## Como rejeitar
-Commit com mensagem: `REJECT: 88445689-61AC-42D2-A51E-8F2D9C1C0C3D [motivo]`
+
+`REJECT: 598B12B4-B6B1-461F-A4DD-026E1BDD9764 [motivo]`
