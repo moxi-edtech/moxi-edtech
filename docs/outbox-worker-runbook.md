@@ -26,10 +26,17 @@ No Supabase Dashboard:
 
 ## Teste rápido
 ```bash
+# Via POST (padrão)
 curl -X POST "https://<project>.functions.supabase.co/outbox-dispatch" \
+  -H "Authorization: Bearer <anon-or-service-key>"
+
+# Via GET (suportado para triggers simples de monitoramento/cron)
+curl -X GET "https://<project>.functions.supabase.co/outbox-dispatch" \
   -H "Authorization: Bearer <anon-or-service-key>"
 ```
 
 ## Observabilidade
-- Erros de job ficam em `outbox_events.last_error` e status `failed`/`dead`.
+- Erros de job ficam em `outbox_events.last_error`.
+- Status esperado de sucesso: `sent` (anteriormente `processed`).
+- Status de falha: `failed` (aguarda retry) ou `dead` (limite de tentativas atingido).
 - Reprocesso manual: `POST /api/jobs/outbox/retry` com `{ "event_id": "..." }`.

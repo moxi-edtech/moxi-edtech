@@ -29,6 +29,14 @@ Liberação de acesso de alunos (novo)
 - Cron: Supabase pg_cron permanece como fonte de verdade (refresh MVs + requeue de outbox). Para executar `/api/jobs/outbox`, use a Edge Function `supabase/functions/outbox-dispatch` com `OUTBOX_JOB_URL` e `CRON_SECRET`.
 - Runbook: `docs/outbox-worker-runbook.md`.
 
+Políticas de Infraestrutura e Retenção (Jun/2026)
+- Preservação de Disk IO: Os crons de Refresh de Materialized Views (MVs) são escalonados (staggered) para evitar picos de concorrência. Máximo de 3 jobs simultâneos.
+- Dashboards Financeiros: Atualizados automaticamente a cada 5-15 minutos.
+- Dashboards Pedagógicos/Admin: Atualizados a cada 1 hora ou diariamente para preservar IO.
+- Forçar Dashboards: Super Admins podem forçar a atualização imediata via botão "Forçar Dashboards" no Dashboard de Saúde.
+- Retenção de pg_cron: Histórico de execuções (`cron.job_run_details`) limitado aos últimos 7 dias.
+- Retenção de Audit Logs: Logs de auditoria (`public.audit_logs`) limitados aos últimos 30 dias (limpeza automática às 04:00 AM).
+
 Relatórios de scan
 - `agents/outputs/REPORT_SCAN.md` (scan automatizado)
 - `agents/ACADEMIC_REPORT_SCAN.md` (notas acadêmicas manuais)
