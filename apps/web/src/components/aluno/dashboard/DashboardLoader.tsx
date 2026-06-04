@@ -5,6 +5,7 @@ import { IdCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import AvisosRecentesCard from "./AvisosRecentesCard";
+import { RematriculaBanner } from "./RematriculaBanner";
 import { ErrorState, StatCardsSkeleton, TableSkeleton } from "@/components/feedback/FeedbackSystem";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { NotaBar } from "@/components/aluno/shared/NotaBar";
@@ -192,6 +193,8 @@ export default function DashboardLoader() {
 
   return (
     <div className="space-y-6">
+      <RematriculaBanner />
+
       <AlunoCard className="bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white border-[#1f4028]">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">Ano lectivo</p>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
