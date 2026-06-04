@@ -1949,6 +1949,13 @@ export type Database = {
             foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
             columns: ["turma_preferencial_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
+            columns: ["turma_preferencial_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -4060,6 +4067,7 @@ export type Database = {
           dados_pagamento: Json | null
           endereco: string | null
           id: string
+          login_sigla: string
           logo_url: string | null
           needs_academic_setup: boolean | null
           nif: string | null
@@ -4082,6 +4090,7 @@ export type Database = {
           dados_pagamento?: Json | null
           endereco?: string | null
           id?: string
+          login_sigla: string
           logo_url?: string | null
           needs_academic_setup?: boolean | null
           nif?: string | null
@@ -4104,6 +4113,7 @@ export type Database = {
           dados_pagamento?: Json | null
           endereco?: string | null
           id?: string
+          login_sigla?: string
           logo_url?: string | null
           needs_academic_setup?: boolean | null
           nif?: string | null
@@ -4344,6 +4354,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_pauta_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "excecoes_pauta_turma_id_fkey"
@@ -9737,6 +9754,13 @@ export type Database = {
             foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -10486,6 +10510,13 @@ export type Database = {
             foreignKeyName: "historico_anos_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "historico_anos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -10780,6 +10811,13 @@ export type Database = {
             foreignKeyName: "horario_eventos_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "horario_eventos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -10944,6 +10982,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_versoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "horario_versoes_turma_id_fkey"
@@ -12015,6 +12060,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -13826,6 +13878,13 @@ export type Database = {
             foreignKeyName: "pautas_lote_itens_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "pautas_lote_itens_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -14061,6 +14120,13 @@ export type Database = {
             foreignKeyName: "pautas_oficiais_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "pautas_oficiais_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -14274,6 +14340,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "presencas_turma_id_fkey"
@@ -14779,6 +14852,13 @@ export type Database = {
             foreignKeyName: "fk_quadro_horarios_turma_escola"
             columns: ["turma_id", "escola_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_turma_escola"
+            columns: ["turma_id", "escola_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_turmas"
             referencedColumns: ["id", "escola_id"]
           },
@@ -15012,6 +15092,13 @@ export type Database = {
             foreignKeyName: "rotinas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "rotinas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -15230,6 +15317,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "secoes_turma_id_fkey"
@@ -15639,6 +15733,13 @@ export type Database = {
             foreignKeyName: "sistemas_notas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "sistemas_notas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -15840,6 +15941,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substituicoes_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "substituicoes_professores_turma_id_fkey"
@@ -16452,6 +16560,13 @@ export type Database = {
             foreignKeyName: "turma_disciplinas_turma_id_fkey1"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_turma_id_fkey1"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -16564,6 +16679,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
@@ -17046,6 +17168,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -17165,6 +17294,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -17241,6 +17377,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -17309,6 +17452,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -17329,6 +17479,53 @@ export type Database = {
           total_aberto: number | null
         }
         Relationships: []
+      }
+      view_admissao_oportunidades_lista_espera: {
+        Row: {
+          candidatos: Json | null
+          escola_id: string | null
+          total_na_espera: number | null
+          turma_id: string | null
+          turma_nome: string | null
+          vagas_disponiveis: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
       }
       vw_admin_activity_feed_enriched: {
         Row: {
@@ -17661,6 +17858,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -17848,6 +18052,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -18859,6 +19070,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -18959,6 +19177,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -19316,6 +19541,13 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -19565,6 +19797,13 @@ export type Database = {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "presencas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -19687,6 +19926,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_turma_escola"
+            columns: ["turma_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id", "escola_id"]
           },
           {
             foreignKeyName: "fk_quadro_horarios_turma_escola"
@@ -20537,6 +20783,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_force_refresh_financial_mvs: {
+        Args: never
+        Returns: Json
+      }
       admin_recalc_all_aggregates: { Args: never; Returns: Json }
       admissao_approve: {
         Args: {
@@ -20550,10 +20800,11 @@ export type Database = {
         Args: {
           p_candidatura_id: string
           p_escola_id: string
-          p_motivo?: string
+          p_motivo: string
         }
         Returns: string
       }
+      admissao_auto_expire_reservations: { Args: never; Returns: undefined }
       admissao_convert: {
         Args: {
           p_amount?: number
@@ -20599,6 +20850,9 @@ export type Database = {
         Args: { p_escola_id: string; p_protocolo: string }
         Returns: {
           aluno_id: string
+          ano_letivo: number
+          classe_id: string
+          curso_id: string
           curso_nome: string
           dados_candidato: Json
           id: string
@@ -20607,6 +20861,14 @@ export type Database = {
           responsavel_contato_normalizado: string
           status: string
         }[]
+      }
+      admissao_reabrir: {
+        Args: {
+          p_candidatura_id: string
+          p_escola_id: string
+          p_motivo: string
+        }
+        Returns: string
       }
       admissao_reject: {
         Args: {
@@ -20819,7 +21081,9 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_audit_logs: { Args: never; Returns: number }
       cleanup_pautas_zip: { Args: never; Returns: undefined }
+      cleanup_pg_cron_history: { Args: never; Returns: number }
       clone_academic_structure: {
         Args: {
           p_clone_professores?: boolean
