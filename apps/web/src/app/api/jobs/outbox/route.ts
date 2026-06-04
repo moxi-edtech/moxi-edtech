@@ -251,8 +251,30 @@ async function emitirReciboPagamento(
 ) {
   const payload = (event.payload || {}) as Record<string, unknown>;
   const pagamentoId = typeof payload.pagamento_id === "string" ? payload.pagamento_id : null;
-  if (!pagamentoId) throw new Error("payload missing pagamento_id");
+  const mensalidadeId = typeof payload.mensalidade_id === "string" ? payload.mensalidade_id : null;
 
+  if (!pagamentoId && !mensalidadeId) {
+    throw new Error("payload missing pagamento_id or mensalidade_id");
+  }
+
+  // Se tiver mensalidade_id, usamos a RPC do sistema que é muito mais completa
+  if (mensalidadeId) {
+    const { data: res, error: rpcError } = await admin.rpc("emitir_recibo_system", {
+      p_mensalidade_id: mensalidadeId,
+    });
+
+    if (rpcError) {
+      // Ignoramos erros de status (mensalidade não paga) para evitar retries infinitos
+      if (rpcError.message?.includes("não está paga")) {
+        console.warn(`[RECIBO] Mensalidade ${mensalidadeId} ainda não está paga. Ignorando.`);
+        return;
+      }
+      throw rpcError;
+    }
+    return;
+  }
+
+  // Fallback para pagamentos sem mensalidade direta (se existir no futuro)
   const { data: pagamento, error: pagamentoErr } = await admin
     .from("pagamentos")
     .select("id, escola_id, aluno_id, mensalidade_id, valor_pago, data_pagamento, metodo, reference")
