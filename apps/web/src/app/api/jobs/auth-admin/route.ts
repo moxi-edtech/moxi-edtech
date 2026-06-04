@@ -130,7 +130,7 @@ export async function POST(req: Request) {
         }
 
         let email: string | null = null;
-        const numeroLoginLike = /^[A-Z]{2,4}-\d{3,}$/i;
+        const numeroLoginLike = /^(?:[A-Z][A-Z0-9]{2,7}\d{5}|[A-Z]{2,8}-\d{3,}|[A-Z]{2,8}-\d{4}-\d{6})$/i;
         if (numeroLoginLike.test(raw)) {
           const numero = raw.toUpperCase();
           const { data: byNumero, error } = await admin
@@ -302,8 +302,8 @@ export async function POST(req: Request) {
         const code = String(codigo || "").trim();
         const biInput = String(bi || "").trim();
         const shouldResetExistingPassword = resetExistingPassword === true;
-        if (!code || !biInput) {
-          return NextResponse.json({ ok: false, error: "Missing codigo or bi" }, { status: 400 });
+        if (!code) {
+          return NextResponse.json({ ok: false, error: "Missing codigo" }, { status: 400 });
         }
 
         const { data: aluno, error } = await admin
@@ -349,12 +349,29 @@ export async function POST(req: Request) {
           }
         }
 
-        const { data: loginLabel } = await (admin as any).rpc("build_numero_login", {
-          p_escola_id: escolaId,
-          p_numero_processo: numeroProcessoRaw,
-        });
-
-        const loginDisplay = String(loginLabel || numeroProcessoRaw).trim();
+        const existingProfileId = (aluno as any).profile_id || (aluno as any).usuario_auth_id || null;
+        let loginDisplay = "";
+        if (existingProfileId) {
+          const { data: existingProfile } = await admin
+            .from("profiles")
+            .select("numero_processo_login")
+            .eq("user_id", existingProfileId)
+            .maybeSingle();
+          loginDisplay = String(existingProfile?.numero_processo_login || "").trim();
+        }
+        if (!loginDisplay) {
+          const { data: loginLabel, error: loginError } = await (admin as any).rpc("build_numero_login", {
+            p_escola_id: escolaId,
+            p_numero_processo: numeroProcessoRaw,
+          });
+          if (loginError || !loginLabel) {
+            return NextResponse.json(
+              { ok: false, error: loginError?.message || "Falha ao gerar login do aluno" },
+              { status: 400 }
+            );
+          }
+          loginDisplay = String(loginLabel).trim();
+        }
         const loginCandidate = (loginDisplay
           ? `${loginDisplay}@klasse.ao`
           : `aluno_${(aluno as any).id}@klasse.ao`
@@ -447,7 +464,7 @@ export async function POST(req: Request) {
           senha = "";
         }
 
-        const loginResposta = loginDisplay || login;
+        const loginResposta = loginDisplay || String(login || "").split("@")[0];
         return NextResponse.json({ ok: true, data: { login: loginResposta, senha, created } });
       }
       case "resetStudentPassword": {
@@ -473,7 +490,14 @@ export async function POST(req: Request) {
           return NextResponse.json({ ok: false, error: updateError.message }, { status: 400 });
         }
 
-        const loginResposta = userData.user.email || login;
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("numero_processo_login")
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+        const loginResposta =
+          profile?.numero_processo_login ||
+          String(login || userData.user.email || "").split("@")[0];
         return NextResponse.json({ ok: true, data: { login: loginResposta, senha } });
       }
       case "seedSuperAdmin": {

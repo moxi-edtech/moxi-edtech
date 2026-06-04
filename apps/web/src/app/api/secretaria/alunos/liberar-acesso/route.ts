@@ -96,20 +96,18 @@ export async function POST(req: Request) {
     }> = [];
 
     for (const row of rows as any[]) {
-      const extra = alunosMap.get(row.aluno_id) || { nome: null, codigo_ativacao: null, bi_numero: null };
+      const extra = alunosMap.get(row.aluno_id) || { nome: null, email: null, codigo_ativacao: null, bi_numero: null };
       const codigo = extra.codigo_ativacao || row.codigo_ativacao || null;
       let login: string | null = null;
       let senha: string | null = null;
       let status = "queued";
 
       if (gerarCredenciais) {
-        if (!extra.bi_numero) {
-          status = "bi_missing";
-        } else if (codigo) {
+        if (codigo) {
           try {
             const result = await callAuthAdminJob(req, "activateStudentAccess", {
               codigo,
-              bi: extra.bi_numero,
+              bi: extra.bi_numero || "",
               resetExistingPassword: true,
             });
             login = (result as any)?.login ?? null;
