@@ -5,8 +5,8 @@
 3) Worker/cron: Edge Function `outbox-dispatch` chama `/api/jobs/outbox` (POST com `x-job-token`). Agende via Supabase Edge Scheduled Function.
 4) Runbook: `docs/outbox-worker-runbook.md`.
 4) Validar envio de e-mails via `/api/jobs/outbox` e logs do worker.
-5) UI/API: `/secretaria/acesso-alunos` lista pendentes; `/api/secretaria/alunos/sem-acesso`, `/metricas-acesso`, `/liberar-acesso` (idempotente); ativação self-service `/ativar-acesso` → `/api/alunos/ativar-acesso` (código + BI).
-6) Segurança: rate limit em `/ativar-acesso`; para e-mails sintéticos, prever reset de senha via secretaria (não por “esqueci minha senha”).
+5) UI/API: `/secretaria/acesso-alunos` lista pendentes; `/api/secretaria/alunos/sem-acesso`, `/metricas-acesso`, `/liberar-acesso` (idempotente); ativação self-service `/ativar-acesso` → `/api/alunos/ativar-acesso` (código + BI opcional).
+6) Segurança: rate limit em `/ativar-acesso`; worker suporta triggers via GET/POST; logs do worker usam status `sent`.
 
 ## Checklist de paridade de agenda (migração SSOT)
 
