@@ -2,11 +2,11 @@ import { ReciboPrintDocument } from "@/app/secretaria/documentos/_print/ReciboPr
 
 export const dynamic = "force-dynamic";
 
-export default async function ReciboPrintPage({
+export default async function AlunoReciboPrintPage({
   params,
 }: {
   params: Promise<{ docId: string }>;
 }) {
   const { docId } = await params;
-  return <ReciboPrintDocument docId={docId} />;
+  return <ReciboPrintDocument docId={docId} requireStudentOwnership />;
 }

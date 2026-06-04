@@ -1,6 +1,7 @@
 import "server-only";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveAuthorizedStudentIds } from "@/lib/portalAlunoAuth";
 
 export type DocumentoSnapshot = {
   escola_nome?: string | null;
@@ -37,7 +38,10 @@ export type DocumentoEmitido = {
   dados_snapshot: DocumentoSnapshot;
 };
 
-export async function getDocumentoEmitido(docId: string, opts?: { incrementPrintCount?: boolean }) {
+export async function getDocumentoEmitido(
+  docId: string,
+  opts?: { incrementPrintCount?: boolean; requireStudentOwnership?: boolean }
+) {
   const supabase = await supabaseServerTyped();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
@@ -61,6 +65,17 @@ export async function getDocumentoEmitido(docId: string, opts?: { incrementPrint
     return { error: "Sem permissão" } as const;
   }
 
+  if (opts?.requireStudentOwnership) {
+    const authorizedIds = await resolveAuthorizedStudentIds({
+      supabase,
+      userId: user.id,
+      escolaId: doc.escola_id,
+      userEmail: user.email,
+    });
+    if (!doc.aluno_id || !authorizedIds.includes(doc.aluno_id)) {
+      return { error: "Sem permissão" } as const;
+    }
+  }
 
   let printMeta: { print_count: number; last_printed_at: string | null } | null = null;
   if (opts?.incrementPrintCount && doc.tipo === "recibo") {

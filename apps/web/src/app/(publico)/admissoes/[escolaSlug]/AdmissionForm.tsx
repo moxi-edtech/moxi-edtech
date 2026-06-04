@@ -680,9 +680,15 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
               {formData.turma_preferencial_id &&
                 config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera" && (
-                  <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                    <span>A turma está lotada no momento, mas a escola ainda pode contactar candidatos caso surjam novas vagas.</span>
+                  <div className="flex flex-col gap-3 rounded-2xl bg-slate-900 p-6 text-white shadow-xl ring-4 ring-slate-100 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <AlertCircle size={20} className="shrink-0" />
+                      <h4 className="font-black uppercase tracking-widest text-xs">Atenção: Turma Lotada</h4>
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      Esta turma atingiu o limite de vagas. Ao prosseguir, a sua inscrição entrará para a <span className="text-white font-bold underline">Lista de Espera</span>. 
+                      A secretaria entrará em contacto apenas se houver desistências ou abertura de novas vagas.
+                    </p>
                   </div>
                 )}
 
@@ -694,7 +700,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
               )}
             </div>
 
-            <div className="pt-4 flex justify-between">
+            <div className="pt-4 flex justify-between gap-4">
               <button
                 type="button"
                 onClick={prevStep}
@@ -707,9 +713,15 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 type="button"
                 onClick={nextStep}
                 disabled={!formData.curso_id}
-                className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-50"
+                className={`flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-sm font-black text-white transition disabled:opacity-50 flex-1 sm:flex-none ${
+                  formData.turma_preferencial_id && config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera"
+                    ? 'bg-slate-700 hover:bg-slate-800'
+                    : 'bg-slate-900 hover:bg-slate-800'
+                }`}
               >
-                Próximo Passo
+                {formData.turma_preferencial_id && config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera"
+                  ? 'Ciente, prosseguir para Lista de Espera'
+                  : 'Próximo Passo'}
                 <ArrowRight size={18} />
               </button>
             </div>

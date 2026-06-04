@@ -48,13 +48,42 @@ export async function POST(req: Request) {
     const { type } = parsed.data
     const { escolaId, alunoId, matriculaId, anoLetivo } = ctx
 
+    if (type === 'declaracao') {
+      const { data: comprovante, error: comprovanteError } = await supabase
+        .from('documentos_emitidos')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('aluno_id', alunoId)
+        .eq('tipo', 'comprovante_matricula')
+        .contains('dados_snapshot', { matricula_id: matriculaId })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (comprovanteError) {
+        console.error('Comprovante lookup error:', comprovanteError)
+        return NextResponse.json({ ok: false, error: 'Falha ao localizar comprovante de matrícula' }, { status: 500 })
+      }
+
+      if (!comprovante) {
+        return NextResponse.json(
+          { ok: false, error: 'O comprovante de matrícula ainda não foi emitido pela secretaria.' },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        ok: true,
+        url: `/aluno/documentos/${comprovante.id}/comprovante-matricula/print`,
+      })
+    }
+
     // 1. Emitir Documento (RPC para gerar Snapshot/Hash)
-    const tipoDocRpc = type === 'boletim' ? 'declaracao_notas' : 'declaracao_matricula'
     const { data: docRes, error: emitError } = await supabase.rpc('emitir_documento_final', {
       p_escola_id: escolaId,
       p_aluno_id: alunoId,
       p_ano_letivo: Number(anoLetivo),
-      p_tipo_documento: tipoDocRpc,
+      p_tipo_documento: 'declaracao_notas',
     })
 
     const docResult = docRes as { docId: string } | null

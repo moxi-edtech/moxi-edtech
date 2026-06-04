@@ -128,7 +128,7 @@ export function TabFinanceiro() {
 
   const handleReprintRecibo = (reciboId: string | null | undefined) => {
     if (!reciboId) return;
-    window.open(`/secretaria/documentos/${reciboId}/recibo/print`, "_blank", "noopener,noreferrer");
+    window.open(`/aluno/documentos/${reciboId}/recibo/print`, "_blank", "noopener,noreferrer");
   };
 
   return (

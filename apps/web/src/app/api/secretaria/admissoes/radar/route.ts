@@ -128,8 +128,15 @@ export async function GET(request: Request) {
     }
 
     const { data: countsRow, error: countsError } = await countsQuery.maybeSingle()
-
     if (countsError) throw countsError
+
+    // 1.1) Oportunidades de Lista de Espera
+    const { data: opps, error: oppsError } = await supabase
+      .from('view_admissao_oportunidades_lista_espera' as any)
+      .select('vagas_disponiveis, total_na_espera')
+      .eq('escola_id', escolaId) as { data: Array<{ vagas_disponiveis: number, total_na_espera: number }> | null, error: any }
+    
+    const waitlistOpportunities = (opps || []).reduce((acc, curr) => acc + Math.min(curr.vagas_disponiveis || 0, curr.total_na_espera || 0), 0)
 
     // 2) Items para o Kanban (separado para evitar problemas com .or e datas ISO)
     const baseSelect = `
@@ -292,6 +299,7 @@ export async function GET(request: Request) {
       matriculado: countsRow?.matriculado_7d_total ?? 0,
       expirando: countsRow?.expirando_24h_total ?? 0,
       reenviados: countsRow?.reenviados_48h_total ?? 0,
+      oportunidades_espera: waitlistOpportunities,
     }
 
     const lastOpen = (openRes.data ?? [])[Math.max((openRes.data?.length ?? 1) - 1, 0)]

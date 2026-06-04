@@ -77,17 +77,20 @@ function getAccessContext(headerStore: Awaited<ReturnType<typeof headers>>): Acc
   };
 }
 
+function resolveAuthAdminBaseUrl() {
+  if (process.env.NODE_ENV === "development") {
+    return readEnv(process.env.KLASSE_K12_LOCAL_ORIGIN, "http://app.lvh.me:3001");
+  }
+  return readEnv(process.env.AUTH_ADMIN_BASE_URL, "https://app.klasse.ao");
+}
+
 async function resolveIdentifierToEmail(identifier: string): Promise<string | null> {
   if (identifier.includes("@")) return identifier.toLowerCase();
 
   const token = readEnv(process.env.AUTH_ADMIN_JOB_TOKEN, process.env.CRON_SECRET);
   if (!token) return null;
 
-  const baseUrl = readEnv(
-    process.env.AUTH_ADMIN_BASE_URL,
-    process.env.NODE_ENV === "development" ? "http://app.lvh.me:3001" : "https://app.klasse.ao"
-  );
-
+  const baseUrl = resolveAuthAdminBaseUrl();
 
   try {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/jobs/auth-admin`, {
@@ -121,11 +124,7 @@ async function recordUserAccess(params: {
   const token = readEnv(process.env.AUTH_ADMIN_JOB_TOKEN, process.env.CRON_SECRET);
   if (!token) return;
 
-  const baseUrl = readEnv(
-    process.env.AUTH_ADMIN_BASE_URL,
-    process.env.NODE_ENV === "development" ? "http://app.lvh.me:3001" : "https://app.klasse.ao"
-  );
-
+  const baseUrl = resolveAuthAdminBaseUrl();
 
   try {
     await fetch(`${baseUrl.replace(/\/$/, "")}/api/jobs/auth-admin`, {
