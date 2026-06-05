@@ -154,7 +154,7 @@ export default function OperationalFeedSection({ escolaId }: Props) {
         <ul className="space-y-3">
           {items.slice(0, 8).map((item) => {
             const isDocument = item.event_family === "documentos";
-            const canValidate = isDocument && item.event_type.includes("enviado");
+            const canValidate = isDocument && item.event_type?.includes("enviado");
 
             return (
               <li key={item.id} className="group rounded-2xl border border-slate-50 bg-white p-3 transition-all hover:border-slate-200 hover:shadow-sm">

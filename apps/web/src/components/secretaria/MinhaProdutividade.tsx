@@ -48,7 +48,7 @@ function formatActivityLabel(act: any) {
 }
 
 function ActivityIcon({ act }: { act: any }) {
-  if (act.action.includes('PAGAMENTO') || act.entity === 'pagamentos') return <Wallet size={16} className="text-emerald-500" />;
+  if (act.action?.includes('PAGAMENTO') || act.entity === 'pagamentos') return <Wallet size={16} className="text-emerald-500" />;
   if (act.entity === 'matriculas') return <UserPlus size={16} className="text-blue-500" />;
   if (act.entity === 'documentos_emitidos') return <FileText size={16} className="text-amber-500" />;
   if (act.action === 'NOTA_LANCADA_BATCH') return <ClipboardCheck size={16} className="text-purple-500" />;
