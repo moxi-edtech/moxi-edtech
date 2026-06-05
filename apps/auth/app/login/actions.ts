@@ -84,11 +84,38 @@ function resolveAuthAdminBaseUrl() {
   return readEnv(process.env.AUTH_ADMIN_BASE_URL, "https://app.klasse.ao");
 }
 
-async function resolveIdentifierToEmail(identifier: string): Promise<string | null> {
-  if (identifier.includes("@")) return identifier.toLowerCase();
+function uniqueEmails(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => String(value ?? "").trim().toLowerCase())
+        .filter((value) => value.includes("@"))
+    )
+  );
+}
+
+function buildCanonicalStudentEmails(identifier: string) {
+  const raw = identifier.trim();
+  if (raw.includes("@")) return [];
+
+  const upper = raw.toUpperCase();
+  const compact = upper.replace(/[^A-Z0-9]/g, "");
+  const loginLike = /^(?:[A-Z][A-Z0-9]{2,7}\d{5}|[A-Z]{2,8}-\d{3,}|[A-Z]{2,8}-\d{4}-\d{6})$/i;
+  if (!loginLike.test(raw)) return [];
+
+  return uniqueEmails([
+    `${upper}@klasse.ao`,
+    compact ? `${compact}@klasse.ao` : null,
+  ]);
+}
+
+async function resolveIdentifierToEmails(identifier: string): Promise<string[]> {
+  if (identifier.includes("@")) return [identifier.toLowerCase()];
+
+  const fallbackEmails = buildCanonicalStudentEmails(identifier);
 
   const token = readEnv(process.env.AUTH_ADMIN_JOB_TOKEN, process.env.CRON_SECRET);
-  if (!token) return null;
+  if (!token) return fallbackEmails;
 
   const baseUrl = resolveAuthAdminBaseUrl();
 
@@ -104,13 +131,12 @@ async function resolveIdentifierToEmail(identifier: string): Promise<string | nu
     });
 
     const json = (await response.json().catch(() => null)) as ResolveIdentifierJobResponse | null;
-    if (!response.ok || !json?.ok) return null;
+    if (!response.ok || !json?.ok) return fallbackEmails;
 
     const email = json.data?.email;
-    if (!email) return null;
-    return email.toLowerCase();
+    return uniqueEmails([email, ...fallbackEmails]);
   } catch {
-    return null;
+    return fallbackEmails;
   }
 }
 
@@ -192,25 +218,32 @@ export async function loginAction(_: unknown, formData: FormData) {
   );
 
   try {
-    const email = await resolveIdentifierToEmail(parsed.data.identifier);
-    if (!email) {
+    const emails = await resolveIdentifierToEmails(parsed.data.identifier);
+    if (emails.length === 0) {
       throw new Error("INVALID_CREDENTIALS");
     }
 
     const supabase = await supabaseRouteClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: parsed.data.password,
-    });
+    let signedInUserId: string | null = null;
+    for (const email of emails) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: parsed.data.password,
+      });
+      if (!error && data.user) {
+        signedInUserId = data.user.id;
+        break;
+      }
+    }
 
-    if (error || !data.user) {
+    if (!signedInUserId) {
       throw new Error("INVALID_CREDENTIALS");
     }
 
     logAuthEvent({
       action: "login",
       route: "/login",
-      user_id: data.user.id,
+      user_id: signedInUserId,
       tenant_type: null,
       details: { ip: rate.ip },
     });
@@ -223,13 +256,13 @@ export async function loginAction(_: unknown, formData: FormData) {
       })
     );
 
-    const tenants = await getUserTenants(data.user.id);
+    const tenants = await getUserTenants(signedInUserId);
     let selectedTenant: (typeof tenants)[number] | null = null;
     if (tenants.length === 1) {
       const single = tenants[0];
       selectedTenant = single;
       await setTenantContextCookie({
-        uid: data.user.id,
+        uid: signedInUserId,
         tenant_id: single.tenantId,
         tenant_slug: single.tenantSlug,
         tenant_type: single.tenantType,
@@ -240,7 +273,7 @@ export async function loginAction(_: unknown, formData: FormData) {
     }
 
     await recordUserAccess({
-      userId: data.user.id,
+      userId: signedInUserId,
       tenantId: selectedTenant?.tenantId ?? null,
       tenantType: selectedTenant?.tenantType ?? null,
       role: selectedTenant?.role ?? null,
