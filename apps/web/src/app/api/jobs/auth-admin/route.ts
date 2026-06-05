@@ -31,6 +31,12 @@ type AdminRequest = {
   payload: Record<string, any>;
 };
 
+type ProfileAuthLookup = {
+  user_id?: string | null;
+  email_auth?: string | null;
+  email?: string | null;
+};
+
 function resolveJobToken(req: Request) {
   return req.headers.get("x-job-token") || req.headers.get("authorization")?.replace("Bearer ", "");
 }
@@ -47,6 +53,17 @@ function getAdminClient() {
 
 function normalizeBi(value: string) {
   return value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+}
+
+function buildLoginIdentifierCandidates(value: string) {
+  const upper = value.trim().toUpperCase();
+  const compact = upper.replace(/[^A-Z0-9]/g, "");
+  const candidates = [upper, compact];
+  const compactParts = compact.match(/^([A-Z]+)(\d+)$/);
+  if (compactParts) {
+    candidates.push(`${compactParts[1]}-${compactParts[2]}`);
+  }
+  return Array.from(new Set(candidates.filter(Boolean)));
 }
 
 export async function POST(req: Request) {
@@ -130,35 +147,45 @@ export async function POST(req: Request) {
         }
 
         let email: string | null = null;
+        const resolveProfileEmail = async (row?: ProfileAuthLookup | null) => {
+          if (!row) return null;
+          if (row.user_id) {
+            const { data: userData } = await admin.auth.admin.getUserById(row.user_id);
+            const authEmail = userData?.user?.email;
+            if (authEmail) return authEmail;
+          }
+          return row.email_auth || row.email || null;
+        };
+
         const numeroLoginLike = /^(?:[A-Z][A-Z0-9]{2,7}\d{5}|[A-Z]{2,8}-\d{3,}|[A-Z]{2,8}-\d{4}-\d{6})$/i;
         if (numeroLoginLike.test(raw)) {
-          const numero = raw.toUpperCase();
+          const numeroCandidates = buildLoginIdentifierCandidates(raw);
           const { data: byNumero, error } = await admin
             .from("profiles")
-            .select("email_auth")
-            .eq("numero_processo_login", numero)
+            .select("user_id,email_auth,email")
+            .in("numero_processo_login", numeroCandidates)
             .limit(1);
-          if (!error) email = (byNumero?.[0] as any)?.email_auth || null;
+          if (!error) email = await resolveProfileEmail(byNumero?.[0]);
         }
 
         const onlyDigits = /^\d{5,}$/;
         if (!email && onlyDigits.test(raw)) {
           const { data: byNumero, error: e1 } = await admin
             .from("profiles")
-            .select("email_auth")
+            .select("user_id,email_auth,email")
             .eq("numero_processo_login", raw)
             .limit(1);
-          if (!e1) email = (byNumero?.[0] as any)?.email_auth || null;
+          if (!e1) email = await resolveProfileEmail(byNumero?.[0]);
         }
 
         if (!email && onlyDigits.test(raw)) {
           const { data: byPhone, error: e2 } = await admin
             .from("profiles")
-            .select("email")
+            .select("user_id,email_auth,email")
             .eq("telefone", raw)
             .order("created_at", { ascending: false })
             .limit(1);
-          if (!e2) email = (byPhone?.[0] as any)?.email || null;
+          if (!e2) email = await resolveProfileEmail(byPhone?.[0]);
         }
 
         // BI fallback (ex.: 001234567LA049), mantendo email como fonte final de auth.
@@ -169,13 +196,12 @@ export async function POST(req: Request) {
           const biCandidates = Array.from(new Set([normalizedBi, raw.toUpperCase(), raw]));
           const { data: byBi, error: e3 } = await admin
             .from("profiles")
-            .select("email_auth, email")
+            .select("user_id,email_auth,email")
             .in("bi_numero", biCandidates)
             .order("created_at", { ascending: false })
             .limit(1);
           if (!e3) {
-            const row = byBi?.[0] as { email_auth: string | null; email: string | null } | undefined;
-            email = row?.email_auth ?? row?.email ?? null;
+            email = await resolveProfileEmail(byBi?.[0]);
           }
         }
 
