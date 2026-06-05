@@ -1,6 +1,6 @@
 # Plano de Evolução — Landing Page K12 (V2)
 
-**Status:** PROPOSTA
+**Status:** EM EXECUÇÃO (Fase 1 Concluída)
 **Data:** 2026-06-04
 **Foco:** Transformar a página pública de admissões (`/admissoes/[escolaSlug]`) de um simples formulário transacional num **Hub Educacional (Digital Front Door)** focado em Atração, Posicionamento White-label e Conversão.
 
@@ -17,21 +17,21 @@
 
 ## 2. Escopo de Implementação
 
-### Fase 1: Arquitetura da Página (O "Hub")
+### Fase 1: Arquitetura da Página (O "Hub") — [CONCLUÍDA]
 Atualmente, a página carrega diretamente no `AdmissionForm`. Na V2, a página terá uma estrutura de Landing Page clássica:
 
-*   **Header (Navbar):**
+*   [x] **Header (Navbar):**
     *   Logo da escola à esquerda.
     *   Botões de Login: "Portal do Aluno" e "Portal do Professor" à direita (com redirecionamento automático baseado na sigla/slug da escola).
-*   **Hero Section:**
+*   [x] **Hero Section:**
     *   Fundo estilizado (padrões geométricos ou blobs usando a `cor_primaria` com 10% de opacidade).
     *   Título dinâmico forte (Ex: "Inscrições Abertas - Ano Letivo [ANO]").
     *   CTA Principal: "Fazer Inscrição Agora" (ancorando para a seção do formulário).
-*   **Catálogo de Cursos (Novo Componente):**
+*   [x] **Catálogo de Cursos (Novo Componente):**
     *   Renderizar os cursos disponíveis em *cards* visuais antes do formulário.
     *   Cada card exibirá o nome do curso, turnos e os Badges de Vagas gerados pelo `disponibilidadePublica` (ex: 🔴 Lista de Espera, 🟡 Últimas Vagas, 🟢 Vagas Disponíveis).
 
-### Fase 2: Refatoração do Formulário (Progressive Profiling)
+### Fase 2: Refatoração do Formulário (Progressive Profiling) — [PENDENTE]
 Quebrar o componente monolítico `AdmissionForm.tsx` em *steps* cognitivos mais leves e focados:
 
 *   **Step 1: O Que Você Procura? (Intenção)**
