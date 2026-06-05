@@ -1,251 +1,175 @@
-"use client";
-
-import { useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabaseClient";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { shouldRouteToEscolaAdmin } from "@/lib/escola/onboardingGate";
 import { getDefaultK12PortalPathForRole, normalizePapel } from "@/lib/permissions";
 
-function getFormacaoBaseUrl() {
-  if (typeof window === "undefined") return "https://formacao.klasse.ao";
-  const host = window.location.host.toLowerCase();
-  if (
-    host.startsWith("localhost") ||
-    host.startsWith("127.0.0.1") ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".lvh.me")
-  ) {
-    return "http://formacao.lvh.me:3002";
-  }
-  return "https://formacao.klasse.ao";
-}
-
-function getCentralLoginUrl() {
-  if (typeof window === "undefined") return "https://auth.klasse.ao/login";
-  const host = window.location.host.toLowerCase();
-  if (
-    host.startsWith("localhost") ||
-    host.startsWith("127.0.0.1") ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".lvh.me")
-  ) {
-    return "http://auth.lvh.me:3000/login";
-  }
-  return "https://auth.klasse.ao/login";
-}
-
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
-export default function RedirectPage() {
-  const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
-
-  useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let timeout: NodeJS.Timeout | null = null;
-
-    const goLogin = () => {
-      console.warn("[Redirect] Auth timeout or failed resolution. Redirecting to Central Auth...");
-      const returnTo = window.location.origin + "/redirect";
-      window.location.replace(`${getCentralLoginUrl()}?redirect=${encodeURIComponent(returnTo)}`);
-    };
-
-    const resolve = async () => {
-      console.info("[Redirect] Initializing auth resolution...");
-      try {
-        const shouldRouteToAdmin = async (escolaId: string) => {
-          return shouldRouteToEscolaAdmin(supabase as any, escolaId);
-        };
-
-        // 🔑 sempre tenta pegar o usuário validado
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-        if (userError) {
-          console.error("[Redirect] Supabase getUser error:", userError);
-        }
-
-        if (!user) {
-          console.info("[Redirect] No user session found, waiting for auth state change...");
-          const { data } = supabase.auth.onAuthStateChange(async (event) => {
-            console.info(`[Redirect] Auth state changed: ${event}`);
-            const { data: { user: u } } = await supabase.auth.getUser();
-            if (u) {
-              console.info("[Redirect] User detected after state change. Refreshing and continuing...");
-              await router.refresh(); // 🔑 força sincronizar cookies no server
-              await next(u);
-            }
-          });
-          unsub = () => { 
-            try { 
-              console.info("[Redirect] Unsubscribing from auth state changes");
-              data.subscription.unsubscribe(); 
-            } catch {} 
-          };
-
-          // fallback em 3s → login (reduzido para recuperação mais rápida)
-          timeout = setTimeout(goLogin, 3000);
-        } else {
-          console.info("[Redirect] Active session found for user:", user.id);
-          await router.refresh(); // 🔑 força sincronizar cookies no server
-          await next(user);
-        }
-
-        async function next(user: User) {
-          console.info("[Redirect] Processing user routing...");
-          // se tiver timeout/unsub → cancela
-          if (timeout) clearTimeout(timeout);
-          if (unsub) unsub();
-
-          // Force password change flow
-          if (user?.user_metadata?.must_change_password) {
-            console.info("[Redirect] Forced password change required");
-            window.location.replace("/mudar-senha");
-            return;
-          }
-
-          // Perfil
-          console.info("[Redirect] Fetching user profile...");
-          const { data: rows, error: profileError } = await supabase
-            .from("profiles")
-            .select("role, escola_id, created_at")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          if (profileError) {
-            console.error("[Redirect] Profile fetch error:", profileError);
-          }
-
-          const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
-          const profileRole: string = profile?.role ?? "guest";
-          const escola_id: string | null = profile?.escola_id ?? null;
-          
-          console.info(`[Redirect] Resolved profile role: ${profileRole}, profile_escola_id: ${escola_id}`);
-
-          const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
-          const tenantType = String(
-            appMetadata.tenant_type ??
-              appMetadata.modelo_ensino ??
-              ""
-          )
-            .trim()
-            .toLowerCase();
-
-          console.info(`[Redirect] Tenant type: ${tenantType}`);
-
-          const resolvedEscolaId = escola_id || (await resolveEscolaIdForUser(supabase, user.id));
-          const baseEscolaId = escola_id || resolvedEscolaId;
-          const resolvedParam = baseEscolaId ? await resolveEscolaParam(supabase, baseEscolaId) : null;
-          const escolaParam = resolvedParam?.slug ? resolvedParam.slug : baseEscolaId;
-
-          const isGlobalRole = profileRole === "super_admin" || profileRole === "global_admin";
-          let role = profileRole;
-          if (baseEscolaId) {
-            const { data: vinculo, error: vinculoError } = await supabase
-              .from("escola_users")
-              .select("papel, role")
-              .eq("user_id", user.id)
-              .eq("escola_id", baseEscolaId)
-              .limit(1)
-              .maybeSingle();
-
-            if (vinculoError) {
-              console.warn("[Redirect] Failed to fetch escola_users role:", vinculoError);
-            }
-
-            const scopedRole = normalizePapel(vinculo?.papel ?? vinculo?.role ?? null);
-            if (scopedRole && !isGlobalRole) role = scopedRole;
-          }
-          
-          console.info(`[Redirect] Resolved tenant context - ID: ${baseEscolaId}, Param: ${escolaParam}, effective_role: ${role}`);
-
-          const isK12AdminRole =
-            role === "admin" ||
-            role === "admin_escola" ||
-            role === "staff_admin";
-
-          const isFormacaoRole =
-            role === "formacao_admin" ||
-            role === "formacao_secretaria" ||
-            role === "formacao_financeiro" ||
-            role === "formador" ||
-            role === "formando";
-
-          if (tenantType === "formacao" || isFormacaoRole) {
-            const formacaoBaseUrl = getFormacaoBaseUrl();
-            let target = `${formacaoBaseUrl}/meus-cursos`;
-
-            if (
-              role === "formacao_admin" ||
-              role === "admin" ||
-              role === "admin_escola" ||
-              role === "staff_admin"
-            ) {
-              target = `${formacaoBaseUrl}/admin/dashboard`;
-            } else if (role === "formacao_secretaria") {
-              target = `${formacaoBaseUrl}/secretaria/catalogo-cursos`;
-            } else if (role === "formacao_financeiro") {
-              target = `${formacaoBaseUrl}/financeiro/dashboard`;
-            } else if (role === "formador") {
-              target = `${formacaoBaseUrl}/agenda`;
-            }
-
-            console.info(`[Redirect] Redirecting to Formacao Product: ${target}`);
-            window.location.replace(target);
-            return;
-          }
-
-          // Roteamento por role
-          if (baseEscolaId && isK12AdminRole) {
-            const done = await shouldRouteToAdmin(baseEscolaId);
-            const path = done ? "admin" : "onboarding";
-            const dest = escolaParam ? `/escola/${escolaParam}/${path}` : `/escola/${baseEscolaId}/${path}`;
-            console.info(`[Redirect] K12 Admin routing to: ${dest}`);
-            window.location.replace(dest);
-            return;
-          }
-
-          let finalDest = "/";
-          if (role === "aluno") {
-            const escolaId = baseEscolaId;
-            const alunoBase = getDefaultK12PortalPathForRole(role, escolaParam);
-            if (escolaId) {
-              const { data: esc } = await supabase
-                .from("escolas")
-                .select("aluno_portal_enabled")
-                .eq("id", escolaId)
-                .limit(1);
-              const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
-              finalDest = enabled ? alunoBase : `${alunoBase}/desabilitado`;
-            } else {
-              finalDest = alunoBase;
-            }
-          } else {
-            finalDest = getDefaultK12PortalPathForRole(role, escolaParam);
-          }
-          console.info(`[Redirect] Final routing destination: ${finalDest}`);
-          window.location.replace(finalDest);
-        }
-      } catch (err) {
-        console.error("[Redirect] Critical error during resolution:", err);
-        goLogin();
-      }
-    };
-
-    resolve();
-
-    return () => {
-      if (unsub) unsub();
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [router, supabase]);
-
+function isLocalHost(host: string) {
   return (
-    <div className="min-h-screen flex items-center justify-center text-moxinexa-gray">
-      Redirecionando...
-    </div>
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".lvh.me")
   );
+}
+
+function resolveProtocol(host: string) {
+  return process.env.NODE_ENV === "development" || isLocalHost(host) ? "http" : "https";
+}
+
+function safeUrlWithRedirect(loginUrl: string, returnTo: string) {
+  try {
+    const url = new URL(loginUrl);
+    url.searchParams.set("redirect", returnTo);
+    return url.toString();
+  } catch {
+    return `${loginUrl}?redirect=${encodeURIComponent(returnTo)}`;
+  }
+}
+
+function resolveAuthLoginUrl(host: string) {
+  if (process.env.NODE_ENV !== "production") {
+    return (process.env.KLASSE_AUTH_LOCAL_URL ?? "http://auth.lvh.me:3000/login").trim();
+  }
+
+  const configured = process.env.KLASSE_AUTH_URL?.trim();
+  if (configured) return configured;
+
+  return isLocalHost(host) ? "http://auth.lvh.me:3000/login" : "https://auth.klasse.ao/login";
+}
+
+function resolveFormacaoBaseUrl(host: string) {
+  if (isLocalHost(host)) {
+    return process.env.KLASSE_FORMACAO_LOCAL_ORIGIN?.trim() || "http://formacao.lvh.me:3002";
+  }
+
+  return process.env.NEXT_PUBLIC_KLASSE_FORMACAO_URL?.trim() || "https://formacao.klasse.ao";
+}
+
+function resolveReturnTo(host: string) {
+  const configuredBase = process.env.NEXT_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
+  const origin = host ? `${resolveProtocol(host)}://${host}` : configuredBase || "https://app.klasse.ao";
+  return `${origin}/redirect`;
+}
+
+export default async function RedirectPage() {
+  const headerStore = await headers();
+  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect(safeUrlWithRedirect(resolveAuthLoginUrl(host), resolveReturnTo(host)));
+  }
+
+  if (user.user_metadata?.must_change_password) {
+    redirect("/mudar-senha");
+  }
+
+  const { data: rows } = await supabase
+    .from("profiles")
+    .select("role, escola_id, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
+  const profileRole = profile?.role ?? "guest";
+  const profileEscolaId = profile?.escola_id ?? null;
+  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
+  const tenantType = String(appMetadata.tenant_type ?? appMetadata.modelo_ensino ?? "")
+    .trim()
+    .toLowerCase();
+
+  const resolvedEscolaId = profileEscolaId || (await resolveEscolaIdForUser(supabase, user.id));
+  const resolvedParam = resolvedEscolaId ? await resolveEscolaParam(supabase, resolvedEscolaId) : null;
+  const escolaParam = resolvedParam?.slug ? resolvedParam.slug : resolvedEscolaId;
+
+  const isGlobalRole = profileRole === "super_admin" || profileRole === "global_admin";
+  let role = profileRole;
+
+  if (resolvedEscolaId) {
+    const { data: vinculo } = await supabase
+      .from("escola_users")
+      .select("papel, role")
+      .eq("user_id", user.id)
+      .eq("escola_id", resolvedEscolaId)
+      .limit(1)
+      .maybeSingle();
+
+    const scopedRole = normalizePapel(vinculo?.papel ?? vinculo?.role ?? null);
+    if (scopedRole && !isGlobalRole) role = scopedRole;
+  }
+
+  const isK12AdminRole = role === "admin" || role === "admin_escola" || role === "staff_admin";
+  const isFormacaoRole =
+    role === "formacao_admin" ||
+    role === "formacao_secretaria" ||
+    role === "formacao_financeiro" ||
+    role === "formador" ||
+    role === "formando";
+
+  if (tenantType === "formacao" || isFormacaoRole) {
+    const formacaoBaseUrl = resolveFormacaoBaseUrl(host);
+
+    if (
+      role === "formacao_admin" ||
+      role === "admin" ||
+      role === "admin_escola" ||
+      role === "staff_admin"
+    ) {
+      redirect(`${formacaoBaseUrl}/admin/dashboard`);
+    }
+
+    if (role === "formacao_secretaria") {
+      redirect(`${formacaoBaseUrl}/secretaria/catalogo-cursos`);
+    }
+
+    if (role === "formacao_financeiro") {
+      redirect(`${formacaoBaseUrl}/financeiro/dashboard`);
+    }
+
+    if (role === "formador") {
+      redirect(`${formacaoBaseUrl}/agenda`);
+    }
+
+    redirect(`${formacaoBaseUrl}/meus-cursos`);
+  }
+
+  if (resolvedEscolaId && isK12AdminRole) {
+    const done = await shouldRouteToEscolaAdmin(supabase, resolvedEscolaId);
+    const path = done ? "admin" : "onboarding";
+    redirect(`/escola/${escolaParam ?? resolvedEscolaId}/${path}`);
+  }
+
+  if (role === "aluno") {
+    const alunoBase = getDefaultK12PortalPathForRole(role, escolaParam);
+
+    if (!resolvedEscolaId) {
+      redirect(alunoBase);
+    }
+
+    const { data: esc } = await supabase
+      .from("escolas")
+      .select("aluno_portal_enabled")
+      .eq("id", resolvedEscolaId)
+      .limit(1);
+    const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
+
+    redirect(enabled ? alunoBase : `${alunoBase}/desabilitado`);
+  }
+
+  redirect(getDefaultK12PortalPathForRole(role, escolaParam));
 }
