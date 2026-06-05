@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import { PublicHeader } from "./components/PublicHeader";
 import { AdmissionForm, type AdmissionConfig } from "./AdmissionForm";
 import { Metadata } from "next";
 import type { Json } from "~types/supabase";
@@ -208,8 +209,11 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 md:py-14">
-      <AdmissionForm config={config} />
-    </main>
+    <div className="min-h-screen bg-slate-50">
+      <PublicHeader config={config} />
+      <main className="pb-16">
+        <AdmissionForm config={config} />
+      </main>
+    </div>
   );
 }
