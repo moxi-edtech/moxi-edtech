@@ -1,6 +1,6 @@
 # Plano de Evolução — Landing Page K12 (V2)
 
-**Status:** EM EXECUÇÃO (Fase 2 Concluída)
+**Status:** CONCLUÍDO (Implementado)
 **Data:** 2026-06-04
 **Foco:** Transformar a página pública de admissões (`/admissoes/[escolaSlug]`) de um simples formulário transacional num **Hub Educacional (Digital Front Door)** focado em Atração, Posicionamento White-label e Conversão.
 
@@ -46,10 +46,10 @@ Quebrar o componente monolítico `AdmissionForm.tsx` em *steps* cognitivos mais 
     *   O componente atual de `DocumentUpload` já funciona bem, será apenas reposicionado.
 *   **Animação:** Adicionar `framer-motion` para transições suaves de deslizamento entre as etapas.
 
-### Fase 3: Transparência e Suporte Operacional
-*   **Mural Público (Opcional/Futuro):** Exibir os últimos 3 avisos marcados como "Público" na tabela de notificações para dar "vida" à página.
-*   **WhatsApp Flutuante (FAB):** Se a escola configurou `whatsapp_suporte` no `config_portal`, exibir um botão flutuante persistente no canto inferior direito para dúvidas imediatas.
-*   **Modo Rascunho / Retomada:** Um pequeno botão "Já comecei uma inscrição" que restaura o `draftId` e os dados do `localStorage`.
+### Fase 3: Transparência e Suporte Operacional — [CONCLUÍDA]
+*   **Mural Público (Futuro):** (Decidido focar na funcionalidade de chat primeiro).
+*   [x] **WhatsApp Flutuante (FAB):** Se a escola configurou `whatsapp_suporte` no `config_portal`, exibir um botão flutuante persistente no canto inferior direito para dúvidas imediatas.
+*   [x] **Modo Rascunho / Retomada:** Um pequeno botão "Já comecei uma inscrição" que restaura o `draftId` e os dados do `localStorage` (Feito na Fase 2).
 
 ---
 
