@@ -453,7 +453,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   }, [selectedTurma]);
 
   useEffect(() => {
-    setSelectedDocs((current) => current.filter((docKey) => DOCS.find((doc) => doc.key === docKey)?.formats.includes(format)));
+    setSelectedDocs((current) => current.filter((docKey) => DOCS.find((doc) => doc.key === docKey)?.formats?.includes(format)));
   }, [format]);
 
   const statusResumo = selectedTurma
