@@ -7,7 +7,6 @@ import { buildPortalHref } from "@/lib/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { 
-  UsersRound, 
   ArrowRight, 
   Search, 
   Filter, 
@@ -15,7 +14,8 @@ import {
   XCircle, 
   AlertCircle, 
   Save,
-  Lock 
+  Lock,
+  CalendarClock
 } from "lucide-react";
 
 // 1. Tipagens atualizadas para o Payload Enriquecido (UX Defensiva)
@@ -40,6 +40,24 @@ interface AlunoTriagem {
     saldo_pendente: number;
   };
 }
+
+type TriagemRow = {
+  id?: string;
+  aluno_id?: string;
+  nome?: string;
+  aluno_nome?: string;
+  status?: string | null;
+  status_matricula?: string | null;
+  pode_transitar?: boolean;
+  motivos_bloqueio?: string[];
+  pedagogico?: {
+    status?: string | null;
+  };
+  financeiro?: {
+    em_dia?: boolean;
+    saldo_pendente?: number | string | null;
+  };
+};
 
 export default function RematriculaPage() {
   const router = useRouter();
@@ -121,7 +139,9 @@ export default function RematriculaPage() {
             return status as string;
           };
 
-          const rows = (json.alunos || json.items || []).map((row: any) => {
+          const rows: AlunoTriagem[] = ((json.alunos || json.items || []) as TriagemRow[]).flatMap((row) => {
+            const id = row.aluno_id || row.id;
+            if (!id) return [];
             const pedagogicoStatus = normalizePedagogico(row.pedagogico?.status ?? row.status_matricula ?? row.status);
             const financeiroEmDia = row.financeiro?.em_dia ?? true;
             const saldoPendente = Number(row.financeiro?.saldo_pendente ?? 0);
@@ -129,14 +149,14 @@ export default function RematriculaPage() {
             const motivos: string[] = [];
             if (!financeiroEmDia) motivos.push("inadimplencia");
             if (pedagogicoStatus === "REPROVADA") motivos.push("reprovacao");
-            return {
-              id: row.aluno_id || row.id,
-              nome: row.aluno_nome || row.nome,
+            return [{
+              id,
+              nome: row.aluno_nome || row.nome || "Aluno",
               pode_transitar: podeTransitar,
               motivos_bloqueio: motivos,
               pedagogico: { status: pedagogicoStatus },
               financeiro: { em_dia: financeiroEmDia, saldo_pendente: saldoPendente },
-            };
+            }];
           });
           
           setAlunos(rows);
@@ -236,6 +256,16 @@ export default function RematriculaPage() {
             { label: "Rematrícula" },
           ]}
         />
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => router.push(buildPortalHref(escolaParam, "/secretaria/rematricula/janelas"))}
+            className="inline-flex items-center gap-2 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-2 text-xs font-bold text-klasse-gold-700 hover:bg-klasse-gold-100"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Gerir janelas de rematrícula online
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">

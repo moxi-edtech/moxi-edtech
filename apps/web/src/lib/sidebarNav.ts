@@ -109,6 +109,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/secretaria/alunos", label: "Lista de alunos" },
         { href: "/escola/[escolaId]/secretaria/matriculas", label: "Matrículas" },
         { href: "/escola/[escolaId]/secretaria/rematricula", label: "Rematrícula" },
+        { href: "/escola/[escolaId]/secretaria/rematricula/janelas", label: "Janelas de rematrícula" },
       ],
     },
     { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
