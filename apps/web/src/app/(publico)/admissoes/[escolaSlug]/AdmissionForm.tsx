@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { PublicHero } from "./components/PublicHero";
+import { CourseCatalog } from "./components/CourseCatalog";
 import { DocumentUpload } from "./DocumentUpload";
 import { v4 as uuidv4 } from "uuid";
 
@@ -140,7 +142,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   };
   const prevStep = () => setStep((s) => s - 1);
 
-  const selectTurmaFromLanding = (turma: AdmissionConfig["turmas"][number]) => {
+  const selectTurmaFromLanding = (turmaId: string) => {
+    const turma = config.turmas.find(t => t.id === turmaId);
+    if (!turma) return;
     setFormData((prev) => ({
       ...prev,
       curso_id: turma.curso_id,
@@ -254,134 +258,54 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
-        <div className="space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600">
-            <GraduationCap size={14} />
-            Ano letivo {config.ano_letivo?.ano || "vigente"}
-          </div>
-          <div className="space-y-3">
-            <h1 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">
-              Admissão online
-              <span className="block" style={{ color: primaryColor }}>{config.escola.nome}</span>
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-slate-600">
-              Escolha a turma pretendida, preencha os dados do estudante e acompanhe a candidatura pelo protocolo.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
-              <ShieldCheck size={16} className="text-emerald-600" />
-              Protocolo de consulta
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
-              <MessageCircle size={16} className="text-emerald-600" />
-              Apoio da secretaria
-            </span>
-          </div>
-        </div>
+      <PublicHero config={config} />
+      
+      <CourseCatalog 
+        config={config} 
+        onSelectTurma={selectTurmaFromLanding} 
+      />
 
-        <div className="rounded-lg border border-slate-200 bg-slate-950 p-5 text-white">
-          <p className="text-xs font-black uppercase tracking-widest text-white/50">Consultar candidatura</p>
-          <p className="mt-2 text-sm leading-6 text-white/75">
-            Já submeteu uma candidatura? Use o protocolo para ver o estado e documentos pendentes.
-          </p>
-          <Link
-            href={`/admissoes/${config.escola.slug}/consultar`}
-            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-slate-100"
-          >
-            <Search size={16} />
-            Consultar protocolo
-          </Link>
-        </div>
-      </section>
-
-      {visibleTurmas.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Turmas abertas</p>
-              <h2 className="text-xl font-black text-slate-950">Selecione uma opção para iniciar</h2>
-            </div>
-            <p className="max-w-md text-sm text-slate-500">
-              A escola avalia cada candidatura antes de confirmar a matrícula.
-            </p>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            {visibleTurmas.map((turma) => {
-              const disponibilidade = turma.disponibilidade ?? "disponivel";
-              const curso = config.cursos.find((item) => item.id === turma.curso_id);
-              const isWaitlist = disponibilidade === "lista_espera";
-
-              return (
-                <button
-                  key={turma.id}
-                  type="button"
-                  onClick={() => selectTurmaFromLanding(turma)}
-                  className="rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-base font-black text-slate-950">{turma.nome}</p>
-                      <p className="mt-1 text-sm text-slate-500">{curso?.nome || "Curso"} · {turma.turno || "Turno a confirmar"}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${disponibilidadeStyle[disponibilidade]}`}>
-                      {disponibilidadeLabel[disponibilidade]}
-                    </span>
-                  </div>
-                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-black" style={{ color: primaryColor }}>
-                    {isWaitlist ? "Entrar na lista de espera" : "Inscrever nesta turma"}
-                    <ArrowRight size={16} />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-    <div id="admissao-formulario" className="overflow-hidden rounded-lg bg-white shadow-xl shadow-slate-200/60 border border-slate-100">
-      {/* Header */}
-      <div className="bg-slate-900 px-8 py-10 text-white relative">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            {config.escola.logo_url ? (
-              <img src={config.escola.logo_url} alt={config.escola.nome} className="h-16 w-16 rounded-2xl bg-white p-2 object-contain" />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
-                <School size={32} />
+      <div id="admissao-formulario" className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/60 border border-slate-100 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="bg-slate-900 px-8 py-10 text-white relative">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              {config.escola.logo_url ? (
+                <img src={config.escola.logo_url} alt={config.escola.nome} className="h-16 w-16 rounded-2xl bg-white p-2 object-contain" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                  <School size={32} />
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-white/60">Formulário de Candidatura</p>
+                <h2 className="text-2xl font-black tracking-tight">Insira seus dados</h2>
               </div>
-            )}
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-white/60">Portal de Admissão</p>
-              <h2 className="text-2xl font-black tracking-tight">{config.escola.nome}</h2>
             </div>
+            
+            <Link 
+              href={`/admissoes/${config.escola.slug}/consultar`}
+              className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-bold hover:bg-white/20 transition shrink-0"
+            >
+              <Search size={14} />
+              Consultar Inscrição
+            </Link>
           </div>
+          <p className="mt-4 text-white/70 max-w-lg relative z-10">
+            Passo {step} de {TOTAL_STEPS} para garantir sua vaga no ano letivo <span className="text-white font-bold">{config.ano_letivo?.ano || "vigente"}</span>.
+          </p>
           
-          <Link 
-            href={`/admissoes/${config.escola.slug}/consultar`}
-            className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-bold hover:bg-white/20 transition shrink-0"
-          >
-            <Search size={14} />
-            Consultar Inscrição
-          </Link>
+          {/* Progress Bar */}
+          <div className="absolute bottom-0 left-0 h-1.5 bg-white/10 w-full">
+             <div 
+               className="h-full transition-all duration-500 ease-in-out" 
+               style={{ width: `${(step / TOTAL_STEPS) * 100}%`, backgroundColor: primaryColor }}
+             />
+          </div>
         </div>
-        <p className="mt-4 text-white/70 max-w-lg relative z-10">
-          Seja bem-vindo ao nosso processo de admissão para o ano letivo <span className="text-white font-bold">{config.ano_letivo?.ano || "vigente"}</span>.
-        </p>
-        
-        {/* Progress Bar */}
-        <div className="absolute bottom-0 left-0 h-1 bg-white/10 w-full">
-           <div 
-             className="h-full transition-all duration-500 ease-in-out" 
-             style={{ width: `${(step / TOTAL_STEPS) * 100}%`, backgroundColor: primaryColor }}
-           />
-        </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="p-8">
-        {/* Honeypot Anti-spam */}
+        <form onSubmit={handleSubmit} className="p-8">
+          {/* Honeypot Anti-spam */}
         <div style={{ position: 'absolute', left: '-9999px', top: '0' }} aria-hidden="true">
           <input
             type="text"
