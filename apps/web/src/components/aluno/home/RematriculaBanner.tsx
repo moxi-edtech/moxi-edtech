@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Sparkles, ArrowRight, Loader2, CheckCircle2, AlertCircle, Wallet } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useRouter } from 'next/navigation'
+import { Sparkles, ArrowRight, Loader2, CheckCircle2, Wallet } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 
 type RematriculaStatus = {
@@ -17,7 +16,6 @@ type RematriculaStatus = {
 }
 
 export function RematriculaBanner() {
-  const router = useRouter()
   const { success, error } = useToast()
   const confirm = useConfirm()
   const [status, setStatus] = useState<RematriculaStatus | null>(null)
@@ -26,11 +24,12 @@ export function RematriculaBanner() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/aluno/rematricula/status')
+      const res = await fetch('/api/aluno/rematricula/status', { cache: 'no-store' })
       const json = await res.json()
-      setStatus(json)
+      setStatus(res.ok && json?.ok ? json : null)
     } catch (err) {
       console.error(err)
+      setStatus(null)
     } finally {
       setLoading(false)
     }
@@ -69,10 +68,12 @@ export function RematriculaBanner() {
         'O seu pedido de rematrícula foi enviado com sucesso. A secretaria irá processar a solicitação e em breve terá uma atualização aqui no portal.'
       )
       fetchStatus()
-    } catch (err: any) {
+    } catch (err: unknown) {
       error(
         'Não foi possível completar o pedido',
-        'Ocorreu um problema ao processar a sua rematrícula. Por favor, tente novamente em instantes ou contacte a secretaria se o problema persistir.'
+        err instanceof Error
+          ? err.message
+          : 'Ocorreu um problema ao processar a sua rematrícula. Por favor, tente novamente em instantes ou contacte a secretaria se o problema persistir.'
       )
     } finally {
       setBusy(false)

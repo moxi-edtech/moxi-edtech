@@ -20,8 +20,11 @@ export function TabPerfil() {
     email: "",
     telefone: "",
     endereco: "",
+    loginPortal: "",
+    emailAuth: "",
   });
 
+  const [senhaAtual, setSenhaAtual] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
 
@@ -32,9 +35,11 @@ export function TabPerfil() {
         if (json.ok && json.dados) {
           setDados({
             nome: json.dados.nome || "",
-            email: json.dados.email || "",
+            email: json.dados.email_contato || json.dados.email || "",
             telefone: json.dados.telefone || json.dados.responsavel_contato || "",
             endereco: json.dados.endereco || "",
+            loginPortal: json.dados.login_portal || "",
+            emailAuth: json.dados.email_auth || "",
           });
         }
       })
@@ -56,12 +61,23 @@ export function TabPerfil() {
       });
       const json = await res.json();
       if (json.ok) {
-        success("Dados atualizados", "Suas informações de contato foram salvas com sucesso.");
+        if (json.dados) {
+          setDados((current) => ({
+            ...current,
+            email: json.dados.email || "",
+            telefone: json.dados.telefone || "",
+            endereco: json.dados.endereco || "",
+          }));
+        }
+        success(
+          "Dados atualizados",
+          json.message || "Suas informações de contato foram salvas com sucesso."
+        );
       } else {
         throw new Error(json.error);
       }
-    } catch (err: any) {
-      error("Erro ao salvar", err.message || "Não foi possível atualizar os dados.");
+    } catch (err: unknown) {
+      error("Erro ao salvar", err instanceof Error ? err.message : "Não foi possível atualizar os dados.");
     } finally {
       setSavingDados(false);
     }
@@ -73,8 +89,9 @@ export function TabPerfil() {
       error("Senhas não coincidem", "A nova senha e a confirmação devem ser iguais.");
       return;
     }
-    if (senha.length < 6) {
-      error("Senha muito curta", "A nova senha deve ter pelo menos 6 caracteres.");
+    const failedRule = passwordRules(senha).find((rule) => !rule.ok);
+    if (failedRule) {
+      error("Senha inválida", failedRule.message);
       return;
     }
 
@@ -83,18 +100,19 @@ export function TabPerfil() {
       const res = await fetch("/api/aluno/perfil/senha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senha }),
+        body: JSON.stringify({ senhaAtual, novaSenha: senha }),
       });
       const json = await res.json();
       if (json.ok) {
         success("Senha atualizada", "Sua senha de acesso ao portal foi alterada com sucesso.");
+        setSenhaAtual("");
         setSenha("");
         setConfirmarSenha("");
       } else {
         throw new Error(json.error);
       }
-    } catch (err: any) {
-      error("Erro ao alterar senha", err.message || "Não foi possível redefinir a senha.");
+    } catch (err: unknown) {
+      error("Erro ao alterar senha", err instanceof Error ? err.message : "Não foi possível redefinir a senha.");
     } finally {
       setSavingSenha(false);
     }
@@ -131,8 +149,15 @@ export function TabPerfil() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-700">Login do Portal</label>
+              <Input value={dados.loginPortal || dados.emailAuth || "—"} disabled className="bg-slate-50 font-mono" />
+              <p className="mt-1 text-[10px] text-slate-400">
+                O login de acesso é gerido pela secretaria e não muda quando atualiza o email de contato.
+              </p>
+            </div>
+            <div>
               <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-700">
-                <Mail className="h-3 w-3" /> Email
+                <Mail className="h-3 w-3" /> Email de Contato
               </label>
               <Input 
                 type="email" 
@@ -140,6 +165,9 @@ export function TabPerfil() {
                 onChange={(e) => setDados({ ...dados, email: e.target.value })} 
                 placeholder="seu.email@exemplo.com"
               />
+              <p className="mt-1 text-[10px] text-slate-400">
+                Usado para comunicação da escola. Não altera o login do portal.
+              </p>
             </div>
             <div>
               <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-700">
@@ -182,6 +210,17 @@ export function TabPerfil() {
         </div>
         
         <form onSubmit={handleSalvarSenha} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-slate-700">Senha Atual</label>
+            <Input
+              type="password"
+              value={senhaAtual}
+              onChange={(e) => setSenhaAtual(e.target.value)}
+              autoComplete="current-password"
+              placeholder="Informe a senha atual"
+            />
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700">Nova Senha</label>
@@ -189,7 +228,8 @@ export function TabPerfil() {
                 type="password" 
                 value={senha} 
                 onChange={(e) => setSenha(e.target.value)} 
-                placeholder="Mínimo 6 caracteres"
+                autoComplete="new-password"
+                placeholder="Mínimo 8 caracteres"
               />
             </div>
             <div>
@@ -198,13 +238,22 @@ export function TabPerfil() {
                 type="password" 
                 value={confirmarSenha} 
                 onChange={(e) => setConfirmarSenha(e.target.value)} 
+                autoComplete="new-password"
                 placeholder="Repita a senha"
               />
             </div>
           </div>
 
+          <ul className="grid gap-1 text-[10px] text-slate-500 md:grid-cols-2">
+            {passwordRules(senha).map((rule) => (
+              <li key={rule.message} className={rule.ok ? "text-klasse-green-600" : undefined}>
+                {rule.ok ? "✓" : "•"} {rule.message}
+              </li>
+            ))}
+          </ul>
+
           <div className="pt-2">
-            <Button type="submit" disabled={savingSenha || !senha} variant="outline" className="w-full md:w-auto text-slate-700">
+            <Button type="submit" disabled={savingSenha || !senhaAtual || !senha} variant="outline" className="w-full md:w-auto text-slate-700">
               {savingSenha ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
               Alterar Senha
             </Button>
@@ -214,3 +263,11 @@ export function TabPerfil() {
     </div>
   );
 }
+
+const passwordRules = (password: string) => [
+  { ok: password.length >= 8, message: "Pelo menos 8 caracteres" },
+  { ok: /[A-Z]/.test(password), message: "Uma letra maiúscula" },
+  { ok: /[a-z]/.test(password), message: "Uma letra minúscula" },
+  { ok: /\d/.test(password), message: "Um número" },
+  { ok: /[^A-Za-z0-9]/.test(password), message: "Um caractere especial" },
+];
