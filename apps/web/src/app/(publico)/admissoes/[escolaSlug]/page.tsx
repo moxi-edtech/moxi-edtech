@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { PublicHeader } from "./components/PublicHeader";
+import { FloatingSupport } from "./components/FloatingSupport";
 import { AdmissionForm, type AdmissionConfig } from "./AdmissionForm";
 import { Metadata } from "next";
 import type { Json } from "~types/supabase";
@@ -209,11 +210,15 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 relative">
       <PublicHeader config={config} />
       <main className="pb-16">
         <AdmissionForm config={config} />
       </main>
+      <FloatingSupport 
+        whatsappNumber={config.escola.config_portal?.whatsapp_suporte} 
+        escolaNome={config.escola.nome} 
+      />
     </div>
   );
 }

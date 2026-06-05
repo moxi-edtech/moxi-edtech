@@ -24,6 +24,7 @@ import Link from "next/link";
 
 import { PublicHero } from "./components/PublicHero";
 import { CourseCatalog } from "./components/CourseCatalog";
+import { FloatingSupport } from "./components/FloatingSupport";
 import { DocumentUpload } from "./DocumentUpload";
 import { v4 as uuidv4 } from "uuid";
 
