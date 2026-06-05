@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, 
   GraduationCap, 
@@ -68,6 +68,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draftId] = useState(() => uuidv4());
+  const [hasDraft, setHasDraft] = useState(false);
 
   const [formData, setFormData] = useState({
     nome_completo: "",
@@ -84,10 +85,46 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     curso_id: "",
     turma_preferencial_id: "",
     turno: "",
-    hp_field: "", // Honeypot
+    hp_field: "",
     documentos: {} as Record<string, string>,
     campos_extras: {} as Record<string, string>,
   });
+
+  // Draft Load
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`klasse_admission_draft_${config.escola.id}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.nome_completo || parsed.responsavel_nome) {
+          setHasDraft(true);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [config.escola.id]);
+
+  // Draft Save
+  useEffect(() => {
+    if (formData.nome_completo || formData.responsavel_nome || formData.curso_id) {
+      localStorage.setItem(`klasse_admission_draft_${config.escola.id}`, JSON.stringify(formData));
+    }
+  }, [formData, config.escola.id]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const saved = localStorage.getItem(`klasse_admission_draft_${config.escola.id}`);
+      if (saved) {
+        setFormData(JSON.parse(saved));
+        setHasDraft(false);
+        setStep(2); // Vai direto para os dados
+        document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
   const TOTAL_STEPS = 5;
@@ -113,13 +150,17 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   const isDocumentNumberRequired = !["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento);
 
   const step1Validation = () => {
+    if (!formData.curso_id) return "Selecione o curso pretendido.";
+    return null;
+  };
+
+  const step2Validation = () => {
     if (formData.nome_completo.trim().length < 5) return "Informe o nome completo do estudante.";
     if (!formData.tipo_documento) return "Selecione o tipo de documento.";
     if (isDocumentNumberRequired && formData.numero_documento.trim().length < 3) {
       return "Informe o número do documento.";
     }
     if (!formData.data_nascimento) return "Informe a data de nascimento.";
-    if (formData.telefone.replace(/\D/g, "").length < 7) return "Informe um telefone válido.";
 
     const missingExtra = config.escola.config_portal?.campos_extras?.find(
       (campo) => campo.required && !String(formData.campos_extras[campo.id] ?? "").trim()
@@ -140,6 +181,18 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     setError(null);
     nextStep();
   };
+
+  const canProceedStep2 = step2Validation() === null;
+  const handleStep2Next = () => {
+    const validationError = step2Validation();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
+    nextStep();
+  };
+
   const prevStep = () => setStep((s) => s - 1);
 
   const selectTurmaFromLanding = (turmaId: string) => {
@@ -193,6 +246,10 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
       setProtocolo(data.protocolo);
       setSubmissionStatus(typeof data.status === "string" ? data.status : null);
       setSuccess(true);
+      
+      try {
+        localStorage.removeItem(`klasse_admission_draft_${config.escola.id}`);
+      } catch (e) {}
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
     } finally {
@@ -304,6 +361,19 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
         </div>
 
+        {hasDraft && step === 1 && (
+          <div className="bg-amber-50 px-8 py-4 border-b border-amber-100 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm text-amber-800 font-medium">Você possui uma inscrição iniciada não concluída.</p>
+            <button 
+              type="button" 
+              onClick={handleRestoreDraft}
+              className="text-xs font-bold text-amber-900 bg-amber-200/50 hover:bg-amber-200 px-4 py-2 rounded-lg transition"
+            >
+              Continuar de onde parei
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-8">
           {/* Honeypot Anti-spam */}
         <div style={{ position: 'absolute', left: '-9999px', top: '0' }} aria-hidden="true">
@@ -323,7 +393,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
         )}
 
-        {step === 1 && (
+        {step === 2 && (
           <div className="space-y-6 animate-klasse-fade-in">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
@@ -483,11 +553,19 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
               ))}
             </div>
             
-            <div className="pt-4 flex justify-end">
+            <div className="pt-4 flex justify-between gap-4">
               <button
                 type="button"
-                onClick={handleStep1Next}
-                disabled={!canProceedStep1}
+                onClick={prevStep}
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
+              >
+                <ArrowLeft size={18} />
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={handleStep2Next}
+                disabled={!canProceedStep2}
                 className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-50"
               >
                 Próximo Passo
@@ -497,7 +575,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="space-y-6 animate-klasse-fade-in">
              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
@@ -556,7 +634,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 1 && (
           <div className="space-y-6 animate-klasse-fade-in">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
@@ -624,18 +702,10 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
               )}
             </div>
 
-            <div className="pt-4 flex justify-between gap-4">
+            <div className="pt-4 flex justify-end gap-4">
               <button
                 type="button"
-                onClick={prevStep}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
-              >
-                <ArrowLeft size={18} />
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={nextStep}
+                onClick={handleStep1Next}
                 disabled={!formData.curso_id}
                 className={`flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-sm font-black text-white transition disabled:opacity-50 flex-1 sm:flex-none ${
                   formData.turma_preferencial_id && config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera"
