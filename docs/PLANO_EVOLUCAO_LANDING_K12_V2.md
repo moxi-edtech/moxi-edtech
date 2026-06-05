@@ -1,6 +1,6 @@
 # Plano de Evolução — Landing Page K12 (V2)
 
-**Status:** EM EXECUÇÃO (Fase 1 Concluída)
+**Status:** EM EXECUÇÃO (Fase 2 Concluída)
 **Data:** 2026-06-04
 **Foco:** Transformar a página pública de admissões (`/admissoes/[escolaSlug]`) de um simples formulário transacional num **Hub Educacional (Digital Front Door)** focado em Atração, Posicionamento White-label e Conversão.
 
@@ -31,18 +31,18 @@ Atualmente, a página carrega diretamente no `AdmissionForm`. Na V2, a página t
     *   Renderizar os cursos disponíveis em *cards* visuais antes do formulário.
     *   Cada card exibirá o nome do curso, turnos e os Badges de Vagas gerados pelo `disponibilidadePublica` (ex: 🔴 Lista de Espera, 🟡 Últimas Vagas, 🟢 Vagas Disponíveis).
 
-### Fase 2: Refatoração do Formulário (Progressive Profiling) — [PENDENTE]
+### Fase 2: Refatoração do Formulário (Progressive Profiling) — [CONCLUÍDA]
 Quebrar o componente monolítico `AdmissionForm.tsx` em *steps* cognitivos mais leves e focados:
 
-*   **Step 1: O Que Você Procura? (Intenção)**
+*   [x] **Step 1: O Que Você Procura? (Intenção)**
     *   Escolha do Curso e Turma Preferencial.
     *   (Mostrando as tags de vagas restantes).
-*   **Step 2: Dados do Candidato**
+*   [x] **Step 2: Dados do Candidato**
     *   Nome, BI, Data de Nascimento, Gênero.
-*   **Step 3: Dados do Encarregado (Responsável)**
+*   [x] **Step 3: Dados do Encarregado (Responsável)**
     *   Nome do Pai/Mãe, Nome do Encarregado, Telefones, Email.
     *   *Implementação de rascunho (Draft):* Salvar os dados no `localStorage` neste momento para não perder caso o usuário saia.
-*   **Step 4: Documentação (Upload)**
+*   [x] **Step 4: Documentação (Upload)**
     *   O componente atual de `DocumentUpload` já funciona bem, será apenas reposicionado.
 *   **Animação:** Adicionar `framer-motion` para transições suaves de deslizamento entre as etapas.
 
