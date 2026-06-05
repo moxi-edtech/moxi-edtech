@@ -38,6 +38,7 @@ type BoletimData = {
 };
 
 export default function DashboardLoader() {
+  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [boletim, setBoletim] = useState<BoletimData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -188,9 +189,6 @@ export default function DashboardLoader() {
       />
     );
   }
-
-  const router = useRouter();
-
   return (
     <div className="space-y-6">
       <RematriculaBanner />
@@ -255,7 +253,7 @@ export default function DashboardLoader() {
           </div>
           <div className="rounded-full bg-white p-2 shadow-sm border border-blue-100 group-hover:translate-x-1 transition-transform">
             <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>
