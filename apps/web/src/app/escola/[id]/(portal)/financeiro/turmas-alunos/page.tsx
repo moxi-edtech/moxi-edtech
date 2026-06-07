@@ -10,6 +10,7 @@ import {
 import ModalExtratoAluno from './modal-extrato-aluno';
 import { useParams } from 'next/navigation';
 import { buildPortalHref } from '@/lib/navigation';
+import { formatTurmaDisplayName } from '@/utils/formatters';
 
 // --- Types & Interfaces ---
 interface Aluno {
@@ -281,7 +282,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#E3B23C] transition-colors truncate">
-                        {turma.nome}
+                        {formatTurmaDisplayName(turma)}
                       </h3>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-slate-50 text-slate-500 border-slate-200">
                         {turma.cursoNome}

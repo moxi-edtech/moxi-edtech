@@ -8,6 +8,7 @@ import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { formatTurmaDisplayName } from "@/utils/formatters"
 
 type Atrib = {
   id: string
@@ -245,7 +246,8 @@ export default function ProfessorNotasPage() {
 
   const handleExportMiniPauta = async () => {
     if (!turmaId || !disciplinaId || pauta.length === 0) return
-    const turmaNome = atribs.find((a) => a.turma.id === turmaId)?.turma.nome || turmaId
+    const turma = atribs.find((a) => a.turma.id === turmaId)?.turma
+    const turmaNome = turma ? formatTurmaDisplayName(turma) : turmaId
     const disciplinaNomeResolved =
       disciplinaNome || atribs.find((a) => a.disciplina.id === disciplinaId)?.disciplina.nome || disciplinaId
     const hash = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`
@@ -357,7 +359,10 @@ export default function ProfessorNotasPage() {
                     <option value="">Turma</option>
                     {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
                       <option key={tid} value={tid}>
-                        {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
+                        {(() => {
+                          const turma = atribs.find((a) => a.turma.id === tid)?.turma
+                          return turma ? formatTurmaDisplayName(turma) : tid
+                        })()}
                       </option>
                     ))}
                   </select>
@@ -437,7 +442,10 @@ export default function ProfessorNotasPage() {
                     <option value="">Turma</option>
                     {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
                       <option key={tid} value={tid}>
-                        {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
+                        {(() => {
+                          const turma = atribs.find((a) => a.turma.id === tid)?.turma
+                          return turma ? formatTurmaDisplayName(turma) : tid
+                        })()}
                       </option>
                     ))}
                   </select>

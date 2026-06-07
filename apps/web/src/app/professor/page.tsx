@@ -4,6 +4,7 @@ import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -213,7 +214,7 @@ export default function Page() {
               <div className="grid md:grid-cols-2 gap-4">
                 {turmaMap.map((turma) => (
                   <div key={turma.nome ?? Math.random()} className="rounded-xl border border-slate-200 p-4">
-                    <div className="font-semibold text-slate-900">{turma.nome || "Turma"}</div>
+                    <div className="font-semibold text-slate-900">{formatTurmaDisplayName({ nome: turma.nome })}</div>
                     <div className="mt-2 text-sm text-slate-500">
                       {turma.disciplinas.join(", ")}
                     </div>
@@ -254,7 +255,7 @@ export default function Page() {
                           <div key={`${day}-${idx}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs">
                             <div className="font-semibold text-slate-700">{item.disciplina_nome || "Disciplina"}</div>
                             <div className="text-slate-500">
-                              {item.turma_nome || "Turma"}
+                              {formatTurmaDisplayName({ turma_nome: item.turma_nome })}
                               {item.sala_nome ? ` • Sala ${item.sala_nome}` : ""}
                               {` • ${item.inicio}–${item.fim}`}
                             </div>

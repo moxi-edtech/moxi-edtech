@@ -3,6 +3,7 @@ import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -68,8 +69,8 @@ export default async function DeclaracaoFrequenciaPrintPage({
               Declara-se, para os devidos efeitos, que <strong>{snapshot.aluno_nome || "—"}</strong>,
               portador do BI nº <strong>{snapshot.aluno_bi || "—"}</strong>, está regularmente
               matriculado na <strong>{snapshot.classe_nome || "—"}</strong>, Turma
-              <strong> {snapshot.turma_nome || "—"}</strong>, Turno
-              <strong> {snapshot.turma_turno || "—"}</strong>, no ano letivo
+              <strong> {snapshot.turma_nome ? formatTurmaDisplayName({ turma_nome: snapshot.turma_nome, turma_turno: snapshot.turma_turno }) : "—"}</strong>, Turno
+              <strong> {formatTurnoDisplay(snapshot.turma_turno) || "—"}</strong>, no ano letivo
               <strong> {snapshot.ano_letivo || "—"}</strong>.
             </p>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 type TurmaItem = {
   id: string;
@@ -254,7 +255,7 @@ export function PautaRapidaModal({
 
   const turmaLabel =
     initialTurmaLabel ||
-    (turmaSelecionada ? turmaSelecionada.turma_nome || turmaSelecionada.nome || "Turma" : "Turma");
+    (turmaSelecionada ? formatTurmaDisplayName(turmaSelecionada) : "Turma");
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return;
@@ -361,8 +362,8 @@ export function PautaRapidaModal({
               >
                 <option value="">Selecione a turma</option>
                 {turmas.map((turma) => {
-                  const label = turma.turma_nome || turma.nome || "Turma";
-                  const meta = [turma.classe_nome, turma.turno].filter(Boolean).join(" • ");
+                  const label = formatTurmaDisplayName(turma);
+                  const meta = [turma.classe_nome, formatTurnoDisplay(turma.turno)].filter(Boolean).join(" • ");
                   return (
                     <option key={turma.id} value={turma.id}>
                       {meta ? `${label} (${meta})` : label}

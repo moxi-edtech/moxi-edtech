@@ -36,7 +36,7 @@ export function PublicHero({ config }: { config: AdmissionConfig }) {
               O futuro do seu filho começa aqui.
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-slate-300">
-              Faça a pré-inscrição online, escolha o curso e turno ideal, e acompanhe o estado da sua candidatura sem sair de casa.
+              Faça a pré-inscrição online, escolha o nível de ensino, classe/turma e turno, e acompanhe o estado da sua candidatura sem sair de casa.
             </p>
           </div>
 

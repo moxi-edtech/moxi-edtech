@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Calendar, CheckCircle, AlertCircle } from "lucide-react";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 type Status = "idle" | "success" | "error";
 type TurmaOption = { id: string; nome: string };
@@ -209,7 +210,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             <option value="todas">Todas as turmas</option>
             {turmas.map((turma) => (
               <option key={turma.id} value={turma.id}>
-                {turma.nome}
+                {formatTurmaDisplayName(turma)}
               </option>
             ))}
           </select>

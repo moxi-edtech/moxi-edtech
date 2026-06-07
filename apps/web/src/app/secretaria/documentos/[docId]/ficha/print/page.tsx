@@ -3,6 +3,7 @@ import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,11 @@ export default async function FichaInscricaoPrintPage({
               </div>
               <div className="col-span-3">
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Turma / Turno Designado</p>
-                <p className="font-medium">{snapshot.turma_nome ? `${snapshot.turma_nome} (${snapshot.turma_turno || '—'})` : "—"}</p>
+                <p className="font-medium">
+                  {snapshot.turma_nome
+                    ? `${formatTurmaDisplayName({ turma_nome: snapshot.turma_nome, turma_turno: snapshot.turma_turno })} (${formatTurnoDisplay(snapshot.turma_turno) || "—"})`
+                    : "—"}
+                </p>
               </div>
             </div>
           </section>

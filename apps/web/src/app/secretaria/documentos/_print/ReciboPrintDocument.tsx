@@ -3,6 +3,7 @@ import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocum
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 const getSnapshotString = (value: unknown, fallback = "—") => {
   if (typeof value === "string" && value.trim()) return value;
@@ -89,7 +90,8 @@ export async function ReciboPrintDocument({
 
   const alunoNome = getSnapshotString(snapshot.aluno_nome, fallbackAlunoNome ?? "—");
   const alunoBi = getSnapshotString(snapshot.aluno_bi, fallbackAlunoBi ?? "—");
-  const turmaNome = getSnapshotString(snapshot.turma_nome, fallbackTurmaNome ?? "—");
+  const turmaNomeRaw = getSnapshotString(snapshot.turma_nome, fallbackTurmaNome ?? "—");
+  const turmaNome = turmaNomeRaw === "—" ? turmaNomeRaw : formatTurmaDisplayName({ turma_nome: turmaNomeRaw });
   const classeNome = getSnapshotString(snapshot.classe_nome, fallbackClasseNome ?? "—");
   const cursoNome = getSnapshotString(snapshot.curso_nome, fallbackCursoNome ?? "");
 

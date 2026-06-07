@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Filter, SlidersHorizontal } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 // Simplified types from the API response
 type OcupacaoRow = {
@@ -142,7 +143,7 @@ export default function OcupacaoClient() {
                   <tbody className="divide-y divide-slate-100">
                     {grupo.turmas.map((turma) => (
                       <tr key={turma.id}>
-                        <td className="px-4 py-4 text-slate-900 font-medium">{turma.nome}</td>
+                        <td className="px-4 py-4 text-slate-900 font-medium">{formatTurmaDisplayName(turma)}</td>
                         <td className="px-4 py-4 text-slate-600">{turma.sala ?? "-"}</td>
                         <td className="px-4 py-4 text-slate-600">{turma.capacidade_maxima ?? "-"}</td>
                         <td className="px-4 py-4 text-slate-600">{turma.total_matriculas_ativas ?? "0"}</td>
