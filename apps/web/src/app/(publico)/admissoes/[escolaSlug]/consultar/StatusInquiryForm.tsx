@@ -478,6 +478,9 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
           {/* PASSO 3: ÁREA DA CANDIDATURA (VAULT) */}
           {step === 'vault' && vault && (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+              {/* Progresso Visual (Funnel) */}
+              <VaultProgress status={vault.status} />
+
               {/* Resumo do Aluno */}
               <div className="flex items-start justify-between border-b border-slate-100 pb-6">
                 <div>
@@ -491,6 +494,9 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                   {vault.status === 'matriculado' ? 'Oficial' : 'Reserva'}
                 </div>
               </div>
+
+              {/* Card de Próxima Ação */}
+              <NextActionCard vault={vault} />
 
               {/* Reserva Timer */}
               {vault.status === 'aguardando_pagamento' && vault.reserva_expira_at && (
@@ -829,7 +835,128 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
         </p>
       </div>
     </div>
-  )
+  );
+}
+
+function VaultProgress({ status }: { status: string }) {
+  const s = status.toLowerCase();
+  
+  const steps = [
+    { id: 'submitted', label: 'Inscrito', active: true, done: true },
+    { 
+      id: 'analysis', 
+      label: 'Análise', 
+      active: ['submetida', 'pendente'].includes(s), 
+      done: ['aguardando_pagamento', 'aguardando_compensacao', 'matriculado', 'aprovada'].includes(s),
+      error: s === 'pendente'
+    },
+    { 
+      id: 'payment', 
+      label: 'Pagamento', 
+      active: ['aguardando_pagamento', 'aguardando_compensacao'].includes(s), 
+      done: ['matriculado', 'aprovada'].includes(s) 
+    },
+    { 
+      id: 'enrolled', 
+      label: 'Matriculado', 
+      active: ['matriculado', 'aprovada'].includes(s), 
+      done: ['matriculado', 'aprovada'].includes(s) 
+    },
+  ];
+
+  return (
+    <div className="relative flex justify-between items-center mb-10 px-2">
+      <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 -z-10" />
+      {steps.map((step, idx) => (
+        <div key={step.id} className="flex flex-col items-center gap-2 bg-white px-2">
+          <div className={`
+            h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all duration-500
+            ${step.done ? 'bg-emerald-500 border-emerald-500 text-white' : 
+              step.error ? 'bg-rose-500 border-rose-500 text-white animate-pulse' :
+              step.active ? 'bg-white border-blue-600 text-blue-600 shadow-lg shadow-blue-100' : 
+              'bg-white border-slate-200 text-slate-300'}
+          `}>
+            {step.done ? <Check size={16} strokeWidth={3} /> : <span className="text-[10px] font-black">{idx + 1}</span>}
+          </div>
+          <span className={`text-[10px] font-black uppercase tracking-widest ${
+            step.done ? 'text-emerald-600' : 
+            step.error ? 'text-rose-600' :
+            step.active ? 'text-blue-600' : 
+            'text-slate-400'
+          }`}>
+            {step.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NextActionCard({ vault }: { vault: VaultData }) {
+  const s = vault.status.toLowerCase();
+
+  const config = {
+    pendente: {
+      title: "Correção Necessária",
+      description: "A secretaria solicitou a correção de alguns documentos. Verifique seu dossiê abaixo.",
+      icon: <AlertCircle className="text-rose-600" />,
+      bg: "bg-rose-50",
+      border: "border-rose-100"
+    },
+    aguardando_pagamento: {
+      title: "Pagamento Pendente",
+      description: "Sua reserva está garantida! Efetue o pagamento e envie o talão para finalizar.",
+      icon: <CreditCard className="text-amber-600" />,
+      bg: "bg-amber-50",
+      border: "border-amber-100"
+    },
+    aguardando_compensacao: {
+      title: "Análise Financeira",
+      description: "Recebemos seu comprovativo. Estamos validando a transação bancária.",
+      icon: <Clock className="text-blue-600" />,
+      bg: "bg-blue-50",
+      border: "border-blue-100"
+    },
+    matriculado: {
+      title: "Matrícula Efetivada",
+      description: "Tudo pronto! Você já pode acessar o portal e baixar seus documentos.",
+      icon: <CheckCircle2 className="text-emerald-600" />,
+      bg: "bg-emerald-50",
+      border: "border-emerald-100"
+    },
+    aprovada: {
+      title: "Matrícula Efetivada",
+      description: "Tudo pronto! Você já pode acessar o portal e baixar seus documentos.",
+      icon: <CheckCircle2 className="text-emerald-600" />,
+      bg: "bg-emerald-50",
+      border: "border-emerald-100"
+    },
+    submetida: {
+      title: "Em Análise",
+      description: "Sua inscrição foi recebida e está na fila para revisão documental.",
+      icon: <Search className="text-slate-600" />,
+      bg: "bg-slate-50",
+      border: "border-slate-100"
+    }
+  }[s] || {
+    title: "Em Processamento",
+    description: "Acompanhe as atualizações do seu processo aqui no cofre.",
+    icon: <Clock className="text-slate-600" />,
+    bg: "bg-slate-50",
+    border: "border-slate-100"
+  };
+
+  return (
+    <div className={`p-6 rounded-2xl border-2 ${config.bg} ${config.border} flex items-start gap-4 shadow-sm`}>
+      <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
+        {config.icon}
+      </div>
+      <div>
+        <h4 className="font-black text-slate-900 leading-tight">{config.title}</h4>
+        <p className="text-sm text-slate-600 mt-1 leading-relaxed">{config.description}</p>
+      </div>
+    </div>
+  );
 }
 
 function Countdown({ targetDate }: { targetDate: string }) {
