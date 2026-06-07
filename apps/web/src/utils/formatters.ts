@@ -33,6 +33,13 @@ const joinTurmaLevelTokens = (tokens: string[]) =>
     .replace(/\s*-\s*/g, "-")
     .trim();
 
+const normalizeTurmaLevelName = (value: string) => {
+  const cleaned = cleanTurmaToken(value);
+  const numericClass = cleaned.match(/^(\d{1,2})$/);
+  if (numericClass) return `${numericClass[1]}ª Classe`;
+  return cleaned;
+};
+
 const inferTurnoFromTurmaName = (nome?: string | null) => {
   const rawParts = cleanTurmaToken(nome ?? "")
     .split("-")
@@ -64,7 +71,7 @@ export const formatTurmaDisplayName = (turma: TurmaDisplayInput) => {
     const levelTokens = rawParts.slice(0, -2);
     if (levelTokens.length > 1 && isInternalTurmaPrefix(levelTokens[0])) levelTokens.shift();
 
-    const levelName = joinTurmaLevelTokens(levelTokens);
+    const levelName = normalizeTurmaLevelName(joinTurmaLevelTokens(levelTokens));
     if (levelName && turmaPart) return `${levelName} - Turma ${turmaPart}`;
   }
 

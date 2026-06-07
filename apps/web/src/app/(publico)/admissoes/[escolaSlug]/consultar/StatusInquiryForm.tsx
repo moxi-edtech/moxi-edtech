@@ -1,12 +1,11 @@
 'use client'
 
-import { 
-  Search, 
-  Loader2, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
+import {
+  Search,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  XCircle,
   AlertCircle,
   ShieldCheck,
   Lock,
@@ -18,12 +17,12 @@ import {
   CreditCard,
   Timer,
   Copy,
-  FileText
+  FileText,
+  Banknote
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { DocumentUpload } from "../DocumentUpload";
 
 type BasicStatus = {
@@ -92,18 +91,24 @@ function formatTimelineDate(value?: string | null) {
   }
 }
 
+function formatKwanza(value?: number | null) {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return `${amount.toLocaleString("pt-AO")} Kz`;
+}
+
 export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }) {
   const [protocolo, setProtocolo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  
+
   // States do Fluxo
   const [step, setStep] = useState<'search' | 'challenge' | 'vault'>('search');
   const [basicData, setBasicData] = useState<BasicStatus | null>(null);
   const [contactChallenge, setContactChallenge] = useState("");
   const [vault, setVault] = useState<VaultData | null>(null);
-  
+
   // Password State
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -111,6 +116,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
   const [passSaved, setPassPassSaved] = useState(false);
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"TRANSFERENCIA" | "CASH">("TRANSFERENCIA");
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -157,14 +163,11 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ protocolo, contato: contactChallenge })
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Dado de contato incorreto");
 
       setVault(data.vault);
-      if (data.vault?.valor_esperado) {
-        setPaymentAmount(String(data.vault.valor_esperado));
-      }
       setStep('vault');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro na validação");
@@ -184,11 +187,11 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       const res = await fetch(`/api/public/admissoes/${escolaSlug}/consultar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          protocolo, 
+        body: JSON.stringify({
+          protocolo,
           contato: contactChallenge,
           action: 'set_password',
-          password 
+          password
         })
       });
 
@@ -203,14 +206,14 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
     }
   };
 
-  const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentRef, setPaymentRef] = useState("");
 
   const handleReceiptUpload = async (path: string) => {
-    if (!paymentAmount) {
-      setError("Por favor, informe o valor pago antes de enviar o comprovativo.");
+    if (!vault?.valor_esperado || Number(vault.valor_esperado) <= 0) {
+      setError("O valor da matrícula ainda não está configurado pela escola. Contacte a secretaria antes de efetuar o pagamento.");
       return;
     }
+    const expectedAmount = String(vault.valor_esperado);
 
     setLoading(true);
     setError(null);
@@ -218,13 +221,13 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       const res = await fetch(`/api/public/admissoes/${escolaSlug}/consultar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          protocolo, 
+        body: JSON.stringify({
+          protocolo,
           contato: contactChallenge,
           action: 'upload_payment',
           comprovativo_path: path,
           payment_data: {
-            amount: paymentAmount,
+            amount: expectedAmount,
             referencia: paymentRef,
             metodo: 'TRANSFERENCIA'
           }
@@ -237,10 +240,10 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       setSuccessMsg("Comprovativo enviado com sucesso! Aguarde a compensação bancária.");
       // Atualizar o vault localmente para refletir a mudança de status
       if (vault) {
-        setVault({ 
-          ...vault, 
+        setVault({
+          ...vault,
           status: 'aguardando_compensacao',
-          pode_enviar_comprovativo: false 
+          pode_enviar_comprovativo: false
         });
       }
     } catch (err: unknown) {
@@ -257,12 +260,12 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       const res = await fetch(`/api/public/admissoes/${escolaSlug}/consultar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          protocolo, 
+        body: JSON.stringify({
+          protocolo,
           contato: contactChallenge,
           action: 'reupload_document',
           document_id: docId,
-          document_path: path 
+          document_path: path
         })
       });
 
@@ -270,10 +273,10 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       if (!res.ok) throw new Error(data.error || "Erro ao enviar documento");
 
       setSuccessMsg(data.message || "Documento atualizado com sucesso!");
-      
+
       // Atualizar o vault localmente
       if (vault) {
-        const updatedDossier = vault.dossier.map(d => 
+        const updatedDossier = vault.dossier.map(d =>
           d.id === docId ? { ...d, status: 'review' as const, path } : d
         );
         const doc = vault.dossier.find(d => d.id === docId);
@@ -287,8 +290,8 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
           },
           ...(vault.historico_pendencias || []),
         ];
-        setVault({ 
-          ...vault, 
+        setVault({
+          ...vault,
           dossier: updatedDossier,
           historico_pendencias: nextHistory,
           status: data.status || vault.status
@@ -350,7 +353,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div className="mb-8">
-        <Link 
+        <Link
           href={`/admissoes/${escolaSlug}`}
           className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition text-sm font-bold"
         >
@@ -422,7 +425,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 opacity-70">Resultado</p>
                   <h3 className={`text-lg font-black ${getStatusConfig(basicData.status).color}`}>
-                    {basicData.status === 'matriculado' 
+                    {basicData.status === 'matriculado'
                       ? `Parabéns! Matrícula de ${basicData.nome_candidato_mask} Efetivada.`
                       : getStatusConfig(basicData.status).label}
                   </h3>
@@ -436,11 +439,11 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                   </div>
                   <h4 className="font-black text-slate-900">Desafio de Segurança</h4>
                   <p className="text-sm text-slate-500 max-w-xs">
-                    {basicData.email_mask 
+                    {basicData.email_mask
                       ? "Confirme o telefone ou email do encarregado registrado para acessar seus dados."
                       : "Confirme o telefone do encarregado registrado para acessar seus dados."}
                   </p>
-                  
+
                   <form onSubmit={handleChallengeSubmit} className="w-full space-y-4 pt-4">
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400">
@@ -456,7 +459,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                         placeholder={
                           basicData.telefone_mask && basicData.email_mask
                             ? `Ex: ${basicData.telefone_mask} ou ${basicData.email_mask}`
-                            : basicData.telefone_mask 
+                            : basicData.telefone_mask
                               ? `Confirmar Telefone (Ex: ${basicData.telefone_mask})`
                               : `Confirmar Email (Ex: ${basicData.email_mask})`
                         }
@@ -529,11 +532,11 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
 
                   <div className="grid gap-4">
                     {vault.dossier.map((doc) => (
-                      <div 
-                        key={doc.id} 
+                      <div
+                        key={doc.id}
                         className={`p-5 rounded-2xl border-2 transition-all ${
-                          doc.status === 'rejected' ? 'border-rose-100 bg-rose-50/30' : 
-                          doc.status === 'review' ? 'border-emerald-50 bg-emerald-50/20' : 
+                          doc.status === 'rejected' ? 'border-rose-100 bg-rose-50/30' :
+                          doc.status === 'review' ? 'border-emerald-50 bg-emerald-50/20' :
                           'border-slate-100 bg-white'
                         }`}
                       >
@@ -549,13 +552,13 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                             {doc.motivo && (
                               <div className="mt-3 p-3 rounded-xl bg-rose-100/50 border border-rose-100">
                                 <p className="text-[10px] font-black text-rose-900 uppercase mb-1">Motivo da Rejeição:</p>
-                                <p className="text-xs text-rose-700 font-medium italic">"{doc.motivo}"</p>
+                                <p className="text-xs text-rose-700 font-medium italic">&quot;{doc.motivo}&quot;</p>
                               </div>
                             )}
                           </div>
                           <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            doc.status === 'rejected' ? 'bg-rose-100 text-rose-600' : 
-                            doc.status === 'review' ? 'bg-emerald-100 text-emerald-600' : 
+                            doc.status === 'rejected' ? 'bg-rose-100 text-rose-600' :
+                            doc.status === 'review' ? 'bg-emerald-100 text-emerald-600' :
                             'bg-slate-100 text-slate-400'
                           }`}>
                             {doc.status === 'review' ? <Check size={20} /> : <FileText size={20} />}
@@ -563,7 +566,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                         </div>
 
                         {doc.status !== 'review' && (
-                          <DocumentUpload 
+                          <DocumentUpload
                             label={doc.status === 'rejected' ? "Substituir Documento" : "Adicionar ao Dossiê"}
                             description={doc.status === 'rejected' ? "Clique para enviar a versão correta" : "Clique para selecionar o arquivo"}
                             escolaId={basicData?.escola_id || ""}
@@ -614,14 +617,94 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                 {/* 0. Enviar Comprovativo (Prioridade se aguardando pagamento) */}
                 {vault.status === 'aguardando_pagamento' && (
                   <div className="space-y-6">
+                    {formatKwanza(vault.valor_esperado) ? (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6 shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                          Valor da matrícula
+                        </p>
+                        <p className="mt-2 text-3xl font-black text-emerald-950">
+                          {formatKwanza(vault.valor_esperado)}
+                        </p>
+                        <p className="mt-2 text-xs font-semibold leading-relaxed text-emerald-800">
+                          Efetue o pagamento deste valor e envie o comprovativo abaixo. Não é necessário adivinhar ou preencher outro valor.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+                        <div className="flex items-center gap-2 text-amber-800">
+                          <AlertCircle size={18} />
+                          <h4 className="text-sm font-black">Valor da matrícula não configurado</h4>
+                        </div>
+                        <p className="mt-2 text-xs font-semibold leading-relaxed text-amber-800">
+                          A escola ainda não configurou o valor de matrícula para este nível/classe. Contacte a secretaria antes de efetuar qualquer pagamento.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("TRANSFERENCIA")}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          paymentMode === "TRANSFERENCIA"
+                            ? "border-slate-900 bg-slate-900 text-white shadow-lg"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        <CreditCard size={18} className={paymentMode === "TRANSFERENCIA" ? "text-amber-300" : "text-slate-400"} />
+                        <p className="mt-3 text-sm font-black">Transferência bancária</p>
+                        <p className={`mt-1 text-xs ${paymentMode === "TRANSFERENCIA" ? "text-white/70" : "text-slate-500"}`}>
+                          Pague por conta/IBAN e envie o talão pelo portal.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("CASH")}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          paymentMode === "CASH"
+                            ? "border-emerald-700 bg-emerald-700 text-white shadow-lg"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        <Banknote size={18} className={paymentMode === "CASH" ? "text-emerald-100" : "text-slate-400"} />
+                        <p className="mt-3 text-sm font-black">Pagamento na secretaria</p>
+                        <p className={`mt-1 text-xs ${paymentMode === "CASH" ? "text-white/80" : "text-slate-500"}`}>
+                          Pague em dinheiro no balcão da escola.
+                        </p>
+                      </button>
+                    </div>
+
+                    {paymentMode === "CASH" && (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
+                        <div className="flex items-center gap-2 text-emerald-800">
+                          <Banknote size={18} />
+                          <h4 className="text-sm font-black">Pagamento em dinheiro no balcão</h4>
+                        </div>
+                        <div className="mt-4 grid gap-3 text-sm">
+                          <div className="rounded-xl bg-white p-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Valor a pagar</p>
+                            <p className="mt-1 text-xl font-black text-emerald-950">{formatKwanza(vault.valor_esperado) || "A definir pela secretaria"}</p>
+                          </div>
+                          <div className="rounded-xl bg-white p-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Protocolo</p>
+                            <p className="mt-1 font-mono text-base font-black text-emerald-950">{vault ? basicData?.protocolo_publico || basicData?.protocolo || protocolo : protocolo}</p>
+                          </div>
+                        </div>
+                        <p className="mt-4 text-xs font-semibold leading-relaxed text-emerald-800">
+                          Dirija-se à secretaria com este protocolo. A escola registará o pagamento em dinheiro e efetivará a matrícula no sistema. Não é necessário enviar comprovativo pelo portal para pagamento em dinheiro.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Bank Details */}
-                    {vault.escola_pagamento && vault.escola_pagamento.ativo && (
+                    {paymentMode === "TRANSFERENCIA" && vault.escola_pagamento && vault.escola_pagamento.ativo && (
                       <div className="p-6 rounded-2xl bg-slate-900 text-white space-y-4 shadow-xl">
                         <div className="flex items-center gap-2">
                           <CreditCard className="text-amber-400" size={18} />
                           <h4 className="font-bold text-sm">Dados Bancários para Pagamento</h4>
                         </div>
-                        
+
                         <div className="grid gap-3">
                           <div className="flex justify-between items-center py-2 border-b border-white/10">
                             <div>
@@ -664,58 +747,55 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                       </div>
                     )}
 
-                    <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="text-slate-400" size={18} />
-                        <h4 className="font-bold text-slate-900 text-sm">Enviar Comprovativo</h4>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        Após efetuar o pagamento, informe os dados do talão e envie o comprovativo para que a secretaria confirme sua vaga.
-                      </p>
+                    {paymentMode === "TRANSFERENCIA" && (
+                      <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="text-slate-400" size={18} />
+                          <h4 className="font-bold text-slate-900 text-sm">Enviar Comprovativo</h4>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Após efetuar o pagamento, informe os dados do talão e envie o comprovativo para que a secretaria confirme sua vaga.
+                        </p>
 
-                      {vault.valor_esperado && (
-                        <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="text-emerald-600" size={16} />
-                            <span className="text-xs font-bold text-emerald-900 uppercase">Valor a Pagar</span>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-400">Valor pago</label>
+                            <input
+                              type="text"
+                              value={formatKwanza(vault.valor_esperado) || "A definir pela secretaria"}
+                              readOnly
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700"
+                            />
                           </div>
-                          <span className="text-lg font-black text-emerald-900">
-                            {vault.valor_esperado.toLocaleString('pt-AO')} Kz
-                          </span>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-400">Nº do Talão / Ref.</label>
+                            <input
+                              type="text"
+                              value={paymentRef}
+                              onChange={(e) => setPaymentRef(e.target.value.toUpperCase())}
+                              placeholder="Ex: MCX-123"
+                              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold uppercase"
+                            />
+                          </div>
                         </div>
-                      )}
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black uppercase text-slate-400">Valor Pago (Kz)</label>
-                          <input 
-                            type="number"
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                            placeholder="0.00"
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold"
+                        {formatKwanza(vault.valor_esperado) && vault.escola_pagamento?.ativo ? (
+                          <DocumentUpload
+                            label="Upload do Talão"
+                            description="Foto ou PDF do comprovativo"
+                            escolaId={basicData?.escola_id || ""}
+                            candidaturaId={vault.id}
+                            onUploadSuccess={handleReceiptUpload}
                           />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black uppercase text-slate-400">Nº do Talão / Ref.</label>
-                          <input 
-                            type="text"
-                            value={paymentRef}
-                            onChange={(e) => setPaymentRef(e.target.value.toUpperCase())}
-                            placeholder="Ex: MCX-123"
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold uppercase"
-                          />
-                        </div>
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-xs font-semibold text-slate-500">
+                            {!formatKwanza(vault.valor_esperado)
+                              ? "O envio do comprovativo ficará disponível quando o valor da matrícula estiver configurado."
+                              : "O envio do comprovativo ficará disponível quando a escola configurar os dados bancários para transferência."}
+                          </div>
+                        )}
                       </div>
-
-                      <DocumentUpload 
-                        label="Upload do Talão"
-                        description="Foto ou PDF do comprovativo"
-                        escolaId={basicData?.escola_id || ""}
-                        candidaturaId={vault.id}
-                        onUploadSuccess={handleReceiptUpload}
-                      />
-                    </div>
+                    )}
                   </div>
                 )}
 
@@ -744,8 +824,8 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                         <p className="text-xs text-slate-500">Documento oficial em PDF</p>
                       </div>
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="border-klasse-gold text-klasse-gold hover:bg-klasse-gold hover:text-white rounded-xl font-bold text-xs h-10 px-4"
                       onClick={() => vault.comprovativo_url && window.open(vault.comprovativo_url, '_blank')}
                     >
@@ -760,7 +840,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                     <Lock size={18} className="text-slate-400" />
                     <h4 className="font-bold text-slate-900 text-sm">Acesso ao Portal do Aluno</h4>
                   </div>
-                  
+
                   {vault.status !== 'matriculado' ? (
                     <div className="rounded-xl border border-slate-200 bg-white p-4">
                       <p className="text-xs leading-relaxed text-slate-500">
@@ -784,18 +864,18 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                             placeholder="Nova senha"
                             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-900 transition text-sm font-mono"
                           />
-                          <button 
+                          <button
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                           >
                             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         </div>
-                        <Button 
+                        <Button
                           onClick={handleSetPassword}
                           disabled={!passwordMeetsPolicy || savingPass}
                           loading={savingPass}
-                          tone="blue" 
+                          tone="blue"
                           className="rounded-xl px-6 font-bold text-xs"
                         >
                           Salvar
@@ -841,27 +921,27 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
 
 function VaultProgress({ status }: { status: string }) {
   const s = status.toLowerCase();
-  
+
   const steps = [
     { id: 'submitted', label: 'Inscrito', active: true, done: true },
-    { 
-      id: 'analysis', 
-      label: 'Análise', 
-      active: ['submetida', 'pendente'].includes(s), 
+    {
+      id: 'analysis',
+      label: 'Análise',
+      active: ['submetida', 'pendente'].includes(s),
       done: ['aguardando_pagamento', 'aguardando_compensacao', 'matriculado', 'aprovada'].includes(s),
       error: s === 'pendente'
     },
-    { 
-      id: 'payment', 
-      label: 'Pagamento', 
-      active: ['aguardando_pagamento', 'aguardando_compensacao'].includes(s), 
-      done: ['matriculado', 'aprovada'].includes(s) 
+    {
+      id: 'payment',
+      label: 'Pagamento',
+      active: ['aguardando_pagamento', 'aguardando_compensacao'].includes(s),
+      done: ['matriculado', 'aprovada'].includes(s)
     },
-    { 
-      id: 'enrolled', 
-      label: 'Matriculado', 
-      active: ['matriculado', 'aprovada'].includes(s), 
-      done: ['matriculado', 'aprovada'].includes(s) 
+    {
+      id: 'enrolled',
+      label: 'Matriculado',
+      active: ['matriculado', 'aprovada'].includes(s),
+      done: ['matriculado', 'aprovada'].includes(s)
     },
   ];
 
@@ -872,17 +952,17 @@ function VaultProgress({ status }: { status: string }) {
         <div key={step.id} className="flex flex-col items-center gap-2 bg-white px-2">
           <div className={`
             h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all duration-500
-            ${step.done ? 'bg-emerald-500 border-emerald-500 text-white' : 
+            ${step.done ? 'bg-emerald-500 border-emerald-500 text-white' :
               step.error ? 'bg-rose-500 border-rose-500 text-white animate-pulse' :
-              step.active ? 'bg-white border-blue-600 text-blue-600 shadow-lg shadow-blue-100' : 
+              step.active ? 'bg-white border-blue-600 text-blue-600 shadow-lg shadow-blue-100' :
               'bg-white border-slate-200 text-slate-300'}
           `}>
             {step.done ? <Check size={16} strokeWidth={3} /> : <span className="text-[10px] font-black">{idx + 1}</span>}
           </div>
           <span className={`text-[10px] font-black uppercase tracking-widest ${
-            step.done ? 'text-emerald-600' : 
+            step.done ? 'text-emerald-600' :
             step.error ? 'text-rose-600' :
-            step.active ? 'text-blue-600' : 
+            step.active ? 'text-blue-600' :
             'text-slate-400'
           }`}>
             {step.label}
