@@ -360,7 +360,7 @@ export default function AlunosPage() {
           });
           return;
         }
-        throw new Error(json?.error || "Falha ao criar candidatura");
+        throw new Error(json?.error || "Houve um erro técnico ao tentar criar esta candidatura. Por favor, verifique se todos os campos estão correctos.");
       }
 
       if (json?.candidatura_id || json?.id) {
@@ -373,7 +373,7 @@ export default function AlunosPage() {
         /* ignore */
       }
     } catch (err) {
-      error("Não conseguimos processar o cadastro", "Houve um erro técnico ao tentar criar esta candidatura. Por favor, verifique se todos os campos estão correctos e tente salvar novamente.");
+      error("Não conseguimos processar o cadastro", err instanceof Error ? err.message : "Houve um erro técnico ao tentar criar esta candidatura. Por favor, verifique se todos os campos estão correctos e tente salvar novamente.");
     } finally {
       setIsSubmitting(false);
     }
