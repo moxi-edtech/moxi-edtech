@@ -59,6 +59,11 @@ const statusChallengeSchema = z
     action: z.enum(["set_password", "upload_payment", "reupload_document"]).optional(),
     password: strongPasswordSchema.optional(),
     comprovativo_path: z.string().trim().optional(),
+    payment_data: z.object({
+      amount: z.union([z.string(), z.number()]).optional(),
+      referencia: z.string().trim().max(120).optional(),
+      metodo: z.enum(["TPA", "CASH", "TRANSFERENCIA"]).optional(),
+    }).optional(),
     document_id: z.string().trim().optional(),
     document_path: z.string().trim().optional(),
   })
@@ -298,17 +303,17 @@ export async function GET(
 
     // Extrair e mascarar contatos para o desafio
     const dados = isRecord(match.dados_candidato) ? match.dados_candidato : {};
-    
+
     // Telefone
     const telefoneBruto = match.responsavel_contato_normalizado || getString(dados, "responsavel_contato") || "";
-    const telefoneMascarado = telefoneBruto.length > 4 
+    const telefoneMascarado = telefoneBruto.length > 4
       ? `****${telefoneBruto.slice(-3)}`
       : null;
 
     // Email
     const emailBruto = getString(dados, "encarregado_email") || getString(dados, "email") || "";
     const [user, domain] = emailBruto.split("@");
-    const emailMascarado = user && domain 
+    const emailMascarado = user && domain
       ? `${user.slice(0, 2)}***@${domain}`
       : null;
 
@@ -373,14 +378,14 @@ export async function POST(
     // 2. Validar Desafio (Telefone ou Email)
     const inputNormalizado = contato.trim().toLowerCase();
     const inputPhoneNormalizado = normalizePhone(contato);
-    
+
     const dados = isRecord(match.dados_candidato) ? match.dados_candidato : {};
-    
+
     const telRegistrado = match.responsavel_contato_normalizado || normalizePhone(getString(dados, "responsavel_contato"));
     const emailEncarregado = getString(dados, "encarregado_email")?.toLowerCase();
     const emailAluno = getString(dados, "email")?.toLowerCase();
 
-    const isAuthorized = 
+    const isAuthorized =
       (inputPhoneNormalizado && inputPhoneNormalizado === telRegistrado) ||
       (inputNormalizado === emailEncarregado) ||
       (inputNormalizado === emailAluno);
@@ -438,7 +443,7 @@ export async function POST(
             .select("nome")
             .eq("id", escolaId)
             .maybeSingle();
-            
+
           const mail = buildCredentialsEmail({
             nome: getString(dados, "nome_completo") || match.nome_candidato,
             email: aluno.email,
@@ -477,14 +482,35 @@ export async function POST(
         return NextResponse.json({ ok: false, error: "Caminho do comprovativo inválido" }, { status: 400 });
       }
 
+      const { tabela } = await resolveTabelaPreco(supabase, {
+        escolaId,
+        anoLetivo: match.ano_letivo || new Date().getFullYear(),
+        cursoId: match.curso_id,
+        classeId: match.classe_id,
+        allowMensalidadeFallback: false,
+      });
+      const expectedAmount = Number(tabela?.valor_matricula ?? 0);
+      if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "Valor de matrícula não configurado pela escola. Contacte a secretaria antes de efetuar o pagamento." },
+          { status: 409 }
+        );
+      }
+
       const current = isRecord(match.dados_candidato) ? match.dados_candidato : {};
       const currentPagamento = isRecord(current.pagamento) ? current.pagamento : {};
-      
+      const paymentData = parsedBody.data.payment_data;
+
       const merged: Json = {
         ...current,
         pagamento: {
           ...currentPagamento,
           comprovativo_path,
+          amount: expectedAmount,
+          valor_esperado: expectedAmount,
+          valor_declarado: paymentData?.amount ?? expectedAmount,
+          referencia: paymentData?.referencia || getString(currentPagamento, "referencia") || null,
+          metodo: paymentData?.metodo || getString(currentPagamento, "metodo") || "TRANSFERENCIA",
           uploaded_at: new Date().toISOString(),
           source: "PORTAL_VAULT"
         }
@@ -492,7 +518,7 @@ export async function POST(
 
       const { error: updateErr } = await supabase
         .from("candidaturas")
-        .update({ 
+        .update({
           dados_candidato: merged,
           status: "aguardando_compensacao" // Transaciona para análise financeira
         })
@@ -520,13 +546,13 @@ export async function POST(
         // Fallback: se não estiver pendente, apenas completamos o dossiê.
         const current = isRecord(match.dados_candidato as Record<string, unknown>) ? match.dados_candidato as Record<string, unknown> : {};
         const currentDocs = isRecord(current.documentos as Record<string, unknown>) ? current.documentos as Record<string, unknown> : {};
-        
+
         const mergedDocs: { [key: string]: string } = { ...currentDocs as Record<string, string>, [document_id]: document_path };
         const merged = { ...current, documentos: mergedDocs } as unknown as { [key: string]: string | number | boolean | null | { [key: string]: any } | any[] };
 
         const { error: updateErr } = await supabase
           .from("candidaturas")
-          .update({ 
+          .update({
             dados_candidato: merged,
             updated_at: new Date().toISOString()
           })
@@ -540,7 +566,7 @@ export async function POST(
 
         return NextResponse.json({ ok: true, message: "Documento adicionado ao dossiê" });
       }
-      
+
       const rpcResult = result as { status?: string };
 
       if (rpcResult?.status === "documentos_reenviados") {
@@ -562,9 +588,9 @@ export async function POST(
     }
 
     // 4. Gerar links e ações se matriculado ou reservado
-    const actions: { 
-      pode_mudar_senha: boolean; 
-      pode_baixar_comprovativo: boolean; 
+    const actions: {
+      pode_mudar_senha: boolean;
+      pode_baixar_comprovativo: boolean;
       pode_enviar_comprovativo: boolean;
       pode_resolver_pendencia: boolean;
       reserva_expira_at: string | null;
@@ -644,7 +670,7 @@ export async function POST(
     } else if (match.status === "aguardando_pagamento") {
       actions.pode_enviar_comprovativo = true;
       actions.reserva_expira_at = getString(dados, "reserva_expira_at");
-      
+
       // Fallback para expires_at se reserva_expira_at não estiver no JSON (casos legados)
       if (!actions.reserva_expira_at) {
         const { data: cand } = await supabase
@@ -661,7 +687,7 @@ export async function POST(
         .select("dados_pagamento")
         .eq("id", escolaId)
         .maybeSingle();
-      
+
       actions.escola_pagamento = escola?.dados_pagamento ?? null;
 
       // Calcular preço esperado de matrícula
@@ -671,10 +697,11 @@ export async function POST(
           anoLetivo: match.ano_letivo || new Date().getFullYear(),
           cursoId: match.curso_id,
           classeId: match.classe_id,
-          allowMensalidadeFallback: true
+          allowMensalidadeFallback: false
         });
-        if (tabela?.valor_matricula) {
-          actions.valor_esperado = tabela.valor_matricula;
+        const valorMatricula = Number(tabela?.valor_matricula ?? 0);
+        if (Number.isFinite(valorMatricula) && valorMatricula > 0) {
+          actions.valor_esperado = valorMatricula;
         }
       } catch (err) {
         console.error("[Price calculation error]:", err);

@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
-import { 
-  Search, 
-  MessageCircle, 
-  Pencil, 
-  Check, 
-  ChevronRight, 
-  Clock, 
+import {
+  Search,
+  MessageCircle,
+  Pencil,
+  Check,
+  ChevronRight,
+  Clock,
   AlertCircle,
   User,
   Phone,
@@ -124,6 +124,37 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
   matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
 }
 
+const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
+const APPROVABLE_STATUSES: AdmissaoStatus[] = ['submetida', 'em_analise', 'pendente', 'lista_espera']
+const CONVERTIBLE_STATUSES: AdmissaoStatus[] = ['aprovada', 'aguardando_pagamento', 'aguardando_compensacao']
+const REOPENABLE_STATUSES: AdmissaoStatus[] = ['rejeitada', 'arquivada', 'arquivado']
+const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera', 'rejeitada']
+const DOCUMENT_CORRECTION_STATUSES: AdmissaoStatus[] = ['submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
+
+function canRejectAdmission(status: AdmissaoStatus) {
+  return REJECTABLE_STATUSES.includes(status)
+}
+
+function canApproveAdmission(status: AdmissaoStatus) {
+  return APPROVABLE_STATUSES.includes(status)
+}
+
+function canConvertAdmission(status: AdmissaoStatus) {
+  return CONVERTIBLE_STATUSES.includes(status)
+}
+
+function canReopenAdmission(status: AdmissaoStatus) {
+  return REOPENABLE_STATUSES.includes(status)
+}
+
+function canArchiveAdmission(status: AdmissaoStatus) {
+  return ARCHIVABLE_STATUSES.includes(status)
+}
+
+function canRequestDocumentCorrection(status: AdmissaoStatus) {
+  return DOCUMENT_CORRECTION_STATUSES.includes(status)
+}
+
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -206,10 +237,10 @@ async function fetchRadar(url: string): Promise<AdmissoesRadarResponse> {
   return json
 }
 
-export default function AdmissoesInboxClient({ 
+export default function AdmissoesInboxClient({
   escolaId,
   initialItems = []
-}: { 
+}: {
   escolaId: string;
   initialItems?: CandidaturaListItem[];
 }) {
@@ -241,7 +272,7 @@ export default function AdmissoesInboxClient({
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const supabase = useMemo(() => createClient(), [])
 
-  
+
   const [viewingDoc, setViewingDoc] = useState<{ name: string; url: string } | null>(null)
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
@@ -315,7 +346,7 @@ export default function AdmissoesInboxClient({
       const normalizedSearch = searchLower.replace(/^#/, '')
       const matchesProtocol = item.id.toLowerCase().startsWith(normalizedSearch) || protocol.startsWith(normalizedSearch)
       const matchesSearch = matchesName || matchesProtocol
-      
+
       let matchesStatus = false
       if (statusFilter === 'novas') {
         matchesStatus = item.status === 'submetida' || item.status === 'documentos_reenviados'
@@ -330,7 +361,7 @@ export default function AdmissoesInboxClient({
       } else if (statusFilter === 'reenviados') {
         matchesStatus = item.status === 'documentos_reenviados'
       }
-      
+
       return matchesSearch && matchesStatus
     })
 
@@ -351,7 +382,7 @@ export default function AdmissoesInboxClient({
 
   const handleCloseConversion = useCallback(() => {
     setIsConversionOpen(false)
-    
+
     if (wasSuccess) {
       // Find current index and select next pending if available
       const currentIndex = filteredItems.findIndex(item => item.id === selectedId)
@@ -364,8 +395,8 @@ export default function AdmissoesInboxClient({
     }
   }, [wasSuccess, filteredItems, selectedId])
 
-  const publicLink = typeof window !== 'undefined' 
-    ? `${window.location.origin}/admissoes/${escolaParam}` 
+  const publicLink = typeof window !== 'undefined'
+    ? `${window.location.origin}/admissoes/${escolaParam}`
     : ''
 
   const handleCopyLink = () => {
@@ -382,19 +413,19 @@ export default function AdmissoesInboxClient({
     try {
       const textArea = document.createElement("textarea")
       textArea.value = text
-      
+
       // Ensure the textarea is not visible but part of the DOM
       textArea.style.position = "fixed"
       textArea.style.left = "-9999px"
       textArea.style.top = "0"
       document.body.appendChild(textArea)
-      
+
       textArea.focus()
       textArea.select()
-      
+
       const successful = document.execCommand('copy')
       document.body.removeChild(textArea)
-      
+
       if (successful) {
         success('Link copiado', 'O link de acesso foi copiado. Já o pode partilhar com o encarregado ou aluno.')
       } else {
@@ -482,6 +513,10 @@ export default function AdmissoesInboxClient({
 
   const handleReject = async () => {
     if (!selectedId) return
+    if (selectedData && !canRejectAdmission(selectedData.status)) {
+      toastError('Ação indisponível', 'Esta candidatura já passou da fase de rejeição pela secretaria.')
+      return
+    }
 
     const motivo = await confirm({
       title: 'Rejeitar candidatura',
@@ -508,7 +543,7 @@ export default function AdmissoesInboxClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao rejeitar')
-      
+
       mutate(
         (prev) => {
           if (!prev) return prev;
@@ -530,7 +565,7 @@ export default function AdmissoesInboxClient({
 
   const handleReopen = async () => {
     if (!selectedId) return
-    
+
     const motivo = await confirm({
       title: 'Reabrir candidatura',
       message: 'Deseja reabrir esta candidatura para análise? Ela voltará ao estado "Em Análise".',
@@ -550,7 +585,7 @@ export default function AdmissoesInboxClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao reabrir')
-      
+
       await mutate()
       success('Candidatura reaberta', 'A candidatura foi reaberta com sucesso e já está disponível para análise.')
     } catch (err: unknown) {
@@ -562,7 +597,7 @@ export default function AdmissoesInboxClient({
 
   const handleArchive = async () => {
     if (!selectedId) return
-    
+
     const ok = await confirm({
       title: 'Arquivar candidatura',
       message: 'Deseja mover esta candidatura para o arquivo? Ela deixará de aparecer na fila de espera principal.',
@@ -588,7 +623,7 @@ export default function AdmissoesInboxClient({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Falha ao arquivar')
-      
+
       // Remove from list or move to concluded depending on business logic
       // In this UI, concluded means matriculado or rejeitada. Let's just refresh.
       await mutate()
@@ -813,9 +848,9 @@ export default function AdmissoesInboxClient({
             <h2 className="text-lg font-bold text-slate-800">Inbox</h2>
             <div className="flex items-center gap-2">
               {turmaId && (
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
+                <Button
+                  size="sm"
+                  variant="ghost"
                   className="h-8 text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2"
                   onClick={() => {
                     const url = new URL(window.location.href)
@@ -828,16 +863,16 @@ export default function AdmissoesInboxClient({
                   Limpar Filtro
                 </Button>
               )}
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="h-8 w-8 p-0" 
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0"
                 onClick={() => fetchList()}
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="h-8 bg-klasse-green hover:bg-klasse-green-600 text-white gap-1"
                 onClick={() => router.push(withSlug(`/secretaria/admissoes/nova`))}
               >
@@ -846,7 +881,7 @@ export default function AdmissoesInboxClient({
               </Button>
             </div>
           </div>
-          
+
           <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
               <Share2 className="h-3 w-3" />
@@ -856,7 +891,7 @@ export default function AdmissoesInboxClient({
               <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-mono text-slate-500 truncate">
                 {publicLink}
               </div>
-              <button 
+              <button
                 onClick={handleCopyLink}
                 className="flex items-center gap-1 px-2 py-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-500 text-[10px] font-bold"
                 title="Copiar Link"
@@ -864,7 +899,7 @@ export default function AdmissoesInboxClient({
                 <Copy className="h-3.5 w-3.5" />
                 <span>Copiar</span>
               </button>
-              <button 
+              <button
                 onClick={handleShareWhatsApp}
                 className="flex items-center gap-1 px-2 py-1.5 hover:bg-[#25D366]/10 rounded-lg transition-colors text-[#25D366] text-[10px] font-bold"
                 title="Partilhar no WhatsApp"
@@ -874,10 +909,10 @@ export default function AdmissoesInboxClient({
               </button>
             </div>
           </div>
-          
+
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input 
+            <input
               type="text"
               placeholder="Buscar aluno..."
               value={search}
@@ -898,7 +933,7 @@ export default function AdmissoesInboxClient({
                 onClick={() => setStatusFilter(f.id)}
                 className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
                   statusFilter === f.id
-                    ? 'bg-white text-klasse-green shadow-sm' 
+                    ? 'bg-white text-klasse-green shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -912,8 +947,8 @@ export default function AdmissoesInboxClient({
             <button
               onClick={() => setStatusFilter('expirando')}
               className={`p-3 rounded-xl border text-left transition-all ${
-                statusFilter === 'expirando' 
-                  ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-100' 
+                statusFilter === 'expirando'
+                  ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-100'
                   : 'bg-white border-slate-100 hover:border-slate-200'
               }`}
             >
@@ -928,8 +963,8 @@ export default function AdmissoesInboxClient({
             <button
               onClick={() => setStatusFilter('reenviados')}
               className={`p-3 rounded-xl border text-left transition-all ${
-                statusFilter === 'reenviados' 
-                  ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100' 
+                statusFilter === 'reenviados'
+                  ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-100'
                   : 'bg-white border-slate-100 hover:border-slate-200'
               }`}
             >
@@ -944,8 +979,8 @@ export default function AdmissoesInboxClient({
             <button
               onClick={() => setStatusFilter('lista_espera')}
               className={`p-3 rounded-xl border text-left transition-all col-span-2 ${
-                statusFilter === 'lista_espera' 
-                  ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-100' 
+                statusFilter === 'lista_espera'
+                  ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-100'
                   : counts.oportunidades_espera > 0 ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' : 'bg-white border-slate-100 hover:border-slate-200'
               }`}
             >
@@ -954,8 +989,8 @@ export default function AdmissoesInboxClient({
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Vagas Disponíveis</span>
               </div>
               <p className={`text-sm font-bold ${counts.oportunidades_espera > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
-                {counts.oportunidades_espera > 0 
-                  ? `${counts.oportunidades_espera} candidatos podem ser promovidos` 
+                {counts.oportunidades_espera > 0
+                  ? `${counts.oportunidades_espera} candidatos podem ser promovidos`
                   : 'Nenhuma vaga aberta para espera'}
               </p>
             </button>
@@ -976,22 +1011,22 @@ export default function AdmissoesInboxClient({
             filteredItems.map((item) => {
               const isActive = selectedId === item.id
               const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.rascunho
-              
+
               return (
                 <motion.div
                   key={item.id}
                   layoutId={item.id}
                   onClick={() => setSelectedId(item.id)}
                   className={`group relative p-4 rounded-xl cursor-pointer transition-all border ${
-                    isActive 
-                      ? 'bg-white border-klasse-gold shadow-md ring-1 ring-klasse-gold/20' 
+                    isActive
+                      ? 'bg-white border-klasse-gold shadow-md ring-1 ring-klasse-gold/20'
                       : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm'
                   }`}
                 >
                   <div className={`absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold ${status.bg} ${status.color}`}>
                     {status.label}
                   </div>
-                  
+
                   <div className="pr-16">
                     <p className="font-sans font-bold text-slate-900 group-hover:text-klasse-green transition-colors">
                       {item.nome_candidato}
@@ -1000,7 +1035,7 @@ export default function AdmissoesInboxClient({
                       {displayProtocol(item)} • {item.classes?.nome || '—'} • {item.cursos?.nome || '—'}
                     </p>
                   </div>
-                  
+
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-[10px] text-slate-400 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -1019,7 +1054,7 @@ export default function AdmissoesInboxClient({
       <div className="flex-1 bg-slate-50 flex flex-col relative overflow-hidden">
         <AnimatePresence mode="wait">
           {selectedId ? (
-            <motion.div 
+            <motion.div
               key={selectedId}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1065,7 +1100,7 @@ export default function AdmissoesInboxClient({
 
                       <div className="flex items-center gap-3">
                         {selectedData.dados_candidato?.responsavel_contato && (
-                          <button 
+                          <button
                             onClick={() => {
                               const contato = selectedData.dados_candidato?.responsavel_contato;
                               if (contato) openWhatsApp(contato);
@@ -1103,20 +1138,20 @@ export default function AdmissoesInboxClient({
                             {selectedData.status === 'aguardando_compensacao' ? 'Comprovativo Enviado' : 'Aguardando Talão'}
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-3">
-                            <DataField 
-                              label="Valor Declarado" 
-                              value={selectedData.dados_candidato?.pagamento?.amount ? `${Number(selectedData.dados_candidato.pagamento.amount).toLocaleString('pt-AO')} Kz` : 'Não informado'} 
+                            <DataField
+                              label="Valor Declarado"
+                              value={selectedData.dados_candidato?.pagamento?.amount ? `${Number(selectedData.dados_candidato.pagamento.amount).toLocaleString('pt-AO')} Kz` : 'Não informado'}
                             />
-                            <DataField 
-                              label="Referência/Talão" 
-                              value={selectedData.dados_candidato?.pagamento?.referencia || 'Sem referência'} 
+                            <DataField
+                              label="Referência/Talão"
+                              value={selectedData.dados_candidato?.pagamento?.referencia || 'Sem referência'}
                             />
-                            <DataField 
-                              label="Método" 
-                              value={selectedData.dados_candidato?.pagamento?.metodo || 'TRANSFERENCIA'} 
+                            <DataField
+                              label="Método"
+                              value={selectedData.dados_candidato?.pagamento?.metodo || 'TRANSFERENCIA'}
                             />
                           </div>
 
@@ -1139,18 +1174,11 @@ export default function AdmissoesInboxClient({
                         </div>
 
                         <div className="mt-6 flex gap-3">
-                          <Button 
-                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-11 font-bold"
+                          <Button
+                            className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-11 font-bold"
                             onClick={() => setIsConversionOpen(true)}
                           >
                             Validar e Matricular
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            className="flex-1 border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl h-11 font-bold"
-                            onClick={openPendenciasModal}
-                          >
-                            Recusar Pagamento
                           </Button>
                         </div>
                       </section>
@@ -1222,7 +1250,7 @@ export default function AdmissoesInboxClient({
                         <div className="flex flex-wrap gap-4">
                           {documentEntries.length > 0 ? (
                             documentEntries.map(([name, path]) => (
-                              <div 
+                              <div
                                 key={name}
                                 className="group relative w-24 h-32 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden hover:border-klasse-gold transition-all"
                               >
@@ -1256,15 +1284,17 @@ export default function AdmissoesInboxClient({
                           <p className="text-xs text-slate-500">
                             Se houver documento inválido ou ausente, envie a pendência para o Cofre do candidato.
                           </p>
-                          <button
-                            type="button"
-                            onClick={openPendenciasModal}
-                            disabled={!!loadingAction}
-                            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                          >
-                            <AlertCircle className="h-4 w-4" />
-                            Solicitar correção
-                          </button>
+                          {canRequestDocumentCorrection(selectedData.status) && (
+                            <button
+                              type="button"
+                              onClick={openPendenciasModal}
+                              disabled={!!loadingAction}
+                              className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                            >
+                              <AlertCircle className="h-4 w-4" />
+                              Solicitar correção
+                            </button>
+                          )}
                         </div>
                       </section>
 
@@ -1310,8 +1340,8 @@ export default function AdmissoesInboxClient({
 
                   {/* Barra de Ação Sticky Bottom */}
                   <div className="absolute bottom-0 inset-x-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-200 flex items-center justify-end gap-4 z-10">
-                    {['rejeitada', 'arquivada', 'arquivado'].includes(selectedData.status) && (
-                      <button 
+                    {canReopenAdmission(selectedData.status) && (
+                      <button
                         onClick={handleReopen}
                         disabled={!!loadingAction}
                         className="flex items-center gap-2 px-6 py-4 bg-white border-2 border-slate-900 text-slate-900 rounded-2xl font-bold hover:bg-slate-900 hover:text-white transition-all disabled:opacity-50"
@@ -1321,24 +1351,28 @@ export default function AdmissoesInboxClient({
                       </button>
                     )}
 
-                    <button 
-                      onClick={handleArchive}
-                      disabled={!!loadingAction}
-                      className="flex items-center gap-2 px-6 py-4 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-                    >
-                      {loadingAction === 'archiving' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-                      Arquivar
-                    </button>
+                    {canArchiveAdmission(selectedData.status) && (
+                      <button
+                        onClick={handleArchive}
+                        disabled={!!loadingAction}
+                        className="flex items-center gap-2 px-6 py-4 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
+                      >
+                        {loadingAction === 'archiving' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+                        Arquivar
+                      </button>
+                    )}
 
-                    <button 
-                      onClick={handleReject}
-                      disabled={!!loadingAction}
-                      className="flex items-center gap-2 px-6 py-4 border border-red-200 text-red-600 rounded-2xl font-bold hover:bg-red-50 transition-all disabled:opacity-50"
-                    >
-                      {loadingAction === 'rejecting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                      Rejeitar
-                    </button>
-                    
+                    {canRejectAdmission(selectedData.status) && (
+                      <button
+                        onClick={handleReject}
+                        disabled={!!loadingAction}
+                        className="flex items-center gap-2 px-6 py-4 border border-red-200 text-red-600 rounded-2xl font-bold hover:bg-red-50 transition-all disabled:opacity-50"
+                      >
+                        {loadingAction === 'rejecting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                        Rejeitar
+                      </button>
+                    )}
+
                     {selectedData.status === 'documentos_reenviados' && (
                       <button
                         onClick={handleAcceptReuploadedDocuments}
@@ -1350,8 +1384,8 @@ export default function AdmissoesInboxClient({
                       </button>
                     )}
 
-                    {['submetida', 'em_analise', 'pendente', 'lista_espera'].includes(selectedData.status) && (
-                      <button 
+                    {canApproveAdmission(selectedData.status) && (
+                      <button
                         onClick={handleApprove}
                         disabled={!!loadingAction}
                         className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
@@ -1361,7 +1395,7 @@ export default function AdmissoesInboxClient({
                       </button>
                     )}
 
-                    {['aprovada', 'aguardando_pagamento', 'aguardando_compensacao'].includes(selectedData.status) && (
+                    {canConvertAdmission(selectedData.status) && (
                       <button
                         onClick={() => setIsConversionOpen(true)}
                         disabled={!!loadingAction}
@@ -1390,14 +1424,14 @@ export default function AdmissoesInboxClient({
       {/* Modal Visualizador de Documentos */}
       <AnimatePresence>
         {viewingDoc && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
             onClick={() => setViewingDoc(null)}
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -1409,7 +1443,7 @@ export default function AdmissoesInboxClient({
                   <FileText className="h-4 w-4" />
                   {viewingDoc.name.replace('_', ' ')}
                 </h3>
-                <button 
+                <button
                   onClick={() => setViewingDoc(null)}
                   className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                 >
@@ -1418,16 +1452,16 @@ export default function AdmissoesInboxClient({
               </div>
               <div className="flex-1 bg-slate-100">
                 {viewingDoc.url.toLowerCase().endsWith('.pdf') ? (
-                  <iframe 
-                    src={viewingDoc.url} 
+                  <iframe
+                    src={viewingDoc.url}
                     className="w-full h-full border-none"
                     title={viewingDoc.name}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center p-8">
-                    <img 
-                      src={viewingDoc.url} 
-                      alt={viewingDoc.name} 
+                    <img
+                      src={viewingDoc.url}
+                      alt={viewingDoc.name}
                       className="max-w-full max-h-full object-contain shadow-lg rounded-lg"
                     />
                   </div>
@@ -1546,7 +1580,7 @@ export default function AdmissoesInboxClient({
         )}
       </AnimatePresence>
 
-      <AdmissaoConversionSheet 
+      <AdmissaoConversionSheet
         isOpen={isConversionOpen}
         onClose={handleCloseConversion}
         candidaturaId={selectedId}
