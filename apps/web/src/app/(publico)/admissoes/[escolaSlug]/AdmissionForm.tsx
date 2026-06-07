@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { 
-  User, 
-  GraduationCap, 
-  CheckCircle2, 
-  ArrowRight, 
-  ArrowLeft, 
+import {
+  User,
+  GraduationCap,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
   Loader2,
   School,
   Clock,
@@ -21,6 +21,7 @@ import Link from "next/link";
 import { PublicHero } from "./components/PublicHero";
 import { CourseCatalog } from "./components/CourseCatalog";
 import { DocumentUpload } from "./DocumentUpload";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 import { v4 as uuidv4 } from "uuid";
 
 export type AdmissionConfig = {
@@ -32,7 +33,7 @@ export type AdmissionConfig = {
     slug: string;
     config_portal?: {
       whatsapp_suporte?: string;
-      documentos_obrigatorios?: string[]; // IDs como 'bi_aluno', 'notas', etc.
+      documentos_obrigatorios?: string[];
       documentos_admissao_catalogo?: Array<{
         id: string;
         label: string;
@@ -134,7 +135,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         if (parsed?.draftId) setDraftId(parsed.draftId);
         if (parsed?.formData) setFormData(parsed.formData);
         setHasDraft(false);
-        setStep(2); // Vai direto para os dados
+        setStep(1);
         document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     } catch {
@@ -143,22 +144,39 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   };
 
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = 4;
 
   const whatsappNumber = config.escola.config_portal?.whatsapp_suporte;
   const disponibilidadeLabel: Record<NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>, string> = {
     disponivel: "Disponível",
     ultimas_vagas: "Últimas vagas",
-    lista_espera: "Lista de espera aberta",
+    lista_espera: "Lista de espera",
   };
+
+  // Grouped options for the dropdown: Grade + Shift
+  const groupedTurmas = formData.curso_id
+    ? (() => {
+        const map: Record<string, { id: string, label: string }> = {};
+        config.turmas
+          .filter(t => t.curso_id === formData.curso_id)
+          .forEach(t => {
+            const gradeName = formatTurmaDisplayName(t);
+            const publicTurno = formatTurnoDisplay(t.turno);
+            const disponibilidade = disponibilidadeLabel[t.disponibilidade ?? "disponivel"];
+            const key = `${gradeName}|${publicTurno}`;
+            if (!map[key]) {
+              map[key] = {
+                id: t.id,
+                label: `${gradeName} - ${publicTurno} - ${disponibilidade}`
+              };
+            }
+          });
+        return Object.values(map);
+      })()
+    : [];
+
   const isDocumentNumberRequired = !["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento);
   const configuredDocumentCatalog = config.escola.config_portal?.documentos_admissao_catalogo ?? [];
-  const defaultDocumentCatalog = [
-    { id: "bi_aluno", label: "BI ou Cédula do Aluno", description: "Cópia legível do documento de identidade." },
-    { id: "notas", label: "Certificado ou Declaração", description: "Certificado de habilitações ou declaração de notas." },
-    { id: "folha_25_linhas", label: "Folha de 25 linhas", description: "Documento complementar solicitado pela secretaria." },
-    { id: "outro_documento", label: "Outro documento", description: "Anexe qualquer outro documento exigido pela escola." },
-  ];
   const documentDescriptions: Record<string, string> = {
     bi_aluno: "Cópia legível do documento de identidade.",
     bi_candidato: "Cópia legível do documento de identidade.",
@@ -177,7 +195,12 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           label: doc.label,
           description: documentDescriptions[doc.id] ?? "Documento solicitado pela secretaria.",
         }))
-      : defaultDocumentCatalog;
+      : [
+          { id: "bi_aluno", label: "BI ou Cédula do Aluno", description: "Cópia legível do documento de identidade." },
+          { id: "notas", label: "Certificado ou Declaração", description: "Certificado de habilitações ou declaração de notas." },
+          { id: "folha_25_linhas", label: "Folha de 25 linhas", description: "Documento complementar solicitado pela secretaria." },
+          { id: "outro_documento", label: "Outro documento", description: "Anexe qualquer outro documento exigido pela escola." },
+        ];
     const byId = new Map(catalog.map((doc) => [doc.id, doc]));
     for (const id of requiredDocumentIds) {
       if (!byId.has(id)) {
@@ -190,15 +213,11 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     }
     return Array.from(byId.values());
   })();
-  const hasRequiredDocuments = requiredDocumentIds.size > 0;
   const missingRequiredDocuments = Array.from(requiredDocumentIds).filter((id) => !formData.documentos[id]);
 
   const step1Validation = () => {
-    if (!formData.curso_id) return "Selecione o curso pretendido.";
-    return null;
-  };
-
-  const step2Validation = () => {
+    if (!formData.curso_id) return "Selecione o nível de ensino pretendido.";
+    if (!formData.turma_preferencial_id) return "Selecione a classe pretendida.";
     if (formData.nome_completo.trim().length < 5) return "Informe o nome completo do estudante.";
     if (!formData.tipo_documento) return "Selecione o tipo de documento.";
     if (isDocumentNumberRequired && formData.numero_documento.trim().length < 3) {
@@ -216,7 +235,15 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     return null;
   };
 
-  const nextStep = () => setStep((s) => s + 1);
+  const nextStep = () => {
+    setStep((s) => s + 1);
+    document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const prevStep = () => {
+    setStep((s) => s - 1);
+    document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const handleStep1Next = () => {
     const validationError = step1Validation();
     if (validationError) {
@@ -227,7 +254,12 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     nextStep();
   };
 
-  const canProceedStep2 = step2Validation() === null;
+  const step2Validation = () => {
+    if (formData.responsavel_nome.trim().length < 5) return "Informe o nome do responsável.";
+    if (formData.responsavel_contato.trim().length < 7) return "Informe o contacto do responsável.";
+    return null;
+  };
+
   const handleStep2Next = () => {
     const validationError = step2Validation();
     if (validationError) {
@@ -238,31 +270,50 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     nextStep();
   };
 
-  const prevStep = () => setStep((s) => s - 1);
+  const handleStep3Next = () => {
+    if (missingRequiredDocuments.length > 0) {
+      setError(`Por favor, anexe os documentos obrigatórios: ${missingRequiredDocuments.map(id => id.replace('_', ' ')).join(', ')}.`);
+      return;
+    }
+    setError(null);
+    nextStep();
+  };
 
-  const selectTurmaFromLanding = (turmaId: string) => {
-    const turma = config.turmas.find(t => t.id === turmaId);
-    if (!turma) return;
+  const selectCourseFromLanding = (cursoId: string) => {
     setFormData((prev) => ({
       ...prev,
-      curso_id: turma.curso_id,
-      turma_preferencial_id: turma.id,
-      turno: turma.turno,
+      curso_id: cursoId,
+      turma_preferencial_id: "",
+      turno: "",
     }));
     setError(null);
+    setStep(1);
     document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    
-    // Auto-fill turno when turma is selected
+
     if (name === "turma_preferencial_id") {
       const selectedTurma = config.turmas.find(t => t.id === value);
       if (selectedTurma) {
-        setFormData(prev => ({ ...prev, turno: selectedTurma.turno, turma_preferencial_id: value }));
+        setFormData(prev => ({
+          ...prev,
+          turma_preferencial_id: value,
+          turno: selectedTurma.turno
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
       }
+    } else if (name === "curso_id") {
+      setFormData(prev => ({
+        ...prev,
+        curso_id: value,
+        turma_preferencial_id: "",
+        turno: ""
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -277,7 +328,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          draftId, // Envia o ID usado para os arquivos
+          draftId,
           ano_letivo: config.ano_letivo?.ano || new Date().getFullYear(),
         }),
       });
@@ -291,7 +342,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
       setProtocolo(data.protocolo);
       setSubmissionStatus(typeof data.status === "string" ? data.status : null);
       setSuccess(true);
-      
+
       try {
         localStorage.removeItem(draftStorageKey);
       } catch {}
@@ -304,51 +355,51 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center animate-klasse-fade-up">
+      <div className="flex flex-col items-center justify-center py-12 text-center animate-klasse-fade-up px-4">
         <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-green-100 text-green-600">
           <CheckCircle2 size={48} />
         </div>
         <h1 className="text-3xl font-black text-slate-900">Inscrição Enviada!</h1>
         {submissionStatus === "lista_espera" ? (
-          <p className="mt-4 max-w-md text-lg text-slate-600">
-            Obrigado, <span className="font-bold">{formData.nome_completo}</span>. A turma está lotada no momento, mas a escola ainda pode contactar candidatos caso surjam novas vagas.
+          <p className="mt-4 max-w-md text-lg text-slate-600 leading-relaxed">
+            Obrigado, <span className="font-bold">{formData.nome_completo}</span>. A classe selecionada está lotada no momento, mas sua candidatura entrou para a <b>Lista de Espera</b>.
           </p>
         ) : (
-          <p className="mt-4 max-w-md text-lg text-slate-600">
+          <p className="mt-4 max-w-md text-lg text-slate-600 leading-relaxed">
             Obrigado, <span className="font-bold">{formData.nome_completo}</span>. Sua intenção de matrícula foi registrada com sucesso.
           </p>
         )}
-        
-        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-sm w-full">
+
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-sm w-full mx-auto">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Protocolo de Referência</p>
-          <p className="mt-1 text-4xl font-black tracking-tight text-slate-900">{protocolo}</p>
+          <p className="mt-1 text-4xl font-black tracking-tight text-slate-900 font-mono">{protocolo}</p>
           <div className="mt-6 pt-6 border-t border-slate-100">
             <Link
               href={`/admissoes/${config.escola.slug}/consultar`}
               className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
             >
               <ShieldCheck size={18} />
-              Acessar Área da Candidatura
+              Área da Candidatura
             </Link>
             <p className="mt-4 text-[11px] text-slate-500 leading-relaxed italic">
-              * Você precisará confirmar o telefone do encarregado (<span className="font-bold">{formData.responsavel_contato}</span>) para acessar seus dados.
+              * Guarde este código para acompanhar o status da sua vaga.
             </p>
           </div>
         </div>
 
-        <div className="mt-10 space-y-4 max-w-md">
+        <div className="mt-10 space-y-4 max-w-md mx-auto">
           <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-left flex gap-3">
             <Clock className="text-blue-500 shrink-0" size={20} />
             <div>
               <p className="text-sm font-bold text-blue-900">O que acontece agora?</p>
               <p className="text-xs text-blue-700 mt-1">
-                A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga de 48h</b> e poderá enviar o comprovativo de pagamento diretamente pela área da candidatura.
+                A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga</b> e poderá enviar o comprovativo de pagamento diretamente por aqui.
               </p>
             </div>
           </div>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => window.location.reload()}
           className="mt-12 text-sm font-bold text-slate-400 hover:text-slate-600 underline underline-offset-4"
         >
@@ -361,10 +412,10 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   return (
     <div className="space-y-8">
       <PublicHero config={config} />
-      
-      <CourseCatalog 
-        config={config} 
-        onSelectTurma={selectTurmaFromLanding} 
+
+      <CourseCatalog
+        config={config}
+        onSelectCourse={selectCourseFromLanding}
       />
 
       <div id="admissao-formulario" className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/60 border border-slate-100 max-w-4xl mx-auto">
@@ -384,8 +435,8 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 <h2 className="text-2xl font-black tracking-tight">Insira seus dados</h2>
               </div>
             </div>
-            
-            <Link 
+
+            <Link
               href={`/admissoes/${config.escola.slug}/consultar`}
               className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-bold hover:bg-white/20 transition shrink-0"
             >
@@ -396,11 +447,11 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           <p className="mt-4 text-white/70 max-w-lg relative z-10">
             Passo {step} de {TOTAL_STEPS} para garantir sua vaga no ano letivo <span className="text-white font-bold">{config.ano_letivo?.ano || "vigente"}</span>.
           </p>
-          
+
           {/* Progress Bar */}
           <div className="absolute bottom-0 left-0 h-1.5 bg-white/10 w-full">
-             <div 
-               className="h-full transition-all duration-500 ease-in-out" 
+             <div
+               className="h-full transition-all duration-500 ease-in-out"
                style={{ width: `${(step / TOTAL_STEPS) * 100}%`, backgroundColor: primaryColor }}
              />
           </div>
@@ -409,8 +460,8 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         {hasDraft && step === 1 && (
           <div className="bg-amber-50 px-8 py-4 border-b border-amber-100 flex items-center justify-between gap-4 flex-wrap">
             <p className="text-sm text-amber-800 font-medium">Você possui uma inscrição iniciada não concluída.</p>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleRestoreDraft}
               className="text-xs font-bold text-amber-900 bg-amber-200/50 hover:bg-amber-200 px-4 py-2 rounded-lg transition"
             >
@@ -421,563 +472,478 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
         <form onSubmit={handleSubmit} className="p-8">
           {/* Honeypot Anti-spam */}
-        <div style={{ position: 'absolute', left: '-9999px', top: '0' }} aria-hidden="true">
-          <input
-            type="text"
-            name="hp_field"
-            tabIndex={-1}
-            autoComplete="off"
-            value={formData.hp_field}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100">
-            {error}
+          <div style={{ position: 'absolute', left: '-9999px', top: '0' }} aria-hidden="true">
+            <input
+              type="text"
+              name="hp_field"
+              tabIndex={-1}
+              autoComplete="off"
+              value={formData.hp_field}
+              onChange={handleInputChange}
+            />
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-6 animate-klasse-fade-in">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                <User size={20} />
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Dados do Aluno</h3>
+          {error && (
+            <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100">
+              {error}
             </div>
+          )}
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <label className="col-span-full">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Nome Completo <span className="text-red-500">*</span>
-                </span>
-                <input
-                  required
-                  type="text"
-                  name="nome_completo"
-                  value={formData.nome_completo}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="Nome completo do estudante"
-                  />
-                  </label>
+          {/* NOVO PASSO 1: VAGA + ALUNO */}
+          {step === 1 && (
+            <div className="space-y-10 animate-klasse-fade-in">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                    <GraduationCap size={20} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900">O que pretende estudar?</h3>
+                </div>
 
-                  <label className="col-span-full">
-                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                   Documento de Identificação {isDocumentNumberRequired && <span className="text-red-500">*</span>}
-                 </span>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                   <select
-                     name="tipo_documento"
-                     value={formData.tipo_documento}
-                     onChange={handleInputChange}
-                     className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                   >
-                     <option value="BI">Bilhete de Identidade (BI)</option>
-                     <option value="Cédula Pessoal">Cédula Pessoal</option>
-                     <option value="Passaporte">Passaporte</option>
-                     <option value="Cartão de Residente">Cartão de Residente</option>
-                     <option value="Folha de 25 linhas">Folha de 25 linhas</option>
-                     <option value="Outro">Outro</option>
-                   </select>
-                   <input
-                     required={isDocumentNumberRequired}
-                     type="text"
-                     name="numero_documento"
-                     value={formData.numero_documento}
-                     onChange={handleInputChange}
-                     className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition font-mono uppercase"
-                     placeholder={isDocumentNumberRequired ? "Número do documento" : "Número (se houver)"}
-                   />
-                 </div>
-               </label>
-
+                <div className="grid gap-6 md:grid-cols-2">
                   <label>
-                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                    Data de Nascimento <span className="text-red-500">*</span>
-                  </span>
-                  <input
-                  required
-                  type="date"
-                  name="data_nascimento"
-                  value={formData.data_nascimento}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  />
-                  </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Gênero <span className="text-red-500">*</span>
-                </span>
-                <select
-                  required
-                  name="sexo"
-                  value={formData.sexo}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                >
-                  <option value="">Selecionar...</option>
-                  <option value="M">Masculino</option>
-                  <option value="F">Feminino</option>
-                  <option value="O">Outro</option>
-                  <option value="N">Não informar</option>
-                </select>
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Email (Opcional)</span>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="email@exemplo.com"
-                />
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Telefone <span className="text-red-500">*</span>
-                </span>
-                <input
-                  required
-                  type="tel"
-                  name="telefone"
-                  value={formData.telefone}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="9xx xxx xxx"
-                />
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome do Pai</span>
-                <input
-                  type="text"
-                  name="pai_nome"
-                  value={formData.pai_nome}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="Nome completo do pai"
-                />
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome da Mãe</span>
-                <input
-                  type="text"
-                  name="mae_nome"
-                  value={formData.mae_nome}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="Nome completo da mãe"
-                />
-              </label>
-
-              {/* Dynamic Extra Fields */}
-              {config.escola.config_portal?.campos_extras?.map((campo) => (
-                <label key={campo.id} className={campo.tipo === 'text' ? 'col-span-full' : ''}>
-                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                    {campo.label} {campo.required && <span className="text-red-500">*</span>}
-                  </span>
-                  {campo.tipo === 'select' ? (
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Nível de ensino <span className="text-red-500">*</span>
+                    </span>
                     <select
-                      required={campo.required}
-                      value={formData.campos_extras[campo.id] || ""}
-                      onChange={(e) => setFormData(p => ({ ...p, campos_extras: { ...p.campos_extras, [campo.id]: e.target.value } }))}
+                      required
+                      name="curso_id"
+                      value={formData.curso_id}
+                      onChange={handleInputChange}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
                     >
                       <option value="">Selecionar...</option>
-                      {campo.options?.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
+                      {config.cursos.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nome}</option>
                       ))}
                     </select>
-                  ) : (
+                  </label>
+
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Classe pretendida <span className="text-red-500">*</span>
+                    </span>
+                    <select
+                      required
+                      name="turma_preferencial_id"
+                      value={formData.turma_preferencial_id}
+                      onChange={handleInputChange}
+                      disabled={!formData.curso_id}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition disabled:opacity-50"
+                    >
+                      <option value="">Selecionar...</option>
+                      {groupedTurmas.map((t) => (
+                        <option key={t.id} value={t.id}>{t.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                    <User size={20} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900">Identificação do Aluno</h3>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <label className="col-span-full">
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Nome Completo <span className="text-red-500">*</span>
+                    </span>
                     <input
-                      required={campo.required}
-                      type={campo.tipo}
-                      value={formData.campos_extras[campo.id] || ""}
-                      onChange={(e) => setFormData(p => ({ ...p, campos_extras: { ...p.campos_extras, [campo.id]: e.target.value } }))}
+                      required
+                      type="text"
+                      name="nome_completo"
+                      value={formData.nome_completo}
+                      onChange={handleInputChange}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                      placeholder={`Informe ${campo.label.toLowerCase()}`}
+                      placeholder="Nome completo do estudante"
                     />
-                  )}
-                </label>
-              ))}
-            </div>
-            
-            <div className="pt-4 flex justify-between gap-4">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
-              >
-                <ArrowLeft size={18} />
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={handleStep2Next}
-                disabled={!canProceedStep2}
-                className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-50"
-              >
-                Próximo Passo
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
+                  </label>
 
-        {step === 3 && (
-          <div className="space-y-6 animate-klasse-fade-in">
-             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                <User size={20} />
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Dados do Responsável</h3>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <label className="col-span-full">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Nome do Pai/Mãe ou Encarregado <span className="text-red-500">*</span>
-                </span>
-                <input
-                  required
-                  type="text"
-                  name="responsavel_nome"
-                  value={formData.responsavel_nome}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="Nome completo do responsável"
-                />
-              </label>
-
-              <label className="col-span-full">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Telefone de Contacto <span className="text-red-500">*</span>
-                </span>
-                <input
-                  required
-                  type="tel"
-                  name="responsavel_contato"
-                  value={formData.responsavel_contato}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                  placeholder="9xx xxx xxx"
-                />
-              </label>
-            </div>
-
-            <div className="pt-4 flex justify-between">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
-              >
-                <ArrowLeft size={18} />
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={nextStep}
-                disabled={!formData.responsavel_nome || !formData.responsavel_contato}
-                className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-50"
-              >
-                Próximo Passo
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="space-y-6 animate-klasse-fade-in">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                <GraduationCap size={20} />
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Curso e Turma</h3>
-            </div>
-
-            <div className="grid gap-6">
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  Curso Pretendido <span className="text-red-500">*</span>
-                </span>
-                <select
-                  required
-                  name="curso_id"
-                  value={formData.curso_id}
-                  onChange={handleInputChange}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
-                >
-                  <option value="">Selecionar curso...</option>
-                  {config.cursos.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Turma Preferencial (Opcional)</span>
-                <select
-                  name="turma_preferencial_id"
-                  value={formData.turma_preferencial_id}
-                  onChange={handleInputChange}
-                  disabled={!formData.curso_id}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition disabled:opacity-50"
-                >
-                  <option value="">Sem preferência de turma</option>
-                  {config.turmas
-                    .filter(t => t.curso_id === formData.curso_id)
-                    .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome} ({t.turno}) - {disponibilidadeLabel[t.disponibilidade ?? "disponivel"]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {formData.turma_preferencial_id &&
-                config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera" && (
-                  <div className="flex flex-col gap-3 rounded-2xl bg-slate-900 p-6 text-white shadow-xl ring-4 ring-slate-100 animate-in fade-in zoom-in-95 duration-300">
-                    <div className="flex items-center gap-2 text-amber-400">
-                      <AlertCircle size={20} className="shrink-0" />
-                      <h4 className="font-black uppercase tracking-widest text-xs">Atenção: Turma Lotada</h4>
+                  <label className="col-span-full">
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Documento de Identificação {isDocumentNumberRequired && <span className="text-red-500">*</span>}
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <select
+                        name="tipo_documento"
+                        value={formData.tipo_documento}
+                        onChange={handleInputChange}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                      >
+                        <option value="BI">BI</option>
+                        <option value="Cédula Pessoal">Cédula</option>
+                        <option value="Passaporte">Passaporte</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                      <input
+                        required={isDocumentNumberRequired}
+                        type="text"
+                        name="numero_documento"
+                        value={formData.numero_documento}
+                        onChange={handleInputChange}
+                        className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition font-mono uppercase"
+                        placeholder={isDocumentNumberRequired ? "Número" : "Número (se houver)"}
+                      />
                     </div>
-                    <p className="text-sm text-slate-300 leading-relaxed">
-                      Esta turma atingiu o limite de vagas. Ao prosseguir, a sua inscrição entrará para a <span className="text-white font-bold underline">Lista de Espera</span>. 
-                      A secretaria entrará em contacto apenas se houver desistências ou abertura de novas vagas.
+                  </label>
+
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Data de Nascimento <span className="text-red-500">*</span>
+                    </span>
+                    <input
+                      required
+                      type="date"
+                      name="data_nascimento"
+                      value={formData.data_nascimento}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Gênero <span className="text-red-500">*</span>
+                    </span>
+                    <select
+                      required
+                      name="sexo"
+                      value={formData.sexo}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                    >
+                      <option value="">Selecionar...</option>
+                      <option value="M">Masculino</option>
+                      <option value="F">Feminino</option>
+                      <option value="O">Outro</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                      Telefone <span className="text-red-500">*</span>
+                    </span>
+                    <input
+                      required
+                      type="tel"
+                      name="telefone"
+                      value={formData.telefone}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                      placeholder="9xx xxx xxx"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Email (Opcional)</span>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                      placeholder="email@exemplo.com"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleStep1Next}
+                  className="flex items-center gap-2 rounded-2xl bg-slate-900 px-10 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
+                >
+                  Próximo Passo
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* NOVO PASSO 2: RESPONSÁVEL */}
+          {step === 2 && (
+            <div className="space-y-6 animate-klasse-fade-in">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                  <User size={20} />
+                </div>
+                <h3 className="text-lg font-black text-slate-900">Dados do Responsável</h3>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <label className="col-span-full">
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Nome do Pai/Mãe ou Encarregado <span className="text-red-500">*</span>
+                  </span>
+                  <input
+                    required
+                    type="text"
+                    name="responsavel_nome"
+                    value={formData.responsavel_nome}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                    placeholder="Nome completo do responsável"
+                  />
+                </label>
+
+                <label className="col-span-full">
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Telefone de Contacto <span className="text-red-500">*</span>
+                  </span>
+                  <input
+                    required
+                    type="tel"
+                    name="responsavel_contato"
+                    value={formData.responsavel_contato}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                    placeholder="9xx xxx xxx"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome do Pai (opcional)</span>
+                  <input
+                    type="text"
+                    name="pai_nome"
+                    value={formData.pai_nome}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                    placeholder="Nome completo do pai"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome da Mãe (opcional)</span>
+                  <input
+                    type="text"
+                    name="mae_nome"
+                    value={formData.mae_nome}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                    placeholder="Nome completo da mãe"
+                  />
+                </label>
+              </div>
+
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  <ArrowLeft size={18} />
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStep2Next}
+                  className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
+                >
+                  Próximo Passo
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* NOVO PASSO 3: DOCUMENTAÇÃO */}
+          {step === 3 && (
+            <div className="space-y-6 animate-klasse-fade-in">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                  <FileText size={20} />
+                </div>
+                <h3 className="text-lg font-black text-slate-900">
+                  Documentação {requiredDocumentIds.size > 0 ? '' : '(Opcional)'}
+                </h3>
+              </div>
+
+              <p className="text-sm text-slate-500">
+                {requiredDocumentIds.size > 0
+                  ? "Por favor, anexe os documentos obrigatórios para prosseguir."
+                  : "Anexar documentos agora ajuda a agilizar a análise da sua inscrição."
+                }
+              </p>
+
+              <div className="grid gap-4">
+                {documentCatalog.map((doc) => (
+                  <DocumentUpload
+                    key={doc.id}
+                    label={`${doc.label}${requiredDocumentIds.has(doc.id) ? " *" : ""}`}
+                    description={doc.description}
+                    escolaId={config.escola.id}
+                    candidaturaId={draftId}
+                    initialPath={formData.documentos[doc.id]}
+                    onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, [doc.id]: path } }))}
+                    onRemove={async () => {
+                      setFormData((prev) => {
+                        const documentos = { ...prev.documentos };
+                        delete documentos[doc.id];
+                        return { ...prev, documentos };
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  <ArrowLeft size={18} />
+                  Voltar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStep3Next}
+                  className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
+                >
+                  Revisar Inscrição
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* NOVO PASSO 4: RESUMO */}
+          {step === 4 && (
+            <div className="space-y-6 animate-klasse-fade-in">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                  <ShieldCheck size={20} />
+                </div>
+                <h3 className="text-lg font-black text-slate-900">Resumo da Inscrição</h3>
+              </div>
+
+              <div className="grid gap-4 rounded-2xl bg-slate-50 p-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Aluno</p>
+                    <p className="text-sm font-black text-slate-900">{formData.nome_completo}</p>
+                    <p className="text-xs text-slate-500">{formData.email || "Sem e-mail"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Responsável</p>
+                    <p className="text-sm font-black text-slate-900">{formData.responsavel_nome}</p>
+                    <p className="text-xs text-slate-500">{formData.responsavel_contato}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Nível de ensino</p>
+                    <p className="text-sm font-black text-slate-900">
+                      {config.cursos.find(c => c.id === formData.curso_id)?.nome}
                     </p>
                   </div>
-                )}
-
-              {formData.turno && (
-                <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-4 text-sm text-blue-700">
-                  <Clock size={16} />
-                  <span>Turno selecionado: <span className="font-bold">{formData.turno}</span></span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-4 flex justify-end gap-4">
-              <button
-                type="button"
-                onClick={handleStep1Next}
-                disabled={!formData.curso_id}
-                className={`flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-sm font-black text-white transition disabled:opacity-50 flex-1 sm:flex-none ${
-                  formData.turma_preferencial_id && config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera"
-                    ? 'bg-slate-700 hover:bg-slate-800'
-                    : 'bg-slate-900 hover:bg-slate-800'
-                }`}
-              >
-                {formData.turma_preferencial_id && config.turmas.find(t => t.id === formData.turma_preferencial_id)?.disponibilidade === "lista_espera"
-                  ? 'Ciente, prosseguir para Lista de Espera'
-                  : 'Próximo Passo'}
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-6 animate-klasse-fade-in">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                <FileText size={20} />
-              </div>
-              <h3 className="text-lg font-black text-slate-900">
-                Documentação {hasRequiredDocuments ? '' : '(Opcional)'}
-              </h3>
-            </div>
-
-            <p className="text-sm text-slate-500">
-              {hasRequiredDocuments
-                ? "Por favor, anexe os documentos obrigatórios para prosseguir com sua inscrição."
-                : "Anexar documentos ajuda a agilizar a análise da sua inscrição. Você pode pular este passo e entregar na secretaria depois."
-              }
-            </p>
-
-            <div className="grid gap-4">
-              {documentCatalog.map((doc) => (
-                <DocumentUpload
-                  key={doc.id}
-                  label={`${doc.label}${requiredDocumentIds.has(doc.id) ? " *" : ""}`}
-                  description={doc.description}
-                  escolaId={config.escola.id}
-                  candidaturaId={draftId}
-                  initialPath={formData.documentos[doc.id]}
-                  onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, [doc.id]: path } }))}
-                  onRemove={async () => {
-                    setFormData((prev) => {
-                      const documentos = { ...prev.documentos };
-                      delete documentos[doc.id];
-                      return { ...prev, documentos };
-                    });
-                  }}
-                />
-              ))}
-            </div>
-
-            <div className="pt-4 flex justify-between">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
-              >
-                <ArrowLeft size={18} />
-                Voltar
-              </button>
-              <button
-                type="button"
-                onClick={nextStep}
-                disabled={
-                  missingRequiredDocuments.length > 0
-                }
-                className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                Revisar Dados
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 5 && (
-          <div className="space-y-6 animate-klasse-fade-in">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                <ShieldCheck size={20} />
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Resumo da Inscrição</h3>
-            </div>
-
-            <div className="grid gap-4 rounded-2xl bg-slate-50 p-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Aluno</p>
-                  <p className="text-sm font-black text-slate-900">{formData.nome_completo}</p>
-                  <p className="text-xs text-slate-500">{formData.email || "Sem e-mail"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Responsável</p>
-                  <p className="text-sm font-black text-slate-900">{formData.responsavel_nome}</p>
-                  <p className="text-xs text-slate-500">{formData.responsavel_contato}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Filiação</p>
-                  <p className="text-sm font-black text-slate-900">{formData.pai_nome || "Pai não informado"}</p>
-                  <p className="text-xs text-slate-500">{formData.mae_nome || "Mãe não informada"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Curso</p>
-                  <p className="text-sm font-black text-slate-900">
-                    {config.cursos.find(c => c.id === formData.curso_id)?.nome}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Turma / Turno</p>
-                  <p className="text-sm font-black text-slate-900">
-                    {formData.turma_preferencial_id 
-                      ? config.turmas.find(t => t.id === formData.turma_preferencial_id)?.nome 
-                      : "Sem preferência"}
-                    {formData.turno ? ` (${formData.turno})` : ""}
-                  </p>
-                </div>
-                <div className="col-span-full">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos Anexados</p>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {Object.keys(formData.documentos).length > 0 ? (
-                      Object.keys(formData.documentos).map(k => (
-                        <span key={k} className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700 border border-green-100 uppercase">
-                          <ShieldCheck size={10} />
-                          {k.replace('_', ' ')}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Nenhum documento anexado</span>
-                    )}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Classe / Turno</p>
+                    <p className="text-sm font-black text-slate-900">
+                      {formData.turma_preferencial_id
+                        ? (() => {
+                            const selectedTurma = config.turmas.find(t => t.id === formData.turma_preferencial_id);
+                            return selectedTurma ? formatTurmaDisplayName(selectedTurma) : "Sem preferência";
+                          })()
+                        : "Sem preferência"}
+                      {formData.turno ? ` (${formatTurnoDisplay(formData.turno)})` : ""}
+                    </p>
+                  </div>
+                  <div className="col-span-full">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos Anexados</p>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {Object.keys(formData.documentos).length > 0 ? (
+                        Object.keys(formData.documentos).map(k => (
+                          <span key={k} className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700 border border-green-100 uppercase">
+                            <ShieldCheck size={10} />
+                            {k.replace('_', ' ')}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Nenhum documento anexado</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-xl bg-blue-50 p-4 text-xs text-blue-700 flex items-start gap-3">
-              <AlertCircle size={16} className="shrink-0 mt-0.5" />
-              <p>Ao clicar em finalizar, sua intenção de matrícula será enviada para a secretaria da escola. Você receberá um número de protocolo para acompanhar o status.</p>
-            </div>
+              <div className="rounded-xl bg-blue-50 p-4 text-xs text-blue-700 flex items-start gap-3">
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <p>Ao clicar em finalizar, sua intenção de matrícula será enviada para a escola. Você receberá um número de protocolo para acompanhamento.</p>
+              </div>
 
-            <div className="pt-4 flex justify-between">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
-              >
-                <ArrowLeft size={18} />
-                Corrigir Dados
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex items-center gap-2 rounded-2xl px-10 py-4 text-sm font-black text-white hover:opacity-90 transition disabled:opacity-50"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    Finalizar e Enviar
-                    <CheckCircle2 size={18} />
-                  </>
-                )}
-              </button>
+              <div className="pt-4 flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 px-6 py-4 text-sm font-bold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  <ArrowLeft size={18} />
+                  Corrigir Dados
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center gap-2 rounded-2xl px-10 py-4 text-sm font-black text-white hover:opacity-90 transition disabled:opacity-50 shadow-lg"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      Finalizar e Enviar
+                      <CheckCircle2 size={18} />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </form>
-      
-      {/* Footer & Support */}
-      <div className="bg-slate-50 p-8 border-t border-slate-100">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          {whatsappNumber ? (
-            <div className="text-center md:text-left">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Precisa de ajuda?</p>
-              <p className="text-sm text-slate-600">Fale diretamente com nossa secretaria</p>
-            </div>
-          ) : (
-            <div />
           )}
-          
-          <div className="flex items-center gap-3">
-             {whatsappNumber && (
-               <>
-                 <a
-                   href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=Olá, estou no portal de admissão da escola ${config.escola.nome} e preciso de ajuda.`}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 text-sm font-bold text-white hover:bg-green-600 transition shadow-lg shadow-green-200"
-                 >
-                   <MessageCircle size={18} />
-                   WhatsApp
-                 </a>
-                 <div className="h-10 w-px bg-slate-200 hidden md:block" />
-               </>
-             )}
-             <div className="text-center md:text-left">
-               <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Tecnologia por</p>
-               <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Plataforma Klasse</p>
-             </div>
+        </form>
+
+        {/* Footer & Support */}
+        <div className="bg-slate-50 p-8 border-t border-slate-100">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {whatsappNumber ? (
+              <div className="text-center md:text-left">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Precisa de ajuda?</p>
+                <p className="text-sm text-slate-600">Fale diretamente com nossa secretaria</p>
+              </div>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-3">
+               {whatsappNumber && (
+                 <>
+                   <a
+                     href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=Olá, estou no portal de admissão da escola ${config.escola.nome} e preciso de ajuda.`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 text-sm font-bold text-white hover:bg-green-600 transition shadow-lg shadow-green-200"
+                   >
+                     <MessageCircle size={18} />
+                     WhatsApp
+                   </a>
+                   <div className="h-10 w-px bg-slate-200 hidden md:block" />
+                 </>
+               )}
+               <div className="text-center md:text-left">
+                 <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Tecnologia por</p>
+                 <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Plataforma Klasse</p>
+               </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }
