@@ -3,6 +3,7 @@ import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 export async function ComprovanteMatriculaPrintDocument({
   docId,
@@ -103,7 +104,11 @@ export async function ComprovanteMatriculaPrintDocument({
               </div>
               <div>
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Turma / Turno</p>
-                <p className="font-medium">{snapshot.turma_nome ? `${snapshot.turma_nome} (${snapshot.turma_turno || "—"})` : "—"}</p>
+                <p className="font-medium">
+                  {snapshot.turma_nome
+                    ? `${formatTurmaDisplayName({ turma_nome: snapshot.turma_nome, turma_turno: snapshot.turma_turno })} (${formatTurnoDisplay(snapshot.turma_turno) || "—"})`
+                    : "—"}
+                </p>
               </div>
               <div className="col-span-2">
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Data de Efectivação</p>

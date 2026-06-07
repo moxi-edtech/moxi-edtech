@@ -3,6 +3,7 @@ import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export default async function CartaoEstudantePrintPage({
               <p className="text-sm font-semibold">{snapshot.aluno_nome || "—"}</p>
               <p className="text-xs text-slate-500">BI: {snapshot.aluno_bi || "—"}</p>
               <p className="text-xs text-slate-500">
-                Turma: {snapshot.turma_nome || "—"} • {snapshot.classe_nome || "—"}
+                Turma: {snapshot.turma_nome ? formatTurmaDisplayName({ turma_nome: snapshot.turma_nome }) : "—"} • {snapshot.classe_nome || "—"}
               </p>
             </div>
           </section>

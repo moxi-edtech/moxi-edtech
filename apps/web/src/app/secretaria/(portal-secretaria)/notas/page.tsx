@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters"
 
 type TurmaItem = {
   id: string
@@ -273,8 +274,8 @@ export default function SecretariaNotasPage() {
         >
           <option value="">Selecione a turma</option>
           {turmas.map((turma) => {
-            const label = turma.turma_nome || turma.nome || "Turma"
-            const meta = [turma.classe_nome, turma.turno].filter(Boolean).join(" • ")
+            const label = formatTurmaDisplayName(turma)
+            const meta = [turma.classe_nome, formatTurnoDisplay(turma.turno)].filter(Boolean).join(" • ")
             return (
               <option key={turma.id} value={turma.id}>
                 {meta ? `${label} (${meta})` : label}

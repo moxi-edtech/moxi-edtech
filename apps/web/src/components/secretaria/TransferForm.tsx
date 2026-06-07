@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 interface TransferFormProps {
   matriculaId: string;
@@ -133,8 +134,8 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, o
         >
           <option value="">Selecione uma turma</option>
           {turmasCompativeis.map((turma) => {
-            const displayName = turma.turma_nome || turma.nome || "Turma sem nome";
-            const details = [turma.turno, turma.classe_nome].filter(Boolean).join(" • ");
+            const displayName = formatTurmaDisplayName(turma);
+            const details = [formatTurnoDisplay(turma.turno), turma.classe_nome].filter(Boolean).join(" • ");
             return (
               <option key={turma.id} value={turma.id}>
                 {details ? `${displayName} (${details})` : displayName}

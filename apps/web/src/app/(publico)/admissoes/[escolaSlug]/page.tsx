@@ -204,7 +204,7 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
         </div>
         <h1 className="text-2xl font-black text-slate-900">Portal em Configuração</h1>
         <p className="mt-2 text-slate-500 max-w-md">
-          Esta escola ainda está configurando o catálogo de cursos para o próximo ano letivo. 
+          Esta escola ainda está configurando os níveis de ensino disponíveis para o próximo ano letivo.
           Por favor, tente novamente em breve ou contacte a secretaria.
         </p>
       </div>

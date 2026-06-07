@@ -1,3 +1,104 @@
+type TurmaDisplayInput = {
+  nome?: string | null;
+  turma_nome?: string | null;
+  turno?: string | null;
+  turma_turno?: string | null;
+};
+
+const TURMA_TURNO_LABELS: Record<string, string> = {
+  M: "Manhã",
+  MANHA: "Manhã",
+  MANHÃ: "Manhã",
+  MATUTINO: "Manhã",
+  T: "Tarde",
+  TARDE: "Tarde",
+  VESPERTINO: "Tarde",
+  N: "Noite",
+  NOITE: "Noite",
+  NOTURNO: "Noite",
+};
+
+const cleanTurmaToken = (value: string) =>
+  value
+    .replace(/[_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isInternalTurmaPrefix = (value: string) => /^[A-Z0-9]{2,6}$/.test(value);
+
+const joinTurmaLevelTokens = (tokens: string[]) =>
+  tokens
+    .filter(Boolean)
+    .join("-")
+    .replace(/\s*-\s*/g, "-")
+    .trim();
+
+const inferTurnoFromTurmaName = (nome?: string | null) => {
+  const rawParts = cleanTurmaToken(nome ?? "")
+    .split("-")
+    .map(cleanTurmaToken)
+    .filter(Boolean);
+
+  return rawParts.length >= 4 ? formatTurnoDisplay(rawParts[rawParts.length - 2]) : "";
+};
+
+export const formatTurnoDisplay = (turno?: string | null) => {
+  const cleaned = cleanTurmaToken(turno ?? "").replace(/[().-]/g, "").toUpperCase();
+  return TURMA_TURNO_LABELS[cleaned] ?? cleanTurmaToken(turno ?? "");
+};
+
+export const formatTurmaDisplayName = (turma: TurmaDisplayInput) => {
+  const originalName = cleanTurmaToken(turma.nome ?? turma.turma_nome ?? "");
+  if (!originalName) return "Sem turma";
+
+  const providedTurnoLabel = formatTurnoDisplay(turma.turno ?? turma.turma_turno);
+  const rawParts = originalName
+    .split("-")
+    .map(cleanTurmaToken)
+    .filter(Boolean);
+  const embeddedTurnoLabel = rawParts.length >= 4 ? formatTurnoDisplay(rawParts[rawParts.length - 2]) : "";
+  const turnoLabel = providedTurnoLabel || embeddedTurnoLabel;
+
+  if (rawParts.length >= 4 && formatTurnoDisplay(rawParts[rawParts.length - 2]) === turnoLabel) {
+    const turmaPart = rawParts[rawParts.length - 1];
+    const levelTokens = rawParts.slice(0, -2);
+    if (levelTokens.length > 1 && isInternalTurmaPrefix(levelTokens[0])) levelTokens.shift();
+
+    const levelName = joinTurmaLevelTokens(levelTokens);
+    if (levelName && turmaPart) return `${levelName} - Turma ${turmaPart}`;
+  }
+
+  const classMatch = originalName.match(/(\d{1,2}\s*[ªº]?\s*Classe)/i);
+  if (classMatch?.index == null) return originalName;
+
+  const className = cleanTurmaToken(classMatch[1].replace(/\s+/g, " "));
+  const suffix = originalName.slice(classMatch.index + classMatch[0].length);
+  const parts = suffix
+    .split("-")
+    .map(cleanTurmaToken)
+    .filter(Boolean)
+    .filter((part) => formatTurnoDisplay(part) !== turnoLabel);
+
+  const turmaPart = parts.find((part) => /^turma\s+/i.test(part)) ?? parts[0];
+  if (!turmaPart) return className;
+
+  const publicTurmaPart = /^turma\s+/i.test(turmaPart) ? turmaPart : `Turma ${turmaPart}`;
+  return `${className} - ${publicTurmaPart}`;
+};
+
+export const formatTurmaOptionDisplay = (
+  turma: TurmaDisplayInput,
+  disponibilidadeLabel?: string
+) => {
+  const parts = [
+    formatTurmaDisplayName(turma),
+    formatTurnoDisplay(turma.turno ?? turma.turma_turno) || inferTurnoFromTurmaName(turma.nome ?? turma.turma_nome),
+    disponibilidadeLabel,
+  ].filter(Boolean);
+
+  return parts.join(" - ");
+};
+
 export const formatTurmaName = (turma: any, includeCourse = false) => {
   const shortClasse = turma?.classes?.nome
     ? String(turma.classes.nome).replace(' Classe', '')
@@ -24,14 +125,11 @@ const TURMA_CURSO_LABELS: Record<string, string> = {
   TG: "Téc. Gestão",
 };
 
-const TURMA_TURNO_LABELS: Record<string, string> = {
-  M: "Manhã",
-  T: "Tarde",
-  N: "Noite",
-};
-
 export const formatTurmaNomeHumano = (raw?: string | null, cursoNome?: string | null) => {
   if (!raw) return "Sem nome";
+  const displayName = formatTurmaDisplayName({ nome: raw });
+  if (displayName !== raw) return displayName;
+
   const match = raw.trim().match(/^([A-Z]{2,4})-(\d{1,2})-([MTN])-(\w)$/i);
   if (!match) return raw;
 

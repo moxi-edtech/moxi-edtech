@@ -488,6 +488,7 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                     {vault.status === 'matriculado' ? 'Aluno Matriculado' : 'Situação do Candidato'}
                   </p>
                   <h3 className="text-2xl font-black text-slate-900">{vault.nome_completo}</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Nível de ensino</p>
                   <p className="text-sm text-slate-500 font-medium">{vault.curso}</p>
                 </div>
                 <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${vault.status === 'matriculado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>

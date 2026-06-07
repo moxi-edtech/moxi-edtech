@@ -3,6 +3,7 @@ import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -111,7 +112,7 @@ export default async function PublicComprovantePrintPage(props: {
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1">Vínculo Académico</h2>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="col-span-2">
-                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Curso / Classe</p>
+                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Nível de ensino / Classe</p>
                 <p className="font-semibold">{(snapshot.curso_nome || snapshot.classe_nome) ? `${snapshot.curso_nome || ''} - ${snapshot.classe_nome || ''}` : "—"}</p>
               </div>
               <div>
@@ -119,8 +120,12 @@ export default async function PublicComprovantePrintPage(props: {
                 <p className="font-semibold">{snapshot.ano_letivo || "—"}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Turma / Turno</p>
-                <p className="font-medium">{snapshot.turma_nome ? `${snapshot.turma_nome} (${snapshot.turma_turno || '—'})` : "—"}</p>
+                <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Classe/Turma / Turno</p>
+                <p className="font-medium">
+                  {snapshot.turma_nome
+                    ? `${formatTurmaDisplayName({ turma_nome: snapshot.turma_nome, turma_turno: snapshot.turma_turno })} (${formatTurnoDisplay(snapshot.turma_turno) || "—"})`
+                    : "—"}
+                </p>
               </div>
               <div className="col-span-2">
                 <p className="text-[10px] uppercase text-slate-400 font-sans font-bold">Data de Efectivação</p>

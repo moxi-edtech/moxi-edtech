@@ -15,6 +15,7 @@ import {
   Loader2,
   Search,
 } from "lucide-react";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 type TurmaItem = {
   id: string;
@@ -171,7 +172,7 @@ function buildClientHistoryId() {
 }
 
 function turmaLabel(turma: TurmaItem) {
-  return turma.turma_nome || turma.nome || "Turma sem nome";
+  return formatTurmaDisplayName(turma);
 }
 
 function uniqSorted(values: Array<string | null | undefined>) {

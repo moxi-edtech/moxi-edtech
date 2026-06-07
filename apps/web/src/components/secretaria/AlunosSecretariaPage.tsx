@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 import {
   AlertCircle,
   Archive,
@@ -1541,7 +1542,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                         <option value="">Todas</option>
                         {turmas.map((turma) => (
                           <option key={turma.id} value={turma.id}>
-                            {turma.nome}
+                            {formatTurmaDisplayName(turma)}
                           </option>
                         ))}
                       </select>

@@ -6,6 +6,7 @@ import { createIdempotencyKey } from '@/lib/idempotency'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from '@/components/feedback/FeedbackSystem';
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 import { Printer } from 'lucide-react'
 
@@ -133,7 +134,10 @@ export default function ProfessorFrequenciasPage() {
               <option value="">Turma</option>
               {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
                 <option key={tid} value={tid}>
-                  {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
+                  {(() => {
+                    const turma = atribs.find((a) => a.turma.id === tid)?.turma;
+                    return turma ? formatTurmaDisplayName(turma) : tid;
+                  })()}
                 </option>
               ))}
             </select>

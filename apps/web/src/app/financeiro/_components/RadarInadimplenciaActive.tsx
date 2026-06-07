@@ -13,6 +13,7 @@ import {
   Clock3,
 } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 // --- Tipos vindos da API (view vw_radar_inadimplencia) ---
 type RadarRowFromApi = {
@@ -282,7 +283,7 @@ export default function RadarInadimplenciaActive({
             numero_matricula: row.numero_matricula ?? null,
             responsavel: row.responsavel ?? "—",
             telefone: row.telefone ?? "",
-            turma: row.nome_turma ?? "—",
+            turma: row.nome_turma ? formatTurmaDisplayName({ turma_nome: row.nome_turma }) : "—",
             dias_atraso: row.dias_em_atraso ?? 0,
             valor_divida: Number(
               row.valor_em_atraso ?? row.valor_previsto ?? 0

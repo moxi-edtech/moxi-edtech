@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 import {
   UserPlusIcon,
   CheckCircleIcon,
@@ -906,10 +907,11 @@ export default function AlunosPage() {
                                 />
                                 <div>
                                   <p className="font-bold text-gray-900">
-                                    {turma.nome} ({turmaCodigo(turma)})
+                                    {formatTurmaDisplayName(turma)}
+                                    {turmaCodigo(turma) ? ` (${turmaCodigo(turma)})` : ""}
                                   </p>
                                   <p className="text-xs text-gray-500 flex gap-2">
-                                    <span>Turno: {turma.turno || "N/D"}</span>
+                                    <span>Turno: {formatTurnoDisplay(turma.turno) || "N/D"}</span>
                                     <span className="text-gray-300">•</span>
                                     <span>Ano: {turma.ano_letivo ?? turma.ano ?? formData.anoLetivo}</span>
                                   </p>

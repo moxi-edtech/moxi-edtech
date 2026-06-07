@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BarChart3, Filter } from "lucide-react";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 type TurmaOption = { id: string; nome: string; codigo: string | null; turno: string | null };
 type PeriodoOption = { id: string; numero: number | null; tipo: string | null };
@@ -89,7 +90,9 @@ export default function MapaAproveitamentoClient() {
               <option value="">Selecione a turma</option>
               {turmas.map((turma) => (
                 <option key={turma.id} value={turma.id}>
-                  {turma.nome} {turma.codigo ? `(${turma.codigo})` : ""}
+                  {formatTurmaDisplayName(turma)}
+                  {turma.turno ? ` - ${formatTurnoDisplay(turma.turno)}` : ""}
+                  {turma.codigo ? ` (${turma.codigo})` : ""}
                 </option>
               ))}
             </select>

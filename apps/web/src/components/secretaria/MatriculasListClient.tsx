@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 import StatusForm from "./StatusForm";
 import TransferForm from "./TransferForm";
@@ -591,7 +592,7 @@ export default function MatriculasListClient() {
             <option value="">Turma</option>
             {turmas.map((turma) => (
               <option key={turma.id} value={turma.id}>
-                {turma.nome}
+                {formatTurmaDisplayName(turma)}
               </option>
             ))}
           </select>
@@ -615,7 +616,9 @@ export default function MatriculasListClient() {
 
             {turmaIdFromQuery && (
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200/70">
-                <span className="truncate max-w-[200px]">Turma: {items[0]?.turma_nome || turmaIdFromQuery}</span>
+                <span className="truncate max-w-[200px]">
+                  Turma: {items[0]?.turma_nome ? formatTurmaDisplayName({ turma_nome: items[0].turma_nome }) : turmaIdFromQuery}
+                </span>
                 <button
                   onClick={() => replaceParams((p) => { p.delete("turma_id"); p.delete("page"); })}
                   className="ml-1 hover:text-violet-900"

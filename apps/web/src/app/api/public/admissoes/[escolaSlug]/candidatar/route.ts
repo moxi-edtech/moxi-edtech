@@ -22,7 +22,7 @@ const CandidaturaSchema = z.object({
   responsavel_contato: z.string().trim().min(7, "Contato do responsável inválido"),
   
   // Dados Acadêmicos Pretendidos
-  curso_id: z.string().uuid("Curso obrigatório"),
+  curso_id: z.string().uuid("Nível de ensino obrigatório"),
   ano_letivo: z.coerce.number().int(),
   turma_preferencial_id: z.string().uuid().optional().nullable().transform(v => v === "" ? null : v),
   turno: z.string().optional().nullable().transform(v => v === "" ? null : v),
@@ -144,7 +144,7 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
       {
         ok: false,
         code: "ADMISSION_DUPLICATE_DOCUMENT",
-        error: "Já existe uma candidatura com este documento para este curso e ano letivo.",
+        error: "Já existe uma candidatura com este documento para este nível de ensino e ano letivo.",
       },
       { status: 409 }
     );
@@ -155,7 +155,7 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
       {
         ok: false,
         code: "ADMISSION_DUPLICATE_GUARDIAN_CONTACT",
-        error: "Já existe uma candidatura com este nome e contato do encarregado para este curso e ano letivo.",
+        error: "Já existe uma candidatura com este nome e contato do encarregado para este nível de ensino e ano letivo.",
       },
       { status: 409 }
     );
@@ -166,7 +166,7 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
       {
         ok: false,
         code: "ADMISSION_DUPLICATE_STUDENT_CONTACT",
-        error: "Já existe uma candidatura com este nome e telefone do aluno para este curso e ano letivo.",
+        error: "Já existe uma candidatura com este nome e telefone do aluno para este nível de ensino e ano letivo.",
       },
       { status: 409 }
     );
@@ -176,7 +176,7 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
     {
       ok: false,
       code: "ADMISSION_DUPLICATE",
-      error: "Já existe uma candidatura com estes dados para este curso e ano letivo.",
+      error: "Já existe uma candidatura com estes dados para este nível de ensino e ano letivo.",
     },
     { status: 409 }
   );
@@ -297,13 +297,13 @@ export async function POST(
     ]);
 
     if (!courseCheck.data) {
-      return NextResponse.json({ ok: false, error: "Curso inválido para esta escola" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Nível de ensino inválido para esta escola" }, { status: 400 });
     }
     if (!turmaCheck.data) {
-      return NextResponse.json({ ok: false, error: "Turma inválida para esta escola" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Classe/turma inválida para esta escola" }, { status: 400 });
     }
     if (data.turma_preferencial_id && turmaCheck.data.curso_id !== data.curso_id) {
-      return NextResponse.json({ ok: false, error: "Turma inválida para o curso selecionado" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Classe/turma inválida para o nível de ensino selecionado" }, { status: 400 });
     }
 
     const turmaAnoLetivo = Number(turmaCheck.data.ano_letivo);
@@ -331,7 +331,7 @@ export async function POST(
 
       if (ocupacaoError) {
         console.error("[Public Admission Occupancy Error]:", ocupacaoError);
-        return NextResponse.json({ ok: false, error: "Erro ao validar disponibilidade da turma." }, { status: 500 });
+        return NextResponse.json({ ok: false, error: "Erro ao validar disponibilidade da classe/turma." }, { status: 500 });
       }
 
       disponibilidade = disponibilidadePublica(
@@ -486,7 +486,7 @@ const { data: candidatura, error: insertErr } = await supabase
       to_status: statusInicial,
       motivo:
         statusInicial === "lista_espera"
-          ? "Candidatura pública em lista de espera por turma lotada"
+          ? "Candidatura pública em lista de espera por classe/turma lotada"
           : "Candidatura pública submetida",
       metadata: {
         source: "public_form",

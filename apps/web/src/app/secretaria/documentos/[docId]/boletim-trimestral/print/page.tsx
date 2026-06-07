@@ -4,6 +4,7 @@ import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -132,8 +133,8 @@ export default async function BoletimTrimestralPrintPage({
               Declara-se, para os devidos efeitos, que <strong>{typeof snapshot.aluno_nome === "string" ? snapshot.aluno_nome : "—"}</strong>,
               portador do BI nº <strong>{typeof snapshot.aluno_bi === "string" ? snapshot.aluno_bi : "—"}</strong>, está regularmente
               matriculado na <strong>{typeof snapshot.classe_nome === "string" ? snapshot.classe_nome : "—"}</strong>, Turma
-              <strong> {typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : "—"}</strong>, Turno
-              <strong> {typeof snapshot.turma_turno === "string" ? snapshot.turma_turno : "—"}</strong>, no ano letivo
+              <strong> {typeof snapshot.turma_nome === "string" ? formatTurmaDisplayName({ turma_nome: snapshot.turma_nome, turma_turno: typeof snapshot.turma_turno === "string" ? snapshot.turma_turno : null }) : "—"}</strong>, Turno
+              <strong> {typeof snapshot.turma_turno === "string" ? formatTurnoDisplay(snapshot.turma_turno) : "—"}</strong>, no ano letivo
               <strong> {typeof snapshot.ano_letivo === "string" || typeof snapshot.ano_letivo === "number" ? String(snapshot.ano_letivo) : "—"}</strong>, tendo obtido o seguinte aproveitamento
               pedagógico:
             </p>
