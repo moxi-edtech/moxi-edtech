@@ -19,6 +19,9 @@ export type PagamentoPendenteRow = {
   reference: string | null;
   metodo: string | null;
   created_at: string;
+  tipo_entidade: 'mensalidade' | 'servico';
+  servico_codigo: string | null;
+  servico_nome: string | null;
 };
 
 type ValidarPagamentoReturn = {

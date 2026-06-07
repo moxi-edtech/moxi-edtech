@@ -9,6 +9,7 @@ import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHistoricoTimelineSection";
 import { QuickEditField } from "@/components/aluno/QuickEditField";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { PushSettings } from "@/components/aluno/PushSettings";
 
 export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   const p = aluno.perfil;
@@ -29,6 +30,8 @@ export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
 
   return (
     <div className="space-y-4">
+      <PushSettings escolaId={aluno.perfil.escola_id} />
+      
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
           Identificação

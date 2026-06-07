@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import { preloadPortalData } from "../usePortalSWR";
+import { useSearchParams } from "next/navigation";
 
 type NavItem = {
   href: string;
@@ -7,6 +9,7 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   badge?: number;
+  preload?: { keys: string[]; urls: string[] };
 };
 
 type Props = {
@@ -16,6 +19,18 @@ type Props = {
 };
 
 export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
+  const searchParams = useSearchParams();
+  const studentId = searchParams?.get("aluno") ?? null;
+
+  const handlePreload = (item: NavItem) => {
+    if (!item.preload) return;
+    
+    item.preload.keys.forEach((key, idx) => {
+      const url = item.preload?.urls[idx];
+      if (url) void preloadPortalData(key, url);
+    });
+  };
+
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur"
@@ -23,7 +38,8 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
       aria-label="Navegação do portal do aluno"
     >
       <div className="mx-auto grid w-full max-w-5xl grid-cols-5 gap-2 px-2 py-2">
-        {items.map(({ href, path, label, icon: Icon, badge }) => {
+        {items.map((item) => {
+          const { href, path, label, icon: Icon, badge } = item;
           const active =
             activePath === href ||
             activePath.startsWith(`${href}/`) ||
@@ -33,6 +49,8 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
             key={href}
             href={withAlunoParam(href)}
             prefetch
+            onPointerEnter={() => handlePreload(item)}
+            onTouchStart={() => handlePreload(item)}
             className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-semibold transition ${
               active
                 ? "bg-klasse-green-50 text-klasse-green-700"

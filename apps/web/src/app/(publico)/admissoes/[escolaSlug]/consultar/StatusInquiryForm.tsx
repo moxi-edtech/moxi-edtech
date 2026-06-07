@@ -48,6 +48,8 @@ type VaultData = {
   reserva_expira_at: string | null;
   valor_esperado?: number | null;
   comprovativo_url?: string;
+  portal_login?: string | null;
+  login_url?: string | null;
   pendencias?: Array<{ id: string; label: string; motivo?: string }>;
   historico_pendencias?: Array<{
     id: string;
@@ -198,6 +200,11 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao definir senha");
 
+      setVault(current => current ? {
+        ...current,
+        portal_login: data.login || current.portal_login,
+        login_url: data.loginUrl || current.login_url || "/login"
+      } : current);
       setPassPassSaved(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao definir senha");
@@ -691,8 +698,11 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                             <p className="mt-1 font-mono text-base font-black text-emerald-950">{vault ? basicData?.protocolo_publico || basicData?.protocolo || protocolo : protocolo}</p>
                           </div>
                         </div>
-                        <p className="mt-4 text-xs font-semibold leading-relaxed text-emerald-800">
-                          Dirija-se à secretaria com este protocolo. A escola registará o pagamento em dinheiro e efetivará a matrícula no sistema. Não é necessário enviar comprovativo pelo portal para pagamento em dinheiro.
+                        <p className="mt-4 text-xs font-black uppercase tracking-widest text-emerald-700">
+                          Próximo passo
+                        </p>
+                        <p className="mt-1 text-xs font-semibold leading-relaxed text-emerald-800">
+                          Dirija-se à secretaria com este protocolo para pagar no balcão. A escola registará o pagamento em dinheiro e efetivará a matrícula no sistema. Não é necessário enviar comprovativo pelo portal para pagamento em dinheiro.
                         </p>
                       </div>
                     )}
@@ -847,14 +857,40 @@ export default function StatusInquiryForm({ escolaSlug }: { escolaSlug: string }
                         O acesso ao portal será liberado após a confirmação da matrícula.
                       </p>
                     </div>
+                  ) : !vault.pode_mudar_senha ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-xs font-semibold leading-relaxed text-amber-800">
+                        A matrícula foi efetivada. A secretaria ainda precisa liberar o acesso digital do aluno antes da criação da senha.
+                      </p>
+                    </div>
                   ) : passSaved ? (
-                    <div className="bg-green-100 text-green-700 p-4 rounded-xl flex items-center gap-3 text-sm font-bold animate-in zoom-in-95">
-                      <CheckCircle2 size={20} />
-                      Senha configurada com sucesso!
+                    <div className="rounded-xl border border-green-100 bg-green-50 p-4 text-sm animate-in zoom-in-95">
+                      <div className="flex items-center gap-3 font-bold text-green-700">
+                        <CheckCircle2 size={20} />
+                        Senha configurada com sucesso!
+                      </div>
+                      {vault.portal_login && (
+                        <div className="mt-3 rounded-lg bg-white p-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Usuário do portal</p>
+                          <p className="mt-1 font-mono text-sm font-black text-slate-900">{vault.portal_login}</p>
+                        </div>
+                      )}
+                      <Link
+                        href={vault.login_url || "/login"}
+                        className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-black text-white transition hover:bg-slate-800"
+                      >
+                        Entrar no Portal do Aluno
+                      </Link>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       <p className="text-xs text-slate-500">Defina uma senha para acompanhar notas e faturas no portal.</p>
+                      {vault.portal_login && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Usuário do portal</p>
+                          <p className="mt-1 font-mono text-sm font-black text-slate-900">{vault.portal_login}</p>
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <input

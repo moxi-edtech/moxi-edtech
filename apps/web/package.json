@@ -60,6 +60,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
@@ -72,6 +73,7 @@
     "@next/swc-wasm-nodejs": "15.5.7",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/react": "^19.2.2",
+    "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
     "autoprefixer": "^10.4.22",

@@ -130,6 +130,22 @@ const CONVERTIBLE_STATUSES: AdmissaoStatus[] = ['aprovada', 'aguardando_pagament
 const REOPENABLE_STATUSES: AdmissaoStatus[] = ['rejeitada', 'arquivada', 'arquivado']
 const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera', 'rejeitada']
 const DOCUMENT_CORRECTION_STATUSES: AdmissaoStatus[] = ['submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: 'Dinheiro',
+  TPA: 'TPA',
+  TRANSFERENCIA: 'Transferência',
+}
+
+function formatPaymentMethod(value?: unknown) {
+  const key = typeof value === 'string' ? value.toUpperCase() : ''
+  return PAYMENT_METHOD_LABELS[key] || 'Transferência'
+}
+
+function getConversionActionLabel(status: AdmissaoStatus) {
+  if (status === 'aguardando_compensacao') return 'Validar Pagamento e Matricular'
+  if (status === 'aguardando_pagamento') return 'Registar Pagamento e Matricular'
+  return 'Efetivar Matrícula'
+}
 
 function canRejectAdmission(status: AdmissaoStatus) {
   return REJECTABLE_STATUSES.includes(status)
@@ -1151,7 +1167,7 @@ export default function AdmissoesInboxClient({
                             />
                             <DataField
                               label="Método"
-                              value={selectedData.dados_candidato?.pagamento?.metodo || 'TRANSFERENCIA'}
+                              value={formatPaymentMethod(selectedData.dados_candidato?.pagamento?.metodo)}
                             />
                           </div>
 
@@ -1178,7 +1194,7 @@ export default function AdmissoesInboxClient({
                             className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-11 font-bold"
                             onClick={() => setIsConversionOpen(true)}
                           >
-                            Validar e Matricular
+                            {selectedData.status === 'aguardando_compensacao' ? 'Validar Pagamento e Matricular' : 'Registar Pagamento e Matricular'}
                           </Button>
                         </div>
                       </section>
@@ -1402,7 +1418,7 @@ export default function AdmissoesInboxClient({
                         className="flex items-center gap-3 px-10 py-4 bg-[#E3B23C] text-white rounded-2xl font-bold shadow-xl shadow-klasse-gold/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95"
                       >
                         <Check className="h-5 w-5" />
-                        Efetivar Matrícula
+                        {getConversionActionLabel(selectedData.status)}
                       </button>
                     )}
                   </div>

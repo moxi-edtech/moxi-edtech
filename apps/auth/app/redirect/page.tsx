@@ -21,20 +21,41 @@ function isLocalOrigin(value: string) {
   return (
     v.includes("localhost") ||
     v.includes("127.0.0.1") ||
+    /^https?:\/\/(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}(?::\d+)?(?:\/|$)/.test(v) ||
+    /^(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}(?::\d+)?$/.test(v) ||
     v.includes(".localhost") ||
     v.includes(".lvh.me")
   );
 }
 
-function resolveProductBases(host: string, redirectHint?: string) {
-  const hostIsLocal = isLocalOrigin(host) || isLocalOrigin(redirectHint ?? "");
+function getPrivateLanHostname(value: string) {
+  const raw = value.trim().toLowerCase();
+  try {
+    const parsed = new URL(raw.startsWith("http://") || raw.startsWith("https://") ? raw : `http://${raw}`);
+    const hostname = parsed.hostname;
+    return /^(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}$/.test(hostname) ? hostname : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveProductBases(host: string, ...redirectHints: Array<string | null | undefined>) {
+  const hostIsLocal = isLocalOrigin(host) || redirectHints.some((hint) => isLocalOrigin(hint ?? ""));
   const isLocalHost = hostIsLocal && process.env.NODE_ENV !== "production";
 
   if (isLocalHost) {
+    const lanHostname = getPrivateLanHostname(host) || redirectHints.map((hint) => getPrivateLanHostname(hint ?? "")).find(Boolean);
+    if (lanHostname) {
+      return {
+        k12: `http://${lanHostname}:3001`,
+        formacao: `http://${lanHostname}:3002`,
+      };
+    }
+
     const prefersLocalhost =
       host.includes("localhost") ||
       host.includes(".localhost") ||
-      (isLocalOrigin(redirectHint ?? "") && (redirectHint ?? "").toLowerCase().includes("localhost"));
+      redirectHints.some((hint) => isLocalOrigin(hint ?? "") && String(hint ?? "").toLowerCase().includes("localhost"));
 
     if (prefersLocalhost) {
       return {
@@ -140,6 +161,8 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     .split(",")[0]
     .trim()
     .toLowerCase();
+  const originHint = headerStore.get("origin");
+  const refererHint = headerStore.get("referer");
 
   const isResolverTarget = (url: string | null) => {
     if (!url) return false;
@@ -153,7 +176,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
 
   const cachedContext = await getTenantContextCookieForUser(user.id);
   if (cachedContext) {
-    const bases = resolveProductBases(host, params.redirect);
+    const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
     const destinationConfig = resolveTenantRoute({
       tenantId: cachedContext.tenant_id,
       tenantSlug: cachedContext.tenant_slug,
@@ -182,7 +205,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const globalRole = await resolveGlobalRole(supabase, user.id, user.user_metadata, user.app_metadata);
 
   if (tenants.length === 0 && globalRole) {
-    const bases = resolveProductBases(host, params.redirect);
+    const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
     const productBase = bases.k12;
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
     const destination = preferred && !isResolverTarget(preferred)
@@ -223,7 +246,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const selected = tenants[0];
   const destinationConfig = resolveTenantRoute(selected);
 
-  const bases = resolveProductBases(host, params.redirect);
+  const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
   const preferred = normalizeRedirectTarget(params.redirect, productBase);
   const destination = preferred && !isResolverTarget(preferred)

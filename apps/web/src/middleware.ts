@@ -298,6 +298,24 @@ function isInternalPath(path: string) {
   return path.startsWith('/') && !path.startsWith('//') && !path.includes('://');
 }
 
+function resolveRequestedLoginReturnTo(request: NextRequest) {
+  const requested = request.nextUrl.searchParams.get('redirect');
+  if (!requested) return request.nextUrl.origin + '/redirect';
+
+  try {
+    const target = requested.startsWith('/')
+      ? new URL(requested, request.nextUrl.origin)
+      : new URL(requested);
+
+    if (target.origin !== request.nextUrl.origin) return request.nextUrl.origin + '/redirect';
+    if (isRedirectPath(target.pathname) || target.pathname === '/login') return request.nextUrl.origin + '/redirect';
+
+    return target.toString();
+  } catch {
+    return request.nextUrl.origin + '/redirect';
+  }
+}
+
 function pathRequiresK12Model(pathname: string): boolean {
   return (
     pathname.startsWith('/admin') ||
@@ -585,13 +603,17 @@ export async function middleware(request: NextRequest) {
     const fastAuthContext = await resolveAuthContextFromTenantCookie(request);
     if (fastAuthContext) {
       console.info(`[Middleware:Web] User already has session. Skipping login redirect.`);
-      const dest = getLandingPathByContext(fastAuthContext);
+      const requestedReturnTo = resolveRequestedLoginReturnTo(request);
+      const requestedUrl = new URL(requestedReturnTo);
+      const dest = !isRedirectPath(requestedUrl.pathname) && requestedUrl.pathname !== '/login'
+        ? `${requestedUrl.pathname}${requestedUrl.search}`
+        : getLandingPathByContext(fastAuthContext);
       return NextResponse.redirect(new URL(dest, request.nextUrl.origin));
     }
 
     console.info(`[Middleware:Web] Intercepted ${pathname} for host ${host}. Redirecting to Central Auth.`);
     const centralLogin = new URL(resolveUniversalLoginUrl(host));
-    centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
+    centralLogin.searchParams.set('redirect', resolveRequestedLoginReturnTo(request));
     return NextResponse.redirect(centralLogin);
   }
 

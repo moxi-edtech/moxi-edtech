@@ -564,6 +564,78 @@ export type Database = {
         }
         Relationships: []
       }
+      aluno_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          escola_id: string
+          id: string
+          p256dh: string
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          escola_id: string
+          id?: string
+          p256dh: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          escola_id?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aluno_push_subscriptions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_push_subscriptions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_push_subscriptions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "aluno_push_subscriptions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "aluno_push_subscriptions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       alunos: {
         Row: {
           acesso_bloqueado: boolean
@@ -12805,6 +12877,7 @@ export type Database = {
           lida_em: string | null
           modal_id: string | null
           prioridade: Database["public"]["Enums"]["notificacao_prioridade"]
+          push_processed: boolean | null
           tipo: string | null
           titulo: string
         }
@@ -12825,6 +12898,7 @@ export type Database = {
           lida_em?: string | null
           modal_id?: string | null
           prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          push_processed?: boolean | null
           tipo?: string | null
           titulo: string
         }
@@ -12845,6 +12919,7 @@ export type Database = {
           lida_em?: string | null
           modal_id?: string | null
           prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          push_processed?: boolean | null
           tipo?: string | null
           titulo?: string
         }
@@ -14976,6 +15051,91 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sistemas_notas"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      rematricula_janelas: {
+        Row: {
+          ano_letivo: number
+          ativa: boolean
+          created_at: string
+          created_by: string | null
+          data_fim: string
+          data_inicio: string
+          escola_id: string
+          id: string
+          observacao: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ano_letivo: number
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_fim: string
+          data_inicio: string
+          escola_id: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ano_letivo?: number
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string
+          data_inicio?: string
+          escola_id?: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rematricula_janelas_ano_fk"
+            columns: ["escola_id", "ano_letivo"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["escola_id", "ano"]
+          },
+          {
+            foreignKeyName: "rematricula_janelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rematricula_janelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rematricula_janelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "rematricula_janelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "rematricula_janelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -20749,6 +20909,7 @@ export type Database = {
           month_start: string
         }[]
       }
+      admin_force_refresh_financial_mvs: { Args: never; Returns: Json }
       admin_get_escola_health_metrics: { Args: never; Returns: Json[] }
       admin_get_storage_usage: {
         Args: { p_bucket_ids?: string[]; p_limit?: number }
@@ -20782,10 +20943,6 @@ export type Database = {
           nome: string
           user_id: string
         }[]
-      }
-      admin_force_refresh_financial_mvs: {
-        Args: never
-        Returns: Json
       }
       admin_recalc_all_aggregates: { Args: never; Returns: Json }
       admissao_approve: {
@@ -20928,6 +21085,28 @@ export type Database = {
           p_source?: string
         }
         Returns: string
+      }
+      aluno_atualizar_contatos_proprios: {
+        Args: {
+          p_aluno_id: string
+          p_email?: string
+          p_endereco?: string
+          p_escola_id: string
+          p_telefone?: string
+        }
+        Returns: {
+          email: string
+          endereco: string
+          telefone: string
+        }[]
+      }
+      aluno_confirmar_rematricula: {
+        Args: { p_matricula_id: string }
+        Returns: {
+          candidatura_id: string
+          next_ano: number
+          reused: boolean
+        }[]
       }
       aluno_submeter_comprovativo_pagamento: {
         Args: {
@@ -21495,6 +21674,10 @@ export type Database = {
         Returns: Json
       }
       emitir_recibo: { Args: { p_mensalidade_id: string }; Returns: Json }
+      emitir_recibo_system: {
+        Args: { p_mensalidade_id: string }
+        Returns: Json
+      }
       enqueue_outbox_event: {
         Args: {
           p_escola_id: string

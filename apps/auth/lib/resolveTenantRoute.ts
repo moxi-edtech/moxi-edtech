@@ -15,6 +15,11 @@ export function resolveTenantRoute(tenant: UserTenant): { product: ProductContex
     return { product: "formacao", path: "/admin/dashboard" };
   }
 
-  // For K12, always hand off to app redirect resolver so school slug/context is respected.
+  if (tenant.role === "aluno" || tenant.role === "encarregado") {
+    const escolaParam = tenant.tenantSlug || tenant.tenantId;
+    return { product: "k12", path: `/escola/${escolaParam}/aluno/dashboard` };
+  }
+
+  // For remaining K12 roles, hand off to app redirect resolver so admin/onboarding gates are respected.
   return { product: "k12", path: "/redirect" };
 }

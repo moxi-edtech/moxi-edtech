@@ -80,6 +80,14 @@ type TurmaOption = {
   curso_id?: string | null
 }
 
+type PaymentMethod = 'CASH' | 'TPA' | 'TRANSFERENCIA'
+
+const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string; helper: string }> = [
+  { value: 'CASH', label: 'Dinheiro', helper: 'Pagamento no balcão' },
+  { value: 'TPA', label: 'TPA', helper: 'Terminal físico' },
+  { value: 'TRANSFERENCIA', label: 'Transferência', helper: 'Conta/IBAN' },
+]
+
 type ConvertResponse = {
   ok?: boolean
   error?: string
@@ -135,7 +143,7 @@ export function AdmissaoConversionSheet({
     classeId: ''
   })
   const [payment, setPayment] = useState({
-    metodo: 'CASH' as 'CASH' | 'TPA' | 'TRANSFERENCIA',
+    metodo: 'CASH' as PaymentMethod,
     referencia: '',
     amount: '',
     parcial: false,
@@ -210,7 +218,7 @@ export function AdmissaoConversionSheet({
           if (item.dados_candidato?.pagamento) {
             const p = item.dados_candidato.pagamento;
             const metodo = ['CASH', 'TPA', 'TRANSFERENCIA'].includes(p.metodo ?? '')
-              ? p.metodo as 'CASH' | 'TPA' | 'TRANSFERENCIA'
+              ? p.metodo as PaymentMethod
               : 'TRANSFERENCIA';
             setPayment({
               metodo,
@@ -903,18 +911,23 @@ export function AdmissaoConversionSheet({
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-700">Método de Pagamento</label>
                     <div className="grid grid-cols-3 gap-2">
-                      {(['CASH', 'TPA', 'TRANSFERENCIA'] as const).map(m => (
+                      {PAYMENT_METHOD_OPTIONS.map(option => (
                         <button
-                          key={m}
+                          key={option.value}
                           type="button"
-                          onClick={() => setPayment(p => ({ ...p, metodo: m }))}
+                          onClick={() => setPayment(p => ({ ...p, metodo: option.value }))}
                           className={`py-3 px-2 rounded-xl text-[10px] font-black border transition-all ${
-                            payment.metodo === m 
+                            payment.metodo === option.value
                               ? 'bg-slate-900 text-white border-slate-900' 
                               : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
-                          {m}
+                          <span className="block">{option.label}</span>
+                          <span className={`mt-1 block text-[9px] font-semibold normal-case ${
+                            payment.metodo === option.value ? 'text-white/70' : 'text-slate-400'
+                          }`}>
+                            {option.helper}
+                          </span>
                         </button>
                       ))}
                     </div>

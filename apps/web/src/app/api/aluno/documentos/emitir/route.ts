@@ -48,6 +48,29 @@ export async function POST(req: Request) {
     const { type } = parsed.data
     const { escolaId, alunoId, matriculaId, anoLetivo } = ctx
 
+    // --- SEGURANÇA: Verificar se o aluno tem permissão (serviço pago/liberado) ---
+    const serviceCode = type === 'boletim' ? 'DOC_DECLARACAO_NOTAS' : 'DOC_DECLARACAO_FREQ';
+    
+    const { data: permission, error: permError } = await supabase
+      .from('servico_pedidos')
+      .select('status')
+      .eq('escola_id', escolaId)
+      .eq('aluno_id', alunoId)
+      .eq('servico_codigo', serviceCode)
+      .eq('status', 'granted')
+      .limit(1)
+      .maybeSingle();
+
+    if (permError) throw permError;
+    
+    if (!permission) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Acesso negado. Este documento requer solicitação prévia e confirmação de pagamento pela secretaria.' 
+      }, { status: 403 });
+    }
+    // ----------------------------------------------------------------------------
+
     if (type === 'declaracao') {
       const { data: comprovante, error: comprovanteError } = await supabase
         .from('documentos_emitidos')

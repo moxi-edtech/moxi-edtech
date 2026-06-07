@@ -6,6 +6,8 @@ import { Bell, BookOpen, FileText, Home, Wallet, Clock, IdCard, Settings } from 
 import { createClient } from "@/lib/supabaseClient";
 import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
 import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
+import { NetworkStatus } from "@/components/aluno/layout/NetworkStatus";
+import { PWAInstallPrompt } from "@/components/aluno/layout/PWAInstallPrompt";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 
 type Educando = { id: string; nome: string; escola_id: string | null };
@@ -149,10 +151,34 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
   const navItems = useMemo(
     () =>
       [
-        { path: "/aluno/dashboard", label: "Início", icon: Home },
+        { 
+          path: "/aluno/dashboard", 
+          label: "Início", 
+          icon: Home,
+          preload: {
+            keys: [`home-status-${alunoSelecionado ?? "default"}`, `home-alert-${alunoSelecionado ?? "default"}`],
+            urls: [`/api/aluno/home/status?studentId=${alunoSelecionado}`, `/api/aluno/home/finance-alert?studentId=${alunoSelecionado}`]
+          }
+        },
         { path: "/aluno/horario", label: "Horário", icon: Clock },
-        { path: "/aluno/academico", label: "Académico", icon: BookOpen },
-        { path: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
+        { 
+          path: "/aluno/academico", 
+          label: "Académico", 
+          icon: BookOpen,
+          preload: {
+            keys: [`academic-disciplinas-${alunoSelecionado ?? "default"}`],
+            urls: [`/api/aluno/academico/disciplinas?studentId=${alunoSelecionado}`]
+          }
+        },
+        { 
+          path: "/aluno/financeiro", 
+          label: "Financeiro", 
+          icon: Wallet,
+          preload: {
+            keys: [`finance-status-${alunoSelecionado ?? "default"}`],
+            urls: [`/api/aluno/financeiro/status?studentId=${alunoSelecionado}`]
+          }
+        },
         { path: "/aluno/identidade", label: "ID Digital", icon: IdCard },
         { path: "/aluno/documentos", label: "Documentos", icon: FileText },
         { path: "/aluno/avisos", label: "Avisos", icon: Bell },
@@ -161,7 +187,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
         ...item,
         href: buildPortalHref(navEscolaParam, item.path),
       })),
-    [navEscolaParam],
+    [navEscolaParam, alunoSelecionado],
   );
 
   const withAlunoParam = useCallback((href: string) => {
@@ -198,11 +224,15 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
         homeHref={withAlunoParam(navItems[0]?.href ?? buildPortalHref(navEscolaParam, "/aluno/dashboard"))}
       />
 
+      <NetworkStatus />
+
       <main className="mx-auto w-full max-w-5xl px-4 py-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
         <div className="rounded-2xl bg-white p-4 shadow-sm md:p-6">{children}</div>
 
         <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />
       </main>
+
+      <PWAInstallPrompt />
     </div>
   );
 }

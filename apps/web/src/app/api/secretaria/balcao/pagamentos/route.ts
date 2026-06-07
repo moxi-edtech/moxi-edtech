@@ -286,7 +286,10 @@ async function confirmPagamentoIntent({
   }
 
   const normalizedMetodo = metodo === "kwik" ? "kiwk" : metodo;
-  const newStatus = normalizedMetodo === "cash" ? "settled" : "pending";
+  // No balcão físico, se a secretária está processando TPA/Transfer, ela já viu o comprovativo.
+  // Portanto, liquidamos imediatamente para permitir a emissão do documento.
+  const isBalcaoEmissao = meta.origem === "documentos_emissao";
+  const newStatus = (normalizedMetodo === "cash" || isBalcaoEmissao) ? "settled" : "pending";
 
   await supabase
     .from("pagamento_intents")
