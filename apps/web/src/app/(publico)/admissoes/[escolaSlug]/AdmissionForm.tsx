@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { 
   User, 
   GraduationCap, 
@@ -8,13 +8,9 @@ import {
   ArrowRight, 
   ArrowLeft, 
   Loader2,
-  Calendar,
-  Phone,
-  Mail,
   School,
   Clock,
   MessageCircle,
-  ExternalLink,
   ShieldCheck,
   FileText,
   Search,
@@ -24,7 +20,6 @@ import Link from "next/link";
 
 import { PublicHero } from "./components/PublicHero";
 import { CourseCatalog } from "./components/CourseCatalog";
-import { FloatingSupport } from "./components/FloatingSupport";
 import { DocumentUpload } from "./DocumentUpload";
 import { v4 as uuidv4 } from "uuid";
 
@@ -38,6 +33,10 @@ export type AdmissionConfig = {
     config_portal?: {
       whatsapp_suporte?: string;
       documentos_obrigatorios?: string[]; // IDs como 'bi_aluno', 'notas', etc.
+      documentos_admissao_catalogo?: Array<{
+        id: string;
+        label: string;
+      }>;
       campos_extras?: Array<{
         id: string;
         label: string;
@@ -68,7 +67,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   const [protocolo, setProtocolo] = useState("");
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [draftId] = useState(() => uuidv4());
+  const [draftId, setDraftId] = useState(() => uuidv4());
   const [hasDraft, setHasDraft] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -91,38 +90,54 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     campos_extras: {} as Record<string, string>,
   });
 
+  type DraftPayload = {
+    draftId?: string;
+    formData?: typeof formData;
+  };
+
+  const draftStorageKey = `klasse_admission_draft_${config.escola.id}`;
+
+  const parseDraftPayload = useCallback((saved: string): DraftPayload | null => {
+    const parsed = JSON.parse(saved) as DraftPayload | typeof formData;
+    if (parsed && typeof parsed === "object" && "formData" in parsed) return parsed as DraftPayload;
+    return { formData: parsed as typeof formData };
+  }, []);
+
   // Draft Load
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(`klasse_admission_draft_${config.escola.id}`);
+      const saved = localStorage.getItem(draftStorageKey);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.nome_completo || parsed.responsavel_nome) {
+        const parsed = parseDraftPayload(saved);
+        const savedFormData = parsed?.formData;
+        if (savedFormData?.nome_completo || savedFormData?.responsavel_nome || savedFormData?.curso_id) {
           setHasDraft(true);
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
-  }, [config.escola.id]);
+  }, [draftStorageKey, parseDraftPayload]);
 
   // Draft Save
   useEffect(() => {
     if (formData.nome_completo || formData.responsavel_nome || formData.curso_id) {
-      localStorage.setItem(`klasse_admission_draft_${config.escola.id}`, JSON.stringify(formData));
+      localStorage.setItem(draftStorageKey, JSON.stringify({ draftId, formData }));
     }
-  }, [formData, config.escola.id]);
+  }, [draftId, draftStorageKey, formData]);
 
   const handleRestoreDraft = () => {
     try {
-      const saved = localStorage.getItem(`klasse_admission_draft_${config.escola.id}`);
+      const saved = localStorage.getItem(draftStorageKey);
       if (saved) {
-        setFormData(JSON.parse(saved));
+        const parsed = parseDraftPayload(saved);
+        if (parsed?.draftId) setDraftId(parsed.draftId);
+        if (parsed?.formData) setFormData(parsed.formData);
         setHasDraft(false);
         setStep(2); // Vai direto para os dados
         document.getElementById("admissao-formulario")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -130,25 +145,53 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
   const TOTAL_STEPS = 5;
 
-  const whatsappNumber = config.escola.config_portal?.whatsapp_suporte || "244923000000";
+  const whatsappNumber = config.escola.config_portal?.whatsapp_suporte;
   const disponibilidadeLabel: Record<NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>, string> = {
     disponivel: "Disponível",
     ultimas_vagas: "Últimas vagas",
     lista_espera: "Lista de espera aberta",
   };
-  const disponibilidadeStyle: Record<
-    NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>,
-    string
-  > = {
-    disponivel: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    ultimas_vagas: "bg-amber-50 text-amber-700 border-amber-100",
-    lista_espera: "bg-slate-100 text-slate-700 border-slate-200",
-  };
-  const selectedTurma = config.turmas.find((turma) => turma.id === formData.turma_preferencial_id) ?? null;
-  const selectedDisponibilidade = selectedTurma?.disponibilidade ?? "disponivel";
-  const visibleTurmas = config.turmas.slice(0, 8);
-
   const isDocumentNumberRequired = !["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento);
+  const configuredDocumentCatalog = config.escola.config_portal?.documentos_admissao_catalogo ?? [];
+  const defaultDocumentCatalog = [
+    { id: "bi_aluno", label: "BI ou Cédula do Aluno", description: "Cópia legível do documento de identidade." },
+    { id: "notas", label: "Certificado ou Declaração", description: "Certificado de habilitações ou declaração de notas." },
+    { id: "folha_25_linhas", label: "Folha de 25 linhas", description: "Documento complementar solicitado pela secretaria." },
+    { id: "outro_documento", label: "Outro documento", description: "Anexe qualquer outro documento exigido pela escola." },
+  ];
+  const documentDescriptions: Record<string, string> = {
+    bi_aluno: "Cópia legível do documento de identidade.",
+    bi_candidato: "Cópia legível do documento de identidade.",
+    foto_candidato: "Fotografia recente do candidato.",
+    certificado_habilitacoes: "Certificado de habilitações ou declaração de notas.",
+    notas: "Certificado de habilitações ou declaração de notas.",
+    bi_encarregado: "Cópia legível do documento do encarregado.",
+    folha_25_linhas: "Documento complementar solicitado pela secretaria.",
+    outro_documento: "Anexe qualquer outro documento exigido pela escola.",
+  };
+  const requiredDocumentIds = new Set(config.escola.config_portal?.documentos_obrigatorios ?? []);
+  const documentCatalog = (() => {
+    const catalog = configuredDocumentCatalog.length > 0
+      ? configuredDocumentCatalog.map((doc) => ({
+          id: doc.id,
+          label: doc.label,
+          description: documentDescriptions[doc.id] ?? "Documento solicitado pela secretaria.",
+        }))
+      : defaultDocumentCatalog;
+    const byId = new Map(catalog.map((doc) => [doc.id, doc]));
+    for (const id of requiredDocumentIds) {
+      if (!byId.has(id)) {
+        byId.set(id, {
+          id,
+          label: id.replace(/_/g, " "),
+          description: "Documento obrigatório solicitado pela secretaria.",
+        });
+      }
+    }
+    return Array.from(byId.values());
+  })();
+  const hasRequiredDocuments = requiredDocumentIds.size > 0;
+  const missingRequiredDocuments = Array.from(requiredDocumentIds).filter((id) => !formData.documentos[id]);
 
   const step1Validation = () => {
     if (!formData.curso_id) return "Selecione o curso pretendido.";
@@ -162,6 +205,8 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
       return "Informe o número do documento.";
     }
     if (!formData.data_nascimento) return "Informe a data de nascimento.";
+    if (formData.telefone.trim().length < 7) return "Informe o telefone de contacto do estudante.";
+    if (!formData.sexo) return "Selecione o gênero do estudante.";
 
     const missingExtra = config.escola.config_portal?.campos_extras?.find(
       (campo) => campo.required && !String(formData.campos_extras[campo.id] ?? "").trim()
@@ -171,7 +216,6 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     return null;
   };
 
-  const canProceedStep1 = step1Validation() === null;
   const nextStep = () => setStep((s) => s + 1);
   const handleStep1Next = () => {
     const validationError = step1Validation();
@@ -249,8 +293,8 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
       setSuccess(true);
       
       try {
-        localStorage.removeItem(`klasse_admission_draft_${config.escola.id}`);
-      } catch (e) {}
+        localStorage.removeItem(draftStorageKey);
+      } catch {}
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
     } finally {
@@ -405,7 +449,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
             <div className="grid gap-6 md:grid-cols-2">
               <label className="col-span-full">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome Completo</span>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Nome Completo <span className="text-red-500">*</span>
+                </span>
                 <input
                   required
                   type="text"
@@ -418,7 +464,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                   </label>
 
                   <label className="col-span-full">
-                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Documento de Identificação</span>
+                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                   Documento de Identificação {isDocumentNumberRequired && <span className="text-red-500">*</span>}
+                 </span>
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                    <select
                      name="tipo_documento"
@@ -446,7 +494,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                </label>
 
                   <label>
-                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Data de Nascimento</span>
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Data de Nascimento <span className="text-red-500">*</span>
+                  </span>
                   <input
                   required
                   type="date"
@@ -458,8 +508,11 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                   </label>
 
               <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Gênero</span>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Gênero <span className="text-red-500">*</span>
+                </span>
                 <select
+                  required
                   name="sexo"
                   value={formData.sexo}
                   onChange={handleInputChange}
@@ -486,7 +539,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
               </label>
 
               <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Telefone</span>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Telefone <span className="text-red-500">*</span>
+                </span>
                 <input
                   required
                   type="tel"
@@ -587,7 +642,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
             <div className="grid gap-6 md:grid-cols-2">
               <label className="col-span-full">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Nome do Pai/Mãe ou Encarregado</span>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Nome do Pai/Mãe ou Encarregado <span className="text-red-500">*</span>
+                </span>
                 <input
                   required
                   type="text"
@@ -600,7 +657,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
               </label>
 
               <label className="col-span-full">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Telefone de Contacto</span>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Telefone de Contacto <span className="text-red-500">*</span>
+                </span>
                 <input
                   required
                   type="tel"
@@ -646,7 +705,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
             <div className="grid gap-6">
               <label>
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Curso Pretendido</span>
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Curso Pretendido <span className="text-red-500">*</span>
+                </span>
                 <select
                   required
                   name="curso_id"
@@ -730,46 +791,36 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 <FileText size={20} />
               </div>
               <h3 className="text-lg font-black text-slate-900">
-                Documentação {config.escola.config_portal?.documentos_obrigatorios?.length ? '' : '(Opcional)'}
+                Documentação {hasRequiredDocuments ? '' : '(Opcional)'}
               </h3>
             </div>
 
             <p className="text-sm text-slate-500">
-              {config.escola.config_portal?.documentos_obrigatorios?.length 
+              {hasRequiredDocuments
                 ? "Por favor, anexe os documentos obrigatórios para prosseguir com sua inscrição."
                 : "Anexar documentos ajuda a agilizar a análise da sua inscrição. Você pode pular este passo e entregar na secretaria depois."
               }
             </p>
 
             <div className="grid gap-4">
-              <DocumentUpload
-                label={`BI ou Cédula do Aluno ${config.escola.config_portal?.documentos_obrigatorios?.includes('bi_aluno') ? '*' : ''}`}
-                description="Cópia legível do documento de identidade."
-                escolaId={config.escola.id}
-                candidaturaId={draftId}
-                onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, bi_aluno: path } }))}
-              />
-              <DocumentUpload
-                label={`Certificado ou Declaração ${config.escola.config_portal?.documentos_obrigatorios?.includes('notas') ? '*' : ''}`}
-                description="Certificado de habilitações ou declaração de notas."
-                escolaId={config.escola.id}
-                candidaturaId={draftId}
-                onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, notas: path } }))}
-              />
-              <DocumentUpload
-                label={`Folha de 25 linhas ${config.escola.config_portal?.documentos_obrigatorios?.includes('folha_25_linhas') ? '*' : ''}`}
-                description="Documento complementar solicitado pela secretaria."
-                escolaId={config.escola.id}
-                candidaturaId={draftId}
-                onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, folha_25_linhas: path } }))}
-              />
-              <DocumentUpload
-                label="Outro documento"
-                description="Anexe qualquer outro documento exigido pela escola."
-                escolaId={config.escola.id}
-                candidaturaId={draftId}
-                onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, outro_documento: path } }))}
-              />
+              {documentCatalog.map((doc) => (
+                <DocumentUpload
+                  key={doc.id}
+                  label={`${doc.label}${requiredDocumentIds.has(doc.id) ? " *" : ""}`}
+                  description={doc.description}
+                  escolaId={config.escola.id}
+                  candidaturaId={draftId}
+                  initialPath={formData.documentos[doc.id]}
+                  onUploadSuccess={(path) => setFormData(p => ({ ...p, documentos: { ...p.documentos, [doc.id]: path } }))}
+                  onRemove={async () => {
+                    setFormData((prev) => {
+                      const documentos = { ...prev.documentos };
+                      delete documentos[doc.id];
+                      return { ...prev, documentos };
+                    });
+                  }}
+                />
+              ))}
             </div>
 
             <div className="pt-4 flex justify-between">
@@ -785,9 +836,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 type="button"
                 onClick={nextStep}
                 disabled={
-                  config.escola.config_portal?.documentos_obrigatorios?.some(
-                    id => !formData.documentos[id]
-                  )
+                  missingRequiredDocuments.length > 0
                 }
                 className="flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-sm font-black text-white hover:bg-slate-800 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -897,22 +946,30 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
       {/* Footer & Support */}
       <div className="bg-slate-50 p-8 border-t border-slate-100">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-center md:text-left">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Precisa de ajuda?</p>
-            <p className="text-sm text-slate-600">Fale diretamente com nossa secretaria</p>
-          </div>
+          {whatsappNumber ? (
+            <div className="text-center md:text-left">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Precisa de ajuda?</p>
+              <p className="text-sm text-slate-600">Fale diretamente com nossa secretaria</p>
+            </div>
+          ) : (
+            <div />
+          )}
           
           <div className="flex items-center gap-3">
-             <a 
-               href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=Olá, estou no portal de admissão da escola ${config.escola.nome} e preciso de ajuda.`}
-               target="_blank"
-               rel="noopener noreferrer"
-               className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 text-sm font-bold text-white hover:bg-green-600 transition shadow-lg shadow-green-200"
-             >
-               <MessageCircle size={18} />
-               WhatsApp
-             </a>
-             <div className="h-10 w-px bg-slate-200 hidden md:block" />
+             {whatsappNumber && (
+               <>
+                 <a
+                   href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=Olá, estou no portal de admissão da escola ${config.escola.nome} e preciso de ajuda.`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 text-sm font-bold text-white hover:bg-green-600 transition shadow-lg shadow-green-200"
+                 >
+                   <MessageCircle size={18} />
+                   WhatsApp
+                 </a>
+                 <div className="h-10 w-px bg-slate-200 hidden md:block" />
+               </>
+             )}
              <div className="text-center md:text-left">
                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Tecnologia por</p>
                <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Plataforma Klasse</p>

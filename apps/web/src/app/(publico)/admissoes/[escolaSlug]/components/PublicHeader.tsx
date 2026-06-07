@@ -5,8 +5,6 @@ import { LogIn, School } from "lucide-react";
 import type { AdmissionConfig } from "../AdmissionForm";
 
 export function PublicHeader({ config }: { config: AdmissionConfig }) {
-  const primaryColor = config.escola.cor_primaria || "#1F6B3B";
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">

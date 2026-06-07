@@ -9,13 +9,13 @@ const CandidaturaSchema = z.object({
   // Dados do Candidato (Aluno)
   nome_completo: z.string().trim().min(5, "Nome completo deve ter pelo menos 5 caracteres"),
   tipo_documento: z.string().optional().default("BI"),
-  numero_documento: z.string().trim().optional().nullable(),
-  email: z.string().email("Email inválido").optional().nullable(),
-  telefone: z.string().trim().min(7, "Telefone inválido").optional().nullable(),
-  data_nascimento: z.string().optional().nullable(),
-  sexo: z.enum(["M", "F", "O", "N"]).optional().nullable(),
-  pai_nome: z.string().trim().max(160).optional().nullable(),
-  mae_nome: z.string().trim().max(160).optional().nullable(),
+  numero_documento: z.string().trim().optional().nullable().transform(v => v === "" ? null : v),
+  email: z.string().trim().email("Email inválido").optional().nullable().or(z.literal("")).transform(v => v === "" ? null : v),
+  telefone: z.string().trim().min(7, "Telefone inválido").optional().nullable().or(z.literal("")).transform(v => v === "" ? null : v),
+  data_nascimento: z.string().optional().nullable().transform(v => v === "" ? null : v),
+  sexo: z.enum(["M", "F", "O", "N"]).optional().nullable().or(z.literal("")).transform(v => v === "" ? null : v),
+  pai_nome: z.string().trim().max(160).optional().nullable().transform(v => v === "" ? null : v),
+  mae_nome: z.string().trim().max(160).optional().nullable().transform(v => v === "" ? null : v),
   
   // Dados do Encarregado
   responsavel_nome: z.string().trim().min(5, "Nome do responsável deve ter pelo menos 5 caracteres"),
@@ -24,8 +24,8 @@ const CandidaturaSchema = z.object({
   // Dados Acadêmicos Pretendidos
   curso_id: z.string().uuid("Curso obrigatório"),
   ano_letivo: z.coerce.number().int(),
-  turma_preferencial_id: z.string().uuid().optional().nullable(),
-  turno: z.string().optional().nullable(),
+  turma_preferencial_id: z.string().uuid().optional().nullable().transform(v => v === "" ? null : v),
+  turno: z.string().optional().nullable().transform(v => v === "" ? null : v),
 
   // Anti-spam (Honeypot)
   hp_field: z.string().max(0).optional(), // Deve estar vazio
@@ -75,6 +75,47 @@ function toJsonObject(record: Record<string, unknown> | undefined): Json {
     }
   }
   return out;
+}
+
+function isJsonRecord(value: Json | null | undefined): value is Record<string, Json> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function getRequiredDocumentIds(config: Json | null | undefined) {
+  if (!isJsonRecord(config)) return [];
+  const required = config.documentos_obrigatorios;
+  if (!Array.isArray(required)) return [];
+  return Array.from(
+    new Set(
+      required.filter((item): item is string =>
+        typeof item === "string" && /^[a-z0-9_-]{1,120}$/.test(item)
+      )
+    )
+  );
+}
+
+function isSafeDraftDocumentPath(path: string, escolaId: string, draftId: string) {
+  if (path.includes("..") || path.startsWith("/") || path.includes("\\")) return false;
+  return path.startsWith(`${escolaId}/${draftId}/`);
+}
+
+async function admissionDocumentExists(path: string, escolaId: string, draftId: string) {
+  if (!isSafeDraftDocumentPath(path, escolaId, draftId)) return false;
+
+  const fileName = path.split("/").pop();
+  if (!fileName) return false;
+
+  const supabase = supabaseServerRole();
+  const { data, error } = await supabase.storage
+    .from("candidaturas")
+    .list(`${escolaId}/${draftId}`, { limit: 100, search: fileName });
+
+  if (error) {
+    console.error("[Public Admission Document Validation Error]:", error);
+    return false;
+  }
+
+  return (data ?? []).some((item) => item.name === fileName);
 }
 
 type PostgrestLikeError = {
@@ -171,6 +212,63 @@ export async function POST(
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 404 });
+    }
+
+    const { data: escolaConfig, error: escolaConfigError } = await supabase
+      .from("escolas")
+      .select("status, config_portal_admissao")
+      .eq("id", escolaId)
+      .maybeSingle();
+
+    if (escolaConfigError) {
+      console.error("[Public Admission Config Error]:", escolaConfigError);
+      return NextResponse.json({ ok: false, error: "Erro ao validar configuração da escola." }, { status: 500 });
+    }
+    if (!escolaConfig || escolaConfig.status !== "ativa") {
+      return NextResponse.json(
+        { ok: false, error: "Esta escola não está aceitando novas inscrições online no momento." },
+        { status: 403 }
+      );
+    }
+
+    const requiredDocumentIds = getRequiredDocumentIds(escolaConfig?.config_portal_admissao);
+    if (requiredDocumentIds.length > 0) {
+      if (!data.draftId) {
+        return NextResponse.json(
+          { ok: false, error: "Envie os documentos obrigatórios antes de finalizar a inscrição." },
+          { status: 400 }
+        );
+      }
+
+      const documents = data.documentos ?? {};
+      const missingDocumentId = requiredDocumentIds.find((id) => !documents[id]);
+      if (missingDocumentId) {
+        return NextResponse.json(
+          { ok: false, error: "Existem documentos obrigatórios pendentes." },
+          { status: 400 }
+        );
+      }
+
+      const invalidDocumentId = requiredDocumentIds.find((id) => {
+        const path = documents[id];
+        return typeof path !== "string" || !isSafeDraftDocumentPath(path, escolaId, data.draftId as string);
+      });
+      if (invalidDocumentId) {
+        return NextResponse.json(
+          { ok: false, error: "Documento obrigatório inválido." },
+          { status: 400 }
+        );
+      }
+
+      for (const id of requiredDocumentIds) {
+        const exists = await admissionDocumentExists(documents[id], escolaId, data.draftId);
+        if (!exists) {
+          return NextResponse.json(
+            { ok: false, error: "Documento obrigatório inválido ou não encontrado." },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // 3. Security & Integrity Checks (Verify if course/turma belong to this school)

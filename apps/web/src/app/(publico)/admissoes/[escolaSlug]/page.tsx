@@ -7,6 +7,7 @@ import { FloatingSupport } from "./components/FloatingSupport";
 import { AdmissionForm, type AdmissionConfig } from "./AdmissionForm";
 import { Metadata } from "next";
 import type { Json } from "~types/supabase";
+import { getDocumentosAdmissaoCatalogoFromConfig } from "@/lib/admissoes/reserva";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,7 @@ function parseConfigPortal(value: Json | undefined): ConfigPortal | null {
     documentos_obrigatorios: Array.isArray(documentos)
       ? documentos.filter((item): item is string => typeof item === "string")
       : undefined,
+    documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(value),
     campos_extras: camposExtras,
   };
 }
