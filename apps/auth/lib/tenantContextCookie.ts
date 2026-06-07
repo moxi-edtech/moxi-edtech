@@ -1,7 +1,7 @@
 import "server-only";
 
 import crypto from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { readEnv } from "@/lib/env";
 
 export type TenantContextCookie = {
@@ -65,7 +65,15 @@ function decodeContext(raw: string): TenantContextCookie | null {
   }
 }
 
-function resolveCookieOptions(maxAgeSeconds: number) {
+async function resolveCookieOptions(maxAgeSeconds: number) {
+  const headerStore = await headers();
+  const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase()
+    .split(":")[0];
+  const isIpAddressHost = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || /^\[[0-9a-f:]+\]$/i.test(host);
+  const isPlainLocalhost = host === "localhost" || host === "127.0.0.1";
   const localOrigin = readEnv(process.env.KLASSE_AUTH_LOCAL_ORIGIN, "").toLowerCase();
   const inferredDevDomain = localOrigin.includes(".localhost")
     ? ".localhost"
@@ -73,8 +81,10 @@ function resolveCookieOptions(maxAgeSeconds: number) {
       ? ".lvh.me"
       : ".lvh.me";
   const domain =
-    readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN) ||
-    (process.env.NODE_ENV === "production" ? ".klasse.ao" : inferredDevDomain);
+    isIpAddressHost || isPlainLocalhost
+      ? ""
+      : readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN) ||
+        (process.env.NODE_ENV === "production" ? ".klasse.ao" : inferredDevDomain);
   const sameSiteRaw = readEnv(process.env.KLASSE_AUTH_COOKIE_SAMESITE, "lax").toLowerCase();
   const sameSite: "lax" | "strict" | "none" =
     sameSiteRaw === "strict" || sameSiteRaw === "none" ? sameSiteRaw : "lax";
@@ -110,12 +120,12 @@ export async function setTenantContextCookie(input: {
   };
 
   const store = await cookies();
-  store.set(COOKIE_NAME, encodeContext(context), resolveCookieOptions(ttlSeconds));
+  store.set(COOKIE_NAME, encodeContext(context), await resolveCookieOptions(ttlSeconds));
 }
 
 export async function clearTenantContextCookie() {
   const store = await cookies();
-  store.set(COOKIE_NAME, "", resolveCookieOptions(0));
+  store.set(COOKIE_NAME, "", await resolveCookieOptions(0));
 }
 
 export async function getTenantContextCookieForUser(userId: string): Promise<TenantContextCookie | null> {

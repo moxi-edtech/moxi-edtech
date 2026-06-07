@@ -4,6 +4,7 @@ import { pautasLote } from "@/inngest/functions/pautas-lote"
 import { fechamentoAcademicoRun } from "@/inngest/functions/fechamento-academico-run"
 import { fiscalSaftExport } from "@/inngest/functions/fiscal-saft-export"
 import { fiscalFinanceiroReprocess } from "@/inngest/functions/fiscal-financeiro-reprocess"
+import { pushNotificationWorker } from "@/inngest/functions/push-notifications"
 
 if (process.env.NODE_ENV !== "production" && !process.env.INNGEST_SIGNING_KEY) {
   process.env.INNGEST_DEV = "1"
@@ -12,7 +13,13 @@ if (process.env.NODE_ENV !== "production" && !process.env.INNGEST_SIGNING_KEY) {
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const functions = [pautasLote, fechamentoAcademicoRun, fiscalSaftExport, fiscalFinanceiroReprocess]
+const functions = [
+  pautasLote, 
+  fechamentoAcademicoRun, 
+  fiscalSaftExport, 
+  fiscalFinanceiroReprocess,
+  pushNotificationWorker
+]
 
 export const { GET, POST, PUT } = serve({
   client: inngest,

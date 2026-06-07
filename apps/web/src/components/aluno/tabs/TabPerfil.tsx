@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { TableSkeleton } from "@/components/feedback/FeedbackSystem";
+import { PushSettings } from "@/components/aluno/PushSettings";
 
 export function TabPerfil() {
   const { success, error } = useToast();
@@ -22,6 +23,7 @@ export function TabPerfil() {
     endereco: "",
     loginPortal: "",
     emailAuth: "",
+    escola_id: "",
   });
 
   const [senhaAtual, setSenhaAtual] = useState("");
@@ -40,6 +42,7 @@ export function TabPerfil() {
             endereco: json.dados.endereco || "",
             loginPortal: json.dados.login_portal || "",
             emailAuth: json.dados.email_auth || "",
+            escola_id: json.dados.escola_id || "",
           });
         }
       })
@@ -132,6 +135,8 @@ export function TabPerfil() {
         <SectionTitle>Meu Perfil</SectionTitle>
         <p className="text-xs text-slate-500">Gerencie seus dados de contato e segurança.</p>
       </header>
+
+      <PushSettings escolaId={dados.escola_id} />
 
       {/* Atualização Cadastral */}
       <AlunoCard>

@@ -1,10 +1,12 @@
 {
-  "name": "Klasse",
+  "name": "Klasse - Portal do Aluno",
   "short_name": "Klasse",
-  "start_url": "/",
+  "description": "Portal do aluno e encarregado para gestão escolar, financeira e acadêmica.",
+  "start_url": "/aluno/dashboard",
   "display": "standalone",
-  "background_color": "#020617",
+  "background_color": "#F8FAFC",
   "theme_color": "#1F6B3B",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -17,6 +19,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Financeiro",
+      "short_name": "Financeiro",
+      "description": "Ver mensalidades e pagamentos",
+      "url": "/aluno/financeiro",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Académico",
+      "short_name": "Académico",
+      "description": "Ver notas e horários",
+      "url": "/aluno/academico",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

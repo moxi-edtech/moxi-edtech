@@ -44,6 +44,7 @@ export async function GET() {
       ok: true,
       dados: {
         ...alunoRes.data,
+        escola_id: escolaId,
         email_contato: alunoRes.data.email ?? null,
         login_portal: profile?.numero_processo_login ?? null,
         email_auth: profile?.email_auth ?? null,

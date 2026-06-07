@@ -71,6 +71,24 @@ const statusChallengeSchema = z
 
 type PublicLookupClient = ReturnType<typeof supabaseServerRole>;
 
+function resolveLoginUrl(returnTo?: string | null) {
+  const base = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/login` : "/login";
+  if (!returnTo) return base;
+
+  try {
+    const url = base.startsWith("http") ? new URL(base) : new URL(base, "https://app.klasse.ao");
+    url.searchParams.set("redirect", returnTo);
+    return base.startsWith("http") ? url.toString() : `${url.pathname}${url.search}`;
+  } catch {
+    return `${base}?redirect=${encodeURIComponent(returnTo)}`;
+  }
+}
+
+function extractProfileLogin(aluno: { profiles?: unknown } | null | undefined) {
+  const profile = Array.isArray(aluno?.profiles) ? aluno?.profiles[0] : aluno?.profiles;
+  return isRecord(profile) ? getString(profile, "numero_processo_login") : null;
+}
+
 async function lookupByProtocolo(
   supabase: PublicLookupClient,
   escolaId: string,
@@ -413,7 +431,7 @@ export async function POST(
       // Buscar email do aluno para o job de auth
       const { data: aluno } = await supabase
         .from("alunos")
-        .select("email, usuario_auth_id")
+        .select("email, usuario_auth_id, profiles!alunos_profile_id_fkey(numero_processo_login)")
         .eq("id", match.aluno_id)
         .maybeSingle();
 
@@ -464,7 +482,12 @@ export async function POST(
         }
       }
 
-      return NextResponse.json({ ok: true, message: "Senha atualizada" });
+      return NextResponse.json({
+        ok: true,
+        message: "Senha atualizada",
+        login: result.login || extractProfileLogin(aluno),
+        loginUrl: resolveLoginUrl(`/escola/${escolaSlug}/aluno/dashboard`)
+      });
     }
 
     if (action === "upload_payment") {
@@ -607,6 +630,8 @@ export async function POST(
       historico_pendencias: Array<ReturnType<typeof sanitizeAdmissionTimeline>[number]>;
       escola_pagamento: any | null;
       valor_esperado?: number | null;
+      portal_login?: string | null;
+      login_url?: string | null;
     } = {
       pode_mudar_senha: false,
       pode_baixar_comprovativo: false,
@@ -618,7 +643,9 @@ export async function POST(
       dossier: [],
       historico_pendencias: [],
       escola_pagamento: null,
-      valor_esperado: null
+      valor_esperado: null,
+      portal_login: null,
+      login_url: null
     };
 
     // Mapeamento padrão de documentos
@@ -651,6 +678,17 @@ export async function POST(
     if (match.status === "matriculado") {
       actions.pode_mudar_senha = !!match.aluno_id;
       actions.pode_baixar_comprovativo = true;
+      actions.login_url = resolveLoginUrl(`/escola/${escolaSlug}/aluno/dashboard`);
+
+      if (match.aluno_id) {
+        const { data: aluno } = await supabase
+          .from("alunos")
+          .select("profiles!alunos_profile_id_fkey(numero_processo_login)")
+          .eq("id", match.aluno_id)
+          .maybeSingle();
+
+        actions.portal_login = extractProfileLogin(aluno);
+      }
 
       // Buscar o último comprovativo emitido para este aluno
       if (match.aluno_id) {

@@ -49,6 +49,10 @@ export function resolveSharedCookieOptions(params: {
   const nodeEnv = String(params.nodeEnv ?? "").trim().toLowerCase();
   const isProduction = nodeEnv === "production";
   const browserHost = String(params.browserHostname ?? "").trim().toLowerCase();
+  const isIpAddressHost =
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(browserHost) ||
+    /^\[[0-9a-f:]+\]$/i.test(browserHost);
+  const isPlainLocalhost = browserHost === "localhost" || browserHost === "127.0.0.1";
   
   // Se estivermos em qualquer subdomínio do klasse.ao, forçamos o uso do domínio wildcard
   const isBrowserHostKlasse = browserHost.endsWith(".klasse.ao") || browserHost === "klasse.ao";
@@ -56,7 +60,7 @@ export function resolveSharedCookieOptions(params: {
   // Em desenvolvimento, suportamos wildcard para lvh.me e localhost se o host os contiver
   const isLocalWildcard = browserHost.endsWith(".lvh.me") || browserHost.endsWith(".localhost");
 
-  const configuredDomain = String(params.domainEnv ?? "").trim();
+  const configuredDomain = isIpAddressHost || isPlainLocalhost ? "" : String(params.domainEnv ?? "").trim();
   let domain = configuredDomain;
   
   if (!domain) {

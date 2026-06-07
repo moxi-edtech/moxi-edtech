@@ -75,6 +75,7 @@ export type DossierPerfil = {
   endereco: string | null;
   endereco_bairro: string | null;
   provincia: string | null;
+  escola_id: string | null;
 };
 
 export type DossierMatricula = {

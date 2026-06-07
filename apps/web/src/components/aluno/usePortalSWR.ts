@@ -73,3 +73,24 @@ export function usePortalSWR<T>({ key, url, intervalMs = 45000, minGapMs = 1200,
     refresh: () => fetchNow(true),
   };
 }
+
+/**
+ * Preloads data for a specific URL and key.
+ * This can be called externally (e.g. on mouse hover) to fill the inFlight map.
+ */
+export async function preloadPortalData(key: string, url: string) {
+  if (inFlight.has(key)) return;
+
+  const now = Date.now();
+  const prev = lastAt.get(key) ?? 0;
+  if (now - prev < 10000) return; // Don't preload if fetched in last 10s
+
+  const run = fetch(url, { cache: "no-store" })
+    .then((r) => r.json())
+    .finally(() => inFlight.delete(key));
+
+  inFlight.set(key, run);
+  lastAt.set(key, now);
+  
+  return run;
+}

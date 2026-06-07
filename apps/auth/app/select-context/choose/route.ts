@@ -13,23 +13,44 @@ function isLocalOrigin(value: string) {
   return (
     v.includes("localhost") ||
     v.includes("127.0.0.1") ||
+    /^https?:\/\/(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}(?::\d+)?(?:\/|$)/.test(v) ||
+    /^(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}(?::\d+)?$/.test(v) ||
     v.includes(".localhost") ||
     v.includes(".lvh.me")
   );
 }
 
-function resolveProductBases(host: string, redirectHint?: string | null) {
-  const hint = String(redirectHint ?? "").toLowerCase();
+function getPrivateLanHostname(value: string) {
+  const raw = value.trim().toLowerCase();
+  try {
+    const parsed = new URL(raw.startsWith("http://") || raw.startsWith("https://") ? raw : `http://${raw}`);
+    const hostname = parsed.hostname;
+    return /^(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}$/.test(hostname) ? hostname : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveProductBases(host: string, ...redirectHints: Array<string | null | undefined>) {
+  const hints = redirectHints.map((hint) => String(hint ?? "").toLowerCase());
   const isLocalHost =
     isLocalOrigin(host) ||
-    isLocalOrigin(hint) ||
+    hints.some((hint) => isLocalOrigin(hint)) ||
     process.env.NODE_ENV !== "production";
 
   if (isLocalHost) {
+    const lanHostname = getPrivateLanHostname(host) || hints.map((hint) => getPrivateLanHostname(hint)).find(Boolean);
+    if (lanHostname) {
+      return {
+        k12: `http://${lanHostname}:3001`,
+        formacao: `http://${lanHostname}:3002`,
+      };
+    }
+
     const prefersLocalhost =
       host.includes("localhost") ||
       host.includes(".localhost") ||
-      hint.includes("localhost");
+      hints.some((hint) => hint.includes("localhost"));
 
     if (prefersLocalhost) {
       return {
@@ -99,7 +120,9 @@ export async function POST(req: Request) {
     .split(",")[0]
     .trim()
     .toLowerCase();
-  const bases = resolveProductBases(host, typeof redirectTo === "string" ? redirectTo : null);
+  const originHint = headerStore.get("origin");
+  const refererHint = headerStore.get("referer");
+  const bases = resolveProductBases(host, typeof redirectTo === "string" ? redirectTo : null, originHint, refererHint);
 
   const destinationConfig = resolveTenantRoute(tenant);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;

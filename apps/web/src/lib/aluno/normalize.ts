@@ -100,6 +100,7 @@ export function normalizeDossier(alunoId: string, raw: unknown): AlunoNormalizad
     endereco: p.endereco ?? null,
     endereco_bairro: p.endereco_bairro ?? null,
     provincia: p.provincia || p.provincia_residencia || null,
+    escola_id: (p as any).escola_id || null, // Access raw field from RPC response
   };
 
   const historico: DossierMatricula[] = Array.isArray(h)

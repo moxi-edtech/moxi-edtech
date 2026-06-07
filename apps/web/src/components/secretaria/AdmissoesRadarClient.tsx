@@ -11,6 +11,8 @@ type AdmissaoStatus =
   | 'submetida'
   | 'em_analise'
   | 'aprovada'
+  | 'aguardando_pagamento'
+  | 'aguardando_compensacao'
   | 'rejeitada'
   | 'matriculado'
 
@@ -372,7 +374,9 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                   const dt = formatDateShort(item.created_at)
                   const busy = actionLoadingId === item.id
                   const rawStatus = (item.status_raw || '').toLowerCase()
-                  const canArchive = ['submetida', 'em_analise', 'aprovada', 'aguardando_pagamento', 'aguardando_compensacao'].includes(rawStatus || item.status)
+                  const currentStatus = rawStatus || item.status
+                  const canArchive = ['submetida', 'em_analise', 'aprovada', 'aguardando_pagamento', 'aguardando_compensacao'].includes(currentStatus)
+                  const canOpenEnrollment = ['aprovada', 'aguardando_pagamento', 'aguardando_compensacao'].includes(currentStatus)
 
                   return (
                     <div
@@ -424,7 +428,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                               </button>
                             </>
                           )}
-                          {item.status === 'aprovada' && (
+                          {canOpenEnrollment && (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -433,7 +437,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                               }}
                               className="rounded-lg bg-klasse-green px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95"
                             >
-                              Matricular
+                              {currentStatus === 'aguardando_compensacao' ? 'Validar/Matricular' : currentStatus === 'aguardando_pagamento' ? 'Registar/Matricular' : 'Matricular'}
                             </button>
                           )}
                           {canArchive && (

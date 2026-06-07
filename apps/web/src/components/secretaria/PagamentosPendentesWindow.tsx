@@ -97,7 +97,7 @@ export default function PagamentosPendentesWindow() {
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Aluno</th>
-                <th className="px-4 py-3">Turma</th>
+                <th className="px-4 py-3">Tipo / Serviço</th>
                 <th className="px-4 py-3">Esperado</th>
                 <th className="px-4 py-3">Enviado</th>
                 <th className="px-4 py-3">Comprovante</th>
@@ -110,8 +110,20 @@ export default function PagamentosPendentesWindow() {
                 const actioning = Boolean(actioningById[row.pagamento_id]);
                 return (
                   <tr key={row.pagamento_id} className="align-middle">
-                    <td className="px-4 py-3 font-medium text-slate-900">{row.aluno_nome}</td>
-                    <td className="px-4 py-3 text-slate-600">{row.turma_codigo || "—"}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-slate-900">{row.aluno_nome}</p>
+                      <p className="text-[10px] text-slate-500">{row.turma_codigo || "—"}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
+                        row.tipo_entidade === 'servico' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {row.tipo_entidade}
+                      </span>
+                      <p className="mt-1 text-xs font-semibold text-slate-600">
+                        {row.servico_nome || row.servico_codigo || "—"}
+                      </p>
+                    </td>
                     <td className="px-4 py-3 text-slate-800">{kwanza.format(Number(row.valor_esperado || 0))}</td>
                     <td className="px-4 py-3 text-slate-800">{kwanza.format(Number(row.valor_enviado || 0))}</td>
                     <td className="px-4 py-3">
