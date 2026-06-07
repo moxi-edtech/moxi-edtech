@@ -55,7 +55,9 @@
   "exclude": [
     "node_modules",
     ".next",
+    "src/components/escola/onboarding.bak",
     "src/modelo_portal_do_aluno",
+    "src/utils/server.ts 10-27-55-225.ts",
     "playwright.config.ts",
     "tests",
     "**/*.spec.ts",

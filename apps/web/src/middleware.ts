@@ -227,6 +227,11 @@ const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   },
 ];
 
+function isLocalhostHost(host: string | null | undefined) {
+  const normalized = String(host ?? "").trim().toLowerCase().split(":")[0];
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized.endsWith(".localhost");
+}
+
 function safeAbsoluteUrl(
   value: string | undefined,
   fallback: string
@@ -245,8 +250,15 @@ function safeAbsoluteUrl(
   return fallback;
 }
 
-export function resolveUniversalLoginUrl(): string {
+export function resolveUniversalLoginUrl(host?: string | null): string {
   if (process.env.NODE_ENV !== "production") {
+    if (isLocalhostHost(host)) {
+      return safeAbsoluteUrl(
+        process.env.KLASSE_AUTH_LOCALHOST_URL,
+        "http://localhost:3000/login"
+      );
+    }
+
     return safeAbsoluteUrl(
       process.env.KLASSE_AUTH_LOCAL_URL,
       "http://auth.lvh.me:3000/login"
@@ -478,7 +490,9 @@ function createForbiddenResponse(baseResponse: NextResponse, isApi: boolean) {
 }
 
 function redirectToCentralAuth(request: NextRequest, baseResponse: NextResponse) {
-  const loginUrl = new URL(resolveUniversalLoginUrl());
+  const loginUrl = new URL(
+    resolveUniversalLoginUrl(request.headers.get('x-forwarded-host') ?? request.headers.get('host'))
+  );
   const canonicalOrigin = safeAbsoluteUrl(
     process.env.KLASSE_K12_LOCAL_ORIGIN,
     "http://app.lvh.me:3001"
@@ -576,7 +590,7 @@ export async function middleware(request: NextRequest) {
     }
 
     console.info(`[Middleware:Web] Intercepted ${pathname} for host ${host}. Redirecting to Central Auth.`);
-    const centralLogin = new URL(resolveUniversalLoginUrl());
+    const centralLogin = new URL(resolveUniversalLoginUrl(host));
     centralLogin.searchParams.set('redirect', request.nextUrl.origin + '/redirect');
     return NextResponse.redirect(centralLogin);
   }
@@ -612,6 +626,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     process.env.NODE_ENV !== 'production' &&
+    process.env.KLASSE_FORCE_LOCAL_CANONICAL_HOST === '1' &&
     (host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.endsWith('.localhost'))
   ) {
     const canonicalOrigin = (process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001').trim();

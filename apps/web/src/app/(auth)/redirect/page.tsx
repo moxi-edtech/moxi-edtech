@@ -35,7 +35,14 @@ function safeUrlWithRedirect(loginUrl: string, returnTo: string) {
 
 function resolveAuthLoginUrl(host: string) {
   if (process.env.NODE_ENV !== "production") {
-    return (process.env.KLASSE_AUTH_LOCAL_URL ?? "http://auth.lvh.me:3000/login").trim();
+    if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) {
+      return (process.env.KLASSE_AUTH_LOCALHOST_URL ?? "http://localhost:3000/login").trim();
+    }
+
+    return (
+      process.env.KLASSE_AUTH_LOCAL_URL ??
+      "http://auth.lvh.me:3000/login"
+    ).trim();
   }
 
   const configured = process.env.KLASSE_AUTH_URL?.trim();

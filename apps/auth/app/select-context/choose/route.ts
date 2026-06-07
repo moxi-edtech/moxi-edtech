@@ -31,13 +31,20 @@ function resolveProductBases(host: string, redirectHint?: string | null) {
       host.includes(".localhost") ||
       hint.includes("localhost");
 
+    if (prefersLocalhost) {
+      return {
+        k12: process.env.KLASSE_K12_LOCALHOST_ORIGIN?.trim() || "http://localhost:3001",
+        formacao: process.env.KLASSE_FORMACAO_LOCALHOST_ORIGIN?.trim() || "http://localhost:3002",
+      };
+    }
+
     return {
       k12:
         process.env.KLASSE_K12_LOCAL_ORIGIN?.trim() ||
-        (prefersLocalhost ? "http://app.localhost:3001" : "http://app.lvh.me:3001"),
+        "http://app.lvh.me:3001",
       formacao:
         process.env.KLASSE_FORMACAO_LOCAL_ORIGIN?.trim() ||
-        (prefersLocalhost ? "http://formacao.localhost:3002" : "http://formacao.lvh.me:3002"),
+        "http://formacao.lvh.me:3002",
     };
   }
 
