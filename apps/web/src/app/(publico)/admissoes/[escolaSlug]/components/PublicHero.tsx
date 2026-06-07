@@ -6,6 +6,7 @@ import type { AdmissionConfig } from "../AdmissionForm";
 
 export function PublicHero({ config }: { config: AdmissionConfig }) {
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
+  const hasWhatsappSupport = Boolean(config.escola.config_portal?.whatsapp_suporte);
 
   const handleScrollToForm = () => {
     document.getElementById("admissao-catalogo")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -53,10 +54,12 @@ export function PublicHero({ config }: { config: AdmissionConfig }) {
                 <ShieldCheck size={18} className="text-emerald-400" />
                 Oficial
               </span>
-              <span className="flex items-center gap-2">
-                <MessageCircle size={18} className="text-emerald-400" />
-                Suporte WhatsApp
-              </span>
+              {hasWhatsappSupport && (
+                <span className="flex items-center gap-2">
+                  <MessageCircle size={18} className="text-emerald-400" />
+                  Suporte WhatsApp
+                </span>
+              )}
             </div>
           </div>
         </div>

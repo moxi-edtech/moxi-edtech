@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Clock } from "lucide-react";
 import type { AdmissionConfig } from "../AdmissionForm";
 
 export function CourseCatalog({
@@ -11,7 +11,12 @@ export function CourseCatalog({
   onSelectTurma: (turmaId: string) => void;
 }) {
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
-  const visibleTurmas = config.turmas;
+  const coursesWithTurmas = config.cursos
+    .map((curso) => ({
+      ...curso,
+      turmas: config.turmas.filter((turma) => turma.curso_id === curso.id),
+    }))
+    .filter((curso) => curso.turmas.length > 0);
 
   const disponibilidadeLabel: Record<NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>, string> = {
     disponivel: "Disponível",
@@ -25,7 +30,7 @@ export function CourseCatalog({
     lista_espera: "bg-slate-100 text-slate-700 border-slate-200",
   };
 
-  if (visibleTurmas.length === 0) return null;
+  if (coursesWithTurmas.length === 0) return null;
 
   return (
     <section id="admissao-catalogo" className="mx-auto max-w-6xl px-4 py-16">
@@ -40,53 +45,59 @@ export function CourseCatalog({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {visibleTurmas.map((turma) => {
-          const disponibilidade = turma.disponibilidade ?? "disponivel";
-          const curso = config.cursos.find((item) => item.id === turma.curso_id);
-          const isWaitlist = disponibilidade === "lista_espera";
-
+        {coursesWithTurmas.map((curso) => {
           return (
-            <button
-              key={turma.id}
-              type="button"
-              onClick={() => onSelectTurma(turma.id)}
-              className="group flex flex-col items-start justify-between rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md h-full"
+            <article
+              key={curso.id}
+              className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
             >
               <div className="w-full">
                 <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-400 group-hover:scale-110 transition-transform">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
                     <BookOpen size={24} />
                   </div>
-                  <span className={`shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${disponibilidadeStyle[disponibilidade]}`}>
-                    {disponibilidadeLabel[disponibilidade]}
+                  <span className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    {curso.turmas.length} {curso.turmas.length === 1 ? "turma" : "turmas"}
                   </span>
                 </div>
-                <h3 className="text-lg font-black text-slate-900 leading-tight">{turma.nome}</h3>
-                <p className="mt-2 text-sm text-slate-500 font-medium">{curso?.nome || "Curso"}</p>
-                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg w-fit">
-                  <ClockIcon />
-                  Turno: {turma.turno || "A confirmar"}
-                </div>
-              </div>
+                <h3 className="text-lg font-black text-slate-900 leading-tight">{curso.nome}</h3>
+                <div className="mt-4 space-y-3">
+                  {curso.turmas.map((turma) => {
+                    const disponibilidade = turma.disponibilidade ?? "disponivel";
+                    const isWaitlist = disponibilidade === "lista_espera";
 
-              <div className="mt-6 w-full pt-4 border-t border-slate-100 flex items-center justify-between text-sm font-black transition-colors" style={{ color: primaryColor }}>
-                {isWaitlist ? "Entrar na lista de espera" : "Inscrever nesta turma"}
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 group-hover:bg-current transition-colors">
-                  <ArrowRight size={16} className="text-current group-hover:text-white" />
+                    return (
+                      <div key={turma.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{turma.nome}</p>
+                            <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                              <Clock size={14} />
+                              {turma.turno || "Turno a confirmar"}
+                            </p>
+                          </div>
+                          <span className={`shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${disponibilidadeStyle[disponibilidade]}`}>
+                            {disponibilidadeLabel[disponibilidade]}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onSelectTurma(turma.id)}
+                          className="mt-3 flex w-full items-center justify-between rounded-lg bg-white px-3 py-2 text-xs font-black transition hover:bg-slate-100"
+                          style={{ color: primaryColor }}
+                        >
+                          {isWaitlist ? "Entrar na lista de espera" : "Inscrever nesta turma"}
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            </button>
+            </article>
           );
         })}
       </div>
     </section>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
   );
 }

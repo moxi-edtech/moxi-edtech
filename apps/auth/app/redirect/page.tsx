@@ -36,13 +36,20 @@ function resolveProductBases(host: string, redirectHint?: string) {
       host.includes(".localhost") ||
       (isLocalOrigin(redirectHint ?? "") && (redirectHint ?? "").toLowerCase().includes("localhost"));
 
+    if (prefersLocalhost) {
+      return {
+        k12: process.env.KLASSE_K12_LOCALHOST_ORIGIN?.trim() || "http://localhost:3001",
+        formacao: process.env.KLASSE_FORMACAO_LOCALHOST_ORIGIN?.trim() || "http://localhost:3002",
+      };
+    }
+
     return {
       k12:
         process.env.KLASSE_K12_LOCAL_ORIGIN?.trim() ||
-        (prefersLocalhost ? "http://app.localhost:3001" : "http://app.lvh.me:3001"),
+        "http://app.lvh.me:3001",
       formacao:
         process.env.KLASSE_FORMACAO_LOCAL_ORIGIN?.trim() ||
-        (prefersLocalhost ? "http://formacao.localhost:3002" : "http://formacao.lvh.me:3002"),
+        "http://formacao.lvh.me:3002",
     };
   }
 
@@ -134,11 +141,11 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     .trim()
     .toLowerCase();
 
-  const isLoopback = (url: string | null) => {
+  const isResolverTarget = (url: string | null) => {
     if (!url) return false;
     try {
       const p = new URL(url);
-      return p.host === host && (p.pathname === "/redirect" || p.pathname === "/login");
+      return p.pathname === "/redirect" || p.pathname === "/login";
     } catch {
       return false;
     }
@@ -156,7 +163,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     });
     const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
-    const destination = preferred && !isLoopback(preferred)
+    const destination = preferred && !isResolverTarget(preferred)
       ? preferred
       : `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
 
@@ -178,7 +185,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     const bases = resolveProductBases(host, params.redirect);
     const productBase = bases.k12;
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
-    const destination = preferred && !isLoopback(preferred)
+    const destination = preferred && !isResolverTarget(preferred)
       ? preferred
       : `${productBase.replace(/\/$/, "")}/super-admin`;
 
@@ -219,7 +226,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const bases = resolveProductBases(host, params.redirect);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
   const preferred = normalizeRedirectTarget(params.redirect, productBase);
-  const destination = preferred && !isLoopback(preferred)
+  const destination = preferred && !isResolverTarget(preferred)
     ? preferred
     : `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
 
