@@ -659,6 +659,7 @@ export type Database = {
           encarregado_telefone: string | null
           endereco: string | null
           escola_id: string
+          foto_url: string | null
           id: string
           import_id: string | null
           mae_nome: string | null
@@ -714,6 +715,7 @@ export type Database = {
           encarregado_telefone?: string | null
           endereco?: string | null
           escola_id: string
+          foto_url?: string | null
           id?: string
           import_id?: string | null
           mae_nome?: string | null
@@ -769,6 +771,7 @@ export type Database = {
           encarregado_telefone?: string | null
           endereco?: string | null
           escola_id?: string
+          foto_url?: string | null
           id?: string
           import_id?: string | null
           mae_nome?: string | null
@@ -3644,13 +3647,6 @@ export type Database = {
             foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
-            referencedRelation: "vw_pagamentos_pendentes"
-            referencedColumns: ["mensalidade_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -4944,13 +4940,6 @@ export type Database = {
             foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
-            referencedRelation: "vw_pagamentos_pendentes"
-            referencedColumns: ["mensalidade_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -5390,13 +5379,6 @@ export type Database = {
             foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
-            referencedRelation: "vw_pagamentos_pendentes"
-            referencedColumns: ["mensalidade_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -5621,13 +5603,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_pagamentos_pendentes"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
@@ -11944,6 +11919,7 @@ export type Database = {
           numero_matricula: string | null
           origem_transicao_matricula_id: string | null
           percentagem_desconto: number | null
+          percentagem_presencas: number | null
           secao_id: string | null
           session_id: string | null
           status: string
@@ -11968,6 +11944,7 @@ export type Database = {
           numero_matricula?: string | null
           origem_transicao_matricula_id?: string | null
           percentagem_desconto?: number | null
+          percentagem_presencas?: number | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
@@ -11992,6 +11969,7 @@ export type Database = {
           numero_matricula?: string | null
           origem_transicao_matricula_id?: string | null
           percentagem_desconto?: number | null
+          percentagem_presencas?: number | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
@@ -13115,13 +13093,6 @@ export type Database = {
             foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
             columns: ["pagamento_id"]
             isOneToOne: false
-            referencedRelation: "vw_pagamentos_pendentes"
-            referencedColumns: ["pagamento_id"]
-          },
-          {
-            foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
-            columns: ["pagamento_id"]
-            isOneToOne: false
             referencedRelation: "vw_pagamentos_recentes_humanized"
             referencedColumns: ["id"]
           },
@@ -13786,13 +13757,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pagamentos_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_pagamentos_pendentes"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "pagamentos_mensalidade_id_fkey"
@@ -19832,47 +19796,14 @@ export type Database = {
           metodo: string | null
           pagamento_id: string | null
           reference: string | null
+          servico_codigo: string | null
+          servico_nome: string | null
+          tipo_entidade: string | null
           turma_codigo: string | null
           valor_enviado: number | null
           valor_esperado: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "alunos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_alunos_active"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_balcao_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_alunos"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_pagamentos_recentes_humanized: {
         Row: {
@@ -21108,6 +21039,14 @@ export type Database = {
           reused: boolean
         }[]
       }
+      aluno_solicitar_servico: {
+        Args: {
+          p_aluno_id: string
+          p_escola_id: string
+          p_servico_codigo: string
+        }
+        Returns: Json
+      }
       aluno_submeter_comprovativo_pagamento: {
         Args: {
           p_evidence_url: string
@@ -21115,6 +21054,14 @@ export type Database = {
           p_mensalidade_id: string
           p_meta?: Json
           p_valor_informado?: number
+        }
+        Returns: Json
+      }
+      aluno_submeter_comprovativo_servico: {
+        Args: {
+          p_evidence_url: string
+          p_mensagem?: string
+          p_pagamento_intent_id: string
         }
         Returns: Json
       }

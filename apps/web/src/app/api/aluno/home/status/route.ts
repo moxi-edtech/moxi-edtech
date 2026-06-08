@@ -26,10 +26,10 @@ export async function GET(request: Request) {
     if (!alunoId) return NextResponse.json({ ok: true, status: null });
 
     const [{ data: aluno }, { data: matricula }] = await Promise.all([
-      supabase.from("alunos").select("id, nome").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
+      supabase.from("alunos").select("id, nome, foto_url").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
       supabase
         .from("matriculas")
-        .select("id, status, turma:turmas(nome, classe:classes(nome))")
+        .select("id, status, turma:turmas(nome, classe:classes(nome)), percentagem_presencas")
         .eq("aluno_id", alunoId)
         .eq("escola_id", ctx.escolaId)
         .order("created_at", { ascending: false })
@@ -37,8 +37,9 @@ export async function GET(request: Request) {
         .maybeSingle(),
     ]);
 
-    const turmaNome = matricula?.turma?.nome ?? null;
-    const classeNome = matricula?.turma?.classe?.nome ?? null;
+    const turmaNome = (matricula as any)?.turma?.nome ?? null;
+    const classeNome = (matricula as any)?.turma?.classe?.nome ?? null;
+    const assiduidade = (matricula as any)?.percentagem_presencas ?? null;
 
     const estadoAcademico = ["ativo", "ativa", "active"].includes(matricula?.status ?? "")
       ? "Em curso"
@@ -46,7 +47,17 @@ export async function GET(request: Request) {
         ? "Com pendências"
         : "Sem matrícula ativa";
 
-    return NextResponse.json({ ok: true, status: { nome: aluno?.nome ?? "Aluno", turma: turmaNome, classe: classeNome, estadoAcademico } });
+    return NextResponse.json({ 
+      ok: true, 
+      status: { 
+        nome: aluno?.nome ?? "Aluno", 
+        foto_url: aluno?.foto_url ?? null,
+        turma: turmaNome, 
+        classe: classeNome, 
+        estadoAcademico,
+        assiduidade 
+      } 
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
