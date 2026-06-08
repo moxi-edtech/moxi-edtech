@@ -21,10 +21,29 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const { matriculaId } = ctx;
-    if (!matriculaId) {
+    const { matriculaId, escolaId, alunoId } = ctx;
+    if (!matriculaId || !escolaId || !alunoId) {
       return NextResponse.json({ ok: true, notas: [] });
     }
+
+    // --- SEGURANÇA: Verificar se o boletim foi pago ---
+    const { data: permission } = await supabase
+      .from('servico_pedidos')
+      .select('status')
+      .eq('escola_id', escolaId)
+      .eq('aluno_id', alunoId)
+      .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
+      .eq('status', 'granted')
+      .limit(1)
+      .maybeSingle();
+
+    if (!permission) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Acesso bloqueado. É necessário pagar o Boletim de Notas na secretaria para visualizar os detalhes.' 
+      }, { status: 403 });
+    }
+    // --------------------------------------------------
 
     // Fonte única para aluno: mesma view usada no boletim do portal aluno.
     const { data, error } = await supabase

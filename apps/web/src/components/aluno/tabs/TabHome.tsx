@@ -17,7 +17,8 @@ import {
     CreditCard, 
     Star, 
     Clock,
-    AlertTriangle
+    AlertTriangle,
+    Lock as LockIcon
 } from "lucide-react";
 import Link from "next/link";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
@@ -45,6 +46,7 @@ export function TabHome() {
   const [alert, setAlert] = useState<FinanceResponse>(null);
   const [grades, setGrades] = useState<GradeItem[]>([]);
   const [events, setEvents] = useState<AcademicEvent[]>([]);
+  const [restrictedGrades, setRestrictedGrades] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -70,8 +72,11 @@ export function TabHome() {
     key: `home-grades-${studentId ?? "default"}`,
     url: `/api/aluno/home/recent-grades${query}`,
     intervalMs: 90000,
-    parse: (payload) => ((payload as { items?: GradeItem[] }).items ?? []).slice(0, 4),
-    onData: (data) => setGrades(data),
+    parse: (payload) => payload as { items?: GradeItem[], restricted?: boolean },
+    onData: (data) => {
+        setGrades(data.items ?? []);
+        setRestrictedGrades(!!data.restricted);
+    },
   });
 
   const eventsReq = usePortalSWR({
@@ -247,7 +252,26 @@ export function TabHome() {
             ))}
             
             {/* NOTAS RECENTES INTEGRADO */}
-            {grades.length > 0 && (
+            {restrictedGrades ? (
+                <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-xl">
+                    <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-klasse-green/10 blur-2xl" />
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-amber-400">
+                            <LockIcon size={24} />
+                        </div>
+                        <h4 className="text-sm font-black tracking-tight">Notas Bloqueadas</h4>
+                        <p className="mt-1 text-[11px] text-white/50 leading-relaxed max-w-[200px]">
+                            Regularize o seu Boletim para visualizar os últimos lançamentos.
+                        </p>
+                        <Link 
+                            href={`/aluno/documentos${query}`}
+                            className="mt-4 w-full rounded-xl bg-klasse-green py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition active:scale-95 hover:brightness-110 text-center"
+                        >
+                            Liberar Agora
+                        </Link>
+                    </div>
+                </div>
+            ) : grades.length > 0 && (
                 <div className="rounded-[1.5rem] bg-slate-50 p-5 border border-slate-100">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Últimos Lançamentos</p>
                     <div className="space-y-4">

@@ -31,10 +31,15 @@ export function PublicHero({ config }: { config: AdmissionConfig }) {
             Inscrições Abertas {config.ano_letivo?.ano || "vigente"}
           </div>
           
-          <div className="space-y-4">
-            <h1 className="text-4xl font-black tracking-tight text-white md:text-6xl lg:leading-[1.1]">
-              O futuro do seu filho começa aqui.
-            </h1>
+          <div className="space-y-6">
+            <div>
+              <p className="text-lg font-black text-emerald-400 uppercase tracking-[0.2em] mb-3">
+                {config.escola.nome}
+              </p>
+              <h1 className="text-4xl font-black tracking-tight text-white md:text-6xl lg:leading-[1.1]">
+                O futuro do seu filho começa aqui.
+              </h1>
+            </div>
             <p className="max-w-xl text-lg leading-relaxed text-slate-300">
               Faça a pré-inscrição online, escolha o nível de ensino, classe/turma e turno, e acompanhe o estado da sua candidatura sem sair de casa.
             </p>

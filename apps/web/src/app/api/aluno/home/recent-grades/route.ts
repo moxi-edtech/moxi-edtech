@@ -45,6 +45,22 @@ export async function GET(request: Request) {
 
     if (!matriculaId) return NextResponse.json({ ok: true, items: [] });
 
+    // --- SEGURANÇA: Verificar se o boletim foi pago ---
+    const { data: permission } = await supabase
+      .from('servico_pedidos')
+      .select('status')
+      .eq('escola_id', ctx.escolaId)
+      .eq('aluno_id', alunoId)
+      .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
+      .eq('status', 'granted')
+      .limit(1)
+      .maybeSingle();
+
+    if (!permission) {
+      return NextResponse.json({ ok: true, items: [], restricted: true });
+    }
+    // --------------------------------------------------
+
     const { data } = await supabase
       .from("notas")
       .select("valor, created_at, avaliacao:avaliacoes(nome, tipo, created_at)")

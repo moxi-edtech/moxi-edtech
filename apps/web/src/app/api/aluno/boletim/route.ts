@@ -96,6 +96,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
     }
 
+    // --- SEGURANÇA: Verificar permissão de visualização detalhada (serviço pago) ---
+    const { data: permission } = await supabase
+      .from('servico_pedidos')
+      .select('status')
+      .eq('escola_id', ctx.escolaId)
+      .eq('aluno_id', alunoId)
+      .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
+      .eq('status', 'granted')
+      .limit(1)
+      .maybeSingle();
+    
+    const isLiberado = !!permission;
+    // ----------------------------------------------------------------------------
+
     let periodosQuery = supabase
       .from("periodos_letivos")
       .select("id, numero, data_inicio, data_fim")
@@ -168,9 +182,9 @@ export async function GET(request: Request) {
         status,
       };
 
-      if (row.trimestre === 1) existing.nota_t1 = row.nota_final ?? null;
-      if (row.trimestre === 2) existing.nota_t2 = row.nota_final ?? null;
-      if (row.trimestre === 3) existing.nota_t3 = row.nota_final ?? null;
+      if (row.trimestre === 1) existing.nota_t1 = isLiberado ? (row.nota_final ?? null) : null;
+      if (row.trimestre === 2) existing.nota_t2 = isLiberado ? (row.nota_final ?? null) : null;
+      if (row.trimestre === 3) existing.nota_t3 = isLiberado ? (row.nota_final ?? null) : null;
       existing.nota_final = existing.nota_final ?? row.nota_final ?? null;
       existing.status = status;
       byDisciplina.set(id, existing);
@@ -192,6 +206,7 @@ export async function GET(request: Request) {
       ok: true,
       nome_aluno: aluno?.nome ?? null,
       trimestre_atual: trimestreAtual ?? null,
+      is_liberado: isLiberado,
       disciplinas,
     });
   } catch (e: unknown) {
