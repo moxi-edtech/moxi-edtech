@@ -51,6 +51,7 @@
     "pdf-lib": "^1.17.1",
     "postgres": "^3.4.8",
     "react": "19.1.0",
+    "react-circular-progressbar": "^2.2.0",
     "react-dom": "19.1.0",
     "react-dropzone": "^14.3.8",
     "react-qr-code": "^2.0.12",

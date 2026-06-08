@@ -41,65 +41,68 @@ export function AlunoHeader({
         
         {/* --- Lado Esquerdo: Marca e Contexto --- */}
         <div className="flex items-center gap-3">
-          <Link href={homeHref} className="flex items-center gap-2" aria-label="Ir para a home do aluno">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1F6B3B] text-white shadow-sm ring-4 ring-[#1F6B3B]/10">
-              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={18} height={18} className="h-4.5 w-4.5 object-contain" />
+          <Link href={homeHref} className="flex items-center gap-2.5 transition active:scale-95" aria-label="Ir para a home do aluno">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white border border-slate-100 shadow-sm shadow-slate-200/50">
+              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={24} height={24} className="h-6 w-6 object-contain" />
             </div>
             <div className="hidden min-[400px]:block">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 font-geist leading-none mb-0.5">
+              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 leading-none mb-1">
                 Portal do Aluno
               </p>
-              <h1 className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[120px] sm:max-w-[200px]">
+              <h1 className="text-sm font-black text-slate-900 leading-none tracking-tight">
                 {shortSchoolName(escolaNome)}
               </h1>
             </div>
           </Link>
 
-          <div className="h-6 w-px bg-slate-200 hidden sm:block mx-1" />
+          <div className="h-8 w-px bg-slate-200 hidden sm:block mx-2" />
 
           {/* Contexto do Aluno Selecionado */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full px-2 py-1 pr-1 sm:pr-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 shadow-sm">
-              <UserCircle2 className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2.5 bg-slate-50/80 border border-slate-100 rounded-2xl px-3 py-1.5 transition-all hover:bg-slate-100/80">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 shadow-sm">
+              <UserCircle2 className="h-4 w-4" />
             </div>
-            <div className="max-w-[100px] sm:max-w-none">
-              <p className="hidden sm:block text-[8px] font-bold uppercase tracking-widest text-[#1F6B3B] font-geist leading-none">
-                A Visualizar
+            <div className="max-w-[120px] sm:max-w-none">
+              <p className="hidden sm:block text-[9px] font-black uppercase tracking-widest text-klasse-green leading-none mb-0.5">
+                Utilizador
               </p>
-              <p className="text-[11px] font-bold text-slate-900 truncate">
+              <p className="text-xs font-black text-slate-900 truncate">
                 {alunoSelecionadoNome || "—"}
               </p>
             </div>
 
             {hasMultiple && (
-              <div className="relative group ml-1">
-                <select
-                  value={alunoSelecionadoId ?? ""}
-                  onChange={(e) => onSelectAluno(e.target.value)}
-                  className="appearance-none rounded-full border-none bg-transparent pl-1 pr-6 py-0.5 text-[10px] font-bold text-[#1F6B3B] focus:ring-0 cursor-pointer hover:underline"
-                >
-                  <option value="" disabled>Trocar...</option>
-                  {educandos.map((aluno) => (
-                    <option key={aluno.id} value={aluno.id} className="font-semibold text-slate-900 bg-white">
-                      {aluno.nome}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3 w-3 -translate-y-1/2 text-[#1F6B3B]" />
+              <div className="relative group ml-1 flex items-center">
+                <div className="h-4 w-px bg-slate-200 mx-2" />
+                <div className="relative">
+                  <select
+                    value={alunoSelecionadoId ?? ""}
+                    onChange={(e) => onSelectAluno(e.target.value)}
+                    className="appearance-none rounded-full border-none bg-transparent pl-1 pr-6 py-0.5 text-[10px] font-black text-klasse-green focus:ring-0 cursor-pointer hover:underline uppercase tracking-tighter"
+                  >
+                    <option value="" disabled>Trocar</option>
+                    {educandos.map((aluno) => (
+                      <option key={aluno.id} value={aluno.id} className="font-semibold text-slate-900 bg-white">
+                        {aluno.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-klasse-green" />
+                </div>
               </div>
             )}
           </div>
         </div>
 
         {/* --- Lado Direito: Ações --- */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
           
           <SignOutButton
             label="Sair"
             title="Sair"
             variant="ghost"
-            className="h-8 px-2 sm:px-3 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors text-[10px] sm:text-xs font-semibold"
+            className="h-9 px-4 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs font-black uppercase tracking-widest"
           />
         </div>
 

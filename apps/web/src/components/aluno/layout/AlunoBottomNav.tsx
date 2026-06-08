@@ -51,17 +51,23 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
             prefetch
             onPointerEnter={() => handlePreload(item)}
             onTouchStart={() => handlePreload(item)}
-            className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-semibold transition ${
+            className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-all duration-300 active:scale-90 ${
               active
-                ? "bg-klasse-green-50 text-klasse-green-700"
-                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                ? "text-klasse-green scale-110"
+                : "text-slate-400 hover:text-slate-600"
             }`}
               aria-current={active ? "page" : undefined}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${
+                  active ? "bg-klasse-green-50 shadow-sm" : "bg-transparent"
+              }`}>
+                <Icon className={`h-5 w-5 transition-all ${active ? "fill-current" : ""}`} />
+              </div>
+              <span className={`transition-opacity duration-300 ${active ? "opacity-100" : "opacity-70"}`}>
+                {label}
+              </span>
               {badge && badge > 0 && (
-                <span className="absolute right-2 top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold text-white">
+                <span className="absolute right-3 top-2 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white shadow-sm ring-2 border-white">
                   {badge}
                 </span>
               )}
