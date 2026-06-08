@@ -93,6 +93,15 @@ function normalizeRedirectTarget(raw: string | null, expectedBase: string) {
   }
 }
 
+function shouldForcePasswordChange(userMetadata: unknown) {
+  return Boolean((userMetadata as Record<string, unknown> | null | undefined)?.must_change_password);
+}
+
+function resolvePasswordChangeDestination(productBase: string, product: string) {
+  if (product !== "k12") return null;
+  return `${productBase.replace(/\/$/, "")}/mudar-senha`;
+}
+
 export async function POST(req: Request) {
   const supabase = await supabaseServer();
   const { data: authData } = await supabase.auth.getUser();
@@ -126,11 +135,14 @@ export async function POST(req: Request) {
 
   const destinationConfig = resolveTenantRoute(tenant);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
+  const passwordChangeDestination = shouldForcePasswordChange(user.user_metadata)
+    ? resolvePasswordChangeDestination(productBase, destinationConfig.product)
+    : null;
   const preferred = normalizeRedirectTarget(
     typeof redirectTo === "string" ? redirectTo : null,
     productBase
   );
-  const destination = preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
+  const destination = passwordChangeDestination ?? preferred ?? `${productBase.replace(/\/$/, "")}${destinationConfig.path}`;
 
   await setTenantContextCookie({
     uid: user.id,

@@ -105,6 +105,15 @@ function normalizeRole(value: unknown): string {
     .toLowerCase();
 }
 
+function shouldForcePasswordChange(userMetadata: unknown) {
+  return Boolean((userMetadata as Record<string, unknown> | null | undefined)?.must_change_password);
+}
+
+function resolvePasswordChangeDestination(productBase: string, product: string) {
+  if (product !== "k12") return null;
+  return `${productBase.replace(/\/$/, "")}/mudar-senha`;
+}
+
 async function resolveGlobalRole(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   userId: string,
@@ -156,6 +165,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     redirect(`/login${loginSuffix}`);
   }
 
+  const forcePasswordChange = shouldForcePasswordChange(user.user_metadata);
   const headerStore = await headers();
   const host = (headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "")
     .split(",")[0]
@@ -185,6 +195,21 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       role: cachedContext.role,
     });
     const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
+    const passwordChangeDestination = forcePasswordChange
+      ? resolvePasswordChangeDestination(productBase, destinationConfig.product)
+      : null;
+    if (passwordChangeDestination) {
+      logAuthEvent({
+        action: "redirect",
+        route: "/redirect",
+        user_id: user.id,
+        tenant_id: cachedContext.tenant_id,
+        tenant_type: cachedContext.tenant_type,
+        details: { destination: passwordChangeDestination, source: "must_change_password" },
+      });
+      redirect(passwordChangeDestination);
+    }
+
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
     const destination = preferred && !isResolverTarget(preferred)
       ? preferred
@@ -248,6 +273,29 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
 
   const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
+  const passwordChangeDestination = forcePasswordChange
+    ? resolvePasswordChangeDestination(productBase, destinationConfig.product)
+    : null;
+  if (passwordChangeDestination) {
+    await setTenantContextCookie({
+      uid: user.id,
+      tenant_id: selected.tenantId,
+      tenant_slug: selected.tenantSlug,
+      tenant_type: selected.tenantType,
+      role: selected.role,
+    });
+
+    logAuthEvent({
+      action: "redirect",
+      route: "/redirect",
+      user_id: user.id,
+      tenant_id: selected.tenantId,
+      tenant_type: selected.tenantType,
+      details: { destination: passwordChangeDestination, source: "must_change_password" },
+    });
+    redirect(passwordChangeDestination);
+  }
+
   const preferred = normalizeRedirectTarget(params.redirect, productBase);
   const destination = preferred && !isResolverTarget(preferred)
     ? preferred
