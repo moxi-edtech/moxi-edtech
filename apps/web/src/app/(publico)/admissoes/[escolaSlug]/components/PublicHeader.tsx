@@ -20,7 +20,7 @@ export function PublicHeader({ config }: { config: AdmissionConfig }) {
               <School size={20} />
             </div>
           )}
-          <span className="text-sm font-black text-slate-900 hidden sm:inline-block">
+          <span className="text-sm font-black text-slate-900 truncate max-w-[150px] sm:max-w-none">
             {config.escola.nome}
           </span>
         </div>
