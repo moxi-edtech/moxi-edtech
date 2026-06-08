@@ -5,6 +5,12 @@ type TurmaDisplayInput = {
   turma_turno?: string | null;
 };
 
+type AnoLetivoDisplayInput = {
+  ano?: number | string | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+};
+
 const TURMA_TURNO_LABELS: Record<string, string> = {
   M: "Manhã",
   MANHA: "Manhã",
@@ -52,6 +58,25 @@ const inferTurnoFromTurmaName = (nome?: string | null) => {
 export const formatTurnoDisplay = (turno?: string | null) => {
   const cleaned = cleanTurmaToken(turno ?? "").replace(/[().-]/g, "").toUpperCase();
   return TURMA_TURNO_LABELS[cleaned] ?? cleanTurmaToken(turno ?? "");
+};
+
+export const formatAnoLetivoDisplay = (anoLetivo?: AnoLetivoDisplayInput | number | string | null) => {
+  const input =
+    typeof anoLetivo === "object" && anoLetivo !== null
+      ? anoLetivo
+      : { ano: anoLetivo };
+
+  const startFromDate = input.data_inicio ? new Date(input.data_inicio).getFullYear() : null;
+  const endFromDate = input.data_fim ? new Date(input.data_fim).getFullYear() : null;
+
+  if (Number.isFinite(startFromDate) && Number.isFinite(endFromDate) && startFromDate && endFromDate) {
+    return `${startFromDate}/${endFromDate}`;
+  }
+
+  const startYear = Number(input.ano);
+  if (!Number.isFinite(startYear)) return "—";
+
+  return `${Math.trunc(startYear)}/${Math.trunc(startYear) + 1}`;
 };
 
 export const formatTurmaDisplayName = (turma: TurmaDisplayInput) => {
