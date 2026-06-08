@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import { getAnoLetivoAdmissoesFromConfig } from "@/lib/admissoes/reserva";
 import type { Json } from "~types/supabase";
 
 const CandidaturaSchema = z.object({
@@ -307,11 +308,27 @@ export async function POST(
     }
 
     const turmaAnoLetivo = Number(turmaCheck.data.ano_letivo);
-    const activeAnoLetivo = Number(activeAnoRes.data?.ano);
+    const activeAnoLetivo = getAnoLetivoAdmissoesFromConfig(
+      escolaConfig?.config_portal_admissao,
+      Number(activeAnoRes.data?.ano)
+    );
+    const activeAnoLetivoNumber = typeof activeAnoLetivo === "number" ? activeAnoLetivo : Number.NaN;
+    if (
+      data.turma_preferencial_id &&
+      Number.isFinite(turmaAnoLetivo) &&
+      Number.isFinite(activeAnoLetivoNumber) &&
+      turmaAnoLetivo !== activeAnoLetivoNumber
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "Classe/turma não pertence ao ano letivo aberto para candidaturas." },
+        { status: 400 }
+      );
+    }
+
     const anoLetivo = Number.isFinite(turmaAnoLetivo)
       ? turmaAnoLetivo
-      : Number.isFinite(activeAnoLetivo)
-      ? activeAnoLetivo
+      : Number.isFinite(activeAnoLetivoNumber)
+      ? activeAnoLetivoNumber
       : data.ano_letivo;
 
     const nomeNormalizado = normalizeName(data.nome_completo);

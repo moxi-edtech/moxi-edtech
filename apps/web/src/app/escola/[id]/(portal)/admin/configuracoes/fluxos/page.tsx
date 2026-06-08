@@ -37,6 +37,13 @@ type DocumentoAdmissao = {
   label: string;
 };
 
+type AnoLetivoOption = {
+  id: string;
+  ano: number;
+  ativo?: boolean | null;
+  label?: string | null;
+};
+
 function normalizeDocumentoId(value: string) {
   return value
     .normalize("NFD")
@@ -62,6 +69,8 @@ export default function FluxosConfiguracaoPage() {
   const [isSistemaModalOpen, setIsSistemaModalOpen] = useState(false);
   const [reservaExpiracaoHoras, setReservaExpiracaoHoras] = useState(48);
   const [pendenciaSlaHoras, setPendenciaSlaHoras] = useState(72);
+  const [anoLetivoAdmissoes, setAnoLetivoAdmissoes] = useState<number | null>(null);
+  const [anosLetivos, setAnosLetivos] = useState<AnoLetivoOption[]>([]);
   const [documentosAdmissao, setDocumentosAdmissao] = useState<DocumentoAdmissao[]>([]);
   const [loadingAdmissoes, setLoadingAdmissoes] = useState(true);
   
@@ -133,6 +142,8 @@ export default function FluxosConfiguracaoPage() {
         if (!cancelled) {
           setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || 48);
           setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || 72);
+          setAnoLetivoAdmissoes(Number.isFinite(Number(json?.admissoes?.ano_letivo_admissoes)) ? Number(json.admissoes.ano_letivo_admissoes) : null);
+          setAnosLetivos(Array.isArray(json?.anos_letivos) ? json.anos_letivos : []);
           setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : []);
         }
       } catch (err) {
@@ -175,6 +186,7 @@ export default function FluxosConfiguracaoPage() {
             escolaId,
             reserva_expiracao_horas: normalizedReservaExpiracaoHoras,
             pendencia_sla_horas: normalizedPendenciaSlaHoras,
+            ano_letivo_admissoes: anoLetivoAdmissoes,
             documentos_admissao_catalogo: normalizedDocumentos,
           }),
         });
@@ -182,6 +194,7 @@ export default function FluxosConfiguracaoPage() {
         if (!res.ok) throw new Error(json?.error || "Falha ao guardar configuração");
         setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || normalizedReservaExpiracaoHoras);
         setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || normalizedPendenciaSlaHoras);
+        setAnoLetivoAdmissoes(Number.isFinite(Number(json?.admissoes?.ano_letivo_admissoes)) ? Number(json.admissoes.ano_letivo_admissoes) : anoLetivoAdmissoes);
         setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : normalizedDocumentos);
       }
       success("Fluxo atualizado com sucesso.");
@@ -236,7 +249,28 @@ export default function FluxosConfiguracaoPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <label className="block">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Ano de admissões
+                  </span>
+                  <select
+                    disabled={loadingAdmissoes}
+                    value={anoLetivoAdmissoes ?? ""}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      setAnoLetivoAdmissoes(Number.isFinite(nextValue) ? nextValue : null);
+                    }}
+                    className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                  >
+                    <option value="">Ano mais recente</option>
+                    {anosLetivos.map((ano) => (
+                      <option key={ano.id} value={ano.ano}>
+                        {ano.label ?? `${ano.ano}/${ano.ano + 1}`}{ano.ativo ? " · operacional ativo" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="block">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     Expiração da reserva

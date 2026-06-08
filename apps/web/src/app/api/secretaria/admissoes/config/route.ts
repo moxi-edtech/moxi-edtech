@@ -8,12 +8,15 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import {
   DEFAULT_DOCUMENTOS_ADMISSAO,
+  getAnoLetivoAdmissoesFromConfig,
   getDocumentosAdmissaoCatalogoFromConfig,
   getPendenciaSlaHorasFromConfig,
   getReservaExpiracaoHorasFromConfig,
+  normalizeAnoLetivoAdmissoes,
   normalizePendenciaSlaHoras,
   normalizeReservaExpiracaoHoras,
 } from '@/lib/admissoes/reserva'
+import { formatAnoLetivoDisplay } from '@/utils/formatters'
 import type { Json } from '~types/supabase'
 
 const searchParamsSchema = z.object({
@@ -24,6 +27,7 @@ const patchPayloadSchema = z.object({
   escolaId: z.string().uuid(),
   reserva_expiracao_horas: z.number().int().min(1).max(168).optional(),
   pendencia_sla_horas: z.number().int().min(1).max(720).optional(),
+  ano_letivo_admissoes: z.number().int().min(2000).max(2100).nullable().optional(),
   documentos_admissao_catalogo: z.array(z.object({
     id: z.string().trim().min(1).max(120).regex(/^[a-z0-9_-]+$/),
     label: z.string().trim().min(2).max(120),
@@ -77,13 +81,27 @@ export async function GET(request: Request) {
       .select('config_portal_admissao')
       .eq('id', escolaId)
       .maybeSingle()
+    const anosLetivosQuery = supabase
+      .from('anos_letivos')
+      .select('id, ano, ativo, data_inicio, data_fim')
+      .eq('escola_id', escolaId)
+      .order('ano', { ascending: false })
 
-    const [cursos, classes, escola] = await Promise.all([cursosQuery, classesQuery, escolaQuery])
+    const [cursos, classes, escola, anosLetivos] = await Promise.all([cursosQuery, classesQuery, escolaQuery, anosLetivosQuery])
+    const anos = (Array.isArray(anosLetivos.data) ? anosLetivos.data : []).map((ano) => ({
+      ...ano,
+      label: formatAnoLetivoDisplay(ano),
+    }))
+    const latestAno = typeof anos[0]?.ano === 'number' ? anos[0].ano : null
+    const anoLetivoAdmissoes = getAnoLetivoAdmissoesFromConfig(escola.data?.config_portal_admissao, latestAno)
 
     return NextResponse.json({
       cursos: cursos.data,
       classes: classes.data,
+      anos_letivos: anos,
       admissoes: {
+        ano_letivo_admissoes: anoLetivoAdmissoes,
+        ano_letivo_admissoes_label: formatAnoLetivoDisplay(anoLetivoAdmissoes),
         reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(escola.data?.config_portal_admissao),
         pendencia_sla_horas: getPendenciaSlaHorasFromConfig(escola.data?.config_portal_admissao),
         documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(escola.data?.config_portal_admissao),
@@ -104,7 +122,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: validation.error.format() }, { status: 400 })
   }
 
-  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, documentos_admissao_catalogo } = validation.data
+  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, ano_letivo_admissoes, documentos_admissao_catalogo } = validation.data
 
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
@@ -141,6 +159,9 @@ export async function PATCH(request: Request) {
       ...(pendencia_sla_horas !== undefined
         ? { pendencia_sla_horas: normalizePendenciaSlaHoras(pendencia_sla_horas) }
         : {}),
+      ...(ano_letivo_admissoes !== undefined
+        ? { ano_letivo_admissoes: normalizeAnoLetivoAdmissoes(ano_letivo_admissoes) as unknown as Json }
+        : {}),
       ...(documentos_admissao_catalogo !== undefined
         ? { documentos_admissao_catalogo }
         : {}),
@@ -160,6 +181,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       ok: true,
       admissoes: {
+        ano_letivo_admissoes: getAnoLetivoAdmissoesFromConfig(nextConfig),
+        ano_letivo_admissoes_label: formatAnoLetivoDisplay(getAnoLetivoAdmissoesFromConfig(nextConfig)),
         reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(nextConfig),
         pendencia_sla_horas: getPendenciaSlaHorasFromConfig(nextConfig),
         documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(nextConfig),

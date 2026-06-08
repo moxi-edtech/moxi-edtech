@@ -4,6 +4,8 @@ export const MAX_RESERVA_EXPIRACAO_HORAS = 168;
 export const DEFAULT_PENDENCIA_SLA_HORAS = 72;
 export const MIN_PENDENCIA_SLA_HORAS = 1;
 export const MAX_PENDENCIA_SLA_HORAS = 720;
+export const MIN_ANO_LETIVO_ADMISSOES = 2000;
+export const MAX_ANO_LETIVO_ADMISSOES = 2100;
 
 export const DEFAULT_DOCUMENTOS_ADMISSAO = [
   { id: "bi_candidato", label: "BI do candidato" },
@@ -62,6 +64,32 @@ export function getPendenciaSlaHorasFromConfig(config: unknown) {
   return normalizePendenciaSlaHoras(
     (config as Record<string, unknown>).pendencia_sla_horas
   );
+}
+
+export function normalizeAnoLetivoAdmissoes(value: unknown) {
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : null;
+
+  if (!Number.isFinite(numericValue)) return null;
+
+  const year = Math.trunc(Number(numericValue));
+  if (year < MIN_ANO_LETIVO_ADMISSOES || year > MAX_ANO_LETIVO_ADMISSOES) return null;
+  return year;
+}
+
+export function getAnoLetivoAdmissoesFromConfig(config: unknown, fallback?: number | null) {
+  const fallbackYear = normalizeAnoLetivoAdmissoes(fallback);
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return fallbackYear;
+  }
+
+  return normalizeAnoLetivoAdmissoes(
+    (config as Record<string, unknown>).ano_letivo_admissoes
+  ) ?? fallbackYear;
 }
 
 export function getDocumentosAdmissaoCatalogoFromConfig(config: unknown) {

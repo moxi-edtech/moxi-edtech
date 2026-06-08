@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import { getAnoLetivoAdmissoesFromConfig } from "@/lib/admissoes/reserva";
+import { formatAnoLetivoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -34,16 +36,15 @@ export async function GET(
     const [escolaRes, anosRes, cursosRes, turmasRes] = await Promise.all([
       supabase
         .from("escolas")
-        .select("id, nome, logo_url, cor_primaria, status")
+        .select("id, nome, logo_url, cor_primaria, status, config_portal_admissao")
         .eq("id", escolaId)
         .maybeSingle(),
       supabase
         .from("anos_letivos")
-        .select("id, ano, ativo")
+        .select("id, ano, ativo, data_inicio, data_fim")
         .eq("escola_id", escolaId)
         .order("ano", { ascending: false }) // Pegar o ano mais recente (ex: 2025)
-        .limit(1)
-        .maybeSingle(),
+        .limit(20),
       supabase
         .from("cursos")
         .select("id, nome")
@@ -64,7 +65,14 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Escola não está aceitando novas inscrições no momento" }, { status: 403 });
     }
 
-    const activeAno = Number(anosRes.data?.ano);
+    const anosLetivos = Array.isArray(anosRes.data) ? anosRes.data : [];
+    const latestAno = Number(anosLetivos[0]?.ano);
+    const configuredAno = getAnoLetivoAdmissoesFromConfig(
+      escolaRes.data.config_portal_admissao,
+      latestAno
+    );
+    const activeAno = Number(configuredAno);
+    const selectedAnoLetivo = anosLetivos.find((ano) => Number(ano.ano) === activeAno) ?? anosLetivos[0] ?? null;
     const turmasAtivas = (turmasRes.data || []).filter((turma) => {
       if (!Number.isFinite(activeAno)) return true;
       return Number(turma.ano_letivo) === activeAno;
@@ -97,7 +105,9 @@ export async function GET(
           cor_primaria: escolaRes.data.cor_primaria,
           slug: slug,
         },
-        ano_letivo: anosRes.data || null,
+        ano_letivo: selectedAnoLetivo
+          ? { ...selectedAnoLetivo, label: formatAnoLetivoDisplay(selectedAnoLetivo) }
+          : null,
         cursos: cursosRes.data || [],
         turmas: turmasAtivas.map(t => ({
           id: t.id,
