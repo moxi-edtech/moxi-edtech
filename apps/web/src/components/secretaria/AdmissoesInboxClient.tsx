@@ -843,17 +843,29 @@ export default function AdmissoesInboxClient({
   }
 
   const handleViewDoc = async (name: string, path: string) => {
+    const trimmedPath = path?.trim();
+    if (!trimmedPath) return;
+
     try {
+      // Se já for uma URL completa (ex: começa com http), usamos direto
+      if (trimmedPath.startsWith('http')) {
+        setViewingDoc({ name, url: trimmedPath });
+        return;
+      }
+
       const { data, error } = await supabase.storage
         .from('candidaturas')
-        .createSignedUrl(path, 3600) // 1 hora de validade
+        .createSignedUrl(trimmedPath, 3600); // 1 hora de validade
 
-      if (error) throw error
-      setViewingDoc({ name, url: data.signedUrl })
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error('Signed URL empty');
+      
+      setViewingDoc({ name, url: data.signedUrl });
     } catch (err: unknown) {
-      toastError('Erro ao visualizar', 'Não foi possível gerar um link seguro para este documento.')
+      console.error('[handleViewDoc] Error:', err);
+      toastError('Erro ao visualizar', 'Não foi possível gerar um link seguro para este documento.');
     }
-  }
+  };
 
   return (
     <div className="flex h-[calc(100vh-160px)] gap-0 overflow-hidden bg-white rounded-2xl shadow-sm border border-slate-200">
@@ -1173,19 +1185,23 @@ export default function AdmissoesInboxClient({
 
                           <div className="flex flex-col gap-2">
                             <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Documento de Prova</p>
-                            {selectedData.dados_candidato?.pagamento?.comprovativo_url ? (
-                              <button
-                                onClick={() => handleViewDoc('Comprovativo', selectedData.dados_candidato?.pagamento?.comprovativo_url)}
-                                className="flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-dashed border-amber-300 rounded-xl text-amber-700 font-bold hover:bg-amber-100 transition-all group"
-                              >
-                                <FileText className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                                Visualizar Talão Agora
-                              </button>
-                            ) : (
-                              <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 rounded-xl text-amber-500 text-xs italic">
-                                Nenhum talão anexado pelo aluno
-                              </div>
-                            )}
+                            {(() => {
+                              const compPath = selectedData.dados_candidato?.pagamento?.comprovativo_path || selectedData.dados_candidato?.pagamento?.comprovativo_url;
+                              if (!compPath) return (
+                                <div className="flex items-center justify-center w-full py-4 bg-amber-100/50 border-2 border-dashed border-amber-200 rounded-xl text-amber-500 text-xs italic">
+                                  Nenhum talão anexado pelo aluno
+                                </div>
+                              );
+                              return (
+                                <button
+                                  onClick={() => handleViewDoc('Comprovativo', compPath)}
+                                  className="flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-dashed border-amber-300 rounded-xl text-amber-700 font-bold hover:bg-amber-100 transition-all group"
+                                >
+                                  <FileText className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                                  Visualizar Talão Agora
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
 
@@ -1467,21 +1483,43 @@ export default function AdmissoesInboxClient({
                 </button>
               </div>
               <div className="flex-1 bg-slate-100">
-                {viewingDoc.url.toLowerCase().endsWith('.pdf') ? (
-                  <iframe
-                    src={viewingDoc.url}
-                    className="w-full h-full border-none"
-                    title={viewingDoc.name}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center p-8">
-                    <img
-                      src={viewingDoc.url}
-                      alt={viewingDoc.name}
-                      className="max-w-full max-h-full object-contain shadow-lg rounded-lg"
-                    />
-                  </div>
-                )}
+                {(() => {
+                  try {
+                    const urlObj = new URL(viewingDoc.url);
+                    const isPdf = urlObj.pathname.toLowerCase().endsWith('.pdf');
+                    
+                    if (isPdf) {
+                      return (
+                        <iframe
+                          src={viewingDoc.url}
+                          className="w-full h-full border-none"
+                          title={viewingDoc.name}
+                        />
+                      );
+                    }
+                  } catch (e) {
+                    // Fallback if URL is invalid or simple path
+                    if (viewingDoc.url.toLowerCase().includes('.pdf')) {
+                      return (
+                        <iframe
+                          src={viewingDoc.url}
+                          className="w-full h-full border-none"
+                          title={viewingDoc.name}
+                        />
+                      );
+                    }
+                  }
+
+                  return (
+                    <div className="w-full h-full flex items-center justify-center p-8">
+                      <img
+                        src={viewingDoc.url}
+                        alt={viewingDoc.name}
+                        className="max-w-full max-h-full object-contain shadow-lg rounded-lg"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
               <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
                 <Button variant="outline" onClick={() => window.open(viewingDoc.url, '_blank')}>
