@@ -13,7 +13,7 @@ export function ProfessorBottomNav({ items, activePath }: Props) {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navegação do portal do professor"
     >
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-5 gap-2 px-2 py-2">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-6 gap-1 px-1 py-2">
         {items.map(({ href, path, label, icon: Icon }) => {
           const active =
             activePath === href ||

@@ -579,6 +579,7 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
 
   const allocation = getAllocationStatus(aula.temposTotal, aula.temposAlocados, aula.missingLoad);
   const isComplete = allocation.isComplete;
+  const isOverbooked = allocation.isOverbooked;
   const totalLabel = aula.missingLoad ? "?" : aula.temposTotal;
 
   return (
@@ -590,36 +591,51 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
         group relative p-3 rounded-xl border transition-all select-none
         ${isDragging ? "opacity-30" : "opacity-100"}
         ${isComplete 
-            ? "bg-slate-50 border-slate-100 grayscale" 
+            ? "bg-emerald-50/50 border-emerald-100" 
+            : isOverbooked
+            ? "bg-rose-50/50 border-rose-100"
             : "bg-white border-slate-200 hover:border-klasse-gold/50 hover:shadow-sm cursor-grab active:cursor-grabbing"
         }
       `}
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ring-2 ring-white shadow-sm ${aula.cor.split(" ")[0]}`} />
-          <span className={`font-bold text-xs ${isComplete ? "text-slate-400" : "text-slate-700"}`}>
+          <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm ${aula.cor.split(" ")[0]}`} />
+          <span className={`font-bold text-sm ${isComplete ? "text-emerald-700" : isOverbooked ? "text-rose-700" : "text-slate-700"}`}>
             {aula.disciplina}
           </span>
         </div>
         {isComplete ? (
-          <Check className="w-3.5 h-3.5 text-klasse-green-500" />
+          <Check className="w-4 h-4 text-emerald-600" />
+        ) : isOverbooked ? (
+          <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
         ) : (
           <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-klasse-gold transition-colors" />
         )}
       </div>
 
-      <div className="flex items-center justify-between mt-2">
-         <span className="text-[10px] text-slate-400 font-mono">
-            {aula.temposAlocados}/{totalLabel} aulas
-         </span>
-         <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
+      <div className="flex items-center justify-between mt-3">
+         <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Carga Horária</span>
+            <span className={`text-xs font-mono font-bold ${isComplete ? "text-emerald-600" : isOverbooked ? "text-rose-600" : "text-slate-600"}`}>
+               {aula.temposAlocados} de {totalLabel} tempos
+            </span>
+         </div>
+         <div className="h-2 w-20 bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-200/50">
             <div
-              className={`h-full ${isComplete ? "bg-klasse-green-500" : "bg-klasse-gold"}`}
-              style={{ width: `${allocation.progress}%` }}
+              className={`h-full transition-all duration-500 ${
+                isComplete ? "bg-emerald-500" : isOverbooked ? "bg-rose-500" : "bg-klasse-gold"
+              }`}
+              style={{ width: `${Math.min(100, allocation.progress)}%` }}
             />
          </div>
       </div>
+      
+      {isOverbooked && (
+        <div className="mt-2 text-[9px] font-bold text-rose-600 uppercase tracking-tight">
+          Excesso de {aula.temposAlocados - aula.temposTotal} aulas
+        </div>
+      )}
     </div>
   );
 });

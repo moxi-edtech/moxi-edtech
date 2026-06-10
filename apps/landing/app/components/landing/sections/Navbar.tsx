@@ -48,7 +48,7 @@ export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps)
   }, [])
 
   return (
-    <nav id="navbar" className="fixed top-0 left-0 right-0 z-[1000] bg-[#F5F0E8] border-b border-[#DDD8CF]/10">
+    <nav id="navbar" className="fixed top-0 left-0 right-0 z-[1000] bg-[#F5F0E8]/80 backdrop-blur-md border-b border-[#DDD8CF]/10">
       <div className="container">
         <div className="nav-inner">
           <a href="/" className="nav-logo z">
