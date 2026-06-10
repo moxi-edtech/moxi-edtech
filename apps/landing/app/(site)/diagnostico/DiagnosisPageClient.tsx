@@ -157,8 +157,8 @@ export function DiagnosisPageClient() {
   const diagnosis = getDiagnosis()
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8] text-slate-900 selection:bg-klasse-gold selection:text-black">
-      <div className="relative w-full max-w-5xl mx-auto py-12 px-6">
+    <div className="min-h-screen w-full flex justify-center bg-[#F5F0E8] text-slate-900 selection:bg-klasse-gold selection:text-black">
+      <div className="w-full max-w-5xl px-6 py-12 md:py-24">
         
         <AnimatePresence mode="wait">
           {/* STEP 0: INTRO */}
@@ -168,7 +168,7 @@ export function DiagnosisPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col gap-10"
+              className="flex flex-col gap-10 w-full"
             >
               <div className="flex flex-col gap-8 text-center sm:text-left">
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-800 self-center sm:self-start border border-emerald-200/50">
@@ -188,41 +188,41 @@ export function DiagnosisPageClient() {
                     <ChevronRight className="transition-transform group-hover:translate-x-1" />
                   </button>
                 </div>
-                <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
                   {[
                     { label: 'Tempo', val: '2 min' },
                     { label: 'Entrega', val: 'Relatório' },
                     { label: 'Foco', val: 'Angola' },
                   ].map(card => (
-                    <div key={card.label} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm flex flex-col justify-center min-h-[120px]">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-1">{card.label}</p>
-                      <p className="text-2xl font-black text-slate-900 leading-tight">{card.val}</p>
+                    <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm flex flex-col justify-center min-h-[120px]">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">{card.label}</p>
+                      <p className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">{card.val}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* SEÇÃO O QUE MEDIMOS - ARREDONDADA E ESCURA */}
-              <div className="rounded-[2rem] bg-[#061B15] p-8 md:p-16 text-white shadow-2xl overflow-hidden relative">
+              <div className="rounded-[2.5rem] bg-[#061B15] p-8 md:p-12 lg:p-16 text-white shadow-2xl overflow-hidden relative">
                 <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-klasse-gold/10 blur-[80px]" />
-                <div className="relative flex flex-col gap-12">
+                <div className="relative flex flex-col gap-10 md:gap-12">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/70 self-start">
                     O que avaliamos
                   </div>
-                  <div className="grid gap-10 md:grid-cols-2">
+                  <div className="grid gap-8 md:gap-10 md:grid-cols-2">
                     {[
                       { title: 'Matrículas', desc: 'Identificação de gargalos no atendimento e gestão de documentos físicos.', icon: Users },
                       { title: 'Propinas', desc: 'Rastreabilidade de depósitos e automação de alertas de cobrança.', icon: Building2 },
                       { title: 'Notas', desc: 'Digitalização de pautas e agilidade no conselho de notas trimestral.', icon: Target },
                       { title: 'Estratégia', desc: 'Visibilidade executiva sobre a saúde financeira e operacional da escola.', icon: TrendingDown },
                     ].map((item) => (
-                      <div key={item.title} className="flex gap-6 items-start">
-                        <div className="h-12 w-12 shrink-0 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
-                           <item.icon className="h-6 w-6 text-klasse-gold" />
+                      <div key={item.title} className="flex gap-5 sm:gap-6 items-start">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
+                           <item.icon className="h-5 w-5 sm:h-6 sm:w-6 text-klasse-gold" />
                         </div>
-                        <div className="space-y-2">
-                          <p className="text-xl font-black text-white">{item.title}</p>
-                          <p className="text-base leading-relaxed text-white/50 font-medium">{item.desc}</p>
+                        <div className="space-y-1 sm:space-y-2">
+                          <p className="text-lg sm:text-xl font-black text-white">{item.title}</p>
+                          <p className="text-sm sm:text-base leading-relaxed text-white/60 font-medium">{item.desc}</p>
                         </div>
                       </div>
                     ))}
