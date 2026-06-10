@@ -19,12 +19,17 @@ export async function GET() {
         nome_completo,
         numero_processo,
         bi_numero,
-        foto_url:documentos->>foto_candidato
+        documentos,
+        profile:profiles(avatar_url)
       `)
       .eq("id", alunoId)
       .single();
 
     if (alunoError || !aluno) throw alunoError || new Error("Aluno não encontrado");
+
+    const profileAvatar = (aluno.profile as any)?.avatar_url;
+    const documentPhoto = (aluno.documentos as any)?.foto_candidato;
+    const effectivePhoto = profileAvatar || documentPhoto;
 
     const { data: matricula } = matriculaId 
       ? await supabase
@@ -58,7 +63,7 @@ export async function GET() {
         nome: aluno.nome_completo,
         processo: aluno.numero_processo,
         bi: aluno.bi_numero,
-        foto: aluno.foto_url,
+        foto: effectivePhoto,
         escola: escola?.nome || "Escola",
         escola_logo: escola?.logo_url,
         sigla: escola?.login_sigla,

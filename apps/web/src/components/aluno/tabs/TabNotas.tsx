@@ -98,26 +98,39 @@ export function TabNotas() {
         ) : (
           <section className="space-y-3">
             {!isLiberado && (
-                <div className="rounded-[2rem] bg-slate-900 p-6 text-white shadow-xl relative overflow-hidden mb-6">
-                    <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
-                    <div className="relative z-10 flex flex-col gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                                <AlertCircle size={28} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-black tracking-tight">Detalhes Bloqueados</p>
-                                <p className="text-[11px] text-white/60 leading-relaxed">
-                                    Para visualizar as notas de cada trimestre e as médias parciais, é necessário regularizar o pagamento do Boletim na secretaria.
-                                </p>
-                            </div>
+                <div className="group relative mb-8 overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl shadow-klasse-gold/10 transition-all hover:shadow-klasse-gold/20">
+                    {/* Elementos Decorativos de Fundo */}
+                    <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-klasse-gold/10 blur-3xl transition-all group-hover:bg-klasse-gold/20" />
+                    <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-klasse-gold/5 blur-3xl" />
+                    
+                    <div className="relative z-10 flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-klasse-gold to-amber-600 shadow-lg shadow-klasse-gold/20 ring-4 ring-white/10">
+                            <LockIcon size={36} className="text-white animate-pulse" />
                         </div>
+                        
+                        <div className="flex-1 space-y-2">
+                            <h3 className="text-xl font-black tracking-tight text-white md:text-2xl">
+                                Suas Notas Detalhadas Estão <span className="text-klasse-gold">Aguardando Liberação</span>
+                            </h3>
+                            <p className="max-w-2xl text-sm font-medium leading-relaxed text-slate-400">
+                                Para visualizar o desempenho por trimestre, avaliações contínuas e descarregar o boletim oficial, é necessário efectuar o pagamento da taxa de secretaria.
+                            </p>
+                        </div>
+
                         <Link 
                             href={`/aluno/documentos${query}`}
-                            className="flex items-center justify-center gap-2 w-full py-3 bg-white text-slate-900 rounded-2xl text-xs font-black hover:bg-slate-100 transition active:scale-95"
+                            className="group/btn flex w-full shrink-0 items-center justify-center gap-3 rounded-2xl bg-klasse-gold px-8 py-4 text-sm font-black text-slate-950 transition-all hover:brightness-110 active:scale-95 md:w-auto"
                         >
-                            Solicitar Liberação no Balcão <ChevronRight size={16} />
+                            Solicitar Boletim Digital
+                            <ChevronRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
                         </Link>
+                    </div>
+
+                    {/* Badge de Status */}
+                    <div className="absolute right-6 top-6 hidden md:block">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-klasse-gold backdrop-blur-sm">
+                            <AlertCircle size={10} /> Pagamento Pendente
+                        </span>
                     </div>
                 </div>
             )}

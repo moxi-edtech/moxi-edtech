@@ -312,15 +312,16 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
   );
 }
 
-// --- SUB-COMPONENT: GERADOR (Isolado para limpeza) ---
+// --- SUB-COMPONENT: GERADOR (Melhorado) ---
 function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
    const [config, setConfig] = useState({
       inicio: "07:30",
-      duracao: 45, // min
+      duracao: 45, 
       qtd: 6,
       intervalo: true,
       intervaloApos: 3,
-      duracaoIntervalo: 20
+      duracaoIntervalo: 20,
+      aplicarTodosDias: true
    });
 
    const addMinutes = (time: string, minutes: number) => {
@@ -331,115 +332,203 @@ function GeradorPanel({ turno, dia, onGenerate, onCancel }: any) {
       return `${String(nextHour).padStart(2, "0")}:${String(nextMinute).padStart(2, "0")}`;
    };
 
-   const buildId = () => {
-      if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-         return crypto.randomUUID();
-      }
-      // Fallback para ambientes sem randomUUID (mantém formato UUID para backend).
-      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
-         const random = Math.floor(Math.random() * 16);
-         const value = char === "x" ? random : (random & 0x3) | 0x8;
-         return value.toString(16);
-      });
-   };
-
-   const handleGenerate = () => {
-      const slots: HorarioSlot[] = [];
+   const generatedPreview = useMemo(() => {
+      const preview: Array<{ label: string, inicio: string, fim: string, is_intervalo: boolean }> = [];
       let currentStart = config.inicio;
       let ordem = 1;
 
-      for (let index = 1; index <= config.qtd; index += 1) {
+      for (let i = 1; i <= config.qtd; i++) {
          const fim = addMinutes(currentStart, config.duracao);
-         slots.push({
-            id: buildId(),
-            turno_id: turno,
-            dia_semana: dia,
-            ordem,
-            inicio: currentStart,
-            fim,
-            is_intervalo: false,
-         });
-         ordem += 1;
-
+         preview.push({ label: `${ordem}º Tempo`, inicio: currentStart, fim, is_intervalo: false });
+         ordem++;
          currentStart = fim;
 
-         if (config.intervalo && index === config.intervaloApos) {
-            const intervaloFim = addMinutes(currentStart, config.duracaoIntervalo);
-            slots.push({
-               id: buildId(),
-               turno_id: turno,
-               dia_semana: dia,
-               ordem,
-               inicio: currentStart,
-               fim: intervaloFim,
-               is_intervalo: true,
-               nome: "Intervalo",
-            });
-            ordem += 1;
-            currentStart = intervaloFim;
+         if (config.intervalo && i === config.intervaloApos) {
+            const intFim = addMinutes(currentStart, config.duracaoIntervalo);
+            preview.push({ label: `Intervalo`, inicio: currentStart, fim: intFim, is_intervalo: true });
+            ordem++;
+            currentStart = intFim;
          }
       }
+      return preview;
+   }, [config]);
 
-      onGenerate(slots);
+   const handleGenerate = () => {
+      const buildId = () => crypto.randomUUID();
+      const diasParaAplicar = config.aplicarTodosDias ? [1, 2, 3, 4, 5] : [dia];
+      
+      const allNewSlots: HorarioSlot[] = [];
+
+      diasParaAplicar.forEach(d => {
+         let currentStart = config.inicio;
+         let ordem = 1;
+         for (let i = 1; i <= config.qtd; i++) {
+            const fim = addMinutes(currentStart, config.duracao);
+            allNewSlots.push({
+               id: buildId(),
+               turno_id: turno,
+               dia_semana: d,
+               ordem,
+               inicio: currentStart,
+               fim,
+               is_intervalo: false
+            });
+            ordem++;
+            currentStart = fim;
+
+            if (config.intervalo && i === config.intervaloApos) {
+               const intFim = addMinutes(currentStart, config.duracaoIntervalo);
+               allNewSlots.push({
+                  id: buildId(),
+                  turno_id: turno,
+                  dia_semana: d,
+                  ordem,
+                  inicio: currentStart,
+                  fim: intFim,
+                  is_intervalo: true,
+                  nome: "Intervalo"
+               });
+               ordem++;
+               currentStart = intFim;
+            }
+         }
+      });
+
+      onGenerate(allNewSlots);
    };
 
    return (
-      <div className="bg-slate-900 text-white rounded-2xl p-8 shadow-2xl animate-in fade-in slide-in-from-right-8 duration-500">
-         <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-               <Wand2 className="w-5 h-5 text-klasse-gold" />
-               Gerador Automático
-            </h3>
-            <button onClick={onCancel} className="text-slate-400 hover:text-white text-sm">Cancelar</button>
+      <div className="bg-slate-900 text-white rounded-[2.5rem] p-8 shadow-2xl border border-white/5 animate-in zoom-in-95 duration-300">
+         <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-4">
+               <div className="h-12 w-12 rounded-2xl bg-klasse-gold/20 flex items-center justify-center border border-klasse-gold/30">
+                  <Wand2 className="w-6 h-6 text-klasse-gold" />
+               </div>
+               <div>
+                  <h3 className="text-xl font-black tracking-tight">Gerador de Grade Base</h3>
+                  <p className="text-xs text-slate-400 font-medium">Automatize a estrutura de tempos da sua escola.</p>
+               </div>
+            </div>
+            <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-full transition-colors text-slate-500">
+               <Settings2 className="w-5 h-5" />
+            </button>
          </div>
 
-         <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="space-y-4">
-               <label className="text-xs font-bold text-slate-400 uppercase">Configuração Básica</label>
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                     <span className="block text-xs mb-1 text-slate-300">Início</span>
-                     <input 
-                        type="time" 
-                        value={config.inicio} 
-                        onChange={e => setConfig({...config, inicio: e.target.value})}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-klasse-gold outline-none" 
-                     />
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {/* Controles */}
+            <div className="lg:col-span-5 space-y-8">
+               <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Hora de Início</label>
+                        <input 
+                           type="time" 
+                           value={config.inicio}
+                           onChange={e => setConfig({...config, inicio: e.target.value})}
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Duração Aula (min)</label>
+                        <input 
+                           type="number" 
+                           value={config.duracao}
+                           onChange={e => setConfig({...config, duracao: parseInt(e.target.value)})}
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                        />
+                     </div>
                   </div>
-                  <div>
-                     <span className="block text-xs mb-1 text-slate-300">Qtd. Aulas</span>
-                     <input 
-                        type="number" 
-                        value={config.qtd} 
-                        onChange={e => setConfig({...config, qtd: Number(e.target.value)})}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-klasse-gold outline-none" 
-                     />
+
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Total de Aulas</label>
+                        <input 
+                           type="number" 
+                           value={config.qtd}
+                           onChange={e => setConfig({...config, qtd: parseInt(e.target.value)})}
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Minutos de Recreio</label>
+                        <input 
+                           type="number" 
+                           value={config.duracaoIntervalo}
+                           onChange={e => setConfig({...config, duracaoIntervalo: parseInt(e.target.value)})}
+                           className="w-full bg-slate-800 border-0 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-klasse-gold transition-all"
+                        />
+                     </div>
                   </div>
+
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                     <label className="flex items-center gap-3 cursor-pointer group">
+                        <input 
+                           type="checkbox" 
+                           checked={config.intervalo}
+                           onChange={e => setConfig({...config, intervalo: e.target.checked})}
+                           className="w-5 h-5 rounded-lg border-0 bg-slate-700 text-klasse-gold focus:ring-offset-slate-900"
+                        />
+                        <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">Habilitar Intervalo (Recreio)</span>
+                     </label>
+                     
+                     {config.intervalo && (
+                        <div className="pl-8 flex items-center gap-3">
+                           <span className="text-[10px] font-bold text-slate-500 uppercase">Após a</span>
+                           <select 
+                              value={config.intervaloApos}
+                              onChange={e => setConfig({...config, intervaloApos: parseInt(e.target.value)})}
+                              className="bg-slate-800 border-0 rounded-lg text-xs font-bold py-1 px-3 focus:ring-klasse-gold"
+                           >
+                              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}ª aula</option>)}
+                           </select>
+                        </div>
+                     )}
+                  </div>
+
+                  <label className="flex items-center gap-3 cursor-pointer group p-4 rounded-2xl bg-klasse-gold/5 border border-klasse-gold/10">
+                     <input 
+                        type="checkbox" 
+                        checked={config.aplicarTodosDias}
+                        onChange={e => setConfig({...config, aplicarTodosDias: e.target.checked})}
+                        className="w-5 h-5 rounded-lg border-0 bg-slate-700 text-klasse-gold focus:ring-offset-slate-900"
+                     />
+                     <div className="flex flex-col">
+                        <span className="text-xs font-black text-klasse-gold uppercase tracking-tight">Replicar Semana Inteira</span>
+                        <span className="text-[9px] text-slate-500 font-bold">Aplica esta grade de Segunda a Sexta automaticamente.</span>
+                     </div>
+                  </label>
                </div>
             </div>
 
-            <div className="space-y-4">
-               <label className="text-xs font-bold text-slate-400 uppercase">Intervalo (Recreio)</label>
-               <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-lg border border-slate-700">
-                  <input 
-                     type="checkbox" 
-                     checked={config.intervalo} 
-                     onChange={e => setConfig({...config, intervalo: e.target.checked})}
-                     className="accent-klasse-gold h-4 w-4" 
-                  />
-                  <div className="text-xs text-slate-300">
-                     Inserir <span className="text-white font-bold">{config.duracaoIntervalo}min</span> após a {config.intervaloApos}ª aula
-                  </div>
+            {/* Live Preview */}
+            <div className="lg:col-span-7 space-y-4">
+               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Pré-visualização da Grade</label>
+               <div className="bg-slate-800/50 rounded-3xl p-6 border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {generatedPreview.map((p, i) => (
+                     <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${p.is_intervalo ? 'bg-klasse-gold/10 border-klasse-gold/20' : 'bg-white/5 border-white/5'}`}>
+                        <div className="flex items-center gap-3">
+                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black ${p.is_intervalo ? 'bg-klasse-gold text-slate-900' : 'bg-white/10 text-slate-400'}`}>
+                              {p.is_intervalo ? <Coffee size={14} /> : `${p.label.charAt(0)}º`}
+                           </div>
+                           <span className={`text-xs font-bold ${p.is_intervalo ? 'text-klasse-gold' : 'text-white'}`}>{p.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono text-[10px] font-bold text-slate-400">
+                           <span>{p.inicio}</span>
+                           <ArrowRight size={10} />
+                           <span>{p.fim}</span>
+                        </div>
+                     </div>
+                  ))}
                </div>
+
+               <button 
+                  onClick={handleGenerate}
+                  className="w-full py-5 bg-klasse-gold text-slate-900 font-black rounded-[2rem] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-klasse-gold/20 text-sm uppercase tracking-widest mt-4"
+               >
+                  Aplicar Estrutura de Horários
+               </button>
             </div>
          </div>
-
-         <button 
-            onClick={handleGenerate} // Conecte sua lógica aqui
-            className="w-full py-4 bg-klasse-gold text-slate-900 font-bold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-klasse-gold/20"
-         >
-            Gerar Grade para {DIAS.find(d => d.id === dia)?.label}
-         </button>
       </div>
    );
 }

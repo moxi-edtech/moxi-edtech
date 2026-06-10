@@ -147,32 +147,38 @@ export function TabDocumentos() {
             <AlunoCard 
               key={doc.id}
               onClick={() => handleAction(doc)}
-              className={`group transition-all ${
-                doc.status === 'pending_payment' ? 'border-amber-200 bg-amber-50/30' : 
-                doc.status === 'pending' ? 'border-blue-100 bg-blue-50/20' : 
-                doc.status === 'rejected' ? 'border-rose-200 bg-rose-50/30' : ''
+              className={`group relative transition-all hover:scale-[1.01] active:scale-[0.99] border-l-4 ${
+                doc.status === 'pending_payment' ? 'border-l-amber-500 border-amber-200 bg-amber-50/20' : 
+                doc.status === 'pending' || doc.status === 'blocked' ? 'border-l-blue-500 border-blue-100 bg-blue-50/10' : 
+                doc.status === 'granted' ? 'border-l-klasse-green-500 border-klasse-green-100' :
+                doc.status === 'rejected' ? 'border-l-rose-500 border-rose-200 bg-rose-50/20' : 'border-l-slate-200'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex gap-4 flex-1">
+                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl transition-colors shadow-sm ${
                     doc.status === 'granted' ? 'bg-klasse-green-50 text-klasse-green-600' :
                     doc.status === 'pending_payment' ? 'bg-amber-100 text-amber-600' :
-                    doc.status === 'pending' ? 'bg-blue-100 text-blue-600' :
+                    doc.status === 'pending' || doc.status === 'blocked' ? 'bg-blue-100 text-blue-600' :
                     doc.status === 'rejected' ? 'bg-rose-100 text-rose-600' :
                     'bg-slate-100 text-slate-500'
                   }`}>
-                    <FileText className="h-5 w-5" />
+                    <FileText className="h-7 w-7" />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">{doc.nome}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-base font-black text-slate-900 leading-tight">{doc.nome}</p>
+                    {doc.descricao && (
+                        <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                            {doc.descricao}
+                        </p>
+                    )}
+                    <div className="flex items-center gap-3 pt-1">
+                      <p className="text-xs font-black text-klasse-gold uppercase tracking-tighter">
                         {doc.valor > 0 ? formatKwanza(doc.valor) : 'Gratuito'}
                       </p>
                       {doc.status !== 'available' && (
                          <>
-                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <span className="h-1 w-1 rounded-full bg-slate-200" />
                           <StatusBadge status={doc.status} />
                          </>
                       )}
@@ -180,17 +186,24 @@ export function TabDocumentos() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex h-14 items-center justify-center shrink-0">
                   {loading === doc.codigo ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                   ) : (
-                    <ActionButton status={doc.status} />
+                    <div className={`p-3 rounded-full transition-all ${
+                        doc.status === 'granted' ? 'bg-klasse-green-500 text-white' :
+                        doc.status === 'pending_payment' ? 'bg-amber-500 text-white' :
+                        'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
+                    }`}>
+                        <ActionButton status={doc.status} />
+                    </div>
                   )}
                 </div>
               </div>
               {doc.status === 'rejected' && doc.reject_reason && (
-                <div className="mt-3 rounded-lg bg-rose-50/50 p-2 text-[10px] font-medium text-rose-700 border border-rose-100">
-                   <b>Motivo da rejeição:</b> {doc.reject_reason}
+                <div className="mt-4 rounded-xl bg-rose-50 p-3 text-[11px] font-bold text-rose-700 border border-rose-100 flex items-start gap-2">
+                   <AlertCircle size={14} className="shrink-0" />
+                   <span><b>Motivo:</b> {doc.reject_reason}</span>
                 </div>
               )}
             </AlunoCard>
