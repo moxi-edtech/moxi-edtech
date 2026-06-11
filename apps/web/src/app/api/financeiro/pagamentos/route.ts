@@ -16,8 +16,11 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const q = url.searchParams.get("q") || "";
     const days = url.searchParams.get("days") || "30";
+    const alunoId = url.searchParams.get("aluno_id") || "";
+    const status = url.searchParams.get("status") || "";
 
     const since = (() => {
+      if (days === "all") return "1970-01-01";
       const d = parseInt(days || "30", 10);
       if (!Number.isFinite(d) || d <= 0) return "1970-01-01";
       const dt = new Date();
@@ -27,13 +30,22 @@ export async function GET(req: Request) {
 
     let query = s
       .from("pagamentos")
-      .select("id, status, valor_pago, metodo, reference, referencia, created_at")
+      .select("id, aluno_id, mensalidade_id, status, valor_pago, metodo, reference, referencia, created_at")
       .eq("escola_id", escolaId)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(50);
 
     query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+
+    if (/^[0-9a-fA-F-]{36}$/.test(alunoId)) {
+      query = query.eq("aluno_id", alunoId);
+    }
+
+    if (status === "realizados") {
+      query = query.in("status", ["settled", "concluido", "pago"]);
+    }
 
     if (q) {
       const uuidRe = /^[0-9a-fA-F-]{36}$/;
