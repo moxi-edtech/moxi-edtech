@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
-import { getAnoLetivoAdmissoesFromConfig } from "@/lib/admissoes/reserva";
+import { getAnoLetivoAdmissoesFromConfig, getModoPortalAdmissoesFromConfig } from "@/lib/admissoes/reserva";
 import { formatAnoLetivoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
@@ -66,14 +66,17 @@ export async function GET(
     }
 
     const anosLetivos = Array.isArray(anosRes.data) ? anosRes.data : [];
-    const latestAno = Number(anosLetivos[0]?.ano);
+    const fallbackAno = Number(anosLetivos.find((ano) => ano.ativo)?.ano ?? anosLetivos[0]?.ano);
     const configuredAno = getAnoLetivoAdmissoesFromConfig(
       escolaRes.data.config_portal_admissao,
-      latestAno
+      fallbackAno
     );
     const activeAno = Number(configuredAno);
     const selectedAnoLetivo = anosLetivos.find((ano) => Number(ano.ano) === activeAno) ?? anosLetivos[0] ?? null;
+    const modoPortalAdmissoes = getModoPortalAdmissoesFromConfig(escolaRes.data.config_portal_admissao);
+    const isPreCandidatura = modoPortalAdmissoes === "pre_candidatura_proximo_ano";
     const turmasAtivas = (turmasRes.data || []).filter((turma) => {
+      if (isPreCandidatura) return false;
       if (!Number.isFinite(activeAno)) return true;
       return Number(turma.ano_letivo) === activeAno;
     });
@@ -108,6 +111,7 @@ export async function GET(
         ano_letivo: selectedAnoLetivo
           ? { ...selectedAnoLetivo, label: formatAnoLetivoDisplay(selectedAnoLetivo) }
           : null,
+        modo_portal_admissoes: modoPortalAdmissoes,
         cursos: cursosRes.data || [],
         turmas: turmasAtivas.map(t => ({
           id: t.id,

@@ -16,12 +16,13 @@ const searchParamsSchema = z
     cursor: z.string().optional(),
     turmaId: z.string().uuid().optional(),
     q: z.string().trim().max(120).optional(),
-    status: z.enum(['novas', 'lista_espera', 'pendentes', 'concluidas', 'expirando', 'reenviados', 'all']).optional(),
+    status: z.enum(['novas', 'pre_candidaturas', 'lista_espera', 'pendentes', 'concluidas', 'expirando', 'reenviados', 'all']).optional(),
   })
   .strict()
 
 type Status =
   | 'submetida'
+  | 'pre_candidatura'
   | 'documentos_reenviados'
   | 'lista_espera'
   | 'em_analise'
@@ -31,6 +32,7 @@ type Status =
   | 'matriculado'
 
 const SUBMETIDA_STATUSES = ['submetida', 'pendente', 'documentos_reenviados']
+const PRE_CANDIDATURA_STATUSES = ['pre_candidatura']
 const LISTA_ESPERA_STATUSES = ['lista_espera']
 const EM_ANALISE_STATUSES = ['em_analise']
 const APROVADA_STATUSES = ['aprovada', 'aguardando_pagamento']
@@ -40,6 +42,7 @@ const REJEITADA_STATUSES = ['rejeitada', 'arquivado']
 
 const STATUS_MAP: Record<string, Status> = {
   submetida: 'submetida',
+  pre_candidatura: 'pre_candidatura',
   pendente: 'submetida',
   documentos_reenviados: 'documentos_reenviados',
   lista_espera: 'lista_espera',
@@ -61,6 +64,7 @@ function escapeIlike(value: string) {
 
 function statusesForFilter(filter: string | undefined) {
   if (filter === 'novas') return SUBMETIDA_STATUSES
+  if (filter === 'pre_candidaturas') return PRE_CANDIDATURA_STATUSES
   if (filter === 'lista_espera') return LISTA_ESPERA_STATUSES
   if (filter === 'pendentes') return [...RASCUNHO_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]
   if (filter === 'concluidas') return [...MATRICULADO_STATUSES, ...REJEITADA_STATUSES]
@@ -68,6 +72,7 @@ function statusesForFilter(filter: string | undefined) {
   if (filter === 'reenviados') return ['documentos_reenviados']
   return [
     ...RASCUNHO_STATUSES,
+    ...PRE_CANDIDATURA_STATUSES,
     ...SUBMETIDA_STATUSES,
     ...LISTA_ESPERA_STATUSES,
     ...EM_ANALISE_STATUSES,
@@ -116,7 +121,7 @@ export async function GET(request: Request) {
 
   try {
     // 1) Counts (canônico por status)
-    let countsQuery = supabase
+    const countsQuery = supabase
       .from('vw_admissoes_counts_por_status')
       .select('submetida_total, em_analise_total, aprovada_total, matriculado_7d_total, expirando_24h_total, reenviados_48h_total')
       .eq('escola_id', escolaId)
@@ -130,11 +135,23 @@ export async function GET(request: Request) {
     const { data: countsRow, error: countsError } = await countsQuery.maybeSingle()
     if (countsError) throw countsError
 
+    let preCandidaturaCountQuery = supabase
+      .from('candidaturas')
+      .select('id', { count: 'exact', head: true })
+      .eq('escola_id', escolaId)
+      .or(statusOr(PRE_CANDIDATURA_STATUSES))
+
+    if (turmaId) preCandidaturaCountQuery = preCandidaturaCountQuery.eq('turma_preferencial_id', turmaId)
+
+    const { count: preCandidaturaTotal, error: preCandidaturaCountError } = await preCandidaturaCountQuery
+    if (preCandidaturaCountError) throw preCandidaturaCountError
+
     // 1.1) Oportunidades de Lista de Espera
     const { data: opps, error: oppsError } = await supabase
       .from('view_admissao_oportunidades_lista_espera' as any)
       .select('vagas_disponiveis, total_na_espera')
       .eq('escola_id', escolaId) as { data: Array<{ vagas_disponiveis: number, total_na_espera: number }> | null, error: any }
+    if (oppsError) throw oppsError
     
     const waitlistOpportunities = (opps || []).reduce((acc, curr) => acc + Math.min(curr.vagas_disponiveis || 0, curr.total_na_espera || 0), 0)
 
@@ -209,6 +226,7 @@ export async function GET(request: Request) {
           ok: true,
           counts: {
             submetida: countsRow?.submetida_total ?? 0,
+            pre_candidatura: preCandidaturaTotal ?? 0,
             lista_espera: 0,
             em_analise: countsRow?.em_analise_total ?? 0,
             aprovada: countsRow?.aprovada_total ?? 0,
@@ -234,7 +252,7 @@ export async function GET(request: Request) {
           .from('candidaturas')
           .select(baseSelect)
           .eq('escola_id', escolaId)
-          .or(statusOr([...SUBMETIDA_STATUSES, ...LISTA_ESPERA_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]))
+          .or(statusOr([...PRE_CANDIDATURA_STATUSES, ...SUBMETIDA_STATUSES, ...LISTA_ESPERA_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]))
           .order('created_at', { ascending: false })
           .order('id', { ascending: false })
 
@@ -291,6 +309,7 @@ export async function GET(request: Request) {
 
     const counts: Record<string, number> = {
       submetida: countsRow?.submetida_total ?? 0,
+      pre_candidatura: preCandidaturaTotal ?? 0,
       lista_espera: 0,
       em_analise: countsRow?.em_analise_total ?? 0,
       aprovada: countsRow?.aprovada_total ?? 0,

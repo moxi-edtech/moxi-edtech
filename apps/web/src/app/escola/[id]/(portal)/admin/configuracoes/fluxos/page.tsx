@@ -44,6 +44,8 @@ type AnoLetivoOption = {
   label?: string | null;
 };
 
+type ModoPortalAdmissoes = "ingresso_imediato" | "pre_candidatura_proximo_ano";
+
 function normalizeDocumentoId(value: string) {
   return value
     .normalize("NFD")
@@ -70,6 +72,8 @@ export default function FluxosConfiguracaoPage() {
   const [reservaExpiracaoHoras, setReservaExpiracaoHoras] = useState(48);
   const [pendenciaSlaHoras, setPendenciaSlaHoras] = useState(72);
   const [anoLetivoAdmissoes, setAnoLetivoAdmissoes] = useState<number | null>(null);
+  const [anoLetivoAdmissoesEfetivoLabel, setAnoLetivoAdmissoesEfetivoLabel] = useState<string | null>(null);
+  const [modoPortalAdmissoes, setModoPortalAdmissoes] = useState<ModoPortalAdmissoes>("ingresso_imediato");
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivoOption[]>([]);
   const [documentosAdmissao, setDocumentosAdmissao] = useState<DocumentoAdmissao[]>([]);
   const [loadingAdmissoes, setLoadingAdmissoes] = useState(true);
@@ -143,6 +147,8 @@ export default function FluxosConfiguracaoPage() {
           setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || 48);
           setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || 72);
           setAnoLetivoAdmissoes(Number.isFinite(Number(json?.admissoes?.ano_letivo_admissoes)) ? Number(json.admissoes.ano_letivo_admissoes) : null);
+          setAnoLetivoAdmissoesEfetivoLabel(typeof json?.admissoes?.ano_letivo_admissoes_efetivo_label === "string" ? json.admissoes.ano_letivo_admissoes_efetivo_label : null);
+          setModoPortalAdmissoes(json?.admissoes?.modo_portal_admissoes === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : "ingresso_imediato");
           setAnosLetivos(Array.isArray(json?.anos_letivos) ? json.anos_letivos : []);
           setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : []);
         }
@@ -187,6 +193,7 @@ export default function FluxosConfiguracaoPage() {
             reserva_expiracao_horas: normalizedReservaExpiracaoHoras,
             pendencia_sla_horas: normalizedPendenciaSlaHoras,
             ano_letivo_admissoes: anoLetivoAdmissoes,
+            modo_portal_admissoes: modoPortalAdmissoes,
             documentos_admissao_catalogo: normalizedDocumentos,
           }),
         });
@@ -195,6 +202,8 @@ export default function FluxosConfiguracaoPage() {
         setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || normalizedReservaExpiracaoHoras);
         setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || normalizedPendenciaSlaHoras);
         setAnoLetivoAdmissoes(Number.isFinite(Number(json?.admissoes?.ano_letivo_admissoes)) ? Number(json.admissoes.ano_letivo_admissoes) : anoLetivoAdmissoes);
+        setAnoLetivoAdmissoesEfetivoLabel(typeof json?.admissoes?.ano_letivo_admissoes_efetivo_label === "string" ? json.admissoes.ano_letivo_admissoes_efetivo_label : anoLetivoAdmissoesEfetivoLabel);
+        setModoPortalAdmissoes(json?.admissoes?.modo_portal_admissoes === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : modoPortalAdmissoes);
         setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : normalizedDocumentos);
       }
       success("Fluxo atualizado com sucesso.");
@@ -204,6 +213,17 @@ export default function FluxosConfiguracaoPage() {
       setSaving(false);
     }
   };
+
+  const anoLetivoAdmissoesLabel = useMemo(() => {
+    if (modoPortalAdmissoes === "pre_candidatura_proximo_ano") return "pré-candidatura sem ano letivo operacional definido";
+
+    if (anoLetivoAdmissoes) {
+      const selected = anosLetivos.find((ano) => ano.ano === anoLetivoAdmissoes);
+      return selected?.label ?? `${anoLetivoAdmissoes}/${anoLetivoAdmissoes + 1}`;
+    }
+
+    return anoLetivoAdmissoesEfetivoLabel ?? "ano operacional ativo";
+  }, [anoLetivoAdmissoes, anoLetivoAdmissoesEfetivoLabel, anosLetivos, modoPortalAdmissoes]);
 
   return (
     <>
@@ -250,6 +270,25 @@ export default function FluxosConfiguracaoPage() {
               </div>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <label className="block sm:col-span-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Modo do portal público
+                  </span>
+                  <select
+                    disabled={loadingAdmissoes}
+                    value={modoPortalAdmissoes}
+                    onChange={(event) => setModoPortalAdmissoes(event.target.value === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : "ingresso_imediato")}
+                    className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                  >
+                    <option value="ingresso_imediato">Ingresso imediato no ano letivo ativo</option>
+                    <option value="pre_candidatura_proximo_ano">Pré-candidaturas para o próximo ano</option>
+                  </select>
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-slate-500">
+                    {modoPortalAdmissoes === "pre_candidatura_proximo_ano"
+                      ? "O candidato demonstra interesse. O sistema não cria reserva, cobrança ou matrícula até a escola preparar o próximo ano."
+                      : "O candidato entra no fluxo formal de candidatura, reserva, pagamento e matrícula."}
+                  </p>
+                </label>
                 <label className="block">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     Ano de admissões
@@ -263,13 +302,16 @@ export default function FluxosConfiguracaoPage() {
                     }}
                     className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
                   >
-                    <option value="">Ano mais recente</option>
+                    <option value="">Automático: ano operacional ativo</option>
                     {anosLetivos.map((ano) => (
                       <option key={ano.id} value={ano.ano}>
                         {ano.label ?? `${ano.ano}/${ano.ano + 1}`}{ano.ativo ? " · operacional ativo" : ""}
                       </option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-slate-500">
+                    As novas candidaturas públicas entram em {anoLetivoAdmissoesLabel}.
+                  </p>
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
