@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote, Calculator, CheckCircle, CreditCard,
-  Loader2, Smartphone, Wallet, X,
+  Loader2, RotateCcw, Smartphone, Wallet, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useConfirm, useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { useRouter } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -69,6 +69,20 @@ type ReciboBatchItem = {
   kwik_chave?: string | null;
   referenciasDetalhadas?: string[];
   itensDetalhados?: Array<{ referencia: string; valor: number }>;
+};
+
+type PagamentoConcluido = {
+  pagamento_id: string;
+  referencia: string;
+  valor: number;
+};
+
+type PagamentoAlunoApiItem = {
+  id: string;
+  status: string | null;
+  valor_pago: number | null;
+  referencia: string | null;
+  created_at: string | null;
 };
 
 export interface ModalPagamentoRapidoProps {
@@ -523,12 +537,22 @@ function EstadoConcluido({
   valor, 
   mesAno, 
   escolaId, 
+  pagamentos,
+  loadingPagamentos,
+  revertingId,
+  reversedIds,
+  onReverter,
   onClose 
 }: { 
   aluno: ModalPagamentoRapidoProps["aluno"]; 
   valor: number; 
   mesAno: string; 
   escolaId: string | null;
+  pagamentos: PagamentoConcluido[];
+  loadingPagamentos: boolean;
+  revertingId: string | null;
+  reversedIds: Set<string>;
+  onReverter: (pagamento: PagamentoConcluido) => void;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -564,6 +588,56 @@ function EstadoConcluido({
         }}
         onDismiss={onClose}
       />
+
+      {pagamentos.length > 0 || loadingPagamentos ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+          <div className="mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-700">
+              Pagamentos pagos do aluno
+            </p>
+            <p className="mt-1 text-xs text-rose-700">
+              Cada pagamento realizado pode ser revertido com motivo obrigatório.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {loadingPagamentos ? (
+              <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Carregando pagamentos pagos...
+              </div>
+            ) : null}
+            {pagamentos.map((pagamento) => {
+              const reversed = reversedIds.has(pagamento.pagamento_id);
+              return (
+                <div
+                  key={pagamento.pagamento_id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-white px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-slate-900">{pagamento.referencia}</p>
+                    <p className="text-[11px] font-semibold text-slate-500">
+                      {moneyAOA.format(pagamento.valor)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onReverter(pagamento)}
+                    disabled={reversed || revertingId === pagamento.pagamento_id}
+                    className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {revertingId === pagamento.pagamento_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    )}
+                    {reversed ? "Revertido" : "Reverter"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -579,6 +653,7 @@ function usePagamentoSubmit({
   trocoValido,
   onConcluido,
   onRecibos,
+  onPagamentosConcluidos,
   safeClose,
   onSuccess,
 }: {
@@ -590,6 +665,7 @@ function usePagamentoSubmit({
   trocoValido:    boolean;
   onConcluido:    () => void;
   onRecibos:      (r: ReciboBatchItem[]) => void;
+  onPagamentosConcluidos: (p: PagamentoConcluido[]) => void;
   safeClose:      () => void;
   onSuccess?:     () => void;
 }) {
@@ -615,6 +691,7 @@ function usePagamentoSubmit({
 
     try {
       const recibosGerados: ReciboBatchItem[] = [];
+      const pagamentosConcluidos: PagamentoConcluido[] = [];
 
       for (const mensalidade of mensalidadesSelecionadas) {
         const idempotencyKey = crypto.randomUUID?.() ??
@@ -652,6 +729,15 @@ function usePagamentoSubmit({
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) {
           throw new Error(json?.error || `Falha ao registar pagamento de ${referencia}.`);
+        }
+
+        const pagamentoId = typeof json?.data?.id === "string" ? json.data.id : null;
+        if (pagamentoId) {
+          pagamentosConcluidos.push({
+            pagamento_id: pagamentoId,
+            referencia,
+            valor,
+          });
         }
 
         let reciboId = mensalidade.id;
@@ -729,6 +815,7 @@ function usePagamentoSubmit({
       } else {
         onRecibos(recibosGerados);
       }
+      onPagamentosConcluidos(pagamentosConcluidos);
       onConcluido();
       if (onSuccess) onSuccess();
 
@@ -742,6 +829,7 @@ function usePagamentoSubmit({
     mensalidadesSelecionadas, trocoValido, processando, metodo, detalhes,
     valorPagoNum, aluno.id,
     onConcluido, onRecibos, onSuccess, error,
+    onPagamentosConcluidos,
   ]);
 
   return { processando, submit };
@@ -767,12 +855,19 @@ export function ModalPagamentoRapido({
   const [valor,    setValor]    = useState("");
   const [concluido, setConcluido] = useState(false);
   const [recibos,   setRecibos]   = useState<ReciboBatchItem[]>([]);
+  const [pagamentosConcluidos, setPagamentosConcluidos] = useState<PagamentoConcluido[]>([]);
+  const [pagamentosPagosAluno, setPagamentosPagosAluno] = useState<PagamentoConcluido[]>([]);
+  const [loadingPagamentosPagos, setLoadingPagamentosPagos] = useState(false);
+  const [reversedPagamentoIds, setReversedPagamentoIds] = useState<Set<string>>(new Set());
+  const [revertingPagamentoId, setRevertingPagamentoId] = useState<string | null>(null);
   const [printReadyCount, setPrintReadyCount] = useState(0);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
+  const confirm = useConfirm();
+  const { success, error: toastError } = useToast();
   const availableMensalidades = useMemo(() => {
     if (mensalidades?.length) return sortMensalidades(mensalidades);
     return mensalidade ? [mensalidade] : [];
@@ -819,6 +914,89 @@ export function ModalPagamentoRapido({
   const canConfirm = mensalidadesSelecionadas.length > 0 && (trocoValido || (isPartial && !!detalhes.partial_reason?.trim() && !!detalhes.promise_date));
 
   const safeClose = useCallback(() => { onClose(); }, [onClose]);
+  const loadPagamentosPagosAluno = useCallback(async () => {
+    if (!aluno.id) return;
+    setLoadingPagamentosPagos(true);
+    try {
+      const params = new URLSearchParams({
+        aluno_id: aluno.id,
+        status: "realizados",
+        days: "all",
+      });
+      const response = await fetch(`/api/financeiro/pagamentos?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao carregar pagamentos pagos.");
+      }
+
+      const items = Array.isArray(json.items) ? json.items as PagamentoAlunoApiItem[] : [];
+      setPagamentosPagosAluno(
+        items.map((item) => ({
+          pagamento_id: item.id,
+          referencia: item.referencia || (item.created_at ? new Date(item.created_at).toLocaleDateString("pt-PT") : "Pagamento"),
+          valor: Number(item.valor_pago || 0),
+        }))
+      );
+    } catch (err) {
+      toastError("Erro", err instanceof Error ? err.message : "Não foi possível carregar pagamentos pagos.");
+      setPagamentosPagosAluno([]);
+    } finally {
+      setLoadingPagamentosPagos(false);
+    }
+  }, [aluno.id, toastError]);
+
+  const pagamentosReversiveis = useMemo(() => {
+    const map = new Map<string, PagamentoConcluido>();
+    for (const pagamento of pagamentosConcluidos) map.set(pagamento.pagamento_id, pagamento);
+    for (const pagamento of pagamentosPagosAluno) map.set(pagamento.pagamento_id, pagamento);
+    return Array.from(map.values());
+  }, [pagamentosConcluidos, pagamentosPagosAluno]);
+
+  const handleReverterPagamento = useCallback(async (pagamento: PagamentoConcluido) => {
+    const motivo = await confirm({
+      title: "Reverter pagamento",
+      message: "Informe o motivo da reversão. A mensalidade será recalculada e a operação ficará auditada.",
+      confirmLabel: "Reverter",
+      variant: "danger",
+      inputType: "text",
+      placeholder: "Ex: pagamento registado por engano",
+    });
+
+    if (motivo === null) return;
+    if (motivo.trim().length < 5) {
+      toastError("Motivo obrigatório", "Informe um motivo com pelo menos 5 caracteres.");
+      return;
+    }
+
+    setRevertingPagamentoId(pagamento.pagamento_id);
+    try {
+      const response = await fetch(`/api/financeiro/pagamentos/${pagamento.pagamento_id}/reverter`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `secretaria-reverter-pagamento-${pagamento.pagamento_id}-${crypto.randomUUID()}`,
+        },
+        body: JSON.stringify({ motivo: motivo.trim() }),
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.ok) {
+        throw new Error(json?.error || "Não foi possível reverter o pagamento.");
+      }
+
+      setReversedPagamentoIds((prev) => new Set([...prev, pagamento.pagamento_id]));
+      success("Pagamento revertido", "A mensalidade foi recalculada e a reversão ficou auditada.");
+      await loadPagamentosPagosAluno();
+      onSuccess?.();
+    } catch (err) {
+      toastError("Erro", err instanceof Error ? err.message : "Não foi possível reverter o pagamento.");
+    } finally {
+      setRevertingPagamentoId(null);
+    }
+  }, [confirm, loadPagamentosPagosAluno, onSuccess, success, toastError]);
+
   const toggleMensalidade = useCallback((id: string) => {
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((currentId) => currentId !== id);
@@ -853,9 +1031,23 @@ export function ModalPagamentoRapido({
     }, 0);
     setValor(initialTotal > 0 ? String(initialTotal) : "");
     setRecibos([]);
+    setPagamentosConcluidos([]);
+    setPagamentosPagosAluno([]);
+    setReversedPagamentoIds(new Set());
+    setRevertingPagamentoId(null);
     setPrintReadyCount(0);
     setTimeout(() => confirmBtnRef.current?.focus(), 50);
   }, [open, initialSelectedIds, availableMensalidades]);
+
+  useEffect(() => {
+    if (!open) return;
+    loadPagamentosPagosAluno();
+  }, [loadPagamentosPagosAluno, open]);
+
+  useEffect(() => {
+    if (!concluido) return;
+    loadPagamentosPagosAluno();
+  }, [concluido, loadPagamentosPagosAluno]);
 
   // ── Reset detalhes ao mudar método ──────────────────────────────────────
   useEffect(() => { setDetalhes(DETALHES_VAZIOS); }, [metodo]);
@@ -890,6 +1082,7 @@ export function ModalPagamentoRapido({
     trocoValido,
     onConcluido: () => setConcluido(true),
     onRecibos:   (payload) => setRecibos(payload),
+    onPagamentosConcluidos: (payload) => setPagamentosConcluidos(payload),
     safeClose, onSuccess,
   });
 
@@ -988,6 +1181,11 @@ export function ModalPagamentoRapido({
                 valor={valorNum || valorDevido}
                 mesAno={mesAno} 
                 escolaId={escolaId ?? null}
+                pagamentos={pagamentosReversiveis}
+                loadingPagamentos={loadingPagamentosPagos}
+                revertingId={revertingPagamentoId}
+                reversedIds={reversedPagamentoIds}
+                onReverter={handleReverterPagamento}
                 onClose={safeClose}
               />
             ) : (
