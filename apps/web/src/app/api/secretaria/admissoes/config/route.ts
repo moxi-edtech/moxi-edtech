@@ -10,9 +10,11 @@ import {
   DEFAULT_DOCUMENTOS_ADMISSAO,
   getAnoLetivoAdmissoesFromConfig,
   getDocumentosAdmissaoCatalogoFromConfig,
+  getModoPortalAdmissoesFromConfig,
   getPendenciaSlaHorasFromConfig,
   getReservaExpiracaoHorasFromConfig,
   normalizeAnoLetivoAdmissoes,
+  normalizeModoPortalAdmissoes,
   normalizePendenciaSlaHoras,
   normalizeReservaExpiracaoHoras,
 } from '@/lib/admissoes/reserva'
@@ -28,6 +30,7 @@ const patchPayloadSchema = z.object({
   reserva_expiracao_horas: z.number().int().min(1).max(168).optional(),
   pendencia_sla_horas: z.number().int().min(1).max(720).optional(),
   ano_letivo_admissoes: z.number().int().min(2000).max(2100).nullable().optional(),
+  modo_portal_admissoes: z.enum(['ingresso_imediato', 'pre_candidatura_proximo_ano']).optional(),
   documentos_admissao_catalogo: z.array(z.object({
     id: z.string().trim().min(1).max(120).regex(/^[a-z0-9_-]+$/),
     label: z.string().trim().min(2).max(120),
@@ -92,16 +95,25 @@ export async function GET(request: Request) {
       ...ano,
       label: formatAnoLetivoDisplay(ano),
     }))
-    const latestAno = typeof anos[0]?.ano === 'number' ? anos[0].ano : null
-    const anoLetivoAdmissoes = getAnoLetivoAdmissoesFromConfig(escola.data?.config_portal_admissao, latestAno)
+    const fallbackAno = anos.find((ano) => ano.ativo)?.ano ?? anos[0]?.ano ?? null
+    const configAdmissoes = isJsonObject(escola.data?.config_portal_admissao)
+      ? escola.data?.config_portal_admissao
+      : {}
+    const anoLetivoAdmissoesConfigurado = normalizeAnoLetivoAdmissoes(configAdmissoes.ano_letivo_admissoes)
+    const anoLetivoAdmissoesEfetivo = getAnoLetivoAdmissoesFromConfig(configAdmissoes, fallbackAno)
 
     return NextResponse.json({
       cursos: cursos.data,
       classes: classes.data,
       anos_letivos: anos,
       admissoes: {
-        ano_letivo_admissoes: anoLetivoAdmissoes,
-        ano_letivo_admissoes_label: formatAnoLetivoDisplay(anoLetivoAdmissoes),
+        ano_letivo_admissoes: anoLetivoAdmissoesConfigurado,
+        ano_letivo_admissoes_label: anoLetivoAdmissoesConfigurado
+          ? formatAnoLetivoDisplay(anoLetivoAdmissoesConfigurado)
+          : null,
+        ano_letivo_admissoes_efetivo: anoLetivoAdmissoesEfetivo,
+        ano_letivo_admissoes_efetivo_label: formatAnoLetivoDisplay(anoLetivoAdmissoesEfetivo),
+        modo_portal_admissoes: getModoPortalAdmissoesFromConfig(configAdmissoes),
         reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(escola.data?.config_portal_admissao),
         pendencia_sla_horas: getPendenciaSlaHorasFromConfig(escola.data?.config_portal_admissao),
         documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(escola.data?.config_portal_admissao),
@@ -122,7 +134,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: validation.error.format() }, { status: 400 })
   }
 
-  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, ano_letivo_admissoes, documentos_admissao_catalogo } = validation.data
+  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, ano_letivo_admissoes, modo_portal_admissoes, documentos_admissao_catalogo } = validation.data
 
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
@@ -162,6 +174,9 @@ export async function PATCH(request: Request) {
       ...(ano_letivo_admissoes !== undefined
         ? { ano_letivo_admissoes: normalizeAnoLetivoAdmissoes(ano_letivo_admissoes) as unknown as Json }
         : {}),
+      ...(modo_portal_admissoes !== undefined
+        ? { modo_portal_admissoes: normalizeModoPortalAdmissoes(modo_portal_admissoes) }
+        : {}),
       ...(documentos_admissao_catalogo !== undefined
         ? { documentos_admissao_catalogo }
         : {}),
@@ -178,11 +193,32 @@ export async function PATCH(request: Request) {
 
     if (updateError) throw updateError
 
+    const { data: fallbackAnoLetivo } = await supabase
+      .from('anos_letivos')
+      .select('ano, ativo, data_inicio, data_fim')
+      .eq('escola_id', escolaId)
+      .order('ativo', { ascending: false })
+      .order('ano', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const anoLetivoAdmissoesConfigurado = normalizeAnoLetivoAdmissoes(nextConfig.ano_letivo_admissoes)
+    const anoLetivoAdmissoesEfetivo = getAnoLetivoAdmissoesFromConfig(nextConfig, fallbackAnoLetivo?.ano ?? null)
+
     return NextResponse.json({
       ok: true,
       admissoes: {
-        ano_letivo_admissoes: getAnoLetivoAdmissoesFromConfig(nextConfig),
-        ano_letivo_admissoes_label: formatAnoLetivoDisplay(getAnoLetivoAdmissoesFromConfig(nextConfig)),
+        ano_letivo_admissoes: anoLetivoAdmissoesConfigurado,
+        ano_letivo_admissoes_label: anoLetivoAdmissoesConfigurado
+          ? formatAnoLetivoDisplay(anoLetivoAdmissoesConfigurado)
+          : null,
+        ano_letivo_admissoes_efetivo: anoLetivoAdmissoesEfetivo,
+        ano_letivo_admissoes_efetivo_label: formatAnoLetivoDisplay(
+          fallbackAnoLetivo && Number(fallbackAnoLetivo.ano) === Number(anoLetivoAdmissoesEfetivo)
+            ? fallbackAnoLetivo
+            : anoLetivoAdmissoesEfetivo
+        ),
+        modo_portal_admissoes: getModoPortalAdmissoesFromConfig(nextConfig),
         reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(nextConfig),
         pendencia_sla_horas: getPendenciaSlaHorasFromConfig(nextConfig),
         documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(nextConfig),

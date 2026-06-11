@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
-import { getAnoLetivoAdmissoesFromConfig } from "@/lib/admissoes/reserva";
+import { getAnoLetivoAdmissoesFromConfig, getModoPortalAdmissoesFromConfig } from "@/lib/admissoes/reserva";
 import type { Json } from "~types/supabase";
 
 const CandidaturaSchema = z.object({
@@ -24,7 +24,7 @@ const CandidaturaSchema = z.object({
   
   // Dados Acadêmicos Pretendidos
   curso_id: z.string().uuid("Nível de ensino obrigatório"),
-  ano_letivo: z.coerce.number().int(),
+  ano_letivo: z.coerce.number().int().optional().nullable(),
   turma_preferencial_id: z.string().uuid().optional().nullable().transform(v => v === "" ? null : v),
   turno: z.string().optional().nullable().transform(v => v === "" ? null : v),
 
@@ -140,7 +140,10 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
   if (error.code !== "23505") return null;
 
   const text = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
-  if (text.includes("ux_candidaturas_doc_normalizado")) {
+  if (
+    text.includes("ux_candidaturas_doc_normalizado") ||
+    text.includes("ux_candidaturas_pre_doc_normalizado")
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -151,7 +154,10 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
     );
   }
 
-  if (text.includes("ux_candidaturas_resp_phone_nome_normalizado")) {
+  if (
+    text.includes("ux_candidaturas_resp_phone_nome_normalizado") ||
+    text.includes("ux_candidaturas_pre_resp_phone_nome_normalizado")
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -162,7 +168,10 @@ function duplicateAdmissionResponse(error: PostgrestLikeError) {
     );
   }
 
-  if (text.includes("ux_candidaturas_phone_nome_normalizado")) {
+  if (
+    text.includes("ux_candidaturas_phone_nome_normalizado") ||
+    text.includes("ux_candidaturas_pre_phone_nome_normalizado")
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -232,7 +241,9 @@ export async function POST(
       );
     }
 
-    const requiredDocumentIds = getRequiredDocumentIds(escolaConfig?.config_portal_admissao);
+    const modoPortalAdmissoes = getModoPortalAdmissoesFromConfig(escolaConfig?.config_portal_admissao);
+    const isPreCandidatura = modoPortalAdmissoes === "pre_candidatura_proximo_ano";
+    const requiredDocumentIds = isPreCandidatura ? [] : getRequiredDocumentIds(escolaConfig?.config_portal_admissao);
     if (requiredDocumentIds.length > 0) {
       if (!data.draftId) {
         return NextResponse.json(
@@ -276,9 +287,10 @@ export async function POST(
     const [activeAnoRes, courseCheck, turmaCheck] = await Promise.all([
       supabase
         .from("anos_letivos")
-        .select("ano")
+        .select("ano, ativo")
         .eq("escola_id", escolaId)
-        .order("ano", { ascending: false }) // Priorizar o ano mais recente para novas admissões
+        .order("ativo", { ascending: false })
+        .order("ano", { ascending: false })
         .limit(1)
         .maybeSingle(),
       supabase
@@ -288,7 +300,9 @@ export async function POST(
         .eq("escola_id", escolaId)
         .maybeSingle(),
       data.turma_preferencial_id
-        ? supabase
+        ? isPreCandidatura
+          ? Promise.resolve({ data: { id: "ok", curso_id: data.curso_id, ano_letivo: null, capacidade_maxima: null }, error: null })
+          : supabase
             .from("turmas")
             .select("id, curso_id, ano_letivo, capacidade_maxima")
             .eq("id", data.turma_preferencial_id)
@@ -314,6 +328,7 @@ export async function POST(
     );
     const activeAnoLetivoNumber = typeof activeAnoLetivo === "number" ? activeAnoLetivo : Number.NaN;
     if (
+      !isPreCandidatura &&
       data.turma_preferencial_id &&
       Number.isFinite(turmaAnoLetivo) &&
       Number.isFinite(activeAnoLetivoNumber) &&
@@ -325,11 +340,22 @@ export async function POST(
       );
     }
 
-    const anoLetivo = Number.isFinite(turmaAnoLetivo)
+    const anoLetivo: number | null = isPreCandidatura
+      ? null
+      : Number.isFinite(turmaAnoLetivo)
       ? turmaAnoLetivo
       : Number.isFinite(activeAnoLetivoNumber)
       ? activeAnoLetivoNumber
-      : data.ano_letivo;
+      : Number.isFinite(Number(data.ano_letivo))
+      ? Number(data.ano_letivo)
+      : null;
+
+    if (!isPreCandidatura && anoLetivo === null) {
+      return NextResponse.json(
+        { ok: false, error: "Ano letivo de admissões não configurado." },
+        { status: 400 }
+      );
+    }
 
     const nomeNormalizado = normalizeName(data.nome_completo);
     const telefoneNormalizado = normalizePhone(data.telefone);
@@ -337,7 +363,7 @@ export async function POST(
     const documentoNormalizado = normalizeDocument(data.numero_documento);
     let disponibilidade: DisponibilidadePublica = "disponivel";
 
-    if (data.turma_preferencial_id) {
+    if (!isPreCandidatura && data.turma_preferencial_id) {
       const { data: ocupacaoReservada, error: ocupacaoError } = await supabase.rpc(
         "admissao_turma_ocupacao_reservada",
         {
@@ -356,16 +382,20 @@ export async function POST(
         ocupacaoReservada ?? 0
       );
     }
-    const statusInicial = disponibilidade === "lista_espera" ? "lista_espera" : "pendente";
+    const statusInicial = isPreCandidatura
+      ? "pre_candidatura"
+      : disponibilidade === "lista_espera" ? "lista_espera" : "pendente";
 
-    const dedupeBase = () =>
-      supabase
+    const dedupeBase = () => {
+      let query = supabase
         .from("candidaturas")
         .select("id, protocolo_publico")
         .eq("escola_id", escolaId)
-        .eq("ano_letivo", anoLetivo)
         .eq("curso_id", data.curso_id)
         .limit(1);
+      query = anoLetivo === null ? query.is("ano_letivo", null) : query.eq("ano_letivo", anoLetivo);
+      return query;
+    };
 
     let existing: { id: string; protocolo_publico: string | null } | null = null;
 
@@ -418,15 +448,17 @@ export async function POST(
 
     // Fallback legado anterior aos normalizados.
     if (!existing) {
-      const { data: existingLegacy } = await supabase
-      .from("candidaturas")
-      .select("id, protocolo_publico")
-      .eq("escola_id", escolaId)
-      .eq("nome_candidato", data.nome_completo)
-      .eq("ano_letivo", anoLetivo)
-      .eq("curso_id", data.curso_id)
-      .contains("dados_candidato", { responsavel_contato: data.responsavel_contato })
-      .maybeSingle();
+      let existingLegacyQuery = supabase
+        .from("candidaturas")
+        .select("id, protocolo_publico")
+        .eq("escola_id", escolaId)
+        .eq("nome_candidato", data.nome_completo)
+        .eq("curso_id", data.curso_id)
+        .contains("dados_candidato", { responsavel_contato: data.responsavel_contato });
+      existingLegacyQuery = anoLetivo === null
+        ? existingLegacyQuery.is("ano_letivo", null)
+        : existingLegacyQuery.eq("ano_letivo", anoLetivo);
+      const { data: existingLegacy } = await existingLegacyQuery.maybeSingle();
       existing = existingLegacy;
     }
 
@@ -464,30 +496,31 @@ export async function POST(
       documentos: toJsonObject(data.documentos),
       campos_extras: toJsonObject(data.campos_extras),
       draft_id: draftId,
+      modo_portal_admissoes: modoPortalAdmissoes,
       disponibilidade_submissao: disponibilidade,
+      pre_candidatura: isPreCandidatura,
     };
-// 6. Insert Candidacy
-  const insertPayload = {
-    escola_id: escolaId,
-    curso_id: data.curso_id,
-    ano_letivo: anoLetivo,
-    status: statusInicial,
-    turma_preferencial_id: data.turma_preferencial_id || null,
-    dados_candidato: dadosCandidato as any,
-    nome_candidato: data.nome_completo,
-    nome_normalizado: nomeNormalizado,
-    documento_normalizado: documentoNormalizado,
-    telefone_normalizado: telefoneNormalizado,
-    responsavel_contato_normalizado: responsavelContatoNormalizado,
-    turno: data.turno || null,
-    protocolo_publico: null as any, // Let DB trigger handle it
-  };
+    const insertPayload = {
+      escola_id: escolaId,
+      curso_id: data.curso_id,
+      ano_letivo: anoLetivo,
+      status: statusInicial,
+      turma_preferencial_id: isPreCandidatura ? null : data.turma_preferencial_id || null,
+      dados_candidato: dadosCandidato as any,
+      nome_candidato: data.nome_completo,
+      nome_normalizado: nomeNormalizado,
+      documento_normalizado: documentoNormalizado,
+      telefone_normalizado: telefoneNormalizado,
+      responsavel_contato_normalizado: responsavelContatoNormalizado,
+      turno: isPreCandidatura ? null : data.turno || null,
+      protocolo_publico: null as any, // Let DB trigger handle it
+    };
 
-const { data: candidatura, error: insertErr } = await supabase
-  .from("candidaturas")
-  .insert(insertPayload)
-  .select("id, protocolo_publico")
-  .single();
+    const { data: candidatura, error: insertErr } = await supabase
+      .from("candidaturas")
+      .insert(insertPayload)
+      .select("id, protocolo_publico")
+      .single();
 
     if (insertErr) {
       console.error("[Public Candidacy Insert Error]:", insertErr);
@@ -502,12 +535,16 @@ const { data: candidatura, error: insertErr } = await supabase
       from_status: null,
       to_status: statusInicial,
       motivo:
+        statusInicial === "pre_candidatura"
+          ? "Pré-candidatura pública para próximo ano recebida"
+          :
         statusInicial === "lista_espera"
           ? "Candidatura pública em lista de espera por classe/turma lotada"
           : "Candidatura pública submetida",
       metadata: {
         source: "public_form",
-        turma_id: data.turma_preferencial_id ?? null,
+        modo_portal_admissoes: modoPortalAdmissoes,
+        turma_id: isPreCandidatura ? null : data.turma_preferencial_id ?? null,
         disponibilidade,
       },
     });
@@ -523,6 +560,7 @@ const { data: candidatura, error: insertErr } = await supabase
         nome: data.nome_completo, 
         curso_id: data.curso_id,
         status: statusInicial,
+        modo_portal_admissoes: modoPortalAdmissoes,
         disponibilidade,
         source: "public_form"
       }
@@ -531,7 +569,9 @@ const { data: candidatura, error: insertErr } = await supabase
     // 8. Return generic success
     return NextResponse.json({ 
       ok: true, 
-      message: "Inscrição realizada com sucesso! A secretaria entrará em contato em breve.",
+      message: isPreCandidatura
+        ? "Pré-candidatura realizada com sucesso! A secretaria entrará em contato quando o próximo período estiver preparado."
+        : "Inscrição realizada com sucesso! A secretaria entrará em contato em breve.",
       protocolo: candidatura.protocolo_publico,
       status: statusInicial,
     }, { status: 201 });

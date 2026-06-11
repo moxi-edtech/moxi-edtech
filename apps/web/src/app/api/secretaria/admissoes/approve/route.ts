@@ -93,6 +93,13 @@ export async function POST(request: Request) {
       if (updateErr) throw updateErr
     }
 
+    if (head.status === 'pre_candidatura') {
+      return NextResponse.json(
+        { error: 'Pré-candidatura não pode ser aprovada como matrícula. Aguarde a preparação do próximo ano letivo e converta-a para candidatura formal.' },
+        { status: 400 }
+      )
+    }
+
     if (head.status === 'rascunho') {
       const turmaId = turma_id ?? head.turma_preferencial_id
       if (!turmaId) {

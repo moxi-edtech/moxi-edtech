@@ -6,6 +6,14 @@ export const MIN_PENDENCIA_SLA_HORAS = 1;
 export const MAX_PENDENCIA_SLA_HORAS = 720;
 export const MIN_ANO_LETIVO_ADMISSOES = 2000;
 export const MAX_ANO_LETIVO_ADMISSOES = 2100;
+export const DEFAULT_MODO_PORTAL_ADMISSOES = "ingresso_imediato";
+
+export const MODOS_PORTAL_ADMISSOES = [
+  "ingresso_imediato",
+  "pre_candidatura_proximo_ano",
+] as const;
+
+export type ModoPortalAdmissoes = (typeof MODOS_PORTAL_ADMISSOES)[number];
 
 export const DEFAULT_DOCUMENTOS_ADMISSAO = [
   { id: "bi_candidato", label: "BI do candidato" },
@@ -90,6 +98,22 @@ export function getAnoLetivoAdmissoesFromConfig(config: unknown, fallback?: numb
   return normalizeAnoLetivoAdmissoes(
     (config as Record<string, unknown>).ano_letivo_admissoes
   ) ?? fallbackYear;
+}
+
+export function normalizeModoPortalAdmissoes(value: unknown): ModoPortalAdmissoes {
+  return MODOS_PORTAL_ADMISSOES.includes(value as ModoPortalAdmissoes)
+    ? (value as ModoPortalAdmissoes)
+    : DEFAULT_MODO_PORTAL_ADMISSOES;
+}
+
+export function getModoPortalAdmissoesFromConfig(config: unknown): ModoPortalAdmissoes {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return DEFAULT_MODO_PORTAL_ADMISSOES;
+  }
+
+  return normalizeModoPortalAdmissoes(
+    (config as Record<string, unknown>).modo_portal_admissoes
+  );
 }
 
 export function getDocumentosAdmissaoCatalogoFromConfig(config: unknown) {

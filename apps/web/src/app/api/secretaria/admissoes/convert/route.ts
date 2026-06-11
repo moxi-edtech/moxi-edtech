@@ -221,6 +221,17 @@ export async function POST(request: Request) {
 
     escolaIdContext = candidatura.escola_id as string;
     const statusAtual = String(candidatura.status ?? "").toLowerCase();
+    if (statusAtual === "pre_candidatura") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Pré-candidatura ainda não pode ser convertida em matrícula. Primeiro transforme-a em candidatura formal para um ano letivo e turma.",
+          code: "PRE_CANDIDATURA_NOT_CONVERTIBLE",
+        },
+        { status: 400 }
+      );
+    }
+
     if (statusAtual === "matriculado" && candidatura.matricula_id) {
       let numeroMatricula: string | null = null;
       const { data: matricula } = await supabase

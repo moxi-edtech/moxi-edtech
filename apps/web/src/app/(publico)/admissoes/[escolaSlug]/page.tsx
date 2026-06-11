@@ -7,7 +7,11 @@ import { FloatingSupport } from "./components/FloatingSupport";
 import { AdmissionForm, type AdmissionConfig } from "./AdmissionForm";
 import { Metadata } from "next";
 import type { Json } from "~types/supabase";
-import { getDocumentosAdmissaoCatalogoFromConfig } from "@/lib/admissoes/reserva";
+import {
+  getAnoLetivoAdmissoesFromConfig,
+  getDocumentosAdmissaoCatalogoFromConfig,
+  getModoPortalAdmissoesFromConfig,
+} from "@/lib/admissoes/reserva";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +89,7 @@ function parseConfigPortal(value: Json | undefined): ConfigPortal | null {
       ? documentos.filter((item): item is string => typeof item === "string")
       : undefined,
     documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(value),
+    modo_portal_admissoes: getModoPortalAdmissoesFromConfig(value),
     campos_extras: camposExtras,
   };
 }
@@ -109,10 +114,10 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
       .maybeSingle(),
     supabase
       .from("anos_letivos")
-      .select("id, ano, ativo")
+      .select("id, ano, ativo, data_inicio, data_fim")
       .eq("escola_id", escolaId)
-      .eq("ativo", true)
-      .maybeSingle(),
+      .order("ano", { ascending: false })
+      .limit(20),
     supabase
       .from("cursos")
       .select("id, nome")
@@ -148,8 +153,14 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
     );
   }
 
-  const activeAno = Number(anosRes.data?.ano);
+  const anosLetivos = Array.isArray(anosRes.data) ? anosRes.data : [];
+  const fallbackAno = Number(anosLetivos.find((ano) => ano.ativo)?.ano ?? anosLetivos[0]?.ano);
+  const configuredAno = getAnoLetivoAdmissoesFromConfig(escolaRes.data.config_portal_admissao, fallbackAno);
+  const activeAno = Number(configuredAno);
+  const selectedAnoLetivo = anosLetivos.find((ano) => Number(ano.ano) === activeAno) ?? anosLetivos[0] ?? null;
+  const isPreCandidatura = getModoPortalAdmissoesFromConfig(escolaRes.data.config_portal_admissao) === "pre_candidatura_proximo_ano";
   const turmasAtivas = (turmasRes.data || []).filter((turma) => {
+    if (isPreCandidatura) return false;
     if (!Number.isFinite(activeAno)) return true;
     return Number(turma.ano_letivo) === activeAno;
   });
@@ -180,7 +191,7 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
       slug: slug || escolaSlug,
       config_portal: parseConfigPortal(escolaRes.data.config_portal_admissao) ?? undefined,
     },
-    ano_letivo: anosRes.data || null,
+    ano_letivo: selectedAnoLetivo || null,
     cursos: cursosRes.data || [],
     turmas: turmasAtivas.flatMap((t) => {
       if (!t.curso_id) return [];

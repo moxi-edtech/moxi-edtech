@@ -117,10 +117,33 @@ export function DiagnosisPageClient() {
   const submitLead = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setTimeout(() => {
-        setIsSubmitting(false)
-        handleNext()
-    }, 1500)
+    
+    try {
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: leadData.nome,
+          escola: leadData.escola,
+          whatsapp: leadData.whatsapp,
+          email: leadData.email,
+          score: totalScore,
+          answers: answers,
+          origem: 'diagnostico_gestao'
+        })
+      })
+
+      if (!response.ok) throw new Error('Falha ao enviar lead')
+      
+      handleNext()
+    } catch (error) {
+      console.error('Erro ao enviar lead:', error)
+      // Mesmo com erro, avançamos para não bloquear a experiência do usuário, 
+      // mas o ideal seria um feedback de erro aqui.
+      handleNext()
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const getDiagnosis = () => {
@@ -157,25 +180,25 @@ export function DiagnosisPageClient() {
   const diagnosis = getDiagnosis()
 
   return (
-    <div className="min-h-screen w-full flex justify-center bg-[#F5F0E8] text-slate-900 selection:bg-klasse-gold selection:text-black">
-      <div className="w-full max-w-5xl px-6 py-12 md:py-24">
+    <div className="selection:bg-klasse-gold selection:text-black overflow-x-hidden">
+      <div className="container">
         
         <AnimatePresence mode="wait">
           {/* STEP 0: INTRO */}
           {step === 0 && (
             <motion.div
               key="intro"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col gap-10 w-full"
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col gap-12 w-full"
             >
-              <div className="flex flex-col gap-8 text-center sm:text-left">
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-800 self-center sm:self-start border border-emerald-200/50">
+              <div className="flex flex-col gap-8 text-center sm:text-left max-w-4xl mx-auto sm:mx-0">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100/60 px-4 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-800 self-center sm:self-start border border-emerald-200/40">
                   <BarChart3 size={14} /> Executive Assessment
                 </div>
                 <div className="flex flex-col gap-5">
-                  <h1 className="text-5xl font-black tracking-tighter text-slate-950 md:text-7xl leading-[1.1]" style={headingStyle}>
+                  <h1 className="text-5xl font-black tracking-tighter text-slate-950 md:text-7xl leading-[1.05]" style={headingStyle}>
                     Sua Escola está <br className="hidden md:block"/> <span className="text-emerald-700 italic">Lucrando</span> ou <br className="hidden md:block"/> Apenas Operando?
                   </h1>
                   <p className="max-w-2xl text-xl leading-relaxed text-slate-600 font-medium">
@@ -194,7 +217,7 @@ export function DiagnosisPageClient() {
                     { label: 'Entrega', val: 'Relatório' },
                     { label: 'Foco', val: 'Angola' },
                   ].map(card => (
-                    <div key={card.label} className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm flex flex-col justify-center min-h-[120px]">
+                    <div key={card.label} className="rounded-3xl border border-slate-200 bg-white/60 backdrop-blur-sm p-6 sm:p-8 shadow-sm flex flex-col justify-center min-h-[120px]">
                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">{card.label}</p>
                       <p className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">{card.val}</p>
                     </div>
@@ -202,27 +225,33 @@ export function DiagnosisPageClient() {
                 </div>
               </div>
 
-              {/* SEÇÃO O QUE MEDIMOS - ARREDONDADA E ESCURA */}
-              <div className="rounded-[2.5rem] bg-[#061B15] p-8 md:p-12 lg:p-16 text-white shadow-2xl overflow-hidden relative">
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-klasse-gold/10 blur-[80px]" />
-                <div className="relative flex flex-col gap-10 md:gap-12">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/70 self-start">
-                    O que avaliamos
+              {/* SEÇÃO O QUE MEDIMOS - CARTÃO FLUTUANTE */}
+              <div className="rounded-[3rem] bg-[#061B15] p-10 md:p-14 lg:p-20 text-white shadow-2xl shadow-emerald-950/20 overflow-hidden relative max-w-5xl w-full mx-auto lg:mx-0">
+                <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-klasse-gold/10 blur-[100px]" />
+                <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-emerald-500/5 blur-[100px]" />
+                
+                <div className="relative flex flex-col gap-12">
+                  <div className="flex flex-col gap-4">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/70 self-start">
+                      O que avaliamos
+                    </div>
+                    <h2 className="text-3xl font-black text-white md:text-4xl" style={headingStyle}>Fatores críticos de sucesso</h2>
                   </div>
-                  <div className="grid gap-8 md:gap-10 md:grid-cols-2">
+
+                  <div className="grid gap-10 md:grid-cols-2">
                     {[
                       { title: 'Matrículas', desc: 'Identificação de gargalos no atendimento e gestão de documentos físicos.', icon: Users },
                       { title: 'Propinas', desc: 'Rastreabilidade de depósitos e automação de alertas de cobrança.', icon: Building2 },
                       { title: 'Notas', desc: 'Digitalização de pautas e agilidade no conselho de notas trimestral.', icon: Target },
                       { title: 'Estratégia', desc: 'Visibilidade executiva sobre a saúde financeira e operacional da escola.', icon: TrendingDown },
                     ].map((item) => (
-                      <div key={item.title} className="flex gap-5 sm:gap-6 items-start">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
-                           <item.icon className="h-5 w-5 sm:h-6 sm:w-6 text-klasse-gold" />
+                      <div key={item.title} className="flex gap-6 items-start group">
+                        <div className="h-12 w-12 shrink-0 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 transition-colors group-hover:border-klasse-gold/30">
+                           <item.icon className="h-6 w-6 text-klasse-gold" />
                         </div>
-                        <div className="space-y-1 sm:space-y-2">
-                          <p className="text-lg sm:text-xl font-black text-white">{item.title}</p>
-                          <p className="text-sm sm:text-base leading-relaxed text-white/60 font-medium">{item.desc}</p>
+                        <div className="space-y-2">
+                          <p className="text-xl font-black text-white">{item.title}</p>
+                          <p className="text-base leading-relaxed text-white/50 font-medium">{item.desc}</p>
                         </div>
                       </div>
                     ))}
@@ -239,11 +268,11 @@ export function DiagnosisPageClient() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col gap-10"
+              className="flex flex-col gap-10 max-w-4xl mx-auto w-full"
             >
               <div className="flex flex-col gap-8 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 self-center sm:self-start border border-slate-200 shadow-sm">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 self-center sm:self-start border border-slate-200 shadow-sm">
                     Pergunta {step} de {QUESTIONS.length}
                   </div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{Math.round((step / QUESTIONS.length) * 100)}% concluído</span>
@@ -251,8 +280,8 @@ export function DiagnosisPageClient() {
                 <h2 className="text-3xl font-black leading-tight text-slate-950 md:text-5xl lg:text-6xl" style={headingStyle}>
                   {QUESTIONS[step - 1].title}
                 </h2>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <motion.div className="h-full bg-emerald-600" initial={{ width: 0 }} animate={{ width: `${(step/QUESTIONS.length)*100}%` }} />
+                <div className="h-2 overflow-hidden rounded-full bg-slate-200/50">
+                  <motion.div className="h-full bg-emerald-600 shadow-[0_0_15px_rgba(5,150,105,0.3)]" initial={{ width: 0 }} animate={{ width: `${(step/QUESTIONS.length)*100}%` }} />
                 </div>
               </div>
 
@@ -261,25 +290,25 @@ export function DiagnosisPageClient() {
                   <button
                     key={opt.value}
                     onClick={() => selectOption(QUESTIONS[step - 1].id, opt.score)}
-                    className="group flex items-start justify-between gap-6 rounded-[2rem] border border-slate-200 bg-white p-6 md:p-8 text-left transition-all hover:border-emerald-600 hover:bg-emerald-50/50 hover:shadow-xl shadow-sm min-h-[100px]"
+                    className="group flex items-start justify-between gap-6 rounded-[2.5rem] border border-slate-200 bg-white/90 backdrop-blur-sm p-6 md:p-10 text-left transition-all hover:border-emerald-600 hover:bg-white hover:shadow-2xl shadow-emerald-900/5 min-h-[120px]"
                   >
-                    <div className="flex flex-col gap-3 flex-1">
-                      <p className="text-xl font-bold text-slate-800 transition-colors group-hover:text-emerald-900 leading-tight">{opt.label}</p>
-                      <div className="flex flex-wrap items-center gap-3">
-                         <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    <div className="flex flex-col gap-4 flex-1">
+                      <p className="text-2xl font-black text-slate-800 transition-colors group-hover:text-emerald-950 leading-tight">{opt.label}</p>
+                      <div className="flex flex-wrap items-center gap-4">
+                         <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
                             opt.risk === 'Crítico' ? 'text-rose-600 border-rose-100 bg-rose-50' : opt.risk === 'Alto' ? 'text-orange-600 border-orange-100 bg-orange-50' : 'text-emerald-600 border-emerald-100 bg-emerald-50'
                          }`}>Risco {opt.risk}</span>
-                         <p className="text-sm text-slate-500 font-medium leading-relaxed">{opt.impact}</p>
+                         <p className="text-base text-slate-500 font-medium leading-relaxed">{opt.impact}</p>
                       </div>
                     </div>
-                    <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 transition-colors group-hover:border-emerald-600">
-                      <ChevronRight size={18} className="text-slate-300 group-hover:text-emerald-600 transition-all group-hover:translate-x-0.5" />
+                    <div className="mt-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-100 transition-colors group-hover:border-emerald-600 group-hover:bg-emerald-50">
+                      <ChevronRight size={20} className="text-slate-300 group-hover:text-emerald-600 transition-all group-hover:translate-x-1" />
                     </div>
                   </button>
                 ))}
               </div>
 
-              <div className="pt-4">
+              <div className="pt-6">
                 <button onClick={handleBack} className="flex items-center gap-2 text-base font-bold text-slate-400 transition-colors hover:text-slate-600">
                   <ChevronLeft size={20} />
                   Voltar
@@ -294,7 +323,7 @@ export function DiagnosisPageClient() {
               key="lead"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid gap-16 lg:grid-cols-[1fr_1.1fr]"
+              className="grid gap-16 lg:grid-cols-[1fr_1.1fr] max-w-5xl mx-auto w-full items-center"
             >
                 <div className="flex flex-col gap-8">
                   <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-600 shadow-lg shadow-emerald-900/10 border border-emerald-200/50">
@@ -359,7 +388,7 @@ export function DiagnosisPageClient() {
 
           {/* RESULTS */}
           {step === QUESTIONS.length + 2 && (
-            <motion.div key="result" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-10">
+            <motion.div key="result" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col gap-10 max-w-5xl mx-auto w-full">
               <div className={`overflow-hidden rounded-[3rem] border ${diagnosis.border} ${diagnosis.bg} p-8 md:p-12 shadow-sm`}>
                 <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr]">
                   <div className="flex flex-col gap-8 text-center lg:text-left">

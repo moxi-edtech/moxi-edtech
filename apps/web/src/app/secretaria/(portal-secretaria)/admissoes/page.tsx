@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/lib/supabaseServer";
+import type { ComponentProps } from "react";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AdmissoesInboxClient from "@/components/secretaria/AdmissoesInboxClient";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -10,26 +11,32 @@ type PageProps = {
   params?: Promise<{ id?: string }>;
 };
 
-const STATUS_MAP: Record<string, any> = {
+type AdmissoesInboxProps = ComponentProps<typeof AdmissoesInboxClient>;
+type InitialAdmissaoItem = NonNullable<AdmissoesInboxProps["initialItems"]>[number];
+type InitialAdmissaoStatus = InitialAdmissaoItem["status"];
+
+const STATUS_MAP: Record<string, InitialAdmissaoStatus> = {
+  pre_candidatura: 'pre_candidatura',
   submetida: 'submetida',
   pendente: 'submetida',
   em_analise: 'em_analise',
   aprovada: 'aprovada',
   aguardando_pagamento: 'aprovada',
+  aguardando_compensacao: 'aguardando_compensacao',
   matriculado: 'matriculado',
   convertida: 'matriculado',
 }
 
-function normalizeStatus(status: string | null | undefined) {
+function normalizeStatus(status: string | null | undefined): InitialAdmissaoStatus {
   const normalized = (status ?? '').toLowerCase()
-  return STATUS_MAP[normalized] ?? normalized
+  return STATUS_MAP[normalized] ?? (normalized as InitialAdmissaoStatus)
 }
 
 function statusOr(statuses: string[]) {
   return statuses.map((status) => `status.ilike.${status}`).join(',')
 }
 
-const ALL_STATUSES = ['submetida', 'pendente', 'em_analise', 'aprovada', 'aguardando_pagamento', 'matriculado', 'convertida']
+const ALL_STATUSES = ['pre_candidatura', 'submetida', 'pendente', 'em_analise', 'aprovada', 'aguardando_pagamento', 'aguardando_compensacao', 'matriculado', 'convertida']
 
 export default async function Page({ params }: PageProps = {}) {
   const routeParams = params ? await params : null;
@@ -39,7 +46,7 @@ export default async function Page({ params }: PageProps = {}) {
   let escolaId: string | null = null
   if (user) {
     escolaId = await resolveSecretariaEscolaIdForPage(
-      s as any,
+      s,
       user.id,
       routeParams?.id ?? null
     )
@@ -55,7 +62,7 @@ export default async function Page({ params }: PageProps = {}) {
   }
 
   // Fetch initial items for SSR to improve perceived performance
-  let initialItems: any[] = []
+  let initialItems: InitialAdmissaoItem[] = []
   try {
     const { data } = await s
       .from('candidaturas')
@@ -78,6 +85,8 @@ export default async function Page({ params }: PageProps = {}) {
     
     initialItems = (data || []).map(item => ({
       ...item,
+      nome_candidato: item.nome_candidato ?? "Candidato sem nome",
+      created_at: item.created_at ?? new Date(0).toISOString(),
       status: normalizeStatus(item.status)
     }))
   } catch (err) {

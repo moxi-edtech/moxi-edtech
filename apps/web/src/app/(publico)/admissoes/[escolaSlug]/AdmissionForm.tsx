@@ -38,6 +38,7 @@ export type AdmissionConfig = {
         id: string;
         label: string;
       }>;
+      modo_portal_admissoes?: "ingresso_imediato" | "pre_candidatura_proximo_ano";
       campos_extras?: Array<{
         id: string;
         label: string;
@@ -145,6 +146,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
   const primaryColor = config.escola.cor_primaria || "#1F6B3B";
   const TOTAL_STEPS = 4;
+  const isPreCandidatura = config.escola.config_portal?.modo_portal_admissoes === "pre_candidatura_proximo_ano";
 
   const whatsappNumber = config.escola.config_portal?.whatsapp_suporte;
   const disponibilidadeLabel: Record<NonNullable<AdmissionConfig["turmas"][number]["disponibilidade"]>, string> = {
@@ -187,7 +189,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     folha_25_linhas: "Documento complementar solicitado pela secretaria.",
     outro_documento: "Anexe qualquer outro documento exigido pela escola.",
   };
-  const requiredDocumentIds = new Set(config.escola.config_portal?.documentos_obrigatorios ?? []);
+  const requiredDocumentIds = new Set(isPreCandidatura ? [] : config.escola.config_portal?.documentos_obrigatorios ?? []);
   const documentCatalog = (() => {
     const catalog = configuredDocumentCatalog.length > 0
       ? configuredDocumentCatalog.map((doc) => ({
@@ -217,7 +219,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
   const step1Validation = () => {
     if (!formData.curso_id) return "Selecione o nível de ensino pretendido.";
-    if (!formData.turma_preferencial_id) return "Selecione a classe pretendida.";
+    if (!isPreCandidatura && !formData.turma_preferencial_id) return "Selecione a classe pretendida.";
     if (formData.nome_completo.trim().length < 5) return "Informe o nome completo do estudante.";
     if (!formData.tipo_documento) return "Selecione o tipo de documento.";
     if (isDocumentNumberRequired && formData.numero_documento.trim().length < 3) {
@@ -329,7 +331,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         body: JSON.stringify({
           ...formData,
           draftId,
-          ano_letivo: config.ano_letivo?.ano || new Date().getFullYear(),
+          ano_letivo: isPreCandidatura ? null : config.ano_letivo?.ano || new Date().getFullYear(),
         }),
       });
 
@@ -366,7 +368,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </p>
         ) : (
           <p className="mt-4 max-w-md text-lg text-slate-600 leading-relaxed">
-            Obrigado, <span className="font-bold">{formData.nome_completo}</span>. Sua intenção de matrícula foi registrada com sucesso.
+            Obrigado, <span className="font-bold">{formData.nome_completo}</span>. {isPreCandidatura ? "Sua pré-candidatura foi registrada com sucesso." : "Sua intenção de matrícula foi registrada com sucesso."}
           </p>
         )}
 
@@ -393,7 +395,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
             <div>
               <p className="text-sm font-bold text-blue-900">O que acontece agora?</p>
               <p className="text-xs text-blue-700 mt-1">
-                A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga</b> e poderá enviar o comprovativo de pagamento diretamente por aqui.
+                {isPreCandidatura
+                  ? "A secretaria analisará seu interesse e entrará em contato quando o próximo período de admissões estiver preparado."
+                  : <>A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga</b> e poderá enviar o comprovativo de pagamento diretamente por aqui.</>}
               </p>
             </div>
           </div>
@@ -431,7 +435,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 </div>
               )}
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-white/60">Formulário de Candidatura</p>
+                <p className="text-xs font-black uppercase tracking-widest text-white/60">{isPreCandidatura ? "Pré-candidatura" : "Formulário de Candidatura"}</p>
                 <h2 className="text-2xl font-black tracking-tight">Insira seus dados</h2>
               </div>
             </div>
@@ -445,7 +449,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
             </Link>
           </div>
           <p className="mt-4 text-white/70 max-w-lg relative z-10">
-            Passo {step} de {TOTAL_STEPS} para garantir sua vaga no ano letivo <span className="text-white font-bold">{config.ano_letivo?.ano || "vigente"}</span>.
+            {isPreCandidatura
+              ? <>Passo {step} de {TOTAL_STEPS} para demonstrar interesse no próximo período de admissões.</>
+              : <>Passo {step} de {TOTAL_STEPS} para garantir sua vaga no ano letivo <span className="text-white font-bold">{config.ano_letivo?.ano || "vigente"}</span>.</>}
           </p>
 
           {/* Progress Bar */}
@@ -521,17 +527,17 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
                   <label>
                     <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                      Classe pretendida <span className="text-red-500">*</span>
+                      {isPreCandidatura ? "Classe/turno de interesse" : "Classe pretendida"} {!isPreCandidatura && <span className="text-red-500">*</span>}
                     </span>
                     <select
-                      required
+                      required={!isPreCandidatura}
                       name="turma_preferencial_id"
                       value={formData.turma_preferencial_id}
                       onChange={handleInputChange}
                       disabled={!formData.curso_id}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition disabled:opacity-50"
                     >
-                      <option value="">Selecionar...</option>
+                      <option value="">{isPreCandidatura ? "Informar depois com a secretaria" : "Selecionar..."}</option>
                       {groupedTurmas.map((t) => (
                         <option key={t.id} value={t.id}>{t.label}</option>
                       ))}
@@ -539,6 +545,11 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                   </label>
                 </div>
               </div>
+              {isPreCandidatura && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-blue-800">
+                  Esta pré-candidatura não reserva vaga, não gera cobrança e não efetiva matrícula. A escola usará estes dados para contactar o responsável quando o próximo ano letivo estiver preparado.
+                </div>
+              )}
 
               <div className="space-y-6">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
@@ -874,7 +885,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
               <div className="rounded-xl bg-blue-50 p-4 text-xs text-blue-700 flex items-start gap-3">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                <p>Ao clicar em finalizar, sua intenção de matrícula será enviada para a escola. Você receberá um número de protocolo para acompanhamento.</p>
+                <p>{isPreCandidatura ? "Ao clicar em finalizar, sua pré-candidatura será enviada para a escola. Você receberá um número de protocolo para acompanhamento." : "Ao clicar em finalizar, sua intenção de matrícula será enviada para a escola. Você receberá um número de protocolo para acompanhamento."}</p>
               </div>
 
               <div className="pt-4 flex justify-between">

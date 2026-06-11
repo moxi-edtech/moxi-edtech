@@ -39,6 +39,7 @@ import { createClient } from '@/lib/supabase/client'
 
 type AdmissaoStatus =
   | 'rascunho'
+  | 'pre_candidatura'
   | 'submetida'
   | 'documentos_reenviados'
   | 'em_analise'
@@ -110,6 +111,7 @@ type DocumentCatalogItem = {
 
 const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: string }> = {
   rascunho: { label: 'Rascunho', color: 'text-slate-500', bg: 'bg-slate-100' },
+  pre_candidatura: { label: 'Pré-candidatura', color: 'text-indigo-700', bg: 'bg-indigo-50' },
   submetida: { label: 'Nova', color: 'text-blue-600', bg: 'bg-blue-50' },
   documentos_reenviados: { label: 'Documentos Re-enviados', color: 'text-blue-700', bg: 'bg-blue-100' },
   pendente: { label: 'Documentos Pendentes', color: 'text-rose-700', bg: 'bg-rose-50' },
@@ -124,11 +126,11 @@ const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: 
   matriculado: { label: 'Matriculado', color: 'text-klasse-green', bg: 'bg-klasse-green/20' },
 }
 
-const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
+const REJECTABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
 const APPROVABLE_STATUSES: AdmissaoStatus[] = ['submetida', 'em_analise', 'pendente', 'lista_espera']
 const CONVERTIBLE_STATUSES: AdmissaoStatus[] = ['aprovada', 'aguardando_pagamento', 'aguardando_compensacao']
 const REOPENABLE_STATUSES: AdmissaoStatus[] = ['rejeitada', 'arquivada', 'arquivado']
-const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera', 'rejeitada']
+const ARCHIVABLE_STATUSES: AdmissaoStatus[] = ['rascunho', 'pre_candidatura', 'submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera', 'rejeitada']
 const DOCUMENT_CORRECTION_STATUSES: AdmissaoStatus[] = ['submetida', 'documentos_reenviados', 'em_analise', 'pendente', 'lista_espera']
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: 'Dinheiro',
@@ -284,7 +286,7 @@ export default function AdmissoesInboxClient({
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [search, setSearch] = useState(initialSearch || '')
-  const [statusFilter, setStatusFilter] = useState<'novas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
+  const [statusFilter, setStatusFilter] = useState<'novas' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const supabase = useMemo(() => createClient(), [])
 
@@ -366,6 +368,8 @@ export default function AdmissoesInboxClient({
       let matchesStatus = false
       if (statusFilter === 'novas') {
         matchesStatus = item.status === 'submetida' || item.status === 'documentos_reenviados'
+      } else if (statusFilter === 'pre_candidaturas') {
+        matchesStatus = item.status === 'pre_candidatura'
       } else if (statusFilter === 'lista_espera') {
         matchesStatus = item.status === 'lista_espera'
       } else if (statusFilter === 'pendentes') {
@@ -952,6 +956,7 @@ export default function AdmissoesInboxClient({
           <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
             {([
               { id: 'novas', label: 'Novas' },
+              { id: 'pre_candidaturas', label: 'Pré' },
               { id: 'lista_espera', label: 'Lista' },
               { id: 'pendentes', label: 'Pendentes' },
               { id: 'concluidas', label: 'Concluídas' },
