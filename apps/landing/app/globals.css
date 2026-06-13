@@ -38,6 +38,23 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .container{max-width:1120px;margin:0 auto;padding:0 24px}
 .landing-home-shell{height:100vh;height:100dvh;overflow:hidden}
 .landing-site-shell{width:100%;min-height:100vh;display:flex;flex-direction:column}
+.diagnosis-main{position:relative;z-index:1;flex:1;overflow-x:hidden;padding-top:calc(var(--nav-h, 96px) + 80px);padding-bottom:96px;background:#F7F4EE}
+.diagnosis-page-shell{width:min(900px,calc(100vw - 40px));margin-inline:auto;min-height:100vh;padding-bottom:64px;overflow-x:hidden;text-align:center;scroll-margin-top:calc(var(--nav-h, 96px) + 32px)}
+.diagnosis-page-shell > *{width:100%}
+.diagnosis-center-stack{display:flex;flex-direction:column;align-items:center;width:100%}
+.diagnosis-measure-section{width:100%;max-width:840px;margin-inline:auto;text-align:center}
+.diagnosis-question-shell{width:100%;max-width:720px;margin-inline:auto;text-align:center}
+.diagnosis-lead-shell{width:100%;max-width:760px;margin-inline:auto;display:flex;flex-direction:column;align-items:center;gap:32px;text-align:center}
+.diagnosis-lead-card{width:100%;margin-inline:auto;text-align:center}
+.diagnosis-lead-form{width:100%;max-width:560px;margin-inline:auto;display:flex;flex-direction:column;align-items:stretch;gap:20px;text-align:left}
+.diagnosis-lead-form .btn-p{width:100%;justify-content:center}
+.diagnosis-lead-form label{display:block;margin:0 0 10px 2px}
+.diagnosis-lead-form input,
+.diagnosis-lead-form select{min-height:58px;padding:17px 20px;font-weight:700}
+.diagnosis-lead-form input::placeholder{color:#94A3B8;font-weight:600}
+.diagnosis-page-shell .rounded-2xl.bg-white{padding:clamp(28px,4vw,42px);border-color:#D6DDE6;box-shadow:0 18px 45px rgba(15,23,42,.06)}
+.diagnosis-page-shell button.rounded-2xl.bg-white{padding:clamp(24px,3.4vw,36px)}
+.diagnosis-lead-card > .bg-slate-50{padding:clamp(24px,3vw,32px)}
 
 .gradient-bg{
   background:

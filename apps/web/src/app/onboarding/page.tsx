@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   School, 
   GraduationCap, 
@@ -31,6 +31,8 @@ interface ClasseConfig {
   activa: boolean;
 }
 
+type PlanoInteresse = "essencial" | "profissional" | "premium";
+
 interface FormData {
   // Passo 1 — Escola
   escola_nome: string;
@@ -51,6 +53,7 @@ interface FormData {
   turnos: string[];
   total_alunos: string;
   faixa_propina: string;
+  plano_interesse: PlanoInteresse | "";
   // Passo 4 — Utilizadores
   utilizadores: {
     principal: { nome: string; tel: string; nivel_exp: string };
@@ -109,6 +112,28 @@ const FAIXAS_PROPINA = [
   { value: "acima_40k", label: "Acima de 40.000 Kz / mês" },
 ];
 
+const PLANOS_INTERESSE: Array<{
+  value: PlanoInteresse;
+  label: string;
+  resumo: string;
+}> = [
+  {
+    value: "essencial",
+    label: "Essencial",
+    resumo: "Para escolas que querem começar com matrícula online e organização base.",
+  },
+  {
+    value: "profissional",
+    label: "Profissional",
+    resumo: "Para escolas que querem secretaria, cobrança e portal do aluno com mais rotina comercial.",
+  },
+  {
+    value: "premium",
+    label: "Premium",
+    resumo: "Para escolas que querem operação completa, relatórios e acompanhamento prioritário.",
+  },
+];
+
 const FORM_INICIAL: FormData = {
   escola_nome: "", escola_nif: "", escola_abrev: "", escola_codigo: "",
   escola_morada: "", escola_municipio: "", escola_provincia: "Luanda",
@@ -119,6 +144,7 @@ const FORM_INICIAL: FormData = {
   turnos: ["M"],
   total_alunos: "",
   faixa_propina: "",
+  plano_interesse: "",
   utilizadores: {
     principal: { nome: "", tel: "", nivel_exp: "" },
   },
@@ -210,7 +236,9 @@ function SectionSep({ children }: { children: React.ReactNode }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  const parceiroRef = (searchParams?.get("ref") || "").trim().toUpperCase();
 
   const [passo, setPasso]       = useState(1);
   const [form, setForm]         = useState<FormData>(FORM_INICIAL);
@@ -262,6 +290,7 @@ export default function OnboardingPage() {
   async function submeter() {
     setSubmitting(true);
     setErro(null);
+    const planoSeleccionado = PLANOS_INTERESSE.find((plano) => plano.value === form.plano_interesse);
 
     const { error } = await supabase.from("onboarding_requests").insert({
       escola_nome:      form.escola_nome,
@@ -282,6 +311,10 @@ export default function OnboardingPage() {
       financeiro: {
         ...form.financeiro,
         total_alunos: form.total_alunos,
+        plano_interesse: form.plano_interesse || null,
+        plano_interesse_label: planoSeleccionado?.label ?? null,
+        origem_campanha: parceiroRef ? "influencer_escola_moderna" : "onboarding_direto",
+        influencer_codigo: parceiroRef || null,
       } as any,
       utilizadores: form.utilizadores as any,
       status: "pendente",
@@ -383,6 +416,11 @@ export default function OnboardingPage() {
 
       {/* Conteúdo */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-10">
+        {parceiroRef && (
+          <div className="mb-6 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-3 text-xs font-bold leading-relaxed text-klasse-gold-800">
+            Pedido iniciado pela campanha Escola Moderna. Código do parceiro: <span className="font-black">{parceiroRef}</span>
+          </div>
+        )}
 
         {/* ═══ PASSO 1 — ESCOLA ════════════════════════════════════════════ */}
         {passo === 1 && (
@@ -605,6 +643,41 @@ export default function OnboardingPage() {
                 />
                 <Hint>Número total de alunos em todos os turnos.</Hint>
               </div>
+
+              <div>
+                <Label required>Plano de interesse</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {PLANOS_INTERESSE.map((plano) => {
+                    const activo = form.plano_interesse === plano.value;
+                    return (
+                      <button
+                        key={plano.value}
+                        type="button"
+                        onClick={() => update("plano_interesse", plano.value)}
+                        className={`flex items-start gap-4 rounded-2xl border-2 p-4 text-left transition-all
+                          ${activo
+                            ? "border-[#1F6B3B] bg-[#E8F5EE] shadow-sm"
+                            : "border-slate-200 bg-white hover:border-slate-300"}`}
+                      >
+                        <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2
+                          ${activo ? "border-[#1F6B3B] bg-[#1F6B3B]" : "border-slate-300 bg-white"}`}
+                        >
+                          {activo && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </span>
+                        <span>
+                          <span className={`block text-sm font-black ${activo ? "text-[#1F6B3B]" : "text-slate-800"}`}>
+                            {plano.label}
+                          </span>
+                          <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+                            {plano.resumo}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <Hint>Esta referência fica no pedido para a equipa comercial validar a proposta certa.</Hint>
+              </div>
             </div>
           </div>
         )}
@@ -769,6 +842,7 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
                   <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Estimativa Alunos</p><p className="font-bold text-slate-700">{form.total_alunos} Alunos</p></div>
                   <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Faixa de Propina</p><p className="font-bold text-[#1F6B3B]">{FAIXAS_PROPINA.find(f => f.value === form.faixa_propina)?.label}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Plano de Interesse</p><p className="font-bold text-[#1F6B3B]">{PLANOS_INTERESSE.find(p => p.value === form.plano_interesse)?.label}</p></div>
                   <div className="col-span-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Classes Activas</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -834,7 +908,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={submeter}
-              disabled={submitting || !form.faixa_propina || !form.total_alunos}
+              disabled={submitting || !form.faixa_propina || !form.total_alunos || !form.plano_interesse}
               className="flex items-center gap-2 px-8 py-2.5 bg-klasse-green text-white
                 rounded-xl text-xs font-bold hover:brightness-110 transition-all
                 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-klasse-green/10 uppercase tracking-widest"

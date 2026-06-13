@@ -81,6 +81,22 @@ const LEAD_STATUS_META = {
   'PERDIDO': { label: "Perdido", color: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400" },
 };
 
+const PLAN_META: Record<string, { label: string; color: string }> = {
+  essencial: { label: "Essencial", color: "bg-slate-100 text-slate-700 border-slate-200" },
+  profissional: { label: "Profissional", color: "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200" },
+  premium: { label: "Premium", color: "bg-klasse-green-100 text-klasse-green-700 border-klasse-green-200" },
+};
+
+const getPlanMeta = (financeiro: any) => {
+  const key = String(financeiro?.plano_interesse || "").toLowerCase();
+  return PLAN_META[key] || { label: financeiro?.plano_interesse_label || "Sem plano", color: "bg-slate-100 text-slate-500 border-slate-200" };
+};
+
+const getInfluencerCode = (financeiro: any) => {
+  const code = financeiro?.influencer_codigo;
+  return typeof code === "string" && code.trim() ? code.trim().toUpperCase() : null;
+};
+
 // ─── Lead Scoring Helper ──────────────────────────────────────────────────────
 const calcEstimativa = (faixa: string | null, totalAlunos: any) => {
   const alunos = parseInt(String(totalAlunos || 0));
@@ -250,6 +266,8 @@ export default function SuperAdminOnboardingPage() {
                   ) : (
                     filteredRequests.map(req => {
                       const meta = STATUS_META[req.status] || STATUS_META.pendente;
+                      const plan = getPlanMeta(req.financeiro);
+                      const influencerCode = getInfluencerCode(req.financeiro);
                       return (
                         <Card 
                           key={req.id} 
@@ -268,6 +286,16 @@ export default function SuperAdminOnboardingPage() {
                                     <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(req.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
                                     <span className="text-slate-200">•</span>
                                     <span className="font-bold text-klasse-green">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <Badge className={`${plan.color} border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full`}>
+                                      Plano: {plan.label}
+                                    </Badge>
+                                    {influencerCode && (
+                                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                                        Ref: {influencerCode}
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -341,6 +369,25 @@ export default function SuperAdminOnboardingPage() {
                     <CardDescription>Resumo dos dados de Onboarding</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
+                    {(() => {
+                      const plan = getPlanMeta(selectedRequest.financeiro);
+                      const influencerCode = getInfluencerCode(selectedRequest.financeiro);
+                      return (
+                        <div className="rounded-2xl border border-klasse-green-100 bg-klasse-green-50 p-4">
+                          <h4 className="mb-3 text-[10px] font-bold text-klasse-green-700 uppercase tracking-widest">Contexto Comercial</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[9px] font-bold text-klasse-green-600 uppercase">Plano Escolhido</p>
+                              <p className="text-sm font-black text-slate-900">{plan.label}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-bold text-klasse-green-600 uppercase">Influencer</p>
+                              <p className="text-sm font-black text-slate-900">{influencerCode || "Direto"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     
                     {/* Info Escola */}
                     <div className="space-y-3">
