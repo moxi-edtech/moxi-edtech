@@ -46,6 +46,7 @@ function normalizarMensalidade(m: RawDossierMensalidade): DossierMensalidade {
     vencimento,
     pago_em: m.pago_em ?? null,
     recibo_id: m.recibo_id ?? null,
+    pagamento_reversivel_id: m.pagamento_reversivel_id ?? null,
     atrasada,
   };
 }
@@ -148,5 +149,6 @@ export function toMensalidadeAcoes(m: DossierMensalidade) {
     valor: m.valor,
     status: m.status,
     vencimento: m.vencimento ?? undefined,
+    pagamentoReversivelId: m.pagamento_reversivel_id ?? undefined,
   };
 }

@@ -9,9 +9,11 @@ import {
   UserPlus,
   Wallet,
   Plus,
+  RotateCcw,
 } from "lucide-react";
 import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { ReverterPagamentoButton } from "@/components/financeiro/ReverterPagamentoButton";
 
 type MensalidadeResumo = {
   id: string;
@@ -20,6 +22,7 @@ type MensalidadeResumo = {
   valor: number;
   status: string;
   vencimento?: string;
+  pagamentoReversivelId?: string;
 };
 
 interface AcoesRapidasBalcaoProps {
@@ -58,7 +61,7 @@ function sortByVencimentoAsc(a: MensalidadeResumo, b: MensalidadeResumo) {
 }
 
 type QuickAction = {
-  id: "pagar" | "doc_freq" | "doc_notas" | "matricula" | "extrato";
+  id: "pagar" | "reverter" | "doc_freq" | "doc_notas" | "matricula" | "extrato";
   title: string;
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -67,6 +70,7 @@ type QuickAction = {
   isPagamento?: boolean;
   inadimplente?: boolean;
   disabled?: boolean;
+  customNode?: React.ReactNode;
 };
 
 function QuickCard(props: {
@@ -75,6 +79,8 @@ function QuickCard(props: {
 }) {
   const { action } = props;
   const Icon = action.icon;
+
+  if (action.customNode) return <>{action.customNode}</>;
 
   const isPagamentoCritico = action.isPagamento && action.inadimplente;
 
@@ -151,6 +157,13 @@ export function AcoesRapidasBalcao({
     return { pendentes: pend, totalPendente: total, mensalidadeSugerida: suggested };
   }, [mensalidades]);
 
+  const pagamentoReversivelId = useMemo(() => {
+    const paga = [...(mensalidades ?? [])]
+      .reverse()
+      .find((m) => m.pagamentoReversivelId && m.status.toLowerCase() === "pago");
+    return paga?.pagamentoReversivelId ?? null;
+  }, [mensalidades]);
+
   const openPagamento = useCallback(() => {
     if (!mensalidadeSugerida) {
       error("Não há mensalidades pendentes para este aluno.");
@@ -189,6 +202,32 @@ export function AcoesRapidasBalcao({
         disabled: !mensalidadeSugerida,
       },
       {
+        id: "reverter",
+        title: "Reverter",
+        subtitle: "Pagamento",
+        icon: RotateCcw,
+        onClick: () => {},
+        disabled: !pagamentoReversivelId,
+        customNode: pagamentoReversivelId ? (
+          <ReverterPagamentoButton
+            pagamentoId={pagamentoReversivelId}
+            label="Reverter pagamento"
+            className="min-h-[74px] w-full justify-start px-4 text-left"
+          />
+        ) : (
+          <QuickCard
+            action={{
+              id: "reverter",
+              title: "Reverter",
+              subtitle: "Sem pagamento pago",
+              icon: RotateCcw,
+              onClick: () => {},
+              disabled: true,
+            }}
+          />
+        ),
+      },
+      {
         id: "doc_freq",
         title: "Declaração",
         subtitle: "Simples",
@@ -217,7 +256,7 @@ export function AcoesRapidasBalcao({
         onClick: goExtrato,
       },
     ],
-    [openPagamento, totalPendente, mensalidadeSugerida, goDocumento, goMatricula, goExtrato]
+    [openPagamento, totalPendente, mensalidadeSugerida, pagamentoReversivelId, goDocumento, goMatricula, goExtrato]
   );
 
   return (

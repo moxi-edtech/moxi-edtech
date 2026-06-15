@@ -20,6 +20,21 @@ import { Button } from "@/components/ui/Button";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
+function formatSlotSaveError(json: any) {
+  if (json?.error === "SLOT_TEMPORAL_CONFLICT") {
+    const detail = json?.detail;
+    const current = detail?.inicio && detail?.fim ? `${detail.inicio}-${detail.fim}` : "um dos tempos";
+    const other = detail?.conflicting_with?.inicio && detail?.conflicting_with?.fim
+      ? `${detail.conflicting_with.inicio}-${detail.conflicting_with.fim}`
+      : "outro tempo";
+    return `Conflito de horário: ${current} sobrepõe ${other}. Ajuste os tempos antes de salvar.`;
+  }
+  if (json?.error === "SLOT_TIME_RANGE_INVALID") {
+    return "Horário inválido: a hora de início deve ser anterior à hora de fim.";
+  }
+  return json?.error || "Falha ao salvar slots.";
+}
+
 export default function QuadroHorariosPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -529,7 +544,7 @@ export default function QuadroHorariosPage() {
       });
       const saveJson = await saveRes.json().catch(() => null);
       if (!saveRes.ok || saveJson?.ok === false) {
-        throw new Error(saveJson?.error || "Falha ao salvar slots.");
+        throw new Error(formatSlotSaveError(saveJson));
       }
 
       success(`Slots ajustados para ${targetSlotsPerDay} aulas/dia.`);
@@ -794,6 +809,10 @@ export default function QuadroHorariosPage() {
             if (slotKey) nextConflicts[slotKey] = true;
           }
           setConflictSlots(nextConflicts);
+          error(
+            "Conflito de horário",
+            `${json.conflicts.length} slot(s) têm professor ou sala já ocupados. Os horários em conflito foram destacados.`
+          );
         }
         if (json?.details?.missing?.length) {
           const nomes = json.details.missing
@@ -952,7 +971,7 @@ export default function QuadroHorariosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           curso_matriz_id: aula.cursoMatrizId,
-          disciplina_id: aula.cursoMatrizId,
+          disciplina_id: aula.id,
           professor_user_id: professorUserId,
         }),
       });

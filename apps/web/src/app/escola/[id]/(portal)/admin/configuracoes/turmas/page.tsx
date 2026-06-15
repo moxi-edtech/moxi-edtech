@@ -683,6 +683,7 @@ export default function TurmasConfiguracoesPage() {
                   payload.avaliacao.mode === "inherit_disciplina"
                     ? payload.avaliacao.base_id ?? null
                     : null,
+                create_local_disciplina: true,
               }),
             });
             const json = await res.json().catch(() => null);

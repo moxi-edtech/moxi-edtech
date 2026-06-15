@@ -1,6 +1,5 @@
 "use server";
 
-import { hydrateCourseCurriculum } from "@/features/curriculum/actions";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { parseTurmaCode } from "@/lib/turma";
@@ -247,18 +246,6 @@ export async function saveAndValidateTurma(payload: ValidateTurmaPayload) {
 
     if (result.error) throw result.error;
     finalTurmaId = (result.data as any)?.id || finalTurmaId;
-
-    // [NOVO] Passo Final: Garantir que o curso tenha disciplinas
-    // Dispara a hidratação baseada no nome do curso
-    if (payload.curso_id) {
-      try {
-        await hydrateCourseCurriculum(payload.escola_id, payload.curso_id);
-      } catch (hydrationError) {
-        console.warn("Aviso: Falha na hidratação automática do currículo:", hydrationError);
-        // Não lançamos erro aqui para não travar a validação da turma,
-        // apenas logamos. O Admin pode corrigir manualmente depois.
-      }
-    }
 
     // 3b. Notificar financeiro apenas quando a turma estiver ativa
     if (payload.escola_id && finalCursoId && turmaData.status_validacao === 'ativo') {

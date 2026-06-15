@@ -607,7 +607,13 @@ export default function ProfessoresPage() {
   const [turmas,    setTurmas]    = useState<{ id: string; nome: string }[]>([])
   const [todasTurmas, setTodasTurmas] = useState<{ id: string; nome: string }[]>([])
   const [cursos,    setCursos]    = useState<{ id: string; nome: string }[]>([])
-  const [disciplinas,  setDisciplinas]  = useState<{ id: string; nome: string; catalogoId?: string | null }[]>([])
+  const [disciplinas,  setDisciplinas]  = useState<{
+    cursoMatrizId: string;
+    nome: string;
+    catalogoId?: string | null;
+    professorNome?: string | null;
+    professorEmail?: string | null;
+  }[]>([])
   const [disciplinasCatalogo, setDisciplinasCatalogo] = useState<{ id: string; nome: string }[]>([])
   const [lastCredentials, setLastCredentials] = useState<{ email: string; senha: string } | null>(null)
 
@@ -618,6 +624,11 @@ export default function ProfessoresPage() {
   const [atribDisciplinaId,  setAtribDisciplinaId]  = useState("")
   const [atribuindo,         setAtribuindo]          = useState(false)
   const [turmaAssignments,   setTurmaAssignments]   = useState<any[] | null>(null)
+  const [replaceAssignment,  setReplaceAssignment]  = useState<{
+    cursoMatrizId: string;
+    disciplinaNome: string;
+    professorNome: string;
+  } | null>(null)
   const [confirmRemove,      setConfirmRemove]       = useState<{ disciplinaId: string } | null>(null)
   const [removing,           setRemoving]            = useState(false)
 
@@ -832,7 +843,7 @@ export default function ProfessoresPage() {
   // ── Load turmas por curso ─────────────────────────────────────────────────
   useEffect(() => {
     if (!escolaId || !atribCursoId) {
-      setTurmas(todasTurmas); setAtribTurmaId(""); setDisciplinas([]); setAtribDisciplinaId("")
+      setTurmas(todasTurmas); setAtribTurmaId(""); setDisciplinas([]); setAtribDisciplinaId(""); setReplaceAssignment(null)
       return
     }
     let cancelled = false
@@ -844,9 +855,9 @@ export default function ProfessoresPage() {
         if (!res.ok || !Array.isArray(payload)) throw new Error()
         if (!cancelled) {
           setTurmas(payload.map((t: any) => ({ id: t.id, nome: t.nome ?? t.turma_nome ?? "Sem nome" })))
-          setAtribTurmaId(""); setDisciplinas([]); setAtribDisciplinaId("")
+          setAtribTurmaId(""); setDisciplinas([]); setAtribDisciplinaId(""); setReplaceAssignment(null)
         }
-      } catch { if (!cancelled) { setTurmas([]); setAtribTurmaId(""); setDisciplinas([]); setAtribDisciplinaId("") } }
+      } catch { if (!cancelled) { setTurmas([]); setAtribTurmaId(""); setDisciplinas([]); setAtribDisciplinaId(""); setReplaceAssignment(null) } }
     }
     load()
     return () => { cancelled = true }
@@ -854,7 +865,7 @@ export default function ProfessoresPage() {
 
   // ── Load disciplinas por turma ────────────────────────────────────────────
   useEffect(() => {
-    if (!escolaId || !atribTurmaId) { setDisciplinas([]); setAtribDisciplinaId(""); return }
+    if (!escolaId || !atribTurmaId) { setDisciplinas([]); setAtribDisciplinaId(""); setReplaceAssignment(null); return }
     let cancelled = false
     const load = async () => {
       try {
@@ -865,11 +876,13 @@ export default function ProfessoresPage() {
           setDisciplinas(
             json.items
               .map((d: any) => ({
-                id: d.curso_matriz_id ?? d.disciplina?.id,
+                cursoMatrizId: d.curso_matriz_id,
                 nome: d.disciplina?.nome ?? "Sem disciplina",
                 catalogoId: d.disciplina?.id ?? null,
+                professorNome: d.professor?.nome ?? null,
+                professorEmail: d.professor?.email ?? null,
               }))
-              .filter((d: any) => Boolean(d.id))
+              .filter((d: any) => Boolean(d.cursoMatrizId))
           )
         }
       } catch { if (!cancelled) setDisciplinas([]) }
@@ -893,16 +906,46 @@ export default function ProfessoresPage() {
     e.preventDefault()
     if (!atribTurmaId || !atribProfessorUserId || !atribCursoId || !atribDisciplinaId)
       return showToast("Selecione professor, curso, turma e disciplina", "error")
+    const selectedDisciplina = disciplinas.find((disciplina) => disciplina.cursoMatrizId === atribDisciplinaId)
+    const replacingSelected = replaceAssignment?.cursoMatrizId === atribDisciplinaId
+    if ((selectedDisciplina?.professorNome || selectedDisciplina?.professorEmail) && !replacingSelected) {
+      return showToast(
+        `${selectedDisciplina.nome} já foi atribuída a ${selectedDisciplina.professorNome || selectedDisciplina.professorEmail}. Use "Trocar" na lista abaixo.`,
+        "error"
+      )
+    }
     setAtribuindo(true)
     try {
       const res  = await fetch(`/api/escolas/${escolaId}/turmas/${atribTurmaId}/atribuir-professor`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ disciplina_id: atribDisciplinaId, professor_user_id: atribProfessorUserId }),
+        body: JSON.stringify({
+          curso_matriz_id: atribDisciplinaId,
+          disciplina_id: selectedDisciplina?.catalogoId ?? atribDisciplinaId,
+          professor_user_id: atribProfessorUserId,
+          replace_existing: replacingSelected,
+        }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atribuir")
       showToast("Atribuição salva com sucesso.", "success")
+      setAtribDisciplinaId("")
+      setReplaceAssignment(null)
       await loadTurmaAssignments(atribTurmaId)
+      const refreshed = await fetch(`/api/escolas/${escolaId}/turmas/${atribTurmaId}/disciplinas`, { cache: "no-store" })
+      const refreshedJson = await refreshed.json().catch(() => null)
+      if (refreshed.ok && Array.isArray(refreshedJson?.items)) {
+        setDisciplinas(
+          refreshedJson.items
+            .map((d: any) => ({
+              cursoMatrizId: d.curso_matriz_id,
+              nome: d.disciplina?.nome ?? "Sem disciplina",
+              catalogoId: d.disciplina?.id ?? null,
+              professorNome: d.professor?.nome ?? null,
+              professorEmail: d.professor?.email ?? null,
+            }))
+            .filter((d: any) => Boolean(d.cursoMatrizId))
+        )
+      }
     } catch (e) { showToast(e instanceof Error ? e.message : "Erro ao atribuir", "error") }
     finally { setAtribuindo(false) }
   }
@@ -915,6 +958,15 @@ export default function ProfessoresPage() {
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao remover")
       showToast("Atribuição removida.", "success")
+      setDisciplinas((prev) =>
+        prev.map((disciplina) =>
+          disciplina.catalogoId === confirmRemove.disciplinaId
+            ? { ...disciplina, professorNome: null, professorEmail: null }
+            : disciplina
+        )
+      )
+      setAtribDisciplinaId("")
+      setReplaceAssignment(null)
       setConfirmRemove(null)
       await loadTurmaAssignments(atribTurmaId)
     } catch (e) { showToast(e instanceof Error ? e.message : "Erro ao remover", "error") }
@@ -1060,6 +1112,8 @@ export default function ProfessoresPage() {
   const activeFilterCount = [
     search.trim(), statusFilter !== "todos", atribuicaoFilter !== "todos", complianceFilter !== "todos"
   ].filter(Boolean).length
+  const disciplinasDisponiveis = disciplinas.filter((disciplina) => !disciplina.professorNome && !disciplina.professorEmail)
+  const disciplinasAtribuidas = disciplinas.filter((disciplina) => disciplina.professorNome || disciplina.professorEmail)
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -1283,23 +1337,60 @@ export default function ProfessoresPage() {
               ))}
             </select>
             <select className={selectCls} required value={atribCursoId}
-              onChange={(e) => setAtribCursoId(e.target.value)}>
+              onChange={(e) => { setAtribCursoId(e.target.value); setReplaceAssignment(null) }}>
               <option value="">Selecione um curso</option>
               {cursos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
             <select className={selectCls} required value={atribTurmaId}
-              onChange={(e) => { setAtribTurmaId(e.target.value); loadTurmaAssignments(e.target.value) }}>
+              onChange={(e) => { setAtribTurmaId(e.target.value); setReplaceAssignment(null); loadTurmaAssignments(e.target.value) }}>
               <option value="">Selecione uma turma</option>
               {turmas.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
             <select className={selectCls} required value={atribDisciplinaId}
-              disabled={!atribTurmaId} onChange={(e) => setAtribDisciplinaId(e.target.value)}>
+              disabled={!atribTurmaId} onChange={(e) => { setAtribDisciplinaId(e.target.value); setReplaceAssignment(null) }}>
               <option value="">{atribTurmaId ? "Selecione uma disciplina" : "Selecione uma turma primeiro"}</option>
-              {disciplinas.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
+              {disciplinasDisponiveis.map((d) => <option key={d.cursoMatrizId} value={d.cursoMatrizId}>{d.nome}</option>)}
+              {disciplinasAtribuidas.length > 0 ? (
+                <optgroup label="Já atribuídas">
+                  {disciplinasAtribuidas.map((d) => (
+                    <option
+                      key={d.cursoMatrizId}
+                      value={d.cursoMatrizId}
+                      disabled={replaceAssignment?.cursoMatrizId !== d.cursoMatrizId}
+                    >
+                      {d.nome} — {d.professorNome || d.professorEmail}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
             </select>
+            {replaceAssignment ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                <div>
+                  Trocar professor de {replaceAssignment.disciplinaNome}. Actual: {replaceAssignment.professorNome}.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setReplaceAssignment(null); setAtribDisciplinaId("") }}
+                  className="mt-1 text-[11px] font-bold text-amber-900 underline"
+                >
+                  Cancelar troca
+                </button>
+              </div>
+            ) : null}
+            {atribTurmaId && disciplinas.length > 0 && disciplinasDisponiveis.length === 0 ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                Todas as disciplinas desta turma já têm professor atribuído. Use "Trocar" na lista abaixo para substituir sem remover manualmente.
+              </p>
+            ) : null}
+            {atribTurmaId && disciplinasAtribuidas.length > 0 && disciplinasDisponiveis.length > 0 ? (
+              <p className="text-xs text-slate-500">
+                {disciplinasAtribuidas.length} disciplina(s) já atribuída(s) foram bloqueadas no selector.
+              </p>
+            ) : null}
             <button type="submit" disabled={atribuindo}
               className="rounded-xl bg-[#E3B23C] px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-60 transition-all active:scale-95">
-              {atribuindo ? "A guardar…" : "Confirmar Atribuição"}
+              {atribuindo ? "A guardar…" : replaceAssignment ? "Confirmar Troca" : "Confirmar Atribuição"}
             </button>
           </form>
 
@@ -1340,11 +1431,26 @@ export default function ProfessoresPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => setConfirmRemove({ disciplinaId: a.disciplina?.id })}
-                                className="rounded-lg border border-rose-200 px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
-                                Remover
-                              </button>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReplaceAssignment({
+                                      cursoMatrizId: a.curso_matriz_id,
+                                      disciplinaNome: a.disciplina?.nome || "Disciplina",
+                                      professorNome: a.professor?.nome || a.professor?.email || "professor actual",
+                                    })
+                                    setAtribDisciplinaId(a.curso_matriz_id)
+                                  }}
+                                  className="rounded-lg border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-700 hover:bg-amber-50 transition-colors">
+                                  Trocar
+                                </button>
+                                <button
+                                  onClick={() => setConfirmRemove({ disciplinaId: a.disciplina?.id })}
+                                  className="rounded-lg border border-rose-200 px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
+                                  Remover
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}

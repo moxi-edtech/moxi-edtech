@@ -24,7 +24,8 @@ import {
   Copy,
   Calendar,
   Timer,
-  CreditCard
+  CreditCard,
+  School
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
@@ -36,6 +37,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AdmissaoConversionSheet } from './AdmissaoConversionSheet'
 import { createClient } from '@/lib/supabase/client'
+import { formatTurnoDisplay } from '@/utils/formatters'
 
 type AdmissaoStatus =
   | 'rascunho'
@@ -70,13 +72,22 @@ type CandidaturaListItem = {
   matriculado_em?: string | null
   expires_at?: string | null
   portal_reenvio_at?: string | null
+  curso_id?: string | null
+  classe_id?: string | null
+  turma_preferencial_id?: string | null
+  turno?: string | null
+  dados_candidato?: Record<string, any>
   cursos?: { nome?: string | null } | null
   classes?: { nome?: string | null } | null
 }
 
 type CandidaturaDetail = CandidaturaListItem & {
   escola_id: string
+  curso_id?: string | null
+  classe_id?: string | null
   ano_letivo?: number | null
+  turno?: string | null
+  turma_preferencial_id?: string | null
   dados_candidato?: Record<string, any>
   pendencias_historico?: CandidaturaStatusLogItem[]
 }
@@ -107,6 +118,21 @@ type PendingDocumentDraft = {
 type DocumentCatalogItem = {
   id: string
   label: string
+}
+
+type TurmaPromocao = {
+  id: string
+  nome: string | null
+  turma_codigo?: string | null
+  turno: string | null
+  vagas_disponiveis: number
+  ocupacao_atual: number
+  capacidade_maxima: number
+  curso_id: string | null
+  classe_id: string | null
+  curso_nome: string | null
+  classe_nome: string | null
+  ano_letivo: number | null
 }
 
 const STATUS_CONFIG: Record<AdmissaoStatus, { label: string; color: string; bg: string }> = {
@@ -296,6 +322,21 @@ export default function AdmissoesInboxClient({
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [isConversionOpen, setIsConversionOpen] = useState(false)
   const [isPendenciasOpen, setIsPendenciasOpen] = useState(false)
+  const [isPromoteOpen, setIsPromoteOpen] = useState(false)
+  const [promoteTurmas, setPromoteTurmas] = useState<TurmaPromocao[]>([])
+  const [promoteTurmaId, setPromoteTurmaId] = useState('')
+  const [promoteObservacao, setPromoteObservacao] = useState('')
+  const [loadingPromoteTurmas, setLoadingPromoteTurmas] = useState(false)
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkPromoteOpen, setIsBulkPromoteOpen] = useState(false)
+  const [bulkPromoteTurmas, setBulkPromoteTurmas] = useState<TurmaPromocao[]>([])
+  const [bulkPromoteTurmaId, setBulkPromoteTurmaId] = useState('')
+  const [bulkPromoteObservacao, setBulkPromoteObservacao] = useState('')
+  const [loadingBulkPromoteTurmas, setLoadingBulkPromoteTurmas] = useState(false)
+  const [bulkPromotionReport, setBulkPromotionReport] = useState<{
+    promoted: number
+    failures: Array<{ candidatura_id: string; error: string }>
+  } | null>(null)
   const [pendingDraft, setPendingDraft] = useState<PendingDocumentDraft[]>([])
   const [pendingGeneralMotivo, setPendingGeneralMotivo] = useState('')
   const [documentCatalog, setDocumentCatalog] = useState<DocumentCatalogItem[]>([])
@@ -392,6 +433,24 @@ export default function AdmissoesInboxClient({
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
   }, [items, search, statusFilter])
+
+  const visiblePreCandidaturaIds = useMemo(
+    () => filteredItems.filter((item) => item.status === 'pre_candidatura').map((item) => item.id),
+    [filteredItems]
+  )
+
+  const bulkSelectedItems = useMemo(
+    () => filteredItems.filter((item) => bulkSelectedIds.has(item.id)),
+    [bulkSelectedIds, filteredItems]
+  )
+
+  useEffect(() => {
+    setBulkSelectedIds((prev) => {
+      const visible = new Set(visiblePreCandidaturaIds)
+      const next = new Set(Array.from(prev).filter((id) => visible.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [visiblePreCandidaturaIds])
 
   const [wasSuccess, setWasSuccess] = useState(false)
 
@@ -838,6 +897,212 @@ export default function AdmissoesInboxClient({
     }
   }
 
+  const toggleBulkSelected = (id: string) => {
+    setBulkSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllVisiblePreCandidaturas = () => {
+    setBulkSelectedIds((prev) => {
+      const allSelected = visiblePreCandidaturaIds.length > 0 && visiblePreCandidaturaIds.every((id) => prev.has(id))
+      if (allSelected) return new Set()
+      return new Set(visiblePreCandidaturaIds)
+    })
+  }
+
+  const getCommonInterest = (selected: CandidaturaListItem[]) => {
+    const values = selected.map((item) => ({
+      cursoId: item.curso_id || item.dados_candidato?.interesse?.curso_id || null,
+      classeId: item.classe_id || item.dados_candidato?.interesse?.classe_id || null,
+    }))
+    const cursoId = values.length > 0 && values.every((item) => item.cursoId === values[0].cursoId) ? values[0].cursoId : null
+    const classeId = values.length > 0 && values.every((item) => item.classeId === values[0].classeId) ? values[0].classeId : null
+    return { cursoId, classeId }
+  }
+
+  const openBulkPromoteModal = async () => {
+    const selected = bulkSelectedItems
+    if (selected.length === 0) {
+      toastError('Seleção vazia', 'Selecione pelo menos uma pré-candidatura.')
+      return
+    }
+
+    const { cursoId, classeId } = getCommonInterest(selected)
+    const params = new URLSearchParams({ escolaId })
+    if (cursoId) params.set('cursoId', String(cursoId))
+    if (classeId) params.set('classeId', String(classeId))
+
+    setIsBulkPromoteOpen(true)
+    setBulkPromoteTurmaId('')
+    setBulkPromoteObservacao('')
+    setBulkPromotionReport(null)
+    setLoadingBulkPromoteTurmas(true)
+
+    try {
+      const res = await fetch(`/api/secretaria/admissoes/vagas?${params.toString()}`, { cache: 'no-store' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || 'Falha ao carregar turmas oficiais')
+      const rows = Array.isArray(json?.items) ? json.items : []
+      setBulkPromoteTurmas(rows)
+      const firstWithCapacity = rows.find((row: TurmaPromocao) => row.vagas_disponiveis >= selected.length) ?? rows[0]
+      setBulkPromoteTurmaId(firstWithCapacity?.id ?? '')
+    } catch (err: unknown) {
+      setBulkPromoteTurmas([])
+      toastError('Falha ao carregar turmas', err instanceof Error ? err.message : 'Não foi possível carregar as turmas oficiais.')
+    } finally {
+      setLoadingBulkPromoteTurmas(false)
+    }
+  }
+
+  const handleBulkPromotePreCandidaturas = async () => {
+    const selectedIds = Array.from(bulkSelectedIds)
+    if (selectedIds.length === 0 || !bulkPromoteTurmaId) return
+
+    const idempotencyKey =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? `pre-candidatura-promover-lote-${crypto.randomUUID()}`
+        : `pre-candidatura-promover-lote-${Date.now()}`
+
+    setLoadingAction('bulk_promoting')
+    try {
+      const res = await fetch('/api/secretaria/admissoes/promover-lote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          escola_id: escolaId,
+          candidatura_ids: selectedIds,
+          turma_id: bulkPromoteTurmaId,
+          observacao: bulkPromoteObservacao.trim() || undefined,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || 'Falha ao promover lote')
+
+      const promotedIds: string[] = Array.isArray(json?.promoted) ? json.promoted : []
+      const failures: Array<{ candidatura_id: string; error: string }> = Array.isArray(json?.failures) ? json.failures : []
+      const promotedSet = new Set(promotedIds)
+      await mutate(
+        (prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            items: prev.items.map((item) => promotedSet.has(item.id) ? { ...item, status: 'submetida' } : item),
+          }
+        },
+        false
+      )
+
+      setBulkSelectedIds(new Set(selectedIds.filter((id) => !promotedSet.has(id))))
+      setBulkPromotionReport({ promoted: promotedIds.length, failures })
+      if (failures.length === 0) setIsBulkPromoteOpen(false)
+      success(
+        'Promoção em lote concluída',
+        `${promotedIds.length} pré-candidatura(s) promovida(s). ${failures.length} bloqueada(s).`
+      )
+      if (selectedId && promotedSet.has(selectedId)) {
+        await fetchDetail(selectedId)
+      }
+    } catch (err: unknown) {
+      toastError('Falha na promoção em lote', err instanceof Error ? err.message : 'Não foi possível promover o lote.')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const openPromoteModal = async () => {
+    if (!selectedData) return
+
+    const interesse = selectedData.dados_candidato?.interesse || {}
+    const cursoId = selectedData.curso_id || interesse.curso_id
+    const classeId = selectedData.classe_id || interesse.classe_id
+    const params = new URLSearchParams({ escolaId })
+    if (cursoId) params.set('cursoId', String(cursoId))
+    if (classeId) params.set('classeId', String(classeId))
+
+    setIsPromoteOpen(true)
+    setPromoteTurmaId('')
+    setPromoteObservacao('')
+    setLoadingPromoteTurmas(true)
+
+    try {
+      const res = await fetch(`/api/secretaria/admissoes/vagas?${params.toString()}`, { cache: 'no-store' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || 'Falha ao carregar turmas oficiais')
+      const rows = Array.isArray(json?.items) ? json.items : []
+      setPromoteTurmas(rows)
+      const firstAvailable = rows.find((row: TurmaPromocao) => row.vagas_disponiveis > 0) ?? rows[0]
+      setPromoteTurmaId(firstAvailable?.id ?? '')
+    } catch (err: unknown) {
+      setPromoteTurmas([])
+      toastError('Falha ao carregar turmas', err instanceof Error ? err.message : 'Não foi possível carregar as turmas oficiais.')
+    } finally {
+      setLoadingPromoteTurmas(false)
+    }
+  }
+
+  const handlePromotePreCandidatura = async () => {
+    if (!selectedId || !selectedData || !promoteTurmaId) return
+
+    const selectedTurma = promoteTurmas.find((turma) => turma.id === promoteTurmaId)
+    const idempotencyKey =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? `pre-candidatura-promover-${selectedId}-${crypto.randomUUID()}`
+        : `pre-candidatura-promover-${selectedId}-${Date.now()}`
+
+    setLoadingAction('promoting')
+    try {
+      const res = await fetch(`/api/secretaria/admissoes/${selectedId}/promover`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          turma_id: promoteTurmaId,
+          observacao: promoteObservacao.trim() || undefined,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || 'Falha ao promover pré-candidatura')
+
+      mutate(
+        (prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            items: prev.items.map((item) => (item.id === selectedId ? { ...item, status: 'submetida' } : item)),
+          }
+        },
+        false
+      )
+
+      setSelectedData({
+        ...selectedData,
+        status: 'submetida',
+        curso_id: selectedTurma?.curso_id ?? selectedData.curso_id ?? null,
+        classe_id: selectedTurma?.classe_id ?? selectedData.classe_id ?? null,
+        ano_letivo: selectedTurma?.ano_letivo ?? selectedData.ano_letivo ?? null,
+        turno: selectedTurma?.turno ?? selectedData.turno ?? null,
+        turma_preferencial_id: promoteTurmaId,
+        cursos: selectedTurma?.curso_nome ? { nome: selectedTurma.curso_nome } : selectedData.cursos,
+        classes: selectedTurma?.classe_nome ? { nome: selectedTurma.classe_nome } : selectedData.classes,
+      })
+      setIsPromoteOpen(false)
+      success('Pré-candidatura promovida', 'A candidatura entrou no funil oficial para análise da secretaria.')
+    } catch (err: unknown) {
+      toastError('Falha na promoção', err instanceof Error ? err.message : 'Não foi possível promover a pré-candidatura.')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
   const openWhatsApp = (phone?: string) => {
     if (!phone) return
     const cleanPhone = phone.replace(/\D/g, '')
@@ -975,6 +1240,35 @@ export default function AdmissoesInboxClient({
             ))}
           </div>
 
+          {statusFilter === 'pre_candidaturas' && (
+            <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-[11px] font-bold text-indigo-800">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-indigo-300"
+                    checked={visiblePreCandidaturaIds.length > 0 && visiblePreCandidaturaIds.every((id) => bulkSelectedIds.has(id))}
+                    onChange={toggleAllVisiblePreCandidaturas}
+                  />
+                  Selecionar visíveis
+                </label>
+                <Button
+                  size="sm"
+                  type="button"
+                  onClick={openBulkPromoteModal}
+                  disabled={bulkSelectedIds.size === 0 || !!loadingAction}
+                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  <School className="h-4 w-4" />
+                  Promover ({bulkSelectedIds.size})
+                </Button>
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-indigo-700">
+                A promoção em lote exige uma turma oficial com capacidade para todos os selecionados.
+              </p>
+            </div>
+          )}
+
           {/* Gargalos de Conversão */}
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -1044,6 +1338,8 @@ export default function AdmissoesInboxClient({
             filteredItems.map((item) => {
               const isActive = selectedId === item.id
               const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.rascunho
+              const isBulkSelectable = statusFilter === 'pre_candidaturas' && item.status === 'pre_candidatura'
+              const isBulkSelected = bulkSelectedIds.has(item.id)
 
               return (
                 <motion.div
@@ -1060,7 +1356,20 @@ export default function AdmissoesInboxClient({
                     {status.label}
                   </div>
 
-                  <div className="pr-16">
+                  {isBulkSelectable && (
+                    <input
+                      type="checkbox"
+                      checked={isBulkSelected}
+                      onChange={(event) => {
+                        event.stopPropagation()
+                        toggleBulkSelected(item.id)
+                      }}
+                      onClick={(event) => event.stopPropagation()}
+                      className="absolute left-3 top-4 h-4 w-4 rounded border-indigo-300"
+                    />
+                  )}
+
+                  <div className={isBulkSelectable ? "pl-7 pr-16" : "pr-16"}>
                     <p className="font-sans font-bold text-slate-900 group-hover:text-klasse-green transition-colors">
                       {item.nome_candidato}
                     </p>
@@ -1259,6 +1568,17 @@ export default function AdmissoesInboxClient({
                           Acadêmico
                         </h3>
                         <div className="space-y-4">
+                          {selectedData.status === 'pre_candidatura' && selectedData.dados_candidato?.interesse ? (
+                            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+                              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                                Interesse declarado
+                              </p>
+                              <DataField label="Nível" value={selectedData.dados_candidato.interesse?.curso_nome || selectedData.cursos?.nome || '—'} />
+                              <DataField label="Classe" value={selectedData.dados_candidato.interesse?.classe_nome || 'A definir'} />
+                              <DataField label="Turno" value={formatTurnoDisplay(selectedData.dados_candidato.interesse?.turno) || 'A definir'} />
+                              <DataField label="Ano alvo" value={selectedData.dados_candidato.interesse?.ano_alvo_label || 'Próximo ano letivo'} />
+                            </div>
+                          ) : null}
                           <DataField label="Curso" value={selectedData.cursos?.nome || '—'} />
                           <DataField label="Classe" value={selectedData.classes?.nome || '—'} />
                           <DataField label="Ano Letivo" value={selectedData.ano_letivo?.toString() || '—'} />
@@ -1410,6 +1730,17 @@ export default function AdmissoesInboxClient({
                       </button>
                     )}
 
+                    {selectedData.status === 'pre_candidatura' && (
+                      <button
+                        onClick={openPromoteModal}
+                        disabled={!!loadingAction}
+                        className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-600/20 hover:shadow-2xl hover:brightness-105 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        {loadingAction === 'promoting' ? <RefreshCw className="h-5 w-5 animate-spin" /> : <School className="h-5 w-5" />}
+                        Promover para candidatura
+                      </button>
+                    )}
+
                     {selectedData.status === 'documentos_reenviados' && (
                       <button
                         onClick={handleAcceptReuploadedDocuments}
@@ -1457,6 +1788,346 @@ export default function AdmissoesInboxClient({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal de Promoção em Lote */}
+      <AnimatePresence>
+        {isBulkPromoteOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            onClick={() => setIsBulkPromoteOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="border-b border-slate-200 p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                      Operação em lote
+                    </p>
+                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                      Promover pré-candidaturas
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Reveja os candidatos selecionados e escolha a turma oficial que receberá o lote.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkPromoteOpen(false)}
+                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-[62vh] space-y-5 overflow-y-auto p-6">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-slate-900">
+                      {bulkSelectedItems.length} pré-candidatura(s) selecionada(s)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setBulkSelectedIds(new Set())}
+                      className="text-xs font-bold text-slate-500 hover:text-slate-800"
+                    >
+                      Limpar seleção
+                    </button>
+                  </div>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {bulkSelectedItems.slice(0, 8).map((item) => (
+                      <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-xs">
+                        <p className="font-bold text-slate-900">{item.nome_candidato}</p>
+                        <p className="text-slate-500">
+                          {item.dados_candidato?.interesse?.curso_nome || item.cursos?.nome || 'Nível não informado'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {bulkSelectedItems.length > 8 && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      +{bulkSelectedItems.length - 8} outros selecionados.
+                    </p>
+                  )}
+                </div>
+
+                {bulkPromotionReport && (
+                  <div className={`rounded-xl border p-4 ${
+                    bulkPromotionReport.failures.length > 0
+                      ? 'border-amber-200 bg-amber-50'
+                      : 'border-emerald-200 bg-emerald-50'
+                  }`}>
+                    <p className={`text-sm font-bold ${
+                      bulkPromotionReport.failures.length > 0 ? 'text-amber-900' : 'text-emerald-900'
+                    }`}>
+                      Relatório do lote
+                    </p>
+                    <p className={`mt-1 text-xs ${
+                      bulkPromotionReport.failures.length > 0 ? 'text-amber-800' : 'text-emerald-800'
+                    }`}>
+                      {bulkPromotionReport.promoted} promovida(s), {bulkPromotionReport.failures.length} não promovida(s).
+                    </p>
+                    {bulkPromotionReport.failures.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {bulkPromotionReport.failures.map((failure) => {
+                          const item = filteredItems.find((candidate) => candidate.id === failure.candidatura_id)
+                          return (
+                            <div key={failure.candidatura_id} className="rounded-lg bg-white px-3 py-2 text-xs">
+                              <p className="font-bold text-slate-900">{item?.nome_candidato || failure.candidatura_id}</p>
+                              <p className="text-amber-700">{failure.error}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Turma oficial
+                  </span>
+                  {loadingBulkPromoteTurmas ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      A carregar turmas...
+                    </div>
+                  ) : (
+                    <select
+                      value={bulkPromoteTurmaId}
+                      onChange={(event) => setBulkPromoteTurmaId(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="">Selecionar turma...</option>
+                      {bulkPromoteTurmas.map((turma) => (
+                        <option key={turma.id} value={turma.id}>
+                          {turma.nome || turma.turma_codigo || 'Turma'} · {turma.classe_nome || 'Classe'} · {formatTurnoDisplay(turma.turno) || 'Turno'} · {turma.ano_letivo || 'Ano'} · {turma.vagas_disponiveis} vaga(s)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+
+                {bulkPromoteTurmaId ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    {(() => {
+                      const turma = bulkPromoteTurmas.find((item) => item.id === bulkPromoteTurmaId)
+                      if (!turma) return null
+                      const insufficientCapacity = turma.capacidade_maxima > 0 && turma.vagas_disponiveis < bulkSelectedItems.length
+                      return (
+                        <div className="space-y-3">
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <DataField label="Curso" value={turma.curso_nome || '—'} />
+                            <DataField label="Classe" value={turma.classe_nome || '—'} />
+                            <DataField label="Turno" value={formatTurnoDisplay(turma.turno) || '—'} />
+                            <DataField label="Ano letivo" value={turma.ano_letivo?.toString() || '—'} />
+                            <DataField label="Ocupação" value={`${turma.ocupacao_atual}/${turma.capacidade_maxima}`} />
+                            <DataField label="Vagas" value={turma.vagas_disponiveis.toString()} />
+                          </div>
+                          {insufficientCapacity && (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                              Esta turma não tem vagas suficientes para os {bulkSelectedItems.length} selecionados. Reduza o lote ou escolha outra turma.
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                ) : null}
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Observação
+                  </span>
+                  <textarea
+                    value={bulkPromoteObservacao}
+                    onChange={(event) => setBulkPromoteObservacao(event.target.value)}
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Ex: Lote promovido após abertura oficial do ano letivo."
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsBulkPromoteOpen(false)}
+                  disabled={loadingAction === 'bulk_promoting'}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleBulkPromotePreCandidaturas}
+                  disabled={
+                    !bulkPromoteTurmaId ||
+                    loadingBulkPromoteTurmas ||
+                    loadingAction === 'bulk_promoting' ||
+                    (() => {
+                      const turma = bulkPromoteTurmas.find((item) => item.id === bulkPromoteTurmaId)
+                      return Boolean(turma && turma.capacidade_maxima > 0 && turma.vagas_disponiveis < bulkSelectedItems.length)
+                    })()
+                  }
+                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  {loadingAction === 'bulk_promoting' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <School className="mr-2 h-4 w-4" />}
+                  Promover lote
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Promoção de Pré-candidatura */}
+      <AnimatePresence>
+        {isPromoteOpen && selectedData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            onClick={() => setIsPromoteOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="border-b border-slate-200 p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                      Pré-candidatura
+                    </p>
+                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                      Promover para candidatura oficial
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Escolha uma turma real do ano letivo preparado para colocar esta candidatura no funil operacional.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPromoteOpen(false)}
+                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-5 p-6">
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-indigo-700">
+                    Interesse original
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <DataField
+                      label="Nível"
+                      value={selectedData.dados_candidato?.interesse?.curso_nome || selectedData.cursos?.nome || '—'}
+                    />
+                    <DataField
+                      label="Ano alvo"
+                      value={selectedData.dados_candidato?.interesse?.ano_alvo_label || 'Próximo ano letivo'}
+                    />
+                  </div>
+                </div>
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Turma oficial
+                  </span>
+                  {loadingPromoteTurmas ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      A carregar turmas...
+                    </div>
+                  ) : (
+                    <select
+                      value={promoteTurmaId}
+                      onChange={(event) => setPromoteTurmaId(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="">Selecionar turma...</option>
+                      {promoteTurmas.map((turma) => (
+                        <option key={turma.id} value={turma.id}>
+                          {turma.nome || turma.turma_codigo || 'Turma'} · {turma.classe_nome || 'Classe'} · {formatTurnoDisplay(turma.turno) || 'Turno'} · {turma.ano_letivo || 'Ano'} · {turma.vagas_disponiveis} vaga(s)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+
+                {promoteTurmaId ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    {(() => {
+                      const turma = promoteTurmas.find((item) => item.id === promoteTurmaId)
+                      if (!turma) return null
+                      return (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <DataField label="Curso" value={turma.curso_nome || '—'} />
+                          <DataField label="Classe" value={turma.classe_nome || '—'} />
+                          <DataField label="Turno" value={formatTurnoDisplay(turma.turno) || '—'} />
+                          <DataField label="Ano letivo" value={turma.ano_letivo?.toString() || '—'} />
+                          <DataField label="Ocupação" value={`${turma.ocupacao_atual}/${turma.capacidade_maxima}`} />
+                          <DataField label="Vagas" value={turma.vagas_disponiveis.toString()} />
+                        </div>
+                      )
+                    })()}
+                  </div>
+                ) : null}
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">
+                    Observação
+                  </span>
+                  <textarea
+                    value={promoteObservacao}
+                    onChange={(event) => setPromoteObservacao(event.target.value)}
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Ex: Promovida após abertura das turmas do novo ano."
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsPromoteOpen(false)}
+                  disabled={loadingAction === 'promoting'}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handlePromotePreCandidatura}
+                  disabled={!promoteTurmaId || loadingPromoteTurmas || loadingAction === 'promoting'}
+                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  {loadingAction === 'promoting' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <School className="mr-2 h-4 w-4" />}
+                  Promover
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Visualizador de Documentos */}
       <AnimatePresence>

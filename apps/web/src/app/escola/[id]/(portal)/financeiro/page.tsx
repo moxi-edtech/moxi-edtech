@@ -23,7 +23,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { GerarMensalidadesDialog } from "@/app/financeiro/_components/GerarMensalidadesDialog";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
 import { ReciboPrintButton } from "@/components/financeiro/ReciboImprimivel";
-import { EstornarMensalidadeButton } from "@/components/financeiro/EstornarMensalidadeButton";
+import { ReverterPagamentoButton } from "@/components/financeiro/ReverterPagamentoButton";
 import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
@@ -42,6 +42,12 @@ type Mensalidade = Database["public"]["Tables"]["mensalidades"]["Row"] & {
   valor?: number | null;
 };
 type PagamentoStatusRow = { status: string | null; total: number | null };
+type PagamentoMensalidade = {
+  id: string;
+  mensalidade_id: string | null;
+  status: string | null;
+  created_at: string | null;
+};
 
 export default async function FinanceiroDashboardPage({
   params,
@@ -152,6 +158,7 @@ export default async function FinanceiroDashboardPage({
   }, 0);
 
   let mensalidades: Mensalidade[] = [];
+  let pagamentosPorMensalidade = new Map<string, PagamentoMensalidade>();
   let alunoNome = "";
   let financeNotifications: Notification[] = [];
   let escolaNome = "Escola";
@@ -172,6 +179,25 @@ export default async function FinanceiroDashboardPage({
       .order("ano_referencia", { ascending: false })
       .order("mes_referencia", { ascending: false });
     mensalidades = (data as Mensalidade[]) ?? [];
+
+    const mensalidadesPagas = mensalidades
+      .filter((mens) => mens.status === "pago")
+      .map((mens) => mens.id);
+
+    if (mensalidadesPagas.length > 0) {
+      const { data: pagamentosMensalidades } = await supabase
+        .from("pagamentos")
+        .select("id, mensalidade_id, status, created_at")
+        .in("mensalidade_id", mensalidadesPagas)
+        .in("status", ["settled", "concluido", "pago"])
+        .order("created_at", { ascending: false });
+
+      pagamentosPorMensalidade = new Map(
+        ((pagamentosMensalidades as PagamentoMensalidade[] | null) ?? [])
+          .filter((pagamento) => pagamento.mensalidade_id)
+          .map((pagamento) => [pagamento.mensalidade_id as string, pagamento])
+      );
+    }
 
     const { data: alunoRow } = await supabase
       .from("alunos")
@@ -480,7 +506,14 @@ export default async function FinanceiroDashboardPage({
                                   iban={escolaDadosPagamento?.iban ?? null}
                                   kwikChave={escolaDadosPagamento?.kwik_chave ?? null}
                                 />
-                                <EstornarMensalidadeButton mensalidadeId={mens.id} />
+                                {pagamentosPorMensalidade.get(mens.id) ? (
+                                  <ReverterPagamentoButton
+                                    pagamentoId={pagamentosPorMensalidade.get(mens.id)!.id}
+                                    label="Reverter"
+                                  />
+                                ) : (
+                                  <span className="text-xs text-slate-400">Sem pagamento reversível</span>
+                                )}
                               </div>
                             )}
                           </td>
@@ -509,24 +542,38 @@ export default async function FinanceiroDashboardPage({
               {pagamentosRecentes.length === 0 ? (
                 <div className="text-sm text-slate-500">Nenhum pagamento hoje.</div>
               ) : (
-                pagamentosRecentes.slice(0, 8).map((pagamento) => (
-                  <div key={pagamento.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">
-                        {pagamento.aluno_id ? `Aluno ${pagamento.aluno_id.slice(0, 8)}…` : "Aluno"}
+                pagamentosRecentes.slice(0, 8).map((pagamento) => {
+                  const status = String(pagamento.status ?? "").toLowerCase();
+                  const canReverter = ["settled", "concluido", "pago"].includes(status);
+
+                  return (
+                    <div key={pagamento.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900">
+                          {pagamento.aluno_id ? `Aluno ${pagamento.aluno_id.slice(0, 8)}…` : "Aluno"}
+                        </div>
+                        <div className="text-xs text-slate-500">{pagamento.metodo ?? "—"}</div>
                       </div>
-                      <div className="text-xs text-slate-500">{pagamento.metodo ?? "—"}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold text-slate-900">{kwanza.format(Number(pagamento.valor_pago ?? 0))}</div>
-                      <div className="text-xs text-slate-500">
-                        {pagamento.created_at
-                          ? new Date(pagamento.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
-                          : "—"}
+                      <div className="flex flex-col items-end gap-2 text-right">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">{kwanza.format(Number(pagamento.valor_pago ?? 0))}</div>
+                          <div className="text-xs text-slate-500">
+                            {pagamento.created_at
+                              ? new Date(pagamento.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
+                              : "—"}
+                          </div>
+                        </div>
+                        {canReverter && (
+                          <ReverterPagamentoButton
+                            pagamentoId={pagamento.id}
+                            label="Reverter"
+                            compact
+                          />
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>

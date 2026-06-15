@@ -33,13 +33,22 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
     .filter((item): item is string => Boolean(item));
 
   if (mensalidadeIds.length > 0) {
-    const { data: recibos } = await supabase
-      .from("documentos_emitidos")
-      .select("id, mensalidade_id, created_at")
-      .eq("escola_id", resolvedEscolaId)
-      .eq("tipo", "recibo")
-      .in("mensalidade_id", mensalidadeIds)
-      .order("created_at", { ascending: false });
+    const [{ data: recibos }, { data: pagamentos }] = await Promise.all([
+      supabase
+        .from("documentos_emitidos")
+        .select("id, mensalidade_id, created_at")
+        .eq("escola_id", resolvedEscolaId)
+        .eq("tipo", "recibo")
+        .in("mensalidade_id", mensalidadeIds)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("pagamentos")
+        .select("id, mensalidade_id, status, created_at")
+        .eq("escola_id", resolvedEscolaId)
+        .in("mensalidade_id", mensalidadeIds)
+        .in("status", ["settled", "concluido", "pago"])
+        .order("created_at", { ascending: false }),
+    ]);
 
     const reciboByMensalidadeId = new Map<string, string>();
     for (const recibo of recibos ?? []) {
@@ -47,6 +56,15 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
         typeof recibo.mensalidade_id === "string" ? recibo.mensalidade_id : null;
       if (mensalidadeId && !reciboByMensalidadeId.has(mensalidadeId)) {
         reciboByMensalidadeId.set(mensalidadeId, recibo.id);
+      }
+    }
+
+    const pagamentoByMensalidadeId = new Map<string, string>();
+    for (const pagamento of pagamentos ?? []) {
+      const mensalidadeId =
+        typeof pagamento.mensalidade_id === "string" ? pagamento.mensalidade_id : null;
+      if (mensalidadeId && !pagamentoByMensalidadeId.has(mensalidadeId)) {
+        pagamentoByMensalidadeId.set(mensalidadeId, pagamento.id);
       }
     }
 
@@ -59,6 +77,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
           return {
             ...mensalidade,
             recibo_id: mensalidadeId ? reciboByMensalidadeId.get(mensalidadeId) ?? null : null,
+            pagamento_reversivel_id: mensalidadeId ? pagamentoByMensalidadeId.get(mensalidadeId) ?? null : null,
           };
         }),
       },

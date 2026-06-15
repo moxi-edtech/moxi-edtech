@@ -907,6 +907,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 avaliacao_mode: "inherit_school",
                 avaliacao_modelo_id: null,
                 avaliacao_disciplina_id: null,
+                create_local_disciplina: true,
               }),
             });
             const discJson = await discRes.json().catch(() => null);
@@ -1020,6 +1021,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                     payload.avaliacao.mode === "custom"
                       ? payload.modelo_excecao_id ?? null
                       : null,
+                  create_local_disciplina: true,
                 }),
               });
               const json = await res.json().catch(() => null);

@@ -42,6 +42,21 @@ const DIAS = [
   { id: 5, label: "Sexta" },
 ];
 
+function formatSlotSaveError(json: any) {
+  if (json?.error === "SLOT_TEMPORAL_CONFLICT") {
+    const detail = json?.detail;
+    const current = detail?.inicio && detail?.fim ? `${detail.inicio}-${detail.fim}` : "um dos tempos";
+    const other = detail?.conflicting_with?.inicio && detail?.conflicting_with?.fim
+      ? `${detail.conflicting_with.inicio}-${detail.conflicting_with.fim}`
+      : "outro tempo";
+    return `Conflito de horário: ${current} sobrepõe ${other}. Ajuste os tempos antes de salvar.`;
+  }
+  if (json?.error === "SLOT_TIME_RANGE_INVALID") {
+    return "Horário inválido: a hora de início deve ser anterior à hora de fim.";
+  }
+  return json?.error || "Falha ao salvar slots.";
+}
+
 export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +122,7 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
         success("Grade padrão gerada para toda a semana!");
         await fetchSlots();
       } else {
-        error(json.error || "Falha ao gerar grade.");
+        error(formatSlotSaveError(json));
       }
     } catch (e) {
       error("Erro na rede.");
@@ -138,7 +153,7 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
         setShowAddModal(false);
         await fetchSlots();
       } else {
-        error(json.error || "Falha ao adicionar tempo.");
+        error(formatSlotSaveError(json));
       }
     } catch (e) {
       error("Erro na rede.");

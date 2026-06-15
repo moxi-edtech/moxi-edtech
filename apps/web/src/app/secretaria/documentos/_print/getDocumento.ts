@@ -38,6 +38,28 @@ export type DocumentoEmitido = {
   dados_snapshot: DocumentoSnapshot;
 };
 
+function normalizeCustomLogoUrl(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  try {
+    const pathname = trimmed.startsWith("http")
+      ? new URL(trimmed).pathname
+      : trimmed;
+    const normalizedPath = pathname.toLowerCase();
+    if (
+      normalizedPath === "/insignia_med.png" ||
+      normalizedPath.endsWith("/insignia_med.png")
+    ) {
+      return null;
+    }
+  } catch {
+    if (trimmed.toLowerCase().includes("insignia_med.png")) return null;
+  }
+
+  return trimmed;
+}
+
 export async function getDocumentoEmitido(
   docId: string,
   opts?: { incrementPrintCount?: boolean; requireStudentOwnership?: boolean }
@@ -100,13 +122,13 @@ export async function getDocumentoEmitido(
       ? (rawSnapshot as DocumentoSnapshot)
       : ({} as DocumentoSnapshot);
 
-  const hasSnapshotBranding =
-    Boolean(snapshot.escola_logo_url?.trim()) ||
+  const snapshotLogoUrl = normalizeCustomLogoUrl(snapshot.escola_logo_url);
+  const hasSnapshotPaymentBranding =
     Boolean(snapshot.escola_banco?.trim()) ||
     Boolean(snapshot.escola_titular_conta?.trim()) ||
     Boolean(snapshot.escola_iban?.trim()) ||
     Boolean(snapshot.escola_kwik_chave?.trim());
-  const needsLiveBranding = !hasSnapshotBranding;
+  const needsLiveBranding = !snapshotLogoUrl || !hasSnapshotPaymentBranding;
   const needsLiveSchoolName = !snapshot.escola_nome?.trim();
 
   const [escolaInfoResult, brandingResult] = await Promise.all([
@@ -133,7 +155,7 @@ export async function getDocumentoEmitido(
     dados_pagamento?: Record<string, unknown> | null;
   } | null;
   const rawLogoUrl =
-    escolaRow?.logo_url?.trim() || snapshot.escola_logo_url?.trim() || null;
+    normalizeCustomLogoUrl(escolaRow?.logo_url) || snapshotLogoUrl;
   const rawPagamento =
     (escolaRow?.dados_pagamento as Record<string, unknown> | null) ??
     ({

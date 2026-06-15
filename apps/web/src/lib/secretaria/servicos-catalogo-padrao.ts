@@ -1,0 +1,163 @@
+export type ServicoCatalogoPadrao = {
+  codigo: string;
+  nome: string;
+  descricao: string;
+  categoria: "documento" | "emolumento";
+  valor_base: number;
+  ativo: boolean;
+  pode_bloquear_por_debito: boolean;
+  exige_pagamento_antes_de_liberar: boolean;
+  aceita_pagamento_pendente: boolean;
+  exige_aprovacao: boolean;
+};
+
+export const SERVICOS_ESCOLA_PADRAO: ServicoCatalogoPadrao[] = [
+  {
+    codigo: "DOC_DECLARACAO_FREQUENCIA",
+    nome: "Declaracao de Frequencia",
+    descricao: "Documento oficial de frequencia ou matricula do aluno.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "DOC_DECLARACAO_NOTAS",
+    nome: "Declaracao com Notas",
+    descricao: "Declaracao com notas e aproveitamento escolar.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "DOC_BOLETIM_TRIMESTRAL",
+    nome: "Boletim Trimestral",
+    descricao: "Boletim ou pauta trimestral emitida pela secretaria.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "DOC_CARTAO_ESTUDANTE",
+    nome: "Cartao de Estudante",
+    descricao: "Emissao ou renovacao do cartao de estudante.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "DOC_COMPROVANTE_MATRICULA",
+    nome: "Comprovante de Matricula",
+    descricao: "Comprovativo oficial de matricula no ano lectivo.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "DOC_FICHA_INSCRICAO",
+    nome: "Ficha de Inscricao",
+    descricao: "Ficha com dados basicos para inscricao ou processo interno.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: false,
+  },
+  {
+    codigo: "DOC_HISTORICO_ESCOLAR",
+    nome: "Historico Escolar",
+    descricao: "Historico escolar completo do aluno.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "DOC_CERTIFICADO_HABILITACOES",
+    nome: "Certificado de Habilitacoes",
+    descricao: "Certificado ou comprovativo final de habilitacoes.",
+    categoria: "documento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "SERV_SEGUNDA_VIA_CARTAO",
+    nome: "Segunda Via de Cartao",
+    descricao: "Emolumento para segunda via de cartao ou documento interno.",
+    categoria: "emolumento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: false,
+  },
+  {
+    codigo: "SERV_DECLARACAO_URGENTE",
+    nome: "Taxa de Urgencia de Documento",
+    descricao: "Taxa adicional para emissao urgente de documentos.",
+    categoria: "emolumento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: false,
+  },
+  {
+    codigo: "SERV_TRANSFERENCIA_TURMA",
+    nome: "Transferencia de Turma",
+    descricao: "Servico administrativo para troca de turma.",
+    categoria: "emolumento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+  {
+    codigo: "SERV_REABERTURA_PROCESSO",
+    nome: "Reabertura de Processo",
+    descricao: "Servico administrativo para reabrir ou regularizar processo.",
+    categoria: "emolumento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: false,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: true,
+  },
+];
+
+export function getServicoCategoria(codigo: string): ServicoCatalogoPadrao["categoria"] {
+  return codigo.startsWith("DOC_") ? "documento" : "emolumento";
+}

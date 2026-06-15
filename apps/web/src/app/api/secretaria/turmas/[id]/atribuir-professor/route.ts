@@ -14,6 +14,7 @@ const Body = z.object({
   // aceita professor_id (tabela professores.id) ou professor_user_id (profiles.user_id)
   professor_id: z.string().uuid().optional(),
   professor_user_id: z.string().uuid().optional(),
+  replace_existing: z.boolean().optional(),
   horarios: z.any().optional(),
   planejamento: z.any().optional(),
 }).refine((d) => !!(d.professor_id || d.professor_user_id), {
@@ -66,8 +67,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     headers.set('Deprecation', 'true')
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`)
 
-    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/atribuir-professor`)
-    if (forwarded) return forwarded
+    const canonicalPath = `/api/escolas/${escolaId}/turmas/${turmaId}/atribuir-professor`
+    if (new URL(req.url).pathname !== canonicalPath) {
+      const forwarded = await tryCanonicalFetch(req, canonicalPath)
+      if (forwarded) return forwarded
+    }
 
     const { data: actorProfile } = await supabase
       .from('profiles')
@@ -109,6 +113,61 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!turmaQ?.id) {
       emitObs('error', 404, { error_code: 'TURMA_NOT_FOUND', professor_id: professorId })
       return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404, headers })
+    }
+
+    const { data: matrizRow } = await supabase
+      .from('curso_matriz')
+      .select('disciplina_id')
+      .eq('id', cursoMatrizId)
+      .eq('escola_id', escolaId)
+      .maybeSingle()
+    const disciplinaCatalogoId = (matrizRow as { disciplina_id?: string | null } | null)?.disciplina_id ?? null
+    if (!disciplinaCatalogoId) {
+      emitObs('error', 404, { error_code: 'MATRIZ_NOT_FOUND', professor_id: professorId })
+      return NextResponse.json({ ok: false, error: 'Disciplina da turma não encontrada' }, { status: 404, headers })
+    }
+
+    const [{ data: existingTdp }, { data: existingTurmaDisciplina }] = await Promise.all([
+      supabase
+        .from('turma_disciplinas_professores')
+        .select('professor_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .eq('disciplina_id', disciplinaCatalogoId)
+        .maybeSingle(),
+      supabase
+        .from('turma_disciplinas')
+        .select('professor_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .eq('curso_matriz_id', cursoMatrizId)
+        .maybeSingle(),
+    ])
+    const existingProfessorId =
+      (existingTdp as { professor_id?: string | null } | null)?.professor_id ??
+      (existingTurmaDisciplina as { professor_id?: string | null } | null)?.professor_id ??
+      null
+    if (existingProfessorId && !body.replace_existing) {
+      const { data: existingProfessor } = await supabase
+        .from('professores')
+        .select('profiles!professores_profile_id_fkey ( nome, email )')
+        .eq('id', existingProfessorId)
+        .eq('escola_id', escolaId)
+        .maybeSingle()
+      const profile = Array.isArray((existingProfessor as any)?.profiles)
+        ? (existingProfessor as any)?.profiles?.[0]
+        : (existingProfessor as any)?.profiles
+      const assignedTo = profile?.nome || profile?.email || 'outro professor'
+      const message =
+        existingProfessorId === professorId
+          ? `Esta disciplina já foi atribuída a ${assignedTo}.`
+          : `Esta disciplina já foi atribuída a ${assignedTo}. Remova a atribuição antes de trocar o professor.`
+      emitObs('error', 409, {
+        error_code: 'DISCIPLINA_ALREADY_ASSIGNED',
+        professor_id: professorId,
+        existing_professor_id: existingProfessorId,
+      })
+      return NextResponse.json({ ok: false, error: message }, { status: 409, headers })
     }
 
     const { data: rpcRows, error: rpcErr } = await (supabase as any).rpc(

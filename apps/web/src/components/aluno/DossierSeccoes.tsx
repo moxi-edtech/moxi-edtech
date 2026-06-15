@@ -10,6 +10,7 @@ import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHisto
 import { QuickEditField } from "@/components/aluno/QuickEditField";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { PushSettings } from "@/components/aluno/PushSettings";
+import { ReverterPagamentoButton } from "@/components/financeiro/ReverterPagamentoButton";
 
 export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   const p = aluno.perfil;
@@ -114,10 +115,12 @@ export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
 function MensalidadeRow({
   m,
   canReprint,
+  canReverse,
   onMissingRecibo,
 }: {
   m: DossierMensalidade;
   canReprint: boolean;
+  canReverse: boolean;
   onMissingRecibo: () => void;
 }) {
   const vencimentoLabel = m.vencimento ? formatDate(m.vencimento) : null;
@@ -157,7 +160,7 @@ function MensalidadeRow({
           </p>
         )}
       </div>
-      <div className="md:justify-self-end">
+      <div className="flex flex-wrap justify-end gap-2 md:justify-self-end">
         {m.status === "pago" ? (
           <button
             type="button"
@@ -180,6 +183,13 @@ function MensalidadeRow({
             Reimprimir
           </button>
         ) : null}
+        {canReverse && m.pagamento_reversivel_id ? (
+          <ReverterPagamentoButton
+            pagamentoId={m.pagamento_reversivel_id}
+            label="Reverter"
+            compact
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -188,6 +198,7 @@ function MensalidadeRow({
 export function DossierFinanceiroSection({ aluno, role }: { aluno: AlunoNormalizado; role: DossierRole }) {
   const { error } = useToast();
   const canReprint = role === "secretaria";
+  const canReverse = role === "secretaria";
   const f = aluno.financeiro;
   const atrasado = f.situacao === "inadimplente";
   return (
@@ -241,6 +252,7 @@ export function DossierFinanceiroSection({ aluno, role }: { aluno: AlunoNormaliz
                 key={m.id}
                 m={m}
                 canReprint={canReprint}
+                canReverse={canReverse}
                 onMissingRecibo={() =>
                   error("Recibo indisponível", "Não existe documento emitido vinculado para esta mensalidade.")
                 }

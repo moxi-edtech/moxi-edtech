@@ -48,6 +48,7 @@ type AlunoNested = {
 
 type MatriculaRow = {
   id: string;
+  turma_id: string | null;
   numero_chamada: number | null;
   status: string;
   alunos: AlunoNested | AlunoNested[] | null;
@@ -62,7 +63,8 @@ type FrequenciaRow = {
 type ListaNominalPdfParams = {
   supabase: Client;
   escolaId: string;
-  turmaId: string;
+  turmaId?: string | null;
+  classeId?: string | null;
   month?: string | null;
   year?: string | null;
   isAttendance?: boolean;
@@ -115,10 +117,50 @@ function fitMetaLines(parts: string[], maxWidth: number, font: any, size: number
   return lines;
 }
 
+function getLogoBaseUrl(fallbackLogoUrl?: string | null) {
+  if (fallbackLogoUrl) {
+    try {
+      return new URL(fallbackLogoUrl).origin;
+    } catch {
+      // Ignore invalid fallback URLs and use environment fallbacks below.
+    }
+  }
+
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return null;
+}
+
+function normalizePdfLogoUrl(value: string | null | undefined, fallbackLogoUrl?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const lower = trimmed.toLowerCase();
+  if (lower === "/insignia_med.png" || lower.endsWith("/insignia_med.png")) {
+    return null;
+  }
+
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    const baseUrl = getLogoBaseUrl(fallbackLogoUrl);
+    if (!baseUrl) return trimmed;
+    const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return `${baseUrl.replace(/\/$/, "")}${path}`;
+  }
+}
+
 export async function renderListaNominalPdfBuffer({
   supabase,
   escolaId,
   turmaId,
+  classeId,
   month,
   year,
   isAttendance = false,
@@ -128,31 +170,99 @@ export async function renderListaNominalPdfBuffer({
   fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
+  const isClasseScope = Boolean(classeId && !turmaId);
 
-  const { data: turmaData, error: turmaError } = await supabase
-    .from("turmas")
-    .select(
-      `
-      id,
-      nome,
-      escola_id,
-      curso_id,
-      session_id,
-      ano_letivo,
-      classe_id,
-      turno,
-      sala
-    `
-    )
-    .eq("id", turmaId)
-    .eq("escola_id", escolaId)
-    .single();
-
-  if (turmaError || !turmaData) {
-    throw new Error("Turma não encontrada");
+  if (!turmaId && !classeId) {
+    throw new Error("Informe turma ou classe para gerar a lista nominal");
   }
 
-  const turma = turmaData as unknown as TurmaRow;
+  let turma: TurmaRow;
+  let classeNome = "—";
+  let cursoNome = "";
+  let turmaIds: string[] = [];
+  let turmaById = new Map<string, TurmaRow>();
+
+  if (isClasseScope && classeId) {
+    const { data: classeData, error: classeError } = await supabase
+      .from("classes")
+      .select("id, nome, curso_id, cursos(nome)")
+      .eq("id", classeId)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+
+    if (classeError) throw new Error(classeError.message);
+    if (!classeData) throw new Error("Classe não encontrada");
+
+    classeNome = (classeData as any)?.nome ?? "—";
+    cursoNome = (classeData as any)?.cursos?.nome ?? "";
+
+    let turmasQuery = supabase
+      .from("turmas")
+      .select("id, nome, escola_id, curso_id, session_id, ano_letivo, classe_id, turno, sala")
+      .eq("escola_id", escolaId)
+      .eq("classe_id", classeId)
+      .order("turno", { ascending: true })
+      .order("nome", { ascending: true });
+
+    if (normalizedYear) {
+      const yearNumber = Number(normalizedYear);
+      if (Number.isFinite(yearNumber)) {
+        turmasQuery = turmasQuery.eq("ano_letivo", yearNumber);
+      }
+    }
+
+    const { data: turmasData, error: turmasError } = await turmasQuery;
+    if (turmasError) throw new Error(turmasError.message);
+
+    const turmasClasse = (turmasData ?? []) as unknown as TurmaRow[];
+    turmaIds = turmasClasse.map((item) => item.id).filter(Boolean);
+    turmaById = new Map(turmasClasse.map((item) => [item.id, item]));
+
+    if (turmaIds.length === 0) {
+      throw new Error("Não há turmas para esta classe no ano letivo selecionado");
+    }
+
+    turma = {
+      id: `classe:${classeId}`,
+      nome: `Todas as turmas (${turmaIds.length})`,
+      escola_id: escolaId,
+      curso_id: (classeData as any)?.curso_id ?? turmasClasse[0]?.curso_id ?? null,
+      session_id: turmasClasse[0]?.session_id ?? null,
+      ano_letivo: Number(normalizedYear) || (turmasClasse[0]?.ano_letivo ?? null),
+      classe_id: classeId,
+      turno: null,
+      sala: null,
+    };
+  } else if (turmaId) {
+    const { data: turmaData, error: turmaError } = await supabase
+      .from("turmas")
+      .select(
+        `
+        id,
+        nome,
+        escola_id,
+        curso_id,
+        session_id,
+        ano_letivo,
+        classe_id,
+        turno,
+        sala
+      `
+      )
+      .eq("id", turmaId)
+      .eq("escola_id", escolaId)
+      .single();
+
+    if (turmaError || !turmaData) {
+      throw new Error("Turma não encontrada");
+    }
+
+    turma = turmaData as unknown as TurmaRow;
+    turmaIds = [turma.id];
+    turmaById = new Map([[turma.id, turma]]);
+  } else {
+    throw new Error("Escopo inválido para lista nominal");
+  }
 
   const [escolaRes, classeRes, sessaoRes, extraDataRes] = await Promise.all([
     supabase
@@ -160,13 +270,13 @@ export async function renderListaNominalPdfBuffer({
       .select("id, nome, nif, endereco, logo_url")
       .eq("id", escolaId)
       .maybeSingle(),
-    turma.classe_id
+    !isClasseScope && turma.classe_id
       ? supabase.from("classes").select("nome").eq("id", turma.classe_id).eq("escola_id", escolaId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     turma.session_id
       ? supabase.from("anos_letivos").select("ano").eq("id", turma.session_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    disciplinaId
+    disciplinaId && turmaId
       ? Promise.all([
           supabase.from("disciplinas_catalogo").select("nome").eq("id", disciplinaId).maybeSingle(),
           supabase
@@ -186,7 +296,9 @@ export async function renderListaNominalPdfBuffer({
   const escola = escolaRes.data as unknown as EscolaRow | null;
   const classe = classeRes.data as unknown as ClasseRow | null;
   const sessao = sessaoRes.data as unknown as SessaoRow | null;
-  const classeNome = classe?.nome ?? "—";
+  if (!isClasseScope) {
+    classeNome = classe?.nome ?? "—";
+  }
 
   const disciplinaNome = (extraDataRes?.[0] as any)?.data?.nome || "";
   const professorNome = (extraDataRes?.[1] as any)?.data?.professores?.profiles?.nome || "";
@@ -196,6 +308,7 @@ export async function renderListaNominalPdfBuffer({
     .select(
       `
       id,
+      turma_id,
       numero_chamada,
       status,
       alunos (
@@ -215,10 +328,15 @@ export async function renderListaNominalPdfBuffer({
       )
     `
     )
-    .eq("turma_id", turmaId)
     .eq("escola_id", escolaId)
     .order("numero_chamada", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
+
+  if (isClasseScope) {
+    matriculasQuery = matriculasQuery.in("turma_id", turmaIds);
+  } else if (turmaId) {
+    matriculasQuery = matriculasQuery.eq("turma_id", turmaId);
+  }
 
   if (!includeAllStatus) {
     matriculasQuery = matriculasQuery.in("status", ["ativo", "ativa"]);
@@ -263,11 +381,27 @@ export async function renderListaNominalPdfBuffer({
   }
 
   const matriculas = (matriculasData ?? []) as unknown as MatriculaRow[];
-  const alunos = matriculas.map((matricula, index) => {
+  const sortedMatriculas = isClasseScope
+    ? [...matriculas].sort((a, b) => {
+        const turmaA = turmaById.get(a.turma_id ?? "")?.nome ?? "";
+        const turmaB = turmaById.get(b.turma_id ?? "")?.nome ?? "";
+        const byTurma = turmaA.localeCompare(turmaB, "pt-PT");
+        if (byTurma !== 0) return byTurma;
+        const byNumero = (a.numero_chamada ?? 9999) - (b.numero_chamada ?? 9999);
+        if (byNumero !== 0) return byNumero;
+        const alunoA = Array.isArray(a.alunos) ? a.alunos[0] : a.alunos;
+        const alunoB = Array.isArray(b.alunos) ? b.alunos[0] : b.alunos;
+        return String(alunoA?.nome ?? "").localeCompare(String(alunoB?.nome ?? ""), "pt-PT");
+      })
+    : matriculas;
+
+  const alunos = sortedMatriculas.map((matricula, index) => {
     const aluno = Array.isArray(matricula.alunos) ? matricula.alunos[0] : matricula.alunos;
+    const turmaAluno = turmaById.get(matricula.turma_id ?? "");
     const row: Record<string, string | number> = {
       id: matricula.id,
       numero: matricula.numero_chamada ?? index + 1,
+      turma: turmaAluno?.nome ?? "—",
       nome: aluno?.nome ?? "—",
       genero:
         aluno?.sexo === "masculino" || aluno?.sexo === "M"
@@ -319,6 +453,7 @@ export async function renderListaNominalPdfBuffer({
 
   const verificationToken = randomUUID();
   const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? undefined;
+  const logoUrl = normalizePdfLogoUrl(escola?.logo_url, fallbackLogoUrl);
 
   const pdfBytes = await createInstitutionalPdf({
     title: isAlbum
@@ -335,7 +470,7 @@ export async function renderListaNominalPdfBuffer({
       nif: escola?.nif,
       address: escola?.endereco,
       contacts: "",
-      logoUrl: escola?.logo_url,
+      logoUrl,
       fallbackLogoUrl,
       validationBaseUrl: validationBase,
     },
@@ -370,9 +505,9 @@ export async function renderListaNominalPdfBuffer({
       ];
       const metaLineOne = fitMetaLines(
         [
-          `Turma: ${turma.nome ?? "—"}`,
+          isClasseScope ? `Escopo: Classe inteira` : `Turma: ${turma.nome ?? "—"}`,
           `Classe: ${classeNome}`,
-          `Turno: ${turma.turno ?? "—"}`,
+          isClasseScope ? `Turmas incluídas: ${turmaIds.length}` : `Turno: ${turma.turno ?? "—"}`,
           month ? `Mês: ${monthNames[parseInt(month, 10) - 1]} / ${normalizedYear}` : "",
         ],
         width - 2 * margin,
@@ -382,7 +517,7 @@ export async function renderListaNominalPdfBuffer({
       const metaLineTwo = fitMetaLines(
         [
           `Ano letivo: ${sessao?.ano ?? turma.ano_letivo ?? "—"}`,
-          `Sala: ${turma.sala ?? "—"}`,
+          isClasseScope ? (cursoNome ? `Curso: ${cursoNome}` : "") : `Sala: ${turma.sala ?? "—"}`,
           disciplinaNome ? `Disciplina: ${disciplinaNome}` : "",
           professorNome ? `Prof: ${professorNome}` : "",
         ],
@@ -554,7 +689,8 @@ export async function renderListaNominalPdfBuffer({
           // NOMINAL LIST: Extended Academic Data
           columns = [
             { header: "Nº", key: "numero", width: 25, align: "center" },
-            { header: "Nome do Aluno", key: "nome", width: 180 },
+            ...(isClasseScope ? [{ header: "Turma", key: "turma", width: 80 } as Column] : []),
+            { header: "Nome do Aluno", key: "nome", width: isClasseScope ? 130 : 180 },
             { header: "G", key: "genero", width: 20, align: "center" },
             { header: "Nascimento", key: "data_nascimento", width: 70 },
             { header: "Idade", key: "idade", width: 35, align: "center" },

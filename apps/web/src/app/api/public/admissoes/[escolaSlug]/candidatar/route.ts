@@ -295,7 +295,7 @@ export async function POST(
         .maybeSingle(),
       supabase
         .from("cursos")
-        .select("id")
+        .select("id, nome")
         .eq("id", data.curso_id)
         .eq("escola_id", escolaId)
         .maybeSingle(),
@@ -473,6 +473,16 @@ export async function POST(
     // 6. Insert Candidacy
     const draftId = data.draftId ?? crypto.randomUUID();
     const tempProtocol = draftId.split("-")[0].toUpperCase();
+    const interesse: Record<string, Json> | null = isPreCandidatura
+      ? {
+          curso_id: data.curso_id,
+          curso_nome: typeof courseCheck.data?.nome === "string" ? courseCheck.data.nome : null,
+          classe_id: null,
+          classe_nome: null,
+          turno: null,
+          ano_alvo_label: "Próximo ano letivo",
+        }
+      : null;
     const dadosCandidato: Record<string, Json> = {
       nome_completo: data.nome_completo,
       nome_normalizado: nomeNormalizado,
@@ -499,6 +509,7 @@ export async function POST(
       modo_portal_admissoes: modoPortalAdmissoes,
       disponibilidade_submissao: disponibilidade,
       pre_candidatura: isPreCandidatura,
+      ...(interesse ? { interesse } : {}),
     };
     const insertPayload = {
       escola_id: escolaId,

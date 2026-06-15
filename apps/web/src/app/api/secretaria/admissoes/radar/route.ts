@@ -167,6 +167,11 @@ export async function GET(request: Request) {
       expires_at,
       portal_reenvio_at,
       nome_candidato,
+      curso_id,
+      classe_id,
+      turma_preferencial_id,
+      turno,
+      dados_candidato,
       cursos(nome),
       classes(nome)
     `

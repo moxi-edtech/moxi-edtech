@@ -24,6 +24,21 @@ type TurmaResumo = {
   classe_nome?: string | null;
 };
 
+function formatSlotSaveError(json: any) {
+  if (json?.error === "SLOT_TEMPORAL_CONFLICT") {
+    const detail = json?.detail;
+    const current = detail?.inicio && detail?.fim ? `${detail.inicio}-${detail.fim}` : "um dos tempos";
+    const other = detail?.conflicting_with?.inicio && detail?.conflicting_with?.fim
+      ? `${detail.conflicting_with.inicio}-${detail.conflicting_with.fim}`
+      : "outro tempo";
+    return `Conflito de horário: ${current} sobrepõe ${other}. Ajuste os tempos antes de salvar.`;
+  }
+  if (json?.error === "SLOT_TIME_RANGE_INVALID") {
+    return "Horário inválido: a hora de início deve ser anterior à hora de fim.";
+  }
+  return json?.error || "Falha ao salvar slots";
+}
+
 export default function HorariosSlotsPage() {
   const params = useParams();
   const escolaId = params?.id as string;
@@ -233,7 +248,9 @@ export default function HorariosSlotsPage() {
           onClick: () => router.push(`/escola/${escolaParam}/horarios/quadro`),
         });
       } else {
-        setSaveError(json?.error || "Falha ao salvar slots");
+        const message = formatSlotSaveError(json);
+        setSaveError(message);
+        error(message);
       }
     } finally {
       setSaving(false);

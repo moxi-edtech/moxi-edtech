@@ -46,6 +46,7 @@ export type RawDossierMensalidade = {
   data_vencimento?: string | null;
   pago_em?: string | null;
   recibo_id?: string | null;
+  pagamento_reversivel_id?: string | null;
 };
 
 export type RawDossierFinanceiro = {
@@ -103,6 +104,7 @@ export type DossierMensalidade = {
   vencimento: string | null;
   pago_em: string | null;
   recibo_id: string | null;
+  pagamento_reversivel_id: string | null;
   atrasada: boolean;
 };
 

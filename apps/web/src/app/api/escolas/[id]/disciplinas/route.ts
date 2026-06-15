@@ -188,6 +188,7 @@ export async function POST(
       avaliacao_modelo_id: z.string().uuid().nullable().optional(),
       avaliacao_disciplina_id: z.string().uuid().nullable().optional(),
       modelo_excecao_id: z.string().uuid().nullable().optional(),
+      create_local_disciplina: z.boolean().optional().default(false),
     });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -222,6 +223,17 @@ export async function POST(
         }
       }
       else {
+        if (!parsed.data.create_local_disciplina) {
+          return NextResponse.json(
+            {
+              ok: false,
+              code: "DISCIPLINA_LOCAL_CONFIRM_REQUIRED",
+              error: `A disciplina "${parsed.data.nome}" ainda não existe no catálogo desta escola. Confirme a criação local antes de continuar.`,
+            },
+            { status: 409 }
+          );
+        }
+
         const { data: nova, error: discErr } = await (supabase as any)
           .from('disciplinas_catalogo')
           .insert({

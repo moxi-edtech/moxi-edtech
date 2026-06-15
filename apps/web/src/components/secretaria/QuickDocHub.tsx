@@ -19,6 +19,7 @@ import { formatTurmaDisplayName } from "@/utils/formatters";
 
 type TurmaItem = {
   id: string;
+  classe_id?: string | null;
   turma_nome?: string | null;
   nome?: string | null;
   turno?: string | null;
@@ -53,6 +54,7 @@ type DocKey =
   | "excel";
 
 type FormatKey = "pdf_individual" | "pdf_consolidado" | "excel";
+type ScopeKey = "turma" | "classe";
 
 type JobItem = {
   id: string;
@@ -221,6 +223,18 @@ function buildDocUrl(
   }
 }
 
+function buildClasseDocUrl(
+  classeId: string,
+  year: number | null,
+  includeAllStatus: boolean = false
+) {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  if (includeAllStatus) params.set("all_status", "true");
+  const query = params.toString();
+  return `/api/secretaria/classes/${classeId}/alunos/pdf${query ? `?${query}` : ""}`;
+}
+
 export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) {
   const storageKey = escolaId ? `quick-doc-hub:last-turma:${escolaId}` : null;
   const historyStorageKey = escolaId ? `quick-doc-hub:history:${escolaId}` : null;
@@ -243,6 +257,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [turmaPickerOpen, setTurmaPickerOpen] = useState(false);
   const [selectedDocs, setSelectedDocs] = useState<DocKey[]>([]);
   const [format, setFormat] = useState<FormatKey>("pdf_individual");
+  const [scope, setScope] = useState<ScopeKey>("turma");
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -410,6 +425,18 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   }, [storageKey, turmaId]);
 
   const classes = useMemo(() => uniqSorted(turmas.map((turma) => turma.classe_nome)), [turmas]);
+  const classOptions = useMemo(() => {
+    const byKey = new Map<string, { id: string; nome: string; total: number }>();
+    for (const turma of turmas) {
+      const id = turma.classe_id ?? "";
+      const nome = (turma.classe_nome ?? "").trim();
+      if (!id || !nome) continue;
+      const key = `${id}:${nome}`;
+      const current = byKey.get(key);
+      byKey.set(key, { id, nome, total: (current?.total ?? 0) + 1 });
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.nome.localeCompare(b.nome, "pt-PT"));
+  }, [turmas]);
   const cursos = useMemo(() => uniqSorted(turmas.map((turma) => turma.curso_nome)), [turmas]);
   const turnos = useMemo(() => uniqSorted(turmas.map((turma) => turma.turno)), [turmas]);
 
@@ -442,6 +469,16 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     [turmaId, turmas]
   );
 
+  const selectedClasse = useMemo(
+    () => classOptions.find((classe) => classe.nome === classeFiltro) ?? null,
+    [classeFiltro, classOptions]
+  );
+
+  const selectedClasseTurmas = useMemo(() => {
+    if (!selectedClasse?.id) return [];
+    return turmasFiltradas.filter((turma) => turma.classe_id === selectedClasse.id);
+  }, [selectedClasse?.id, turmasFiltradas]);
+
   const selectedPeriodo = useMemo(
     () => periodos.find((periodo) => periodo.id === periodoId) ?? null,
     [periodoId, periodos]
@@ -473,6 +510,15 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     (docKey: DocKey) => {
       const doc = DOCS.find((item) => item.key === docKey);
       if (!doc) return "Documento indisponível.";
+      if (scope === "classe") {
+        if (doc.key !== "nominal") return "Escopo por classe disponível para Lista Nominal.";
+        if (format === "excel") return "Lista nominal por classe não tem versão Excel.";
+        if (!selectedClasse?.id) return "Selecione uma classe.";
+        if (format === "pdf_consolidado" && selectedClasseTurmas.length === 0) {
+          return "Nenhuma turma encontrada para esta classe nos filtros atuais.";
+        }
+        return null;
+      }
       if (!doc.formats.includes(format)) {
         return format === "excel"
           ? "Este documento não tem versão Excel."
@@ -482,7 +528,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       if (doc.requiresPeriodo && !periodoId) return "Selecione um período.";
       return null;
     },
-    [format, periodoId, processAllTurmas, selectedTurma]
+    [format, periodoId, processAllTurmas, scope, selectedClasse?.id, selectedClasseTurmas.length, selectedTurma]
   );
 
   const addDirectHistory = useCallback((entry: Omit<DirectHistoryItem, "id" | "createdAt">) => {
@@ -497,6 +543,21 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   }, []);
 
   const runDirectDownloads = useCallback(() => {
+    if (scope === "classe") {
+      if (!selectedClasse?.id) return;
+      const doc = selectedDocDefs.find((item) => item.key === "nominal");
+      if (!doc) return;
+
+      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus);
+      window.open(url, "_blank");
+      addDirectHistory({
+        label: `${doc.label} • ${selectedClasse.nome}`,
+        format,
+        href: url,
+      });
+      return;
+    }
+
     if (!selectedTurma) return;
     for (const doc of selectedDocDefs) {
       const url = buildDocUrl(
@@ -524,14 +585,26 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     isAlbum,
     month,
     periodoId,
+    scope,
+    selectedClasse?.id,
+    selectedClasse?.nome,
     selectedDocDefs,
     selectedPeriodo?.numero,
     selectedTurma,
   ]);
 
   const runQueuedEmission = useCallback(async () => {
-    if ((!selectedTurma && !processAllTurmas) || !escolaId) return;
-    const targetTurmaIds = processAllTurmas ? turmasFiltradas.map((t) => t.id) : [selectedTurma!.id];
+    if (!escolaId) return;
+    const targetTurmaIds =
+      scope === "classe"
+        ? selectedClasseTurmas.map((turma) => turma.id)
+        : processAllTurmas
+          ? turmasFiltradas.map((t) => t.id)
+          : selectedTurma
+            ? [selectedTurma.id]
+            : [];
+
+    if (targetTurmaIds.length === 0) return;
 
     for (const doc of selectedDocDefs) {
       if (!queueDocKeys.has(doc.key)) continue;
@@ -564,7 +637,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         body: JSON.stringify(body),
       });
     }
-  }, [anoLetivo, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [anoLetivo, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&
@@ -629,6 +702,30 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           </select>
         </Field>
 
+        <Field label="Escopo">
+          <div className="grid grid-cols-2 gap-2">
+            {(["turma", "classe"] as ScopeKey[]).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => {
+                  setScope(item);
+                  if (item === "classe") {
+                    setSelectedDocs((current) => current.includes("nominal") ? ["nominal"] : []);
+                  }
+                }}
+                className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                  scope === item
+                    ? "border-klasse-gold bg-klasse-gold/10 text-slate-900"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {item === "turma" ? "Turma" : "Classe"}
+              </button>
+            ))}
+          </div>
+        </Field>
+
         <Field label="Classe">
           <select
             value={classeFiltro}
@@ -677,15 +774,16 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.9fr)]">
         <div className="space-y-3">
-          <Field
-            label="Turma"
-            hint={
-              turmasFiltradas.length > 0
-                ? `${turmasFiltradas.length} turma${turmasFiltradas.length !== 1 ? "s" : ""} disponível${turmasFiltradas.length !== 1 ? "eis" : ""}`
-                : "Nenhuma turma encontrada para os filtros atuais"
-            }
-          >
-            <div className="relative">
+          {scope === "turma" ? (
+            <Field
+              label="Turma"
+              hint={
+                turmasFiltradas.length > 0
+                  ? `${turmasFiltradas.length} turma${turmasFiltradas.length !== 1 ? "s" : ""} disponível${turmasFiltradas.length !== 1 ? "eis" : ""}`
+                  : "Nenhuma turma encontrada para os filtros atuais"
+              }
+            >
+              <div className="relative">
               <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
                 <Search size={16} />
               </div>
@@ -752,8 +850,23 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                   )}
                 </div>
               ) : null}
+              </div>
+            </Field>
+          ) : (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Classe selecionada</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">
+                {selectedClasse ? selectedClasse.nome : "Selecione uma classe nos filtros acima"}
+              </p>
+              <p className="mt-1 text-xs text-emerald-800">
+                {selectedClasse
+                  ? format === "pdf_consolidado"
+                    ? `O consolidado vai gerar um pacote com ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
+                    : `A lista nominal juntará os alunos de ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
+                  : "A emissão por classe fica disponível depois de escolher uma classe."}
+              </p>
             </div>
-          </Field>
+          )}
 
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Mês do mapa">
@@ -811,7 +924,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               </span>
             </label>
 
-            {format === "pdf_consolidado" && (
+            {format === "pdf_consolidado" && scope === "turma" && (
               <label className="flex items-center gap-2 cursor-pointer group bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
                 <input 
                   type="checkbox" 
@@ -848,7 +961,25 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Resumo operacional</p>
-          {selectedTurma ? (
+          {scope === "classe" && selectedClasse ? (
+            <div className="mt-3 space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">{selectedClasse.nome}</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Lista nominal por classe • {selectedClasseTurmas.length} turma{selectedClasseTurmas.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <SummaryBox label="Turmas" value={String(selectedClasseTurmas.length)} />
+                <SummaryBox label="Ano" value={anoLetivo ? String(anoLetivo) : "—"} />
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                {format === "pdf_consolidado"
+                  ? "O consolidado mantém cada turma como documento separado dentro do pacote final."
+                  : "O PDF direto junta os alunos da classe inteira e mantém a turma de origem em cada linha."}
+              </div>
+            </div>
+          ) : selectedTurma ? (
             <div className="mt-3 space-y-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">{turmaLabel(selectedTurma)}</h3>
@@ -874,7 +1005,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             </div>
           ) : (
             <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-              Selecione uma turma para ver o contexto da emissão e habilitar os documentos.
+              {scope === "classe" ? "Selecione uma classe para habilitar a lista nominal." : "Selecione uma turma para ver o contexto da emissão e habilitar os documentos."}
             </div>
           )}
         </div>
