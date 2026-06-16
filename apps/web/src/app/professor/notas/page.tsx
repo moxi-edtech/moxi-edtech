@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { enqueueOfflineAction } from "@/lib/offline/queue"
 import { createIdempotencyKey } from "@/lib/idempotency"
@@ -30,6 +30,21 @@ type PautaDetalhadaRow = {
 }
 
 export default function ProfessorNotasPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar pauta...</p>
+        </div>
+      </div>
+    }>
+      <ProfessorNotasContent />
+    </Suspense>
+  )
+}
+
+function ProfessorNotasContent() {
   const searchParams = useSearchParams()
   const highlightAlunoId = searchParams?.get("alunoId") ?? null
   const [atribs, setAtribs] = useState<Atrib[]>([])

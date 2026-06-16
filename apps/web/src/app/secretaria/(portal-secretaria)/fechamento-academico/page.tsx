@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -66,6 +66,19 @@ const mapEstadoToStep = (estado?: string | null): JobStep => {
 };
 
 export default function FechamentoAcademicoPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center max-w-4xl mx-auto">
+        <RefreshCw className="w-10 h-10 text-[#1F6B3B] animate-spin mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-slate-900 font-sora">A carregar assistente...</h2>
+      </div>
+    }>
+      <FechamentoAcademicoContent />
+    </Suspense>
+  );
+}
+
+function FechamentoAcademicoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [acao, setAcao] = useState<"fechar_trimestre" | "fechar_ano">("fechar_trimestre");

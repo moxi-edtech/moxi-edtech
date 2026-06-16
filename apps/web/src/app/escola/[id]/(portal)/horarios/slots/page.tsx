@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
@@ -40,6 +40,19 @@ function formatSlotSaveError(json: any) {
 }
 
 export default function HorariosSlotsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
+        <Spinner className="text-klasse-gold" size={24} />
+        <span className="ml-3 text-sm">A carregar horários...</span>
+      </div>
+    }>
+      <HorariosSlotsContent />
+    </Suspense>
+  );
+}
+
+function HorariosSlotsContent() {
   const params = useParams();
   const escolaId = params?.id as string;
   const { escolaSlug } = useEscolaId();

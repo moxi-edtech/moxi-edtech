@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
@@ -37,6 +37,23 @@ type PautaDetalhadaRow = {
 }
 
 export default function SecretariaNotasPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="animate-pulse bg-slate-200 h-10 w-48 rounded mb-6" />
+        <div className="grid md:grid-cols-3 gap-3">
+          <div className="h-10 bg-slate-100 rounded" />
+          <div className="h-10 bg-slate-100 rounded" />
+          <div className="h-10 bg-slate-100 rounded" />
+        </div>
+      </div>
+    }>
+      <SecretariaNotasContent />
+    </Suspense>
+  )
+}
+
+function SecretariaNotasContent() {
   const searchParams = useSearchParams()
   const initialTurmaId = searchParams?.get("turmaId") ?? ""
   const initialDisciplinaId = searchParams?.get("disciplinaId") ?? ""

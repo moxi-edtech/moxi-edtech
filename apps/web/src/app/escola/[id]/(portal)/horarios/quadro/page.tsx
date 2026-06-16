@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2 } from "lucide-react";
@@ -11,12 +11,12 @@ import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { useHorarioBaseData, useHorarioTurmaData } from "@/hooks/useHorarioData";
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
-import { pdf } from "@react-pdf/renderer";
-import { QuadroHorarioPdf } from "@/templates/pdf/horarios/QuadroHorario";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { HorarioWizard } from "@/components/escola/horarios/HorarioWizard";
 import { Button } from "@/components/ui/Button";
+import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
+import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
@@ -36,11 +36,28 @@ function formatSlotSaveError(json: any) {
 }
 
 export default function QuadroHorariosPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
+        <Spinner className="text-klasse-gold" size={24} />
+        <span className="ml-3 text-sm">A carregar quadro...</span>
+      </div>
+    }>
+      <QuadroHorariosContent />
+    </Suspense>
+  );
+}
+
+function QuadroHorariosContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const escolaId = params?.id as string;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+  const { userRole } = useUserRoleContext();
+  const dashboardHref = userRole === "secretaria"
+    ? `/escola/${escolaParam}/secretaria`
+    : `/escola/${escolaParam}/admin/dashboard`;
   const { online } = useOfflineStatus();
   const { success, error, warning, toast: rawToast } = useToast();
   const confirm = useConfirm();
@@ -645,29 +662,7 @@ export default function QuadroHorariosPage() {
 
     try {
       setDownloadingPdf(true);
-      const rows = buildGridRows();
-      const payload = {
-        escola: escolaNome || "Escola",
-        curso: selectedTurma?.curso?.nome ?? "Curso",
-        classe: selectedTurma?.classe?.nome ?? "Classe",
-        turma: selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma",
-        turno: turnoLabel,
-        sala: selectedTurma?.sala ?? null,
-        anoLetivo: selectedTurma?.ano_letivo ?? null,
-        dias: DIAS_SEMANA,
-        tempos: rows.map((row) => row.tempo),
-        grid: rows.map((row) => row.values),
-        generatedAt: new Date().toLocaleString("pt-PT"),
-      };
-
-      const blob = await pdf(<QuadroHorarioPdf {...payload} />).toBlob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const salaSuffix = payload.sala ? `_Sala-${payload.sala.replace(/\s+/g, "-")}` : "";
-      link.download = `Horario_${payload.turma}${salaSuffix}_${Date.now()}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(url);
+      await downloadHorarioTurmaPdf({ turma: { id: selectedTurma.id } });
     } catch (e: any) {
       error(e?.message || "Falha ao gerar PDF.");
     } finally {
@@ -1095,7 +1090,7 @@ export default function QuadroHorariosPage() {
       <div className="min-h-screen bg-slate-50 py-12 px-4 flex flex-col items-center">
         <div className="w-full max-w-6xl">
           <div className="mb-8 flex justify-between items-center">
-            <Link href={`/escola/${escolaParam}/admin/dashboard`} className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-all">
+            <Link href={dashboardHref} className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-all">
               ← Voltar ao Dashboard
             </Link>
             <Button variant="ghost" onClick={handleSkipWizard} className="text-slate-500 font-bold">

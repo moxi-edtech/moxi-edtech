@@ -2,7 +2,7 @@
 // Build trigger: synchronizing with remote environment
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -235,6 +235,21 @@ function SectionSep({ children }: { children: React.ReactNode }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAF9] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4">
+          <RefreshCw className="w-8 h-8 animate-spin text-[#1F6B3B]" />
+          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar formulário...</p>
+        </div>
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
+  );
+}
+
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();

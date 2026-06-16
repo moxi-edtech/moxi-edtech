@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -39,6 +39,19 @@ interface OnboardingRequest {
 }
 
 export default function NovaEscolaPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
+        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar formulário...</p>
+      </div>
+    }>
+      <NovaEscolaContent />
+    </Suspense>
+  );
+}
+
+function NovaEscolaContent() {
   return (
     <>
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_create" />
