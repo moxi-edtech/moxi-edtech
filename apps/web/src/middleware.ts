@@ -61,10 +61,10 @@ const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? '')
 const LOCAL_ALLOWED_ORIGINS =
   process.env.NODE_ENV === 'production'
     ? []
-    : [
-        process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001',
-        process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://formacao.lvh.me:3002',
-      ]
+	    : [
+	        process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001',
+	        process.env.KLASSE_FORMACAO_LOCAL_ORIGIN ?? 'http://formacao.lvh.me:3002',
+	      ]
         .map((origin) => origin.trim())
         .filter(Boolean);
 

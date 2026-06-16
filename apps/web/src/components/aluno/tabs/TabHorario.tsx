@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Clock, MapPin, User, Calendar } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 import { TableSkeleton } from "@/components/feedback/FeedbackSystem";
@@ -38,19 +39,28 @@ const DIAS_SEMANA = [
 ];
 
 export function TabHorario() {
+  const searchParams = useSearchParams();
+  const studentId = searchParams?.get("aluno");
+
   const [data, setData] = useState<TimetableData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeDay, setActiveDay] = useState<number>(new Date().getDay() || 1); // Default to today or Monday
 
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch("/api/aluno/horario", { cache: "no-store", signal: ctrl.signal })
+    setLoading(true);
+
+    const url = studentId 
+      ? `/api/aluno/horario?studentId=${studentId}`
+      : "/api/aluno/horario";
+
+    fetch(url, { cache: "no-store", signal: ctrl.signal })
       .then((r) => r.json() as Promise<TimetableData>)
       .then((json) => setData(json))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, []);
+  }, [studentId]);
 
   const slotsPorDia = useMemo(() => {
     if (!data?.slots) return [];
