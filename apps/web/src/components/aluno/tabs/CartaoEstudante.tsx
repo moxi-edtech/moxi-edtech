@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
-import { User, ShieldCheck, Calendar, GraduationCap, Info } from "lucide-react";
+import { User, ShieldCheck, Calendar, GraduationCap, Info, Wallet } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 
 type IdentidadeData = {
@@ -21,17 +22,36 @@ type IdentidadeData = {
 };
 
 export function CartaoEstudante() {
+  const searchParams = useSearchParams();
+  const studentId = searchParams?.get("aluno");
+  
   const [data, setData] = useState<IdentidadeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<{ type: string; message: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/aluno/perfil/identidade")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.ok) setData(json.identidade);
+    setLoading(true);
+    setError(null);
+    
+    const url = studentId 
+      ? `/api/aluno/perfil/identidade?studentId=${studentId}`
+      : "/api/aluno/perfil/identidade";
+
+    fetch(url)
+      .then(async (r) => {
+        const json = await r.json();
+        if (r.ok && json.ok) {
+          setData(json.identidade);
+        } else {
+          setError({ 
+            type: json.error || "UNKNOWN", 
+            message: json.message || "Falha ao carregar identidade acadêmica." 
+          });
+        }
       })
+      .catch(() => setError({ type: "FETCH_ERROR", message: "Erro de conexão ao carregar dados." }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [studentId]);
 
   if (loading) {
     return (
@@ -42,7 +62,29 @@ export function CartaoEstudante() {
     );
   }
 
-  if (!data) return <div className="text-center py-8 text-slate-500 font-bold">Falha ao carregar identidade.</div>;
+  if (error?.type === "PENDING_PAYMENT") {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-6 text-center space-y-6">
+        <div className="h-20 w-20 rounded-3xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner">
+          <Wallet size={40} />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-black text-slate-900">Pagamento Pendente</h3>
+          <p className="text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
+            {error.message}
+          </p>
+        </div>
+        <div className="w-full max-w-xs p-4 rounded-2xl bg-slate-50 border border-slate-100 text-left flex gap-3">
+          <Info className="text-blue-500 shrink-0" size={18} />
+          <p className="text-[11px] text-slate-600 font-medium">
+            Após o pagamento na secretaria ou via portal, o seu cartão digital será gerado automaticamente.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return <div className="text-center py-12 text-slate-500 font-bold">{error?.message || "Falha ao carregar identidade."}</div>;
 
   return (
     <div className="flex flex-col items-center gap-8 py-6 px-4">
