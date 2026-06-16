@@ -124,6 +124,15 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/secretaria/classes", label: "Classes" },
       ],
     },
+    {
+      href: "/escola/[escolaId]/horarios/quadro",
+      label: "Horários",
+      icon: "CalendarClock",
+      children: [
+        { href: "/escola/[escolaId]/horarios/quadro", label: "Quadro de horários" },
+        { href: "/escola/[escolaId]/horarios/slots", label: "Tempos e turnos" },
+      ],
+    },
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações", icon: "Archive" },
     { href: "/escola/[escolaId]/secretaria/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },

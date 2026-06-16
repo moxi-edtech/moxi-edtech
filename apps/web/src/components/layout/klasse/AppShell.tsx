@@ -47,7 +47,7 @@ export default function AppShell({
 
   const escolaIdFromPath = useMemo(() => {
     if (!safePathname) return null;
-    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria|financeiro|professor|aluno|professores|alunos)/);
+    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria|financeiro|professor|aluno|professores|alunos|horarios)/);
     return match?.[1] ?? null;
   }, [safePathname]);
   
@@ -67,6 +67,7 @@ export default function AppShell({
         if (safePathname.includes("/admin")) return "admin";
         if (safePathname.includes("/secretaria")) return "secretaria";
         if (safePathname.includes("/financeiro")) return "financeiro";
+        if (safePathname.includes("/horarios")) return "secretaria";
         if (safePathname.includes("/professores")) return "admin";
         if (safePathname.includes("/alunos")) return "admin";
         if (safePathname.includes("/professor")) return "professor";

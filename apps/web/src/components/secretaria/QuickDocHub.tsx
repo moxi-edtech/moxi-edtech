@@ -16,6 +16,7 @@ import {
   Search,
 } from "lucide-react";
 import { formatTurmaDisplayName } from "@/utils/formatters";
+import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 
 type TurmaItem = {
   id: string;
@@ -49,6 +50,7 @@ type DocKey =
   | "nominal"
   | "blank"
   | "mini"
+  | "schedule"
   | "pauta-geral"
   | "pauta-anual"
   | "excel";
@@ -133,6 +135,13 @@ const DOCS: Array<{
     formats: ["pdf_individual"],
   },
   {
+    key: "schedule",
+    label: "Horário da Turma",
+    hint: "Quadro semanal oficial pronto para baixar.",
+    icon: <Clock3 size={14} />,
+    formats: ["pdf_individual"],
+  },
+  {
     key: "pauta-geral",
     label: "Pauta Geral",
     hint: "Documento trimestral com base no período selecionado.",
@@ -214,6 +223,8 @@ function buildDocUrl(
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
     case "mini":
       return `/api/secretaria/turmas/${turmaId}/mini-pautas`;
+    case "schedule":
+      return "#";
     case "pauta-geral":
       return `/api/secretaria/turmas/${turmaId}/pauta-geral?periodo_letivo_id=${periodoId}&periodoNumero=${periodoNumero || 1}`;
     case "pauta-anual":
@@ -479,6 +490,11 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     return turmasFiltradas.filter((turma) => turma.classe_id === selectedClasse.id);
   }, [selectedClasse?.id, turmasFiltradas]);
 
+  const selectedClasseAlunoCount = useMemo(
+    () => selectedClasseTurmas.reduce((total, turma) => total + Number(turma.ocupacao_atual ?? 0), 0),
+    [selectedClasseTurmas]
+  );
+
   const selectedPeriodo = useMemo(
     () => periodos.find((periodo) => periodo.id === periodoId) ?? null,
     [periodoId, periodos]
@@ -494,6 +510,12 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     setSelectedDocs((current) => current.filter((docKey) => DOCS.find((doc) => doc.key === docKey)?.formats?.includes(format)));
   }, [format]);
 
+  useEffect(() => {
+    if (scope !== "classe") return;
+    setSelectedDocs(["nominal"]);
+    if (format === "excel") setFormat("pdf_individual");
+  }, [format, scope]);
+
   const statusResumo = selectedTurma
     ? [
         selectedTurma.classe_nome ? `Classe ${selectedTurma.classe_nome}` : null,
@@ -505,6 +527,10 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     : null;
 
   const selectedDocDefs = DOCS.filter((doc) => selectedDocs.includes(doc.key));
+  const visibleDocs = useMemo(
+    () => scope === "classe" ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
+    [scope]
+  );
 
   const docDisabledReason = useCallback(
     (docKey: DocKey) => {
@@ -524,11 +550,12 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           ? "Este documento não tem versão Excel."
           : "Este documento ainda não suporta PDF consolidado.";
       }
+      if (doc.key === "schedule" && !escolaId) return "Não foi possível identificar a escola.";
       if (!selectedTurma && !processAllTurmas) return "Selecione uma turma.";
       if (doc.requiresPeriodo && !periodoId) return "Selecione um período.";
       return null;
     },
-    [format, periodoId, processAllTurmas, scope, selectedClasse?.id, selectedClasseTurmas.length, selectedTurma]
+    [escolaId, format, periodoId, processAllTurmas, scope, selectedClasse?.id, selectedClasseTurmas.length, selectedTurma]
   );
 
   const addDirectHistory = useCallback((entry: Omit<DirectHistoryItem, "id" | "createdAt">) => {
@@ -542,7 +569,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     ].slice(0, DIRECT_HISTORY_LIMIT));
   }, []);
 
-  const runDirectDownloads = useCallback(() => {
+  const runDirectDownloads = useCallback(async () => {
     if (scope === "classe") {
       if (!selectedClasse?.id) return;
       const doc = selectedDocDefs.find((item) => item.key === "nominal");
@@ -560,6 +587,20 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
     if (!selectedTurma) return;
     for (const doc of selectedDocDefs) {
+      if (doc.key === "schedule") {
+        await downloadHorarioTurmaPdf({
+          escolaId: escolaId!,
+          escolaNome: "Escola",
+          turma: selectedTurma,
+        });
+        addDirectHistory({
+          label: `${doc.label} • ${turmaLabel(selectedTurma)}`,
+          format,
+          href: `/escola/${escolaId}/horarios/quadro?turmaId=${selectedTurma.id}`,
+        });
+        continue;
+      }
+
       const url = buildDocUrl(
         doc.key,
         selectedTurma.id,
@@ -580,6 +621,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   }, [
     addDirectHistory,
     anoLetivo,
+    escolaId,
     format,
     includeAllStatus,
     isAlbum,
@@ -654,8 +696,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         await loadJobs();
         setFeedback("Lote enviado para a fila de emissão.");
       } else {
-        runDirectDownloads();
-        setFeedback("Downloads iniciados em novas abas.");
+        await runDirectDownloads();
+        setFeedback("Downloads iniciados.");
       }
     } catch (error) {
       console.error("Erro ao emitir documentos:", error);
@@ -673,9 +715,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     <div className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-5 space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Emissão Rápida por Turma</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Mapas, Pautas e Listas</p>
           <p className="mt-1 text-sm text-slate-500">
-            Selecione vários documentos, escolha o formato e acompanhe a fila no mesmo painel.
+            Emita documentos por turma ou baixe a lista nominal de uma classe inteira no mesmo painel.
           </p>
         </div>
         {(loadingTurmas || loadingPeriodos || loadingAnos || submitting) && (
@@ -711,7 +753,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                 onClick={() => {
                   setScope(item);
                   if (item === "classe") {
-                    setSelectedDocs((current) => current.includes("nominal") ? ["nominal"] : []);
+                    setSelectedDocs(["nominal"]);
+                    setFormat((current) => current === "excel" ? "pdf_individual" : current);
                   }
                 }}
                 className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
@@ -853,18 +896,26 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               </div>
             </Field>
           ) : (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Classe selecionada</p>
-              <p className="mt-1 text-sm font-bold text-slate-900">
-                {selectedClasse ? selectedClasse.nome : "Selecione uma classe nos filtros acima"}
-              </p>
-              <p className="mt-1 text-xs text-emerald-800">
-                {selectedClasse
-                  ? format === "pdf_consolidado"
-                    ? `O consolidado vai gerar um pacote com ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
-                    : `A lista nominal juntará os alunos de ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
-                  : "A emissão por classe fica disponível depois de escolher uma classe."}
-              </p>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Lista nominal por classe</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">
+                    {selectedClasse ? selectedClasse.nome : "Selecione uma classe nos filtros acima"}
+                  </p>
+                  <p className="mt-1 text-xs text-emerald-800">
+                    {selectedClasse
+                      ? format === "pdf_consolidado"
+                        ? `Gera um pacote com ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
+                        : "Gera um PDF único com todos os alunos da classe e mantém a turma de origem em cada linha."
+                      : "Depois de escolher a classe, a Lista Nominal fica pronta para emissão."}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:min-w-44">
+                  <SummaryBox label="Turmas" value={String(selectedClasseTurmas.length)} />
+                  <SummaryBox label="Alunos" value={String(selectedClasseAlunoCount)} />
+                </div>
+              </div>
             </div>
           )}
 
@@ -901,9 +952,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
           <div className="flex flex-wrap items-center gap-4 py-2">
             <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={includeAllStatus} 
+              <input
+                type="checkbox"
+                checked={includeAllStatus}
                 onChange={e => setIncludeAllStatus(e.target.checked)}
                 className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
               />
@@ -912,23 +963,25 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               </span>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={isAlbum} 
-                onChange={e => setIsAlbum(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
-              />
-              <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
-                Versão Álbum Visual (Grid com Fotos)
-              </span>
-            </label>
+            {scope === "turma" ? (
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isAlbum}
+                  onChange={e => setIsAlbum(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
+                />
+                <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+                  Versão Álbum Visual (Grid com Fotos)
+                </span>
+              </label>
+            ) : null}
 
             {format === "pdf_consolidado" && scope === "turma" && (
               <label className="flex items-center gap-2 cursor-pointer group bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
-                <input 
-                  type="checkbox" 
-                  checked={processAllTurmas} 
+                <input
+                  type="checkbox"
+                  checked={processAllTurmas}
                   onChange={e => setProcessAllTurmas(e.target.checked)}
                   className="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
                 />
@@ -941,20 +994,22 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
           <Field label="Formato de saída">
             <div className="grid gap-2 md:grid-cols-3">
-              {(Object.keys(formatLabels) as FormatKey[]).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setFormat(item)}
-                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                    format === item
-                      ? "border-klasse-gold bg-klasse-gold/10 text-slate-900"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {formatLabels[item]}
-                </button>
-              ))}
+              {(Object.keys(formatLabels) as FormatKey[])
+                .filter((item) => !(scope === "classe" && item === "excel"))
+                .map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setFormat(item)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                      format === item
+                        ? "border-klasse-gold bg-klasse-gold/10 text-slate-900"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {formatLabels[item]}
+                  </button>
+                ))}
             </div>
           </Field>
         </div>
@@ -971,6 +1026,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SummaryBox label="Turmas" value={String(selectedClasseTurmas.length)} />
+                <SummaryBox label="Alunos" value={String(selectedClasseAlunoCount)} />
                 <SummaryBox label="Ano" value={anoLetivo ? String(anoLetivo) : "—"} />
               </div>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
@@ -1015,19 +1071,23 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos</p>
           <p className="text-xs text-slate-500">
-            {selectedDocs.length} selecionado{selectedDocs.length !== 1 ? "s" : ""} • clique simples seleciona um, `Ctrl/Cmd` acumula
+            {scope === "classe"
+              ? "Lista nominal por classe selecionada"
+              : `${selectedDocs.length} selecionado${selectedDocs.length !== 1 ? "s" : ""} • clique simples seleciona um, Ctrl/Cmd acumula`}
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {DOCS.map((doc) => {
+          {visibleDocs.map((doc) => {
             const disabledReason = docDisabledReason(doc.key);
             const selected = selectedDocs.includes(doc.key);
             return (
               <button
                 key={doc.key}
                 type="button"
+                disabled={scope === "classe"}
                 onClick={(event) =>
                   setSelectedDocs((current) => {
+                    if (scope === "classe") return ["nominal"];
                     if (event.metaKey || event.ctrlKey) {
                       return current.includes(doc.key)
                         ? current.filter((item) => item !== doc.key)
@@ -1060,7 +1120,11 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                     {disabledReason ? (
                       <p className="mt-2 text-[11px] font-medium text-amber-700">{disabledReason}</p>
                     ) : (
-                      <p className="mt-2 text-[11px] text-emerald-700">Compatível com {formatLabels[format].toLowerCase()}.</p>
+                      <p className="mt-2 text-[11px] text-emerald-700">
+                        {scope === "classe"
+                          ? "Inclui todas as turmas da classe selecionada."
+                          : `Compatível com ${formatLabels[format].toLowerCase()}.`}
+                      </p>
                     )}
                   </div>
                 </div>

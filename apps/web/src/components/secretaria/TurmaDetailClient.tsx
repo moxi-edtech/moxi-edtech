@@ -15,6 +15,7 @@ import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/Gra
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
+import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -434,6 +435,7 @@ export default function TurmaDetailClient({
   const [periodoClosed, setPeriodoClosed] = useState(false);
   const [pautaGeralLoading, setPautaGeralLoading] = useState(false);
   const [pautaAnualLoading, setPautaAnualLoading] = useState(false);
+  const [horarioPdfLoading, setHorarioPdfLoading] = useState(false);
   const [closing,       setClosing]       = useState(false);
   const [turmaFechoStatus, setTurmaFechoStatus] = useState<"ABERTO" | "FECHADO" | null>(null);
   const [turmaFechoAllowed, setTurmaFechoAllowed] = useState(false);
@@ -774,6 +776,22 @@ export default function TurmaDetailClient({
     if (isAlbum) params.set("album", "true");
     if (includeAllStatus) params.set("all_status", "true");
     window.open(`/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`, "_blank");
+  };
+
+  const handleHorarioPdf = async () => {
+    if (!escolaId || !data?.turma) return;
+    setHorarioPdfLoading(true);
+    try {
+      await downloadHorarioTurmaPdf({
+        escolaId,
+        turma: { id: data.turma.id },
+      });
+      setToast({ message: "Horário da turma baixado com sucesso.", type: "success" });
+    } catch (e: any) {
+      setToast({ message: e?.message || "Falha ao baixar horário da turma.", type: "error" });
+    } finally {
+      setHorarioPdfLoading(false);
+    }
   };
 
   const handleClosePeriodoConfirmed = useCallback(async () => {
@@ -1740,6 +1758,12 @@ export default function TurmaDetailClient({
                 desc="Planilha oficial para lançamento offline de notas."
                 onClick={() => triggerDownload(`/api/secretaria/turmas/${turmaId}/pauta`)}
                 highlight
+              />
+              <DocCard
+                icon={CalendarCheck}
+                title={horarioPdfLoading ? "A gerar horário…" : "Horário da Turma"}
+                desc="PDF oficial do quadro semanal desta turma."
+                onClick={() => void handleHorarioPdf()}
               />
               <DocCard
                 icon={CalendarCheck}
