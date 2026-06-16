@@ -50,6 +50,7 @@ type Props = {
   receitaResumo?: {
     previsto: number;
     realizado: number;
+    pago_competencia: number;
   };
   estadoVital?:         EstadoVital | null;
 };
@@ -213,16 +214,34 @@ export default function EscolaAdminDashboardContent({
   const horaAtual = new Date().getHours();
   const saudacao = horaAtual < 12 ? "Bom dia" : horaAtual < 19 ? "Boa tarde" : "Boa noite";
 
-  const previstoReceita = Number(receitaResumo?.previsto ?? 0);
+  const previstoReceita  = Number(receitaResumo?.previsto ?? 0);
   const realizadoReceita = Number(receitaResumo?.realizado ?? 0);
-  const hasMetaReceita = previstoReceita > 0;
-  const percentualReceita =
-    hasMetaReceita ? Math.min(100, Math.round((realizadoReceita / previstoReceita) * 100)) : 0;
+  const pagoCompetencia   = Number(receitaResumo?.pago_competencia ?? 0);
+  
+  const hasMetaReceita      = previstoReceita > 0;
+  const hasMovimentoReceita = previstoReceita > 0 || realizadoReceita > 0;
+
+  // Percentage of the current month's billing that has been paid
+  const percentualCompetencia =
+    previstoReceita > 0
+      ? Math.min(100, Math.round((pagoCompetencia / previstoReceita) * 100))
+      : pagoCompetencia > 0 ? 100 : 0;
+
+  // Percentage of total cash flow vs target (can exceed 100%)
+  const rawPercentualReceita =
+    previstoReceita > 0
+      ? (realizadoReceita / previstoReceita) * 100
+      : realizadoReceita > 0 ? 100 : 0;
+
+  const displayPercentualReceita = Math.round(rawPercentualReceita);
+  const percentualReceitaBar     = Math.min(100, displayPercentualReceita);
+  const isAcimaDaMeta            = rawPercentualReceita > 100.1; // Small threshold
+  const valorAcimaMeta           = (rawPercentualReceita - 100).toFixed(2).replace(".", ",");
 
   useEffect(() => {
-    const timer = setTimeout(() => setProgress(percentualReceita), 150);
+    const timer = setTimeout(() => setProgress(percentualReceitaBar), 150);
     return () => clearTimeout(timer);
-  }, [percentualReceita]);
+  }, [percentualReceitaBar]);
 
   const radarAlerts: OperationalAlert[] = [];
   if (typeof pendingTurmasCount === "number" && pendingTurmasCount > 0) {
@@ -299,24 +318,60 @@ export default function EscolaAdminDashboardContent({
         />
       </motion.div>
 
-      {/* ── 4. PREVISÃO DE RECEITA ───────────────────────────────────────────── */}
-      {(previstoReceita > 0 || realizadoReceita > 0) && (
+      {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
+      {hasMovimentoReceita && (
         <motion.section variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4 mb-6 relative z-10">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Desempenho Financeiro</p>
-              <div className="text-2xl font-black text-slate-900 tracking-tight">
-                {mounted ? moeda.format(realizadoReceita) : "—"}
-                <span className="ml-2 text-sm font-medium text-slate-400">
-                  {hasMetaReceita
-                    ? `de ${mounted ? moeda.format(previstoReceita) : "—"} previstos`
-                    : "sem meta prevista no mês"}
-                </span>
+          <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-8 relative z-10">
+            <div className="space-y-4 flex-1">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recebido no Mês (Caixa)</p>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                  <div className="text-2xl font-black text-slate-900 tracking-tight">
+                    {mounted ? moeda.format(realizadoReceita) : "—"}
+                  </div>
+                  <span className="text-sm font-medium text-slate-400">
+                    {hasMetaReceita
+                      ? `de ${mounted ? moeda.format(previstoReceita) : "—"} previstos`
+                      : "sem previsão definida"}
+                  </span>
+                  {isAcimaDaMeta && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 animate-in fade-in slide-in-from-left-2">
+                       <TrendingUp className="w-3 h-3 text-emerald-600" />
+                       <span className="text-[10px] font-black text-emerald-600">+{valorAcimaMeta}% ACIMA DA META</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6">
+                 <div className="space-y-1">
+                   <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Cobrança da Competência</p>
+                   <div className="flex items-center gap-2">
+                     <span className="text-sm font-black text-slate-700">{mounted ? moeda.format(pagoCompetencia) : "—"}</span>
+                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{percentualCompetencia}%</span>
+                   </div>
+                 </div>
+                 {isAcimaDaMeta && (
+                   <div className="flex items-center gap-2 p-2 rounded-xl bg-amber-50 border border-amber-100 max-w-xs">
+                     <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                     <p className="text-[10px] font-medium text-amber-800 leading-tight">
+                       Recebimentos incluem propinas de meses anteriores ou adiantamentos.
+                     </p>
+                   </div>
+                 )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-black text-[#1F6B3B] leading-none">{percentualReceita}%</p>
-              <p className="text-[10px] font-bold text-emerald-600 uppercase mt-1">Realizado</p>
+
+            <div className="text-right flex flex-col items-end flex-shrink-0">
+              <div className="relative">
+                <p className={`text-4xl font-black leading-none tracking-tighter ${isAcimaDaMeta ? "text-emerald-600" : "text-[#1F6B3B]"}`}>
+                  {displayPercentualReceita}%
+                </p>
+                {isAcimaDaMeta && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                )}
+              </div>
+              <p className="text-[10px] font-black text-emerald-600 uppercase mt-2 tracking-widest">Realizado Total</p>
             </div>
           </div>
 
@@ -327,30 +382,34 @@ export default function EscolaAdminDashboardContent({
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
                 className={`h-full rounded-full ${
-                  hasMetaReceita
-                    ? "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_20px_rgba(74,222,128,0.3)]"
+                  hasMovimentoReceita
+                    ? isAcimaDaMeta 
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                      : "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_20px_rgba(74,222,128,0.3)]"
                     : "bg-gradient-to-r from-slate-300 to-slate-400"
                 }`}
               />
             </div>
             
             {/* Pacing marker (Target 70% for example) */}
-            <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-slate-200 z-10 flex flex-col items-center"
-              style={{ left: '70%' }}
-            >
-              <div className="w-2 h-2 rounded-full bg-slate-300 -mt-0.5 shadow-sm" />
-              <div className="absolute top-5 bg-white border border-slate-100 px-1.5 py-0.5 rounded shadow-sm">
-                <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">
-                  {hasMetaReceita ? "META 70%" : "META N/D"}
-                </span>
+            {hasMetaReceita && (
+              <div 
+                className="absolute top-0 bottom-0 w-0.5 bg-slate-200 z-10 flex flex-col items-center"
+                style={{ left: '70%' }}
+              >
+                <div className="w-2 h-2 rounded-full bg-slate-300 -mt-0.5 shadow-sm" />
+                <div className="absolute top-5 bg-white border border-slate-100 px-1.5 py-0.5 rounded shadow-sm">
+                  <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">
+                    META 70%
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
           
           <div className="mt-8 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             <p>0% Iniciado</p>
-            <p className="text-slate-900">Actual: {percentualReceita}%</p>
+            <p className="text-slate-900">Actual: {displayPercentualReceita}%</p>
             <p>100% Meta Final</p>
           </div>
         </motion.section>

@@ -123,7 +123,7 @@ export default function KpiSection({
       variant: s.financeiro && s.financeiro > 80 ? ("success" as const) : ("brand" as const),
       trend: { value: 5, isPositive: true },
       chartData: mockChartData.map(d => ({ value: d.value * 0.8 })),
-      description: "Receita realizada / prevista",
+      description: "Cobrança da competência",
     },
   ];
 

@@ -103,7 +103,9 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
     const todayKey = getLocalDayKey();
     const now = new Date();
-    const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
 
     let missingPricingQuery = s
       .from("vw_financeiro_missing_pricing_count")
@@ -117,7 +119,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
     let financeiroKpiQuery = s
       .from("vw_financeiro_kpis_mes")
-      .select("mes_ref, previsto_total, realizado_total")
+      .select("mes_ref, previsto_total, realizado_total, pago_competencia_total")
       .eq("escola_id", validId)
       .eq("mes_ref", currentMonthStart);
     financeiroKpiQuery = applyKf2ListInvariants(financeiroKpiQuery, {
@@ -233,21 +235,30 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
     // ─── KPIs ─────────────────────────────────────────────────────────────
     const financeiroKpis = (financeiroKpiResult.data ?? []) as Array<{
-      mes_ref?:        string | null;
-      previsto_total?: number | null;
-      realizado_total?: number | null;
+      mes_ref?:                string | null;
+      previsto_total?:         number | null;
+      realizado_total?:        number | null;
+      pago_competencia_total?: number | null;
     }>;
     const kpiAtual          = financeiroKpis[0];
-    const previsto          = Number(kpiAtual?.previsto_total  ?? 0);
-    const realizado         = Number(kpiAtual?.realizado_total ?? 0);
-    const financeiroPercent = previsto > 0 ? Math.round((realizado / previsto) * 100) : 0;
+    const previsto          = Number(kpiAtual?.previsto_total          ?? 0);
+    const realizado         = Number(kpiAtual?.realizado_total         ?? 0);
+    const pago_competencia  = Number(kpiAtual?.pago_competencia_total  ?? 0);
+
+    // Top KPI uses "Cobrança da competência" (capped at 100% for the card usually)
+    const financeiroPercent =
+      previsto > 0
+        ? Math.min(100, Math.round((pago_competencia / previsto) * 100))
+        : pago_competencia > 0
+          ? 100
+          : 0;
 
     const stats: KpiStats = {
-      alunos:     dashboardCounts.data?.alunos_ativos   ?? 0,
-      turmas:     dashboardCounts.data?.turmas_total    ?? 0,
+      alunos:      dashboardCounts.data?.alunos_ativos   ?? 0,
+      turmas:      dashboardCounts.data?.turmas_total    ?? 0,
       professores: dashboardCounts.data?.professores_total ?? 0,
-      avaliacoes: dashboardCounts.data?.avaliacoes_total ?? 0,
-      financeiro: financeiroPercent,
+      avaliacoes:  dashboardCounts.data?.avaliacoes_total ?? 0,
+      financeiro:  financeiroPercent,
     };
 
     // ─── Currículo pendencies ─────────────────────────────────────────────
@@ -340,6 +351,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         receitaResumo={{
           previsto,
           realizado,
+          pago_competencia,
         }}
         curriculoPendencias={curriculoPendencias}
         estadoVital={estadoVital}
@@ -365,6 +377,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         receitaResumo={{
           previsto: 0,
           realizado: 0,
+          pago_competencia: 0,
         }}
         curriculoPendencias={{ horario: 0, avaliacao: 0 }}
       />
