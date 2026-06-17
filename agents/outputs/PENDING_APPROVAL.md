@@ -1,63 +1,80 @@
 # Aprovação necessária — Agent 3
-run_id:    598B12B4-B6B1-461F-A4DD-026E1BDD9764
-timestamp: 2026-06-04T11:22:27Z
+run_id:    4F9D6A1E-CE5B-4B95-95A5-7CC5362CBF0F
+timestamp: 2026-06-17T00:21:44Z
 status:    APPROVED_AND_APPLIED
 
 ## Acção proposta
-
-Reduzir a saturação de compute causada por tempestade de jobs pg_cron.
-
-- Distribuir 24 refreshes de MVs ao longo dos respectivos intervalos.
-- Manter a frequência atual de cada MV.
-- Desativar `refresh_all_materialized_views()` diário, redundante com os jobs individuais.
-- Desativar `cleanup_pautas_zip()`, que falha por apagar diretamente da tabela do Storage.
-
-## Evidência
-
-- Conexões: `21/60`; sem locks.
-- `626/5326` jobs falharam nas últimas 24 horas.
-- Erro predominante: `job startup timeout`.
-- Minutos `00` e `30`: até `27` jobs iniciando simultaneamente.
-- Os refreshes de MVs dominam as consultas mais caras.
-- `get_secretaria_produtividade_hoje` é a RPC mais cara acumulada, mas não apresenta loop atual no frontend.
+Corrigir a policy de leitura de `servico_pedidos` no portal do aluno para eliminar a recursão RLS em `alunos` e permitir que a Identidade Digital valide o Cartão de Estudante concedido.
 
 ## Diff
-
-Migration:
-
-`supabase/migrations/20260604112227_stagger_pg_cron_compute_load.sql`
-
-Distribuição planejada:
-
-- Jobs de 10 minutos: um por minuto entre `0` e `9`.
-- Jobs de 30 minutos: um a cada 2 minutos.
-- Jobs de 15/20/60 minutos: offsets separados.
+```diff
+diff --git a/supabase/migrations/20270616140000_fix_servico_pedidos_portal_rls_recursion.sql b/supabase/migrations/20270616140000_fix_servico_pedidos_portal_rls_recursion.sql
+new file mode 100644
+index 00000000..939e57ec
+--- /dev/null
++++ b/supabase/migrations/20270616140000_fix_servico_pedidos_portal_rls_recursion.sql
+@@ -0,0 +1,44 @@
++BEGIN;
++
++CREATE OR REPLACE FUNCTION public.portal_user_can_access_aluno(p_aluno_id uuid)
++RETURNS boolean
++LANGUAGE sql
++SECURITY DEFINER
++STABLE
++SET search_path = public
++AS $$
++  SELECT EXISTS (
++    SELECT 1
++    FROM public.alunos a
++    WHERE a.id = p_aluno_id
++      AND (
++        a.profile_id = auth.uid()
++        OR a.usuario_auth_id = auth.uid()
++      )
++  )
++  OR EXISTS (
++    SELECT 1
++    FROM public.aluno_encarregados ae
++    JOIN public.encarregados e ON e.id = ae.encarregado_id
++    WHERE ae.aluno_id = p_aluno_id
++      AND lower(e.email) = lower(auth.jwt() ->> 'email')
++  );
++$$;
++
++REVOKE ALL ON FUNCTION public.portal_user_can_access_aluno(uuid) FROM PUBLIC;
++GRANT EXECUTE ON FUNCTION public.portal_user_can_access_aluno(uuid) TO authenticated;
++GRANT EXECUTE ON FUNCTION public.portal_user_can_access_aluno(uuid) TO service_role;
++
++DROP POLICY IF EXISTS "Alunos podem ver seus próprios pedidos de serviço" ON public.servico_pedidos;
++DROP POLICY IF EXISTS "Encarregados podem ver pedidos de serviço dos seus educandos" ON public.servico_pedidos;
++DROP POLICY IF EXISTS servico_pedidos_portal_access ON public.servico_pedidos;
++
++CREATE POLICY servico_pedidos_portal_access
++ON public.servico_pedidos
++FOR SELECT
++TO authenticated
++USING (
++  public.portal_user_can_access_aluno(aluno_id)
++);
++
++COMMIT;
+```
 
 ## Risco
-
-Os dados materializados podem atualizar alguns minutos depois do horário atual, sem alterar sua frequência máxima. Desativar o cleanup quebrado mantém arquivos de pautas até uma correção via Storage API.
-
-## Salvaguardas
-
-- Nenhuma MV obrigatória será removida.
-- Nenhuma frequência será reduzida.
-- Migration transacional.
-- Simulação com rollback antes da aplicação.
-- Verificação pós-apply dos schedules e falhas.
+Se a função `SECURITY DEFINER` for alterada indevidamente, pode ampliar leitura de pedidos de serviço; a versão proposta limita o acesso ao próprio aluno ou aos educandos do encarregado autenticado.
 
 ## Resultado
-
-- Aplicado em `2026-06-04`.
-- Migration registrada como `20260604112227`.
-- Jobs redundantes/quebrados removidos.
-- Pico observado reduzido de `25–27` para `6` jobs por minuto.
-- Zero falhas observadas após o escalonamento.
-- `pnpm --filter web typecheck` passou.
+- Aprovado por commit `9b2f8a9d8594453b50ec257b34ea4d6ca8d31299`.
+- Migration aplicada no banco remoto.
+- Versão `20270616140000` registrada em `supabase_migrations.schema_migrations`.
+- Validação RLS com a sessão da Caroline:
+  - `horario_versoes`: 1 versão publicada.
+  - `quadro_horarios`: 4 linhas.
+  - join `quadro_horarios` + `horario_slots`: 4 linhas.
+  - `servico_pedidos` para cartão `granted`: 1 linha.
 
 ## Como aprovar
-
-`APPROVE: 598B12B4-B6B1-461F-A4DD-026E1BDD9764`
+Commit com mensagem: `APPROVE: 4F9D6A1E-CE5B-4B95-95A5-7CC5362CBF0F`
 
 ## Como rejeitar
-
-`REJECT: 598B12B4-B6B1-461F-A4DD-026E1BDD9764 [motivo]`
+Commit com mensagem: `REJECT: 4F9D6A1E-CE5B-4B95-95A5-7CC5362CBF0F [motivo]`

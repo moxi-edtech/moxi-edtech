@@ -29,8 +29,8 @@ export async function getAlunoContext() {
       .select("escola_id, papel")
       .eq('user_id', user.id)
       .limit(10);
-    const vincAluno = (vinc || []).find((row) => row.papel === "aluno");
-    escolaId = vincAluno?.escola_id ?? null;
+    const vincPortal = (vinc || []).find((row) => row.papel === "aluno" || row.papel === "encarregado");
+    escolaId = vincPortal?.escola_id ?? null;
 
     let alunoQuery = supabase
       .from("alunos")

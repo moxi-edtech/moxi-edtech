@@ -24,17 +24,18 @@ export async function GET(request: Request) {
     }
 
     // --- SEGURANÇA: Verificar se o Cartão de Estudante foi pago ---
-    const { data: cardPayment } = await supabase
+    const { data: cardPayments, error: cardPaymentError } = await supabase
       .from('servico_pedidos')
-      .select('status')
+      .select('id')
       .eq('escola_id', ctx.escolaId)
       .eq('aluno_id', alunoId)
-      .eq('servico_escola_id', 'cc9552ae-d548-44fb-b550-a141ff5925c4') // Cartão de Estudante
       .eq('status', 'granted')
-      .limit(1)
-      .maybeSingle();
+      .or('servico_escola_id.eq.cc9552ae-d548-44fb-b550-a141ff5925c4,servico_codigo.in.(CARTAO,DOC_CARTAO_ESTUDANTE,SERV_SEGUNDA_VIA_CARTAO)')
+      .limit(1);
+    
+    if (cardPaymentError) throw cardPaymentError;
 
-    if (!cardPayment) {
+    if (!cardPayments?.[0]) {
       return NextResponse.json({ 
         ok: false, 
         error: "PENDING_PAYMENT", 
@@ -48,18 +49,30 @@ export async function GET(request: Request) {
       .from("alunos")
       .select(`
         id,
+        profile_id,
         nome_completo,
         numero_processo,
         bi_numero,
-        documentos,
-        profile:profiles(avatar_url)
+        documentos
       `)
       .eq("id", alunoId)
-      .single();
+      .eq("escola_id", ctx.escolaId)
+      .maybeSingle();
 
-    if (alunoError || !aluno) throw alunoError || new Error("Aluno não encontrado");
+    if (alunoError || !aluno) {
+      console.error("[IdentityAPI] Aluno Error:", alunoError);
+      throw new Error(alunoError?.message || "Aluno não encontrado");
+    }
 
-    const profileAvatar = (aluno.profile as any)?.avatar_url;
+    const { data: profile } = aluno.profile_id
+      ? await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", aluno.profile_id)
+          .maybeSingle()
+      : { data: null };
+
+    const profileAvatar = profile?.avatar_url;
     const documentPhoto = (aluno.documentos as any)?.foto_candidato;
     const effectivePhoto = profileAvatar || documentPhoto;
 
