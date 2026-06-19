@@ -34,6 +34,7 @@ ensureSupabaseEnv();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typedRoutes: false,
+  transpilePackages: ["@moxi/auth-middleware", "@moxi/tenant-sdk"],
   
   // Suas configurações existentes
   outputFileTracingRoot: path.join(__dirname, "../.."),

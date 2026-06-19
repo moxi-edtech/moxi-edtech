@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock, Layers } from "lucide-react";
+import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock, Layers, Table2 } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
@@ -138,6 +138,14 @@ export default function AcademicSection({
       reason:      !avaliacaoFrequenciaOk
         ? "Configure avaliação e frequência primeiro."
         : "Crie turmas antes de gerir promoções.",
+    },
+    {
+      title:       "Migração de Pautas",
+      description: "Histórico transitado em lote por turma",
+      icon:        Table2,
+      href:        buildPortalHref(escolaParam, "/admin/migracao/pautas"),
+      locked:      !turmasOk,
+      reason:      "Crie turmas antes de lançar histórico massivo.",
     },
     {
       title:       "Biblioteca",

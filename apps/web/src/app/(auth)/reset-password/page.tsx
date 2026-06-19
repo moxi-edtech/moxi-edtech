@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,16 @@ export default function ResetPasswordPage() {
   const [ok, setOk] = useState<string>("");
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const redirectWithSettledSession = useCallback(async () => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) break;
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+
+    window.location.replace("/redirect");
+  }, [supabase]);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -124,7 +134,9 @@ export default function ResetPasswordPage() {
       }
 
       setOk("Senha definida com sucesso.");
-      setTimeout(() => router.replace("/redirect"), 800);
+      window.setTimeout(() => {
+        void redirectWithSettledSession();
+      }, 400);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

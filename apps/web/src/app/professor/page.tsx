@@ -1,11 +1,10 @@
 "use client";
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
-import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
-import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon } from "@heroicons/react/24/outline";
+import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
@@ -250,10 +249,10 @@ export default function Page() {
                light: "bg-blue-50 text-blue-600"
             },
             { 
-               title: "Fluxo Acadêmico", 
-               desc: "Visão geral do cronograma", 
-               icon: MapIcon, 
-               href: "/professor/fluxos",
+               title: "Calendário Académico", 
+               desc: "Prazos, exames e marcos lectivos", 
+               icon: CalendarDaysIcon, 
+               href: "/professor/calendario",
                color: "from-slate-600 to-slate-800",
                light: "bg-slate-100 text-slate-600"
             }
@@ -322,7 +321,7 @@ export default function Page() {
           <section className="space-y-4">
              <div className="flex items-center justify-between px-2">
                 <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Agenda de {dayLabel(todayKey)}</h2>
-                <Link href={professorHref("/professor/fluxos")} className="text-[10px] font-black uppercase text-slate-500 hover:text-slate-900 transition-colors">Semana Inteira</Link>
+                <Link href={professorHref("/professor/calendario")} className="text-[10px] font-black uppercase text-slate-500 hover:text-slate-900 transition-colors">Calendário completo</Link>
              </div>
 
              <div className="rounded-[2.5rem] bg-white border border-slate-200 p-6 shadow-sm divide-y divide-slate-100">

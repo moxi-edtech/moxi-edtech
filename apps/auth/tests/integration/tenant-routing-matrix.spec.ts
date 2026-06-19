@@ -55,7 +55,7 @@ test("Integração auth: solo_creator ignora namespace center no pós-login", ()
   assert.deepEqual(solo, { product: "formacao", path: "/mentor/dashboard" });
 });
 
-test("Integração auth: k12 mantém handoff para redirect canônico", () => {
+test("Integração auth: k12 admin evita handoff para redirect canônico", () => {
   const k12 = resolveTenantRoute({
     tenantId: "k12-1",
     tenantName: "K12",
@@ -63,6 +63,5 @@ test("Integração auth: k12 mantém handoff para redirect canônico", () => {
     role: "admin",
   });
 
-  assert.deepEqual(k12, { product: "k12", path: "/redirect" });
+  assert.deepEqual(k12, { product: "k12", path: "/escola/k12-1/admin/dashboard" });
 });
-

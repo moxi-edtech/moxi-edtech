@@ -207,6 +207,7 @@ export default async function Page() {
     { label: 'Criar Usuário', route: '/super-admin/usuarios/novo', icon: PlusIcon },
     { label: 'Criar Escola', route: '/super-admin/escolas/nova', icon: BuildingLibraryIcon },
     { label: 'Lançar Nota', route: '/secretaria/notas', icon: ChartBarIcon },
+    { label: 'Migração de Pautas', route: '/admin/migracao/pautas', icon: ClipboardDocumentListIcon },
     { label: 'Registrar Pagamento', route: '/financeiro/pagamentos', icon: BanknotesIcon },
     { label: 'Operações Académicas', route: '/admin/operacoes-academicas', icon: ClipboardDocumentListIcon },
     { label: 'Fecho Académico', route: fechamentoRoute, icon: LockClosedIcon },

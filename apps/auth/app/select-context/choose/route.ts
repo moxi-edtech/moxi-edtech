@@ -31,6 +31,38 @@ function getPrivateLanHostname(value: string) {
   }
 }
 
+function resolveLanProductBases() {
+  const k12 = process.env.KLASSE_K12_LAN_ORIGIN?.trim();
+  const formacao = process.env.KLASSE_FORMACAO_LAN_ORIGIN?.trim();
+
+  if (!k12) return null;
+
+  try {
+    const k12Url = new URL(k12);
+    if (!getPrivateLanHostname(k12Url.toString())) return null;
+
+    if (formacao) {
+      const formacaoUrl = new URL(formacao);
+      if (getPrivateLanHostname(formacaoUrl.toString())) {
+        return {
+          k12: k12Url.toString().replace(/\/$/, ""),
+          formacao: formacaoUrl.toString().replace(/\/$/, ""),
+        };
+      }
+    }
+
+    const derivedFormacao = new URL(k12Url.toString());
+    derivedFormacao.port = "3002";
+
+    return {
+      k12: k12Url.toString().replace(/\/$/, ""),
+      formacao: derivedFormacao.toString().replace(/\/$/, ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function resolveProductBases(host: string, ...redirectHints: Array<string | null | undefined>) {
   const hints = redirectHints.map((hint) => String(hint ?? "").toLowerCase());
   const isLocalHost =
@@ -53,6 +85,9 @@ function resolveProductBases(host: string, ...redirectHints: Array<string | null
       hints.some((hint) => hint.includes("localhost"));
 
     if (prefersLocalhost) {
+      const lanBases = resolveLanProductBases();
+      if (lanBases) return lanBases;
+
       return {
         k12: process.env.KLASSE_K12_LOCALHOST_ORIGIN?.trim() || "http://localhost:3001",
         formacao: process.env.KLASSE_FORMACAO_LOCALHOST_ORIGIN?.trim() || "http://localhost:3002",

@@ -79,7 +79,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.93.3)
       '@supabase/supabase-js':
-        specifier: ^2.81.0
+        specifier: ^2.43.4
         version: 2.93.3
       framer-motion:
         specifier: 12.38.0
@@ -134,7 +134,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.93.3)
       '@supabase/supabase-js':
-        specifier: ^2.81.0
+        specifier: ^2.43.4
         version: 2.93.3
       clsx:
         specifier: ^2.1.1
@@ -265,7 +265,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.93.3)
       '@supabase/supabase-js':
-        specifier: ^2.81.0
+        specifier: ^2.43.4
         version: 2.93.3
       '@tanstack/react-table':
         specifier: ^8.21.3
@@ -428,13 +428,13 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.93.3)
       '@supabase/supabase-js':
-        specifier: ^2.81.0
+        specifier: ^2.43.4
         version: 2.93.3
 
   packages/tenant-sdk:
     devDependencies:
       '@supabase/supabase-js':
-        specifier: ^2.81.0
+        specifier: ^2.43.4
         version: 2.93.3
 
 packages:

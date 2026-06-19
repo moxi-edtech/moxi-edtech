@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { performance } from "node:perf_hooks";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { parsePlanTier } from "@/config/plans";
@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       }
     };
     const totalStart = shouldLog ? performance.now() : 0;
-    const supabase = await supabaseServerTyped<Database>();
+    const supabase = await supabaseRouteClient<Database>();
     const authStart = shouldLog ? performance.now() : 0;
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user ?? null;

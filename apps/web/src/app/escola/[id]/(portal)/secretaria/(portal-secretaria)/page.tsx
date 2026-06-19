@@ -18,7 +18,7 @@ export default async function SecretariaLandingPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return <SecretariaDashboardPage />;
+  if (!user) redirect("/redirect");
 
   const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
   const resolvedEscolaId = await resolveEscolaIdForUser(
@@ -28,7 +28,7 @@ export default async function SecretariaLandingPage({
     metaEscolaId ? String(metaEscolaId) : null
   );
 
-  if (!resolvedEscolaId) return <SecretariaDashboardPage />;
+  if (!resolvedEscolaId) redirect("/redirect");
 
   const { data: vinculo } = await supabase
     .from("escola_users")

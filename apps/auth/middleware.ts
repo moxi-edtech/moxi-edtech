@@ -70,26 +70,6 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (process.env.NODE_ENV !== "production" && (host.includes("localhost") || host.includes("127.0.0.1"))) {
-    const canonicalHost = (process.env.KLASSE_AUTH_LOCAL_ORIGIN ?? "http://auth.lvh.me:3000")
-      .trim()
-      .toLowerCase();
-    try {
-      const canonical = new URL(canonicalHost);
-      if (canonical.host && canonical.host !== host) {
-        const next = request.nextUrl.clone();
-        next.protocol = canonical.protocol;
-        next.hostname = canonical.hostname;
-        next.port = canonical.port;
-        const redirectResponse = NextResponse.redirect(next, 307);
-        applyCorsHeaders(redirectResponse, allowedOrigin);
-        return redirectResponse;
-      }
-    } catch {
-      // ignore invalid canonical origin and continue normal flow
-    }
-  }
-
   const response = NextResponse.next();
   applyCorsHeaders(response, allowedOrigin);
 

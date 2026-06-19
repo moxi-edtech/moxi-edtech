@@ -232,6 +232,26 @@ function isLocalhostHost(host: string | null | undefined) {
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized.endsWith(".localhost");
 }
 
+function resolveCurrentAppOrigin(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return request.nextUrl.origin;
+  }
+
+  const hostHeader = (request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+
+  if (isLocalhostHost(hostHeader)) {
+    return safeAbsoluteUrl(
+      process.env.KLASSE_K12_LOCALHOST_ORIGIN,
+      request.nextUrl.origin
+    );
+  }
+
+  return request.nextUrl.origin;
+}
+
 function safeAbsoluteUrl(
   value: string | undefined,
   fallback: string
@@ -314,6 +334,13 @@ function resolveRequestedLoginReturnTo(request: NextRequest) {
   } catch {
     return request.nextUrl.origin + '/redirect';
   }
+}
+
+function isDocumentNavigation(request: NextRequest) {
+  if (request.nextUrl.searchParams.has('_rsc')) return false;
+  if (request.headers.get('x-nextjs-data')) return false;
+  const accept = request.headers.get('accept') ?? '';
+  return accept.includes('text/html');
 }
 
 function pathRequiresK12Model(pathname: string): boolean {
@@ -452,10 +479,34 @@ async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise
   return authContext;
 }
 
+function hasTenantContextCookie(request: NextRequest): boolean {
+  return getCookieValues(request, TENANT_CONTEXT_COOKIE).length > 0;
+}
+
 async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext | null> {
   const cookieContext = await resolveAuthContextFromTenantCookie(request);
   if (cookieContext) return cookieContext;
 
+  const supabase = createSupabaseClient(request, response);
+  if (!supabase) return null;
+
+  const resolved = await resolveDbAuthContext({
+    supabase,
+    preferredTenantType: null,
+  });
+  if (!resolved.hasSession) return null;
+
+  return {
+    userId: resolved.userId,
+    role: resolved.role,
+    tenantId: resolved.tenantId,
+    escolaId: resolved.tenantId,
+    tenantSlug: null,
+    tenantType: resolved.tenantType as TenantType | null,
+  };
+}
+
+async function resolveFreshAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext | null> {
   const supabase = createSupabaseClient(request, response);
   if (!supabase) return null;
 
@@ -511,18 +562,18 @@ function redirectToCentralAuth(request: NextRequest, baseResponse: NextResponse)
   const loginUrl = new URL(
     resolveUniversalLoginUrl(request.headers.get('x-forwarded-host') ?? request.headers.get('host'))
   );
-  const canonicalOrigin = safeAbsoluteUrl(
-    process.env.KLASSE_K12_LOCAL_ORIGIN,
-    "http://app.lvh.me:3001"
-  );
+  const hasStaleContextHint = hasTenantContextCookie(request) || hasLikelySupabaseSessionCookie(request);
   const canonicalReturnTo =
     process.env.NODE_ENV !== 'production'
       ? new URL(
           `${request.nextUrl.pathname}${request.nextUrl.search}`,
-          canonicalOrigin
+          resolveCurrentAppOrigin(request)
         ).toString()
       : request.nextUrl.href;
   loginUrl.searchParams.set('redirect', canonicalReturnTo);
+  if (hasStaleContextHint) {
+    loginUrl.searchParams.set('error', 'context');
+  }
   const redirectResponse = NextResponse.redirect(loginUrl);
   applyResponseCookies(baseResponse, redirectResponse);
   return redirectResponse;
@@ -597,6 +648,7 @@ export async function middleware(request: NextRequest) {
     .split(',')[0]
     .trim()
     .toLowerCase();
+  const response = NextResponse.next();
 
   // Força redirecionamento imediato para Central Auth se acessar /login local
   if (pathname === '/login' || pathname === '/login/') {
@@ -618,17 +670,17 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isRedirectPath(pathname)) {
-    const fastAuthContext = await resolveAuthContextFromTenantCookie(request);
-    if (fastAuthContext) {
-      const dest = getLandingPathByContext(fastAuthContext);
+    const freshRedirectContext = await resolveFreshAuthContext(request, response);
+    if (freshRedirectContext) {
+      const dest = getLandingPathByContext(freshRedirectContext);
       if (isInternalPath(dest) && !isRedirectPath(dest)) {
         console.info(
           JSON.stringify({
             event: 'redirect_fast_path_used',
             path: pathname,
             destination: dest,
-            tenant_type: fastAuthContext.tenantType,
-            role: fastAuthContext.role,
+            tenant_type: freshRedirectContext.tenantType,
+            role: freshRedirectContext.role,
             timestamp: new Date().toISOString(),
           })
         );
@@ -640,30 +692,13 @@ export async function middleware(request: NextRequest) {
       JSON.stringify({
         event: 'redirect_fast_path_miss',
         path: pathname,
-        reason: fastAuthContext ? 'invalid_destination' : 'context_unavailable',
+        reason:
+          hasTenantContextCookie(request) || hasLikelySupabaseSessionCookie(request)
+            ? 'stale_or_unresolved_session'
+            : 'context_unavailable',
         timestamp: new Date().toISOString(),
       })
     );
-  }
-
-  if (
-    process.env.NODE_ENV !== 'production' &&
-    process.env.KLASSE_FORCE_LOCAL_CANONICAL_HOST === '1' &&
-    (host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.endsWith('.localhost'))
-  ) {
-    const canonicalOrigin = (process.env.KLASSE_K12_LOCAL_ORIGIN ?? 'http://app.lvh.me:3001').trim();
-    try {
-      const canonical = new URL(canonicalOrigin);
-      if (canonical.host && canonical.host !== host) {
-        const next = request.nextUrl.clone();
-        next.protocol = canonical.protocol;
-        next.hostname = canonical.hostname;
-        next.port = canonical.port;
-        return NextResponse.redirect(next, 307);
-      }
-    } catch {
-      // ignore invalid canonical origin and continue normal flow
-    }
   }
 
   const productContext = detectProductContextFromHostname(request.headers.get('host'));
@@ -746,7 +781,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.next();
   const fastAuthContext = await resolveAuthContextFromTenantCookie(request);
 
   const escolaMatch = pathname.match(/^\/(api\/)?escolas?\/([^/]+)(\/.*)?$/);
@@ -759,7 +793,9 @@ export async function middleware(request: NextRequest) {
     if (escolaParam !== 'suspensa') {
       const resolved = await resolveEscolaSlugMapping(request, response, escolaParam, fastAuthContext);
       if (resolved) {
-        const tenant = fastAuthContext ?? await resolveAuthContext(request, response);
+        const tenant = fastAuthContext
+          ? await resolveFreshAuthContext(request, response)
+          : await resolveAuthContext(request, response);
         if (!tenant) {
           if (!isApi) {
             console.info(
@@ -806,7 +842,9 @@ export async function middleware(request: NextRequest) {
   const portalRule = PORTAL_RULES.find((rule) => pathname.startsWith(rule.prefix));
   if (!portalRule) return finalizeResponse(request, response, allowedOrigin);
 
-  const authContext = fastAuthContext ?? await resolveAuthContext(request, response);
+  const authContext = fastAuthContext
+    ? await resolveFreshAuthContext(request, response)
+    : await resolveAuthContext(request, response);
   if (!authContext?.role) {
     console.info(
       JSON.stringify({

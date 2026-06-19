@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { PlusCircle, UserPlus, FileText, Megaphone, Calendar } from "lucide-react";
+import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2 } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
 import EventosPage from "@/app/escola/[id]/(portal)/eventos/page";
@@ -24,7 +24,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type QuickAction = {
-  key:      "funcionario" | "nota" | "aviso" | "evento";
+  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas";
   label:    string;
   href:     string;
   icon:     React.ElementType;
@@ -81,6 +81,14 @@ export default function QuickActionsSection({
       icon:  Calendar,
       href:  buildPortalHref(escolaParam, "/admin/calendario/novo"),
       opensModal: true,
+    },
+    {
+      key: "migracao_pautas",
+      label: "Migrar Pautas",
+      icon: Table2,
+      href: buildPortalHref(escolaParam, "/admin/migracao/pautas"),
+      disabled: !turmasOk,
+      reason: "Crie turmas antes de usar a migração de pautas.",
     },
   ];
 

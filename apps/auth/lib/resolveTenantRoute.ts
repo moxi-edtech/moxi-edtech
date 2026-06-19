@@ -2,6 +2,33 @@ import type { UserTenant } from "@/lib/getUserTenants";
 
 export type ProductContext = "k12" | "formacao";
 
+function resolveK12Path(tenant: UserTenant): string {
+  const escolaParam = tenant.tenantSlug || tenant.tenantId;
+
+  switch (tenant.role) {
+    case "super_admin":
+    case "global_admin":
+      return "/super-admin";
+    case "admin":
+    case "admin_escola":
+    case "staff_admin":
+    case "admin_financeiro":
+      return `/escola/${escolaParam}/admin/dashboard`;
+    case "secretaria":
+    case "secretaria_financeiro":
+      return `/escola/${escolaParam}/secretaria`;
+    case "financeiro":
+      return `/escola/${escolaParam}/financeiro`;
+    case "professor":
+      return `/escola/${escolaParam}/professor`;
+    case "aluno":
+    case "encarregado":
+      return `/escola/${escolaParam}/aluno/dashboard`;
+    default:
+      return `/escola/${escolaParam}/dashboard`;
+  }
+}
+
 export function resolveTenantRoute(tenant: UserTenant): { product: ProductContext; path: string } {
   if (tenant.tenantType === "solo_creator") {
     return { product: "formacao", path: "/mentor/dashboard" };
@@ -15,11 +42,5 @@ export function resolveTenantRoute(tenant: UserTenant): { product: ProductContex
     return { product: "formacao", path: "/admin/dashboard" };
   }
 
-  if (tenant.role === "aluno" || tenant.role === "encarregado") {
-    const escolaParam = tenant.tenantSlug || tenant.tenantId;
-    return { product: "k12", path: `/escola/${escolaParam}/aluno/dashboard` };
-  }
-
-  // For remaining K12 roles, hand off to app redirect resolver so admin/onboarding gates are respected.
-  return { product: "k12", path: "/redirect" };
+  return { product: "k12", path: resolveK12Path(tenant) };
 }

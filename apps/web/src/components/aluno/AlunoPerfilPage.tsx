@@ -2,7 +2,13 @@ import { notFound } from "next/navigation";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
-import { DossierDocumentosSection, DossierFinanceiroSection, DossierHistoricoSection, DossierPerfilSection } from "@/components/aluno/DossierSeccoes";
+import {
+  DossierDocumentosSection,
+  DossierFinanceiroSection,
+  DossierHistoricoSection,
+  DossierHistoricoTransitadoSection,
+  DossierPerfilSection,
+} from "@/components/aluno/DossierSeccoes";
 import { normalizeDossier, toMensalidadeAcoes } from "@/lib/aluno";
 import type { RawDossier, RawDossierMensalidade } from "@/lib/aluno/types";
 import { supabaseServer } from "@/lib/supabaseServer";
@@ -86,6 +92,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
 
   const aluno = normalizeDossier(alunoId, enrichedRaw);
   if (!aluno) return notFound();
+  const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -96,6 +103,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
           slotPerfil={<DossierPerfilSection aluno={aluno} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
+          slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
         />
         {role === "secretaria" && (

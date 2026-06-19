@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { requireRoleInSchool } from '@/lib/authz'
 import { requireFeature } from '@/lib/plan/requireFeature'
 import { HttpError } from '@/lib/errors'
+import { buildCertificadoSnapshot, type CertificadoSnapshot } from '@/lib/documentos/certificadoSnapshot'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
     const { data: matriculas, error: matError } = await query
     if (matError) return NextResponse.json({ ok: false, error: matError.message }, { status: 400 })
 
-    const snapshots: any[] = []
+    const snapshots: CertificadoSnapshot[] = []
     for (const m of matriculas || []) {
       const { data: docRes, error: emitError } = await supabase.rpc('emitir_documento_final', {
         p_escola_id: escolaId,
@@ -83,8 +84,16 @@ export async function POST(request: Request) {
         .eq('escola_id', escolaId)
         .maybeSingle()
 
-      const snapshot = (row?.dados_snapshot || {}) as Record<string, any>
-      snapshots.push({ ...snapshot, hash_validacao: row?.hash_validacao ?? snapshot.hash_validacao ?? null })
+      const snapshot = (row?.dados_snapshot || {}) as Record<string, unknown>
+      const certificado = await buildCertificadoSnapshot({
+        supabase,
+        escolaId,
+        alunoId: m.aluno_id,
+        baseSnapshot: snapshot,
+        hashValidacao: row?.hash_validacao ?? snapshot.hash_validacao ?? null,
+      })
+
+      snapshots.push(certificado)
     }
 
     return NextResponse.json({ ok: true, snapshots })

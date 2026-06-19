@@ -22,7 +22,7 @@
     "@moxi/tenant-sdk": "workspace:*",
     "@react-pdf/renderer": "^4.3.2",
     "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "^2.81.0",
+    "@supabase/supabase-js": "^2.43.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.562.0",

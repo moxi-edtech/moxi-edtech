@@ -26,7 +26,7 @@ test("resolveTenantRoute: formacao_financeiro aponta para financeiro", () => {
   assert.equal(resolved.path, "/financeiro/dashboard");
 });
 
-test("resolveTenantRoute: k12 mantém handoff para redirect", () => {
+test("resolveTenantRoute: k12 admin aponta directo para dashboard da escola", () => {
   const resolved = resolveTenantRoute({
     tenantId: "tenant-k12",
     tenantName: "K12",
@@ -35,5 +35,5 @@ test("resolveTenantRoute: k12 mantém handoff para redirect", () => {
   });
 
   assert.equal(resolved.product, "k12");
-  assert.equal(resolved.path, "/redirect");
+  assert.equal(resolved.path, "/escola/tenant-k12/admin/dashboard");
 });

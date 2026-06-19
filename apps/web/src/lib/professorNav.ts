@@ -1,8 +1,8 @@
 import {
+  CalendarDays,
   LayoutDashboard,
   ClipboardCheck,
   FileText,
-  Workflow,
   User,
   BookOpen as BookOpenIcon,
   type LucideIcon,
@@ -23,6 +23,6 @@ export const professorNavItems: ProfessorNavItem[] = [
   { path: "/professor/frequencias", label: "Frequências", icon: ClipboardCheck },
   { path: "/professor/notas", label: "Notas", icon: FileText },
   { path: "/professor/materiais", label: "Materiais", icon: BookOpenIcon },
-  { path: "/professor/fluxos", label: "Fluxos", icon: Workflow },
+  { path: "/professor/calendario", label: "Calendário", icon: CalendarDays },
   { path: "/professor/perfil", label: "Perfil", icon: User },
 ];

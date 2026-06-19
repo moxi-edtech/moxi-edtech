@@ -7,6 +7,7 @@ import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
 import type { AlunoNormalizado, DossierMensalidade } from "@/lib/aluno/types";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHistoricoTimelineSection";
+import { DossierHistoricoTransitadoSection as DossierHistoricoTransitadoSectionClient } from "@/components/aluno/DossierHistoricoTransitadoSection";
 import { QuickEditField } from "@/components/aluno/QuickEditField";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { PushSettings } from "@/components/aluno/PushSettings";
@@ -280,6 +281,16 @@ export function DossierHistoricoSection({
   escolaId?: string | null;
 }) {
   return <DossierHistoricoTimelineSection alunoId={alunoId} role={role} escolaId={escolaId} />;
+}
+
+export function DossierHistoricoTransitadoSection({
+  alunoId,
+  canEdit = true,
+}: {
+  alunoId: string;
+  canEdit?: boolean;
+}) {
+  return <DossierHistoricoTransitadoSectionClient alunoId={alunoId} canEdit={canEdit} />;
 }
 
 export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
