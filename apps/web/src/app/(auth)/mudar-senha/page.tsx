@@ -100,20 +100,39 @@ export default function Page() {
           <p className="text-sm text-gray-600 mt-1">Por favor, altere sua senha temporária.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
           <div>
             <label className="block text-sm font-medium text-slate-700">E-mail</label>
-            <input className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 bg-slate-50" value={email} disabled />
+            <input
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 bg-slate-50"
+              value={email}
+              disabled
+              suppressHydrationWarning
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700">Senha atual</label>
-            <input type="password" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" value={current} onChange={(e)=>setCurrent(e.target.value)} required />
+            <input
+              type="password"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              value={current}
+              onChange={(e)=>setCurrent(e.target.value)}
+              required
+              suppressHydrationWarning
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700">Nova senha</label>
-            <input type="password" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" value={nextPwd} onChange={(e)=>setNextPwd(e.target.value)} required />
+            <input
+              type="password"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              value={nextPwd}
+              onChange={(e)=>setNextPwd(e.target.value)}
+              required
+              suppressHydrationWarning
+            />
             {/* Indicador de força da senha */}
             {nextPwd && (
               <PasswordStrength pwd={nextPwd} />
@@ -122,7 +141,14 @@ export default function Page() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700">Confirmar nova senha</label>
-            <input type="password" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" value={confirm} onChange={(e)=>setConfirm(e.target.value)} required />
+            <input
+              type="password"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+              value={confirm}
+              onChange={(e)=>setConfirm(e.target.value)}
+              required
+              suppressHydrationWarning
+            />
           </div>
 
           {error && <p className="text-center text-sm text-red-500 font-medium">{error}</p>}

@@ -30,7 +30,7 @@ export default function LoginForm({ redirectTo }: Props) {
         <div className="mt-1 text-sm text-slate-600">Faça login para acessar sua conta.</div>
       </div>
 
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} className="space-y-4" suppressHydrationWarning>
         <input type="hidden" name="redirect_to" value={redirectTo} />
 
         <div>
@@ -41,6 +41,7 @@ export default function LoginForm({ redirectTo }: Props) {
             autoComplete="username"
             required
             placeholder="Email ou número de processo"
+            suppressHydrationWarning
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
           />
           <p className="mt-1 text-xs text-slate-500">Alunos podem usar o número de processo.</p>
@@ -55,6 +56,7 @@ export default function LoginForm({ redirectTo }: Props) {
               autoComplete="current-password"
               required
               placeholder="••••••••"
+              suppressHydrationWarning
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
             />
             <button
@@ -75,6 +77,7 @@ export default function LoginForm({ redirectTo }: Props) {
             <input
               type="checkbox"
               name="remember"
+              suppressHydrationWarning
               className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold"
             />
             <span className="text-sm font-medium text-slate-600">Lembrar-me</span>

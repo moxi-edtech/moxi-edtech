@@ -1,37 +1,16 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { listAlunos, listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import {
+  parseAlunoExportFormat,
+  renderAlunosExport,
+  sortAlunoExportRows,
+} from "@/lib/services/alunosExport.server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
-
-const HEADERS = [
-  "nome",
-  "email",
-  "responsavel",
-  "telefone_responsavel",
-  "status",
-  "numero_processo_login",
-  "numero_processo",
-  "origem",
-  "created_at",
-];
-
-const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
-
-const toCsv = (rows: any[]) => {
-  const lines = [HEADERS.join(",")];
-  rows.forEach((row) => {
-    const line = HEADERS.map((key) => {
-      const value = row?.[key];
-      return escapeCsv(value === null || value === undefined ? "" : String(value));
-    }).join(",");
-    lines.push(line);
-  });
-  return `\ufeff${lines.join("\n")}`;
-};
 
 export async function GET(req: Request) {
   try {
@@ -49,29 +28,20 @@ export async function GET(req: Request) {
     }
 
     const filters = parseAlunoListFilters(url);
-    const exportAll = url.searchParams.get("all") === "1";
-
-    const items = exportAll
-      ? await listAllAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })
-      : (await listAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })).items;
-
-    const sorted = [...items].sort((a, b) => {
-      const nomeA = (a.nome ?? "").toLocaleLowerCase("pt-AO");
-      const nomeB = (b.nome ?? "").toLocaleLowerCase("pt-AO");
-      const compare = nomeA.localeCompare(nomeB, "pt-AO", { sensitivity: "base" });
-      if (compare !== 0) return compare;
-      return (a.id ?? "").localeCompare(b.id ?? "");
-    });
-
-    const csv = toCsv(sorted);
+    const format = parseAlunoExportFormat(url.searchParams.get("tipo"));
+    const sorted = sortAlunoExportRows(
+      await listAllAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })
+    );
+    const rendered = await renderAlunosExport(sorted, format);
     const status = filters.status ?? "ativo";
     const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
-    const filename = `alunos-${segmento}-${exportAll ? "todos" : "pagina"}-${Date.now()}.csv`;
+    const filename = `alunos-${segmento}-${Date.now()}.${rendered.extension}`;
 
-    return new NextResponse(csv, {
+    return new NextResponse(rendered.body as BodyInit, {
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Type": rendered.contentType,
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-store",
       },
     });
   } catch (e: any) {

@@ -156,6 +156,11 @@ function shouldForcePasswordChange(userMetadata: unknown) {
   return Boolean((userMetadata as Record<string, unknown> | null | undefined)?.must_change_password);
 }
 
+function buildLogoutRecoveryUrl(loginSuffix: string) {
+  const next = loginSuffix ? `/redirect${loginSuffix}` : "/redirect";
+  return `/logout?next=${encodeURIComponent(next)}`;
+}
+
 function resolvePasswordChangeDestination(productBase: string, product: string) {
   if (product !== "k12") return null;
   return `${productBase.replace(/\/$/, "")}/mudar-senha`;
@@ -208,7 +213,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       route: "/redirect",
       details: { reason: "no_session" },
     });
-    redirect(`/login${loginSuffix}`);
+    redirect(buildLogoutRecoveryUrl(loginSuffix));
   }
 
   const forcePasswordChange = shouldForcePasswordChange(user.user_metadata);

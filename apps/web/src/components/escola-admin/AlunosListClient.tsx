@@ -949,6 +949,7 @@ export default function AlunosListClient({
     try {
       const url = new URL(`/api/escolas/${escolaId}/admin/alunos/exportar`, window.location.origin);
       url.searchParams.set("tipo", tipo);
+      url.searchParams.set("all", "1");
       url.searchParams.set("status", tab === "ativos" ? "active" : "archived");
       if (q.trim())                    url.searchParams.set("q", q.trim());
       if (filtros.situacao_financeira) url.searchParams.set("situacao_financeira", filtros.situacao_financeira);
@@ -958,11 +959,13 @@ export default function AlunosListClient({
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error("Falha na exportação.");
 
-      const blob     = await res.blob();
-      const blobUrl  = URL.createObjectURL(blob);
-      const a        = document.createElement("a");
-      a.href         = blobUrl;
-      a.download     = `alunos-${tab}-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`;
+      const blob        = await res.blob();
+      const blobUrl     = URL.createObjectURL(blob);
+      const disposition = res.headers.get("content-disposition") ?? "";
+      const filename    = disposition.match(/filename="([^"]+)"/)?.[1] ?? `alunos-${tab}-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`;
+      const a           = document.createElement("a");
+      a.href            = blobUrl;
+      a.download        = filename;
       a.click();
       URL.revokeObjectURL(blobUrl);
       success("Exportação concluída", `Lista exportada em ${tipo === "excel" ? "Excel" : "PDF"}.`);
