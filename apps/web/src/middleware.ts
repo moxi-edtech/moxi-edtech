@@ -650,6 +650,59 @@ function applyResponseCookies(source: NextResponse, target: NextResponse) {
   });
 }
 
+function expireAuthCookiesFromRequest(request: NextRequest, response: NextResponse) {
+  const cookieNames = Array.from(new Set(request.cookies.getAll().map((cookie) => cookie.name)));
+  const domainCandidates = Array.from(
+    new Set(
+      [
+        process.env.KLASSE_COOKIE_DOMAIN?.trim(),
+        process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim(),
+        request.nextUrl.hostname.endsWith('.klasse.ao') ? '.klasse.ao' : null,
+      ].filter(Boolean) as string[]
+    )
+  );
+
+  for (const name of cookieNames) {
+    if (name !== TENANT_CONTEXT_COOKIE && !name.startsWith('sb-')) continue;
+
+    response.cookies.set(name, '', {
+      path: '/',
+      maxAge: 0,
+      httpOnly: false,
+      secure: request.nextUrl.protocol === 'https:',
+      sameSite: 'lax',
+    });
+
+    for (const domain of domainCandidates) {
+      response.cookies.set(name, '', {
+        path: '/',
+        maxAge: 0,
+        httpOnly: false,
+        secure: request.nextUrl.protocol === 'https:',
+        sameSite: 'lax',
+        domain,
+      });
+    }
+  }
+}
+
+function isRefreshTokenNotFoundError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const code = 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+  const message = 'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
+  return code === 'refresh_token_not_found' || message.toLowerCase().includes('refresh token not found');
+}
+
+function redirectToCentralAuthAfterCookieReset(request: NextRequest, baseResponse: NextResponse) {
+  logMiddlewareCookieState('middleware_refresh_token_not_found', request, {
+    recovery: 'clear_auth_cookies_and_redirect_to_auth',
+  });
+  expireAuthCookiesFromRequest(request, baseResponse);
+  const redirectResponse = redirectToCentralAuth(request, baseResponse);
+  applyResponseCookies(baseResponse, redirectResponse);
+  return redirectResponse;
+}
+
 async function resolveEscolaSlugMapping(
   request: NextRequest,
   response: NextResponse,
@@ -723,47 +776,54 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isRedirectPath(pathname)) {
-    const freshRedirectContext = await resolveFreshAuthContext(request, response);
-    if (freshRedirectContext) {
-      logMiddlewareCookieState('middleware_redirect_fresh_context', request, {
-        user_id: freshRedirectContext.userId,
-        tenant_id: freshRedirectContext.tenantId,
-        tenant_type: freshRedirectContext.tenantType,
-        role: freshRedirectContext.role,
-      });
-      const dest = getLandingPathByContext(freshRedirectContext);
-      if (isInternalPath(dest) && !isRedirectPath(dest)) {
-        console.info(
-          JSON.stringify({
-            event: 'redirect_fast_path_used',
-            path: pathname,
-            destination: dest,
-            tenant_type: freshRedirectContext.tenantType,
-            role: freshRedirectContext.role,
-            timestamp: new Date().toISOString(),
-          })
-        );
-        return NextResponse.redirect(new URL(dest, request.nextUrl.origin));
+    try {
+      const freshRedirectContext = await resolveFreshAuthContext(request, response);
+      if (freshRedirectContext) {
+        logMiddlewareCookieState('middleware_redirect_fresh_context', request, {
+          user_id: freshRedirectContext.userId,
+          tenant_id: freshRedirectContext.tenantId,
+          tenant_type: freshRedirectContext.tenantType,
+          role: freshRedirectContext.role,
+        });
+        const dest = getLandingPathByContext(freshRedirectContext);
+        if (isInternalPath(dest) && !isRedirectPath(dest)) {
+          console.info(
+            JSON.stringify({
+              event: 'redirect_fast_path_used',
+              path: pathname,
+              destination: dest,
+              tenant_type: freshRedirectContext.tenantType,
+              role: freshRedirectContext.role,
+              timestamp: new Date().toISOString(),
+            })
+          );
+          return NextResponse.redirect(new URL(dest, request.nextUrl.origin));
+        }
       }
-    }
 
-    console.info(
-      JSON.stringify({
-        event: 'redirect_fast_path_miss',
-        path: pathname,
+      console.info(
+        JSON.stringify({
+          event: 'redirect_fast_path_miss',
+          path: pathname,
+          reason:
+            hasTenantContextCookie(request) || hasLikelySupabaseSessionCookie(request)
+              ? 'stale_or_unresolved_session'
+              : 'context_unavailable',
+          timestamp: new Date().toISOString(),
+        })
+      );
+      logMiddlewareCookieState('middleware_redirect_fast_path_miss_cookies', request, {
         reason:
           hasTenantContextCookie(request) || hasLikelySupabaseSessionCookie(request)
             ? 'stale_or_unresolved_session'
             : 'context_unavailable',
-        timestamp: new Date().toISOString(),
-      })
-    );
-    logMiddlewareCookieState('middleware_redirect_fast_path_miss_cookies', request, {
-      reason:
-        hasTenantContextCookie(request) || hasLikelySupabaseSessionCookie(request)
-          ? 'stale_or_unresolved_session'
-          : 'context_unavailable',
-    });
+      });
+    } catch (error) {
+      if (isRefreshTokenNotFoundError(error)) {
+        return finalizeResponse(request, redirectToCentralAuthAfterCookieReset(request, response), resolveAllowedOrigin(request, request.headers.get('origin')));
+      }
+      throw error;
+    }
   }
 
   const productContext = detectProductContextFromHostname(request.headers.get('host'));
@@ -858,9 +918,17 @@ export async function middleware(request: NextRequest) {
     if (escolaParam !== 'suspensa') {
       const resolved = await resolveEscolaSlugMapping(request, response, escolaParam, fastAuthContext);
       if (resolved) {
-        const tenant = fastAuthContext
-          ? await resolveFreshAuthContext(request, response)
-          : await resolveAuthContext(request, response);
+        let tenant: AuthContext | null = null;
+        try {
+          tenant = fastAuthContext
+            ? await resolveFreshAuthContext(request, response)
+            : await resolveAuthContext(request, response);
+        } catch (error) {
+          if (isRefreshTokenNotFoundError(error)) {
+            return finalizeResponse(request, redirectToCentralAuthAfterCookieReset(request, response), allowedOrigin);
+          }
+          throw error;
+        }
         if (!tenant) {
           if (!isApi) {
             console.info(
@@ -907,9 +975,17 @@ export async function middleware(request: NextRequest) {
   const portalRule = PORTAL_RULES.find((rule) => pathname.startsWith(rule.prefix));
   if (!portalRule) return finalizeResponse(request, response, allowedOrigin);
 
-  const authContext = fastAuthContext
-    ? await resolveFreshAuthContext(request, response)
-    : await resolveAuthContext(request, response);
+  let authContext: AuthContext | null = null;
+  try {
+    authContext = fastAuthContext
+      ? await resolveFreshAuthContext(request, response)
+      : await resolveAuthContext(request, response);
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      return finalizeResponse(request, redirectToCentralAuthAfterCookieReset(request, response), allowedOrigin);
+    }
+    throw error;
+  }
   if (!authContext?.role) {
     console.info(
       JSON.stringify({
