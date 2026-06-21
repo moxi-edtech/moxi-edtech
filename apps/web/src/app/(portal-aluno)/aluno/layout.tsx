@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AlunoLayoutClient from "@/app/(portal-aluno)/aluno/AlunoLayoutClient";
+import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 
 const resolveAlunoIds = async (supabase: Awaited<ReturnType<typeof supabaseServer>>, escolaId: string, userId: string, email?: string | null) => {
   const alunoIds = new Set<string>();
@@ -64,7 +65,20 @@ const alunoTemInadimplencia = async (
 
 export default async function AlunoLayout({ children }: { children: React.ReactNode }) {
   const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
+  let auth:
+    | {
+        user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
+      }
+    | undefined;
+  try {
+    const userResult = await supabase.auth.getUser();
+    auth = userResult.data;
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      redirect("/redirect");
+    }
+    throw error;
+  }
   const user = auth?.user;
 
   if (!user) {

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +30,16 @@ function resolveAuthLoginUrl(host: string, isLocalHost: boolean) {
 export default async function Page() {
   // 🔑 1. Verifica se já existe uma sessão ativa no servidor
   const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  try {
+    const userResult = await supabase.auth.getUser();
+    user = userResult.data.user;
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      return redirect("/redirect");
+    }
+    throw error;
+  }
 
   if (user) {
     // Se o usuário já está logado, pula o login e vai para o roteador interno

@@ -1,5 +1,6 @@
 import ProfessorPortalLayout from "@/components/professor/layout/ProfessorPortalLayout";
 import { requireSchoolActive } from "@/lib/auth/requireSchoolActive";
+import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { redirect } from "next/navigation";
@@ -25,9 +26,16 @@ export default async function ProfessorEscolaLayout({
   await requireSchoolActive(id);
 
   const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  try {
+    const userResult = await supabase.auth.getUser();
+    user = userResult.data.user;
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      redirect("/redirect");
+    }
+    throw error;
+  }
 
   if (!user) {
     redirect("/redirect");
