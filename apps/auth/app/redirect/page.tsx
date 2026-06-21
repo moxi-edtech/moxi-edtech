@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { getUserTenants } from "@/lib/getUserTenants";
 import { logAuthEvent } from "@/lib/auth-log";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
+import { createSessionHandoffPayload, shouldUseSessionHandoff } from "@/lib/sessionHandoff";
 import {
   clearTenantContextCookie,
   getTenantContextCookieForUser,
@@ -210,6 +211,22 @@ function resolvePasswordChangeDestination(productBase: string, product: string) 
   return `${productBase.replace(/\/$/, "")}/mudar-senha`;
 }
 
+function renderSessionHandoff(destination: string, payload: string) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-white p-6">
+      <form id="session-handoff-form" action={`${new URL(destination).origin}/api/auth/handoff`} method="post">
+        <input type="hidden" name="payload" value={payload} />
+      </form>
+      <p className="text-sm text-slate-500">Redirecionando...</p>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "document.getElementById('session-handoff-form')?.submit();",
+        }}
+      />
+    </main>
+  );
+}
+
 async function resolveGlobalRole(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   userId: string,
@@ -269,6 +286,8 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const supabase = await supabaseServer();
   const { data: authData } = await supabase.auth.getUser();
   const user = authData.user;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
 
   const params = await searchParams;
   const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
@@ -366,6 +385,20 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       tenant_type: cachedContext.tenant_type,
       details: { destination, source: "tenant_context_cookie" },
     });
+    if (
+      session?.access_token &&
+      session?.refresh_token &&
+      shouldUseSessionHandoff(destination, bases.k12)
+    ) {
+      return renderSessionHandoff(
+        destination,
+        createSessionHandoffPayload({
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+          destination,
+        })
+      );
+    }
     redirect(destination);
   }
 
@@ -458,6 +491,20 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
         tenant_type: preferredTenant.tenantType,
         details: { destination, source: "preferred_profile_context" },
       });
+      if (
+        session?.access_token &&
+        session?.refresh_token &&
+        shouldUseSessionHandoff(destination, bases.k12)
+      ) {
+        return renderSessionHandoff(
+          destination,
+          createSessionHandoffPayload({
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+            destination,
+          })
+        );
+      }
       redirect(destination);
     }
 
@@ -503,6 +550,21 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     tenant_type: selected.tenantType,
     details: { destination, source: "single_tenant_resolved" },
   });
+
+  if (
+    session?.access_token &&
+    session?.refresh_token &&
+    shouldUseSessionHandoff(destination, bases.k12)
+  ) {
+    return renderSessionHandoff(
+      destination,
+      createSessionHandoffPayload({
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
+        destination,
+      })
+    );
+  }
 
   redirect(destination);
 }
