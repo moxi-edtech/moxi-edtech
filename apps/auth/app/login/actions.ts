@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
@@ -107,6 +107,51 @@ function buildCanonicalStudentEmails(identifier: string) {
     `${upper}@klasse.ao`,
     compact ? `${compact}@klasse.ao` : null,
   ]);
+}
+
+function isSupabaseAuthCookie(name: string) {
+  return name.startsWith("sb-") && (name.includes("auth-token") || name.includes("access-token") || name.includes("refresh-token"));
+}
+
+async function clearExistingAuthCookies() {
+  const headerStore = await headers();
+  const cookieStore = await cookies();
+  const cookieHeader = headerStore.get("cookie") ?? "";
+  const cookieNames = Array.from(
+    new Set(
+      cookieHeader
+        .split(";")
+        .map((part) => part.trim().split("=")[0]?.trim())
+        .filter(Boolean) as string[]
+    )
+  );
+
+  const domain =
+    readEnv(process.env.KLASSE_COOKIE_DOMAIN, process.env.KLASSE_AUTH_COOKIE_DOMAIN) ||
+    (process.env.NODE_ENV === "production" ? ".klasse.ao" : ".lvh.me");
+
+  for (const name of cookieNames) {
+    if (name !== "klasse_ctx" && !isSupabaseAuthCookie(name)) continue;
+
+    cookieStore.set(name, "", {
+      path: "/",
+      maxAge: 0,
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    if (domain) {
+      cookieStore.set(name, "", {
+        path: "/",
+        maxAge: 0,
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        domain,
+      });
+    }
+  }
 }
 
 async function resolvePreferredTenantIdForUser(
@@ -242,6 +287,14 @@ export async function loginAction(_: unknown, formData: FormData) {
     }
 
     const supabase = await supabaseRouteClient();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Best-effort cleanup of any stale shared session before issuing a new one.
+    }
+    await clearExistingAuthCookies();
+    await clearTenantContextCookie();
+
     let signedInUserId: string | null = null;
     let signedInUserAppMetadata: Record<string, unknown> | null = null;
     for (const email of emails) {
