@@ -4,13 +4,57 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { getUserTenants } from "@/lib/getUserTenants";
 import { logAuthEvent } from "@/lib/auth-log";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
-import { getTenantContextCookieForUser } from "@/lib/tenantContextCookie";
+import {
+  clearTenantContextCookie,
+  getTenantContextCookieForUser,
+  setTenantContextCookie,
+} from "@/lib/tenantContextCookie";
 
 type GlobalRole = "super_admin" | "global_admin" | null;
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ redirect?: string }>;
+
+function summarizeCookieHeader(rawCookieHeader: string | null) {
+  const cookiePairs = String(rawCookieHeader ?? "")
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => part.split("=")[0]?.trim())
+    .filter(Boolean) as string[];
+
+  const counts = new Map<string, number>();
+  for (const name of cookiePairs) {
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+
+  const names = Array.from(counts.keys()).sort();
+  const duplicates = Array.from(counts.entries())
+    .filter(([, count]) => count > 1)
+    .map(([name, count]) => `${name}:${count}`);
+
+  return {
+    total: cookiePairs.length,
+    names,
+    klasseCtxCount: counts.get("klasse_ctx") ?? 0,
+    supabaseCookieCount: names.filter(
+      (name) => name.startsWith("sb-") && (name.includes("auth-token") || name.includes("access-token") || name.includes("refresh-token"))
+    ).length,
+    duplicates,
+  };
+}
+
+function logRedirectCookieState(event: string, details: Record<string, unknown>) {
+  console.info(
+    JSON.stringify({
+      event,
+      route: "/redirect",
+      timestamp: new Date().toISOString(),
+      ...details,
+    })
+  );
+}
 
 function isLocalOrigin(value: string) {
   const v = value.trim().toLowerCase();
@@ -199,6 +243,28 @@ async function resolveGlobalRole(
   return null;
 }
 
+async function resolvePreferredTenant(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  userId: string,
+  appMetadata: unknown,
+  tenants: Awaited<ReturnType<typeof getUserTenants>>
+) {
+  if (tenants.length <= 1) return tenants[0] ?? null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_escola_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const preferredTenantId =
+    String((profile as { current_escola_id?: unknown } | null)?.current_escola_id ?? "").trim() ||
+    String((appMetadata as Record<string, unknown> | null | undefined)?.escola_id ?? "").trim();
+
+  if (!preferredTenantId) return null;
+  return tenants.find((tenant) => tenant.tenantId === preferredTenantId) ?? null;
+}
+
 export default async function RedirectPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await supabaseServer();
   const { data: authData } = await supabase.auth.getUser();
@@ -224,6 +290,8 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     .toLowerCase();
   const originHint = headerStore.get("origin");
   const refererHint = headerStore.get("referer");
+  const cookieSummary = summarizeCookieHeader(headerStore.get("cookie"));
+  const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
 
   const isResolverTarget = (url: string | null) => {
     if (!url) return false;
@@ -246,8 +314,22 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
         ) ?? null
       : null;
 
+  logRedirectCookieState("auth_redirect_cookie_inventory", {
+    host,
+    cookie_total: cookieSummary.total,
+    cookie_names: cookieSummary.names,
+    cookie_duplicates: cookieSummary.duplicates,
+    klasse_ctx_count: cookieSummary.klasseCtxCount,
+    supabase_cookie_count: cookieSummary.supabaseCookieCount,
+    tenant_count: tenants.length,
+    cached_ctx_present: Boolean(cachedContext),
+    cached_ctx_tenant_id: cachedContext?.tenant_id ?? null,
+    cached_ctx_tenant_type: cachedContext?.tenant_type ?? null,
+    cached_ctx_role: cachedContext?.role ?? null,
+    cached_tenant_match: Boolean(cachedTenant),
+  });
+
   if (cachedContext && cachedTenant) {
-    const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
     const destinationConfig = resolveTenantRoute({
       tenantId: cachedContext.tenant_id,
       tenantSlug: cachedContext.tenant_slug,
@@ -288,6 +370,18 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   }
 
   if (cachedContext && !cachedTenant) {
+    await clearTenantContextCookie();
+    logRedirectCookieState("auth_redirect_stale_cookie_cleared", {
+      host,
+      cookie_total: cookieSummary.total,
+      cookie_names: cookieSummary.names,
+      klasse_ctx_count: cookieSummary.klasseCtxCount,
+      supabase_cookie_count: cookieSummary.supabaseCookieCount,
+      tenant_count: tenants.length,
+      cached_ctx_tenant_id: cachedContext.tenant_id,
+      cached_ctx_tenant_type: cachedContext.tenant_type,
+      cached_ctx_role: cachedContext.role,
+    });
     logAuthEvent({
       action: "resolve_context_failed",
       route: "/redirect",
@@ -299,7 +393,6 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const globalRole = await resolveGlobalRole(supabase, user.id, user.user_metadata, user.app_metadata);
 
   if (tenants.length === 0 && globalRole) {
-    const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
     const productBase = bases.k12;
     const preferred = normalizeRedirectTarget(params.redirect, productBase);
     const destination = preferred && !isResolverTarget(preferred)
@@ -327,6 +420,47 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   }
 
   if (tenants.length > 1) {
+    const preferredTenant = await resolvePreferredTenant(supabase, user.id, user.app_metadata, tenants);
+    if (preferredTenant) {
+      logRedirectCookieState("auth_redirect_preferred_tenant_selected", {
+        host,
+        tenant_count: tenants.length,
+        preferred_tenant_id: preferredTenant.tenantId,
+        preferred_tenant_type: preferredTenant.tenantType,
+        preferred_tenant_role: preferredTenant.role,
+      });
+      const preferredDestinationConfig = resolveTenantRoute(preferredTenant);
+      const preferredProductBase =
+        preferredDestinationConfig.product === "formacao" ? bases.formacao : bases.k12;
+      const preferredPasswordChangeDestination = forcePasswordChange
+        ? resolvePasswordChangeDestination(preferredProductBase, preferredDestinationConfig.product)
+        : null;
+      const preferred = normalizeRedirectTarget(params.redirect, preferredProductBase);
+      const destination =
+        preferredPasswordChangeDestination ??
+        (preferred && !isResolverTarget(preferred)
+          ? preferred
+          : `${preferredProductBase.replace(/\/$/, "")}${preferredDestinationConfig.path}`);
+
+      await setTenantContextCookie({
+        uid: user.id,
+        tenant_id: preferredTenant.tenantId,
+        tenant_slug: preferredTenant.tenantSlug,
+        tenant_type: preferredTenant.tenantType,
+        role: preferredTenant.role,
+      });
+
+      logAuthEvent({
+        action: "redirect",
+        route: "/redirect",
+        user_id: user.id,
+        tenant_id: preferredTenant.tenantId,
+        tenant_type: preferredTenant.tenantType,
+        details: { destination, source: "preferred_profile_context" },
+      });
+      redirect(destination);
+    }
+
     const selectUrl = `/select-context${params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : ""}`;
     logAuthEvent({
       action: "redirect",
@@ -340,7 +474,6 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   const selected = tenants[0];
   const destinationConfig = resolveTenantRoute(selected);
 
-  const bases = resolveProductBases(host, params.redirect, originHint, refererHint);
   const productBase = destinationConfig.product === "formacao" ? bases.formacao : bases.k12;
   const passwordChangeDestination = forcePasswordChange
     ? resolvePasswordChangeDestination(productBase, destinationConfig.product)

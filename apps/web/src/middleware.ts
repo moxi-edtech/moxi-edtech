@@ -68,6 +68,50 @@ const LOCAL_ALLOWED_ORIGINS =
         .map((origin) => origin.trim())
         .filter(Boolean);
 
+function summarizeRequestCookies(request: NextRequest) {
+  const cookies = request.cookies.getAll();
+  const counts = new Map<string, number>();
+
+  for (const cookie of cookies) {
+    counts.set(cookie.name, (counts.get(cookie.name) ?? 0) + 1);
+  }
+
+  const names = Array.from(counts.keys()).sort();
+  const duplicates = Array.from(counts.entries())
+    .filter(([, count]) => count > 1)
+    .map(([name, count]) => `${name}:${count}`);
+
+  return {
+    total: cookies.length,
+    names,
+    duplicates,
+    klasseCtxCount: counts.get(TENANT_CONTEXT_COOKIE) ?? 0,
+    supabaseCookieCount: names.filter(
+      (name) =>
+        name.startsWith('sb-') &&
+        (name.includes('auth-token') || name.includes('access-token') || name.includes('refresh-token'))
+    ).length,
+  };
+}
+
+function logMiddlewareCookieState(event: string, request: NextRequest, details: Record<string, unknown> = {}) {
+  const summary = summarizeRequestCookies(request);
+  console.info(
+    JSON.stringify({
+      event,
+      path: request.nextUrl.pathname,
+      host: request.nextUrl.host,
+      timestamp: new Date().toISOString(),
+      cookie_total: summary.total,
+      cookie_names: summary.names,
+      cookie_duplicates: summary.duplicates,
+      klasse_ctx_count: summary.klasseCtxCount,
+      supabase_cookie_count: summary.supabaseCookieCount,
+      ...details,
+    })
+  );
+}
+
 async function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
   const now = Date.now();
   const limit = LIMITS[limitKey];
@@ -475,6 +519,15 @@ async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise
   if (candidates.length === 0) return null;
 
   candidates.sort((a, b) => b.issuedAt - a.issuedAt || b.expiresAt - a.expiresAt);
+  logMiddlewareCookieState('middleware_tenant_cookie_candidates', request, {
+    raw_klasse_ctx_values: rawCookies.length,
+    decoded_candidates: candidates.length,
+    candidate_tenants: candidates.map((candidate) => ({
+      tenant_id: candidate.tenantId,
+      tenant_type: candidate.tenantType,
+      role: candidate.role,
+    })),
+  });
   const { issuedAt: _issuedAt, expiresAt: _expiresAt, ...authContext } = candidates[0];
   return authContext;
 }
@@ -672,6 +725,12 @@ export async function middleware(request: NextRequest) {
   if (isRedirectPath(pathname)) {
     const freshRedirectContext = await resolveFreshAuthContext(request, response);
     if (freshRedirectContext) {
+      logMiddlewareCookieState('middleware_redirect_fresh_context', request, {
+        user_id: freshRedirectContext.userId,
+        tenant_id: freshRedirectContext.tenantId,
+        tenant_type: freshRedirectContext.tenantType,
+        role: freshRedirectContext.role,
+      });
       const dest = getLandingPathByContext(freshRedirectContext);
       if (isInternalPath(dest) && !isRedirectPath(dest)) {
         console.info(
@@ -699,6 +758,12 @@ export async function middleware(request: NextRequest) {
         timestamp: new Date().toISOString(),
       })
     );
+    logMiddlewareCookieState('middleware_redirect_fast_path_miss_cookies', request, {
+      reason:
+        hasTenantContextCookie(request) || hasLikelySupabaseSessionCookie(request)
+          ? 'stale_or_unresolved_session'
+          : 'context_unavailable',
+    });
   }
 
   const productContext = detectProductContextFromHostname(request.headers.get('host'));

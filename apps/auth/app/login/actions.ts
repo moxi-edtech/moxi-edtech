@@ -109,6 +109,24 @@ function buildCanonicalStudentEmails(identifier: string) {
   ]);
 }
 
+async function resolvePreferredTenantIdForUser(
+  supabase: Awaited<ReturnType<typeof supabaseRouteClient>>,
+  userId: string,
+  appMetadata?: Record<string, unknown> | null
+) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("current_escola_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return (
+    String((profile as { current_escola_id?: unknown } | null)?.current_escola_id ?? "").trim() ||
+    String(appMetadata?.escola_id ?? "").trim() ||
+    null
+  );
+}
+
 async function resolveIdentifierToEmails(identifier: string): Promise<string[]> {
   if (identifier.includes("@")) return [identifier.toLowerCase()];
 
@@ -225,6 +243,7 @@ export async function loginAction(_: unknown, formData: FormData) {
 
     const supabase = await supabaseRouteClient();
     let signedInUserId: string | null = null;
+    let signedInUserAppMetadata: Record<string, unknown> | null = null;
     for (const email of emails) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -232,6 +251,7 @@ export async function loginAction(_: unknown, formData: FormData) {
       });
       if (!error && data.user) {
         signedInUserId = data.user.id;
+        signedInUserAppMetadata = (data.user.app_metadata as Record<string, unknown> | null) ?? null;
         break;
       }
     }
@@ -269,7 +289,26 @@ export async function loginAction(_: unknown, formData: FormData) {
         role: single.role,
       });
     } else {
-      await clearTenantContextCookie();
+      const preferredTenantId = await resolvePreferredTenantIdForUser(
+        supabase,
+        signedInUserId,
+        signedInUserAppMetadata
+      );
+      selectedTenant = preferredTenantId
+        ? tenants.find((tenant) => tenant.tenantId === preferredTenantId) ?? null
+        : null;
+
+      if (selectedTenant) {
+        await setTenantContextCookie({
+          uid: signedInUserId,
+          tenant_id: selectedTenant.tenantId,
+          tenant_slug: selectedTenant.tenantSlug,
+          tenant_type: selectedTenant.tenantType,
+          role: selectedTenant.role,
+        });
+      } else {
+        await clearTenantContextCookie();
+      }
     }
 
     await recordUserAccess({
