@@ -32,7 +32,7 @@ export default async function ProfessorEscolaLayout({
     user = userResult.data.user;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
-      redirect("/redirect");
+      redirect("/auth-recover?next=/redirect");
     }
     throw error;
   }

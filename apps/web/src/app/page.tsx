@@ -36,7 +36,7 @@ export default async function Page() {
     user = userResult.data.user;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
-      return redirect("/redirect");
+      return redirect("/auth-recover?next=/redirect");
     }
     throw error;
   }

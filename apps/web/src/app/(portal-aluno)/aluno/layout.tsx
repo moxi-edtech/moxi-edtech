@@ -75,7 +75,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
     auth = userResult.data;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
-      redirect("/redirect");
+      redirect("/auth-recover?next=/redirect");
     }
     throw error;
   }
