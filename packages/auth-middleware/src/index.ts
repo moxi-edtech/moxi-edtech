@@ -247,7 +247,6 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
 
     const tokenInfo = extractRefreshTokenCandidate(reconstructedValue);
     const refreshTokenPresent = Boolean(tokenInfo);
-    const refreshTokenSize = tokenInfo?.length ?? 0;
 
     console.info(
       JSON.stringify({
@@ -256,11 +255,8 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
         has_base_cookie: hasBaseCookie,
         base_cookie_size: baseCookieSize,
         chunk_indexes: chunkIndexes,
-        chunk_sizes: chunkSizes,
         selected_source: selectedSource,
-        reconstructed_size: reconstructedValue.length,
         refresh_token_present: refreshTokenPresent,
-        refresh_token_size: refreshTokenSize,
         timestamp: new Date().toISOString(),
       })
     );
@@ -619,4 +615,60 @@ export function buildProductRedirectUrl(params: {
   }
 
   return redirectUrl;
+}
+
+export function serializeCookieHeader(
+  name: string,
+  value: string,
+  options: {
+    path?: string;
+    domain?: string;
+    maxAge?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+  }
+) {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (options.path) parts.push(`Path=${options.path}`);
+  if (options.domain) parts.push(`Domain=${options.domain}`);
+  if (options.maxAge !== undefined) parts.push(`Max-Age=${options.maxAge}`);
+  if (options.httpOnly) parts.push("HttpOnly");
+  if (options.secure) parts.push("Secure");
+  if (options.sameSite) {
+    const ss = options.sameSite.charAt(0).toUpperCase() + options.sameSite.slice(1);
+    parts.push(`SameSite=${ss}`);
+  }
+  return parts.join("; ");
+}
+
+export function appendResponseCookie(
+  response: { headers: { append: (name: string, value: string) => void } },
+  name: string,
+  value: string,
+  options: {
+    path?: string;
+    domain?: string;
+    maxAge?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+  }
+) {
+  response.headers.append("Set-Cookie", serializeCookieHeader(name, value, options));
+}
+
+export function appendExpireResponseCookie(
+  response: { headers: { append: (name: string, value: string) => void } },
+  name: string,
+  domain?: string
+) {
+  appendResponseCookie(response, name, "", {
+    path: "/",
+    maxAge: 0,
+    httpOnly: false,
+    secure: true,
+    sameSite: "lax",
+    ...(domain ? { domain } : {}),
+  });
 }

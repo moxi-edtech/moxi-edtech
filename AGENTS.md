@@ -685,3 +685,25 @@ Cada MV deve ter:
 - `CREATE UNIQUE INDEX`
 - função `refresh_mv_*` com `REFRESH MATERIALIZED VIEW CONCURRENTLY`
 - agendamento `cron.schedule(...)`
+
+---
+
+**RULE: SEC-005**
+Escrita e Expiração simultânea de cookies de mesmo nome (Safari WebKit)
+
+```
+detecção:
+  ficheiros: apps/web/src/app/api/**/*.ts, apps/auth/app/api/**/*.ts
+  condição:  faz cookies.set() para o mesmo nome com opções de domínio concorrentes (ex: definir no wildcard .klasse.ao e expirar no host-only app.klasse.ao)
+             no mesmo ciclo de response.
+
+evidência obrigatória:
+  - chamadas cookies.set() conflitantes
+  - ausência dos helpers de cabeçalhos manuais (appendResponseCookie / appendExpireResponseCookie)
+
+impacto:
+  A classe ResponseCookies do Next.js sobrescreve chaves de mesmo nome internamente, enviando apenas um cabeçalho Set-Cookie e quebrando o login de fluxos iOS WebKit.
+
+recomendacao:
+  Importar e usar os helpers appendResponseCookie e appendExpireResponseCookie do pacote @moxi/auth-middleware.
+```
