@@ -65,21 +65,19 @@ const alunoTemInadimplencia = async (
 
 export default async function AlunoLayout({ children }: { children: React.ReactNode }) {
   const supabase = await supabaseServer();
-  let auth:
-    | {
-        user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"];
-      }
+  let user:
+    | Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]["user"]
+    | null
     | undefined;
   try {
-    const userResult = await supabase.auth.getUser();
-    auth = userResult.data;
+    const sessionResult = await supabase.auth.getSession();
+    user = sessionResult.data.session?.user ?? null;
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       redirect("/auth-recover?next=/redirect");
     }
     throw error;
   }
-  const user = auth?.user;
 
   if (!user) {
     redirect("/redirect");
