@@ -49,6 +49,23 @@ type SupabaseCookieSource = {
   refreshTokenHash: string | null;
 };
 
+function isIgnoredSupabaseDebugPath(pathname: string) {
+  return (
+    pathname === "/sw.js" ||
+    pathname === "/manifest.json" ||
+    pathname === "/favicon.ico" ||
+    pathname === "/offline.html" ||
+    pathname.startsWith("/icons/")
+  );
+}
+
+export function shouldInstrumentSupabaseDebugPath(pathname: string | null | undefined) {
+  if (!pathname) return false;
+  if (isIgnoredSupabaseDebugPath(pathname)) return false;
+  if (pathname === "/api/auth/handoff" || pathname === "/redirect") return true;
+  return /^\/escola\/[^/]+\/aluno\/dashboard(?:\/|$)/.test(pathname);
+}
+
 async function sha256Short(value: string) {
   const data = new TextEncoder().encode(value);
   const digest = await globalThis.crypto.subtle.digest("SHA-256", data);
@@ -221,6 +238,8 @@ export function logSupabaseCookieSnapshot(params: {
   requestPath?: string | null;
   cookies: AuthCookieLike[];
 }) {
+  if (!shouldInstrumentSupabaseDebugPath(params.requestPath)) return;
+
   void (async () => {
     const conflicts = getSupabaseAuthCookieConflicts(params.cookies);
     const sources = await describeSupabaseCookieSources(params.cookies);
@@ -232,7 +251,7 @@ export function logSupabaseCookieSnapshot(params: {
         timestamp: new Date().toISOString(),
         cookies: params.cookies.map((cookie) => ({
           name: cookie.name,
-          size: cookie.value.length,
+          size: String(cookie.value ?? "").length,
           domain: null,
           path: null,
         })),
@@ -280,6 +299,10 @@ export function createSupabaseDebugFetch(params: {
   const baseFetch = globalThis.fetch.bind(globalThis);
 
   return async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!shouldInstrumentSupabaseDebugPath(params.requestPath)) {
+      return baseFetch(input, init);
+    }
+
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const method = init?.method ?? (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET");
     if (url.includes("/auth/v1/token") || url.includes("/auth/v1/user")) {

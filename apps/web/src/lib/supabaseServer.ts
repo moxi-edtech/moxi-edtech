@@ -8,6 +8,7 @@ import {
   logSupabaseCookieSnapshot,
   normalizeSupabaseAuthCookies,
   resolveSharedCookieOptions,
+  shouldInstrumentSupabaseDebugPath,
 } from "@moxi/auth-middleware";
 
 function getSupabaseEnv() {
@@ -56,21 +57,28 @@ export async function supabaseServer() {
   const headerStore = await headers();
   const requestPath = headerStore.get("x-invoke-path") ?? headerStore.get("x-matched-path") ?? null;
   const requestCookies = cookieStore.getAll().map(({ name, value }) => ({ name, value }));
-  logSupabaseCookieSnapshot({
-    label: "web_supabase_server",
-    requestPath,
-    cookies: requestCookies,
-  });
+  const shouldDebug = shouldInstrumentSupabaseDebugPath(requestPath);
+  if (shouldDebug) {
+    logSupabaseCookieSnapshot({
+      label: "web_supabase_server",
+      requestPath,
+      cookies: requestCookies,
+    });
+  }
 
   return createServerClient<Database>(url, anonKey, {
     cookieOptions: await resolveCookieOptions(),
-    global: {
-      fetch: createSupabaseDebugFetch({
-        label: "web_supabase_server",
-        requestPath,
-        cookies: requestCookies,
-      }),
-    },
+    ...(shouldDebug
+      ? {
+          global: {
+            fetch: createSupabaseDebugFetch({
+              label: "web_supabase_server",
+              requestPath,
+              cookies: requestCookies,
+            }),
+          },
+        }
+      : {}),
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -88,21 +96,28 @@ export async function supabaseServerTyped<TDatabase = Database>() {
   const headerStore = await headers();
   const requestPath = headerStore.get("x-invoke-path") ?? headerStore.get("x-matched-path") ?? null;
   const requestCookies = cookieStore.getAll().map(({ name, value }) => ({ name, value }));
-  logSupabaseCookieSnapshot({
-    label: "web_supabase_server_typed",
-    requestPath,
-    cookies: requestCookies,
-  });
+  const shouldDebug = shouldInstrumentSupabaseDebugPath(requestPath);
+  if (shouldDebug) {
+    logSupabaseCookieSnapshot({
+      label: "web_supabase_server_typed",
+      requestPath,
+      cookies: requestCookies,
+    });
+  }
 
   return createServerClient<TDatabase>(url, anonKey, {
     cookieOptions: await resolveCookieOptions(),
-    global: {
-      fetch: createSupabaseDebugFetch({
-        label: "web_supabase_server_typed",
-        requestPath,
-        cookies: requestCookies,
-      }),
-    },
+    ...(shouldDebug
+      ? {
+          global: {
+            fetch: createSupabaseDebugFetch({
+              label: "web_supabase_server_typed",
+              requestPath,
+              cookies: requestCookies,
+            }),
+          },
+        }
+      : {}),
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -117,21 +132,28 @@ export async function supabaseRouteClient<TDatabase = Database>() {
   const headerStore = await headers();
   const requestPath = headerStore.get("x-invoke-path") ?? headerStore.get("x-matched-path") ?? null;
   const requestCookies = cookieStore.getAll().map(({ name, value }) => ({ name, value }));
-  logSupabaseCookieSnapshot({
-    label: "web_supabase_route_client",
-    requestPath,
-    cookies: requestCookies,
-  });
+  const shouldDebug = shouldInstrumentSupabaseDebugPath(requestPath);
+  if (shouldDebug) {
+    logSupabaseCookieSnapshot({
+      label: "web_supabase_route_client",
+      requestPath,
+      cookies: requestCookies,
+    });
+  }
 
   return createServerClient<TDatabase>(url, anonKey, {
     cookieOptions: await resolveCookieOptions(),
-    global: {
-      fetch: createSupabaseDebugFetch({
-        label: "web_supabase_route_client",
-        requestPath,
-        cookies: requestCookies,
-      }),
-    },
+    ...(shouldDebug
+      ? {
+          global: {
+            fetch: createSupabaseDebugFetch({
+              label: "web_supabase_route_client",
+              requestPath,
+              cookies: requestCookies,
+            }),
+          },
+        }
+      : {}),
     cookies: buildMutableCookieAdapter(cookieStore),
   });
 }

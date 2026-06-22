@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import {
-  createSupabaseDebugFetch,
-  logSupabaseCookieSnapshot,
-  resolveSharedCookieOptions,
-} from "@moxi/auth-middleware";
+import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
 import { decodeSessionHandoffPayload } from "@/lib/auth/sessionHandoff";
-import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
+
+const SUPABASE_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+const SUPABASE_COOKIE_BASE64_PREFIX = "base64-";
+const SUPABASE_COOKIE_CHUNK_SIZE = 3180;
 
 function expireCookie(response: NextResponse, name: string, domain?: string) {
   response.cookies.set(name, "", {
@@ -52,65 +50,132 @@ function clearExistingAuthCookies(request: Request, response: NextResponse) {
   }
 }
 
-function getSupabaseEnv() {
+function getSupabaseUrl() {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
-  const anonKey = (
-    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
-  ).trim();
-
-  if (!url || !anonKey) {
+  if (!url) {
     throw new Error("Missing Supabase env for auth handoff");
   }
-
-  return { url, anonKey };
+  return url;
 }
 
-function buildFreshHandoffClient(request: Request, response: NextResponse) {
-  const { url, anonKey } = getSupabaseEnv();
-  const requestUrl = new URL(request.url);
-  const requestCookies = (request.headers.get("cookie") ?? "")
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const [name, ...rest] = part.split("=");
-      return { name: name?.trim() ?? "", value: rest.join("=") };
-    })
-    .filter((cookie) => cookie.name);
-  logSupabaseCookieSnapshot({
-    label: "web_handoff_client",
-    requestPath: requestUrl.pathname,
-    cookies: requestCookies,
+function toBase64Url(value: string) {
+  return Buffer.from(value, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function decodeJwtExpiry(accessToken: string) {
+  const [, payloadEncoded] = accessToken.split(".");
+  if (!payloadEncoded) {
+    throw new Error("Invalid access token payload");
+  }
+
+  const normalized = payloadEncoded.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
+  const payload = JSON.parse(Buffer.from(`${normalized}${pad}`, "base64").toString("utf8")) as {
+    exp?: number;
+  };
+
+  if (!payload.exp || !Number.isFinite(payload.exp)) {
+    throw new Error("Access token missing exp");
+  }
+
+  return payload.exp;
+}
+
+function createCookieChunks(name: string, value: string) {
+  const encodedValue = encodeURIComponent(value);
+  if (encodedValue.length <= SUPABASE_COOKIE_CHUNK_SIZE) {
+    return [{ name, value }];
+  }
+
+  const chunks: string[] = [];
+  let remaining = encodedValue;
+
+  while (remaining.length > 0) {
+    let encodedChunkHead = remaining.slice(0, SUPABASE_COOKIE_CHUNK_SIZE);
+    const lastEscapePos = encodedChunkHead.lastIndexOf("%");
+    if (lastEscapePos > SUPABASE_COOKIE_CHUNK_SIZE - 3) {
+      encodedChunkHead = encodedChunkHead.slice(0, lastEscapePos);
+    }
+
+    let valueHead = "";
+    while (encodedChunkHead.length > 0) {
+      try {
+        valueHead = decodeURIComponent(encodedChunkHead);
+        break;
+      } catch (error) {
+        if (
+          error instanceof URIError &&
+          encodedChunkHead.slice(-3, -2) === "%" &&
+          encodedChunkHead.length > 3
+        ) {
+          encodedChunkHead = encodedChunkHead.slice(0, encodedChunkHead.length - 3);
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    chunks.push(valueHead);
+    remaining = remaining.slice(encodedChunkHead.length);
+  }
+
+  return chunks.map((chunk, index) => ({
+    name: `${name}.${index}`,
+    value: chunk,
+  }));
+}
+
+function getSupabaseStorageKey() {
+  return `sb-${new URL(getSupabaseUrl()).hostname.split(".")[0]}-auth-token`;
+}
+
+function buildSupabaseCookieOptions(requestUrl: URL) {
+  return {
+    ...resolveSharedCookieOptions({
+      nodeEnv: process.env.NODE_ENV,
+      domainEnv: process.env.KLASSE_COOKIE_DOMAIN || process.env.KLASSE_AUTH_COOKIE_DOMAIN,
+      sameSiteEnv: process.env.KLASSE_COOKIE_SAMESITE || process.env.KLASSE_AUTH_COOKIE_SAMESITE,
+      browserHostname: requestUrl.hostname,
+      isHttps: requestUrl.protocol === "https:",
+    }),
+    maxAge: SUPABASE_COOKIE_MAX_AGE,
+  };
+}
+
+function writeSupabaseSessionCookies(params: {
+  requestUrl: URL;
+  response: NextResponse;
+  accessToken: string;
+  refreshToken: string;
+}) {
+  const expiresAt = decodeJwtExpiry(params.accessToken);
+  const expiresIn = Math.max(expiresAt - Math.floor(Date.now() / 1000), 0);
+  const storageKey = getSupabaseStorageKey();
+  const sessionPayload = JSON.stringify({
+    access_token: params.accessToken,
+    refresh_token: params.refreshToken,
+    expires_at: expiresAt,
+    expires_in: expiresIn,
+    token_type: "bearer",
   });
-  const cookieOptions = resolveSharedCookieOptions({
-    nodeEnv: process.env.NODE_ENV,
-    domainEnv: process.env.KLASSE_COOKIE_DOMAIN || process.env.KLASSE_AUTH_COOKIE_DOMAIN,
-    sameSiteEnv: process.env.KLASSE_COOKIE_SAMESITE || process.env.KLASSE_AUTH_COOKIE_SAMESITE,
-    browserHostname: requestUrl.hostname,
-    isHttps: requestUrl.protocol === "https:",
+  const encodedPayload = `${SUPABASE_COOKIE_BASE64_PREFIX}${toBase64Url(sessionPayload)}`;
+  const cookieOptions = buildSupabaseCookieOptions(params.requestUrl);
+  const chunks = createCookieChunks(storageKey, encodedPayload);
+
+  chunks.forEach((chunk) => {
+    params.response.cookies.set(chunk.name, chunk.value, cookieOptions);
   });
 
-  return createServerClient<Database>(url, anonKey, {
-    cookieOptions,
-    global: {
-      fetch: createSupabaseDebugFetch({
-        label: "web_handoff_client",
-        requestPath: requestUrl.pathname,
-        cookies: requestCookies,
-      }),
-    },
-    cookies: {
-      // Critical: ignore incoming cookies so stale app session state cannot poison handoff.
-      getAll() {
-        return [];
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+  return {
+    expiresAt,
+    expiresIn,
+    storageKey,
+    chunkCount: chunks.length,
+  };
 }
 
 function logHandoffEvent(event: string, details: Record<string, unknown> = {}) {
@@ -176,7 +241,6 @@ async function handleHandoff(request: Request) {
 
   const baseResponse = NextResponse.next();
   clearExistingAuthCookies(request, baseResponse);
-  const supabase = buildFreshHandoffClient(request, baseResponse);
   const handoffRefreshTokenHash = await globalThis.crypto.subtle
     .digest("SHA-256", new TextEncoder().encode(payload.refresh_token))
     .then((digest) =>
@@ -185,6 +249,7 @@ async function handleHandoff(request: Request) {
         .join("")
         .slice(0, 12)
     );
+
   logHandoffEvent("session_handoff_payload", {
     method: request.method,
     destination: destination.pathname,
@@ -192,26 +257,33 @@ async function handleHandoff(request: Request) {
     source: "session_handoff",
   });
 
-  const { error } = await supabase.auth.setSession({
-    access_token: payload.access_token,
-    refresh_token: payload.refresh_token,
-  });
-
-  if (error) {
-    logHandoffEvent("session_handoff_set_session_failed", {
+  let cookieWriteMeta: { expiresAt: number; expiresIn: number; storageKey: string; chunkCount: number };
+  try {
+    cookieWriteMeta = writeSupabaseSessionCookies({
+      requestUrl,
+      response: baseResponse,
+      accessToken: payload.access_token,
+      refreshToken: payload.refresh_token,
+    });
+  } catch (error) {
+    logHandoffEvent("session_handoff_cookie_write_failed", {
       method: request.method,
-      code: (error as { code?: string }).code ?? null,
-      message: error.message,
+      message: error instanceof Error ? error.message : "unknown_error",
     });
     const failed = NextResponse.redirect(fallback);
     clearExistingAuthCookies(request, failed);
     return failed;
   }
 
-  logHandoffEvent("session_handoff_set_session_ok", {
+  logHandoffEvent("session_handoff_cookie_write_ok", {
     method: request.method,
     destination: destination.pathname,
+    storage_key: cookieWriteMeta.storageKey,
+    expires_at: cookieWriteMeta.expiresAt,
+    expires_in: cookieWriteMeta.expiresIn,
+    chunk_count: cookieWriteMeta.chunkCount,
   });
+
   const redirectResponse = NextResponse.redirect(destination);
   baseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
     redirectResponse.cookies.set(name, value, options);
