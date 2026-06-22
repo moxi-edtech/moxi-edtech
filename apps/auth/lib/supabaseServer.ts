@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 import { readEnv } from "@/lib/env";
-import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
+import { normalizeSupabaseAuthCookies, resolveSharedCookieOptions } from "@moxi/auth-middleware";
 
 function getSupabaseEnv() {
   const url = readEnv(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -48,7 +48,9 @@ export async function supabaseServer() {
     cookieOptions: await resolveCookieOptions(),
     cookies: {
       getAll() {
-        return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+        return normalizeSupabaseAuthCookies(
+          cookieStore.getAll().map(({ name, value }) => ({ name, value }))
+        );
       },
       setAll(_cookies: { name: string; value: string; options: CookieOptions }[]) {},
     },
@@ -63,7 +65,9 @@ export async function supabaseRouteClient() {
     cookieOptions: await resolveCookieOptions(),
     cookies: {
       getAll() {
-        return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+        return normalizeSupabaseAuthCookies(
+          cookieStore.getAll().map(({ name, value }) => ({ name, value }))
+        );
       },
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
         cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));

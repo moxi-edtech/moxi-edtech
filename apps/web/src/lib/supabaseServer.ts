@@ -3,7 +3,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
-import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
+import { normalizeSupabaseAuthCookies, resolveSharedCookieOptions } from "@moxi/auth-middleware";
 
 function getSupabaseEnv() {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -89,7 +89,9 @@ export async function supabaseRouteClient<TDatabase = Database>() {
 function buildCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return {
     getAll() {
-      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+      return normalizeSupabaseAuthCookies(
+        cookieStore.getAll().map(({ name, value }) => ({ name, value }))
+      );
     },
     // No-op: writing cookies here causaria "Cookies can only be modified..."
     setAll(_cookies: { name: string; value: string; options: CookieOptions }[]) {},
@@ -99,7 +101,9 @@ function buildCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
 function buildMutableCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return {
     getAll() {
-      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+      return normalizeSupabaseAuthCookies(
+        cookieStore.getAll().map(({ name, value }) => ({ name, value }))
+      );
     },
     setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
       cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));

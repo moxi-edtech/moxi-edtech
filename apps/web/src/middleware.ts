@@ -7,6 +7,7 @@ import { logAuthEvent } from '@/lib/auth/logAuthEvent';
 import {
   buildProductRedirectUrl,
   createMiddlewareSupabaseClient,
+  getSupabaseAuthCookieConflicts,
   resolveDbAuthContext,
   type DbAuthContext,
 } from '@moxi/auth-middleware';
@@ -71,6 +72,9 @@ const LOCAL_ALLOWED_ORIGINS =
 function summarizeRequestCookies(request: NextRequest) {
   const cookies = request.cookies.getAll();
   const counts = new Map<string, number>();
+  const conflicts = getSupabaseAuthCookieConflicts(
+    cookies.map(({ name, value }) => ({ name, value }))
+  );
 
   for (const cookie of cookies) {
     counts.set(cookie.name, (counts.get(cookie.name) ?? 0) + 1);
@@ -91,6 +95,10 @@ function summarizeRequestCookies(request: NextRequest) {
         name.startsWith('sb-') &&
         (name.includes('auth-token') || name.includes('access-token') || name.includes('refresh-token'))
     ).length,
+    supabaseConflicts: conflicts.map((conflict) => ({
+      base_name: conflict.baseName,
+      chunk_indexes: conflict.chunkIndexes,
+    })),
   };
 }
 
@@ -107,9 +115,44 @@ function logMiddlewareCookieState(event: string, request: NextRequest, details: 
       cookie_duplicates: summary.duplicates,
       klasse_ctx_count: summary.klasseCtxCount,
       supabase_cookie_count: summary.supabaseCookieCount,
+      supabase_cookie_conflicts: summary.supabaseConflicts,
       ...details,
     })
   );
+}
+
+function expireCookie(response: NextResponse, name: string, domain?: string) {
+  response.cookies.set(name, '', {
+    path: '/',
+    maxAge: 0,
+    httpOnly: false,
+    secure: true,
+    sameSite: 'lax',
+    ...(domain ? { domain } : {}),
+  });
+}
+
+function clearSupabaseCookieConflicts(request: NextRequest, response: NextResponse) {
+  const cookies = request.cookies.getAll().map(({ name, value }) => ({ name, value }));
+  const conflicts = getSupabaseAuthCookieConflicts(cookies);
+  if (conflicts.length === 0) return;
+
+  const domainCandidates = Array.from(
+    new Set(
+      [
+        process.env.KLASSE_COOKIE_DOMAIN?.trim(),
+        process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim(),
+        request.nextUrl.hostname.endsWith('.klasse.ao') ? '.klasse.ao' : null,
+      ].filter(Boolean) as string[]
+    )
+  );
+
+  for (const conflict of conflicts) {
+    expireCookie(response, conflict.baseName);
+    for (const domain of domainCandidates) {
+      expireCookie(response, conflict.baseName, domain);
+    }
+  }
 }
 
 async function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
@@ -207,6 +250,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
 }
 
 function finalizeResponse(request: NextRequest, response: NextResponse, allowedOrigin: string | null) {
+  clearSupabaseCookieConflicts(request, response);
   applyCorsHeaders(response, allowedOrigin);
   applySecurityHeaders(request, response);
   return response;

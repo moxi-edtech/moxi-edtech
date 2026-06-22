@@ -39,6 +39,73 @@ export type DbAuthContext = {
   tenantType: TenantType | null;
 };
 
+type AuthCookieLike = {
+  name: string;
+  value: string;
+};
+
+function isSupabaseAuthCookieName(name: string) {
+  return (
+    name.startsWith("sb-") &&
+    (name.includes("auth-token") || name.includes("access-token") || name.includes("refresh-token"))
+  );
+}
+
+function splitSupabaseCookieName(name: string) {
+  if (!isSupabaseAuthCookieName(name)) return null;
+
+  const chunkMatch = name.match(/^(.*)\.(\d+)$/);
+  if (!chunkMatch) {
+    return { baseName: name, chunkIndex: null as number | null };
+  }
+
+  return {
+    baseName: chunkMatch[1],
+    chunkIndex: Number(chunkMatch[2]),
+  };
+}
+
+export function getSupabaseAuthCookieConflicts(cookies: AuthCookieLike[]) {
+  const grouped = new Map<string, { hasBase: boolean; chunkIndexes: number[] }>();
+
+  for (const cookie of cookies) {
+    const parts = splitSupabaseCookieName(cookie.name);
+    if (!parts) continue;
+
+    const current = grouped.get(parts.baseName) ?? { hasBase: false, chunkIndexes: [] };
+    if (parts.chunkIndex === null) {
+      current.hasBase = true;
+    } else {
+      current.chunkIndexes.push(parts.chunkIndex);
+    }
+    grouped.set(parts.baseName, current);
+  }
+
+  return Array.from(grouped.entries())
+    .filter(([, value]) => value.hasBase && value.chunkIndexes.length > 0)
+    .map(([baseName, value]) => ({
+      baseName,
+      chunkIndexes: value.chunkIndexes.sort((a, b) => a - b),
+    }));
+}
+
+export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: T[]): T[] {
+  const conflictedBaseNames = new Set(
+    getSupabaseAuthCookieConflicts(cookies).map((conflict) => conflict.baseName)
+  );
+
+  if (conflictedBaseNames.size === 0) {
+    return cookies;
+  }
+
+  return cookies.filter((cookie) => {
+    const parts = splitSupabaseCookieName(cookie.name);
+    if (!parts) return true;
+    if (!conflictedBaseNames.has(parts.baseName)) return true;
+    return parts.chunkIndex !== null;
+  });
+}
+
 export function resolveSharedCookieOptions(params: {
   nodeEnv: string | undefined;
   domainEnv?: string | null;
@@ -114,7 +181,7 @@ export function createMiddlewareSupabaseClient(params: {
     cookieOptions,
     cookies: {
       getAll() {
-        return params.request.cookies.getAll();
+        return normalizeSupabaseAuthCookies(params.request.cookies.getAll());
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
