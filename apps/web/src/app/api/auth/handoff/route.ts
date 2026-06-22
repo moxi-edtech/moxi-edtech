@@ -40,7 +40,7 @@ function clearExistingAuthCookies(request: Request, response: NextResponse) {
   );
 
   for (const name of cookieNames) {
-    if (name !== "klasse_ctx" && !name.startsWith("sb-")) continue;
+    if (!name.startsWith("sb-")) continue;
     expireCookie(response, name);
     for (const domain of domainCandidates) {
       expireCookie(response, name, domain);
