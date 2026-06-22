@@ -46,12 +46,43 @@ function clearExistingAuthCookies(request: Request, response: NextResponse) {
   }
 }
 
-export async function POST(request: Request) {
-  const formData = await request.formData();
-  const payload = decodeSessionHandoffPayload(String(formData.get("payload") ?? ""));
+function logHandoffEvent(event: string, details: Record<string, unknown> = {}) {
+  console.info(
+    JSON.stringify({
+      event,
+      route: "/api/auth/handoff",
+      timestamp: new Date().toISOString(),
+      ...details,
+    })
+  );
+}
+
+async function resolvePayload(request: Request) {
+  const requestUrl = new URL(request.url);
+  const queryPayload = requestUrl.searchParams.get("payload");
+  if (queryPayload) {
+    return queryPayload;
+  }
+
+  if (request.method === "POST") {
+    const formData = await request.formData();
+    return String(formData.get("payload") ?? "");
+  }
+
+  return "";
+}
+
+async function handleHandoff(request: Request) {
+  const rawPayload = await resolvePayload(request);
+  const payload = decodeSessionHandoffPayload(rawPayload);
   const fallback = new URL("/auth-recover?next=/redirect", request.url);
 
   if (!payload) {
+    logHandoffEvent("session_handoff_invalid_payload", {
+      method: request.method,
+      has_query_payload: new URL(request.url).searchParams.has("payload"),
+      has_cookie_header: Boolean(request.headers.get("cookie")),
+    });
     return NextResponse.redirect(fallback);
   }
 
@@ -59,11 +90,20 @@ export async function POST(request: Request) {
   try {
     destination = new URL(payload.destination);
   } catch {
+    logHandoffEvent("session_handoff_invalid_destination", {
+      method: request.method,
+      destination: payload.destination,
+    });
     return NextResponse.redirect(fallback);
   }
 
   const requestUrl = new URL(request.url);
   if (destination.origin !== requestUrl.origin) {
+    logHandoffEvent("session_handoff_origin_mismatch", {
+      method: request.method,
+      destination_origin: destination.origin,
+      request_origin: requestUrl.origin,
+    });
     return NextResponse.redirect(fallback);
   }
 
@@ -77,14 +117,31 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    logHandoffEvent("session_handoff_set_session_failed", {
+      method: request.method,
+      code: (error as { code?: string }).code ?? null,
+      message: error.message,
+    });
     const failed = NextResponse.redirect(fallback);
     clearExistingAuthCookies(request, failed);
     return failed;
   }
 
+  logHandoffEvent("session_handoff_set_session_ok", {
+    method: request.method,
+    destination: destination.pathname,
+  });
   const redirectResponse = NextResponse.redirect(destination);
   baseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
     redirectResponse.cookies.set(name, value, options);
   });
   return redirectResponse;
+}
+
+export async function GET(request: Request) {
+  return handleHandoff(request);
+}
+
+export async function POST(request: Request) {
+  return handleHandoff(request);
 }

@@ -211,20 +211,10 @@ function resolvePasswordChangeDestination(productBase: string, product: string) 
   return `${productBase.replace(/\/$/, "")}/mudar-senha`;
 }
 
-function renderSessionHandoff(destination: string, payload: string) {
-  return (
-    <main className="grid min-h-screen place-items-center bg-white p-6">
-      <form id="session-handoff-form" action={`${new URL(destination).origin}/api/auth/handoff`} method="post">
-        <input type="hidden" name="payload" value={payload} />
-      </form>
-      <p className="text-sm text-slate-500">Redirecionando...</p>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: "document.getElementById('session-handoff-form')?.submit();",
-        }}
-      />
-    </main>
-  );
+function buildSessionHandoffUrl(destination: string, payload: string) {
+  const handoffUrl = new URL("/api/auth/handoff", new URL(destination).origin);
+  handoffUrl.searchParams.set("payload", payload);
+  return handoffUrl.toString();
 }
 
 async function resolveGlobalRole(
@@ -390,13 +380,15 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       session?.refresh_token &&
       shouldUseSessionHandoff(destination, bases.k12)
     ) {
-      return renderSessionHandoff(
-        destination,
-        createSessionHandoffPayload({
-          accessToken: session.access_token,
-          refreshToken: session.refresh_token,
+      redirect(
+        buildSessionHandoffUrl(
           destination,
-        })
+          createSessionHandoffPayload({
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+            destination,
+          })
+        )
       );
     }
     redirect(destination);
@@ -496,13 +488,15 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
         session?.refresh_token &&
         shouldUseSessionHandoff(destination, bases.k12)
       ) {
-        return renderSessionHandoff(
-          destination,
-          createSessionHandoffPayload({
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
+        redirect(
+          buildSessionHandoffUrl(
             destination,
-          })
+            createSessionHandoffPayload({
+              accessToken: session.access_token,
+              refreshToken: session.refresh_token,
+              destination,
+            })
+          )
         );
       }
       redirect(destination);
@@ -556,13 +550,15 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     session?.refresh_token &&
     shouldUseSessionHandoff(destination, bases.k12)
   ) {
-    return renderSessionHandoff(
-      destination,
-      createSessionHandoffPayload({
-        accessToken: session.access_token,
-        refreshToken: session.refresh_token,
+    redirect(
+      buildSessionHandoffUrl(
         destination,
-      })
+        createSessionHandoffPayload({
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+          destination,
+        })
+      )
     );
   }
 
