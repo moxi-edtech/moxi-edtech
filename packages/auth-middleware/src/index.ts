@@ -224,7 +224,7 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
     let selectedSource: "base" | "chunks" | "invalid_chunks" | "none" = "none";
     let reconstructedValue = "";
 
-    if (validChunks.length > 0 && (validBaseCookies.length === 0 || baseCookies.some(c => (c.value ?? "").trim() === "" || (c.value ?? "").trim() === "base64-"))) {
+    if (validChunks.length > 0 && validBaseCookies.length === 0) {
       validChunks.sort((a, b) => a.index - b.index);
       let isContiguous = true;
       for (let i = 0; i < validChunks.length; i++) {

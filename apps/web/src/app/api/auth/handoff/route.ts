@@ -186,6 +186,12 @@ function writeSupabaseSessionCookies(params: {
       expireCookie(params.response, storageKey, domain);
     }
   } else {
+    expireCookie(params.response, storageKey);
+    for (const domain of domainCandidates) {
+      if (domain !== cookieOptions.domain) {
+        expireCookie(params.response, storageKey, domain);
+      }
+    }
     for (let i = 0; i < 5; i++) {
       expireCookie(params.response, `${storageKey}.${i}`);
       for (const domain of domainCandidates) {
