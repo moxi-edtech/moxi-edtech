@@ -274,10 +274,9 @@ async function resolvePreferredTenant(
 
 export default async function RedirectPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await supabaseServer();
-  const { data: authData } = await supabase.auth.getUser();
-  const user = authData.user;
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session;
+  const user = session?.user ?? null;
 
   const params = await searchParams;
   const loginSuffix = params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : "";
