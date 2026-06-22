@@ -552,8 +552,6 @@ async function decodeTenantContextCookie(raw: string): Promise<TenantContextCook
 }
 
 async function resolveAuthContextFromTenantCookie(request: NextRequest): Promise<AuthContext | null> {
-  if (!hasLikelySupabaseSessionCookie(request)) return null;
-
   const rawCookies = getCookieValues(request, TENANT_CONTEXT_COOKIE);
   if (rawCookies.length === 0) return null;
 
