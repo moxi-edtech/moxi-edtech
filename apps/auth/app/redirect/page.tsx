@@ -217,6 +217,44 @@ function buildSessionHandoffUrl(destination: string, payload: string) {
   return handoffUrl.toString();
 }
 
+function renderSessionHandoff(handoffUrl: string) {
+  console.info(
+    JSON.stringify({
+      event: "auth_handoff_client_navigation_rendered",
+      route: "/redirect",
+      timestamp: new Date().toISOString(),
+      url: handoffUrl,
+    })
+  );
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-white p-6 font-sans">
+      <div className="flex flex-col items-center space-y-4 text-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
+        <p className="text-sm font-medium text-slate-600">Redirecionando...</p>
+        <p className="text-xs text-slate-400">
+          Se não avançar automaticamente,{" "}
+          <a
+            href={handoffUrl}
+            className="text-indigo-600 underline hover:text-indigo-800 font-semibold"
+          >
+            toque aqui
+          </a>.
+        </p>
+      </div>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            setTimeout(function() {
+              window.location.replace(${JSON.stringify(handoffUrl)});
+            }, 50);
+          `,
+        }}
+      />
+    </main>
+  );
+}
+
 async function resolveGlobalRole(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   userId: string,
@@ -379,7 +417,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       session?.refresh_token &&
       shouldUseSessionHandoff(destination, bases.k12)
     ) {
-      redirect(
+      return renderSessionHandoff(
         buildSessionHandoffUrl(
           destination,
           createSessionHandoffPayload({
@@ -487,7 +525,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
         session?.refresh_token &&
         shouldUseSessionHandoff(destination, bases.k12)
       ) {
-        redirect(
+        return renderSessionHandoff(
           buildSessionHandoffUrl(
             destination,
             createSessionHandoffPayload({
@@ -544,12 +582,20 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     details: { destination, source: "single_tenant_resolved" },
   });
 
+  await setTenantContextCookie({
+    uid: user.id,
+    tenant_id: selected.tenantId,
+    tenant_slug: selected.tenantSlug,
+    tenant_type: selected.tenantType,
+    role: selected.role,
+  });
+
   if (
     session?.access_token &&
     session?.refresh_token &&
     shouldUseSessionHandoff(destination, bases.k12)
   ) {
-    redirect(
+    return renderSessionHandoff(
       buildSessionHandoffUrl(
         destination,
         createSessionHandoffPayload({
