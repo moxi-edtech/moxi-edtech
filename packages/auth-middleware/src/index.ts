@@ -174,6 +174,15 @@ export function getSupabaseAuthCookieConflicts(cookies: AuthCookieLike[]) {
     }));
 }
 
+function simpleHash(str: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
 export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: T[]): T[] {
   const grouped = new Map<string, {
     baseCookies: T[];
@@ -194,7 +203,7 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
   }
 
   const normalized: T[] = [];
-
+  
   for (const cookie of cookies) {
     if (!isSupabaseAuthCookieName(cookie.name)) {
       normalized.push(cookie);
@@ -219,14 +228,26 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
     const baseCookieSize = baseCookies.map(c => (c.value ?? "").length).join(",");
     const chunkIndexes = chunks.map(ch => ch.index).sort((a, b) => a - b);
     const chunkSizes = chunks.map(ch => (ch.cookie.value ?? "").length);
-
-    let selectedSource: "base" | "chunks" | "none" = "none";
+    
+    let selectedSource: "base" | "chunks" | "invalid_chunks" | "none" = "none";
     let reconstructedValue = "";
 
     if (validChunks.length > 0 && (validBaseCookies.length === 0 || baseCookies.some(c => (c.value ?? "").trim() === "" || (c.value ?? "").trim() === "base64-"))) {
       validChunks.sort((a, b) => a.index - b.index);
-      reconstructedValue = validChunks.map(ch => ch.cookie.value).join("");
-      selectedSource = "chunks";
+      let isContiguous = true;
+      for (let i = 0; i < validChunks.length; i++) {
+        if (validChunks[i].index !== i) {
+          isContiguous = false;
+          break;
+        }
+      }
+
+      if (isContiguous) {
+        reconstructedValue = validChunks.map(ch => ch.cookie.value).join("");
+        selectedSource = "chunks";
+      } else {
+        selectedSource = "invalid_chunks";
+      }
     } else if (validBaseCookies.length > 0) {
       reconstructedValue = validBaseCookies[0].value;
       selectedSource = "base";
@@ -235,7 +256,7 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
     let refreshTokenHash: string | null = null;
     const tokenInfo = extractRefreshTokenCandidate(reconstructedValue);
     if (tokenInfo) {
-      refreshTokenHash = tokenInfo.slice(0, 8);
+      refreshTokenHash = simpleHash(tokenInfo);
     }
 
     console.info(

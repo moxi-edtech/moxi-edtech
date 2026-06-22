@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import crypto from "node:crypto";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { getUserTenants } from "@/lib/getUserTenants";
 import { logAuthEvent } from "@/lib/auth-log";
@@ -218,12 +219,27 @@ function buildSessionHandoffUrl(destination: string, payload: string) {
 }
 
 function renderSessionHandoff(handoffUrl: string) {
+  let payloadSize = 0;
+  let payloadHash = "";
+  try {
+    const urlObj = new URL(handoffUrl);
+    const payload = urlObj.searchParams.get("payload") ?? "";
+    payloadSize = payload.length;
+    if (payload) {
+      payloadHash = crypto.createHash("sha256").update(payload).digest("hex");
+    }
+  } catch {
+    // no-op: fallback to defaults
+  }
+
   console.info(
     JSON.stringify({
       event: "auth_handoff_client_navigation_rendered",
       route: "/redirect",
       timestamp: new Date().toISOString(),
-      url: handoffUrl,
+      destination: "/api/auth/handoff",
+      payload_size: payloadSize,
+      payload_hash: payloadHash,
     })
   );
 
