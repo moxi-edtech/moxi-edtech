@@ -170,6 +170,30 @@ function writeSupabaseSessionCookies(params: {
     params.response.cookies.set(chunk.name, chunk.value, cookieOptions);
   });
 
+  const domainCandidates = Array.from(
+    new Set(
+      [
+        process.env.KLASSE_COOKIE_DOMAIN?.trim(),
+        process.env.KLASSE_AUTH_COOKIE_DOMAIN?.trim(),
+        params.requestUrl.hostname.endsWith(".klasse.ao") ? ".klasse.ao" : null,
+      ].filter(Boolean) as string[]
+    )
+  );
+
+  if (chunks.length > 1) {
+    expireCookie(params.response, storageKey);
+    for (const domain of domainCandidates) {
+      expireCookie(params.response, storageKey, domain);
+    }
+  } else {
+    for (let i = 0; i < 5; i++) {
+      expireCookie(params.response, `${storageKey}.${i}`);
+      for (const domain of domainCandidates) {
+        expireCookie(params.response, `${storageKey}.${i}`, domain);
+      }
+    }
+  }
+
   return {
     expiresAt,
     expiresIn,

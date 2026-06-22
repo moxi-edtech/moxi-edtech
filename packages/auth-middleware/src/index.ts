@@ -175,20 +175,102 @@ export function getSupabaseAuthCookieConflicts(cookies: AuthCookieLike[]) {
 }
 
 export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: T[]): T[] {
-  const conflictedBaseNames = new Set(
-    getSupabaseAuthCookieConflicts(cookies).map((conflict) => conflict.baseName)
-  );
+  const grouped = new Map<string, {
+    baseCookies: T[];
+    chunks: Array<{ index: number; cookie: T }>;
+  }>();
 
-  if (conflictedBaseNames.size === 0) {
-    return cookies;
+  for (const cookie of cookies) {
+    const parts = splitSupabaseCookieName(cookie.name);
+    if (!parts) continue;
+
+    const current = grouped.get(parts.baseName) ?? { baseCookies: [], chunks: [] };
+    if (parts.chunkIndex === null) {
+      current.baseCookies.push(cookie);
+    } else {
+      current.chunks.push({ index: parts.chunkIndex, cookie });
+    }
+    grouped.set(parts.baseName, current);
   }
 
-  return cookies.filter((cookie) => {
-    const parts = splitSupabaseCookieName(cookie.name);
-    if (!parts) return true;
-    if (!conflictedBaseNames.has(parts.baseName)) return true;
-    return parts.chunkIndex !== null;
-  });
+  const normalized: T[] = [];
+
+  for (const cookie of cookies) {
+    if (!isSupabaseAuthCookieName(cookie.name)) {
+      normalized.push(cookie);
+    }
+  }
+
+  for (const [baseName, group] of grouped.entries()) {
+    const baseCookies = group.baseCookies;
+    const chunks = group.chunks;
+
+    const validBaseCookies = baseCookies.filter(c => {
+      const val = (c.value ?? "").trim();
+      return val !== "" && val !== "base64-";
+    });
+
+    const validChunks = chunks.filter(ch => {
+      const val = (ch.cookie.value ?? "").trim();
+      return val !== "" && val !== "base64-";
+    });
+
+    const hasBaseCookie = baseCookies.length > 0;
+    const baseCookieSize = baseCookies.map(c => (c.value ?? "").length).join(",");
+    const chunkIndexes = chunks.map(ch => ch.index).sort((a, b) => a - b);
+    const chunkSizes = chunks.map(ch => (ch.cookie.value ?? "").length);
+
+    let selectedSource: "base" | "chunks" | "none" = "none";
+    let reconstructedValue = "";
+
+    if (validChunks.length > 0 && (validBaseCookies.length === 0 || baseCookies.some(c => (c.value ?? "").trim() === "" || (c.value ?? "").trim() === "base64-"))) {
+      validChunks.sort((a, b) => a.index - b.index);
+      reconstructedValue = validChunks.map(ch => ch.cookie.value).join("");
+      selectedSource = "chunks";
+    } else if (validBaseCookies.length > 0) {
+      reconstructedValue = validBaseCookies[0].value;
+      selectedSource = "base";
+    }
+
+    let refreshTokenHash: string | null = null;
+    const tokenInfo = extractRefreshTokenCandidate(reconstructedValue);
+    if (tokenInfo) {
+      refreshTokenHash = tokenInfo.slice(0, 8);
+    }
+
+    console.info(
+      JSON.stringify({
+        event: "supabase_cookie_adapter_instrumentation",
+        storage_key: baseName,
+        has_base_cookie: hasBaseCookie,
+        base_cookie_size: baseCookieSize,
+        chunk_indexes: chunkIndexes,
+        chunk_sizes: chunkSizes,
+        selected_source: selectedSource,
+        reconstructed_size: reconstructedValue.length,
+        refresh_token_hash: refreshTokenHash,
+        timestamp: new Date().toISOString(),
+      })
+    );
+
+    if (selectedSource === "chunks") {
+      normalized.push({
+        name: baseName,
+        value: reconstructedValue,
+      } as T);
+    } else if (selectedSource === "base") {
+      normalized.push({
+        name: baseName,
+        value: reconstructedValue,
+      } as T);
+    } else {
+      if (baseCookies.length > 0) {
+        normalized.push(baseCookies[0]);
+      }
+    }
+  }
+
+  return normalized;
 }
 
 async function describeSupabaseCookieSources(cookies: AuthCookieLike[]): Promise<SupabaseCookieSource[]> {
