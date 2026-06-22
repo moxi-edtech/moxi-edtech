@@ -3,7 +3,12 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
-import { normalizeSupabaseAuthCookies, resolveSharedCookieOptions } from "@moxi/auth-middleware";
+import {
+  createSupabaseDebugFetch,
+  logSupabaseCookieSnapshot,
+  normalizeSupabaseAuthCookies,
+  resolveSharedCookieOptions,
+} from "@moxi/auth-middleware";
 
 function getSupabaseEnv() {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -48,9 +53,24 @@ async function resolveCookieOptions() {
 export async function supabaseServer() {
   const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
+  const headerStore = await headers();
+  const requestPath = headerStore.get("x-invoke-path") ?? headerStore.get("x-matched-path") ?? null;
+  const requestCookies = cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+  logSupabaseCookieSnapshot({
+    label: "web_supabase_server",
+    requestPath,
+    cookies: requestCookies,
+  });
 
   return createServerClient<Database>(url, anonKey, {
     cookieOptions: await resolveCookieOptions(),
+    global: {
+      fetch: createSupabaseDebugFetch({
+        label: "web_supabase_server",
+        requestPath,
+        cookies: requestCookies,
+      }),
+    },
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -65,9 +85,24 @@ export async function supabaseServer() {
 export async function supabaseServerTyped<TDatabase = Database>() {
   const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
+  const headerStore = await headers();
+  const requestPath = headerStore.get("x-invoke-path") ?? headerStore.get("x-matched-path") ?? null;
+  const requestCookies = cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+  logSupabaseCookieSnapshot({
+    label: "web_supabase_server_typed",
+    requestPath,
+    cookies: requestCookies,
+  });
 
   return createServerClient<TDatabase>(url, anonKey, {
     cookieOptions: await resolveCookieOptions(),
+    global: {
+      fetch: createSupabaseDebugFetch({
+        label: "web_supabase_server_typed",
+        requestPath,
+        cookies: requestCookies,
+      }),
+    },
     cookies: buildCookieAdapter(cookieStore),
   });
 }
@@ -79,9 +114,24 @@ export async function supabaseServerTyped<TDatabase = Database>() {
 export async function supabaseRouteClient<TDatabase = Database>() {
   const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
+  const headerStore = await headers();
+  const requestPath = headerStore.get("x-invoke-path") ?? headerStore.get("x-matched-path") ?? null;
+  const requestCookies = cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+  logSupabaseCookieSnapshot({
+    label: "web_supabase_route_client",
+    requestPath,
+    cookies: requestCookies,
+  });
 
   return createServerClient<TDatabase>(url, anonKey, {
     cookieOptions: await resolveCookieOptions(),
+    global: {
+      fetch: createSupabaseDebugFetch({
+        label: "web_supabase_route_client",
+        requestPath,
+        cookies: requestCookies,
+      }),
+    },
     cookies: buildMutableCookieAdapter(cookieStore),
   });
 }

@@ -44,6 +44,74 @@ type AuthCookieLike = {
   value: string;
 };
 
+type SupabaseCookieSource = {
+  source: string;
+  refreshTokenHash: string | null;
+};
+
+async function sha256Short(value: string) {
+  const data = new TextEncoder().encode(value);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 12);
+}
+
+function safeJsonParse(value: string) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function tryDecodeBase64Url(value: string) {
+  try {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
+    const decoded = atob(`${normalized}${pad}`);
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function extractRefreshTokenCandidate(value: unknown): string | null {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    const json = safeJsonParse(value);
+    if (json) return extractRefreshTokenCandidate(json);
+
+    const decoded = tryDecodeBase64Url(value);
+    if (decoded) {
+      const decodedJson = safeJsonParse(decoded);
+      if (decodedJson) return extractRefreshTokenCandidate(decodedJson);
+    }
+
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const candidate = extractRefreshTokenCandidate(item);
+      if (candidate) return candidate;
+    }
+    return typeof value[1] === "string" ? value[1] : null;
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.refresh_token === "string") return record.refresh_token;
+    if (record.currentSession) return extractRefreshTokenCandidate(record.currentSession);
+    if (record.session) return extractRefreshTokenCandidate(record.session);
+    if (record.value) return extractRefreshTokenCandidate(record.value);
+  }
+
+  return null;
+}
+
 function isSupabaseAuthCookieName(name: string) {
   return (
     name.startsWith("sb-") &&
@@ -104,6 +172,135 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
     if (!conflictedBaseNames.has(parts.baseName)) return true;
     return parts.chunkIndex !== null;
   });
+}
+
+async function describeSupabaseCookieSources(cookies: AuthCookieLike[]): Promise<SupabaseCookieSource[]> {
+  const grouped = new Map<string, { baseValue: string | null; chunks: Array<{ index: number; value: string }> }>();
+
+  for (const cookie of cookies) {
+    const parts = splitSupabaseCookieName(cookie.name);
+    if (!parts) continue;
+
+    const current = grouped.get(parts.baseName) ?? { baseValue: null, chunks: [] };
+    if (parts.chunkIndex === null) {
+      current.baseValue = cookie.value;
+    } else {
+      current.chunks.push({ index: parts.chunkIndex, value: cookie.value });
+    }
+    grouped.set(parts.baseName, current);
+  }
+
+  const sources: SupabaseCookieSource[] = [];
+  for (const [baseName, value] of grouped.entries()) {
+    if (value.baseValue) {
+      const refreshToken = extractRefreshTokenCandidate(value.baseValue);
+      sources.push({
+        source: baseName,
+        refreshTokenHash: refreshToken ? await sha256Short(refreshToken) : null,
+      });
+    }
+
+    if (value.chunks.length > 0) {
+      const chunkValue = value.chunks
+        .sort((a, b) => a.index - b.index)
+        .map((chunk) => chunk.value)
+        .join("");
+      const refreshToken = extractRefreshTokenCandidate(chunkValue);
+      sources.push({
+        source: `${baseName}.${value.chunks.map((chunk) => chunk.index).join(".")}`,
+        refreshTokenHash: refreshToken ? await sha256Short(refreshToken) : null,
+      });
+    }
+  }
+
+  return sources;
+}
+
+export function logSupabaseCookieSnapshot(params: {
+  label: string;
+  requestPath?: string | null;
+  cookies: AuthCookieLike[];
+}) {
+  void (async () => {
+    const conflicts = getSupabaseAuthCookieConflicts(params.cookies);
+    const sources = await describeSupabaseCookieSources(params.cookies);
+    console.info(
+      JSON.stringify({
+        event: "supabase_cookie_snapshot",
+        label: params.label,
+        request_path: params.requestPath ?? null,
+        timestamp: new Date().toISOString(),
+        cookies: params.cookies.map((cookie) => ({
+          name: cookie.name,
+          size: cookie.value.length,
+          domain: null,
+          path: null,
+        })),
+        conflicts: conflicts.map((conflict) => ({
+          base_name: conflict.baseName,
+          chunk_indexes: conflict.chunkIndexes,
+        })),
+        sources,
+      })
+    );
+  })();
+}
+
+async function readRequestBody(input: RequestInfo | URL, init?: RequestInit) {
+  if (init?.body && typeof init.body === "string") return init.body;
+  if (init?.body instanceof URLSearchParams) return init.body.toString();
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    try {
+      return await input.clone().text();
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function extractRefreshTokenFromBody(body: string) {
+  if (!body) return { grantType: null as string | null, refreshToken: null as string | null };
+  try {
+    const params = new URLSearchParams(body);
+    return {
+      grantType: params.get("grant_type"),
+      refreshToken: params.get("refresh_token"),
+    };
+  } catch {
+    return { grantType: null, refreshToken: null };
+  }
+}
+
+export function createSupabaseDebugFetch(params: {
+  label: string;
+  requestPath?: string | null;
+  cookies: AuthCookieLike[];
+}) {
+  const baseFetch = globalThis.fetch.bind(globalThis);
+
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const method = init?.method ?? (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET");
+    if (url.includes("/auth/v1/token") || url.includes("/auth/v1/user")) {
+      const body = await readRequestBody(input, init);
+      const tokenInfo = extractRefreshTokenFromBody(body);
+      console.info(
+        JSON.stringify({
+          event: "supabase_auth_request",
+          label: params.label,
+          request_path: params.requestPath ?? null,
+          timestamp: new Date().toISOString(),
+          method,
+          url_path: new URL(url).pathname,
+          grant_type: tokenInfo.grantType,
+          refresh_token_hash: tokenInfo.refreshToken ? await sha256Short(tokenInfo.refreshToken) : null,
+        })
+      );
+    }
+
+    return baseFetch(input, init);
+  };
 }
 
 export function resolveSharedCookieOptions(params: {
@@ -176,9 +373,22 @@ export function createMiddlewareSupabaseClient(params: {
     browserHostname: params.request.nextUrl.hostname,
     isHttps: params.request.nextUrl.protocol === "https:",
   });
+  const requestCookies = params.request.cookies.getAll();
+  logSupabaseCookieSnapshot({
+    label: "middleware_supabase_client",
+    requestPath: params.request.nextUrl.pathname,
+    cookies: requestCookies,
+  });
 
   return createServerClient<Database>(url, key, {
     cookieOptions,
+    global: {
+      fetch: createSupabaseDebugFetch({
+        label: "middleware_supabase_client",
+        requestPath: params.request.nextUrl.pathname,
+        cookies: requestCookies,
+      }),
+    },
     cookies: {
       getAll() {
         return normalizeSupabaseAuthCookies(params.request.cookies.getAll());

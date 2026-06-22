@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
+import {
+  createSupabaseDebugFetch,
+  logSupabaseCookieSnapshot,
+  resolveSharedCookieOptions,
+} from "@moxi/auth-middleware";
 import { decodeSessionHandoffPayload } from "@/lib/auth/sessionHandoff";
 import type { Database } from "~types/supabase";
 
@@ -64,6 +68,20 @@ function getSupabaseEnv() {
 function buildFreshHandoffClient(request: Request, response: NextResponse) {
   const { url, anonKey } = getSupabaseEnv();
   const requestUrl = new URL(request.url);
+  const requestCookies = (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [name, ...rest] = part.split("=");
+      return { name: name?.trim() ?? "", value: rest.join("=") };
+    })
+    .filter((cookie) => cookie.name);
+  logSupabaseCookieSnapshot({
+    label: "web_handoff_client",
+    requestPath: requestUrl.pathname,
+    cookies: requestCookies,
+  });
   const cookieOptions = resolveSharedCookieOptions({
     nodeEnv: process.env.NODE_ENV,
     domainEnv: process.env.KLASSE_COOKIE_DOMAIN || process.env.KLASSE_AUTH_COOKIE_DOMAIN,
@@ -74,6 +92,13 @@ function buildFreshHandoffClient(request: Request, response: NextResponse) {
 
   return createServerClient<Database>(url, anonKey, {
     cookieOptions,
+    global: {
+      fetch: createSupabaseDebugFetch({
+        label: "web_handoff_client",
+        requestPath: requestUrl.pathname,
+        cookies: requestCookies,
+      }),
+    },
     cookies: {
       // Critical: ignore incoming cookies so stale app session state cannot poison handoff.
       getAll() {
@@ -152,6 +177,20 @@ async function handleHandoff(request: Request) {
   const baseResponse = NextResponse.next();
   clearExistingAuthCookies(request, baseResponse);
   const supabase = buildFreshHandoffClient(request, baseResponse);
+  const handoffRefreshTokenHash = await globalThis.crypto.subtle
+    .digest("SHA-256", new TextEncoder().encode(payload.refresh_token))
+    .then((digest) =>
+      Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("")
+        .slice(0, 12)
+    );
+  logHandoffEvent("session_handoff_payload", {
+    method: request.method,
+    destination: destination.pathname,
+    refresh_token_hash: handoffRefreshTokenHash,
+    source: "session_handoff",
+  });
 
   const { error } = await supabase.auth.setSession({
     access_token: payload.access_token,
