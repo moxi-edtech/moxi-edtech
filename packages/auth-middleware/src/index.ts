@@ -98,10 +98,11 @@ function extractRefreshTokenCandidate(value: unknown): string | null {
   if (!value) return null;
 
   if (typeof value === "string") {
-    const json = safeJsonParse(value);
+    const cleanStr = value.startsWith("base64-") ? value.slice(7) : value;
+    const json = safeJsonParse(cleanStr);
     if (json) return extractRefreshTokenCandidate(json);
 
-    const decoded = tryDecodeBase64Url(value);
+    const decoded = tryDecodeBase64Url(cleanStr);
     if (decoded) {
       const decodedJson = safeJsonParse(decoded);
       if (decodedJson) return extractRefreshTokenCandidate(decodedJson);
@@ -174,15 +175,6 @@ export function getSupabaseAuthCookieConflicts(cookies: AuthCookieLike[]) {
     }));
 }
 
-function simpleHash(str: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
-}
-
 export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: T[]): T[] {
   const grouped = new Map<string, {
     baseCookies: T[];
@@ -253,11 +245,9 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
       selectedSource = "base";
     }
 
-    let refreshTokenHash: string | null = null;
     const tokenInfo = extractRefreshTokenCandidate(reconstructedValue);
-    if (tokenInfo) {
-      refreshTokenHash = simpleHash(tokenInfo);
-    }
+    const refreshTokenPresent = Boolean(tokenInfo);
+    const refreshTokenSize = tokenInfo?.length ?? 0;
 
     console.info(
       JSON.stringify({
@@ -269,7 +259,8 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
         chunk_sizes: chunkSizes,
         selected_source: selectedSource,
         reconstructed_size: reconstructedValue.length,
-        refresh_token_hash: refreshTokenHash,
+        refresh_token_present: refreshTokenPresent,
+        refresh_token_size: refreshTokenSize,
         timestamp: new Date().toISOString(),
       })
     );
