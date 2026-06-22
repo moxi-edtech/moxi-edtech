@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { createServerClient } from "@supabase/ssr";
+import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
 import { decodeSessionHandoffPayload } from "@/lib/auth/sessionHandoff";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +46,46 @@ function clearExistingAuthCookies(request: Request, response: NextResponse) {
       expireCookie(response, name, domain);
     }
   }
+}
+
+function getSupabaseEnv() {
+  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+  const anonKey = (
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+  ).trim();
+
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase env for auth handoff");
+  }
+
+  return { url, anonKey };
+}
+
+function buildFreshHandoffClient(request: Request, response: NextResponse) {
+  const { url, anonKey } = getSupabaseEnv();
+  const requestUrl = new URL(request.url);
+  const cookieOptions = resolveSharedCookieOptions({
+    nodeEnv: process.env.NODE_ENV,
+    domainEnv: process.env.KLASSE_COOKIE_DOMAIN || process.env.KLASSE_AUTH_COOKIE_DOMAIN,
+    sameSiteEnv: process.env.KLASSE_COOKIE_SAMESITE || process.env.KLASSE_AUTH_COOKIE_SAMESITE,
+    browserHostname: requestUrl.hostname,
+    isHttps: requestUrl.protocol === "https:",
+  });
+
+  return createServerClient<Database>(url, anonKey, {
+    cookieOptions,
+    cookies: {
+      // Critical: ignore incoming cookies so stale app session state cannot poison handoff.
+      getAll() {
+        return [];
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
+      },
+    },
+  });
 }
 
 function logHandoffEvent(event: string, details: Record<string, unknown> = {}) {
@@ -107,9 +149,9 @@ async function handleHandoff(request: Request) {
     return NextResponse.redirect(fallback);
   }
 
-  const supabase = await supabaseRouteClient();
   const baseResponse = NextResponse.next();
   clearExistingAuthCookies(request, baseResponse);
+  const supabase = buildFreshHandoffClient(request, baseResponse);
 
   const { error } = await supabase.auth.setSession({
     access_token: payload.access_token,
