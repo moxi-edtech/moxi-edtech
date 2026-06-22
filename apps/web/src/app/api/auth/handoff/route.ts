@@ -8,15 +8,59 @@ const SUPABASE_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
 const SUPABASE_COOKIE_BASE64_PREFIX = "base64-";
 const SUPABASE_COOKIE_CHUNK_SIZE = 3180;
 
-function expireCookie(response: NextResponse, name: string, domain?: string) {
-  response.cookies.set(name, "", {
-    path: "/",
-    maxAge: 0,
-    httpOnly: false,
-    secure: true,
-    sameSite: "lax",
-    ...(domain ? { domain } : {}),
-  });
+function serializeCookieHeader(
+  name: string,
+  value: string,
+  options: {
+    path?: string;
+    domain?: string;
+    maxAge?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+  }
+) {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (options.path) parts.push(`Path=${options.path}`);
+  if (options.domain) parts.push(`Domain=${options.domain}`);
+  if (options.maxAge !== undefined) parts.push(`Max-Age=${options.maxAge}`);
+  if (options.httpOnly) parts.push("HttpOnly");
+  if (options.secure) parts.push("Secure");
+  if (options.sameSite) {
+    const ss = options.sameSite.charAt(0).toUpperCase() + options.sameSite.slice(1);
+    parts.push(`SameSite=${ss}`);
+  }
+  return parts.join("; ");
+}
+
+function appendCookieHeader(
+  response: NextResponse,
+  name: string,
+  value: string,
+  options: {
+    path?: string;
+    domain?: string;
+    maxAge?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+  }
+) {
+  response.headers.append("Set-Cookie", serializeCookieHeader(name, value, options));
+}
+
+function appendExpireCookieHeader(response: NextResponse, name: string, domain?: string) {
+  response.headers.append(
+    "Set-Cookie",
+    serializeCookieHeader(name, "", {
+      path: "/",
+      maxAge: 0,
+      httpOnly: false,
+      secure: true,
+      sameSite: "lax",
+      ...(domain ? { domain } : {}),
+    })
+  );
 }
 
 function clearExistingAuthCookies(request: Request, response: NextResponse) {
@@ -43,9 +87,9 @@ function clearExistingAuthCookies(request: Request, response: NextResponse) {
 
   for (const name of cookieNames) {
     if (!name.startsWith("sb-")) continue;
-    expireCookie(response, name);
+    appendExpireCookieHeader(response, name);
     for (const domain of domainCandidates) {
-      expireCookie(response, name, domain);
+      appendExpireCookieHeader(response, name, domain);
     }
   }
 }
@@ -167,7 +211,7 @@ function writeSupabaseSessionCookies(params: {
   const chunks = createCookieChunks(storageKey, encodedPayload);
 
   chunks.forEach((chunk) => {
-    params.response.cookies.set(chunk.name, chunk.value, cookieOptions);
+    appendCookieHeader(params.response, chunk.name, chunk.value, cookieOptions);
   });
 
   const domainCandidates = Array.from(
@@ -181,21 +225,21 @@ function writeSupabaseSessionCookies(params: {
   );
 
   if (chunks.length > 1) {
-    expireCookie(params.response, storageKey);
+    appendExpireCookieHeader(params.response, storageKey);
     for (const domain of domainCandidates) {
-      expireCookie(params.response, storageKey, domain);
+      appendExpireCookieHeader(params.response, storageKey, domain);
     }
   } else {
-    expireCookie(params.response, storageKey);
+    appendExpireCookieHeader(params.response, storageKey);
     for (const domain of domainCandidates) {
       if (domain !== cookieOptions.domain) {
-        expireCookie(params.response, storageKey, domain);
+        appendExpireCookieHeader(params.response, storageKey, domain);
       }
     }
     for (let i = 0; i < 5; i++) {
-      expireCookie(params.response, `${storageKey}.${i}`);
+      appendExpireCookieHeader(params.response, `${storageKey}.${i}`);
       for (const domain of domainCandidates) {
-        expireCookie(params.response, `${storageKey}.${i}`, domain);
+        appendExpireCookieHeader(params.response, `${storageKey}.${i}`, domain);
       }
     }
   }
