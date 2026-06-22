@@ -964,9 +964,7 @@ export async function middleware(request: NextRequest) {
       if (resolved) {
         let tenant: AuthContext | null = null;
         try {
-          tenant = fastAuthContext
-            ? await resolveFreshAuthContext(request, response)
-            : await resolveAuthContext(request, response);
+          tenant = fastAuthContext ?? await resolveAuthContext(request, response);
         } catch (error) {
           if (isRefreshTokenNotFoundError(error)) {
             return finalizeResponse(request, redirectToCentralAuthAfterCookieReset(request, response), allowedOrigin);
@@ -1021,9 +1019,7 @@ export async function middleware(request: NextRequest) {
 
   let authContext: AuthContext | null = null;
   try {
-    authContext = fastAuthContext
-      ? await resolveFreshAuthContext(request, response)
-      : await resolveAuthContext(request, response);
+    authContext = fastAuthContext ?? await resolveAuthContext(request, response);
   } catch (error) {
     if (isRefreshTokenNotFoundError(error)) {
       return finalizeResponse(request, redirectToCentralAuthAfterCookieReset(request, response), allowedOrigin);
