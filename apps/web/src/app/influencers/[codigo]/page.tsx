@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { 
   BarChart3, 
   Clock, 
@@ -175,13 +174,6 @@ function getStepMeta(stepCode: string, owner: string) {
   };
 }
 
-type InfluencerSessionAuth = {
-  pin?: string;
-  memberId?: string;
-  memberName?: string;
-  verifiedAt?: number;
-};
-
 function isMarketingAsset(value: MarketingAssetRow): value is MarketingAsset {
   return ["image", "video", "script", "document"].includes(value.tipo);
 }
@@ -279,7 +271,6 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [activeTab, setActiveTab] = useState('campanha');
   const [authError, setAuthError] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
   const campaignUrl = `https://klasse.ao/escola-moderna?ref=${codigo}`;
   const onboardingUrl = `https://app.klasse.ao/onboarding?ref=${codigo}`;
   const onboardingStats = stats?.onboarding;
@@ -295,41 +286,27 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const storedAuth = sessionStorage.getItem(`klasse_influencer_auth:${codigo}`);
-      const auth = (storedAuth ? JSON.parse(storedAuth) : null) as InfluencerSessionAuth | null;
-      const pin = typeof auth?.pin === "string" ? auth.pin : null;
-      const memberId = typeof auth?.memberId === "string" ? auth.memberId : null;
+      const response = await fetch(`/api/influencers/${codigo}/portal`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as {
+        ok?: boolean;
+        portal?: AfiliadoPortalResponse;
+        assets?: MarketingAssetRow[];
+        member?: { name?: string };
+      } | null;
 
-      if (!pin || !memberId) {
+      if (!response.ok || !payload?.ok || !payload.portal || !isAfiliadoPortalResponse(payload.portal)) {
         setAuthError(true);
         return;
       }
 
-      const [portalRes, assetsRes] = await Promise.all([
-        (supabase.rpc as any)('get_influencer_member_portal', {
-          p_codigo: codigo,
-          p_member_id: memberId,
-          p_pin: pin,
-        }),
-        supabase.from('marketing_assets').select('*').eq('is_active', true)
-      ]);
-
-      if (portalRes.error || !portalRes.data || !isAfiliadoPortalResponse(portalRes.data) || !portalRes.data.ok) {
-        setAuthError(true);
-        return;
-      }
-
-      setStats(portalRes.data.stats);
-      setMemberName(
-        typeof portalRes.data.member?.name === "string"
-          ? portalRes.data.member.name
-          : (auth?.memberName ?? "")
-      );
-      setAssets((assetsRes.data || []).filter(isMarketingAsset));
+      setAuthError(false);
+      setStats(payload.portal.stats);
+      setMemberName(typeof payload.member?.name === "string" ? payload.member.name : "");
+      setAssets((payload.assets || []).filter(isMarketingAsset));
 
       // Update selected school details to reflect the new call log in the drawer
       if (selectedSchoolForDetails) {
-        const updatedSchool = portalRes.data.stats.onboarding?.escolas.find(
+        const updatedSchool = payload.portal.stats.onboarding?.escolas.find(
           (e: any) => e.token === selectedSchoolForDetails.token
         );
         if (updatedSchool) {
@@ -348,31 +325,23 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     if (!selectedSchoolForCall) return;
     setSavingCall(true);
     try {
-      const storedAuth = sessionStorage.getItem(`klasse_influencer_auth:${codigo}`);
-      const auth = storedAuth ? JSON.parse(storedAuth) : null;
-      const pin = auth?.pin;
-      const memberId = auth?.memberId;
-
-      if (!pin || !memberId) {
-        toast.error("A sua sessão expirou. Por favor, valide o seu código e PIN novamente.");
-        setAuthError(true);
-        return;
-      }
-
-      const { data, error } = await (supabase.rpc as any)('log_onboarding_call_followup', {
-        p_codigo: codigo,
-        p_member_id: memberId,
-        p_pin: pin,
-        p_onboarding_token: selectedSchoolForCall.token,
-        p_step_code: selectedStepCodeForCall || null,
-        p_notes: callNotes,
+      const response = await fetch(`/api/influencers/${codigo}/calls`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          onboardingToken: selectedSchoolForCall.token,
+          stepCode: selectedStepCodeForCall || null,
+          notes: callNotes,
+        }),
       });
-
-      if (error) throw error;
-      
-      const res = data as any;
-      if (res && !res.ok) {
-        toast.error(res.error || "Erro ao registrar a ligação.");
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !res?.ok) {
+        if (response.status === 401) {
+          setAuthError(true);
+        }
+        toast.error(res?.error || "Erro ao registrar a ligação.");
         return;
       }
 
@@ -472,6 +441,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     loadData(true);
   }, [codigo]);
 
+  const handleLogout = async () => {
+    await fetch("/api/influencers/session", { method: "DELETE" }).catch(() => null);
+    router.push("/influencers");
+  };
+
   if (authError) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
@@ -511,7 +485,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       stats={stats}
       totalComissao={totalComissao}
       countPendente={countPendente}
-      onLogout={() => router.push('/influencers')}
+      onLogout={handleLogout}
     >
       <Tabs defaultValue="campanha" value={activeTab} onValueChange={setActiveTab} className="w-full">
 

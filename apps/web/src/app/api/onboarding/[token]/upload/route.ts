@@ -85,6 +85,28 @@ export async function POST(
     const { step_code, created_by, member_id } = parsed.data;
 
     const supabase = await supabaseRouteClient();
+    const { data: trackingData, error: trackingError } = await (supabase.rpc as any)("get_onboarding_tracking_payload", {
+      p_token: token,
+    });
+
+    if (trackingError) {
+      return NextResponse.json({ ok: false, error: "Erro ao validar a etapa do onboarding." }, { status: 400 });
+    }
+
+    const targetStep = Array.isArray(trackingData?.steps)
+      ? trackingData.steps.find((step: { step_code?: string; owner_type?: string }) => step.step_code === step_code)
+      : null;
+
+    if (!targetStep) {
+      return NextResponse.json({ ok: false, error: "Etapa de onboarding não encontrada." }, { status: 400 });
+    }
+
+    if (created_by === "escola" && targetStep.owner_type !== "escola") {
+      return NextResponse.json(
+        { ok: false, error: "A escola só pode enviar documentos para etapas sob sua responsabilidade." },
+        { status: 403 }
+      );
+    }
 
     // Upload to Supabase Storage
     const fileName = `${slugFilePart(step_code)}_${Date.now()}.${extensionForType(file.type)}`;

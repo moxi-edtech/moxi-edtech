@@ -4,17 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, KeyRound, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "~types/supabase";
-
-type AfiliadoPortalResponse = Record<string, Json | undefined> & {
-  ok?: boolean;
-};
-
-function isAfiliadoPortalResponse(value: Json): value is AfiliadoPortalResponse {
-  return typeof value === "object" && value !== null && !Array.isArray(value) && "ok" in value;
-}
 
 type InfluencerMemberListItem = {
   afiliado_codigo: string;
@@ -43,7 +34,6 @@ export default function AfiliadosEntryPage() {
   const [pin, setPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const resetMemberStep = () => {
     setAffiliateName("");
@@ -53,13 +43,14 @@ export default function AfiliadosEntryPage() {
   };
 
   const handleResolveMembers = async (normalizedCode: string) => {
-    const { data, error } = await (supabase.rpc as any)("list_influencer_members_public", {
-      p_codigo: normalizedCode,
-    });
+    const response = await fetch(`/api/influencers/${normalizedCode}/members`, { cache: "no-store" });
+    const json = (await response.json().catch(() => null)) as { ok?: boolean; members?: Json[]; error?: string } | null;
 
-    if (error) throw error;
+    if (!response.ok || !json?.ok) {
+      throw new Error(json?.error || "no_members_found");
+    }
 
-    const items = Array.isArray(data) ? data.filter(isInfluencerMemberListItem) : [];
+    const items = Array.isArray(json.members) ? json.members.filter(isInfluencerMemberListItem) : [];
     if (items.length === 0) {
       throw new Error("no_members_found");
     }
@@ -90,27 +81,23 @@ export default function AfiliadosEntryPage() {
         return;
       }
 
-      const selectedMember = members.find((member) => member.membro_id === selectedMemberId) ?? null;
-      const { data, error } = await (supabase.rpc as any)("get_influencer_member_portal", {
-        p_codigo: normalizedCode,
-        p_member_id: selectedMemberId,
-        p_pin: normalizedPin,
+      const response = await fetch("/api/influencers/session", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          codigo: normalizedCode,
+          memberId: selectedMemberId,
+          pin: normalizedPin,
+        }),
       });
+      const data = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
 
-      if (error) throw error;
-      if (!data || !isAfiliadoPortalResponse(data) || !data.ok) {
+      if (!response.ok || !data?.ok) {
         throw new Error("invalid_credentials");
       }
 
-      window.sessionStorage.setItem(
-        `klasse_influencer_auth:${normalizedCode}`,
-        JSON.stringify({
-          pin: normalizedPin,
-          memberId: selectedMemberId,
-          memberName: selectedMember?.membro_nome ?? "",
-          verifiedAt: Date.now(),
-        }),
-      );
       router.push(`/influencers/${normalizedCode}`);
     } catch (error) {
       console.error(error);
