@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-03T15:55:29.044Z",
+  "timestamp": "2026-06-23T15:28:31.694Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -16,7 +16,15 @@
       "status": "PARTIAL",
       "evidence": [
         {
+          "file": "docs/PLAN_EVOLUTION_RELATORIO_FINANCEIRO_CAC_K12.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "docs/big-tech-performance.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "docs/funil-admissao.md",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
@@ -106,14 +114,6 @@
         {
           "file": "apps/formacao/app/(portal)/honorarios/HonorariosClient.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/formacao/app/(portal)/pagamentos/PagamentosClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/formacao/app/(portal)/meus-cursos/MeusCursosClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],
       "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
@@ -162,7 +162,31 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
+          "file": "DOUBLE_CHECK_REPORT_ADMISSAO_P0_V2.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "README.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "REPORT_ADMISSAO_P0.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "plan_crm_execution_backlog.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "plan_crm_execution_status.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
           "file": "temp_supabase_output.ts",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "docs/PLANO_EXECUCAO_UX_FINANCEIRO_SECRETARIA.md",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
@@ -227,30 +251,6 @@
         },
         {
           "file": "supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000004_rpc_gerar_turmas_from_curriculo.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000005_rpc_onboard_academic_structure.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000006_refactor_frequencia_ssot.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000007_rpc_lancar_notas_batch.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000009_rpc_fechar_periodo_unificado.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000010_rpc_transferir_matricula.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],
@@ -365,8 +365,8 @@
           "note": "match: /mv_secretaria_matriculas_status/i"
         },
         {
-          "file": "supabase/migrations/20260127020139_remote_schema.sql",
-          "note": "match: /ux_mv_secretaria_matriculas_status/i"
+          "file": "supabase/migrations/20270506011000_fix_secretaria_matriculas_status_refresh_schema.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
         }
       ],
       "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo)."

@@ -26,18 +26,18 @@ type InfluencerAdminToggleItem = Database["public"]["Functions"]["toggle_afiliad
 async function requireSuperAdmin() {
   const supabase = await supabaseRouteClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const user = session?.user ?? null;
   if (!user) {
     return { ok: false as const, response: NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }) };
   }
 
-  const role =
-    user.app_metadata?.role ??
-    user.user_metadata?.role ??
-    null;
+  let role = user.app_metadata?.role ?? user.user_metadata?.role ?? null;
+  if (!role) {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("user_id", user.id).maybeSingle();
+    role = profile?.role ?? null;
+  }
 
   if (!isSuperAdminRole(typeof role === "string" ? role : null)) {
     return { ok: false as const, response: NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }) };

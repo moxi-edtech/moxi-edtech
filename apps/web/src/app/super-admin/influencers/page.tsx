@@ -9,7 +9,10 @@ import {
   Loader2, 
   ChevronRight, 
   MessageSquare,
-  Mail
+  Mail,
+  UserPlus,
+  ShieldCheck,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -25,17 +28,34 @@ interface Afiliado {
   created_at: string;
 }
 
+interface AfiliadoMember {
+  id: string;
+  afiliado_id: string;
+  nome: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function SuperAdminAfiliadosPage() {
   const [afiliados, setAfiliados] = useState<Afiliado[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [savingMember, setSavingMember] = useState(false);
+  const [selectedAfiliado, setSelectedAfiliado] = useState<Afiliado | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<AfiliadoMember[]>([]);
   const [openWhatsappAfterSave, setOpenWhatsappAfterSave] = useState(true);
   const [formData, setFormData] = useState({
     nome: '',
     codigo: '',
     email: '',
     pin: ''
+  });
+  const [memberForm, setMemberForm] = useState({
+    nome: '',
+    pin: '',
   });
 
   useEffect(() => {
@@ -119,6 +139,104 @@ export default function SuperAdminAfiliadosPage() {
       await loadAfiliados();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao atualizar influenciador');
+    }
+  };
+
+  const loadMembers = async (afiliado: Afiliado) => {
+    setSelectedAfiliado(afiliado);
+    setLoadingMembers(true);
+    try {
+      const response = await fetch(`/api/super-admin/influencers/${afiliado.id}/members`, {
+        cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Erro ao carregar membros');
+      }
+      setSelectedMembers(result.items || []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar membros');
+      setSelectedMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAfiliado) return;
+    if (/.+@.+\..+/.test(memberForm.nome.trim())) {
+      toast.error('Use o nome do membro, não um e-mail.');
+      return;
+    }
+
+    setSavingMember(true);
+    try {
+      const response = await fetch(`/api/super-admin/influencers/${selectedAfiliado.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(memberForm),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Erro ao criar membro');
+      }
+
+      toast.success('Membro cadastrado com sucesso.');
+      setMemberForm({ nome: '', pin: '' });
+      await loadMembers(selectedAfiliado);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao criar membro';
+      if (/duplicate key|23505/i.test(message)) {
+        toast.error('Já existe um membro com este nome para o parceiro.');
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setSavingMember(false);
+    }
+  };
+
+  const toggleMemberStatus = async (member: AfiliadoMember) => {
+    if (!selectedAfiliado) return;
+
+    try {
+      const response = await fetch(`/api/super-admin/influencers/${selectedAfiliado.id}/members`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: member.id, ativo: !member.ativo }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Erro ao atualizar membro');
+      }
+
+      await loadMembers(selectedAfiliado);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar membro');
+    }
+  };
+
+  const removeMember = async (member: AfiliadoMember) => {
+    if (!selectedAfiliado) return;
+    const confirmed = window.confirm(`Remover o membro "${member.nome}" deste parceiro?`);
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/super-admin/influencers/${selectedAfiliado.id}/members`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: member.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Erro ao remover membro');
+      }
+
+      toast.success('Membro removido com sucesso.');
+      await loadMembers(selectedAfiliado);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao remover membro');
     }
   };
 
@@ -218,6 +336,15 @@ export default function SuperAdminAfiliadosPage() {
                       <MessageSquare size={14} className="text-emerald-500" />
                       WHATSAPP
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => loadMembers(af)}
+                      className="flex-1 rounded-lg text-[11px] font-bold gap-2 border-slate-200"
+                    >
+                      <ShieldCheck size={14} className="text-klasse-green" />
+                      MEMBROS
+                    </Button>
                     <button 
                       onClick={() => toggleStatus(af.id, af.ativo)}
                       className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"
@@ -307,6 +434,126 @@ export default function SuperAdminAfiliadosPage() {
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'CONFIRMAR CADASTRO'}
                   </Button>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedAfiliado && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6 backdrop-blur-sm">
+            <div className="bg-white rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="p-8 space-y-6">
+                <div className="flex justify-between items-center gap-4">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedAfiliado.nome}</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest text-klasse-gold">{selectedAfiliado.codigo}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedAfiliado(null);
+                      setSelectedMembers([]);
+                      setMemberForm({ nome: '', pin: '' });
+                    }}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Membros do parceiro</p>
+                        <p className="text-sm text-slate-500">Use membros separados para rastrear acessos e uploads.</p>
+                      </div>
+                      <Badge className="bg-slate-100 text-slate-700">
+                        {selectedMembers.length} membro(s)
+                      </Badge>
+                    </div>
+
+                    {loadingMembers ? (
+                      <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-10">
+                        <Loader2 className="w-6 h-6 animate-spin text-klasse-green" />
+                      </div>
+                    ) : selectedMembers.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                        <p className="text-sm font-medium text-slate-500">Nenhum membro adicional cadastrado.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedMembers.map((member) => (
+                          <div key={member.id} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                            <div>
+                              <p className="font-bold text-slate-900">{member.nome}</p>
+                              <p className="text-xs text-slate-500">Actualizado em {new Date(member.updated_at).toLocaleDateString('pt-AO')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={member.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                                {member.ativo ? 'Ativo' : 'Inativo'}
+                              </Badge>
+                              <button
+                                onClick={() => removeMember(member)}
+                                className="p-2 hover:bg-rose-50 rounded-lg text-rose-400"
+                                title="Remover membro"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => toggleMemberStatus(member)}
+                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"
+                                title={member.ativo ? 'Inativar membro' : 'Reativar membro'}
+                              >
+                                {member.ativo ? <X size={16} /> : <Check size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <UserPlus size={16} className="text-klasse-green" />
+                      <h4 className="text-sm font-black text-slate-900">Adicionar membro</h4>
+                    </div>
+                    <form onSubmit={handleCreateMember} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase text-slate-400">Nome do membro</label>
+                        <input
+                          required
+                          placeholder="Ex: Operador Comercial"
+                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green bg-white"
+                          value={memberForm.nome}
+                          onChange={e => setMemberForm({ ...memberForm, nome: e.target.value })}
+                        />
+                        <p className="text-[11px] text-slate-500">
+                          Use o nome operacional do membro. E-mail não é aceite neste campo.
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase text-slate-400">PIN pessoal</label>
+                        <input
+                          required
+                          type="password"
+                          minLength={4}
+                          placeholder="PIN do membro"
+                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-klasse-green bg-white text-center tracking-[0.4em]"
+                          value={memberForm.pin}
+                          onChange={e => setMemberForm({ ...memberForm, pin: e.target.value })}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={savingMember}
+                        className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm"
+                      >
+                        {savingMember ? <Loader2 className="w-4 h-4 animate-spin" /> : 'CRIAR MEMBRO'}
+                      </Button>
+                    </form>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

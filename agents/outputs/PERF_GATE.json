@@ -1,8 +1,270 @@
 {
-  "timestamp": "2026-01-20T01:37:36.160Z",
-  "status": "PASS",
-  "blocking_findings": [],
+  "timestamp": "2026-06-23T15:28:40.195Z",
+  "status": "FAIL",
+  "blocking_findings": [
+    {
+      "id": "NO_STORE",
+      "title": "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "docs/PLAN_EVOLUTION_RELATORIO_FINANCEIRO_CAC_K12.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "docs/big-tech-performance.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "docs/funil-admissao.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "tools/fiscal/build-agt-evidence.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "tools/validator/fluency-validator-monorepo.js",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/auth/lib/rateLimit.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/lib/auth-admin-job.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/lib/funnel-client.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "docs/fiscal/ui/fiscal-ui-ux-fase5.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/auth/app/login/actions.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/components/aluno/CarreiraHubClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/components/aluno/TalentOptInPrompt.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/components/cohorts/AdminCohortsPageClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/components/mentorias/MentoriasPageClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/lib/integrations/fiscal.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/lib/integrations/payment.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/hooks/useMatriculaLogic.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/auth-admin-job.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/escolaInfoClient.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/financeiroTabelasClient.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/periodosLetivosClient.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/schoolSessionsClient.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/setupStateClient.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/app/(portal)/agenda/AgendaClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/formacao/app/(portal)/honorarios/HonorariosClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        }
+      ],
+      "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
+    },
+    {
+      "id": "F09_MV",
+      "title": "F09 — Radar de Inadimplência com MATERIALIZED VIEW",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20261127000002_fix_refresh_mv_radar_inadimplencia.sql",
+          "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."
+    },
+    {
+      "id": "F18_MV",
+      "title": "F18 — Caixa/Propinas com MATERIALIZED VIEW",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/migrations/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."
+    },
+    {
+      "id": "P0_3_MV_DASHBOARDS",
+      "title": "P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20261127000004_fix_refresh_mv_secretaria_dashboard_counts.sql",
+          "note": "match: /mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /ux_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20261127000004_fix_refresh_mv_secretaria_dashboard_counts.sql",
+          "note": "match: /refresh_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /vw_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261201210000_update_financeiro_kpis_realistic.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261212000002_fix_secretaria_import_pendencias.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20270506011000_fix_secretaria_matriculas_status_refresh_schema.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo)."
+    },
+    {
+      "id": "PLAN_GUARD",
+      "title": "P0.3 — Controle de planos (backend + UI)",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "apps/web/src/app/api/financeiro/recibos/emitir/route.ts",
+          "note": "backend guard (fin_recibo_pdf): sim"
+        },
+        {
+          "file": "apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts",
+          "note": "backend guard (doc_qr_code): sim"
+        },
+        {
+          "file": "apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts",
+          "note": "backend guard (doc_qr_code): sim"
+        },
+        {
+          "file": "apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts",
+          "note": "backend guard (doc_qr_code): sim"
+        },
+        {
+          "file": "apps/web/src/components/financeiro/ReciboImprimivel.tsx",
+          "note": "ui guard (fin_recibo_pdf): não"
+        },
+        {
+          "file": "apps/web/src/components/financeiro/ExtratoActions.tsx",
+          "note": "ui guard (doc_qr_code): sim"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/TurmaDetailClient.tsx",
+          "note": "ui guard (doc_qr_code): sim"
+        }
+      ],
+      "recommendation": "Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI."
+    }
+  ],
   "notes": [
-    "PASS: sem bloqueios P0/P1."
+    "Hard-gate ativo: CRITICAL/HIGH bloqueiam PR até resolver."
   ]
 }

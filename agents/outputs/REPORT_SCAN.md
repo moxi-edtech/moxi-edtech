@@ -1,6 +1,6 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-- Verificado em: `2026-05-03T15:55:29.044Z`
+- Verificado em: `2026-06-23T15:28:31.694Z`
 
 ## 1. SUMÁRIO EXECUTIVO
 
@@ -14,7 +14,9 @@
 - Severidade: **HIGH**
 - Status: **PARTIAL**
 - Evidências:
+  - `docs/PLAN_EVOLUTION_RELATORIO_FINANCEIRO_CAC_K12.md` — match: /cache:\s*['\"]no-store['\"]/i
   - `docs/big-tech-performance.md` — match: /cache:\s*['\"]no-store['\"]/i
+  - `docs/funil-admissao.md` — match: /cache:\s*['\"]no-store['\"]/i
   - `tools/fiscal/build-agt-evidence.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `tools/validator/fluency-validator-monorepo.js` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/auth/lib/rateLimit.ts` — match: /cache:\s*['\"]no-store['\"]/i
@@ -37,8 +39,6 @@
   - `apps/web/src/lib/setupStateClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/formacao/app/(portal)/agenda/AgendaClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/formacao/app/(portal)/honorarios/HonorariosClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/app/(portal)/pagamentos/PagamentosClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/app/(portal)/meus-cursos/MeusCursosClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
@@ -78,7 +78,7 @@
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_matriculas_status/i
   - `supabase/migrations/20261201210000_update_financeiro_kpis_realistic.sql` — match: /mv_secretaria_matriculas_status/i
   - `supabase/migrations/20261212000002_fix_secretaria_import_pendencias.sql` — match: /mv_secretaria_matriculas_status/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20270506011000_fix_secretaria_matriculas_status_refresh_schema.sql` — match: /mv_secretaria_matriculas_status/i
 - Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).
 
 ### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
@@ -111,7 +111,13 @@
 - Evidências:
   - `AGENTS.md` — match: /audit_logs|auditLog|create_audit/i
   - `CHANGELOG.md` — match: /audit_logs|auditLog|create_audit/i
+  - `DOUBLE_CHECK_REPORT_ADMISSAO_P0_V2.md` — match: /audit_logs|auditLog|create_audit/i
+  - `README.md` — match: /audit_logs|auditLog|create_audit/i
+  - `REPORT_ADMISSAO_P0.md` — match: /audit_logs|auditLog|create_audit/i
+  - `plan_crm_execution_backlog.md` — match: /audit_logs|auditLog|create_audit/i
+  - `plan_crm_execution_status.md` — match: /audit_logs|auditLog|create_audit/i
   - `temp_supabase_output.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `docs/PLANO_EXECUCAO_UX_FINANCEIRO_SECRETARIA.md` — match: /audit_logs|auditLog|create_audit/i
   - `docs/inventario-portal-admin-escola-2026-04-03.md` — match: /audit_logs|auditLog|create_audit/i
   - `scripts/README.md` — match: /audit_logs|auditLog|create_audit/i
   - `types/database.ts` — match: /audit_logs|auditLog|create_audit/i
@@ -128,10 +134,4 @@
   - `supabase/migrations/20260203000000_rpc_setup_active_ano_letivo.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000002_rpc_upsert_bulk_periodos_letivos.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000004_rpc_gerar_turmas_from_curriculo.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000005_rpc_onboard_academic_structure.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000006_refactor_frequencia_ssot.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000007_rpc_lancar_notas_batch.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000009_rpc_fechar_periodo_unificado.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000010_rpc_transferir_matricula.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
