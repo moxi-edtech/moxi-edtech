@@ -14,7 +14,7 @@ const BodySchema = z.object({
   aluno_ids: z.array(z.string().uuid()).min(1),
 });
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 export async function POST(request: Request) {
   try {

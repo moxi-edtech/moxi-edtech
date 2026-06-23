@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
+    roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
   });
   if (authError) return authError;
 
@@ -65,7 +65,7 @@ export async function DELETE(request: Request) {
   const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
+    roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
   });
   if (authError) return authError;
 

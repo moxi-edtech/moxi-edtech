@@ -6,16 +6,17 @@ import MaintenanceBanner from "./MaintenanceBanner";
 import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { sidebarConfig, type NavItem } from "@/lib/sidebarNav";
+import { sidebarConfig, type NavItem, type SidebarRole } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { createClient } from "@/lib/supabaseClient";
 import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
 
-const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
+const TOPBAR_LABELS: Record<SidebarRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
   admin: { title: "Admin", subtitle: "Portal da escola" },
+  operacoes: { title: "Operações", subtitle: "Portal operacional" },
   secretaria: { title: "Secretaria", subtitle: "Portal da secretaria" },
   financeiro: { title: "Financeiro", subtitle: "Portal financeiro" },
   aluno: { title: "Aluno", subtitle: "Portal do aluno" },
@@ -47,16 +48,15 @@ export default function AppShell({
 
   const escolaIdFromPath = useMemo(() => {
     if (!safePathname) return null;
-    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria|financeiro|professor|aluno|professores|alunos|horarios)/);
+    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|operacoes|secretaria|financeiro|professor|aluno|professores|alunos|horarios)/);
     return match?.[1] ?? null;
   }, [safePathname]);
   
   const inferredRole = useMemo<UserRole | null>(() => {
-    if (userRole) return userRole;
-
     // fallback por rota
     if (safePathname.startsWith("/super-admin")) return "superadmin";
     if (safePathname.startsWith("/admin")) return "admin";
+    if (safePathname.startsWith("/operacoes")) return "admin";
     if (safePathname.startsWith("/secretaria")) return "secretaria";
     if (safePathname.startsWith("/financeiro")) return "financeiro";
     if (safePathname.startsWith("/professor")) return "professor";
@@ -65,6 +65,7 @@ export default function AppShell({
     // canonical routes
     if (safePathname.includes("/escola/")) {
         if (safePathname.includes("/admin")) return "admin";
+        if (safePathname.includes("/operacoes")) return "admin";
         if (safePathname.includes("/secretaria")) return "secretaria";
         if (safePathname.includes("/financeiro")) return "financeiro";
         if (safePathname.includes("/horarios")) return "secretaria";
@@ -74,24 +75,33 @@ export default function AppShell({
         if (safePathname.includes("/aluno")) return "aluno";
     }
 
+    if (userRole) return userRole;
+
     return null;
   }, [userRole, safePathname]);
+
+  const navRole = useMemo<SidebarRole | null>(() => {
+    if (safePathname.startsWith("/operacoes")) return "operacoes";
+    if (safePathname.includes("/escola/") && safePathname.includes("/operacoes")) return "operacoes";
+    return inferredRole;
+  }, [inferredRole, safePathname]);
 
   const navEscolaId = escolaSlug || escolaIdFromPath || escolaIdFromSession;
   const displayedEscolaNome = navEscolaId ? escolaNome : null;
   const displayedPlanoNome = navEscolaId ? planoNome : null;
 
   const navItems = useMemo(() => {
-    if (!inferredRole) return [];
+    if (!navRole) return [];
     
-    let items = sidebarConfig[inferredRole] || [];
+    let items = sidebarConfig[navRole] || [];
     
     if (
-      inferredRole === "admin" ||
-      inferredRole === "secretaria" ||
-      inferredRole === "financeiro" ||
-      inferredRole === "professor" ||
-      inferredRole === "aluno"
+      navRole === "admin" ||
+      navRole === "operacoes" ||
+      navRole === "secretaria" ||
+      navRole === "financeiro" ||
+      navRole === "professor" ||
+      navRole === "aluno"
     ) {
       items = items
         .map((item) => {
@@ -123,7 +133,7 @@ export default function AppShell({
         .filter(Boolean) as NavItem[];
     }
     
-    if (inferredRole === "financeiro" && Object.keys(financeBadges).length) {
+    if (navRole === "financeiro" && Object.keys(financeBadges).length) {
       items = items.map((item) => {
           // Normalizar o href para bater com as chaves dos badges que vêm da API (que são curtas)
           const shortHref = item.href.replace(/\/escola\/[^\/]+/, "");
@@ -132,7 +142,7 @@ export default function AppShell({
     }
     
     return items;
-  }, [inferredRole, isLoadingRole, navEscolaId, financeBadges]);
+  }, [navRole, isLoadingRole, navEscolaId, financeBadges]);
 
   useEffect(() => {
     if (!navEscolaId) return;
@@ -172,7 +182,7 @@ export default function AppShell({
     return () => {
       cancelled = true;
     };
-  }, [navEscolaId, inferredRole, userRole, pathname, router]);
+  }, [navEscolaId, navRole, userRole, pathname, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,7 +218,7 @@ export default function AppShell({
   }, []);
 
   useEffect(() => {
-    if (inferredRole !== "financeiro") return;
+    if (navRole !== "financeiro") return;
 
     let cancelled = false;
 
@@ -239,10 +249,10 @@ export default function AppShell({
     return () => {
       cancelled = true;
     };
-  }, [inferredRole]);
+  }, [navRole]);
 
 
-  const topbarLabels = inferredRole ? TOPBAR_LABELS[inferredRole] : null;
+  const topbarLabels = navRole ? TOPBAR_LABELS[navRole] : null;
   const isPrintView = safePathname.includes("/print");
 
   if (isPrintView) {
@@ -270,7 +280,7 @@ export default function AppShell({
             planoNome={displayedPlanoNome}
             escolaId={escolaIdFromSession}
             escolaParam={navEscolaId}
-            portal={inferredRole ?? undefined}
+            portal={navRole ?? undefined}
           />
           <MaintenanceBanner />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>

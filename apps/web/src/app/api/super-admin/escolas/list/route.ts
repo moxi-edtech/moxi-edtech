@@ -16,8 +16,28 @@ type EscolaItem = {
   estado: string | null
 }
 
-export async function GET() {
+const INELIGIBLE_PROVISION_STATUSES = new Set([
+  'cancelada',
+  'cancelado',
+  'excluida',
+  'excluido',
+  'inactive',
+  'inativa',
+  'inativo',
+  'suspensa',
+  'suspenso',
+])
+
+function isEligibleForProvision(status: string | null) {
+  if (!status) return true
+  return !INELIGIBLE_PROVISION_STATUSES.has(status.trim().toLowerCase())
+}
+
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const mode = searchParams.get('mode')
+
     // Auth: only super_admin
     const s = await supabaseServer()
     const { data: sess } = await s.auth.getUser()
@@ -106,7 +126,11 @@ export async function GET() {
 
     const r2 = await queryWith(s as any)
     if (r2.ok) {
-      return NextResponse.json({ ok: true, items: r2.items })
+      const items = mode === 'provision-target'
+        ? r2.items.filter((item) => isEligibleForProvision(item.status))
+        : r2.items
+
+      return NextResponse.json({ ok: true, items })
     }
     return NextResponse.json({ ok: false, error: (r2 as any).error?.message || 'Erro ao listar escolas' }, { status: 400 })
   } catch (err) {

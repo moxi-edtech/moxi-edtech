@@ -76,7 +76,7 @@ type CacheEntry = {
   hasMore: boolean;
 };
 
-type PortalKey = "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
+type PortalKey = "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 
 type GlobalSearchOptions = {
   transformQuery?: (query: string) => string;
@@ -88,6 +88,7 @@ const PORTAL_TYPES: Record<PortalKey, string[]> = {
   secretaria: ["aluno", "matricula", "turma", "documento", "candidatura"],
   financeiro: ["aluno", "mensalidade", "pagamento", "recibo"],
   admin: ["turma", "professor", "classe", "curso", "usuario"],
+  operacoes: ["aluno", "matricula", "turma", "documento", "candidatura", "professor", "classe", "curso", "usuario"],
   professor: ["aluno"],
   aluno: ["aluno"],
   gestor: ["aluno"],
@@ -111,7 +112,7 @@ function resolveHref(
   }
 
   if (intent === "documentos" && item.type === "aluno") {
-    return buildPortalHref(escolaParam, `/secretaria/documentos?alunoId=${item.id}`);
+    return buildPortalHref(escolaParam, basePortal === "operacoes" ? `/operacoes/documentos?alunoId=${item.id}` : `/secretaria/documentos?alunoId=${item.id}`);
   }
 
   if (basePortal === "professor") {
@@ -139,6 +140,30 @@ function resolveHref(
         return buildPortalHref(escolaParam, "/admin/funcionarios");
       default:
         return buildPortalHref(escolaParam, "/admin");
+    }
+  }
+
+  if (basePortal === "operacoes") {
+    if (!escolaParam) return "/operacoes";
+    switch (item.type) {
+      case "turma":
+        return buildPortalHref(escolaParam, "/operacoes/turmas");
+      case "professor":
+        return buildPortalHref(escolaParam, "/operacoes/professores");
+      case "classe":
+      case "curso":
+        return buildPortalHref(escolaParam, "/operacoes/configuracoes");
+      case "usuario":
+        return buildPortalHref(escolaParam, "/admin/funcionarios");
+      case "matricula":
+        return buildPortalHref(escolaParam, `/operacoes/admissoes?matricula=${item.id}`);
+      case "documento":
+        return buildPortalHref(escolaParam, `/operacoes/documentos`);
+      case "candidatura":
+        return buildPortalHref(escolaParam, `/operacoes/admissoes?candidatura=${item.id}`);
+      case "aluno":
+      default:
+        return buildPortalHref(escolaParam, `/operacoes/alunos/${item.id}`);
     }
   }
 

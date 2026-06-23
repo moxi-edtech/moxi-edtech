@@ -8,7 +8,7 @@ import { applyKf2ListInvariants } from "@/lib/kf2";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 const CreateSchema = z.object({
   aluno_id: z.string().uuid().nullable().optional(),

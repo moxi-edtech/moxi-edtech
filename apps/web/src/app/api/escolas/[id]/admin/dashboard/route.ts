@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId: resolvedEscolaId,
-      roles: ["admin", "admin_escola", "staff_admin", "secretaria"],
+      roles: ["admin", "admin_escola", "staff_admin", "secretaria", "admin_financeiro"],
     });
     if (roleError) return roleError;
 

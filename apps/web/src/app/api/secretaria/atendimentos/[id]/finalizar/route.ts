@@ -7,7 +7,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 const FinalizarSchema = z.object({
   resolucao: z.string().trim().min(3),

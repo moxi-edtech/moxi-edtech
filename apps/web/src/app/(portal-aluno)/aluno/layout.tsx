@@ -65,10 +65,7 @@ const alunoTemInadimplencia = async (
 
 export default async function AlunoLayout({ children }: { children: React.ReactNode }) {
   const supabase = await supabaseServer();
-  let user:
-    | Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]["user"]
-    | null
-    | undefined;
+  let user: any;
   try {
     const sessionResult = await supabase.auth.getSession();
     user = sessionResult.data.session?.user ?? null;

@@ -86,7 +86,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { data: hasRole, error: rolesError } = await (supabase as any)
       .rpc('user_has_role_in_school', {
         p_escola_id: userEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin'],
+        p_roles: ['admin_escola', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro'],
       });
 
     if (rolesError) {

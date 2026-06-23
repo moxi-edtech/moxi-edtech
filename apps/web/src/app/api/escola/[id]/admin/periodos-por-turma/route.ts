@@ -37,7 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { data: hasRole, error: rolesError } = await supabase
       .rpc('user_has_role_in_school', {
         p_escola_id: effectiveEscolaId,
-        p_roles: ['admin_escola', 'secretaria', 'admin'],
+        p_roles: ['admin_escola', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro'],
       });
 
     if (rolesError) {

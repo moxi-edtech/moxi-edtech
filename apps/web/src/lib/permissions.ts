@@ -94,7 +94,7 @@ const K12_COMPOSITE_ROLE_INHERITANCE: Record<string, ReadonlyArray<string>> = {
   staff_admin: K12_ADMIN_ROLE_GROUP,
   admin_escola: K12_ADMIN_ROLE_GROUP,
   secretaria_financeiro: ['secretaria_financeiro', 'secretaria', 'financeiro'],
-  admin_financeiro: ['admin_financeiro', 'financeiro', 'admin', 'staff_admin', 'admin_escola'],
+  admin_financeiro: ['admin_financeiro', 'financeiro', 'secretaria', 'admin', 'staff_admin', 'admin_escola'],
 }
 
 export function normalizePapel(papel: Papel | string | null | undefined): Papel | null {
@@ -446,8 +446,9 @@ export function getDefaultK12PortalPathForRole(
     case 'admin':
     case 'admin_escola':
     case 'staff_admin':
-    case 'admin_financeiro':
       return escolaSegment ? `${escolaSegment}/admin/dashboard` : '/admin'
+    case 'admin_financeiro':
+      return escolaSegment ? `${escolaSegment}/operacoes/dashboard` : '/operacoes/dashboard'
     case 'secretaria':
     case 'secretaria_financeiro':
       return escolaSegment ? `${escolaSegment}/secretaria` : '/secretaria'

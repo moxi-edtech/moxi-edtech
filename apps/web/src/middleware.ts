@@ -259,7 +259,11 @@ function finalizeResponse(request: NextRequest, response: NextResponse, allowedO
 const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   {
     prefix: '/admin',
-    roles: ['admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formacao_admin'],
+    roles: ['admin', 'admin_escola', 'staff_admin', 'admin_financeiro', 'super_admin', 'global_admin', 'formacao_admin'],
+  },
+  {
+    prefix: '/operacoes',
+    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin'],
   },
   {
     prefix: '/secretaria',

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: head.escola_id,
-      roles: ['secretaria', 'diretor', 'admin', 'admin_escola', 'staff_admin'],
+      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'diretor', 'admin', 'admin_escola', 'staff_admin'],
     })
     if (authError) return authError
 

@@ -27,7 +27,7 @@ import { buildPortalHref } from "@/lib/navigation";
 
 type Props = {
   escolaId?: string | null;
-  portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
+  portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
 export function CommandPalette({ escolaId, portal }: Props) {
@@ -73,11 +73,21 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "dashboard",
         label: "Ir para Dashboard",
         icon: LayoutDashboard,
-        onSelect: () => router.push(buildPortalHref(escolaParam, portal === "admin" ? "/admin/dashboard" : "/dashboard")),
+        onSelect: () =>
+          router.push(
+            buildPortalHref(
+              escolaParam,
+              portal === "admin"
+                ? "/admin/dashboard"
+                : portal === "operacoes"
+                  ? "/operacoes/dashboard"
+                  : "/dashboard",
+            ),
+          ),
       },
     ];
 
-    if (portal === "financeiro" || portal === "admin") {
+    if (portal === "financeiro" || portal === "admin" || portal === "operacoes") {
       actions.push({
         id: "pagamentos",
         label: "Ver Pagamentos",
@@ -86,22 +96,24 @@ export function CommandPalette({ escolaId, portal }: Props) {
       });
     }
 
-    if (portal === "secretaria" || portal === "admin") {
+    if (portal === "secretaria" || portal === "admin" || portal === "operacoes") {
       actions.push({
         id: "alunos",
         label: "Gestão de Alunos",
         icon: Users,
-        onSelect: () => router.push(buildPortalHref(escolaParam, "/secretaria/alunos")),
+        onSelect: () =>
+          router.push(buildPortalHref(escolaParam, portal === "operacoes" ? "/operacoes/alunos" : "/secretaria/alunos")),
       });
       actions.push({
         id: "turmas",
         label: "Gestão de Turmas",
         icon: GraduationCap,
-        onSelect: () => router.push(buildPortalHref(escolaParam, "/secretaria/turmas")),
+        onSelect: () =>
+          router.push(buildPortalHref(escolaParam, portal === "operacoes" ? "/operacoes/turmas" : "/secretaria/turmas")),
       });
     }
 
-    if (portal === "admin") {
+    if (portal === "admin" || portal === "operacoes") {
       actions.push({
         id: "config",
         label: "Configurações da Escola",

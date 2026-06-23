@@ -6,15 +6,17 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { usePapel } from "@/lib/usePapel";
 import { buildPortalHref } from "@/lib/navigation";
 
-type ModuleKey = "admin" | "secretaria" | "financeiro";
+type ModuleKey = "admin" | "operacoes" | "secretaria" | "financeiro";
 
 const LABELS: Record<ModuleKey, string> = {
   admin: "Admin",
+  operacoes: "Operações",
   secretaria: "Secretaria",
   financeiro: "Financeiro",
 };
 
 function resolveModule(pathname: string): ModuleKey | null {
+  if (pathname.includes("/operacoes")) return "operacoes";
   if (pathname.includes("/admin")) return "admin";
   if (pathname.includes("/secretaria")) return "secretaria";
   if (pathname.includes("/financeiro")) return "financeiro";
@@ -48,7 +50,7 @@ export function ModuleSwitcherInner({
   const escolaParam = explicitEscolaParam || escolaSlug || escolaIdFromPath || resolvedEscolaId;
 
   const modules = useMemo<ModuleKey[]>(() => {
-    if (papel === "admin_financeiro") return ["admin", "financeiro"];
+    if (papel === "admin_financeiro") return ["operacoes", "financeiro"];
     if (papel === "secretaria_financeiro") return ["secretaria", "financeiro"];
     return [];
   }, [papel]);
@@ -65,6 +67,7 @@ export function ModuleSwitcherInner({
 
   const resolveTarget = (moduleKey: ModuleKey) => {
     if (moduleKey === "financeiro") return buildPortalHref(escolaParam, "/financeiro/dashboard");
+    if (moduleKey === "operacoes") return buildPortalHref(escolaParam, "/operacoes/dashboard");
     if (moduleKey === "admin") {
       return buildPortalHref(escolaParam, "/admin/dashboard");
     }
@@ -77,17 +80,20 @@ export function ModuleSwitcherInner({
     router.push(target);
   };
 
-  const alternateModule = modules.find((moduleKey) => moduleKey !== currentModule) ?? null;
+  const currentIndex = modules.indexOf(currentModule);
+  const nextModule =
+    currentIndex >= 0 ? modules[(currentIndex + 1) % modules.length] ?? null : null;
+  const alternateModules = modules.filter((moduleKey) => moduleKey !== currentModule);
 
-  if (!alternateModule) return null;
+  if (!nextModule || alternateModules.length === 0) return null;
 
   return (
     <button
       type="button"
-      onClick={() => handleChange(alternateModule)}
+      onClick={() => handleChange(nextModule)}
       className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-      aria-label={`Alternar de ${LABELS[currentModule]} para ${LABELS[alternateModule]}`}
-      title={`Alternar para ${LABELS[alternateModule]}`}
+      aria-label={`Alternar módulo a partir de ${LABELS[currentModule]}`}
+      title={`Alternar para ${LABELS[nextModule]}`}
     >
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Módulo</span>
@@ -105,7 +111,7 @@ export function ModuleSwitcherInner({
         />
       </div>
       <span className="hidden text-xs font-semibold text-slate-500 sm:inline">
-        {LABELS[alternateModule]}
+        {alternateModules.map((moduleKey) => LABELS[moduleKey]).join(" / ")}
       </span>
     </button>
   );

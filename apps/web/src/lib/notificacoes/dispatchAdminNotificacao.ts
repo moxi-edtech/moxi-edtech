@@ -24,7 +24,7 @@ type DispatchParams = {
   agrupamentoTTLHoras?: number;
 };
 
-const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin"];
+const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin", "admin_financeiro"];
 
 const EVENTO_TIPO_MAP: Record<AdminNotificacaoKey, string> = {
   MANUTENCAO_PROGRAMADA: "sistema.manutencao",

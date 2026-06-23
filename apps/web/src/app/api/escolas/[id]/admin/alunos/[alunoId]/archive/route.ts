@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { recordAuditServer } from "@/lib/audit";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
+
+const ALLOWED_ADMIN_PAPEIS = ["admin", "admin_escola", "staff_admin", "admin_financeiro"] as const;
 
 export async function POST(req: Request, context: { params: Promise<{ id: string; alunoId: string }> }) {
   const { id: escolaId, alunoId } = await context.params;
@@ -25,7 +28,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     if (!['super_admin','global_admin'].includes(globalRole || '')) {
       const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', resolvedEscolaId).eq('user_id', user.id).limit(1);
       const papel = (vinc?.[0] as any)?.papel as string | undefined;
-      if (papel !== 'admin') return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+      if (!roleMatchesAllowedRoles(papel, ALLOWED_ADMIN_PAPEIS, "k12")) {
+        return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+      }
     }
 
     // valida aluno e escola (RLS garante escopo)

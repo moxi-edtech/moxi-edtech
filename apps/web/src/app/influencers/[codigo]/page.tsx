@@ -25,20 +25,24 @@ import {
   Target,
   Phone,
   LayoutGrid,
-  List
+  List,
+  Plus,
+  KeyRound,
+  FileQuestion,
+  TrendingDown,
+  Check,
+  Calendar,
+  Share2,
+  ExternalLink
 } from "lucide-react";
 import { 
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
+  ResponsiveContainer
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -57,7 +61,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -167,6 +170,15 @@ const STEP_META: Record<string, { short: string; ownerLabel: string }> = {
   live: { short: "Go-live", ownerLabel: "KLASSE" },
 };
 
+const CRM_STAGES: Record<string, { label: string; dot: string; color: string }> = {
+  prospeccao: { label: "Prospecção", dot: "bg-slate-400", color: "bg-slate-100 text-slate-700" },
+  contacto: { label: "Contacto Iniciado", dot: "bg-blue-500", color: "bg-blue-50 text-blue-700" },
+  apresentacao: { label: "Demonstração", dot: "bg-purple-500", color: "bg-purple-50 text-purple-700" },
+  negociacao: { label: "Negociação", dot: "bg-amber-500", color: "bg-amber-50 text-amber-700" },
+  ganho: { label: "Fechado Ganho", dot: "bg-emerald-500", color: "bg-emerald-50 text-emerald-700" },
+  perdido: { label: "Fechado Perdido", dot: "bg-rose-500", color: "bg-rose-50 text-rose-700" },
+};
+
 function getStepMeta(stepCode: string, owner: string) {
   return STEP_META[stepCode] ?? {
     short: stepCode,
@@ -268,12 +280,43 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [assets, setAssets] = useState<MarketingAsset[]>([]);
   const [memberName, setMemberName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('campanha');
+  const [activeTab, setActiveTab] = useState<'campanha' | 'crm' | 'onboarding' | 'materiais'>('crm');
   const [authError, setAuthError] = useState(false);
   const router = useRouter();
   const campaignUrl = `https://klasse.ao/escola-moderna?ref=${codigo}`;
   const onboardingUrl = `https://app.klasse.ao/onboarding?ref=${codigo}`;
   const onboardingStats = stats?.onboarding;
+
+  // Switcher de Pipeline Comercial vs Ativação
+  const pipelineMode = activeTab === 'crm' ? 'leads' : 'onboarding';
+  const [crmLeads, setCrmLeads] = useState<any[]>([]);
+  const [loadingCrm, setLoadingCrm] = useState(false);
+
+  // Form states for registering a new CRM lead
+  const [crmModalOpen, setCrmModalOpen] = useState(false);
+  const [newLeadSchoolName, setNewLeadSchoolName] = useState("");
+  const [newLeadContactName, setNewLeadContactName] = useState("");
+  const [newLeadPhone, setNewLeadPhone] = useState("");
+  const [newLeadEmail, setNewLeadEmail] = useState("");
+  const [newLeadSegment, setNewLeadSegment] = useState<"publica" | "privada" | "comparticipada">("privada");
+  const [newLeadAlunos, setNewLeadAlunos] = useState(300);
+  const [newLeadPlan, setNewLeadPlan] = useState<"essencial" | "profissional" | "premium">("essencial");
+  const [newLeadAction, setNewLeadAction] = useState("");
+  const [newLeadActionDate, setNewLeadActionDate] = useState("");
+  const [savingLead, setSavingLead] = useState(false);
+
+  // Detail states for CRM leads (Drawer)
+  const [selectedCrmLead, setSelectedCrmLead] = useState<any | null>(null);
+  const [crmLeadDrawerOpen, setCrmLeadDrawerOpen] = useState(false);
+  const [updatingLeadStage, setUpdatingLeadStage] = useState(false);
+  const [nextLeadAction, setNextLeadAction] = useState("");
+  const [nextLeadActionDate, setNextLeadActionDate] = useState("");
+  const [leadActionNotes, setLeadActionNotes] = useState("");
+  const [savingLeadAction, setSavingLeadAction] = useState(false);
+  const [leadHistory, setLeadHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedStageToChange, setSelectedStageToChange] = useState("");
+  const [lossReasonText, setLossReasonText] = useState("");
 
   const [callModalOpen, setCallModalOpen] = useState(false);
   const [selectedSchoolForCall, setSelectedSchoolForCall] = useState<OnboardingEscola | null>(null);
@@ -282,6 +325,53 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [savingCall, setSavingCall] = useState(false);
   const [selectedSchoolForDetails, setSelectedSchoolForDetails] = useState<OnboardingEscola | null>(null);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
+
+  const loadCrmLeads = async (showLoading = false) => {
+    if (showLoading) setLoadingCrm(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; leads?: any[]; error?: string } | null;
+      if (response.ok && payload?.ok && payload.leads) {
+        setCrmLeads(payload.leads);
+        if (selectedCrmLead) {
+          const updated = payload.leads.find(l => l.id === selectedCrmLead.id);
+          if (updated) {
+            setSelectedCrmLead(updated);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load CRM leads:", err);
+    } finally {
+      if (showLoading) setLoadingCrm(false);
+    }
+  };
+
+  const loadLeadHistory = async (leadId: string) => {
+    setLoadingHistory(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${leadId}/history`);
+      const json = await response.json().catch(() => null) as { ok?: boolean; history?: any[] } | null;
+      if (response.ok && json?.ok && json.history) {
+        setLeadHistory(json.history);
+      }
+    } catch (err) {
+      console.error("Failed to load lead history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleOpenLeadDrawer = async (lead: any) => {
+    setSelectedCrmLead(lead);
+    setNextLeadAction(lead.proxima_acao || "");
+    setNextLeadActionDate(lead.proxima_acao_data ? new Date(lead.proxima_acao_data).toISOString().split('T')[0] : "");
+    setLeadActionNotes("");
+    setSelectedStageToChange(lead.etapa);
+    setLossReasonText(lead.motivo_perda || "");
+    setCrmLeadDrawerOpen(true);
+    await loadLeadHistory(lead.id);
+  };
 
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -304,7 +394,6 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       setMemberName(typeof payload.member?.name === "string" ? payload.member.name : "");
       setAssets((payload.assets || []).filter(isMarketingAsset));
 
-      // Update selected school details to reflect the new call log in the drawer
       if (selectedSchoolForDetails) {
         const updatedSchool = payload.portal.stats.onboarding?.escolas.find(
           (e: any) => e.token === selectedSchoolForDetails.token
@@ -313,11 +402,124 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           setSelectedSchoolForDetails(updatedSchool);
         }
       }
+
+      await loadCrmLeads(false);
     } catch (err) {
       console.error(err);
       setAuthError(true);
     } finally {
       if (showLoading) setLoading(false);
+    }
+  };
+
+  const handleCreateLead = async () => {
+    if (!newLeadSchoolName.trim()) return;
+    setSavingLead(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          nome_escola: newLeadSchoolName.trim(),
+          nome_contacto: newLeadContactName.trim() || null,
+          telefone: newLeadPhone.trim() || null,
+          email: newLeadEmail.trim() || null,
+          segmento: newLeadSegment,
+          alunos_estimados: Number(newLeadAlunos) || 0,
+          plano_estimado: newLeadPlan,
+          proxima_acao: newLeadAction.trim() || null,
+          proxima_acao_data: newLeadActionDate || null,
+        }),
+      });
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !res?.ok) {
+        toast.error(res?.error || "Erro ao cadastrar o lead.");
+        return;
+      }
+
+      toast.success("Lead cadastrado com sucesso no CRM!");
+      setCrmModalOpen(false);
+      setNewLeadSchoolName("");
+      setNewLeadContactName("");
+      setNewLeadPhone("");
+      setNewLeadEmail("");
+      setNewLeadSegment("privada");
+      setNewLeadAlunos(300);
+      setNewLeadPlan("essencial");
+      setNewLeadAction("");
+      setNewLeadActionDate("");
+      
+      await loadCrmLeads(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Erro ao cadastrar o lead.");
+    } finally {
+      setSavingLead(false);
+    }
+  };
+
+  const handleUpdateLeadStage = async (leadId: string, newStage: string) => {
+    setUpdatingLeadStage(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${leadId}/stage`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          etapa: newStage,
+          motivo_perda: newStage === 'perdido' ? lossReasonText.trim() : null,
+        }),
+      });
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !res?.ok) {
+        toast.error(res?.error || "Erro ao atualizar etapa.");
+        return;
+      }
+
+      toast.success("Etapa do lead atualizada!");
+      await loadCrmLeads(false);
+      await loadLeadHistory(leadId);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Erro ao atualizar etapa.");
+    } finally {
+      setUpdatingLeadStage(false);
+    }
+  };
+
+  const handleUpdateLeadAction = async () => {
+    if (!selectedCrmLead) return;
+    setSavingLeadAction(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${selectedCrmLead.id}/action`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          proxima_acao: nextLeadAction.trim() || null,
+          proxima_acao_data: nextLeadActionDate || null,
+          interaction_note: leadActionNotes.trim() || null,
+        }),
+      });
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !res?.ok) {
+        toast.error(res?.error || "Erro ao registrar histórico.");
+        return;
+      }
+
+      toast.success("Ação e histórico atualizados com sucesso!");
+      setLeadActionNotes("");
+      await loadCrmLeads(false);
+      await loadLeadHistory(selectedCrmLead.id);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Erro ao registrar histórico.");
+    } finally {
+      setSavingLeadAction(false);
     }
   };
 
@@ -359,7 +561,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   };
 
   const [onboardingFilter, setOnboardingFilter] = useState<'todos' | 'pendente' | 'atrasado' | 'concluido'>('todos');
-  const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('lista');
+  const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('kanban');
 
   // Calculations for filters and pending steps
   const schoolsList = onboardingStats?.escolas || [];
@@ -417,11 +619,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [calcPlan, setCalcPlan] = useState<'essencial' | 'profissional' | 'premium'>('essencial');
   const [calcAlunos, setCalcAlunos] = useState<number>(300);
 
-  const calcComissaoEscola = (plano: string | null, totalAlunos: string | null) => {
+  const calcComissaoEscola = (plano: string | null, _totalAlunos: string | null) => {
     const planKey = String(plano || "").toLowerCase();
     let basePrice = 80000;
     if (planKey === 'profissional') basePrice = 140000;
-    if (planKey === 'premium') basePrice = 250000; // Custom/Premium base default
+    if (planKey === 'premium') basePrice = 250000;
     return basePrice * 0.25;
   };
 
@@ -431,6 +633,24 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
     return acc;
   }, 0) || 0;
+
+  // Pre-Sales CRM Commission Pipeline Value
+  const getCommissionForPlan = (plano: string) => {
+    let basePrice = 80000;
+    if (plano === 'profissional') basePrice = 140000;
+    if (plano === 'premium') basePrice = 250000;
+    return basePrice * 0.25;
+  };
+
+  const activeCrmLeads = crmLeads.filter(l => l.etapa !== 'perdido');
+  const totalCrmLeadsCount = activeCrmLeads.length;
+  const newCrmLeadsCount = activeCrmLeads.filter(l => l.etapa === 'prospeccao').length;
+  const inContactCrmCount = activeCrmLeads.filter(l => l.etapa === 'contacto' || l.etapa === 'apresentacao').length;
+  const negotiatingCrmCount = activeCrmLeads.filter(l => l.etapa === 'negociacao').length;
+
+  const totalCrmPipelineValue = activeCrmLeads.reduce((acc, lead) => {
+    return acc + getCommissionForPlan(lead.plano_estimado);
+  }, 0);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -476,19 +696,30 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     );
   }
 
+  const countPendenteLeads = crmLeads.filter(
+    (l) =>
+      l.etapa !== 'ganho' &&
+      l.etapa !== 'perdido' &&
+      l.proxima_acao_data &&
+      new Date(l.proxima_acao_data).getTime() < Date.now()
+  ).length;
+  const countPendenteOnboarding = schoolsList.filter(
+    (e) => e.status === 'pendente' || e.status === 'em_configuracao'
+  ).length;
+
   return (
     <PartnerAppShell
       codigo={codigo}
       memberName={memberName}
-      activeTab={activeTab as any}
-      setActiveTab={setActiveTab as any}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
       stats={stats}
       totalComissao={totalComissao}
-      countPendente={countPendente}
+      countPendenteLeads={countPendenteLeads}
+      countPendenteOnboarding={countPendenteOnboarding}
       onLogout={handleLogout}
     >
-      <Tabs defaultValue="campanha" value={activeTab} onValueChange={setActiveTab} className="w-full">
-
+      <Tabs defaultValue="crm" value={activeTab} onValueChange={setActiveTab as any} className="w-full">
           <TabsContent value="campanha" className="m-0 space-y-8">
             <Card className="overflow-hidden rounded-[32px] border-slate-200 bg-slate-950 text-white shadow-xl">
               <CardContent className="grid gap-8 p-8 lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
@@ -499,7 +730,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <div className="space-y-3">
                     <h2 className="max-w-2xl text-3xl font-black tracking-tight md:text-5xl">
                       Fazer escolas sentirem que precisam de matrícula online e portal do aluno.
-                    </h2>
+                  </h2>
                     <p className="max-w-2xl text-sm font-medium leading-relaxed text-slate-300 md:text-base">
                       A campanha pública cria pressão social. O diagnóstico entra depois, quando o diretor quer saber se a escola está pronta para modernizar.
                     </p>
@@ -615,10 +846,315 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             </div>
           </TabsContent>
 
-          <TabsContent value="desempenho" className="m-0 space-y-8">
-            {/* Stats Grid */}
+          <TabsContent value="crm" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Leads header with Button */}
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">CRM Pré-Vendas</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Leads Comerciais</h2>
+              </div>
+              <Button
+                onClick={() => setCrmModalOpen(true)}
+                className="bg-klasse-gold hover:bg-klasse-gold/90 text-slate-950 font-bold text-xs uppercase tracking-widest px-5 py-3 h-auto rounded-xl border-none shadow-sm flex items-center gap-1.5"
+              >
+                <Plus size={16} />
+                Novo Lead
+              </Button>
+            </div>
+
+            {/* Leads metrics grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                      <Target size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leads Ativos</p>
+                      <p className="text-3xl font-black text-slate-900">{totalCrmLeadsCount}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em Prospecção</p>
+                      <p className="text-3xl font-black text-blue-600">{newCrmLeadsCount}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500">
+                      <School size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto & Demo</p>
+                      <p className="text-3xl font-black text-purple-600">{inContactCrmCount}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
+                      <TrendingUp size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em Negociação</p>
+                      <p className="text-3xl font-black text-amber-600">{negotiatingCrmCount}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                      <BarChart3 size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Escolas captadas</p>
+                      <p className="text-3xl font-black text-slate-900">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Novos interessados</p>
+                      <p className="text-3xl font-black text-blue-600">{onboardingStats?.pendentes ?? stats?.novos}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
+                      <ShieldCheck size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em contacto</p>
+                      <p className="text-3xl font-black text-amber-600">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-klasse-green/20 bg-klasse-green/5 shadow-sm overflow-hidden border-2">
+                  <CardContent className="p-6 space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-klasse-green flex items-center justify-center text-white">
+                      <TrendingUp size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-klasse-green/60 uppercase tracking-widest">Escolas fechadas</p>
+                      <p className="text-3xl font-black text-klasse-green">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+            {/* Funil de Vendas (CRM Leads) rendering */}
+            {pipelineMode === 'leads' && (
+              <Card className="rounded-[32px] border-slate-200 bg-white shadow-sm">
+                <CardHeader className="p-8 pb-0">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">CRM Pré-Vendas</p>
+                  <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Negociações Comerciais Ativas</CardTitle>
+                  <CardDescription className="text-xs text-slate-500">
+                    Cadastre e faça a prospecção ativa de escolas antes do onboarding técnico. Arraste e clique para gerenciar ações de follow-up.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-8">
+                  {/* Pipeline Value summary */}
+                  {activeCrmLeads.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-white mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Potencial de Receita Comercial</p>
+                        <p className="text-xl font-black text-klasse-gold">
+                          Kz {totalCrmPipelineValue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="text-xs text-slate-400 max-w-md font-medium">
+                        Comissão potencial calculada com base na conversão de todos os leads ativos (25% do valor da mensalidade estimativa).
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CRM leads representation */}
+                  {crmLeads.length === 0 ? (
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-20 text-center">
+                      <Target className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+                      <p className="text-sm font-bold text-slate-500">Nenhum lead comercial de pré-vendas cadastrado.</p>
+                      <p className="text-xs text-slate-400 mt-1 mb-4">Adicione o seu primeiro lead comercial para começar o pipeline de vendas.</p>
+                      <Button onClick={() => setCrmModalOpen(true)} className="bg-slate-900 text-white text-xs font-bold px-4 py-2 h-10 rounded-xl hover:bg-slate-800 border-none">
+                        Cadastrar Primeiro Lead
+                      </Button>
+                    </div>
+                  ) : viewMode === 'kanban' ? (
+                    <div className="flex gap-4 overflow-x-auto pb-6 w-full scrollbar-thin">
+                      {Object.entries(CRM_STAGES).map(([stageCode, stageMeta]) => {
+                        const leadsInStage = crmLeads.filter(l => l.etapa === stageCode);
+                        return (
+                          <div key={stageCode} className="w-72 shrink-0 flex flex-col gap-3">
+                            <div className="flex items-center justify-between px-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">{stageMeta.label}</span>
+                                <span className="bg-slate-100 text-slate-600 font-bold text-[9px] px-1.5 py-0.5 rounded-md border border-slate-200/50">
+                                  {leadsInStage.length}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col gap-2.5 p-2 rounded-2xl bg-slate-50 border border-slate-200/60 min-h-[450px]">
+                              {leadsInStage.length === 0 ? (
+                                <div className="flex-1 flex items-center justify-center p-6 text-center text-slate-300">
+                                  <p className="text-[9px] font-bold uppercase tracking-wider">Sem Leads</p>
+                                </div>
+                              ) : (
+                                leadsInStage.map((lead) => {
+                                  const isLeadOverdue = lead.proxima_acao_data && new Date(lead.proxima_acao_data).getTime() < Date.now();
+                                  let delayDays = 0;
+                                  if (isLeadOverdue && lead.proxima_acao_data) {
+                                    const diffTime = Date.now() - new Date(lead.proxima_acao_data).getTime();
+                                    delayDays = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+                                  }
+
+                                  return (
+                                    <div
+                                      key={lead.id}
+                                      onClick={() => handleOpenLeadDrawer(lead)}
+                                      className={`group relative rounded-xl border p-4 shadow-sm bg-white hover:shadow-md transition-all flex flex-col gap-2.5 cursor-pointer ${
+                                        isLeadOverdue ? 'border-rose-200 ring-1 ring-rose-100' : 'border-slate-200'
+                                      }`}
+                                    >
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <p className="font-black text-slate-900 text-xs truncate" title={lead.nome_escola}>
+                                            {lead.nome_escola}
+                                          </p>
+                                          {isLeadOverdue && (
+                                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-rose-100 text-rose-700 animate-pulse">
+                                              {delayDays === 1 ? '1d atrasado' : `${delayDays}d atrasado`}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                                          <span className="truncate max-w-[120px]">Contato: {lead.nome_contacto || "Não informado"}</span>
+                                          {lead.alunos_estimados > 0 && <span>{lead.alunos_estimados} al.</span>}
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-col gap-1.5 border-t border-slate-50 pt-2 text-[9px] font-medium text-slate-500">
+                                        <div className="flex justify-between items-center">
+                                          <span>Plano: {lead.plano_estimado}</span>
+                                          <span className="font-bold text-emerald-600">
+                                            Kz {getCommissionForPlan(lead.plano_estimado).toLocaleString('pt-PT')}
+                                          </span>
+                                        </div>
+
+                                        {lead.proxima_acao ? (
+                                          <div className={`mt-1 flex items-start gap-1 p-1.5 rounded-lg border ${
+                                            isLeadOverdue ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-slate-50 border-slate-100 text-slate-600'
+                                          }`}>
+                                            <Clock size={10} className="mt-0.5 shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="font-bold truncate text-[8px] uppercase tracking-wider">Ação: {lead.proxima_acao}</p>
+                                              {lead.proxima_acao_data && (
+                                                <p className="text-[8px] mt-0.5">Prazo: {format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")}</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="mt-1 flex items-center gap-1 p-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 text-slate-400">
+                                            <FileQuestion size={10} />
+                                            <span className="text-[8px] font-bold uppercase tracking-wider">Sem próxima ação definida</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {crmLeads.map((lead) => {
+                        const isLeadOverdue = lead.proxima_acao_data && new Date(lead.proxima_acao_data).getTime() < Date.now();
+                        const stageMeta = CRM_STAGES[lead.etapa as keyof typeof CRM_STAGES] || CRM_STAGES.prospeccao;
+                        return (
+                          <div
+                            key={lead.id}
+                            onClick={() => handleOpenLeadDrawer(lead)}
+                            className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                          >
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0">
+                                <p className="truncate font-black text-slate-900">{lead.nome_escola}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-400">
+                                  <span>Cadastrado em: {format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
+                                  {lead.alunos_estimados > 0 && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{lead.alunos_estimados} alunos</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {isLeadOverdue && (
+                                  <Badge className="bg-rose-100 text-rose-700 border-none font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg animate-pulse">
+                                    Ação Atrasada
+                                  </Badge>
+                                )}
+                                <Badge className="border border-slate-200 bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                  Plano: {lead.plano_estimado}
+                                </Badge>
+                                <Badge className={`${stageMeta.color} border-none font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${stageMeta.dot} mr-2`} />
+                                  {stageMeta.label}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {lead.proxima_acao && (
+                              <div className="mt-1 pt-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs text-slate-500">
+                                <p className="truncate">
+                                  Próximo Passo: <span className="font-bold text-slate-800">{lead.proxima_acao}</span>
+                                  {lead.proxima_acao_data && (
+                                    <span className="text-slate-400 font-medium"> (até {format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")})</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="onboarding" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Onboarding Header */}
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Processo de Ativação</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Ativação Escolar</h2>
+              </div>
+            </div>
+
+            {/* Onboarding metrics grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
                 <CardContent className="p-6 space-y-2">
                   <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
                     <BarChart3 size={20} />
@@ -629,7 +1165,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
                 <CardContent className="p-6 space-y-2">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
                     <Clock size={20} />
@@ -640,13 +1176,13 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
                 <CardContent className="p-6 space-y-2">
                   <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
                     <ShieldCheck size={20} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em contacto</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em ativação</p>
                     <p className="text-3xl font-black text-amber-600">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
                   </div>
                 </CardContent>
@@ -664,6 +1200,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               </Card>
             </div>
 
+            {/* Funil de Ativação (Onboarding) rendering */}
             {onboardingStats && (
               <Card className="rounded-[32px] border-slate-200 bg-white shadow-sm">
                 <CardHeader className="p-8 pb-0">
@@ -896,7 +1433,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                            {escola.status !== 'activo' && (
                                              <button
                                                type="button"
-                                               onClick={() => {
+                                               onClick={(e) => {
+                                                 e.stopPropagation();
                                                  const nextPending = escola.steps?.find(st => st.status !== 'concluido');
                                                  setSelectedSchoolForCall(escola);
                                                  setSelectedStepCodeForCall(nextPending?.code || "");
@@ -909,15 +1447,46 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                              </button>
                                            )}
                                            {escola.token && (
-                                             <Link
-                                               href={`/onboarding/acompanhar/${escola.token}`}
-                                               target="_blank"
-                                               className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[#1F6B3B] hover:text-[#1F6B3B]/80 transition-colors"
-                                               title="Acompanhar Etapas"
-                                             >
-                                               <Clock size={10} />
-                                             </Link>
-                                           )}
+                                              <>
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : '';
+                                                    copyToClipboard(trackingUrl);
+                                                  }}
+                                                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-950 transition-colors"
+                                                  title="Copiar Link de Acompanhamento"
+                                                >
+                                                  <Copy size={10} />
+                                                </button>
+                                                <a
+                                                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                                                    `Olá! Acompanhe o processo de ativação da sua escola (${escola.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : ''}`
+                                                  )}${
+                                                    escola.director_tel || escola.escola_tel
+                                                      ? `&phone=${(escola.director_tel || escola.escola_tel || '').replace(/\D/g, '')}`
+                                                      : ''
+                                                  }`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[#1F6B3B] hover:text-[#1F6B3B]/80 transition-colors flex items-center justify-center"
+                                                  title="Compartilhar no WhatsApp"
+                                                >
+                                                  <Send size={10} />
+                                                </a>
+                                                <Link
+                                                  href={`/onboarding/acompanhar/${escola.token}`}
+                                                  target="_blank"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[#1F6B3B] hover:text-[#1F6B3B]/80 transition-colors"
+                                                  title="Ver página pública de acompanhamento"
+                                                >
+                                                  <Clock size={10} />
+                                                </Link>
+                                              </>
+                                            )}
                                          </div>
                                        </div>
                                      </div>
@@ -1041,14 +1610,42 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     </Button>
                                   )}
                                   {escola.token && (
-                                    <Link 
-                                      href={`/onboarding/acompanhar/${escola.token}`}
-                                      target="_blank"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="text-[10px] font-bold text-[#1F6B3B] hover:underline flex items-center gap-1 no-underline"
-                                    >
-                                      <Clock size={12} /> Acompanhar 7 etapas →
-                                    </Link>
+                                    <>
+                                      <Button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : '';
+                                          copyToClipboard(trackingUrl);
+                                        }}
+                                        className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                                      >
+                                        <Copy size={12} className="text-slate-400" />
+                                        COPIAR LINK
+                                      </Button>
+                                      <a
+                                        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                                          `Olá! Acompanhe o processo de ativação da sua escola (${escola.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : ''}`
+                                        )}${
+                                          escola.director_tel || escola.escola_tel
+                                            ? `&phone=${(escola.director_tel || escola.escola_tel || '').replace(/\D/g, '')}`
+                                            : ''
+                                        }`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="h-8 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-black text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
+                                      >
+                                        <Send size={12} /> WHATSAPP
+                                      </a>
+                                      <Link 
+                                        href={`/onboarding/acompanhar/${escola.token}`}
+                                        target="_blank"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="text-[10px] font-bold text-[#1F6B3B] hover:underline flex items-center gap-1 no-underline ml-1"
+                                      >
+                                        <Clock size={12} /> Ver Página Pública →
+                                      </Link>
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -1120,7 +1717,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               {/* Recent Activity */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between px-2">
-                  <h3 className="font-bold text-slate-900 uppercase text-xs tracking-widest">Escolas no funil</h3>
+                  <h3 className="font-bold text-slate-900 uppercase text-xs tracking-widest">Atividade Pública</h3>
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Últimos 50 diagnósticos</span>
                 </div>
                 
@@ -1399,6 +1996,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           </TabsContent>
         </Tabs>
 
+      {/* Modal Dialog for Registering Onboarding Call */}
       <Dialog open={callModalOpen} onOpenChange={setCallModalOpen}>
         <DialogContent className="sm:max-w-[500px] rounded-[32px] border-slate-200 bg-white p-8 shadow-xl">
           <DialogHeader>
@@ -1426,7 +2024,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <select
                     value={selectedStepCodeForCall}
                     onChange={(e) => setSelectedStepCodeForCall(e.target.value)}
-                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none cursor-pointer"
                   >
                     <option value="">Nenhuma etapa específica</option>
                     {selectedSchoolForCall.steps
@@ -1463,7 +2061,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             <Button
               onClick={handleRegisterCall}
               disabled={savingCall || !callNotes.trim()}
-              className="h-10 rounded-xl bg-slate-900 px-6 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+              className="h-10 rounded-xl bg-slate-900 px-6 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 border-none"
             >
               {savingCall ? "A salvar..." : "Registrar Contato"}
             </Button>
@@ -1471,6 +2069,149 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         </DialogContent>
       </Dialog>
 
+      {/* Modal Dialog for Registering a New CRM Lead */}
+      <Dialog open={crmModalOpen} onOpenChange={setCrmModalOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-[32px] border-slate-200 bg-white p-8 shadow-xl">
+          <DialogHeader>
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
+              <Target size={24} />
+            </div>
+            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">
+              Cadastrar Nova Escola (Lead)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Insira as informações do lead comercial para iniciar o acompanhamento de vendas no CRM da Klasse.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4 max-h-[380px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-3.5">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Nome da Escola</label>
+                <input
+                  type="text"
+                  value={newLeadSchoolName}
+                  onChange={(e) => setNewLeadSchoolName(e.target.value)}
+                  placeholder="Ex: Colégio Moxi Nexas"
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Diretor / Decisor</label>
+                  <input
+                    type="text"
+                    value={newLeadContactName}
+                    onChange={(e) => setNewLeadContactName(e.target.value)}
+                    placeholder="Ex: Dr. Eduardo Santos"
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Telefone</label>
+                  <input
+                    type="text"
+                    value={newLeadPhone}
+                    onChange={(e) => setNewLeadPhone(e.target.value)}
+                    placeholder="Ex: 923 000 000"
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">E-mail</label>
+                <input
+                  type="email"
+                  value={newLeadEmail}
+                  onChange={(e) => setNewLeadEmail(e.target.value)}
+                  placeholder="Ex: coordenacao@escola.com"
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Segmento</label>
+                  <select
+                    value={newLeadSegment}
+                    onChange={(e) => setNewLeadSegment(e.target.value as any)}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="privada">Privada</option>
+                    <option value="publica">Pública</option>
+                    <option value="comparticipada">Comparticipada</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Plano Estimado</label>
+                  <select
+                    value={newLeadPlan}
+                    onChange={(e) => setNewLeadPlan(e.target.value as any)}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none cursor-pointer"
+                  >
+                    <option value="essencial">Essencial</option>
+                    <option value="profissional">Profissional</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Alunos Estimados</label>
+                  <input
+                    type="number"
+                    value={newLeadAlunos}
+                    onChange={(e) => setNewLeadAlunos(Number(e.target.value))}
+                    placeholder="Ex: 500"
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Prazo da Ação</label>
+                  <input
+                    type="date"
+                    value={newLeadActionDate}
+                    onChange={(e) => setNewLeadActionDate(e.target.value)}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
+                <input
+                  type="text"
+                  value={newLeadAction}
+                  onChange={(e) => setNewLeadAction(e.target.value)}
+                  placeholder="Ex: Ligar para agendar apresentação"
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 flex gap-2">
+            <Button
+              onClick={() => setCrmModalOpen(false)}
+              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateLead}
+              disabled={savingLead || !newLeadSchoolName.trim()}
+              className="h-10 rounded-xl bg-slate-900 px-6 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 border-none"
+            >
+              {savingLead ? "A cadastrar..." : "Cadastrar Lead"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sheet Drawer for Onboarding School Details */}
       <Sheet open={detailsDrawerOpen} onOpenChange={setDetailsDrawerOpen}>
         <SheetContent className="sm:max-w-xl overflow-y-auto h-full bg-white flex flex-col gap-6 p-8 border-slate-200 shadow-2xl">
           {selectedSchoolForDetails && (
@@ -1507,131 +2248,513 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                 </div>
               </div>
 
-              {/* Informações de Contato */}
+              {/* Share/Copy tracking link */}
+              {selectedSchoolForDetails.token && (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                      <Share2 size={12} className="text-[#1F6B3B]" /> LINK DE ACOMPANHAMENTO DA ESCOLA
+                    </span>
+                    <Link
+                      href={`/onboarding/acompanhar/${selectedSchoolForDetails.token}`}
+                      target="_blank"
+                      className="text-[10px] font-bold text-[#1F6B3B] hover:underline flex items-center gap-1 no-underline"
+                    >
+                      Ver página pública <ExternalLink size={10} />
+                    </Link>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2.5">
+                    <span className="text-xs font-mono font-medium text-slate-500 truncate flex-1 select-all">
+                      {typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : '';
+                        copyToClipboard(trackingUrl);
+                      }}
+                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-900 transition-colors"
+                      title="Copiar Link"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : '';
+                        copyToClipboard(trackingUrl);
+                      }}
+                      className="flex-1 h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 shadow-none"
+                    >
+                      <Copy size={12} /> COPIAR LINK
+                    </Button>
+                    <a
+                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                        `Olá! Acompanhe o processo de ativação da sua escola (${selectedSchoolForDetails.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : ''}`
+                      )}${
+                        selectedSchoolForDetails.director_tel || selectedSchoolForDetails.escola_tel
+                          ? `&phone=${(selectedSchoolForDetails.director_tel || selectedSchoolForDetails.escola_tel || '').replace(/\D/g, '')}`
+                          : ''
+                      }`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 h-9 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-black text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
+                    >
+                      <Send size={12} /> COMPARTILHAR WHATSAPP
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <Tabs defaultValue="progresso" className="w-full flex-1 flex flex-col min-h-0">
+                <TabsList className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl mb-2">
+                  <TabsTrigger value="progresso" className="rounded-lg font-bold text-xs uppercase tracking-wider">
+                    Progresso (SLA)
+                  </TabsTrigger>
+                  <TabsTrigger value="ficha" className="rounded-lg font-bold text-xs uppercase tracking-wider">
+                    Ficha da Escola
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* TAB 1: Progresso e Etapas */}
+                <TabsContent value="progresso" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
+                  {/* Progress circular indicator */}
+                  {(() => {
+                    const steps = selectedSchoolForDetails.steps || [];
+                    const completedSteps = steps.filter(s => s.status === 'concluido').length;
+                    const progressPercent = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
+                    
+                    return (
+                      <div className="bg-slate-950 text-white rounded-3xl p-5 shadow-lg flex items-center justify-between border border-white/5 gap-4">
+                        <div className="space-y-1.5">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-white/10 text-klasse-gold">
+                            Resumo de Ativação
+                          </span>
+                          <h4 className="text-sm font-black tracking-tight">Etapas concluídas</h4>
+                          <p className="text-[10px] text-slate-400 leading-normal">
+                            O onboarding é composto por 7 fases oficiais síncronas.
+                          </p>
+                        </div>
+                        
+                        <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.05)" strokeWidth="6" fill="transparent" />
+                            <circle cx="40" cy="40" r="34" stroke="#E3B23C" strokeWidth="6" fill="transparent"
+                              strokeDasharray={2 * Math.PI * 34}
+                              strokeDashoffset={2 * Math.PI * 34 * (1 - progressPercent / 100)}
+                              strokeLinecap="round"
+                              className="transition-all duration-1000 ease-out"
+                            />
+                          </svg>
+                          <div className="absolute flex flex-col items-center">
+                            <span className="text-base font-black text-white">{progressPercent}%</span>
+                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{completedSteps}/{steps.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Checklist of Steps */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      Roteiro de Ativação
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      {(selectedSchoolForDetails.steps || []).map((step, index) => {
+                        const isCompleted = step.status === "concluido";
+                        const isProgress = step.status === "em_progresso";
+                        const isOverdue = step.deadline && new Date() >= new Date(step.deadline) && !isCompleted;
+                        const meta = getStepMeta(step.code, step.owner as any);
+
+                        return (
+                          <div key={step.code} className={`bg-white border rounded-2xl p-4 transition-all flex items-start gap-3.5 shadow-sm hover:shadow-md ${isProgress ? 'border-[#1F6B3B] ring-1 ring-[#1F6B3B]/10' : 'border-slate-200'}`}>
+                            <div className="flex flex-col items-center gap-1.5 flex-shrink-0 mt-0.5">
+                              <div className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs
+                                ${isCompleted ? 'bg-[#E8F5EE] text-[#1F6B3B]' : isProgress ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                                {isCompleted ? <Check size={14} /> : index + 1}
+                              </div>
+                              <div className="text-[7px] font-black uppercase text-slate-400">{meta.short}</div>
+                            </div>
+                            
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                <h5 className="font-bold text-slate-900 text-xs truncate">{step.title}</h5>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold border
+                                    ${step.owner === 'escola' ? 'bg-blue-50 text-blue-700 border-blue-100' : step.owner === 'parceiro' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                                    {meta.ownerLabel}
+                                  </span>
+                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold border
+                                    ${isCompleted ? 'bg-[#E8F5EE] text-[#1F6B3B] border-emerald-100' : isOverdue ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                                    {isCompleted ? 'Concluído' : isOverdue ? 'Atrasado SLA' : 'No Prazo'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500 font-semibold">
+                                {step.deadline && (
+                                  <span className="flex items-center gap-1.5">
+                                    <Calendar size={10} /> Limite: {format(new Date(step.deadline), "dd 'de' MMMM", { locale: pt })}
+                                  </span>
+                                )}
+                                {step.completed_at && (
+                                  <span className="flex items-center gap-1.5 text-klasse-green">
+                                    <CheckCircle2 size={10} /> Concluído a: {format(new Date(step.completed_at), "dd/MM/yyyy", { locale: pt })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* TAB 2: Ficha da Escola */}
+                <TabsContent value="ficha" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
+                  {/* Informações de Contato */}
+                  <div className="space-y-3.5">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <Users size={14} className="text-slate-400" />
+                      Contatos e Responsáveis
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                      <div>
+                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Diretor</span>
+                        <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_nome || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Diretor</span>
+                        <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">E-mail Escola</span>
+                        <span className="text-xs font-bold text-slate-800 break-all">{selectedSchoolForDetails.escola_email || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Escola</span>
+                        <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.escola_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                      </div>
+                      <div className="md:col-span-2">
+                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Morada</span>
+                        <span className="text-xs font-bold text-slate-800">
+                          {[selectedSchoolForDetails.escola_morada, selectedSchoolForDetails.escola_municipio, selectedSchoolForDetails.escola_provincia].filter(Boolean).join(', ') || <span className="italic font-medium text-slate-400">Não informada</span>}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fila de Uploads */}
+                  <div className="space-y-3.5">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <FileText size={14} className="text-slate-400" />
+                      Arquivos e Staging de Importação
+                    </h4>
+                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                      {!selectedSchoolForDetails.uploads || selectedSchoolForDetails.uploads.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum upload realizado pela escola</p>
+                        </div>
+                      ) : (
+                        selectedSchoolForDetails.uploads.map((up) => {
+                          const meta = getStepMeta(up.step_code, up.created_by as any);
+                          return (
+                            <div key={up.id} className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm flex flex-col gap-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wide">{meta.short}</span>
+                                <Badge className={`border-none font-bold uppercase text-[8px] px-2 py-0.5 rounded-md ${
+                                  up.status === 'aprovado'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : up.status === 'rejeitado'
+                                    ? 'bg-rose-50 text-rose-700'
+                                    : 'bg-blue-50 text-blue-700'
+                                }`}>
+                                  {up.status}
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 font-bold">
+                                <span className="truncate max-w-[200px]" title={up.file_path.split('/').pop()}>
+                                  {up.file_path.split('/').pop()}
+                                </span>
+                                <a
+                                  href={`https://<project-ref>.supabase.co/storage/v1/object/public/onboarding/${up.file_path}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 hover:text-blue-700 underline text-[9px] font-semibold"
+                                >
+                                  BAIXAR
+                                </a>
+                              </div>
+
+                              {up.status === 'rejeitado' && up.rejection_reason && (
+                                <div className="mt-1 rounded-lg bg-rose-50 border border-rose-100 p-2 text-[9px] font-semibold text-rose-700 leading-relaxed">
+                                  Motivo da rejeição: {up.rejection_reason}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline de Atividades */}
+                  <div className="space-y-3.5 flex-grow flex flex-col min-h-0">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <Clock size={14} className="text-slate-400" />
+                      Timeline de Atividades (SLA)
+                    </h4>
+                    <div className="overflow-y-auto pr-1 space-y-4 max-h-[250px]">
+                      {!selectedSchoolForDetails.calls || selectedSchoolForDetails.calls.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum contato registrado</p>
+                        </div>
+                      ) : (
+                        <div className="relative pl-4 border-l border-slate-100 space-y-4 py-1 ml-2">
+                          {selectedSchoolForDetails.calls.map((call) => (
+                            <div key={call.id} className="relative group/timeline">
+                              <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-white shadow-sm ring-4 ring-blue-50" />
+                              
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-black text-slate-800">
+                                    {call.member_name} realizou ligação
+                                  </span>
+                                  <span className="text-[9px] font-semibold text-slate-400">
+                                    {format(new Date(call.realizado_em), "dd MMM, HH:mm", { locale: pt })}
+                                  </span>
+                                </div>
+                                {call.step_title && (
+                                  <Badge className="w-fit border-none bg-blue-50 text-blue-700 font-bold text-[8px] px-1.5 py-0.5 rounded">
+                                    Etapa: {call.step_title}
+                                  </Badge>
+                                )}
+                                <p className="text-xs font-medium text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100/50 leading-relaxed shadow-sm">
+                                  {call.notes}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Sheet Drawer for CRM Lead Details & Action Panel */}
+      <Sheet open={crmLeadDrawerOpen} onOpenChange={setCrmLeadDrawerOpen}>
+        <SheetContent className="sm:max-w-xl overflow-y-auto h-full bg-white flex flex-col gap-6 p-8 border-slate-200 shadow-2xl">
+          {selectedCrmLead && (
+            <div className="flex flex-col gap-6 h-full">
+              {/* Header details */}
+              <div className="border-b border-slate-100 pb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Lead Comercial do CRM</span>
+                  <Badge className={`border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-lg ${
+                    CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.color || "bg-slate-100"
+                  }`}>
+                    {CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.label || selectedCrmLead.etapa}
+                  </Badge>
+                </div>
+                <h3 className="font-black text-slate-900 text-xl tracking-tight leading-tight">
+                  {selectedCrmLead.nome_escola}
+                </h3>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                    Plano Estimado: {selectedCrmLead.plano_estimado}
+                  </Badge>
+                  {selectedCrmLead.alunos_estimados > 0 && (
+                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                      {selectedCrmLead.alunos_estimados} Alunos
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                    Segmento: {selectedCrmLead.segmento}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Informações Gerais do Lead */}
               <div className="space-y-3.5">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                   <Users size={14} className="text-slate-400" />
-                  Contatos e Responsáveis
+                  Informações de Contato
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
                   <div>
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Diretor</span>
-                    <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_nome || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Contato Decisor</span>
+                    <span className="text-xs font-bold text-slate-800">{selectedCrmLead.nome_contacto || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                   </div>
                   <div>
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Diretor</span>
-                    <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">E-mail Escola</span>
-                    <span className="text-xs font-bold text-slate-800 break-all">{selectedSchoolForDetails.escola_email || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Escola</span>
-                    <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.escola_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone</span>
+                    <span className="text-xs font-bold text-slate-800">{selectedCrmLead.telefone || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                   </div>
                   <div className="md:col-span-2">
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Morada</span>
-                    <span className="text-xs font-bold text-slate-800">
-                      {[selectedSchoolForDetails.escola_morada, selectedSchoolForDetails.escola_municipio, selectedSchoolForDetails.escola_provincia].filter(Boolean).join(', ') || <span className="italic font-medium text-slate-400">Não informada</span>}
-                    </span>
+                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">E-mail Comercial</span>
+                    <span className="text-xs font-bold text-slate-800">{selectedCrmLead.email || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Fila de Uploads */}
-              <div className="space-y-3.5">
+              {/* Stage Update Area */}
+              <div className="space-y-3.5 border-t border-slate-100 pt-4">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <FileText size={14} className="text-slate-400" />
-                  Arquivos e Staging de Importação
+                  <Target size={14} className="text-slate-400" />
+                  Mover Etapa Comercial
                 </h4>
-                <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                  {!selectedSchoolForDetails.uploads || selectedSchoolForDetails.uploads.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum upload realizado pela escola</p>
+                <div className="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Selecione a Nova Etapa</label>
+                      <select
+                        value={selectedStageToChange}
+                        onChange={(e) => setSelectedStageToChange(e.target.value)}
+                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        {Object.entries(CRM_STAGES).map(([code, meta]) => (
+                          <option key={code} value={code}>{meta.label}</option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    selectedSchoolForDetails.uploads.map((up) => {
-                      const meta = getStepMeta(up.step_code, up.created_by);
-                      return (
-                        <div key={up.id} className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm flex flex-col gap-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-black text-slate-800 uppercase tracking-wide">{meta.short}</span>
-                            <Badge className={`border-none font-bold uppercase text-[8px] px-2 py-0.5 rounded-md ${
-                              up.status === 'aprovado'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : up.status === 'rejeitado'
-                                ? 'bg-rose-50 text-rose-700'
-                                : 'bg-blue-50 text-blue-700'
-                            }`}>
-                              {up.status}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 font-bold">
-                            <span className="truncate max-w-[200px]" title={up.file_path.split('/').pop()}>
-                              {up.file_path.split('/').pop()}
-                            </span>
-                            <a
-                              href={`https://<project-ref>.supabase.co/storage/v1/object/public/onboarding/${up.file_path}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-600 hover:text-blue-700 underline text-[9px]"
-                            >
-                              BAIXAR
-                            </a>
-                          </div>
-
-                          {up.status === 'rejeitado' && up.rejection_reason && (
-                            <div className="mt-1 rounded-lg bg-rose-50 border border-rose-100 p-2 text-[9px] font-semibold text-rose-700 leading-relaxed">
-                              Motivo da rejeição: {up.rejection_reason}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
+                    {selectedStageToChange === 'perdido' && (
+                      <div>
+                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Motivo da Perda</label>
+                        <input
+                          type="text"
+                          value={lossReasonText}
+                          onChange={(e) => setLossReasonText(e.target.value)}
+                          placeholder="Ex: Sem orçamento"
+                          className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => handleUpdateLeadStage(selectedCrmLead.id, selectedStageToChange)}
+                    disabled={updatingLeadStage || (selectedStageToChange === 'perdido' && !lossReasonText.trim())}
+                    className="w-full mt-2 h-9 rounded-xl bg-slate-900 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 border-none"
+                  >
+                    {updatingLeadStage ? "A atualizar..." : "Confirmar Mudança de Etapa"}
+                  </Button>
                 </div>
               </div>
 
-              {/* Timeline de Atividades */}
-              <div className="space-y-3.5 flex-1 flex flex-col min-h-0">
+              {/* CRM Lead Next Action & Logging */}
+              <div className="space-y-3.5 border-t border-slate-100 pt-4">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <Phone size={14} className="text-slate-400" />
+                  Registrar Contato & Próximo Passo
+                </h4>
+                <div className="space-y-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
+                      <input
+                        type="text"
+                        value={nextLeadAction}
+                        onChange={(e) => setNextLeadAction(e.target.value)}
+                        placeholder="Ex: Enviar proposta comercial"
+                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Prazo da Ação</label>
+                      <input
+                        type="date"
+                        value={nextLeadActionDate}
+                        onChange={(e) => setNextLeadActionDate(e.target.value)}
+                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Notas da Ligação / Reunião</label>
+                    <textarea
+                      value={leadActionNotes}
+                      onChange={(e) => setLeadActionNotes(e.target.value)}
+                      placeholder="Descreva o que foi conversado e alinhe o próximo passo (ex: Reunião excelente com diretor, demonstrou interesse no plano profissional. Próximo passo: formalizar proposta de valores)."
+                      rows={3}
+                      className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none placeholder-slate-400 resize-none"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleUpdateLeadAction}
+                    disabled={savingLeadAction || !nextLeadAction.trim()}
+                    className="w-full h-9 rounded-xl bg-slate-900 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 border-none"
+                  >
+                    {savingLeadAction ? "A registrar..." : "Salvar Ação & Registrar Notas"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Lead interaction timeline logs */}
+              <div className="space-y-3.5 border-t border-slate-100 pt-4 flex-1 flex flex-col min-h-0">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                   <Clock size={14} className="text-slate-400" />
-                  Timeline de Atividades (SLA)
+                  Histórico de Interações do Lead
                 </h4>
+                
                 <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-                  {!selectedSchoolForDetails.calls || selectedSchoolForDetails.calls.length === 0 ? (
+                  {loadingHistory ? (
+                    <div className="text-center py-6">
+                      <Loader2 className="w-6 h-6 animate-spin text-slate-400 mx-auto" />
+                    </div>
+                  ) : leadHistory.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum contato registrado</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum histórico comercial registrado</p>
                     </div>
                   ) : (
                     <div className="relative pl-4 border-l border-slate-100 space-y-4 py-1 ml-2">
-                      {selectedSchoolForDetails.calls.map((call) => (
-                        <div key={call.id} className="relative group/timeline">
-                          {/* Dot marker */}
-                          <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-white shadow-sm ring-4 ring-blue-50" />
-                          
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-black text-slate-800">
-                                {call.member_name} realizou ligação
-                              </span>
-                              <span className="text-[9px] font-semibold text-slate-400">
-                                {format(new Date(call.realizado_em), "dd MMM, HH:mm", { locale: pt })}
-                              </span>
+                      {leadHistory.map((logItem) => {
+                        const isMove = logItem.acao === 'CRM_LEAD_STAGE_MOVE';
+                        return (
+                          <div key={logItem.id} className="relative group/timeline">
+                            <span className={`absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border border-white shadow-sm ring-4 ${
+                              isMove ? 'bg-amber-400 ring-amber-50' : 'bg-blue-500 ring-blue-50'
+                            }`} />
+                            
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-black text-slate-800">
+                                  {isMove ? 'Etapa comercial alterada' : `${logItem.member_name} inseriu notas`}
+                                </span>
+                                <span className="text-[9px] font-semibold text-slate-400">
+                                  {format(new Date(logItem.created_at), "dd MMM, HH:mm", { locale: pt })}
+                                </span>
+                              </div>
+
+                              {isMove ? (
+                                <div className="text-xs font-semibold text-slate-600 bg-amber-50/50 border border-amber-100 p-2.5 rounded-xl">
+                                  Mapeamento de: <span className="font-bold uppercase text-[9.5px] text-slate-500">{CRM_STAGES[logItem.origem_etapa]?.label || logItem.origem_etapa}</span> ➔ <span className="font-bold uppercase text-[9.5px] text-emerald-600">{CRM_STAGES[logItem.nova_etapa]?.label || logItem.nova_etapa}</span>
+                                  {logItem.motivo_perda && (
+                                    <p className="mt-1 font-medium text-rose-700 bg-rose-50/50 border border-rose-100/50 p-2 rounded-lg text-[10px]">
+                                      Motivo da Perda: {logItem.motivo_perda}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-xs font-medium text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100/50 leading-relaxed shadow-sm">
+                                  {logItem.notes}
+                                </p>
+                              )}
                             </div>
-                            {call.step_title && (
-                              <Badge className="w-fit border-none bg-blue-50 text-blue-700 font-bold text-[8px] px-1.5 py-0.5 rounded">
-                                Etapa: {call.step_title}
-                              </Badge>
-                            )}
-                            <p className="text-xs font-medium text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100/50 leading-relaxed shadow-sm">
-                              {call.notes}
-                            </p>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

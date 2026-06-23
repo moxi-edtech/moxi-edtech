@@ -31,7 +31,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
     const roleCheck = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["admin", "admin_escola", "secretaria", "staff_admin"],
+      roles: ["admin", "admin_escola", "secretaria", "secretaria_financeiro", "staff_admin", "admin_financeiro"],
     });
     if (roleCheck.error) return roleCheck.error;
 

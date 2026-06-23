@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-const EXPORT_ROLES = ["admin", "admin_escola", "staff_admin", "secretaria"] as const;
+const EXPORT_ROLES = ["admin", "admin_escola", "staff_admin", "secretaria", "admin_financeiro"] as const;
 
 async function resolveContext(req: Request, escolaParam: string) {
   const supabase = await supabaseServerTyped<Database>();

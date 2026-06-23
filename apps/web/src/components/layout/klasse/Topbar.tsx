@@ -22,7 +22,7 @@ type TopbarProps = {
   planoNome?: string | null;
   escolaId?: string | null;
   escolaParam?: string | null;
-  portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
+  portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
 export default function Topbar({

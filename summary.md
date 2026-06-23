@@ -31,3 +31,18 @@
 - **Cache crítico corrigido**: removido `force-cache` em fluxos de Secretaria/Professor e trocado por `no-store`.
 - **Profiles securizados**: leituras com `.in('user_id', ...)` substituídas por RPCs seguras em rotas da secretaria, escolas e super-admin.
 - **Limites de payload reduzidos**: `defaultLimit` padronizado para `50` nas APIs.
+
+## Sessão — Cockpit de Prontidão Pedagógica & Conselho de Turma (2026-06-23)
+
+- **Database RPCs**: Criada a migration `supabase/migrations/20270623100000_pedagogico_cockpit_and_conselho.sql` contendo funções otimizadas e seguras (`get_pedagogico_prontidao_lancamentos`, `get_turma_notas_pendentes_detalhe`, `get_conselho_turma_risco`).
+- **Next.js API Route**: Criado o endpoint `/api/secretaria/fechamento-academico/cockpit/route.ts` que consome as novas RPCs, devidamente securizado com `resolveEscolaIdForUser` e `requireRoleInSchool`.
+- **TypeScript Fixes**: Augmentadas as tipagens em `apps/web/src/types/supabase-augment.ts` e resolvidos erros pré-existentes em `apps/web/src/app/(portal-aluno)/aluno/layout.tsx` e `apps/web/src/app/api/super-admin/influencers/[id]/members/route.ts`.
+
+### Metas p95 para o Fluxo Afetado:
+*   Métricas de Prontidão e Pendências (p95): **< 200ms** (garantido pelo uso de Materialized Views internas e queries indexadas multi-tenant).
+
+### Próximos Passos:
+1.  Implementar os componentes visuais do Cockpit Pedagógico (gráficos de prontidão e listagem de pendências de notas) no frontend.
+2.  Adicionar ações de follow-up direto no painel (ex: enviar alerta ao professor pendente).
+3.  Simular o fluxo completo de Conselho de Notas com dados de teste.
+

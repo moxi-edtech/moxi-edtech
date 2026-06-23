@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   const { error: authError } = await requireRoleInSchool({ 
     supabase, 
     escolaId, 
-    roles: ['secretaria', 'diretor', 'admin', 'admin_escola', 'staff_admin'] 
+    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'diretor', 'admin', 'admin_escola', 'staff_admin'] 
   });
   if (authError) return authError;
 
@@ -148,7 +148,7 @@ export async function PATCH(request: Request) {
   const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: ['diretor', 'admin', 'admin_escola', 'staff_admin'],
+    roles: ['diretor', 'admin', 'admin_escola', 'staff_admin', 'admin_financeiro'],
   })
   if (authError) return authError
 

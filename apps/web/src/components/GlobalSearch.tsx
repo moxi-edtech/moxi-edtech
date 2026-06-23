@@ -9,7 +9,7 @@ type Props = {
   escolaId?: string | null;
   placeholder?: string;
   disabledText?: string;
-  portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
+  portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
 export function GlobalSearch({ escolaId, placeholder, disabledText, portal }: Props) {

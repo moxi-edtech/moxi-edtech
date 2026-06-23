@@ -692,7 +692,9 @@ export default function TurmasListClient({
     return match?.[1] ?? null;
   }, [pathname]);
   const escolaParam = slugFromPath || escolaSlug || escolaId;
-  const secretariaBase = buildPortalHref(escolaParam, "/secretaria");
+  const secretariaBase = pathname?.includes("/operacoes/")
+    ? buildPortalHref(escolaParam, "/operacoes")
+    : buildPortalHref(escolaParam, "/secretaria");
 
   const [data,            setData]            = useState<TurmasResponse | null>(initialData);
   const [items,           setItems]           = useState<TurmaItem[]>(initialData?.items || []);

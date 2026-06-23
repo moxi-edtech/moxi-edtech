@@ -17,8 +17,10 @@ export type NavItem = {
   children?: SubNavItem[];
 };
 
+export type SidebarRole = UserRole | "operacoes";
+
 type SidebarConfig = {
-  [key in UserRole]?: NavItem[];
+  [key in SidebarRole]?: NavItem[];
 };
 
 export const sidebarConfig: SidebarConfig = {
@@ -36,6 +38,91 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/subscricoes", label: "Subscrições", icon: "CreditCard", badge: "Novo" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
     { href: "/super-admin/comunicacao", label: "Comunicação", icon: "Mail", badge: "Novo" },
+  ],
+  operacoes: [
+    { href: "/escola/[escolaId]/operacoes/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/escola/[escolaId]/operacoes/alunos", label: "Alunos", icon: "Users" },
+    {
+      href: "/escola/[escolaId]/operacoes/matriculas",
+      label: "Matrículas & Admissões",
+      icon: "UserPlus",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/admissoes", label: "Todas as admissões" },
+        { href: "/escola/[escolaId]/operacoes/admissoes/nova", label: "Nova admissão" },
+        { href: "/escola/[escolaId]/operacoes/rematricula", label: "Rematrículas" },
+      ],
+    },
+    { href: "/escola/[escolaId]/operacoes/professores", label: "Professores", icon: "User" },
+    {
+      href: "/escola/[escolaId]/operacoes/turmas",
+      label: "Turmas & Classes",
+      icon: "GraduationCap",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/turmas", label: "Lista de turmas" },
+        { href: "/escola/[escolaId]/operacoes/classes", label: "Classes" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/operacoes/academico",
+      label: "Operações Académicas",
+      icon: "Activity",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/academico", label: "Visão geral" },
+        { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico", label: "Fechamento Trimestral" },
+        { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico/cockpit", label: "Cockpit de Prontidão" },
+        { href: "/escola/[escolaId]/operacoes/academico/sanidade", label: "Sanidade Académica" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/operacoes/calendario",
+      label: "Horários & Calendário",
+      icon: "CalendarDays",
+      children: [
+        { href: "/escola/[escolaId]/horarios/quadro", label: "Quadro de Horários" },
+        { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário Escolar" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/operacoes/documentos",
+      label: "Documentos",
+      icon: "FileText",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/documentos", label: "Emissão de Declarações" },
+        { href: "/escola/[escolaId]/operacoes/documentos-oficiais", label: "Documentos Oficiais (MED)" },
+      ],
+    },
+    { href: "/escola/[escolaId]/operacoes/acessos", label: "Acessos ao Portal", icon: "KeyRound" },
+    {
+      href: "/escola/[escolaId]/operacoes/relatorios",
+      label: "Relatórios",
+      icon: "BarChart3",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/relatorios", label: "Auditoria" },
+        { href: "/escola/[escolaId]/operacoes/relatorios/mapa-aproveitamento", label: "Mapa de Aproveitamento" },
+      ],
+    },
+    { href: "/escola/[escolaId]/operacoes/avisos", label: "Avisos", icon: "Megaphone" },
+    {
+      href: "/escola/[escolaId]/operacoes/integracao",
+      label: "Integração de Dados",
+      icon: "History",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/importacoes", label: "Importações" },
+        { href: "/escola/[escolaId]/operacoes/exportacoes", label: "Exportações" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/operacoes/configuracoes",
+      label: "Configurações",
+      icon: "Settings2",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/configuracoes", label: "Visão geral" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/calendario", label: "Calendário Escolar" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/avaliacao", label: "Sistema de Avaliação" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/financeiro", label: "Políticas Financeiras" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/mensalidades", label: "Mensalidades & Emolumentos" },
+      ],
+    },
   ],
   admin: [
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

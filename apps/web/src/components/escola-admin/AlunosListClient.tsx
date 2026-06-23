@@ -715,6 +715,7 @@ export default function AlunosListClient({
   const { success, error } = useToast();
   const escolaParam = escolaSlug || escolaId;
   const isSecretariaContext = pathname?.includes("/secretaria/") ?? false;
+  const isOperacoesContext = pathname?.includes("/operacoes/") ?? false;
 
   // ── Estado principal ────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState<"ativos" | "arquivados">("ativos");
@@ -1474,7 +1475,7 @@ export default function AlunosListClient({
                             opacity-0 group-hover:opacity-100 transition-opacity">
                             {tab === "ativos" ? (
                               <>
-                                <Link href={buildPortalHref(escolaParam, isSecretariaContext ? `/secretaria/alunos/${aluno.id}` : `/admin/alunos/${aluno.id}`)}
+                                <Link href={buildPortalHref(escolaParam, isOperacoesContext ? `/operacoes/alunos/${aluno.id}` : isSecretariaContext ? `/secretaria/alunos/${aluno.id}` : `/admin/alunos/${aluno.id}`)}
                                   className="flex items-center gap-1 rounded-lg border border-slate-200
                                     px-2 py-1.5 text-xs font-semibold text-slate-600
                                     hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"

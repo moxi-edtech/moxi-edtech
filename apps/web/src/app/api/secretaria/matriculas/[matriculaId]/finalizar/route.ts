@@ -16,8 +16,8 @@ const BodySchema = z.object({
     .optional(),
 });
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
-const OVERRIDE_ROLES = ["admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
+const OVERRIDE_ROLES = ["admin", "admin_escola", "staff_admin", "admin_financeiro"] as const;
 
 export async function POST(
   request: Request,

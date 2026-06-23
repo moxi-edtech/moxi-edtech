@@ -13,7 +13,7 @@ const StatusSchema = z.object({
   status: z.enum(["ativo", "trancado", "concluido", "transferido", "desistente"]),
 });
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 export async function PUT(request: Request, { params }: { params: Promise<{ matriculaId: string }> }) {
   try {

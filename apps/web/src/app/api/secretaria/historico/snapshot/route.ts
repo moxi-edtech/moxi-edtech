@@ -83,7 +83,7 @@ export async function PATCH(req: Request) {
     const roleCheck = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["admin", "admin_escola", "staff_admin"],
+      roles: ["admin", "admin_escola", "staff_admin", "admin_financeiro"],
     });
     if (roleCheck.error) return roleCheck.error;
 

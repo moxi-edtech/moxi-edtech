@@ -7,7 +7,7 @@ import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 function buildFinanceiroMensagem(
   valorOrigem: number,

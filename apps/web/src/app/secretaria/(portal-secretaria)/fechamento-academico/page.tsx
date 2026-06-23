@@ -11,6 +11,7 @@ import {
   Lock,
   Play,
   RefreshCw,
+  Sliders,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -446,6 +447,12 @@ function FechamentoAcademicoContent() {
         </div>
         {validacaoMensagem ? <p className="text-sm text-amber-700">{validacaoMensagem}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={buildPortalHref(escolaParam, "/secretaria/fechamento-academico/cockpit")}
+            className="px-4 py-2 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-sm font-semibold transition flex items-center gap-1.5 shadow-sm"
+          >
+            <Sliders className="w-4 h-4" /> Cockpit de Prontidão
+          </Link>
           <button
             onClick={validarSanidade}
             className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"

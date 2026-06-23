@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabaseClient";
 export type UserRole =
   | "superadmin"
   | "admin"
+  | "operacoes"
   | "secretaria"
   | "financeiro"
   | "aluno"

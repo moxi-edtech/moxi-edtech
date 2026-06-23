@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { data: hasAdminRole, error: roleError } = await supabase
       .rpc('user_has_role_in_school', {
         p_escola_id: effectiveEscolaId,
-        p_roles: ['admin_escola', 'admin'],
+        p_roles: ['admin_escola', 'admin', 'staff_admin', 'admin_financeiro'],
       });
 
     if (roleError) {
@@ -46,7 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const { data: hasSecretariaRole, error: secretariaError } = await supabase
         .rpc('user_has_role_in_school', {
           p_escola_id: effectiveEscolaId,
-          p_roles: ['secretaria'],
+          p_roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro'],
         });
 
       if (secretariaError) {
@@ -114,7 +114,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: hasRole, error: roleError } = await supabase
       .rpc('user_has_role_in_school', {
         p_escola_id: effectiveEscolaId,
-        p_roles: ['admin_escola', 'admin'],
+        p_roles: ['admin_escola', 'admin', 'staff_admin', 'admin_financeiro'],
       });
 
     if (roleError) {

@@ -78,7 +78,12 @@ export function JustificarFaltaModal() {
 
   const handleAbrirTurma = () => {
     if (!turmaId) return;
-    router.push(buildPortalHref(escolaParam, `/secretaria/turmas/${turmaId}`));
+    router.push(
+      buildPortalHref(
+        escolaParam,
+        pathname?.includes("/operacoes/") ? `/operacoes/turmas/${turmaId}` : `/secretaria/turmas/${turmaId}`,
+      ),
+    );
   };
 
   return (

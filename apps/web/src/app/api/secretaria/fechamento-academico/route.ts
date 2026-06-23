@@ -290,7 +290,7 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, payload.data.escola_id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
 
-    const { error: roleError } = await requireRoleInSchool({ supabase, escolaId, roles: ["admin", "admin_escola", "staff_admin"] });
+    const { error: roleError } = await requireRoleInSchool({ supabase, escolaId, roles: ["admin", "admin_escola", "staff_admin", "admin_financeiro"] });
     if (roleError) return roleError;
 
     const { data: activeRun } = await supabase

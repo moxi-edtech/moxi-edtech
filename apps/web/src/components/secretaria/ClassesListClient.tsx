@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { buildPortalHref } from "@/lib/navigation";
@@ -19,6 +20,8 @@ export default function ClassesListClient() {
   const [error, setError] = useState<string | null>(null);
   const [classes, setClasses] = useState<Classe[]>([]);
   const { escolaId, escolaSlug, isLoading: escolaLoading, error: escolaError } = useEscolaId();
+  const pathname = usePathname();
+  const classeBase = pathname?.includes("/operacoes/") ? "/operacoes/classes" : "/secretaria/classes";
 
   useEffect(() => {
     const loadData = async () => {
@@ -88,7 +91,7 @@ export default function ClassesListClient() {
                     {classe.nome}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link href={buildPortalHref(escolaSlug || escolaId, `/secretaria/classes/${classe.id}`)} className="text-klasse-green-600 hover:text-klasse-green-900">
+                    <Link href={buildPortalHref(escolaSlug || escolaId, `${classeBase}/${classe.id}`)} className="text-klasse-green-600 hover:text-klasse-green-900">
                         Ver Disciplinas
                     </Link>
                   </td>

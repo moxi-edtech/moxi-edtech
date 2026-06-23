@@ -5,7 +5,7 @@ import { roleMatchesAllowedRoles } from "@/lib/permissions";
 export type PortalRole = "admin" | "secretaria" | "financeiro" | "professor" | "aluno";
 
 const PORTAL_ALLOWED_ROLES: Record<PortalRole, string[]> = {
-  admin: ["admin", "admin_escola", "staff_admin", "super_admin", "global_admin"],
+  admin: ["admin", "admin_escola", "staff_admin", "admin_financeiro", "super_admin", "global_admin"],
   secretaria: [
     "secretaria",
     "secretaria_financeiro",

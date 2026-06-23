@@ -13,7 +13,7 @@ const BodySchema = z.object({
   motivo: z.string().trim().max(300).optional().nullable(),
 });
 
-const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 const ACTIVE_STATUSES = ["ativo", "ativa", "matriculado"] as const;
 
 export async function POST(
