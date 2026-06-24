@@ -186,6 +186,33 @@ function getStepMeta(stepCode: string, owner: string) {
   };
 }
 
+function getLatestOnboardingCall(escola?: OnboardingEscola | null): OnboardingCall | null {
+  if (!escola?.calls?.length) return null;
+  return [...escola.calls].sort(
+    (a, b) => new Date(b.realizado_em).getTime() - new Date(a.realizado_em).getTime()
+  )[0] ?? null;
+}
+
+function getLatestOnboardingCallForStep(
+  escola: OnboardingEscola | null | undefined,
+  stepCode: string,
+  stepTitle: string
+): OnboardingCall | null {
+  if (!escola?.calls?.length) return null;
+
+  return (
+    [...escola.calls]
+      .filter((call) => {
+        if (!call.step_title) return false;
+        const normalizedCall = call.step_title.trim().toLowerCase();
+        const normalizedTitle = stepTitle.trim().toLowerCase();
+        const normalizedMeta = getStepMeta(stepCode, "").short.trim().toLowerCase();
+        return normalizedCall === normalizedTitle || normalizedCall === normalizedMeta;
+      })
+      .sort((a, b) => new Date(b.realizado_em).getTime() - new Date(a.realizado_em).getTime())[0] ?? null
+  );
+}
+
 function isMarketingAsset(value: MarketingAssetRow): value is MarketingAsset {
   return ["image", "video", "script", "document"].includes(value.tipo);
 }
@@ -1380,6 +1407,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 schoolsInStep.map((escola, escIdx) => {
                                    const isSchoolOverdue = escola.steps?.some(st => st.status !== 'concluido' && st.deadline && new Date(st.deadline).getTime() < Date.now()) ?? false;
                                    const nextPending = escola.steps?.find(st => st.status !== 'concluido');
+                                   const lastCall = getLatestOnboardingCall(escola);
                                    
                                    let delayDays = 0;
                                    if (nextPending && nextPending.deadline) {
@@ -1416,6 +1444,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                            <span className="truncate max-w-[120px]">Plano: {escola.plano_label || escola.plano || "N/I"}</span>
                                            {escola.total_alunos && <span>{escola.total_alunos} al.</span>}
                                          </div>
+                                         {lastCall && (
+                                           <div className="rounded-lg bg-blue-50 border border-blue-100 px-2 py-1 text-[9px] font-bold text-blue-700">
+                                             Última ligação: {lastCall.member_name} · {format(new Date(lastCall.realizado_em), "dd MMM, HH:mm", { locale: pt })}
+                                           </div>
+                                         )}
                                        </div>
 
                                        {escola.steps && escola.steps.length > 0 && (
@@ -1525,6 +1558,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         const status = ONBOARDING_STATUS_CONFIG[escola.status as keyof typeof ONBOARDING_STATUS_CONFIG] || ONBOARDING_STATUS_CONFIG.pendente;
                         const nextPendingStep = escola.steps?.find(step => step.status !== 'concluido') ?? null;
                         const isSchoolOverdue = escola.steps?.some(st => st.status !== 'concluido' && st.deadline && new Date(st.deadline).getTime() < Date.now()) ?? false;
+                        const lastCall = getLatestOnboardingCall(escola);
                         
                         return (
                           <div 
@@ -1544,6 +1578,14 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     <>
                                       <span>•</span>
                                       <span>{escola.total_alunos} alunos</span>
+                                    </>
+                                  )}
+                                  {lastCall && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-blue-600">
+                                        Última ligação: {format(new Date(lastCall.realizado_em), "dd MMM, HH:mm", { locale: pt })}
+                                      </span>
                                     </>
                                   )}
                                 </div>
@@ -2268,7 +2310,28 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                       NIF: {selectedSchoolForDetails.escola_nif}
                     </Badge>
                   )}
+                  {getLatestOnboardingCall(selectedSchoolForDetails) && (
+                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border-blue-200">
+                      Último follow-up: {format(new Date(getLatestOnboardingCall(selectedSchoolForDetails)!.realizado_em), "dd MMM, HH:mm", { locale: pt })}
+                    </Badge>
+                  )}
                 </div>
+                {selectedSchoolForDetails.status !== 'activo' && (
+                  <div className="mt-4">
+                    <Button
+                      onClick={() => {
+                        const nextPending = selectedSchoolForDetails.steps?.find((st) => st.status !== 'concluido');
+                        setSelectedSchoolForCall(selectedSchoolForDetails);
+                        setSelectedStepCodeForCall(nextPending?.code || "");
+                        setCallModalOpen(true);
+                      }}
+                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                    >
+                      <Phone size={12} className="text-slate-400" />
+                      REGISTRAR LIGAÇÃO
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Share/Copy tracking link */}
@@ -2393,6 +2456,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         const isProgress = step.status === "em_progresso";
                         const isOverdue = step.deadline && new Date() >= new Date(step.deadline) && !isCompleted;
                         const meta = getStepMeta(step.code, step.owner as any);
+                        const latestStepCall = getLatestOnboardingCallForStep(selectedSchoolForDetails, step.code, step.title);
 
                         return (
                           <div key={step.code} className={`bg-white border rounded-2xl p-4 transition-all flex items-start gap-3.5 shadow-sm hover:shadow-md ${isProgress ? 'border-[#1F6B3B] ring-1 ring-[#1F6B3B]/10' : 'border-slate-200'}`}>
@@ -2431,6 +2495,27 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                   </span>
                                 )}
                               </div>
+                              {latestStepCall && (
+                                <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-[10px] font-semibold text-blue-700">
+                                  Última ligação nesta etapa: {latestStepCall.member_name} · {format(new Date(latestStepCall.realizado_em), "dd MMM, HH:mm", { locale: pt })}
+                                </div>
+                              )}
+                              {!isCompleted && (
+                                <div className="pt-1">
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSchoolForCall(selectedSchoolForDetails);
+                                      setSelectedStepCodeForCall(step.code);
+                                      setCallModalOpen(true);
+                                    }}
+                                    className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                                  >
+                                    <Phone size={11} className="text-slate-400" />
+                                    REGISTRAR LIGAÇÃO DE FOLLOW-UP
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

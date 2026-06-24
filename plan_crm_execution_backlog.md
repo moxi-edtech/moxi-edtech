@@ -429,7 +429,7 @@ Automatizar follow-up das frentes considerando as limitações dos canais dispon
 
 **Falta para fechar**
 
-- Disponibilizar ação/indicador explícito de `ligação realizada` com persistência em `public.audit_logs`.
+- Nada no escopo de `P2.3`
 
 **Critério de pronto**
 
@@ -474,7 +474,7 @@ Transformar o fluxo em instrumento de gestão.
 4. `P0.4` Verificação técnica completa (feito)
 5. `P1.1` a `P1.4` Fechar a frente do parceiro (feito)
 6. `P1.5` e `P1.6` Migrar o workflow para 7 etapas (feito)
-7. `P2.1`, `P2.2` e `P2.4` concluídos; `P2.3` segue parcial até existir registo manual de ligação
+7. `P2.1`, `P2.2`, `P2.3` e `P2.4` concluídos
 
 ## Definição de “3 frentes cobertas”
 

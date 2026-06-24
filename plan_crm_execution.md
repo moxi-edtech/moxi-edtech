@@ -167,10 +167,10 @@ O workflow de ativação escolar é composto por 7 fases síncronas, cada uma co
 2.  **API de Login de Membros:** já existe listagem pública de membros e validação por `member_id + PIN`.
 3.  **API de Upload Staging:** `/api/onboarding/[token]/upload` já aceita contexto de membro e limpa ficheiros órfãos quando a persistência falha.
 4.  **APIs de Provisionamento:** os fluxos `/api/super-admin/onboarding/[id]/provision` e `/api/super-admin/onboarding/[id]/create-and-provision` já estão implementados.
-5.  **Cron de SLA:** já existe verificação automática com cooldown por etapa; ainda falta o registo manual de `ligação realizada`.
+5.  **Cron de SLA:** já existe verificação automática com cooldown por etapa e registo manual de `ligação realizada`.
 
 ### ➡️ Fase 3: Interfaces do Usuário (Front-End) — **V1 OPERACIONAL / AJUSTES PENDENTES**
 1.  **Página da Escola:** `/onboarding/acompanhar/[token]` já cobre 7 etapas, uploads e download de materiais de apoio.
 2.  **Portal do Parceiro:** `/influencers/[codigo]` já opera com login por membro, workflow completo, dashboard de SLA e materiais.
 3.  **Dashboard Super Admin:** a moderação de uploads, autoria detalhada, relatórios operacionais e provisionamento já estão activos.
-4.  **Pendência actual:** ainda falta a ação explícita de `ligação realizada` para fechar a automação operacional do parceiro.
+4.  **Pendência actual:** o follow-up manual já pode ser registado no portal do parceiro por escola e por etapa.

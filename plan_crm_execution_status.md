@@ -53,7 +53,7 @@ Legenda:
 | Bloqueio visual de provisionamento com etapas pendentes | `feito` | [apps/web/src/app/super-admin/onboarding/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/super-admin/onboarding/page.tsx:1) carrega `onboarding_steps`, calcula prontidão e desabilita a ação quando houver pendências | |
 | Escolas elegíveis no modal “Vincular Existente” | `feito` | [apps/web/src/app/api/super-admin/escolas/list/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/super-admin/escolas/list/route.ts:1) com `?mode=provision-target` + [apps/web/src/app/super-admin/onboarding/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/super-admin/onboarding/page.tsx:1) exibindo status/plano/localização | |
 | Mostrar “quem enviou” com detalhe do parceiro/membro | `feito` | [apps/web/src/app/api/super-admin/onboarding/uploads/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/super-admin/onboarding/uploads/route.ts:1) e [apps/web/src/app/super-admin/onboarding/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/super-admin/onboarding/page.tsx:1) expõem `Enviado por Escola` vs `Enviado por Parceiro: Nome do membro` | |
-| Notificações automáticas de SLA (E-mail / Ligações) | `parcial` | [apps/web/src/app/api/cron/onboarding/sla-alerts/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/cron/onboarding/sla-alerts/route.ts) verifica prazos, aplica cooldown e dispara alertas com logs em `public.audit_logs` | Falta ação/indicador de `ligação realizada` com registo manual |
+| Notificações automáticas de SLA (E-mail / Ligações) | `feito` | [apps/web/src/app/api/cron/onboarding/sla-alerts/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/cron/onboarding/sla-alerts/route.ts) verifica prazos, aplica cooldown e dispara alertas com logs em `public.audit_logs`; [apps/web/src/app/influencers/[codigo]/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/influencers/[codigo]/page.tsx:1) expõe ação e indicador visual de `ligação realizada` por escola e por etapa | |
 | Relatórios operacionais do onboarding | `feito` | Aba "Relatórios" em [apps/web/src/app/super-admin/onboarding/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/super-admin/onboarding/page.tsx:1) exibindo gargalos por owner, tempo médio por fase com `started_at` e conversão por parceiro | |
 
 ## Arquitetura / Banco
@@ -74,12 +74,12 @@ Legenda:
 
 - `Escola`: jornada pública completa com acompanhamento, uploads e download de planilhas modelo
 - `Super Admin`: fila de uploads, provisionamento seguro, autoria de ações e painel de relatórios operacionais de tempo médio e conversão por parceiro
-- `Parceiro`: login de membros, PIN individual, acompanhamento das 7 etapas, download de templates e dashboard de SLA com filtros integrados
+- `Parceiro`: login de membros, PIN individual, acompanhamento das 7 etapas, download de templates, dashboard de SLA com filtros integrados e registo manual de follow-up
 
 ## Próxima Ordem de Execução
 
 Estado actual do P2:
 - P2.1: Modelos de Planilha (`feito`)
 - P2.2: Dashboard por SLA (`feito`)
-- P2.3: Notificações automáticas (`parcial`)
+- P2.3: Notificações automáticas (`feito`)
 - P2.4: Relatórios operacionais (`feito`)
