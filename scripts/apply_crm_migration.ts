@@ -2,12 +2,16 @@ import postgres from 'postgres';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const connectionString = 'postgresql://postgres.<project-ref>:<PASSWORD>@aws-1-<region>.pooler.supabase.com:6543/postgres';
-
 async function main() {
+  const connectionString = process.env.DB_URL?.trim();
+  if (!connectionString) {
+    console.error('Missing DB_URL environment variable.');
+    process.exit(1);
+  }
+
   const sql = postgres(connectionString, { max: 1 });
   try {
-    const migrationPath = path.join(__dirname, '../supabase/migrations/20270623140000_create_crm_pre_sales_pipeline.sql');
+    const migrationPath = path.join(__dirname, '../supabase/migrations/20270624100000_add_role_to_afiliado_membros.sql');
     console.log('Reading migration file:', migrationPath);
     const sqlContent = fs.readFileSync(migrationPath, 'utf8');
 
@@ -24,7 +28,7 @@ async function main() {
       console.log('Registering migration in supabase_migrations.schema_migrations...');
       await sql`
         INSERT INTO supabase_migrations.schema_migrations (version)
-        VALUES ('20270623140000')
+        VALUES ('20270624100000')
         ON CONFLICT (version) DO NOTHING;
       `;
       console.log('Migration registered successfully!');

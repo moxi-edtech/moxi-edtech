@@ -279,6 +279,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [stats, setStats] = useState<AfiliadoStats | null>(null);
   const [assets, setAssets] = useState<MarketingAsset[]>([]);
   const [memberName, setMemberName] = useState("");
+  const [memberRole, setMemberRole] = useState<"owner" | "operator">("operator");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'campanha' | 'crm' | 'onboarding' | 'materiais'>('crm');
   const [authError, setAuthError] = useState(false);
@@ -381,7 +382,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         ok?: boolean;
         portal?: AfiliadoPortalResponse;
         assets?: MarketingAssetRow[];
-        member?: { name?: string };
+        member?: { name?: string; role?: string };
       } | null;
 
       if (!response.ok || !payload?.ok || !payload.portal || !isAfiliadoPortalResponse(payload.portal)) {
@@ -392,6 +393,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       setAuthError(false);
       setStats(payload.portal.stats);
       setMemberName(typeof payload.member?.name === "string" ? payload.member.name : "");
+      setMemberRole((payload.member?.role === "owner" || payload.member?.role === "operator") ? payload.member.role : "operator");
       setAssets((payload.assets || []).filter(isMarketingAsset));
 
       if (selectedSchoolForDetails) {
@@ -711,6 +713,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     <PartnerAppShell
       codigo={codigo}
       memberName={memberName}
+      memberRole={memberRole}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       stats={stats}
@@ -971,15 +974,31 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   {/* Pipeline Value summary */}
                   {activeCrmLeads.length > 0 && (
                     <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-white mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Potencial de Receita Comercial</p>
-                        <p className="text-xl font-black text-klasse-gold">
-                          Kz {totalCrmPipelineValue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                      <div className="text-xs text-slate-400 max-w-md font-medium">
-                        Comissão potencial calculada com base na conversão de todos os leads ativos (25% do valor da mensalidade estimativa).
-                      </div>
+                      {memberRole === 'owner' ? (
+                        <>
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Potencial de Receita Comercial</p>
+                            <p className="text-xl font-black text-klasse-gold">
+                              Kz {totalCrmPipelineValue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="text-xs text-slate-400 max-w-md font-medium">
+                            Comissão potencial calculada com base na conversão de todos os leads ativos (25% do valor da mensalidade estimativa).
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Negociações em Curso</p>
+                            <p className="text-xl font-black text-[#10b981]">
+                              {activeCrmLeads.length} {activeCrmLeads.length === 1 ? 'Lead Ativo' : 'Leads Ativos'}
+                            </p>
+                          </div>
+                          <div className="text-xs text-slate-400 max-w-md font-medium">
+                            Foque em agendar apresentações e fazer contatos regulares para qualificar e converter seus leads.
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -1050,9 +1069,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                       <div className="flex flex-col gap-1.5 border-t border-slate-50 pt-2 text-[9px] font-medium text-slate-500">
                                         <div className="flex justify-between items-center">
                                           <span>Plano: {lead.plano_estimado}</span>
-                                          <span className="font-bold text-emerald-600">
-                                            Kz {getCommissionForPlan(lead.plano_estimado).toLocaleString('pt-PT')}
-                                          </span>
+                                          {memberRole === 'owner' && (
+                                            <span className="font-bold text-emerald-600">
+                                              Kz {getCommissionForPlan(lead.plano_estimado).toLocaleString('pt-PT')}
+                                            </span>
+                                          )}
                                         </div>
 
                                         {lead.proxima_acao ? (
@@ -1758,78 +1779,80 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
               {/* Tips & Commission */}
               <div className="space-y-6">
-                <Card className="rounded-[32px] border-slate-900 bg-slate-900 text-white shadow-xl">
-                  <CardHeader className="p-6">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Award className="text-klasse-gold" />
-                      Sua Comissão
-                    </CardTitle>
-                    <CardDescription className="text-slate-400 text-xs">
-                      Ganhe 25% do valor da primeira mensalidade paga por cada escola ativada.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-0 space-y-5">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Acumulado (Ativo)</p>
-                      <p className="text-2xl font-black text-klasse-gold">
-                        {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(totalComissao).replace('AOA', 'Kz')}
-                      </p>
-                    </div>
+                {memberRole === 'owner' && (
+                  <Card className="rounded-[32px] border-slate-900 bg-slate-900 text-white shadow-xl">
+                    <CardHeader className="p-6">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Award className="text-klasse-gold" />
+                        Sua Comissão
+                      </CardTitle>
+                      <CardDescription className="text-slate-400 text-xs">
+                        Ganhe 25% do valor da primeira mensalidade paga por cada escola ativada.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0 space-y-5">
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Acumulado (Ativo)</p>
+                        <p className="text-2xl font-black text-klasse-gold">
+                          {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(totalComissao).replace('AOA', 'Kz')}
+                        </p>
+                      </div>
 
-                    {/* Simulação interactiva de comissão */}
-                    <div className="pt-4 border-t border-white/10 space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Simulador de Ganhos</h4>
-                      
-                      <div className="space-y-2">
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase">Plano da Escola</label>
-                        <div className="grid grid-cols-3 gap-1.5 bg-white/5 p-1 rounded-xl">
-                          {(['essencial', 'profissional', 'premium'] as const).map(p => (
-                            <button
-                              key={p}
-                              type="button"
-                              onClick={() => setCalcPlan(p)}
-                              className={`py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all
-                                ${calcPlan === p ? 'bg-klasse-gold text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                            >
-                              {p}
-                            </button>
-                          ))}
+                      {/* Simulação interactiva de comissão */}
+                      <div className="pt-4 border-t border-white/10 space-y-3">
+                        <h4 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Simulador de Ganhos</h4>
+                        
+                        <div className="space-y-2">
+                          <label className="block text-[9px] font-bold text-slate-400 uppercase">Plano da Escola</label>
+                          <div className="grid grid-cols-3 gap-1.5 bg-white/5 p-1 rounded-xl">
+                            {(['essencial', 'profissional', 'premium'] as const).map(p => (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => setCalcPlan(p)}
+                                className={`py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all
+                                  ${calcPlan === p ? 'bg-klasse-gold text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
+                            <span>Nº de Alunos</span>
+                            <span className="text-white font-black">{calcAlunos}</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="100" 
+                            max="2000" 
+                            step="50"
+                            value={calcAlunos} 
+                            onChange={e => setCalcAlunos(parseInt(e.target.value))}
+                            className="w-full accent-klasse-gold bg-white/10 rounded-lg appearance-none h-1 cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
+                          <span className="font-bold text-slate-400">Comissão Prevista:</span>
+                          <span className="font-black text-klasse-gold">
+                            {(() => {
+                              let basePrice = 80000;
+                              if (calcPlan === 'profissional') basePrice = 140000;
+                              if (calcPlan === 'premium') basePrice = 250000;
+                              const value = basePrice * 0.25;
+                              return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value).replace('AOA', 'Kz');
+                            })()}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
-                          <span>Nº de Alunos</span>
-                          <span className="text-white font-black">{calcAlunos}</span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="100" 
-                          max="2000" 
-                          step="50"
-                          value={calcAlunos} 
-                          onChange={e => setCalcAlunos(parseInt(e.target.value))}
-                          className="w-full accent-klasse-gold bg-white/10 rounded-lg appearance-none h-1 cursor-pointer"
-                        />
-                      </div>
-
-                      <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-400">Comissão Prevista:</span>
-                        <span className="font-black text-klasse-gold">
-                          {(() => {
-                            let basePrice = 80000;
-                            if (calcPlan === 'profissional') basePrice = 140000;
-                            if (calcPlan === 'premium') basePrice = 250000;
-                            const value = basePrice * 0.25;
-                            return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value).replace('AOA', 'Kz');
-                          })()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] text-slate-500 italic">Os pagamentos são processados entre o dia 1 e 5 de cada mês.</p>
-                  </CardContent>
-                </Card>
+                      <p className="text-[10px] text-slate-500 italic">Os pagamentos são processados entre o dia 1 e 5 de cada mês.</p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="bg-amber-50 border border-amber-100 p-6 rounded-[32px] space-y-4">
                   <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">

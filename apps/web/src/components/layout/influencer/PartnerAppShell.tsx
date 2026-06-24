@@ -23,6 +23,7 @@ type PartnerAppShellProps = {
   children: React.ReactNode;
   codigo: string;
   memberName: string;
+  memberRole?: 'owner' | 'operator';
   activeTab: 'campanha' | 'crm' | 'onboarding' | 'materiais';
   setActiveTab: (tab: 'campanha' | 'crm' | 'onboarding' | 'materiais') => void;
   stats: {
@@ -39,6 +40,7 @@ export default function PartnerAppShell({
   children,
   codigo,
   memberName,
+  memberRole = 'operator',
   activeTab,
   setActiveTab,
   stats,
@@ -127,8 +129,12 @@ export default function PartnerAppShell({
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Membro Ativo</p>
             <p className="text-xs font-black truncate text-white" title={memberName}>{memberName || "Operador"}</p>
             <div className="flex items-center gap-1.5 mt-1">
-              <Badge className="bg-[#E3B23C]/10 text-[#E3B23C] border border-[#E3B23C]/20 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                PARCEIRO
+              <Badge className={`text-[8px] font-bold px-1.5 py-0.5 rounded border ${
+                memberRole === 'owner'
+                  ? 'bg-[#E3B23C]/10 text-[#E3B23C] border-[#E3B23C]/20'
+                  : 'bg-slate-800 text-slate-400 border-slate-700'
+              }`}>
+                {memberRole === 'owner' ? 'PROPRIETÁRIO' : 'OPERADOR'}
               </Badge>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{codigo}</span>
             </div>
@@ -390,13 +396,17 @@ export default function PartnerAppShell({
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Escolas Indicadas</p>
               <p className="text-sm font-black text-slate-900">{stats?.total_diagnosticos || 0}</p>
             </div>
-            <span className="text-slate-200">|</span>
-            <div className="text-right">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Comissão Estimada</p>
-              <p className="text-sm font-black text-emerald-600">
-                Kz {totalComissao.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
+            {memberRole === 'owner' && (
+              <>
+                <span className="text-slate-200">|</span>
+                <div className="text-right">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Comissão Estimada</p>
+                  <p className="text-sm font-black text-emerald-600">
+                    Kz {totalComissao.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </header>
 

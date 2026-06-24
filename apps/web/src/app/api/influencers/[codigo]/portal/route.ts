@@ -60,6 +60,7 @@ export async function GET(
       member: {
         id: auth.session.member_id,
         name: auth.session.member_name,
+        role: portalRes.data.member?.role ?? "operator",
       },
     });
   } catch (err) {
