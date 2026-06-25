@@ -30,7 +30,6 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
   // Tenant permissions & allowed features states
   const [isAllowed, setIsAllowed] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
-  const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
   const [userRole, setUserRole] = useState("");
 
   // Help center states
@@ -203,12 +202,12 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
           return;
         }
 
-        // 1. Get school setting limits & allowed features
+        // 1. Get school setting limits (limits apply, features are not blocked)
         const { data: settings, error: settingsError } = await (supabase as any)
           .from("ai_school_settings")
-          .select("enabled, allowed_features")
+          .select("enabled")
           .eq("school_id", schoolId)
-          .maybeSingle() as { data: { enabled: boolean; allowed_features: any } | null; error: any };
+          .maybeSingle() as { data: { enabled: boolean } | null; error: any };
 
         if (!active) return;
         if (settingsError || !settings || !settings.enabled) {
@@ -234,18 +233,9 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
 
         const role = userRoleData.papel?.toLowerCase() || "";
         const isAllowedRole = AI_WIDGET_ROLES.includes(role);
-        const features = Array.isArray(settings.allowed_features)
-          ? (settings.allowed_features as string[])
-          : [];
 
-        // If allowed_features contains none of our client features, hide the widget
-        const hasAnyClientFeature =
-          features.includes("rewrite") ||
-          features.includes("summary") ||
-          features.includes("finance-message");
-
-        setIsAllowed(isAllowedRole && hasAnyClientFeature);
-        setAllowedFeatures(features);
+        // Widget is allowed for all administrative roles if AI is enabled for the school
+        setIsAllowed(isAllowedRole);
         setUserRole(role);
         setCheckingAccess(false);
       } catch (err) {
@@ -277,10 +267,6 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
       },
     ]);
   }, []);
-
-  const hasFeature = (feat: string) => {
-    return allowedFeatures.includes(feat);
-  };
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -625,40 +611,37 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
 
                     return (
                       <div key={index} className="flex flex-col gap-2 pt-2">
-                        {hasFeature("rewrite") && (
-                          <button
-                            onClick={() => handleAction("rewrite")}
-                            disabled={generating}
-                            className="w-full text-left p-3 text-xs bg-violet-50 hover:bg-violet-100 border border-violet-100 text-violet-850 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-violet-600" />
-                            <span>✨ Polir ou melhorar aviso</span>
-                          </button>
-                        )}
-                        {hasFeature("summary") && (
-                          <button
-                            onClick={() => handleAction("summary")}
-                            disabled={generating}
-                            className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-850 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
-                          >
-                            <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>📊 Resumir indicadores de hoje</span>
-                          </button>
-                        )}
-                        {hasFeature("finance-message") && (
-                          <button
-                            onClick={() => handleAction("billing_redirect")}
-                            disabled={generating}
-                            className="w-full text-left p-3 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
-                          >
-                            <span>💬 Lembrete de Cobrança</span>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleAction("rewrite")}
+                          disabled={generating}
+                          className="w-full text-left p-3 text-xs bg-violet-50 hover:bg-violet-100 border border-violet-100 text-violet-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-violet-600" />
+                          <span>✨ Polir ou melhorar aviso</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleAction("summary")}
+                          disabled={generating}
+                          className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                        >
+                          <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>📊 Resumir indicadores de hoje</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleAction("billing_redirect")}
+                          disabled={generating}
+                          className="w-full text-left p-3 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                        >
+                          <span>💬 Lembrete de Cobrança</span>
+                        </button>
+
                         {/* Help center trigger */}
                         <button
                           onClick={() => handleAction("help_menu")}
                           disabled={generating}
-                          className="w-full text-left p-3 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-850 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
+                          className="w-full text-left p-3 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
                         >
                           <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
                           <span>❔ Ajuda do KLASSE</span>
