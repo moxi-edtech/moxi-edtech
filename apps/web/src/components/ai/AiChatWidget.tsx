@@ -43,6 +43,145 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Dragging states and refs
+  const [position, setPosition] = useState<{ right: number; bottom: number }>({ right: 24, bottom: 24 });
+  const [isDraggingState, setIsDraggingState] = useState(false);
+  const isDragging = useRef(false);
+  const dragHasMoved = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, right: 0, bottom: 0 });
+  const positionRef = useRef(position);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  // Load position on client-side mount
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    const defaultBottom = (hasMobileNav && isMobile) ? 80 : 24;
+    const defaultRight = isMobile ? 16 : 24;
+
+    const saved = localStorage.getItem(`klasse_ai_widget_position_${schoolId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.right === "number" && typeof parsed.bottom === "number") {
+          const maxRight = window.innerWidth - 44 - 16;
+          const maxBottom = window.innerHeight - 44 - 16;
+          const minBottom = (hasMobileNav && isMobile) ? 80 : 16;
+
+          setPosition({
+            right: Math.max(16, Math.min(parsed.right, maxRight)),
+            bottom: Math.max(minBottom, Math.min(parsed.bottom, maxBottom))
+          });
+          return;
+        }
+      } catch (e) {
+        console.error("Error parsing saved widget position:", e);
+      }
+    }
+
+    setPosition({ right: defaultRight, bottom: defaultBottom });
+  }, [schoolId, hasMobileNav]);
+
+  // Clamp position when card is opened to make sure the open card fits inside viewport
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const isMobile = window.innerWidth < 768;
+    const minBottom = (hasMobileNav && isMobile) ? 80 : 16;
+    const widgetWidth = isMobile ? window.innerWidth - 32 : 340;
+    const widgetHeight = 460; // card height
+
+    const maxRight = window.innerWidth - widgetWidth - 16;
+    const maxBottom = window.innerHeight - widgetHeight - 16;
+
+    setPosition((prev) => ({
+      right: Math.max(16, Math.min(prev.right, maxRight)),
+      bottom: Math.max(minBottom, Math.min(prev.bottom, maxBottom))
+    }));
+  }, [isOpen, hasMobileNav]);
+
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    // Avoid dragging when clicking buttons, links or input areas
+    if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("input") || (e.target as HTMLElement).closest("a")) {
+      return;
+    }
+    if ("button" in e && e.button !== 0) return; // Only left mouse click
+
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+    dragStart.current = {
+      x: clientX,
+      y: clientY,
+      right: positionRef.current.right,
+      bottom: positionRef.current.bottom
+    };
+
+    isDragging.current = true;
+    dragHasMoved.current = false;
+    setIsDraggingState(true);
+  };
+
+  useEffect(() => {
+    const handleDragMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDragging.current) return;
+
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+      const dx = clientX - dragStart.current.x;
+      const dy = clientY - dragStart.current.y;
+
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        dragHasMoved.current = true;
+      }
+
+      const isMobile = window.innerWidth < 768;
+      const minBottom = (hasMobileNav && isMobile) ? 80 : 16;
+
+      const widgetWidth = isOpen ? (isMobile ? window.innerWidth - 32 : 340) : 44;
+      const widgetHeight = isOpen ? 460 : 44;
+
+      const maxRight = window.innerWidth - widgetWidth - 16;
+      const maxBottom = window.innerHeight - widgetHeight - 16;
+
+      const nextRight = dragStart.current.right - dx;
+      const nextBottom = dragStart.current.bottom - dy;
+
+      setPosition({
+        right: Math.max(16, Math.min(nextRight, maxRight)),
+        bottom: Math.max(minBottom, Math.min(nextBottom, maxBottom))
+      });
+    };
+
+    const handleDragEnd = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      setIsDraggingState(false);
+
+      localStorage.setItem(
+        `klasse_ai_widget_position_${schoolId}`,
+        JSON.stringify(positionRef.current)
+      );
+    };
+
+    if (isDraggingState) {
+      window.addEventListener("mousemove", handleDragMove, { passive: true });
+      window.addEventListener("mouseup", handleDragEnd);
+      window.addEventListener("touchmove", handleDragMove, { passive: true });
+      window.addEventListener("touchend", handleDragEnd);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleDragMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchmove", handleDragMove);
+      window.removeEventListener("touchend", handleDragEnd);
+    };
+  }, [isDraggingState, isOpen, schoolId, hasMobileNav]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -292,38 +431,66 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
 
   if (checkingAccess || !isAllowed) return null;
 
-  // Adjust coordinates dynamically depending on whether bottom mobile navbar is rendered
-  const buttonBottomClass = hasMobileNav ? "bottom-20 md:bottom-6" : "bottom-6";
-  const cardBottomClass = hasMobileNav ? "bottom-36 md:bottom-24" : "bottom-24";
-
   // Filtered topics based on search state
   const activeHelpTopics = helpSearchQuery ? helpResults : findHelpTopics("", userRole);
+
+  const isMobileSize = typeof window !== "undefined" && window.innerWidth < 768;
+  const cardRight = isMobileSize ? 16 : position.right;
+  const cardWidthClass = isMobileSize ? "w-[calc(100vw-2rem)]" : "w-[340px]";
 
   return (
     <>
       {/* Floating Sparkle Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed ${buttonBottomClass} right-4 sm:right-6 z-50 w-14 h-14 bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer`}
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
+        onClick={(e) => {
+          if (dragHasMoved.current) {
+            e.preventDefault();
+            return;
+          }
+          setIsOpen(!isOpen);
+        }}
+        style={{
+          right: `${position.right}px`,
+          bottom: `${position.bottom}px`,
+        }}
+        className={`fixed z-50 w-11 h-11 bg-white/90 backdrop-blur-md border border-slate-200 text-slate-700 rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:text-indigo-600 hover:scale-105 active:scale-95 cursor-grab active:cursor-grabbing ${
+          isDraggingState ? "" : "transition-all duration-300"
+        }`}
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
+        {isOpen ? <X className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
       </button>
 
       {/* Popover Chat Interface */}
       {isOpen && (
-        <div className={`fixed ${cardBottomClass} right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[500px] h-[500px] bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 flex flex-col overflow-hidden transition-all duration-300`}>
-          
+        <div
+          style={{
+            right: `${cardRight}px`,
+            bottom: `${position.bottom}px`,
+          }}
+          className={`fixed max-h-[70vh] h-[460px] ${cardWidthClass} bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-xl z-50 flex flex-col overflow-hidden ${
+            isDraggingState ? "" : "transition-all duration-300"
+          }`}
+        >
           {/* Header */}
-          <div className="bg-gradient-to-r from-violet-900 to-indigo-900 text-white p-4 flex items-center justify-between">
+          <div
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
+            className="bg-white border-b border-slate-100 p-3 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+          >
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-violet-300 animate-pulse" />
+              <Sparkles className="w-4 h-4 text-indigo-500" />
               <div>
-                <h3 className="text-sm font-extrabold tracking-tight">Klasse AI</h3>
-                <p className="text-[10px] text-violet-200">Assistente de Produtividade</p>
+                <h3 className="text-xs font-bold text-slate-800">Klasse AI</h3>
+                <p className="text-[9px] text-slate-400">Assistente de Produtividade</p>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white hover:text-slate-200 cursor-pointer">
-              <X className="w-4 h-4" />
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -364,7 +531,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                   {selectedTopic.href && (
                     <button
                       onClick={() => handleNavigateToTopic(selectedTopic)}
-                      className="w-full py-2.5 bg-gradient-to-tr from-violet-600 to-indigo-600 hover:brightness-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-colors"
                     >
                       <span>Abrir tela</span>
                     </button>
@@ -462,7 +629,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                           <button
                             onClick={() => handleAction("rewrite")}
                             disabled={generating}
-                            className="w-full text-left p-3 text-xs bg-violet-50 hover:bg-violet-100 border border-violet-100 text-violet-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            className="w-full text-left p-3 text-xs bg-violet-50 hover:bg-violet-100 border border-violet-100 text-violet-850 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
                           >
                             <FileText className="w-3.5 h-3.5 text-violet-600" />
                             <span>✨ Polir ou melhorar aviso</span>
@@ -472,7 +639,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                           <button
                             onClick={() => handleAction("summary")}
                             disabled={generating}
-                            className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-850 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
                           >
                             <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
                             <span>📊 Resumir indicadores de hoje</span>
@@ -482,7 +649,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                           <button
                             onClick={() => handleAction("billing_redirect")}
                             disabled={generating}
-                            className="w-full text-left p-3 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            className="w-full text-left p-3 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
                           >
                             <span>💬 Lembrete de Cobrança</span>
                           </button>
@@ -491,7 +658,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                         <button
                           onClick={() => handleAction("help_menu")}
                           disabled={generating}
-                          className="w-full text-left p-3 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                          className="w-full text-left p-3 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-850 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-xs"
                         >
                           <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
                           <span>❔ Ajuda do KLASSE</span>
@@ -507,7 +674,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                         className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-wrap relative group ${
                           isAi
                             ? "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50"
-                            : "bg-violet-600 text-white rounded-tr-none shadow-sm"
+                            : "bg-slate-800 text-white rounded-tr-none shadow-sm"
                         }`}
                       >
                         <div>{msg.text}</div>
@@ -557,12 +724,12 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                       onChange={(e) => setInputValue(e.target.value)}
                       disabled={generating}
                       placeholder="Cole ou escreve o texto administrativo..."
-                      className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-violet-500 transition-colors"
+                      className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-slate-400 transition-colors"
                     />
                     <button
                       type="submit"
                       disabled={generating || !inputValue.trim()}
-                      className="p-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 text-white rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                      className="p-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 text-white rounded-xl transition-all cursor-pointer flex items-center justify-center"
                     >
                       <Send className="w-3.5 h-3.5" />
                     </button>
