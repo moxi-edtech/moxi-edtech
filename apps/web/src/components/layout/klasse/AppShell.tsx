@@ -3,6 +3,8 @@
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MaintenanceBanner from "./MaintenanceBanner";
+import AiChatWidget from "@/components/ai/AiChatWidget";
+import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -23,6 +25,8 @@ const TOPBAR_LABELS: Record<SidebarRole, { title: string; subtitle: string }> = 
   professor: { title: "Professor", subtitle: "Portal do professor" },
   gestor: { title: "Gestor", subtitle: "Portal do gestor" },
 };
+
+
 
 export default function AppShell({
   children,
@@ -287,6 +291,9 @@ export default function AppShell({
         </div>
       </div>
       {mobileNav ? <div className="md:hidden">{mobileNav}</div> : null}
+      {navEscolaId && navRole && AI_WIDGET_ROLES.includes(navRole) && (
+        <AiChatWidget schoolId={escolaIdFromSession || navEscolaId} hasMobileNav={!!mobileNav} />
+      )}
     </div>
   );
 }

@@ -1,0 +1,594 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { Sparkles, X, Send, Copy, FileText, ListCollapse, Check, Search, ArrowLeft, HelpCircle, ChevronRight } from "lucide-react";
+import { createClient } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
+import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
+
+interface Message {
+  sender: "user" | "ai";
+  text: string;
+  isActions?: boolean;
+  copyable?: boolean;
+}
+
+interface AiChatWidgetProps {
+  schoolId: string;
+  hasMobileNav?: boolean;
+}
+
+export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatWidgetProps) {
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  // Tenant permissions & allowed features states
+  const [isAllowed, setIsAllowed] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
+  const [userRole, setUserRole] = useState("");
+
+  // Help center states
+  const [helpSearchQuery, setHelpSearchQuery] = useState("");
+  const [helpResults, setHelpResults] = useState<HelpTopic[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
+  
+  // Keep track of the active dialog state (e.g. "waiting_for_rewrite_text", "help_menu", "help_search", "help_topic_selected")
+  const [dialogState, setDialogState] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // Client-side access checks aligning with the backend guards
+  useEffect(() => {
+    let active = true;
+    async function checkAccess() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!active) return;
+        if (!user) {
+          setIsAllowed(false);
+          setCheckingAccess(false);
+          return;
+        }
+
+        // 1. Get school setting limits & allowed features
+        const { data: settings, error: settingsError } = await (supabase as any)
+          .from("ai_school_settings")
+          .select("enabled, allowed_features")
+          .eq("school_id", schoolId)
+          .maybeSingle() as { data: { enabled: boolean; allowed_features: any } | null; error: any };
+
+        if (!active) return;
+        if (settingsError || !settings || !settings.enabled) {
+          setIsAllowed(false);
+          setCheckingAccess(false);
+          return;
+        }
+
+        // 2. Check user role inside the school
+        const { data: userRoleData, error: roleError } = await supabase
+          .from("escola_users")
+          .select("papel")
+          .eq("escola_id", schoolId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!active) return;
+        if (roleError || !userRoleData) {
+          setIsAllowed(false);
+          setCheckingAccess(false);
+          return;
+        }
+
+        const role = userRoleData.papel?.toLowerCase() || "";
+        const isAllowedRole = AI_WIDGET_ROLES.includes(role);
+        const features = Array.isArray(settings.allowed_features)
+          ? (settings.allowed_features as string[])
+          : [];
+
+        // If allowed_features contains none of our client features, hide the widget
+        const hasAnyClientFeature =
+          features.includes("rewrite") ||
+          features.includes("summary") ||
+          features.includes("finance-message");
+
+        setIsAllowed(isAllowedRole && hasAnyClientFeature);
+        setAllowedFeatures(features);
+        setUserRole(role);
+        setCheckingAccess(false);
+      } catch (err) {
+        console.error("Error verifying AI access:", err);
+        if (active) {
+          setIsAllowed(false);
+          setCheckingAccess(false);
+        }
+      }
+    }
+
+    checkAccess();
+    return () => {
+      active = false;
+    };
+  }, [schoolId]);
+
+  // Initial welcome message
+  useEffect(() => {
+    setMessages([
+      {
+        sender: "ai",
+        text: "Olá! Sou o Assistente Klasse AI. Posso ajudar-te com tarefas rápidas de produtividade. Seleciona uma das opções abaixo:",
+      },
+      {
+        sender: "ai",
+        text: "",
+        isActions: true,
+      },
+    ]);
+  }, []);
+
+  const hasFeature = (feat: string) => {
+    return allowedFeatures.includes(feat);
+  };
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim()) return;
+
+    const userMsg = text.trim();
+    setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+    setInputValue("");
+    setGenerating(true);
+
+    try {
+      if (dialogState === "waiting_for_rewrite_text") {
+        const res = await fetch("/api/admin/ai/rewrite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: userMsg,
+            mode: "more_formal",
+            schoolId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Erro ao reescrever texto.");
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: `Aqui está a versão melhorada e formalizada do teu texto:\n\n${data.text}`,
+            copyable: true,
+          },
+        ]);
+        setDialogState(null);
+      }
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: `Erro ao executar a solicitação: ${err.message}`,
+        },
+      ]);
+    } finally {
+      setGenerating(false);
+      setMessages((prev) => [...prev, { sender: "ai", text: "", isActions: true }]);
+    }
+  };
+
+  const handleAction = async (action: string) => {
+    if (generating) return;
+
+    if (action === "rewrite") {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "Excelente! Escreve ou cola abaixo o texto administrativo que desejas polir:" },
+      ]);
+      setDialogState("waiting_for_rewrite_text");
+    } else if (action === "summary") {
+      setGenerating(true);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "user", text: "Gerar resumo operacional rápido da escola" },
+      ]);
+
+      try {
+        const res = await fetch("/api/admin/ai/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            period: "today",
+            schoolId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Erro ao gerar resumo da escola.");
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: `Aqui está o resumo analítico dos indicadores reais da escola de hoje:\n\n${data.content}`,
+            copyable: true,
+          },
+        ]);
+      } catch (err: any) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: `Erro ao obter resumo: ${err.message}`,
+          },
+        ]);
+      } finally {
+        setGenerating(false);
+        setMessages((prev) => [...prev, { sender: "ai", text: "", isActions: true }]);
+      }
+    } else if (action === "billing_redirect") {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: "Para gerar lembretes de cobrança assistidos por IA, clique no botão “Cobrança IA” na ficha do aluno ou acesse o painel KLASSE AI.",
+        },
+        { sender: "ai", text: "", isActions: true },
+      ]);
+    } else if (action === "help_menu") {
+      setDialogState("help_menu");
+      setHelpSearchQuery("");
+      setSelectedTopic(null);
+      setHelpResults(findHelpTopics("", userRole));
+    }
+  };
+
+  const handleHelpSearch = (query: string) => {
+    setHelpSearchQuery(query);
+    const results = findHelpTopics(query, userRole);
+    setHelpResults(results);
+    if (query.trim() === "") {
+      setDialogState("help_menu");
+    } else {
+      setDialogState("help_search");
+    }
+  };
+
+  const handleSelectTopic = (topic: HelpTopic) => {
+    setSelectedTopic(topic);
+    setDialogState("help_topic_selected");
+  };
+
+  const handleNavigateToTopic = (topic: HelpTopic) => {
+    if (topic.href) {
+      router.push(topic.href(schoolId));
+      setIsOpen(false);
+    }
+  };
+
+  const handleCopy = (text: string, index: number) => {
+    const cleanText = text
+      .replace(/^Aqui está a versão melhorada e formalizada do teu texto:\n\n/i, "")
+      .replace(/^Aqui está o resumo analítico dos indicadores reais da escola de hoje:\n\n/i, "");
+    navigator.clipboard.writeText(cleanText);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  if (checkingAccess || !isAllowed) return null;
+
+  // Adjust coordinates dynamically depending on whether bottom mobile navbar is rendered
+  const buttonBottomClass = hasMobileNav ? "bottom-20 md:bottom-6" : "bottom-6";
+  const cardBottomClass = hasMobileNav ? "bottom-36 md:bottom-24" : "bottom-24";
+
+  // Filtered topics based on search state
+  const activeHelpTopics = helpSearchQuery ? helpResults : findHelpTopics("", userRole);
+
+  return (
+    <>
+      {/* Floating Sparkle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`fixed ${buttonBottomClass} right-4 sm:right-6 z-50 w-14 h-14 bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer`}
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
+      </button>
+
+      {/* Popover Chat Interface */}
+      {isOpen && (
+        <div className={`fixed ${cardBottomClass} right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[500px] h-[500px] bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 flex flex-col overflow-hidden transition-all duration-300`}>
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-violet-900 to-indigo-900 text-white p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-violet-300 animate-pulse" />
+              <div>
+                <h3 className="text-sm font-extrabold tracking-tight">Klasse AI</h3>
+                <p className="text-[10px] text-violet-200">Assistente de Produtividade</p>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-white hover:text-slate-200 cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Conditional rendering for Help Center or AI Chat */}
+          {dialogState && dialogState.startsWith("help_") ? (
+            dialogState === "help_topic_selected" && selectedTopic ? (
+              /* ─── Selected Topic Detail View ─── */
+              <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100/50">
+                      {selectedTopic.category}
+                    </span>
+                    <h4 className="text-sm font-black text-slate-900 pt-1">{selectedTopic.title}</h4>
+                  </div>
+
+                  <div className="text-xs text-slate-700 bg-white p-3.5 rounded-xl border border-slate-200/50 shadow-sm leading-relaxed">
+                    {selectedTopic.answer}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Passo a Passo</p>
+                    <div className="space-y-2">
+                      {selectedTopic.steps.map((step, idx) => (
+                        <div key={idx} className="flex gap-2.5 bg-white border border-slate-200/50 p-3 rounded-xl shadow-sm">
+                          <span className="flex items-center justify-center w-5 h-5 bg-violet-50 text-violet-700 font-bold text-xs rounded-lg shrink-0">
+                            {idx + 1}
+                          </span>
+                          <p className="text-xs text-slate-600 leading-relaxed pt-0.5">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation & Back Action Bar */}
+                <div className="p-3 border-t border-slate-200 bg-white flex flex-col gap-2">
+                  {selectedTopic.href && (
+                    <button
+                      onClick={() => handleNavigateToTopic(selectedTopic)}
+                      className="w-full py-2.5 bg-gradient-to-tr from-violet-600 to-indigo-600 hover:brightness-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <span>Abrir tela</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setDialogState("help_menu")}
+                    className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-800 border border-slate-200 hover:border-slate-300 bg-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Voltar à Pesquisa
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ─── Help Menu / Search Results List ─── */
+              <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+                {/* Search Bar */}
+                <div className="p-3 border-b border-slate-200 bg-white flex items-center gap-2">
+                  <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={helpSearchQuery}
+                    onChange={(e) => handleHelpSearch(e.target.value)}
+                    placeholder="Procure por aluno, pagamento, turma, comunicado..."
+                    className="w-full text-xs text-slate-900 bg-transparent outline-none"
+                    autoFocus
+                  />
+                  {helpSearchQuery && (
+                    <button
+                      onClick={() => handleHelpSearch("")}
+                      className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Topics List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {helpSearchQuery ? "Resultados da Pesquisa" : "Tópicos Populares"}
+                  </p>
+
+                  {activeHelpTopics.length === 0 ? (
+                    <div className="text-xs text-slate-500 bg-white border border-slate-200 rounded-xl p-4 leading-relaxed">
+                      Ainda não tenho esse caminho documentado. Tente procurar por <strong>aluno</strong>, <strong>pagamento</strong>, <strong>turma</strong>, <strong>comunicado</strong> ou <strong>financeiro</strong>.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {activeHelpTopics.map((topic) => (
+                        <button
+                          key={topic.key}
+                          onClick={() => handleSelectTopic(topic)}
+                          className="w-full text-left p-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all duration-200 flex items-center justify-between cursor-pointer"
+                        >
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-slate-800">{topic.title}</p>
+                            <p className="text-[9px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded w-fit uppercase">
+                              {topic.category}
+                            </p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Back Button */}
+                <div className="p-3 border-t border-slate-200 bg-white">
+                  <button
+                    onClick={() => {
+                      setDialogState(null);
+                      setHelpSearchQuery("");
+                    }}
+                    className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-800 border border-slate-200 hover:border-slate-300 bg-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Voltar ao Menu Principal
+                  </button>
+                </div>
+              </div>
+            )
+          ) : (
+            /* ─── Standard Productivity Widget View ─── */
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                {messages.map((msg, index) => {
+                  if (msg.isActions) {
+                    if (dialogState !== null) return null;
+
+                    return (
+                      <div key={index} className="flex flex-col gap-2 pt-2">
+                        {hasFeature("rewrite") && (
+                          <button
+                            onClick={() => handleAction("rewrite")}
+                            disabled={generating}
+                            className="w-full text-left p-3 text-xs bg-violet-50 hover:bg-violet-100 border border-violet-100 text-violet-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-violet-600" />
+                            <span>✨ Polir ou melhorar aviso</span>
+                          </button>
+                        )}
+                        {hasFeature("summary") && (
+                          <button
+                            onClick={() => handleAction("summary")}
+                            disabled={generating}
+                            className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                          >
+                            <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>📊 Resumir indicadores de hoje</span>
+                          </button>
+                        )}
+                        {hasFeature("finance-message") && (
+                          <button
+                            onClick={() => handleAction("billing_redirect")}
+                            disabled={generating}
+                            className="w-full text-left p-3 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                          >
+                            <span>💬 Lembrete de Cobrança</span>
+                          </button>
+                        )}
+                        {/* Help center trigger */}
+                        <button
+                          onClick={() => handleAction("help_menu")}
+                          disabled={generating}
+                          className="w-full text-left p-3 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>❔ Ajuda do KLASSE</span>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  const isAi = msg.sender === "ai";
+                  return (
+                    <div key={index} className={`flex ${isAi ? "justify-start" : "justify-end"}`}>
+                      <div
+                        className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-wrap relative group ${
+                          isAi
+                            ? "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50"
+                            : "bg-violet-600 text-white rounded-tr-none shadow-sm"
+                        }`}
+                      >
+                        <div>{msg.text}</div>
+                        
+                        {/* Copy action on hover for AI responses */}
+                        {isAi && msg.copyable && (
+                          <button
+                            onClick={() => handleCopy(msg.text, index)}
+                            className="absolute top-2 right-2 p-1 bg-white hover:bg-slate-50 border border-slate-200 rounded text-slate-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                            title="Copiar texto"
+                          >
+                            {copiedIndex === index ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Generating typing state */}
+                {generating && (
+                  <div className="flex justify-start">
+                    <div className="bg-slate-100 border border-slate-200/50 text-slate-500 rounded-2xl rounded-tl-none p-3 text-xs flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Form and Cancel Actions shown strictly when dialogState expects user text input */}
+              {dialogState === "waiting_for_rewrite_text" && (
+                <div className="border-t border-slate-100 p-3 bg-slate-50 flex flex-col gap-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage(inputValue);
+                    }}
+                    className="flex gap-2 items-center"
+                  >
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      disabled={generating}
+                      placeholder="Cole ou escreve o texto administrativo..."
+                      className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      disabled={generating || !inputValue.trim()}
+                      className="p-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 text-white rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogState(null);
+                      setInputValue("");
+                      setMessages((prev) => [
+                        ...prev,
+                        { sender: "ai", text: "Operação cancelada. Seleciona outra opção:" },
+                        { sender: "ai", text: "", isActions: true },
+                      ]);
+                    }}
+                    disabled={generating}
+                    className="w-full text-center py-1.5 text-[10px] text-slate-500 hover:text-slate-700 border border-dashed border-slate-200 hover:border-slate-300 rounded-lg transition-all cursor-pointer font-medium"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
