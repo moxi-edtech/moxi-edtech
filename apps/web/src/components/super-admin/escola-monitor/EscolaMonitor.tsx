@@ -7,7 +7,7 @@ import {
   Phone, Mail, Calendar, ChevronRight, Activity, Users,
   School, FileText, Settings, StickyNote, TrendingUp,
   AlertTriangle, CheckCircle, Clock, Zap, BarChart3, ShieldCheck, XCircle,
-  ArrowRight, Search
+  ArrowRight, Search, Loader2
 } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { createClient } from "@/lib/supabaseClient";
@@ -17,6 +17,7 @@ import type {
   PerformanceMetrics,
   AtividadeRecente,
   PlanLimits,
+  SchoolNotificationProvider,
 } from "@/app/super-admin/escolas/[id]/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -114,7 +115,7 @@ function ActivityRow({ item, i }: { item: AtividadeRecente, i: number }) {
   const cfg = TIPO_CONFIG[item.tipo] || TIPO_CONFIG.outro;
   const Icon = cfg.icon;
   return (
-    <div 
+    <div
       className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 animate-klasse-fade-in"
       style={{ animationDelay: `${i * 50}ms` }}
     >
@@ -217,6 +218,7 @@ interface EscolaMonitorProps {
   atividades: AtividadeRecente[];
   saude: number;
   planLimits: PlanLimits[];
+  providers: SchoolNotificationProvider[];
   refreshing: boolean;
   onRefresh: () => void;
   onUpdate: () => void;
@@ -229,6 +231,7 @@ export default function EscolaMonitor({
   atividades,
   saude,
   planLimits,
+  providers,
   refreshing,
   onRefresh,
   onUpdate,
@@ -245,6 +248,147 @@ export default function EscolaMonitor({
     : null;
   const sslStatus = escola.ssl_status || null;
   const dbRegion = escola.db_region || null;
+
+  // ─── WAHA Provider State ───
+  const wahaProvider = providers?.find(p => p.provider_type === "whatsapp_waha");
+
+  const [wahaStatus, setWahaStatus] = useState<SchoolNotificationProvider['status']>("disabled");
+  const [wahaDailyLimit, setWahaDailyLimit] = useState(50);
+  const [wahaMonthlyLimit, setWahaMonthlyLimit] = useState(500);
+  const [wahaSessionName, setWahaSessionName] = useState("");
+  const [wahaFallbackPhone, setWahaFallbackPhone] = useState("");
+  const [wahaDisplayName, setWahaDisplayName] = useState("WAHA Experimental");
+  const [savingWaha, setSavingWaha] = useState(false);
+
+  useEffect(() => {
+    if (wahaProvider) {
+      setWahaStatus(wahaProvider.status);
+      setWahaDailyLimit(wahaProvider.daily_limit);
+      setWahaMonthlyLimit(wahaProvider.monthly_limit);
+      setWahaSessionName(wahaProvider.session_name || "");
+      setWahaFallbackPhone(wahaProvider.config?.fallback_phone || "");
+      setWahaDisplayName(wahaProvider.display_name || "WAHA Experimental");
+    } else {
+      setWahaStatus("disabled");
+      setWahaDailyLimit(50);
+      setWahaMonthlyLimit(500);
+      const defaultSession = "klasse_school_" + escola.id.replace(/-/g, "").toLowerCase();
+      setWahaSessionName(defaultSession);
+      setWahaFallbackPhone("");
+      setWahaDisplayName("WAHA Experimental");
+    }
+  }, [wahaProvider, escola.id]);
+
+  // ─── KLASSE AI State & Handlers ───
+  const [aiSettings, setAiSettings] = useState<{
+    enabled: boolean;
+    daily_limit: number;
+    monthly_limit: number;
+  } | null>(null);
+  const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [loadingAi, setLoadingAi] = useState(true);
+  const [savingAiSettings, setSavingAiSettings] = useState(false);
+
+  const fetchAiData = async () => {
+    try {
+      setLoadingAi(true);
+      
+      // Fetch settings
+      const { data: settings, error: settingsError } = await (supabase as any)
+        .from("ai_school_settings")
+        .select("enabled, daily_limit, monthly_limit")
+        .eq("school_id", escola.id)
+        .maybeSingle();
+      
+      if (!settingsError && settings) {
+        setAiSettings(settings);
+      } else {
+        setAiSettings(null);
+      }
+
+      // Fetch usage logs
+      const { data: logs, error: logsError } = await (supabase as any)
+        .from("ai_usage_logs")
+        .select("id, feature, status, error_message, tokens_input, tokens_output, created_at, user_id")
+        .eq("school_id", escola.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (!logsError && logs) {
+        setAiLogs(logs);
+      } else {
+        setAiLogs([]);
+      }
+    } catch (err) {
+      console.error("Error fetching AI data for super-admin:", err);
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  useEffect(() => {
+    if (escola?.id) {
+      fetchAiData();
+    }
+  }, [escola?.id]);
+
+  const handleSaveAiSettings = async (enabled: boolean, daily: number, monthly: number) => {
+    try {
+      setSavingAiSettings(true);
+      
+      const { error } = await (supabase as any)
+        .from("ai_school_settings")
+        .upsert({
+          school_id: escola.id,
+          enabled,
+          daily_limit: daily,
+          monthly_limit: monthly,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "school_id" });
+
+      if (error) throw error;
+      
+      success("Sucesso", "Configurações de IA salvas com sucesso!");
+      fetchAiData();
+    } catch (err: any) {
+      toastError("Erro ao salvar", err.message || "Erro desconhecido.");
+    } finally {
+      setSavingAiSettings(false);
+    }
+  };
+
+  const handleSaveWaha = async () => {
+    setSavingWaha(true);
+    try {
+      const res = await fetch(`/api/super-admin/escolas/${escola.id}/providers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          providerType: "whatsapp_waha",
+          displayName: wahaDisplayName,
+          status: wahaStatus,
+          dailyLimit: Number(wahaDailyLimit),
+          monthlyLimit: Number(wahaMonthlyLimit),
+          sessionName: wahaSessionName,
+          fallbackPhone: wahaFallbackPhone,
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao salvar provedor");
+      }
+
+      success("Salvo com sucesso", "Provedor WAHA atualizado com sucesso!");
+      onUpdate();
+    } catch (err: any) {
+      toastError("Erro ao salvar", err.message || "Erro desconhecido");
+    } finally {
+      setSavingWaha(false);
+    }
+  };
 
   const togglePortalAluno = async () => {
     const newStatus = !escola.aluno_portal_enabled;
@@ -288,12 +432,12 @@ export default function EscolaMonitor({
 
   return (
     <div className="bg-slate-50 font-sans text-slate-900">
-      
+
       {/* ── HEADER SUPERIOR ── */}
       <div className="bg-slate-50 px-6 py-10">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] space-y-6">
-            
+
             {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               <span>Super Admin</span>
@@ -304,7 +448,7 @@ export default function EscolaMonitor({
             </nav>
 
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              
+
               {/* Identidade */}
               <div className="flex items-start gap-6">
                 <div className="space-y-3">
@@ -336,22 +480,22 @@ export default function EscolaMonitor({
                 <div className="w-full md:w-52">
                   <SaudeRing valor={saude} />
                 </div>
-                
+
                 <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
-                  <Button 
-                    onClick={onRefresh} 
+                  <Button
+                    onClick={onRefresh}
                     disabled={refreshing}
-                    variant="outline" 
-                    size="sm" 
+                    variant="outline"
+                    size="sm"
                     className="rounded-xl font-semibold text-xs gap-2 border-slate-200"
                   >
                     <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
                     Actualizar Dados
                   </Button>
-                  <Button 
+                  <Button
                     onClick={() => window.open(`/escola/${escola.id}/admin`, '_blank')}
-                    variant="default" 
-                    size="sm" 
+                    variant="default"
+                    size="sm"
                     className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-semibold text-xs gap-2 shadow-sm"
                   >
                     <Eye size={14} />
@@ -382,28 +526,28 @@ export default function EscolaMonitor({
 
       {/* ── CONTEÚDO PRINCIPAL ── */}
       <main className="max-w-6xl mx-auto p-6 space-y-8 animate-klasse-fade-in">
-        
+
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <MetricCard 
+          <MetricCard
             icon={Users} label="Alunos Activos" delay={0}
             main={metricas.alunos_ativos.toLocaleString("pt-AO")}
             sub={`${metricas.alunos_inativos} inactivos · ${metricas.inadimplentes} c/ dívida`}
             variant="green"
           />
-          <MetricCard 
+          <MetricCard
             icon={School} label="Estrutura Académica" delay={100}
             main={`${metricas.professores} Professores`}
             sub={`${metricas.turmas_ativas} turmas · ${metricas.matriculas_ativas} matrículas`}
             variant="gold"
           />
-          <MetricCard 
+          <MetricCard
             icon={CreditCard} label="Receita Arrecadada" delay={200}
             main={fmtKz(metricas.valor_pago)}
             sub={`${fmtKz(metricas.valor_pendente)} em aberto`}
             variant="default"
           />
-          <MetricCard 
+          <MetricCard
             icon={Zap} label="Performance Global" delay={300}
             main={`${performance.latencia_media || 0}ms`}
             sub={`${performance.accessos_24h} acessos em 24h`}
@@ -413,14 +557,16 @@ export default function EscolaMonitor({
 
         {/* TABS E DETALHES */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           <div className="lg:col-span-2 space-y-6">
             <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
               <div className="flex items-center justify-between mb-4">
                 <TabsList className="bg-slate-200/50 p-1 rounded-2xl border-0">
                   <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Geral</TabsTrigger>
                   <TabsTrigger value="atividades" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Actividade</TabsTrigger>
+                  <TabsTrigger value="comunicacao" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Comunicação</TabsTrigger>
                   <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Config</TabsTrigger>
+                  <TabsTrigger value="klasse-ai" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">KLASSE AI</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -535,6 +681,168 @@ export default function EscolaMonitor({
                 </Card>
               </TabsContent>
 
+              <TabsContent value="comunicacao" className="mt-0 focus-visible:ring-0">
+                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                    <CardTitle className="text-lg font-bold">Canais de Comunicação</CardTitle>
+                    <CardDescription>Configuração centralizada dos provedores de notificação da escola</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    {/* WhatsApp WAHA Card */}
+                    <div className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-klasse-green/10 text-klasse-green shrink-0">
+                            <Zap size={20} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900">WhatsApp WAHA (Automático)</h4>
+                            <p className="text-xs text-slate-500 font-medium">Integração experimental para envios programados sem intervenção manual</p>
+                          </div>
+                        </div>
+                        <Badge className={`${
+                          wahaStatus === "connected"
+                            ? "bg-klasse-green/10 text-klasse-green border-klasse-green/20"
+                            : wahaStatus === "pending_qr"
+                              ? "bg-klasse-gold/10 text-klasse-gold border-klasse-gold/20 animate-pulse"
+                              : wahaStatus === "error" || wahaStatus === "disconnected"
+                                ? "bg-red-50 text-red-600 border-red-100"
+                                : "bg-slate-100 text-slate-600 border-slate-200"
+                        } font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border shrink-0`}>
+                          {wahaStatus}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nome de Exibição</Label>
+                          <input
+                            type="text"
+                            value={wahaDisplayName}
+                            onChange={(e) => setWahaDisplayName(e.target.value)}
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            placeholder="WAHA Experimental"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Estado da Sessão</Label>
+                          <select
+                            value={wahaStatus}
+                            onChange={(e) => setWahaStatus(e.target.value as any)}
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                          >
+                            <option value="disabled">Desativado (disabled)</option>
+                            <option value="pending_qr">Aguardando QR Code (pending_qr)</option>
+                            <option value="connected">Conectado (connected)</option>
+                            <option value="disconnected">Desconectado (disconnected)</option>
+                            <option value="error">Erro de Sessão (error)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Limite Diário</Label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={wahaDailyLimit}
+                            onChange={(e) => setWahaDailyLimit(Number(e.target.value))}
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Limite Mensal</Label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={wahaMonthlyLimit}
+                            onChange={(e) => setWahaMonthlyLimit(Number(e.target.value))}
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                          />
+                        </div>
+
+                        <div className="space-y-1 md:col-span-2">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Identificador da Sessão (Session Name)</Label>
+                          <input
+                            type="text"
+                            value={wahaSessionName}
+                            onChange={(e) => setWahaSessionName(e.target.value)}
+                            className="w-full font-mono text-xs text-slate-650 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            placeholder="klasse_school_..."
+                          />
+                          <p className="text-[10px] text-slate-400">
+                            * Deve manter a padronização recomendada de nomenclatura para evitar conflitos de sessões entre escolas no cluster WAHA.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1 md:col-span-2">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Telefone de Fallback (Opcional)</Label>
+                          <input
+                            type="text"
+                            value={wahaFallbackPhone}
+                            onChange={(e) => setWahaFallbackPhone(e.target.value)}
+                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
+                            placeholder="+244..."
+                          />
+                          <p className="text-[10px] text-slate-400">
+                            * Número de telefone para receber alertas ou servir de redirecionamento caso o gateway automático falhe.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 flex items-center justify-between">
+                        <Button
+                          onClick={handleSaveWaha}
+                          disabled={savingWaha}
+                          className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-bold text-xs px-6"
+                        >
+                          {savingWaha ? "A Salvar..." : "Salvar Configuração WAHA"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp Manual Card */}
+                    {(() => {
+                      const manualProvider = providers?.find(p => p.provider_type === "whatsapp_manual");
+                      return (
+                        <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-4 opacity-80">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-xl bg-slate-100 text-slate-600 shrink-0">
+                                <Phone size={20} />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900">WhatsApp Manual (Fallback)</h4>
+                                <p className="text-xs text-slate-500 font-medium">Envios mediados pela interface do utilizador com links wa.me</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-slate-100 text-slate-600 border-slate-200 font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border shrink-0">
+                              {manualProvider?.status || "connected"}
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
+                            <div>
+                              <span className="font-semibold block text-slate-400 uppercase tracking-widest text-[9px]">Nome de Exibição</span>
+                              <span className="font-medium text-slate-900">{manualProvider?.display_name || "WhatsApp Manual"}</span>
+                            </div>
+                            <div>
+                              <span className="font-semibold block text-slate-400 uppercase tracking-widest text-[9px]">Limite Diário</span>
+                              <span className="font-medium text-slate-900">{manualProvider?.daily_limit ?? 200} mensagens</span>
+                            </div>
+                            <div>
+                              <span className="font-semibold block text-slate-400 uppercase tracking-widest text-[9px]">Limite Mensal</span>
+                              <span className="font-medium text-slate-900">{manualProvider?.monthly_limit ?? 2000} mensagens</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               <TabsContent value="config" className="mt-0 focus-visible:ring-0">
                 <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                   <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
@@ -547,8 +855,8 @@ export default function EscolaMonitor({
                         <Label className="text-sm font-bold text-slate-900">Portal do Aluno</Label>
                         <p className="text-xs text-slate-500 font-medium">Permite que alunos consultem notas e paguem propinas online.</p>
                       </div>
-                      <Switch 
-                        checked={escola.aluno_portal_enabled} 
+                      <Switch
+                        checked={escola.aluno_portal_enabled}
                         onCheckedChange={togglePortalAluno}
                         className="data-[state=checked]:bg-klasse-green"
                       />
@@ -574,6 +882,141 @@ export default function EscolaMonitor({
                         </Button>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="klasse-ai" className="mt-0 focus-visible:ring-0">
+                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                    <CardTitle className="text-lg font-bold">Monitoramento do KLASSE AI</CardTitle>
+                    <CardDescription>Gerenciar limites de uso e acompanhar consumo de IA da escola</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    {loadingAi ? (
+                      <div className="text-center py-10 space-y-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-klasse-green mx-auto" />
+                        <p className="text-xs text-slate-500 font-medium">A carregar estatísticas de IA...</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* AI Active Toggle */}
+                        <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-klasse-green/30 transition-colors">
+                          <div className="space-y-1">
+                            <Label className="text-sm font-bold text-slate-900">Estado do KLASSE AI</Label>
+                            <p className="text-xs text-slate-500 font-medium">Ativa ou desativa completamente o assistente de produtividade por IA nesta escola.</p>
+                          </div>
+                          <Switch
+                            checked={aiSettings?.enabled || false}
+                            onCheckedChange={async (val) => {
+                              // Optimistically update
+                              setAiSettings(prev => prev ? { ...prev, enabled: val } : { enabled: val, daily_limit: 20, monthly_limit: 500 });
+                              await handleSaveAiSettings(val, aiSettings?.daily_limit ?? 20, aiSettings?.monthly_limit ?? 500);
+                            }}
+                            className="data-[state=checked]:bg-klasse-green"
+                          />
+                        </div>
+
+                        {/* Limits Settings Form */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Limites de Requisições</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold text-slate-500">Limite Diário</Label>
+                              <input
+                                type="number"
+                                value={aiSettings?.daily_limit ?? 20}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10) || 0;
+                                  setAiSettings(prev => prev ? { ...prev, daily_limit: val } : { enabled: false, daily_limit: val, monthly_limit: 500 });
+                                }}
+                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-klasse-green transition-colors"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold text-slate-500">Limite Mensal</Label>
+                              <input
+                                type="number"
+                                value={aiSettings?.monthly_limit ?? 500}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10) || 0;
+                                  setAiSettings(prev => prev ? { ...prev, monthly_limit: val } : { enabled: false, daily_limit: 20, monthly_limit: val });
+                                }}
+                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-klasse-green transition-colors"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-2">
+                            <Button
+                              onClick={() => handleSaveAiSettings(aiSettings?.enabled || false, aiSettings?.daily_limit ?? 20, aiSettings?.monthly_limit ?? 500)}
+                              disabled={savingAiSettings}
+                              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl"
+                            >
+                              {savingAiSettings ? "Salvando..." : "Salvar Limites"}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Recent Usage Logs */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Histórico de Uso Recente</h4>
+                            <button onClick={fetchAiData} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          
+                          {aiLogs.length === 0 ? (
+                            <div className="text-center p-6 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-400">
+                              Nenhuma requisição de IA encontrada para esta escola nas últimas horas.
+                            </div>
+                          ) : (
+                            <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-white">
+                              {aiLogs.map((log) => {
+                                const isSuccess = log.status === "success";
+                                const isPending = log.status === "pending";
+                                return (
+                                  <div key={log.id} className="p-4 flex items-center justify-between text-xs hover:bg-slate-50 transition-colors">
+                                    <div className="space-y-1">
+                                      <p className="font-bold text-slate-800 uppercase tracking-wider">{log.feature}</p>
+                                      <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                        <span>User: {log.user_id?.substring(0, 8)}...</span>
+                                        <span>•</span>
+                                        <span>{new Date(log.created_at).toLocaleString("pt-AO")}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="text-right">
+                                        <p className="font-semibold text-slate-500 font-mono">
+                                          {log.tokens_input !== null ? `In: ${log.tokens_input}` : ""}
+                                          {log.tokens_output !== null ? ` | Out: ${log.tokens_output}` : ""}
+                                        </p>
+                                        {log.error_message && (
+                                          <p className="text-[10px] text-red-500 font-medium max-w-[200px] truncate" title={log.error_message}>
+                                            {log.error_message}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Badge
+                                        className={`rounded-lg uppercase text-[9px] font-extrabold ${
+                                          isSuccess
+                                            ? "bg-klasse-green/10 text-klasse-green border border-klasse-green/20"
+                                            : isPending
+                                            ? "bg-klasse-gold/10 text-klasse-gold border border-klasse-gold/20"
+                                            : "bg-red-50 text-red-600 border border-red-100"
+                                        }`}
+                                      >
+                                        {log.status}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
