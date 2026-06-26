@@ -3,7 +3,7 @@
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MaintenanceBanner from "./MaintenanceBanner";
-import AiChatWidget from "@/components/ai/AiChatWidget";
+import AiChatWidget, { type AiWidgetContext } from "@/components/ai/AiChatWidget";
 import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
@@ -89,6 +89,28 @@ export default function AppShell({
     if (safePathname.includes("/escola/") && safePathname.includes("/operacoes")) return "operacoes";
     return inferredRole;
   }, [inferredRole, safePathname]);
+
+  const aiWidgetContext = useMemo<AiWidgetContext>(() => {
+    if (safePathname.includes("/financeiro")) {
+      return {
+        module: "financeiro",
+        page: safePathname.includes("/radar") ? "radar" : "financeiro",
+      };
+    }
+    if (safePathname.includes("/secretaria")) {
+      return {
+        module: "secretaria",
+        page: safePathname.includes("/alunos") ? "alunos" : "secretaria",
+      };
+    }
+    if (safePathname.includes("/admin/ai")) {
+      return { module: "classe_ai", page: "actions" };
+    }
+    if (safePathname.includes("/admin")) {
+      return { module: "dashboard", page: "admin" };
+    }
+    return { module: "dashboard" };
+  }, [safePathname]);
 
   const navEscolaId = escolaSlug || escolaIdFromPath || escolaIdFromSession;
   const displayedEscolaNome = navEscolaId ? escolaNome : null;
@@ -292,7 +314,11 @@ export default function AppShell({
       </div>
       {mobileNav ? <div className="md:hidden">{mobileNav}</div> : null}
       {navEscolaId && navRole && AI_WIDGET_ROLES.includes(navRole) && (
-        <AiChatWidget schoolId={escolaIdFromSession || navEscolaId} hasMobileNav={!!mobileNav} />
+        <AiChatWidget
+          schoolId={escolaIdFromSession || navEscolaId}
+          hasMobileNav={!!mobileNav}
+          context={aiWidgetContext}
+        />
       )}
     </div>
   );

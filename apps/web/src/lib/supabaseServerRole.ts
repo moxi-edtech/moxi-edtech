@@ -9,7 +9,7 @@ import type { Database } from "~types/supabase";
  * Only use in secure server-side logic (Route Handlers / Server Actions)
  * where you explicitly validate the tenant/user context.
  */
-export function supabaseServerRole() {
+export function supabaseServerRole<TDatabase = Database>() {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
   const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 
@@ -19,7 +19,7 @@ export function supabaseServerRole() {
     );
   }
 
-  return createClient<Database>(url, serviceRoleKey, {
+  return createClient<TDatabase>(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

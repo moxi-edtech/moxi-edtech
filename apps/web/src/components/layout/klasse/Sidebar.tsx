@@ -36,11 +36,13 @@ import {
   AlertTriangle,
   ShieldCheck,
   Landmark,
+  ClipboardList,
+  type LucideIcon,
 } from "lucide-react";
 import type { NavItem } from "@/lib/sidebarNav";
 
 // Mapa estático de ícones para performance máxima e estabilidade de build
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   HeartPulse,
   Activity,
@@ -67,6 +69,7 @@ const ICON_MAP: Record<string, any> = {
   AlertTriangle,
   ShieldCheck,
   Landmark,
+  ClipboardList,
 };
 
 function cn(...c: Array<string | false | null | undefined>) {
@@ -125,11 +128,7 @@ export default function Sidebar({
         "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100 flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
-      style={
-        {
-          width: collapsed ? "80px" : "256px",
-        } as any
-      }
+      style={{ width: collapsed ? "80px" : "256px" }}
     >
       {/* Header / Brand */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">

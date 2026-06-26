@@ -1,9 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import type { DBWithRPC } from "@/types/supabase-augment";
 import { isEscolaUuid } from "./escolaSlug";
 import { resolveEscolaParam } from "./resolveEscolaParam";
-
-type Client = SupabaseClient<Database>;
 
 type CacheEntry = { escolaId: string | null; expiresAt: number };
 
@@ -13,12 +12,25 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const getCacheKey = (userId: string, requestedEscolaId?: string | null) =>
   `${userId}:${requestedEscolaId ?? "default"}`;
 
+export function resolveEscolaIdForUser(
+  client: SupabaseClient<Database>,
+  userId: string,
+  requestedEscolaId?: string | null,
+  _metadataEscolaId?: string | null
+): Promise<string | null>;
+export function resolveEscolaIdForUser(
+  client: SupabaseClient<DBWithRPC>,
+  userId: string,
+  requestedEscolaId?: string | null,
+  _metadataEscolaId?: string | null
+): Promise<string | null>;
 export async function resolveEscolaIdForUser(
-  client: Client,
+  client: SupabaseClient<Database> | SupabaseClient<DBWithRPC>,
   userId: string,
   requestedEscolaId?: string | null,
   _metadataEscolaId?: string | null
 ): Promise<string | null> {
+  const dbClient = client as SupabaseClient<Database>;
   const cacheKey = getCacheKey(userId, requestedEscolaId ?? null);
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
@@ -28,7 +40,7 @@ export async function resolveEscolaIdForUser(
   if (requestedEscolaId) {
     const normalizedRequestedId = isEscolaUuid(requestedEscolaId)
       ? requestedEscolaId
-      : (await resolveEscolaParam(client, requestedEscolaId)).escolaId;
+      : (await resolveEscolaParam(dbClient, requestedEscolaId)).escolaId;
     if (!normalizedRequestedId) return null;
 
     const cacheAndReturn = (value: string) => {
@@ -37,7 +49,7 @@ export async function resolveEscolaIdForUser(
     };
 
     try {
-      const { data: allowed, error } = await client.rpc("has_access_to_escola_fast", {
+      const { data: allowed, error } = await dbClient.rpc("has_access_to_escola_fast", {
         p_escola_id: normalizedRequestedId,
       });
       if (!error && allowed) return cacheAndReturn(String(normalizedRequestedId));
@@ -45,7 +57,7 @@ export async function resolveEscolaIdForUser(
 
     // Defensive fallback: in case RPC auth context is inconsistent, verify direct links.
     try {
-      const { data: profileRows } = await client
+      const { data: profileRows } = await dbClient
         .from("profiles")
         .select("escola_id, current_escola_id")
         .eq("user_id", userId)
@@ -60,7 +72,7 @@ export async function resolveEscolaIdForUser(
     } catch {}
 
     try {
-      const { data: vinc } = await client
+      const { data: vinc } = await dbClient
         .from("escola_users")
         .select("user_id")
         .eq("escola_id", normalizedRequestedId)
@@ -77,7 +89,7 @@ export async function resolveEscolaIdForUser(
   }
 
   try {
-    const { data: fallbackEscolaId } = await client.rpc("get_my_escola_id");
+    const { data: fallbackEscolaId } = await dbClient.rpc("get_my_escola_id");
     if (fallbackEscolaId) {
       const resolved = String(fallbackEscolaId);
       cache.set(cacheKey, { escolaId: resolved, expiresAt: Date.now() + CACHE_TTL_MS });

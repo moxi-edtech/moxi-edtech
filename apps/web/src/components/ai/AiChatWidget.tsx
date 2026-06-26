@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Copy, FileText, ListCollapse, Check, Search, ArrowLeft, HelpCircle, ChevronRight } from "lucide-react";
+import { Sparkles, X, Send, Copy, FileText, ListCollapse, Check, Search, ArrowLeft, HelpCircle, ChevronRight, ClipboardList, WalletCards } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
 import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 interface Message {
   sender: "user" | "ai";
@@ -17,9 +21,17 @@ interface Message {
 interface AiChatWidgetProps {
   schoolId: string;
   hasMobileNav?: boolean;
+  context?: AiWidgetContext;
 }
 
-export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatWidgetProps) {
+export type AiWidgetContext = {
+  module: "dashboard" | "financeiro" | "secretaria" | "academico" | "comunicacao" | "classe_ai";
+  page?: string;
+  entityType?: string;
+  entityId?: string;
+};
+
+export default function AiChatWidget({ schoolId, hasMobileNav = false, context }: AiChatWidgetProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -203,11 +215,11 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
         }
 
         // 1. Get school setting limits (limits apply, features are not blocked)
-        const { data: settings, error: settingsError } = await (supabase as any)
+        const { data: settings, error: settingsError } = await supabase
           .from("ai_school_settings")
           .select("enabled")
           .eq("school_id", schoolId)
-          .maybeSingle() as { data: { enabled: boolean } | null; error: any };
+          .maybeSingle();
 
         if (!active) return;
         if (settingsError || !settings || !settings.enabled) {
@@ -302,12 +314,12 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
         ]);
         setDialogState(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessages((prev) => [
         ...prev,
         {
           sender: "ai",
-          text: `Erro ao executar a solicitação: ${err.message}`,
+          text: `Erro ao executar a solicitação: ${getErrorMessage(err, "Erro desconhecido.")}`,
         },
       ]);
     } finally {
@@ -354,18 +366,67 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
             copyable: true,
           },
         ]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setMessages((prev) => [
           ...prev,
           {
             sender: "ai",
-            text: `Erro ao obter resumo: ${err.message}`,
+            text: `Erro ao obter resumo: ${getErrorMessage(err, "Erro desconhecido.")}`,
           },
         ]);
       } finally {
         setGenerating(false);
         setMessages((prev) => [...prev, { sender: "ai", text: "", isActions: true }]);
       }
+    } else if (action === "finance_plan") {
+      setGenerating(true);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "user", text: "Preparar plano de cobrança da semana" },
+      ]);
+
+      try {
+        const res = await fetch("/api/admin/ai/finance-message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            schoolId,
+            title: "Plano de cobrança da semana",
+            scenario: "Preparar um rascunho de orientação financeira para cobrança semanal. Usar placeholders para encarregado, valor, aluno e data.",
+            recipientLabel: "[Encarregado]",
+            amountLabel: "[Valor em aberto]",
+            dueDateLabel: "[Data de vencimento]",
+            context: { page: context?.page ?? "financeiro" },
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Erro ao preparar plano de cobrança.");
+        }
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: `Rascunho criado para revisão na Central de Ações IA:\n\n${data.content}`,
+            copyable: true,
+          },
+        ]);
+      } catch (err: unknown) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: `Erro ao preparar cobrança: ${getErrorMessage(err, "Erro desconhecido.")}`,
+          },
+        ]);
+      } finally {
+        setGenerating(false);
+        setMessages((prev) => [...prev, { sender: "ai", text: "", isActions: true }]);
+      }
+    } else if (action === "open_actions") {
+      router.push(`/escola/${schoolId}/admin/ai/actions`);
+      setIsOpen(false);
     } else if (action === "billing_redirect") {
       setMessages((prev) => [
         ...prev,
@@ -409,7 +470,8 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
   const handleCopy = (text: string, index: number) => {
     const cleanText = text
       .replace(/^Aqui está a versão melhorada e formalizada do teu texto:\n\n/i, "")
-      .replace(/^Aqui está o resumo analítico dos indicadores reais da escola de hoje:\n\n/i, "");
+      .replace(/^Aqui está o resumo analítico dos indicadores reais da escola de hoje:\n\n/i, "")
+      .replace(/^Rascunho criado para revisão na Central de Ações IA:\n\n/i, "");
     navigator.clipboard.writeText(cleanText);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
@@ -611,6 +673,48 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
 
                     return (
                       <div key={index} className="flex flex-col gap-2 pt-2">
+                        {context?.module === "financeiro" && (
+                          <>
+                            <button
+                              onClick={() => handleAction("finance_plan")}
+                              disabled={generating}
+                              className="w-full text-left p-3 text-xs bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            >
+                              <WalletCards className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Preparar plano de cobrança</span>
+                            </button>
+                            <button
+                              onClick={() => handleAction("summary")}
+                              disabled={generating}
+                              className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            >
+                              <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Resumir risco financeiro</span>
+                            </button>
+                          </>
+                        )}
+
+                        {context?.module === "secretaria" && (
+                          <>
+                            <button
+                              onClick={() => handleAction("summary")}
+                              disabled={generating}
+                              className="w-full text-left p-3 text-xs bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            >
+                              <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Resumir pendências da secretaria</span>
+                            </button>
+                            <button
+                              onClick={() => handleAction("help_menu")}
+                              disabled={generating}
+                              className="w-full text-left p-3 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                            >
+                              <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Abrir documentos e ficha</span>
+                            </button>
+                          </>
+                        )}
+
                         <button
                           onClick={() => handleAction("rewrite")}
                           disabled={generating}
@@ -627,6 +731,15 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false }: AiChatW
                         >
                           <ListCollapse className="w-3.5 h-3.5 text-indigo-600" />
                           <span>📊 Resumir indicadores de hoje</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleAction("open_actions")}
+                          disabled={generating}
+                          className="w-full text-left p-3 text-xs bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-sm"
+                        >
+                          <ClipboardList className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Abrir Central de Ações IA</span>
                         </button>
 
                         <button

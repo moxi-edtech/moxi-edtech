@@ -148,6 +148,7 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     { href: "/escola/[escolaId]/admin/avisos", label: "Avisos", icon: "Megaphone" },
+    { href: "/escola/[escolaId]/admin/ai/actions", label: "Central IA", icon: "ClipboardList" },
     { href: "/escola/[escolaId]/horarios/quadro", label: "Horários", icon: "CalendarClock" },
     {
       href: "/escola/[escolaId]/admin/relatorios",

@@ -4,6 +4,158 @@ import type { Database, Json } from "~types/supabase"
 export type DBWithRPC = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Functions" | "Tables"> & {
     Tables: Database["public"]["Tables"] & {
+      ai_actions: {
+        Row: {
+          id: string;
+          school_id: string;
+          created_by: string;
+          approved_by: string | null;
+          rejected_by: string | null;
+          action_type:
+            | "finance_message"
+            | "communication_draft"
+            | "school_summary"
+            | "student_summary"
+            | "help_navigation"
+            | "operational_recommendation";
+          source_module:
+            | "dashboard"
+            | "financeiro"
+            | "secretaria"
+            | "academico"
+            | "comunicacao"
+            | "classe_ai";
+          source_entity_type: string | null;
+          source_entity_id: string | null;
+          title: string;
+          summary: string | null;
+          content: string;
+          metadata: Json;
+          status:
+            | "draft"
+            | "review_required"
+            | "approved"
+            | "rejected"
+            | "queued"
+            | "sending"
+            | "sent"
+            | "failed"
+            | "cancelled";
+          risk_level: "low" | "medium" | "high";
+          requires_approval: boolean;
+          approved_at: string | null;
+          rejected_at: string | null;
+          queued_at: string | null;
+          sent_at: string | null;
+          failed_at: string | null;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          created_by: string;
+          approved_by?: string | null;
+          rejected_by?: string | null;
+          action_type:
+            | "finance_message"
+            | "communication_draft"
+            | "school_summary"
+            | "student_summary"
+            | "help_navigation"
+            | "operational_recommendation";
+          source_module:
+            | "dashboard"
+            | "financeiro"
+            | "secretaria"
+            | "academico"
+            | "comunicacao"
+            | "classe_ai";
+          source_entity_type?: string | null;
+          source_entity_id?: string | null;
+          title: string;
+          summary?: string | null;
+          content: string;
+          metadata?: Json;
+          status?:
+            | "draft"
+            | "review_required"
+            | "approved"
+            | "rejected"
+            | "queued"
+            | "sending"
+            | "sent"
+            | "failed"
+            | "cancelled";
+          risk_level?: "low" | "medium" | "high";
+          requires_approval?: boolean;
+          approved_at?: string | null;
+          rejected_at?: string | null;
+          queued_at?: string | null;
+          sent_at?: string | null;
+          failed_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          created_by?: string;
+          approved_by?: string | null;
+          rejected_by?: string | null;
+          action_type?:
+            | "finance_message"
+            | "communication_draft"
+            | "school_summary"
+            | "student_summary"
+            | "help_navigation"
+            | "operational_recommendation";
+          source_module?:
+            | "dashboard"
+            | "financeiro"
+            | "secretaria"
+            | "academico"
+            | "comunicacao"
+            | "classe_ai";
+          source_entity_type?: string | null;
+          source_entity_id?: string | null;
+          title?: string;
+          summary?: string | null;
+          content?: string;
+          metadata?: Json;
+          status?:
+            | "draft"
+            | "review_required"
+            | "approved"
+            | "rejected"
+            | "queued"
+            | "sending"
+            | "sent"
+            | "failed"
+            | "cancelled";
+          risk_level?: "low" | "medium" | "high";
+          requires_approval?: boolean;
+          approved_at?: string | null;
+          rejected_at?: string | null;
+          queued_at?: string | null;
+          sent_at?: string | null;
+          failed_at?: string | null;
+          last_error?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_actions_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "escolas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ai_school_settings: {
         Row: {
           id: string;
@@ -194,6 +346,50 @@ export type DBWithRPC = Omit<Database, "public"> & {
       };
     };
     Functions: Database["public"]["Functions"] & {
+      claim_ai_usage_slot: {
+        Args: {
+          p_school_id: string;
+          p_user_id: string;
+          p_feature: string;
+          p_prompt_template_key?: string | null;
+        };
+        Returns: string;
+      };
+      admissao_public_lookup_by_protocolo: {
+        Args: {
+          p_escola_id: string;
+          p_protocolo: string;
+        };
+        Returns: Array<{
+          id: string;
+          protocolo_publico: string;
+          status: string | null;
+          aluno_id: string | null;
+          nome_candidato: string | null;
+          responsavel_contato_normalizado: string | null;
+          dados_candidato: Json | null;
+          curso_nome: string | null;
+        }>;
+      };
+      check_public_rate_limit: {
+        Args: {
+          p_scope: string;
+          p_key: string;
+          p_limit: number;
+          p_window_seconds: number;
+          p_block_seconds: number;
+        };
+        Returns: Json;
+      };
+      admissao_reupload_documento_pendente: {
+        Args: {
+          p_escola_id: string;
+          p_candidatura_id: string;
+          p_document_id: string;
+          p_document_path: string;
+        };
+        Returns: Json;
+      };
       aluno_atualizar_contatos_proprios: {
         Args: {
           p_escola_id: string;

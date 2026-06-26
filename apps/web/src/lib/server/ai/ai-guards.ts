@@ -2,6 +2,7 @@ import "server-only";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
+import type { DBWithRPC } from "@/types/supabase-augment";
 
 export interface ValidateAiAccessResult {
   ok: boolean;
@@ -15,6 +16,37 @@ export interface ValidateAiAccessResult {
     monthly_limit: number;
     allowed_features: string[];
   };
+}
+
+export async function updateAiUsageLog(
+  usageLogId: string | undefined,
+  payload: {
+    status: "completed" | "error";
+    inputPreview?: string;
+    outputPreview?: string | null;
+    errorMessage?: string | null;
+    tokensInput?: number | null;
+    tokensOutput?: number | null;
+    provider?: string | null;
+    model?: string | null;
+  }
+) {
+  if (!usageLogId) return;
+
+  const supabase = supabaseServerRole<DBWithRPC>();
+  await supabase
+    .from("ai_usage_logs")
+    .update({
+      status: payload.status,
+      input_preview: payload.inputPreview?.slice(0, 500),
+      output_preview: payload.outputPreview?.slice(0, 500) ?? null,
+      error_message: payload.errorMessage ?? null,
+      tokens_input: payload.tokensInput ?? null,
+      tokens_output: payload.tokensOutput ?? null,
+      provider: payload.provider ?? null,
+      model: payload.model ?? null,
+    })
+    .eq("id", usageLogId);
 }
 
 export async function validateAiAccess(
@@ -54,8 +86,8 @@ export async function validateAiAccess(
   }
 
   // 4. Retrieve school setting limits
-  const adminClient = supabaseServerRole();
-  const { data: settings, error: settingsError } = await (adminClient as any)
+  const adminClient = supabaseServerRole<DBWithRPC>();
+  const { data: settings, error: settingsError } = await adminClient
     .from("ai_school_settings")
     .select("enabled, daily_limit, monthly_limit, allowed_features")
     .eq("school_id", escolaId)
@@ -72,7 +104,7 @@ export async function validateAiAccess(
 
 
   // 5. Call claim_ai_usage_slot to atomically reserve a slot and check limits
-  const { data: logId, error: rpcError } = await (adminClient as any).rpc("claim_ai_usage_slot", {
+  const { data: logId, error: rpcError } = await adminClient.rpc("claim_ai_usage_slot", {
     p_school_id: escolaId,
     p_user_id: userId,
     p_feature: feature,
