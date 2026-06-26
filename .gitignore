@@ -92,6 +92,22 @@ Thumbs.db
 # Local dev and large archives
 # ========================================
 .env.db
+.envrc
+.direnv/
+.secrets/
+secrets.local/
+credentials.local/
+*.local.pem
+*.local.key
+*.local.p12
+*.local.pfx
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+.aws/
+.ssh/
+.kube/
 supabase_temp/
 supabase_*.tar.gz
 # pnpm store cache (evita blobs grandes no repo)
