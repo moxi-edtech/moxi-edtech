@@ -15,6 +15,48 @@ const withNoStore = (response: NextResponse, start?: number) => {
   return response;
 };
 
+type WahaStatus = "pending_qr" | "connected" | "disconnected" | "error" | null;
+
+function normalizeWahaStatus(value: unknown): WahaStatus {
+  const status = String(value ?? "").trim().toLowerCase();
+  if (!status) return null;
+
+  if (["working", "connected", "authenticated", "open"].includes(status)) {
+    return "connected";
+  }
+  if (["scan_qr_code", "qr", "pending_qr", "pairing", "starting"].includes(status)) {
+    return "pending_qr";
+  }
+  if (["stopped", "disconnected", "closed"].includes(status)) {
+    return "disconnected";
+  }
+  if (["failed", "error", "logout", "logged_out"].includes(status)) {
+    return "error";
+  }
+
+  return null;
+}
+
+function extractStatus(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const json = payload as Record<string, unknown>;
+  const data = json.data && typeof json.data === "object" ? json.data as Record<string, unknown> : null;
+  const result = json.result && typeof json.result === "object" ? json.result as Record<string, unknown> : null;
+  const engine = json.engine && typeof json.engine === "object" ? json.engine as Record<string, unknown> : null;
+
+  const status =
+    json.status ||
+    json.state ||
+    data?.status ||
+    data?.state ||
+    result?.status ||
+    result?.state ||
+    engine?.state ||
+    null;
+
+  return typeof status === "string" && status.trim() ? status : null;
+}
+
 async function authorize(
   requestedEscolaId: string,
   supabase: Awaited<ReturnType<typeof supabaseServerTyped<DBWithRPC>>>
@@ -48,7 +90,7 @@ async function authorize(
   return { error: null, status: 200, escolaId: userEscolaId } as const;
 }
 
-async function fetchWahaQr(sessionName: string) {
+function getWahaConfig() {
   const baseUrl = (process.env.WAHA_BASE_URL ?? "").trim().replace(/\/$/, "");
   const apiKey = (process.env.WAHA_API_KEY ?? "").trim();
 
@@ -62,17 +104,78 @@ async function fetchWahaQr(sessionName: string) {
     Authorization: `Bearer ${apiKey}`,
   };
 
+  return { ok: true as const, baseUrl, headers };
+}
+
+async function fetchWahaStatus(sessionName: string) {
+  const config = getWahaConfig();
+  if (!config.ok) return { ok: false as const, error: config.error };
+
   const candidates = [
-    `${baseUrl}/api/${encodeURIComponent(sessionName)}/auth/qr?format=image`,
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/qr`,
-    `${baseUrl}/api/${encodeURIComponent(sessionName)}/qr`,
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}`,
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/me`,
+    `${config.baseUrl}/api/sessions/${encodeURIComponent(sessionName)}`,
+    `${config.baseUrl}/api/${encodeURIComponent(sessionName)}/status`,
+    `${config.baseUrl}/api/${encodeURIComponent(sessionName)}/me`,
   ];
 
   for (const url of candidates) {
     try {
-      const response = await fetch(url, { headers, cache: "no-store" });
+      const response = await fetch(url, { headers: config.headers, cache: "no-store" });
+      if (!response.ok) continue;
+
+      const json = await response.json().catch(() => null);
+      const rawStatus = extractStatus(json);
+      const status = normalizeWahaStatus(rawStatus);
+      if (rawStatus || status) return { ok: true as const, rawStatus, status };
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return { ok: false as const, error: "Estado WAHA indisponível." };
+}
+
+async function startWahaSession(sessionName: string) {
+  const config = getWahaConfig();
+  if (!config.ok) return { ok: false as const, error: config.error };
+
+  const candidates = [
+    `${config.baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/start`,
+    `${config.baseUrl}/api/${encodeURIComponent(sessionName)}/start`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          ...config.headers,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
+      if (response.ok || response.status === 409) return { ok: true as const };
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return { ok: false as const, error: "Não foi possível iniciar a sessão WAHA." };
+}
+
+async function fetchWahaQr(sessionName: string) {
+  const config = getWahaConfig();
+  if (!config.ok) return { ok: false as const, error: config.error };
+
+  const candidates = [
+    `${config.baseUrl}/api/${encodeURIComponent(sessionName)}/auth/qr?format=image`,
+    `${config.baseUrl}/api/${encodeURIComponent(sessionName)}/auth/qr?format=raw`,
+    `${config.baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/qr`,
+    `${config.baseUrl}/api/${encodeURIComponent(sessionName)}/qr`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { headers: config.headers, cache: "no-store" });
       if (!response.ok) continue;
 
       const contentType = response.headers.get("content-type") ?? "";
@@ -100,21 +203,11 @@ async function fetchWahaQr(sessionName: string) {
         json?.result?.qrCode ||
         null;
 
-      const status =
-        json?.status ||
-        json?.data?.status ||
-        json?.result?.status ||
-        null;
-
       if (typeof qr === "string" && qr.trim()) {
         const normalized = qr.startsWith("data:image")
           ? qr
           : `data:image/png;base64,${qr.replace(/^data:image\/png;base64,/, "")}`;
-        return { ok: true as const, qrDataUrl: normalized, status: typeof status === "string" ? status : null };
-      }
-
-      if (typeof status === "string" && status.trim()) {
-        return { ok: true as const, qrDataUrl: null, status };
+        return { ok: true as const, qrDataUrl: normalized };
       }
     } catch {
       // Try next candidate.
@@ -177,6 +270,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
+    let status = await fetchWahaStatus(provider.session_name);
+    if (status.ok && (status.status === "disconnected" || status.status === "error")) {
+      await startWahaSession(provider.session_name);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      status = await fetchWahaStatus(provider.session_name);
+    }
+
     const qr = await fetchWahaQr(provider.session_name);
     if (!qr.ok) {
       return withNoStore(
@@ -184,8 +284,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           ok: true,
           data: {
             qrDataUrl: null,
-            status: provider.status,
-            message: qr.error,
+            status: status.ok ? status.status ?? provider.status : provider.status,
+            rawStatus: status.ok ? status.rawStatus : null,
+            message: status.ok && status.status === "connected"
+              ? "Sessão WAHA já pareada. Não há QR pendente para esta sessão."
+              : qr.error,
           },
         }),
         start
@@ -197,8 +300,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         ok: true,
         data: {
           qrDataUrl: qr.qrDataUrl,
-          status: qr.status ?? provider.status,
-          message: qr.qrDataUrl ? null : "Sessão carregada, mas sem QR pendente no momento.",
+          status: status.ok ? status.status ?? "pending_qr" : "pending_qr",
+          rawStatus: status.ok ? status.rawStatus : null,
+          message: null,
         },
       }),
       start

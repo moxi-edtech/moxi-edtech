@@ -2,32 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Sparkles, X, Send, Copy, FileText, ListCollapse, Check, Search, ArrowLeft, HelpCircle, ChevronRight, ClipboardList, WalletCards } from "lucide-react";
-import { createClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
-import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
-}
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
-
-function isUuid(value: string) {
-  return UUID_PATTERN.test(value);
-}
-
-async function resolveAiSchoolId(supabase: ReturnType<typeof createClient>, value: string) {
-  if (isUuid(value)) return value;
-
-  const { data, error } = await supabase
-    .from("escolas")
-    .select("id")
-    .eq("slug", value)
-    .maybeSingle();
-
-  if (error || !data?.id) return null;
-  return String(data.id);
 }
 
 interface Message {
@@ -35,6 +14,42 @@ interface Message {
   text: string;
   isActions?: boolean;
   copyable?: boolean;
+}
+
+function getInitialMessages(): Message[] {
+  return [
+    {
+      sender: "ai",
+      text: "Olá! Sou o Assistente Klasse AI. Posso ajudar-te com tarefas rápidas de produtividade. Seleciona uma das opções abaixo:",
+    },
+    {
+      sender: "ai",
+      text: "",
+      isActions: true,
+    },
+  ];
+}
+
+function parseStoredMessages(value: string | null): Message[] | null {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return null;
+
+    const messages = parsed.filter((item): item is Message => {
+      if (!item || typeof item !== "object") return false;
+      const record = item as Partial<Message>;
+      return (
+        (record.sender === "user" || record.sender === "ai") &&
+        typeof record.text === "string"
+      );
+    });
+
+    return messages.length > 0 ? messages : null;
+  } catch {
+    return null;
+  }
 }
 
 interface AiChatWidgetProps {
@@ -70,6 +85,8 @@ export default function AiChatWidget({
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [userRole, setUserRole] = useState("");
   const [resolvedSchoolId, setResolvedSchoolId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [hydratedMessagesKey, setHydratedMessagesKey] = useState<string | null>(null);
 
   // Help center states
   const [helpSearchQuery, setHelpSearchQuery] = useState("");
@@ -232,58 +249,25 @@ export default function AiChatWidget({
     let active = true;
     async function checkAccess() {
       try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const res = await fetch(`/api/admin/ai/access?schoolId=${encodeURIComponent(schoolId)}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => null);
         if (!active) return;
-        if (!user) {
+
+        if (!res.ok || !json?.ok) {
+          setUserId(null);
+          setResolvedSchoolId(null);
           setIsAllowed(false);
           setCheckingAccess(false);
           return;
         }
 
-        const effectiveSchoolId = await resolveAiSchoolId(supabase, schoolId);
-        if (!active) return;
-        setResolvedSchoolId(effectiveSchoolId);
-        if (!effectiveSchoolId) {
-          setIsAllowed(false);
-          setCheckingAccess(false);
-          return;
-        }
-
-        // 1. Get school setting limits (limits apply, features are not blocked)
-        const { data: settings, error: settingsError } = await supabase
-          .from("ai_school_settings")
-          .select("enabled")
-          .eq("school_id", effectiveSchoolId)
-          .maybeSingle();
-
-        if (!active) return;
-        if (settingsError || !settings || !settings.enabled) {
-          setIsAllowed(false);
-          setCheckingAccess(false);
-          return;
-        }
-
-        // 2. Check user role inside the school
-        const { data: userRoleData, error: roleError } = await supabase
-          .from("escola_users")
-          .select("papel")
-          .eq("escola_id", effectiveSchoolId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!active) return;
-        if (roleError || !userRoleData) {
-          setIsAllowed(false);
-          setCheckingAccess(false);
-          return;
-        }
-
-        const role = userRoleData.papel?.toLowerCase() || "";
-        const isAllowedRole = AI_WIDGET_ROLES.includes(role);
-
-        // Widget is allowed for all administrative roles if AI is enabled for the school
-        setIsAllowed(isAllowedRole);
+        const data = json.data ?? {};
+        const role = String(data.role ?? "").toLowerCase();
+        setResolvedSchoolId(typeof data.schoolId === "string" ? data.schoolId : null);
+        setUserId(typeof data.userId === "string" ? data.userId : null);
+        setIsAllowed(Boolean(data.allowed));
         setUserRole(role);
         setCheckingAccess(false);
       } catch (err) {
@@ -301,20 +285,24 @@ export default function AiChatWidget({
     };
   }, [schoolId]);
 
-  // Initial welcome message
   useEffect(() => {
-    setMessages([
-      {
-        sender: "ai",
-        text: "Olá! Sou o Assistente Klasse AI. Posso ajudar-te com tarefas rápidas de produtividade. Seleciona uma das opções abaixo:",
-      },
-      {
-        sender: "ai",
-        text: "",
-        isActions: true,
-      },
-    ]);
-  }, []);
+    if (!userId || !resolvedSchoolId) return;
+
+    const key = `klasse_ai_widget_messages_${resolvedSchoolId}_${userId}`;
+    const stored = parseStoredMessages(localStorage.getItem(key));
+    setMessages(stored ?? getInitialMessages());
+    setHydratedMessagesKey(key);
+  }, [resolvedSchoolId, userId]);
+
+  useEffect(() => {
+    if (!userId || !resolvedSchoolId) return;
+
+    const key = `klasse_ai_widget_messages_${resolvedSchoolId}_${userId}`;
+    if (hydratedMessagesKey !== key) return;
+
+    const compactMessages = messages.slice(-80);
+    localStorage.setItem(key, JSON.stringify(compactMessages));
+  }, [messages, hydratedMessagesKey, resolvedSchoolId, userId]);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -375,6 +363,7 @@ export default function AiChatWidget({
       ]);
       setDialogState("waiting_for_rewrite_text");
     } else if (action === "summary") {
+      const effectiveSchoolId = resolvedSchoolId ?? schoolId;
       setGenerating(true);
       setMessages((prev) => [
         ...prev,
@@ -387,7 +376,7 @@ export default function AiChatWidget({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             period: "today",
-            schoolId,
+            schoolId: effectiveSchoolId,
           }),
         });
         const data = await res.json();
@@ -416,6 +405,7 @@ export default function AiChatWidget({
         setMessages((prev) => [...prev, { sender: "ai", text: "", isActions: true }]);
       }
     } else if (action === "finance_plan") {
+      const effectiveSchoolId = resolvedSchoolId ?? schoolId;
       setGenerating(true);
       setMessages((prev) => [
         ...prev,
@@ -427,7 +417,7 @@ export default function AiChatWidget({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            schoolId,
+            schoolId: effectiveSchoolId,
             title: "Plano de cobrança da semana",
             scenario: "Preparar um rascunho de orientação financeira para cobrança semanal. Usar placeholders para encarregado, valor, aluno e data.",
             recipientLabel: "[Encarregado]",

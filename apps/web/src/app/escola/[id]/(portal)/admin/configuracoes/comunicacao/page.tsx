@@ -46,6 +46,7 @@ export default function ComunicacaoConfigPage({ params }: Props) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrMessage, setQrMessage] = useState<string | null>(null);
   const [qrStatus, setQrStatus] = useState<string | null>(null);
+  const [qrRawStatus, setQrRawStatus] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     displayName: "WAHA Experimental",
     status: "disabled" as ProviderStatus,
@@ -96,17 +97,20 @@ export default function ComunicacaoConfigPage({ params }: Props) {
       if (!res.ok || !json?.ok) {
         setQrDataUrl(null);
         setQrStatus(null);
+        setQrRawStatus(null);
         setQrMessage(json?.error || "QR Code indisponível.");
         return;
       }
 
       setQrDataUrl(json.data?.qrDataUrl ?? null);
       setQrStatus(json.data?.status ?? null);
+      setQrRawStatus(json.data?.rawStatus ?? null);
       setQrMessage(json.data?.message ?? null);
     } catch (err) {
       console.error(err);
       setQrDataUrl(null);
       setQrStatus(null);
+      setQrRawStatus(null);
       setQrMessage("Erro ao carregar QR Code.");
     } finally {
       setRefreshingQr(false);
@@ -147,6 +151,17 @@ export default function ComunicacaoConfigPage({ params }: Props) {
     if (!escolaParam) return;
     loadQr();
   }, [escolaParam]);
+
+  useEffect(() => {
+    if (!escolaParam) return;
+    if (!qrDataUrl && qrStatus !== "pending_qr") return;
+
+    const timer = window.setInterval(() => {
+      loadQr();
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [escolaParam, qrDataUrl, qrStatus]);
 
   const statusBadgeClass =
     formData.status === "connected"
@@ -315,6 +330,11 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                     <p className="text-center text-xs text-slate-500">
                       Abra o WhatsApp no telefone da escola e faça o pareamento pelo QR acima.
                     </p>
+                    {qrRawStatus && (
+                      <p className="rounded-full bg-slate-100 px-3 py-1 font-mono text-[10px] text-slate-500">
+                        WAHA: {qrRawStatus}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-center">
@@ -322,6 +342,11 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                     <p className="max-w-sm text-sm text-slate-500">
                       {qrMessage || "Nenhum QR pendente no momento. Se a sessão já estiver ligada, o WAHA pode não expor um QR activo."}
                     </p>
+                    {qrRawStatus && (
+                      <p className="rounded-full bg-white px-3 py-1 font-mono text-[10px] text-slate-500">
+                        WAHA: {qrRawStatus}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
