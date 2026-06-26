@@ -103,15 +103,19 @@ export function useEscolaMonitorData(escolaId: string) {
 
 // Sub-fetching functions
 async function loadMetricas(supabase: EscolaMonitorSupabase, id: string): Promise<EscolaMetricas> {
-  const { data: metrics } = await supabase
+  const { data: metricRows } = await supabase
     .from('vw_super_admin_escola_metrics')
     .select('alunos_ativos, alunos_inativos, professores, turmas_ativas, turmas_total, matriculas_ativas')
     .eq('escola_id', id)
-    .maybeSingle();
+    .limit(1);
   
-  const { data: aggregate } = await supabase.from('aggregates_financeiro').select('*').eq('escola_id', id).is('aluno_id', null).eq('data_referencia', new Date().toISOString().slice(0, 7) + '-01').single();
-  const { data: ultimoPagamento } = await supabase.from('financeiro_lancamentos').select('created_at').eq('escola_id', id).eq('tipo', 'credito').eq('status', 'pago').order('created_at', { ascending: false }).limit(1).single();
-  const { data: proximoVencimento } = await supabase.from('mensalidades').select('data_vencimento').eq('escola_id', id).eq('status', 'pendente').order('data_vencimento', { ascending: true }).limit(1).single();
+  const { data: aggregateRows } = await supabase.from('aggregates_financeiro').select('*').eq('escola_id', id).is('aluno_id', null).eq('data_referencia', new Date().toISOString().slice(0, 7) + '-01').limit(1);
+  const { data: ultimoPagamentoRows } = await supabase.from('financeiro_lancamentos').select('created_at').eq('escola_id', id).eq('tipo', 'credito').eq('status', 'pago').order('created_at', { ascending: false }).limit(1);
+  const { data: proximoVencimentoRows } = await supabase.from('mensalidades').select('data_vencimento').eq('escola_id', id).eq('status', 'pendente').order('data_vencimento', { ascending: true }).limit(1);
+  const metrics = metricRows?.[0];
+  const aggregate = aggregateRows?.[0];
+  const ultimoPagamento = ultimoPagamentoRows?.[0];
+  const proximoVencimento = proximoVencimentoRows?.[0];
   
   return {
     alunos_ativos: metrics?.alunos_ativos || 0,
@@ -132,12 +136,14 @@ async function loadMetricas(supabase: EscolaMonitorSupabase, id: string): Promis
 }
 
 async function loadPerformance(supabase: EscolaMonitorSupabase, id: string): Promise<PerformanceMetrics> {
-  const { data: auditMetrics } = await supabase
+  const { data: auditMetricRows } = await supabase
     .from('vw_super_admin_audit_metrics')
     .select('ultimo_acesso, accessos_24h, error_count_24h, last_error')
     .eq('escola_id', id)
-    .maybeSingle();
-  const { data: syncStatus } = await supabase.from('aggregates_financeiro').select('sync_status, sync_updated_at').eq('escola_id', id).is('aluno_id', null).order('sync_updated_at', { ascending: false }).limit(1).single();
+    .limit(1);
+  const { data: syncStatusRows } = await supabase.from('aggregates_financeiro').select('sync_status, sync_updated_at').eq('escola_id', id).is('aluno_id', null).order('sync_updated_at', { ascending: false }).limit(1);
+  const auditMetrics = auditMetricRows?.[0];
+  const syncStatus = syncStatusRows?.[0];
 
   return {
     latencia_media: null,

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import {
   RefreshCw, Eye, Database, Download, CreditCard, UserPlus,
   GraduationCap, Presentation, MoreHorizontal,
   Phone, Mail, Calendar, ChevronRight, Activity, Users,
   School, FileText, Settings, StickyNote, TrendingUp,
   AlertTriangle, CheckCircle, Clock, Zap, BarChart3, ShieldCheck, XCircle,
-  ArrowRight, Search, Loader2
+  ArrowRight, Search, Loader2,
+  type LucideIcon
 } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { createClient } from "@/lib/supabaseClient";
@@ -25,6 +26,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/Label";
+
+type AiUsageLog = {
+  id: string;
+  feature: string;
+  status: string;
+  error_message: string | null;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  created_at: string;
+  user_id: string | null;
+};
+
+type WahaStatus = SchoolNotificationProvider["status"];
+
+const WAHA_STATUSES: WahaStatus[] = ["disabled", "pending_qr", "connected", "disconnected", "error"];
+
+const toErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
+
+const isWahaStatus = (value: string): value is WahaStatus => {
+  return WAHA_STATUSES.includes(value as WahaStatus);
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtKz = (v: number) => {
@@ -44,7 +68,7 @@ const fmtHora = (ts: string) => {
   return d.toLocaleDateString("pt-AO");
 };
 
-const TIPO_CONFIG: Record<string, { icon: any, colorClass: string, bgClass: string, label: string }> = {
+const TIPO_CONFIG: Record<string, { icon: LucideIcon, colorClass: string, bgClass: string, label: string }> = {
   pagamento: { icon: CreditCard,    colorClass: "text-klasse-green", bgClass: "bg-klasse-green/10", label: "Pagamento"  },
   matricula: { icon: UserPlus,      colorClass: "text-klasse-gold",  bgClass: "bg-klasse-gold/10",  label: "Matrícula"  },
   nota:      { icon: GraduationCap, colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Notas"      },
@@ -80,7 +104,7 @@ function SaudeRing({ valor }: { valor: number }) {
   );
 }
 
-function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay = 0 }: { icon: any, label: string, main: React.ReactNode, sub: string, variant?: "default" | "green" | "gold", delay?: number }) {
+function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay = 0 }: { icon: LucideIcon, label: string, main: ReactNode, sub: string, variant?: "default" | "green" | "gold", delay?: number }) {
   const variants = {
     default: "border-slate-200 bg-white",
     green: "border-klasse-green/20 bg-klasse-green/5",
@@ -146,7 +170,7 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
   const [nota, setNota]   = useState("");
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(true);
-  const timer = useRef<any>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -165,7 +189,7 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
 
   const handleChange = (v: string) => {
     setNota(v); setSaved(false);
-    clearTimeout(timer.current);
+    if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
         await fetch(`/api/super-admin/escolas/${escolaId}/notes`, {
@@ -285,7 +309,7 @@ export default function EscolaMonitor({
     daily_limit: number;
     monthly_limit: number;
   } | null>(null);
-  const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [aiLogs, setAiLogs] = useState<AiUsageLog[]>([]);
   const [loadingAi, setLoadingAi] = useState(true);
   const [savingAiSettings, setSavingAiSettings] = useState(false);
 
@@ -294,12 +318,13 @@ export default function EscolaMonitor({
       setLoadingAi(true);
       
       // Fetch settings
-      const { data: settings, error: settingsError } = await (supabase as any)
+      const { data: settingsRows, error: settingsError } = await supabase
         .from("ai_school_settings")
         .select("enabled, daily_limit, monthly_limit")
         .eq("school_id", escola.id)
-        .maybeSingle();
+        .limit(1);
       
+      const settings = settingsRows?.[0];
       if (!settingsError && settings) {
         setAiSettings(settings);
       } else {
@@ -307,7 +332,7 @@ export default function EscolaMonitor({
       }
 
       // Fetch usage logs
-      const { data: logs, error: logsError } = await (supabase as any)
+      const { data: logs, error: logsError } = await supabase
         .from("ai_usage_logs")
         .select("id, feature, status, error_message, tokens_input, tokens_output, created_at, user_id")
         .eq("school_id", escola.id)
@@ -336,7 +361,7 @@ export default function EscolaMonitor({
     try {
       setSavingAiSettings(true);
       
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("ai_school_settings")
         .upsert({
           school_id: escola.id,
@@ -350,8 +375,8 @@ export default function EscolaMonitor({
       
       success("Sucesso", "Configurações de IA salvas com sucesso!");
       fetchAiData();
-    } catch (err: any) {
-      toastError("Erro ao salvar", err.message || "Erro desconhecido.");
+    } catch (err: unknown) {
+      toastError("Erro ao salvar", toErrorMessage(err, "Erro desconhecido."));
     } finally {
       setSavingAiSettings(false);
     }
@@ -383,8 +408,8 @@ export default function EscolaMonitor({
 
       success("Salvo com sucesso", "Provedor WAHA atualizado com sucesso!");
       onUpdate();
-    } catch (err: any) {
-      toastError("Erro ao salvar", err.message || "Erro desconhecido");
+    } catch (err: unknown) {
+      toastError("Erro ao salvar", toErrorMessage(err, "Erro desconhecido"));
     } finally {
       setSavingWaha(false);
     }
@@ -414,7 +439,7 @@ export default function EscolaMonitor({
 
       success("Estado actualizado", `O Portal do Aluno foi ${newStatus ? "activado" : "desactivado"} com sucesso.`);
       onUpdate();
-    } catch (error: any) {
+    } catch (_error: unknown) {
       toastError("Erro na actualização", "Não conseguimos alterar o estado do portal agora. Por favor, tente novamente.");
     }
   };
@@ -729,7 +754,11 @@ export default function EscolaMonitor({
                           <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Estado da Sessão</Label>
                           <select
                             value={wahaStatus}
-                            onChange={(e) => setWahaStatus(e.target.value as any)}
+                            onChange={(e) => {
+                              if (isWahaStatus(e.target.value)) {
+                                setWahaStatus(e.target.value);
+                              }
+                            }}
                             className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-klasse-green/30 focus:ring-4 focus:ring-klasse-green/5 transition-all"
                           >
                             <option value="disabled">Desativado (disabled)</option>

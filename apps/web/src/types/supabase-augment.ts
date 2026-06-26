@@ -4,6 +4,144 @@ import type { Database, Json } from "~types/supabase"
 export type DBWithRPC = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Functions" | "Tables"> & {
     Tables: Database["public"]["Tables"] & {
+      ai_school_settings: {
+        Row: {
+          id: string;
+          school_id: string;
+          enabled: boolean;
+          monthly_limit: number;
+          daily_limit: number;
+          allowed_features: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          enabled?: boolean;
+          monthly_limit?: number;
+          daily_limit?: number;
+          allowed_features?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          enabled?: boolean;
+          monthly_limit?: number;
+          daily_limit?: number;
+          allowed_features?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_school_settings_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: true;
+            referencedRelation: "escolas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ai_usage_logs: {
+        Row: {
+          id: string;
+          school_id: string;
+          user_id: string | null;
+          feature: string;
+          prompt_template_id: string | null;
+          input_hash: string | null;
+          input_preview: string | null;
+          output_preview: string | null;
+          status: string;
+          error_message: string | null;
+          tokens_input: number | null;
+          tokens_output: number | null;
+          provider: string | null;
+          model: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          user_id?: string | null;
+          feature: string;
+          prompt_template_id?: string | null;
+          input_hash?: string | null;
+          input_preview?: string | null;
+          output_preview?: string | null;
+          status: string;
+          error_message?: string | null;
+          tokens_input?: number | null;
+          tokens_output?: number | null;
+          provider?: string | null;
+          model?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          user_id?: string | null;
+          feature?: string;
+          prompt_template_id?: string | null;
+          input_hash?: string | null;
+          input_preview?: string | null;
+          output_preview?: string | null;
+          status?: string;
+          error_message?: string | null;
+          tokens_input?: number | null;
+          tokens_output?: number | null;
+          provider?: string | null;
+          model?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "escolas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      escola_notas_internas: {
+        Row: {
+          escola_id: string;
+          nota: string;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          escola_id: string;
+          nota: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          escola_id?: string;
+          nota?: string;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "escola_notas_internas_escola_id_fkey";
+            columns: ["escola_id"];
+            isOneToOne: true;
+            referencedRelation: "escolas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       school_notification_providers: {
         Row: {
           id: string;
