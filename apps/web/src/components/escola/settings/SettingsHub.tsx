@@ -19,6 +19,7 @@ import {
   Play,
   ChevronDown,
   Landmark,
+  MessageSquare,
 } from "lucide-react";
 
 // ─── Progress ────────────────────────────────────────────────────────────────
@@ -159,6 +160,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     { id: "horarios", label: "Horários", icon: CalendarCheck, href: buildPortalHref(escolaParam, "/horarios/quadro") },
     { id: "financeiro", label: "Financeiro · Políticas", icon: Wallet, href: buildPortalHref(escolaParam, "/admin/configuracoes/financeiro") },
     { id: "mensalidades", label: "Mensalidades & Emolumentos", icon: Landmark, href: buildPortalHref(escolaParam, "/admin/configuracoes/mensalidades") },
+    { id: "comunicacao", label: "Comunicação", icon: MessageSquare, href: buildPortalHref(escolaParam, "/admin/configuracoes/comunicacao") },
     { id: "fluxos", label: "Fluxos", icon: Layers, href: buildPortalHref(escolaParam, "/admin/configuracoes/fluxos") },
     { id: "excecoes", label: "Exceções", icon: AlertTriangle, href: buildPortalHref(escolaParam, "/admin/configuracoes/excecoes") },
     { id: "avancado", label: "Avançado", icon: ShieldCheck, href: buildPortalHref(escolaParam, "/admin/configuracoes/avancado") },
