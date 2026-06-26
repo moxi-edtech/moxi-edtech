@@ -33,6 +33,17 @@ type PagamentoRow = {
   reference: string | null;
 };
 
+type NotificationOutboxRow = {
+  id: string;
+  escola_id: string;
+  aluno_id: string;
+  canal: string;
+  destino: string | null;
+  mensagem: string | null;
+  status: string;
+  request_id: string;
+};
+
 function resolveJobToken(req: Request) {
   return req.headers.get("x-job-token") || req.headers.get("authorization")?.replace("Bearer ", "");
 }
@@ -71,6 +82,152 @@ async function markEvent(
     .eq("id", event.id);
 
   if (error) throw error;
+}
+
+function normalizeWhatsappChatId(rawPhone: string | null | undefined) {
+  const digits = String(rawPhone ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  const withCountryCode = digits.startsWith("244") ? digits : `244${digits.replace(/^0+/, "")}`;
+  if (withCountryCode.length < 11 || withCountryCode.length > 15) return null;
+  return `${withCountryCode}@c.us`;
+}
+
+function extractWahaMessageId(response: unknown) {
+  if (!response || typeof response !== "object") return null;
+  const record = response as Record<string, unknown>;
+  const id = record.id;
+  if (typeof id === "string") return id;
+  if (id && typeof id === "object") {
+    const idRecord = id as Record<string, unknown>;
+    const serialized = idRecord._serialized ?? idRecord.serialized;
+    if (typeof serialized === "string") return serialized;
+    if (typeof idRecord.id === "string") return idRecord.id;
+  }
+  const key = record.key;
+  if (key && typeof key === "object") {
+    const keyRecord = key as Record<string, unknown>;
+    if (typeof keyRecord.id === "string") return keyRecord.id;
+  }
+  return null;
+}
+
+async function getConnectedWahaProvider(
+  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  escolaId: string
+) {
+  const { data, error } = await admin
+    .from("school_notification_providers")
+    .select("session_name,status,daily_limit")
+    .eq("school_id", escolaId)
+    .eq("provider_type", "whatsapp_waha")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.session_name) throw new Error("WAHA provider sem session_name");
+  if (data.status !== "connected") throw new Error(`WAHA provider não conectado (${data.status || "sem status"})`);
+  return data;
+}
+
+async function sendWahaText(sessionName: string, chatId: string, text: string, id: string) {
+  const baseUrl = (process.env.WAHA_BASE_URL ?? "").trim().replace(/\/$/, "");
+  const apiKey = (process.env.WAHA_API_KEY ?? "").trim();
+  if (!baseUrl || !apiKey) throw new Error("WAHA não configurado no servidor");
+
+  const res = await fetch(`${baseUrl}/api/sendText`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Api-Key": apiKey,
+    },
+    body: JSON.stringify({
+      session: sessionName,
+      chatId,
+      text,
+      id,
+      linkPreview: false,
+    }),
+    cache: "no-store",
+  });
+
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message =
+      body && typeof body === "object" && "message" in body
+        ? String((body as { message?: unknown }).message)
+        : `WAHA sendText falhou (${res.status})`;
+    throw new Error(message);
+  }
+
+  return extractWahaMessageId(body) ?? id;
+}
+
+async function processWhatsappNotifications(admin: NonNullable<ReturnType<typeof getAdminClient>>) {
+  const { data: rows, error } = await admin
+    .from("outbox_notificacoes")
+    .select("id,escola_id,aluno_id,canal,destino,mensagem,status,request_id")
+    .eq("canal", "whatsapp")
+    .eq("status", "pending")
+    .not("destino", "is", null)
+    .not("mensagem", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(25);
+
+  if (error) throw error;
+
+  const providerCache = new Map<string, Awaited<ReturnType<typeof getConnectedWahaProvider>>>();
+  const results: Array<{ id: string; status: "sent" | "error" | "skipped"; error?: string }> = [];
+
+  for (const row of (rows || []) as NotificationOutboxRow[]) {
+    const chatId = normalizeWhatsappChatId(row.destino);
+    const text = String(row.mensagem ?? "").trim();
+    const now = new Date().toISOString();
+
+    if (!chatId || !text) {
+      const message = !chatId ? "Telefone WhatsApp inválido ou ausente" : "Mensagem WhatsApp vazia";
+      await admin
+        .from("outbox_notificacoes")
+        .update({ status: "error", error_message: message, processed_at: now })
+        .eq("id", row.id);
+      results.push({ id: row.id, status: "error", error: message });
+      continue;
+    }
+
+    try {
+      let provider = providerCache.get(row.escola_id);
+      if (!provider) {
+        try {
+          provider = await getConnectedWahaProvider(admin, row.escola_id);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          results.push({ id: row.id, status: "skipped", error: message });
+          continue;
+        }
+        providerCache.set(row.escola_id, provider);
+      }
+
+      const messageId = await sendWahaText(provider.session_name, chatId, text, row.id);
+      await admin
+        .from("outbox_notificacoes")
+        .update({
+          status: "sent",
+          mensagem_id: messageId,
+          error_message: null,
+          processed_at: new Date().toISOString(),
+          sent_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+      results.push({ id: row.id, status: "sent" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await admin
+        .from("outbox_notificacoes")
+        .update({ status: "error", error_message: message, processed_at: new Date().toISOString() })
+        .eq("id", row.id);
+      results.push({ id: row.id, status: "error", error: message });
+    }
+  }
+
+  return results;
 }
 
 async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminClient>>, event: OutboxEvent) {
@@ -387,8 +544,15 @@ async function runOutboxWorker(req: Request) {
     emitirReciboPagamento(admin, event)
   );
 
+  const whatsappResults = await processWhatsappNotifications(admin);
+
   const results = [...authResults, ...reciboResults];
-  return NextResponse.json({ ok: true, processed: results.length, results });
+  return NextResponse.json({
+    ok: true,
+    processed: results.length + whatsappResults.length,
+    results,
+    whatsapp: whatsappResults,
+  });
 }
 
 export async function GET(req: Request) {
