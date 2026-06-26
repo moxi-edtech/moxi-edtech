@@ -67,7 +67,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
         <div className={`rounded-xl p-2 ${iconBg}`}>{icon}</div>
         <div>
@@ -127,7 +127,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
   const hasLineData = labels.length > 0 && dadosAlunos.length > 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-5">
 
       {/* Matrículas por mês */}
       <ChartCard
@@ -136,9 +136,9 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
         title="Matrículas por Mês"
         subtitle="Evolução do ano letivo"
       >
-        <div className="h-56">
+        <div className="h-56 min-w-0">
           {hasLineData ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={lineData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke={SLATE_GRID} vertical={false} />
                 <XAxis dataKey="mes" tick={axisTick} tickLine={false} axisLine={false} />
@@ -171,9 +171,9 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
         title="Status das Mensalidades"
         subtitle="Distribuição atual"
       >
-        <div className="h-56">
+        <div className="h-56 min-w-0">
           {resumo ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={barData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke={SLATE_GRID} vertical={false} />
                 <XAxis dataKey="status" tick={axisTick} tickLine={false} axisLine={false} />

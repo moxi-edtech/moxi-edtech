@@ -11,6 +11,25 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+
+function isUuid(value: string) {
+  return UUID_PATTERN.test(value);
+}
+
+async function resolveAiSchoolId(supabase: ReturnType<typeof createClient>, value: string) {
+  if (isUuid(value)) return value;
+
+  const { data, error } = await supabase
+    .from("escolas")
+    .select("id")
+    .eq("slug", value)
+    .maybeSingle();
+
+  if (error || !data?.id) return null;
+  return String(data.id);
+}
+
 interface Message {
   sender: "user" | "ai";
   text: string;
@@ -43,6 +62,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false, context }
   const [isAllowed, setIsAllowed] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [userRole, setUserRole] = useState("");
+  const [resolvedSchoolId, setResolvedSchoolId] = useState<string | null>(null);
 
   // Help center states
   const [helpSearchQuery, setHelpSearchQuery] = useState("");
@@ -214,11 +234,20 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false, context }
           return;
         }
 
+        const effectiveSchoolId = await resolveAiSchoolId(supabase, schoolId);
+        if (!active) return;
+        setResolvedSchoolId(effectiveSchoolId);
+        if (!effectiveSchoolId) {
+          setIsAllowed(false);
+          setCheckingAccess(false);
+          return;
+        }
+
         // 1. Get school setting limits (limits apply, features are not blocked)
         const { data: settings, error: settingsError } = await supabase
           .from("ai_school_settings")
           .select("enabled")
-          .eq("school_id", schoolId)
+          .eq("school_id", effectiveSchoolId)
           .maybeSingle();
 
         if (!active) return;
@@ -232,7 +261,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false, context }
         const { data: userRoleData, error: roleError } = await supabase
           .from("escola_users")
           .select("papel")
-          .eq("escola_id", schoolId)
+          .eq("escola_id", effectiveSchoolId)
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -290,13 +319,14 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false, context }
 
     try {
       if (dialogState === "waiting_for_rewrite_text") {
+        const effectiveSchoolId = resolvedSchoolId ?? schoolId;
         const res = await fetch("/api/admin/ai/rewrite", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: userMsg,
             mode: "more_formal",
-            schoolId,
+            schoolId: effectiveSchoolId,
           }),
         });
         const data = await res.json();

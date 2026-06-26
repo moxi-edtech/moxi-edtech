@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const rewriteSchema = z.object({
-  schoolId: z.string().uuid(),
+  schoolId: z.string().trim().min(1),
   text: z.string().trim().min(3).max(6000),
   mode: z.enum(["more_formal", "shorter", "clearer"]).optional().default("more_formal"),
 });
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Payload inválido." }, { status: 400 });
   }
 
-  const { schoolId, text, mode } = parsed.data;
+  const { schoolId: requestedSchoolId, text, mode } = parsed.data;
   const supabase = await supabaseServerTyped<DBWithRPC>();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user ?? null;
@@ -143,14 +143,14 @@ export async function POST(req: Request) {
   const resolvedEscolaId = await resolveEscolaIdForUser(
     supabase,
     user.id,
-    schoolId,
+    requestedSchoolId,
     metaEscolaId ? String(metaEscolaId) : null
   );
-  if (!resolvedEscolaId || resolvedEscolaId !== schoolId) {
+  if (!resolvedEscolaId) {
     return NextResponse.json({ ok: false, error: "Sem permissão para esta escola." }, { status: 403 });
   }
 
-  const access = await validateAiAccess(schoolId, "rewrite", "admin_ai_rewrite");
+  const access = await validateAiAccess(resolvedEscolaId, "rewrite", "admin_ai_rewrite");
   if (!access.ok || !access.userId) {
     return NextResponse.json({ ok: false, error: access.error ?? "Sem permissão para usar KLASSE AI." }, { status: 403 });
   }
@@ -170,7 +170,7 @@ export async function POST(req: Request) {
     });
 
     const action = await createAiAction(supabase, {
-      schoolId,
+      schoolId: resolvedEscolaId,
       createdBy: access.userId,
       actionType: "communication_draft",
       sourceModule: "classe_ai",

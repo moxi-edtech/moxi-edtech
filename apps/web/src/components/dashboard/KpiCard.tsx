@@ -104,7 +104,7 @@ export function KpiCard({
 
       {chartData && (
         <div className="absolute inset-x-0 bottom-0 h-10 opacity-30 pointer-events-none">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={chartData}>
               <Line
                 type="monotone"
@@ -120,7 +120,7 @@ export function KpiCard({
     </>
   );
 
-  const containerClasses = `group relative overflow-hidden rounded-2xl border p-5 flex flex-col justify-between transition hover:shadow-md ${styles.box}`;
+  const containerClasses = `group relative min-w-0 overflow-hidden rounded-2xl border p-5 flex flex-col justify-between transition hover:shadow-md ${styles.box}`;
 
   if (href) {
     return (
