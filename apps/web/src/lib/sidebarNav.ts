@@ -148,6 +148,7 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     { href: "/escola/[escolaId]/admin/avisos", label: "Avisos", icon: "Megaphone" },
+    { href: "/escola/[escolaId]/admin/comunicacao/whatsapp", label: "WhatsApp KLASSE", icon: "MessageSquare" },
     { href: "/escola/[escolaId]/admin/ai/actions", label: "Central IA", icon: "ClipboardList" },
     { href: "/escola/[escolaId]/horarios/quadro", label: "Horários", icon: "CalendarClock" },
     {
@@ -203,6 +204,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
     { href: "/escola/[escolaId]/secretaria/recebimentos", label: "Recebimentos", icon: "Wallet" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
+    { href: "/escola/[escolaId]/admin/comunicacao/whatsapp", label: "WhatsApp KLASSE", icon: "MessageSquare" },
     {
       href: "/escola/[escolaId]/secretaria/turmas",
       label: "Turmas",
@@ -253,6 +255,7 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     { href: "/escola/[escolaId]/financeiro/candidaturas", label: "Candidaturas", icon: "FileText" },
+    { href: "/escola/[escolaId]/admin/comunicacao/whatsapp", label: "WhatsApp KLASSE", icon: "MessageSquare" },
     {
       href: "/escola/[escolaId]/financeiro/tabelas-mensalidade",
       label: "Tabelas",

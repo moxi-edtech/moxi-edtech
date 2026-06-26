@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createActivationToken } from "@/lib/activationLink";
+import {
+  isWahaEnabled,
+  nextRetryAt,
+  normalizeWhatsappPhone,
+  sendWahaTextMessage,
+} from "@/lib/server/whatsappUtility";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,6 +48,25 @@ type NotificationOutboxRow = {
   mensagem: string | null;
   status: string;
   request_id: string;
+};
+
+type CommunicationOutboxRow = {
+  id: string;
+  school_id: string | null;
+  body: string | null;
+  metadata: Record<string, any> | null;
+  requires_approval: boolean | null;
+  approved_by: string | null;
+  retry_count: number | null;
+  idempotency_key: string;
+};
+
+type CommunicationRateLimit = {
+  max_messages_per_minute: number | null;
+  max_messages_per_hour: number | null;
+  max_messages_per_day: number | null;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
 };
 
 function resolveJobToken(req: Request) {
@@ -126,6 +151,236 @@ async function getConnectedWahaProvider(
   if (!data?.session_name) throw new Error("WAHA provider sem session_name");
   if (data.status !== "connected") throw new Error(`WAHA provider não conectado (${data.status || "sem status"})`);
   return data;
+}
+
+async function getConnectedWahaProviderV2(
+  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  schoolId: string
+) {
+  const { data, error } = await admin
+    .from("school_notification_providers")
+    .select("session_name,status")
+    .eq("school_id", schoolId)
+    .eq("provider_type", "whatsapp_waha")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.session_name) throw new Error("WAHA provider sem session_name");
+  if (data.status !== "connected") throw new Error(`WAHA provider não conectado (${data.status || "sem status"})`);
+  return data as { session_name: string; status: string };
+}
+
+function minutesFromTime(value: string | null | undefined) {
+  const [hours, minutes] = String(value || "00:00").split(":").map((part) => Number(part));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 0;
+  return hours * 60 + minutes;
+}
+
+function luandaMinutesNow() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Luanda",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value || 0);
+  return hour * 60 + minute;
+}
+
+function isQuietHours(limit: CommunicationRateLimit) {
+  const start = minutesFromTime(limit.quiet_hours_start || "20:00");
+  const end = minutesFromTime(limit.quiet_hours_end || "07:00");
+  const now = luandaMinutesNow();
+  if (start === end) return false;
+  return start < end ? now >= start && now < end : now >= start || now < end;
+}
+
+function nextAllowedMorning(limit: CommunicationRateLimit) {
+  const endMinutes = minutesFromTime(limit.quiet_hours_end || "07:00");
+  const now = new Date();
+  const luandaNow = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Luanda" }));
+  const target = new Date(luandaNow);
+  target.setHours(Math.floor(endMinutes / 60), endMinutes % 60, 0, 0);
+  if (target <= luandaNow) target.setDate(target.getDate() + 1);
+  return new Date(now.getTime() + (target.getTime() - luandaNow.getTime())).toISOString();
+}
+
+async function loadCommunicationRateLimit(
+  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  schoolId: string
+) {
+  const defaults: CommunicationRateLimit = {
+    max_messages_per_minute: 10,
+    max_messages_per_hour: 100,
+    max_messages_per_day: 500,
+    quiet_hours_start: "20:00",
+    quiet_hours_end: "07:00",
+  };
+  const { data } = await admin
+    .from("communication_rate_limits")
+    .select("max_messages_per_minute,max_messages_per_hour,max_messages_per_day,quiet_hours_start,quiet_hours_end")
+    .eq("school_id", schoolId)
+    .maybeSingle();
+  return { ...defaults, ...(data || {}) };
+}
+
+async function hasRateCapacity(
+  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  schoolId: string,
+  limit: CommunicationRateLimit
+) {
+  const now = Date.now();
+  const windows = [
+    { key: "minute", from: new Date(now - 60_000).toISOString(), max: limit.max_messages_per_minute ?? 10 },
+    { key: "hour", from: new Date(now - 60 * 60_000).toISOString(), max: limit.max_messages_per_hour ?? 100 },
+    { key: "day", from: new Date(now - 24 * 60 * 60_000).toISOString(), max: limit.max_messages_per_day ?? 500 },
+  ] as const;
+
+  for (const window of windows) {
+    const { count, error } = await admin
+      .from("communication_outbox")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .in("status", ["sent", "delivered", "read"])
+      .gte("sent_at", window.from);
+    if (error) throw error;
+    if ((count || 0) >= window.max) return { ok: false, window: window.key };
+  }
+
+  return { ok: true as const };
+}
+
+async function markCommunicationOutbox(
+  admin: NonNullable<ReturnType<typeof getAdminClient>>,
+  row: CommunicationOutboxRow,
+  patch: Record<string, unknown>,
+  eventType: string,
+  payload: Record<string, unknown> = {}
+) {
+  const now = new Date().toISOString();
+  await admin
+    .from("communication_outbox")
+    .update({ ...patch, updated_at: now })
+    .eq("id", row.id);
+
+  if (row.school_id) {
+    await admin.from("communication_logs").insert({
+      outbox_id: row.id,
+      school_id: row.school_id,
+      event_type: eventType,
+      provider: "waha",
+      provider_event_id: typeof patch.provider_message_id === "string" ? patch.provider_message_id : null,
+      payload_sanitized: payload,
+    });
+  }
+}
+
+async function processCommunicationOutbox(admin: NonNullable<ReturnType<typeof getAdminClient>>) {
+  if (!isWahaEnabled()) return [];
+
+  const { data, error } = await (admin as any).rpc("claim_communication_outbox", { p_limit: 25 });
+  if (error) throw new Error(`[communication_outbox] ${error.message}`);
+
+  const rows = (data || []) as CommunicationOutboxRow[];
+  const providerCache = new Map<string, Awaited<ReturnType<typeof getConnectedWahaProviderV2>>>();
+  const limitCache = new Map<string, Awaited<ReturnType<typeof loadCommunicationRateLimit>>>();
+  const results: Array<{ id: string; status: string; error?: string }> = [];
+
+  for (const row of rows) {
+    const schoolId = row.school_id;
+    const retryCount = row.retry_count || 0;
+
+    try {
+      if (!schoolId) throw new Error("Mensagem sem school_id");
+      if (row.requires_approval && !row.approved_by) throw new Error("Mensagem exige aprovação humana");
+
+      let limit = limitCache.get(schoolId);
+      if (!limit) {
+        limit = await loadCommunicationRateLimit(admin, schoolId);
+        limitCache.set(schoolId, limit);
+      }
+
+      if (isQuietHours(limit)) {
+        await markCommunicationOutbox(
+          admin,
+          row,
+          { status: "queued", next_retry_at: nextAllowedMorning(limit), sending_at: null },
+          "outbox.rate_limited",
+          { reason: "quiet_hours" }
+        );
+        results.push({ id: row.id, status: "queued", error: "quiet_hours" });
+        continue;
+      }
+
+      const capacity = await hasRateCapacity(admin, schoolId, limit);
+      if (!capacity.ok) {
+        await markCommunicationOutbox(
+          admin,
+          row,
+          { status: "queued", next_retry_at: new Date(Date.now() + 60_000).toISOString(), sending_at: null },
+          "outbox.rate_limited",
+          { reason: capacity.window }
+        );
+        results.push({ id: row.id, status: "queued", error: `rate_limit_${capacity.window}` });
+        continue;
+      }
+
+      let provider = providerCache.get(schoolId);
+      if (!provider) {
+        provider = await getConnectedWahaProviderV2(admin, schoolId);
+        providerCache.set(schoolId, provider);
+      }
+
+      const phone = normalizeWhatsappPhone(row.metadata?.phone);
+      const body = String(row.body || "").trim();
+      if (!phone) throw new Error("Telefone WhatsApp inválido");
+      if (!body) throw new Error("Mensagem vazia");
+
+      const sendResult = await sendWahaTextMessage({
+        sessionName: provider.session_name,
+        phone,
+        body,
+        idempotencyKey: row.idempotency_key || row.id,
+      });
+
+      await markCommunicationOutbox(
+        admin,
+        row,
+        {
+          status: "sent",
+          provider_message_id: sendResult.providerMessageId,
+          sent_at: new Date().toISOString(),
+          last_error: null,
+          next_retry_at: null,
+        },
+        "provider.sent",
+        { provider_message_id: sendResult.providerMessageId }
+      );
+      results.push({ id: row.id, status: "sent" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const nextRetry = retryCount + 1;
+      const failedFinal = nextRetry >= 4;
+      await markCommunicationOutbox(
+        admin,
+        row,
+        {
+          status: failedFinal ? "failed" : "queued",
+          retry_count: nextRetry,
+          next_retry_at: failedFinal ? null : nextRetryAt(nextRetry),
+          last_error: message,
+          failed_at: failedFinal ? new Date().toISOString() : null,
+          sending_at: null,
+        },
+        failedFinal ? "provider.failed_final" : "provider.retry_scheduled",
+        { error: message, retry_count: nextRetry }
+      );
+      results.push({ id: row.id, status: failedFinal ? "failed" : "queued", error: message });
+    }
+  }
+
+  return results;
 }
 
 async function sendWahaText(sessionName: string, chatId: string, text: string, id: string) {
@@ -545,13 +800,15 @@ async function runOutboxWorker(req: Request) {
   );
 
   const whatsappResults = await processWhatsappNotifications(admin);
+  const communicationWhatsappResults = await processCommunicationOutbox(admin);
 
   const results = [...authResults, ...reciboResults];
   return NextResponse.json({
     ok: true,
-    processed: results.length + whatsappResults.length,
+    processed: results.length + whatsappResults.length + communicationWhatsappResults.length,
     results,
     whatsapp: whatsappResults,
+    communicationWhatsapp: communicationWhatsappResults,
   });
 }
 

@@ -37,6 +37,7 @@ import {
   ShieldCheck,
   Landmark,
   ClipboardList,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import type { NavItem } from "@/lib/sidebarNav";
@@ -70,6 +71,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   ShieldCheck,
   Landmark,
   ClipboardList,
+  MessageSquare,
 };
 
 function cn(...c: Array<string | false | null | undefined>) {

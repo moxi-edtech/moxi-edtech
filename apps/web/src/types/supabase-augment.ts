@@ -156,6 +156,288 @@ export type DBWithRPC = Omit<Database, "public"> & {
           },
         ];
       };
+      communication_templates: {
+        Row: {
+          id: string;
+          key: string;
+          title: string;
+          category: string;
+          body: string;
+          required_variables: string[];
+          risk_level: "low" | "medium" | "high";
+          requires_approval: boolean;
+          allowed_roles: string[];
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          title: string;
+          category: string;
+          body: string;
+          required_variables?: string[];
+          risk_level?: "low" | "medium" | "high";
+          requires_approval?: boolean;
+          allowed_roles?: string[];
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          key?: string;
+          title?: string;
+          category?: string;
+          body?: string;
+          required_variables?: string[];
+          risk_level?: "low" | "medium" | "high";
+          requires_approval?: boolean;
+          allowed_roles?: string[];
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_outbox: {
+        Row: {
+          id: string;
+          school_id: string;
+          created_by: string | null;
+          approved_by: string | null;
+          provider: "waha";
+          channel: "whatsapp";
+          message_type:
+            | "auth_provision_student"
+            | "school_notice"
+            | "finance_charge"
+            | "document_ready"
+            | "manual_message"
+            | "ai_generated_draft";
+          source_module: string | null;
+          source_entity_type: string | null;
+          source_entity_id: string | null;
+          recipient_type: string;
+          recipient_ref_id: string | null;
+          recipient_name: string | null;
+          recipient_phone_masked: string | null;
+          recipient_phone_hash: string | null;
+          title: string | null;
+          body: string;
+          template_key: string | null;
+          metadata: Json;
+          status:
+            | "draft"
+            | "review_required"
+            | "approved"
+            | "queued"
+            | "sending"
+            | "sent"
+            | "delivered"
+            | "read"
+            | "failed"
+            | "cancelled"
+            | "rejected";
+          risk_level: "low" | "medium" | "high";
+          requires_approval: boolean;
+          idempotency_key: string;
+          provider_message_id: string | null;
+          retry_count: number;
+          next_retry_at: string | null;
+          last_error: string | null;
+          approved_at: string | null;
+          queued_at: string | null;
+          sending_at: string | null;
+          sent_at: string | null;
+          delivered_at: string | null;
+          read_at: string | null;
+          failed_at: string | null;
+          cancelled_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          created_by?: string | null;
+          approved_by?: string | null;
+          provider?: "waha";
+          channel?: "whatsapp";
+          message_type:
+            | "auth_provision_student"
+            | "school_notice"
+            | "finance_charge"
+            | "document_ready"
+            | "manual_message"
+            | "ai_generated_draft";
+          source_module?: string | null;
+          source_entity_type?: string | null;
+          source_entity_id?: string | null;
+          recipient_type: string;
+          recipient_ref_id?: string | null;
+          recipient_name?: string | null;
+          recipient_phone_masked?: string | null;
+          recipient_phone_hash?: string | null;
+          title?: string | null;
+          body: string;
+          template_key?: string | null;
+          metadata?: Json;
+          status?:
+            | "draft"
+            | "review_required"
+            | "approved"
+            | "queued"
+            | "sending"
+            | "sent"
+            | "delivered"
+            | "read"
+            | "failed"
+            | "cancelled"
+            | "rejected";
+          risk_level?: "low" | "medium" | "high";
+          requires_approval?: boolean;
+          idempotency_key: string;
+          provider_message_id?: string | null;
+          retry_count?: number;
+          next_retry_at?: string | null;
+          last_error?: string | null;
+          approved_at?: string | null;
+          queued_at?: string | null;
+          sending_at?: string | null;
+          sent_at?: string | null;
+          delivered_at?: string | null;
+          read_at?: string | null;
+          failed_at?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          created_by?: string | null;
+          approved_by?: string | null;
+          provider?: "waha";
+          channel?: "whatsapp";
+          message_type?:
+            | "auth_provision_student"
+            | "school_notice"
+            | "finance_charge"
+            | "document_ready"
+            | "manual_message"
+            | "ai_generated_draft";
+          source_module?: string | null;
+          source_entity_type?: string | null;
+          source_entity_id?: string | null;
+          recipient_type?: string;
+          recipient_ref_id?: string | null;
+          recipient_name?: string | null;
+          recipient_phone_masked?: string | null;
+          recipient_phone_hash?: string | null;
+          title?: string | null;
+          body?: string;
+          template_key?: string | null;
+          metadata?: Json;
+          status?:
+            | "draft"
+            | "review_required"
+            | "approved"
+            | "queued"
+            | "sending"
+            | "sent"
+            | "delivered"
+            | "read"
+            | "failed"
+            | "cancelled"
+            | "rejected";
+          risk_level?: "low" | "medium" | "high";
+          requires_approval?: boolean;
+          idempotency_key?: string;
+          provider_message_id?: string | null;
+          retry_count?: number;
+          next_retry_at?: string | null;
+          last_error?: string | null;
+          approved_at?: string | null;
+          queued_at?: string | null;
+          sending_at?: string | null;
+          sent_at?: string | null;
+          delivered_at?: string | null;
+          read_at?: string | null;
+          failed_at?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_logs: {
+        Row: {
+          id: string;
+          outbox_id: string | null;
+          school_id: string;
+          event_type: string;
+          provider: "waha";
+          provider_event_id: string | null;
+          payload_sanitized: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          outbox_id?: string | null;
+          school_id: string;
+          event_type: string;
+          provider?: "waha";
+          provider_event_id?: string | null;
+          payload_sanitized?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          outbox_id?: string | null;
+          school_id?: string;
+          event_type?: string;
+          provider?: "waha";
+          provider_event_id?: string | null;
+          payload_sanitized?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_rate_limits: {
+        Row: {
+          school_id: string;
+          max_messages_per_minute: number;
+          max_messages_per_hour: number;
+          max_messages_per_day: number;
+          quiet_hours_start: string;
+          quiet_hours_end: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          school_id: string;
+          max_messages_per_minute?: number;
+          max_messages_per_hour?: number;
+          max_messages_per_day?: number;
+          quiet_hours_start?: string;
+          quiet_hours_end?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          school_id?: string;
+          max_messages_per_minute?: number;
+          max_messages_per_hour?: number;
+          max_messages_per_day?: number;
+          quiet_hours_start?: string;
+          quiet_hours_end?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       ai_school_settings: {
         Row: {
           id: string;

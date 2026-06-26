@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       .maybeSingle(),
     supabase
       .from("ai_school_settings")
-      .select("enabled")
+      .select("enabled,allowed_features")
       .eq("school_id", escolaId)
       .maybeSingle(),
     supabase.rpc("user_has_role_in_school", {
@@ -83,6 +83,7 @@ export async function GET(request: Request) {
       data: {
         allowed,
         enabled,
+        allowedFeatures: Array.isArray(settingsRes.data?.allowed_features) ? settingsRes.data?.allowed_features : [],
         role: role || (allowed ? "admin" : ""),
         schoolId: escolaId,
         userId: user.id,

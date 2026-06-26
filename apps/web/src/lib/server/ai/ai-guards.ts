@@ -101,7 +101,10 @@ export async function validateAiAccess(
     return { ok: false, error: "A IA está desabilitada nas configurações desta escola." };
   }
 
-
+  const allowedFeatures = Array.isArray(settings.allowed_features) ? (settings.allowed_features as string[]) : [];
+  if (allowedFeatures.length === 0 || !allowedFeatures.includes(feature)) {
+    return { ok: false, error: "Esta funcionalidade de IA não está liberada para esta escola." };
+  }
 
   // 5. Call claim_ai_usage_slot to atomically reserve a slot and check limits
   const { data: logId, error: rpcError } = await adminClient.rpc("claim_ai_usage_slot", {
@@ -128,7 +131,7 @@ export async function validateAiAccess(
       enabled: settings.enabled,
       daily_limit: dailyLimit,
       monthly_limit: monthlyLimit,
-      allowed_features: Array.isArray(settings.allowed_features) ? (settings.allowed_features as string[]) : [],
+      allowed_features: allowedFeatures,
     },
   };
 }
