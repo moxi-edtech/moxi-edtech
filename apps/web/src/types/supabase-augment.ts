@@ -2,7 +2,59 @@
 import type { Database, Json } from "~types/supabase"
 
 export type DBWithRPC = Omit<Database, "public"> & {
-  public: Omit<Database["public"], "Functions"> & {
+  public: Omit<Database["public"], "Functions" | "Tables"> & {
+    Tables: Database["public"]["Tables"] & {
+      school_notification_providers: {
+        Row: {
+          id: string;
+          school_id: string;
+          provider_type: "whatsapp_manual" | "whatsapp_waha";
+          display_name: string;
+          status: "disabled" | "pending_qr" | "connected" | "disconnected" | "error";
+          daily_limit: number;
+          monthly_limit: number;
+          session_name: string | null;
+          config: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          provider_type: "whatsapp_manual" | "whatsapp_waha";
+          display_name: string;
+          status?: "disabled" | "pending_qr" | "connected" | "disconnected" | "error";
+          daily_limit?: number;
+          monthly_limit?: number;
+          session_name?: string | null;
+          config?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          provider_type?: "whatsapp_manual" | "whatsapp_waha";
+          display_name?: string;
+          status?: "disabled" | "pending_qr" | "connected" | "disconnected" | "error";
+          daily_limit?: number;
+          monthly_limit?: number;
+          session_name?: string | null;
+          config?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "school_notification_providers_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "escolas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+    };
     Functions: Database["public"]["Functions"] & {
       aluno_atualizar_contatos_proprios: {
         Args: {
@@ -108,4 +160,3 @@ export type DBWithRPC = Omit<Database, "public"> & {
     }
   }
 }
-

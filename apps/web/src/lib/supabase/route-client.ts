@@ -1,4 +1,4 @@
-import type { Database } from "~types/supabase";
+import type { DBWithRPC } from "@/types/supabase-augment";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 
-export const createRouteClient = () => supabaseRouteClient<Database>();
+export const createRouteClient = () => supabaseRouteClient<DBWithRPC>();

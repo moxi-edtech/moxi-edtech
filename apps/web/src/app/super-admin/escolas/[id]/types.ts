@@ -1,4 +1,5 @@
 // apps/web/src/app/super-admin/escolas/[id]/types.ts
+import type { Json } from "~types/supabase";
 
 export interface EscolaDetalhes {
   id: string;
@@ -67,7 +68,7 @@ export interface AtividadeRecente {
   descricao: string;
   usuario: string;
   timestamp: string;
-  detalhes?: any;
+  detalhes?: Json;
 }
 
 export interface AlertaEscola {
@@ -77,4 +78,21 @@ export interface AlertaEscola {
   descricao: string;
   criado_em: string;
   resolvido: boolean;
+}
+
+export interface SchoolNotificationProvider {
+  id: string;
+  school_id: string;
+  provider_type: 'whatsapp_manual' | 'whatsapp_waha';
+  display_name: string;
+  status: 'disabled' | 'pending_qr' | 'connected' | 'disconnected' | 'error';
+  daily_limit: number;
+  monthly_limit: number;
+  session_name: string | null;
+  config: {
+    fallback_phone?: string | null;
+    [key: string]: unknown;
+  } | null;
+  created_at?: string;
+  updated_at?: string;
 }

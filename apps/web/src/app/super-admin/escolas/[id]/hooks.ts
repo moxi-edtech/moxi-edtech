@@ -9,8 +9,12 @@ import {
   PerformanceMetrics, 
   AtividadeRecente, 
   AlertaEscola,
-  PlanLimits
+  PlanLimits,
+  SchoolNotificationProvider
 } from './types';
+
+type EscolaMonitorSupabase = ReturnType<typeof createClient>;
+type SyncStatus = PerformanceMetrics['sync_status'];
 
 // Helper function moved outside the hook
 const mapAuditActionToType = (acao: string): AtividadeRecente['tipo'] => {
@@ -20,6 +24,12 @@ const mapAuditActionToType = (acao: string): AtividadeRecente['tipo'] => {
   if (acao.includes('presenca')) return 'presenca';
   if (acao.includes('config')) return 'config';
   return 'outro';
+};
+
+const normalizeSyncStatus = (status: string | null | undefined): SyncStatus => {
+  if (status === 'error') return 'error';
+  if (status === 'pending' || status === 'retry') return 'pending';
+  return 'synced';
 };
 
 export function useEscolaMonitorData(escolaId: string) {
@@ -33,6 +43,7 @@ export function useEscolaMonitorData(escolaId: string) {
   const [atividades, setAtividades] = useState<AtividadeRecente[]>([]);
   const [alertas, setAlertas] = useState<AlertaEscola[]>([]);
   const [planLimits, setPlanLimits] = useState<PlanLimits[]>([]);
+  const [providers, setProviders] = useState<SchoolNotificationProvider[]>([]);
 
   const loadEscolaData = useCallback(async () => {
     if (!escolaId) return;
@@ -49,12 +60,13 @@ export function useEscolaMonitorData(escolaId: string) {
       if (escolaError) throw escolaError;
       setEscola(escolaData as EscolaDetalhes);
       
-      const [metricasData, performanceData, atividadesData, alertasData, planLimitsData] = await Promise.all([
+      const [metricasData, performanceData, atividadesData, alertasData, planLimitsData, providersData] = await Promise.all([
         loadMetricas(supabase, escolaId),
         loadPerformance(supabase, escolaId),
         loadAtividades(supabase, escolaId),
         loadAlertas(supabase, escolaId),
-        loadPlanLimits(supabase)
+        loadPlanLimits(supabase),
+        loadProviders(supabase, escolaId)
       ]);
       
       setMetricas(metricasData);
@@ -62,6 +74,7 @@ export function useEscolaMonitorData(escolaId: string) {
       setAtividades(atividadesData);
       setAlertas(alertasData);
       setPlanLimits(planLimitsData);
+      setProviders(providersData);
       
     } catch (error) {
       console.error('Erro ao carregar dados da escola:', error);
@@ -85,11 +98,11 @@ export function useEscolaMonitorData(escolaId: string) {
     return Math.max(0, s);
   })();
 
-  return { loading, refreshing, escola, metricas, performance, atividades, alertas, planLimits, loadEscolaData, saude };
+  return { loading, refreshing, escola, metricas, performance, atividades, alertas, planLimits, providers, loadEscolaData, saude };
 }
 
 // Sub-fetching functions
-async function loadMetricas(supabase: any, id: string): Promise<EscolaMetricas> {
+async function loadMetricas(supabase: EscolaMonitorSupabase, id: string): Promise<EscolaMetricas> {
   const { data: metrics } = await supabase
     .from('vw_super_admin_escola_metrics')
     .select('alunos_ativos, alunos_inativos, professores, turmas_ativas, turmas_total, matriculas_ativas')
@@ -118,7 +131,7 @@ async function loadMetricas(supabase: any, id: string): Promise<EscolaMetricas> 
   };
 }
 
-async function loadPerformance(supabase: any, id: string): Promise<PerformanceMetrics> {
+async function loadPerformance(supabase: EscolaMonitorSupabase, id: string): Promise<PerformanceMetrics> {
   const { data: auditMetrics } = await supabase
     .from('vw_super_admin_audit_metrics')
     .select('ultimo_acesso, accessos_24h, error_count_24h, last_error')
@@ -130,7 +143,7 @@ async function loadPerformance(supabase: any, id: string): Promise<PerformanceMe
     latencia_media: null,
     ultimo_acesso: auditMetrics?.ultimo_acesso || new Date().toISOString(),
     accessos_24h: auditMetrics?.accessos_24h || 0,
-    sync_status: syncStatus?.sync_status || 'synced',
+    sync_status: normalizeSyncStatus(syncStatus?.sync_status),
     sync_updated_at: syncStatus?.sync_updated_at || new Date().toISOString(),
     api_calls_24h: null,
     storage_usage_mb: null,
@@ -139,20 +152,24 @@ async function loadPerformance(supabase: any, id: string): Promise<PerformanceMe
   };
 }
 
-async function loadAtividades(supabase: any, id: string): Promise<AtividadeRecente[]> {
+async function loadAtividades(supabase: EscolaMonitorSupabase, id: string): Promise<AtividadeRecente[]> {
   const { data: auditLogs } = await supabase.from('audit_logs').select('*').eq('escola_id', id).order('created_at', { ascending: false }).limit(10);
   
-  return (auditLogs || []).map((log: any) => ({
-    id: log.id,
-    tipo: mapAuditActionToType(log.acao),
-    descricao: log.mensagem || log.acao,
-    usuario: log.user_id?.slice(0, 8) || 'sistema',
-    timestamp: log.created_at,
-    detalhes: log.detalhes
-  }));
+  return (auditLogs || []).map((log) => {
+    const action = log.acao ?? log.action ?? '';
+
+    return {
+      id: String(log.id),
+      tipo: mapAuditActionToType(action),
+      descricao: action || log.entity || 'atividade',
+      usuario: log.user_id?.slice(0, 8) || log.actor_id?.slice(0, 8) || 'sistema',
+      timestamp: log.created_at ?? new Date().toISOString(),
+      detalhes: log.details ?? log.meta ?? undefined
+    };
+  });
 }
 
-async function loadAlertas(supabase: any, id: string): Promise<AlertaEscola[]> {
+async function loadAlertas(supabase: EscolaMonitorSupabase, id: string): Promise<AlertaEscola[]> {
   const alertas: AlertaEscola[] = [];
   const metricas = await loadMetricas(supabase, id);
   const performance = await loadPerformance(supabase, id);
@@ -175,9 +192,24 @@ async function loadAlertas(supabase: any, id: string): Promise<AlertaEscola[]> {
   return alertas;
 }
 
-async function loadPlanLimits(supabase: any): Promise<PlanLimits[]> {
+async function loadPlanLimits(supabase: EscolaMonitorSupabase): Promise<PlanLimits[]> {
   const { data } = await supabase
     .from('app_plan_limits')
     .select('plan, price_mensal_kz, max_alunos, max_admin_users, max_storage_gb, professores_ilimitados, api_enabled, multi_campus');
   return (data || []) as PlanLimits[];
+}
+
+async function loadProviders(supabase: EscolaMonitorSupabase, id: string): Promise<SchoolNotificationProvider[]> {
+  const { data, error } = await supabase
+    .from('school_notification_providers')
+    .select('*')
+    .eq('school_id', id)
+    .order('provider_type', { ascending: true });
+
+  if (error) {
+    console.warn('[super-admin/escola-monitor] Providers indisponiveis:', error.message);
+    return [];
+  }
+
+  return (data || []) as SchoolNotificationProvider[];
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import type { Database } from "~types/supabase";
+import type { DBWithRPC } from "@/types/supabase-augment";
 import { resolveSharedCookieOptions } from "@moxi/auth-middleware";
 
 const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -34,7 +34,7 @@ export const createClient = () => {
     );
   }
 
-  return createBrowserClient<Database>(url, anonKey, {
+  return createBrowserClient<DBWithRPC>(url, anonKey, {
     cookieOptions: resolveCookieOptions(),
     auth: {
       persistSession: true,
