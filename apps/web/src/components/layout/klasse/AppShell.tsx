@@ -316,6 +316,7 @@ export default function AppShell({
       {navEscolaId && navRole && AI_WIDGET_ROLES.includes(navRole) && (
         <AiChatWidget
           schoolId={escolaIdFromSession || navEscolaId}
+          schoolParam={navEscolaId}
           hasMobileNav={!!mobileNav}
           context={aiWidgetContext}
         />

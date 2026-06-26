@@ -40,6 +40,13 @@ export default async function SecretariaLandingPage({
   const papel = (vinculo?.papel ?? null) as string | null;
 
   const normalizedPapel = String(papel ?? "").trim().toLowerCase();
+  if (normalizedPapel === "admin_financeiro") {
+    const qp = new URLSearchParams(sp as Record<string, string> | undefined);
+    const query = qp.toString();
+    const dest = `/escola/${escolaParam}/operacoes/dashboard`;
+    redirect(`${dest}${query ? `?${query}` : ""}`);
+  }
+
   if (normalizedPapel && normalizedPapel !== "secretaria" && normalizedPapel !== "secretaria_financeiro") {
     const qp = new URLSearchParams(sp as Record<string, string> | undefined);
     const query = qp.toString();

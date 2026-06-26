@@ -50,10 +50,14 @@ export function ModuleSwitcherInner({
   const escolaParam = explicitEscolaParam || escolaSlug || escolaIdFromPath || resolvedEscolaId;
 
   const modules = useMemo<ModuleKey[]>(() => {
-    if (papel === "admin_financeiro") return ["operacoes", "financeiro"];
+    if (papel === "admin_financeiro") {
+      return currentModule === "secretaria"
+        ? ["secretaria", "operacoes", "financeiro"]
+        : ["operacoes", "financeiro"];
+    }
     if (papel === "secretaria_financeiro") return ["secretaria", "financeiro"];
     return [];
-  }, [papel]);
+  }, [currentModule, papel]);
 
   if (
     loading ||

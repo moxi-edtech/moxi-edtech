@@ -57,22 +57,37 @@ async function fetchWahaQr(sessionName: string) {
   }
 
   const headers: Record<string, string> = {
-    Accept: "application/json",
+    Accept: "application/json,image/png",
     "X-Api-Key": apiKey,
     Authorization: `Bearer ${apiKey}`,
   };
 
   const candidates = [
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}`,
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/me`,
+    `${baseUrl}/api/${encodeURIComponent(sessionName)}/auth/qr?format=image`,
     `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/qr`,
     `${baseUrl}/api/${encodeURIComponent(sessionName)}/qr`,
+    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}`,
+    `${baseUrl}/api/sessions/${encodeURIComponent(sessionName)}/me`,
   ];
 
   for (const url of candidates) {
     try {
       const response = await fetch(url, { headers, cache: "no-store" });
       if (!response.ok) continue;
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("image/")) {
+        const imageBuffer = Buffer.from(await response.arrayBuffer());
+        if (imageBuffer.length > 0) {
+          const mimeType = contentType.split(";")[0] || "image/png";
+          return {
+            ok: true as const,
+            qrDataUrl: `data:${mimeType};base64,${imageBuffer.toString("base64")}`,
+            status: null,
+          };
+        }
+      }
+
       const json = await response.json().catch(() => null);
       const qr =
         json?.qr ||

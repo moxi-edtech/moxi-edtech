@@ -39,6 +39,7 @@ interface Message {
 
 interface AiChatWidgetProps {
   schoolId: string;
+  schoolParam?: string;
   hasMobileNav?: boolean;
   context?: AiWidgetContext;
 }
@@ -50,8 +51,14 @@ export type AiWidgetContext = {
   entityId?: string;
 };
 
-export default function AiChatWidget({ schoolId, hasMobileNav = false, context }: AiChatWidgetProps) {
+export default function AiChatWidget({
+  schoolId,
+  schoolParam,
+  hasMobileNav = false,
+  context,
+}: AiChatWidgetProps) {
   const router = useRouter();
+  const routeSchoolParam = schoolParam || schoolId;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -455,7 +462,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false, context }
         setMessages((prev) => [...prev, { sender: "ai", text: "", isActions: true }]);
       }
     } else if (action === "open_actions") {
-      router.push(`/escola/${schoolId}/admin/ai/actions`);
+      router.push(`/escola/${routeSchoolParam}/admin/ai/actions`);
       setIsOpen(false);
     } else if (action === "billing_redirect") {
       setMessages((prev) => [
@@ -492,7 +499,7 @@ export default function AiChatWidget({ schoolId, hasMobileNav = false, context }
 
   const handleNavigateToTopic = (topic: HelpTopic) => {
     if (topic.href) {
-      router.push(topic.href(schoolId));
+      router.push(topic.href(routeSchoolParam));
       setIsOpen(false);
     }
   };

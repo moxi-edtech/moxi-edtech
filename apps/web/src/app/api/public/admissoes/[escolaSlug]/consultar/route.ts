@@ -4,7 +4,9 @@ import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
+import type { DBWithRPC } from "@/types/supabase-augment";
 import type { Json } from "~types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type CandidaturaStatusLogRow = {
   id: string;
@@ -69,7 +71,7 @@ const statusChallengeSchema = z
   })
   .strict();
 
-type PublicLookupClient = ReturnType<typeof supabaseServerRole>;
+type PublicLookupClient = SupabaseClient<DBWithRPC>;
 
 function resolveLoginUrl(returnTo?: string | null) {
   const base = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/login` : "/login";
@@ -288,7 +290,7 @@ export async function GET(
     const protocolo = parsedProtocolo.data;
 
     // 1. Resolve School
-    const supabase = supabaseServerRole();
+    const supabase = supabaseServerRole<DBWithRPC>();
     const { escolaId } = await resolveEscolaParam(supabase, escolaSlug);
 
     if (!escolaId) {
@@ -372,7 +374,7 @@ export async function POST(
     }
     const { protocolo, contato, action, password, comprovativo_path, document_id, document_path } = parsedBody.data;
 
-    const supabase = supabaseServerRole();
+    const supabase = supabaseServerRole<DBWithRPC>();
     const { escolaId } = await resolveEscolaParam(supabase, escolaSlug);
 
     if (!escolaId) {
