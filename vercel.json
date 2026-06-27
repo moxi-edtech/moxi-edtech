@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/jobs/outbox",
-      "schedule": "* * * * *"
+      "schedule": "5 6 * * *"
     },
     {
       "path": "/api/jobs/subscriptions/reminders",
