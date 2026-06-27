@@ -70,7 +70,21 @@ type CommunicationRateLimit = {
 };
 
 function resolveJobToken(req: Request) {
-  return req.headers.get("x-job-token") || req.headers.get("authorization")?.replace("Bearer ", "");
+  return (
+    req.headers.get("x-job-token") ||
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+    new URL(req.url).searchParams.get("token")
+  );
+}
+
+function isAuthorizedJobRequest(req: Request) {
+  const token = resolveJobToken(req);
+  const expectedTokens = [process.env.OUTBOX_JOB_TOKEN, process.env.CRON_SECRET]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  if (token && expectedTokens.includes(token.trim())) return true;
+  return process.env.VERCEL === "1" && req.headers.get("x-vercel-cron") === "1";
 }
 
 function getAdminClient() {
@@ -749,9 +763,7 @@ async function emitirReciboPagamento(
 }
 
 async function runOutboxWorker(req: Request) {
-  const token = resolveJobToken(req);
-  const expected = process.env.OUTBOX_JOB_TOKEN || process.env.CRON_SECRET;
-  if (!expected || token !== expected) {
+  if (!isAuthorizedJobRequest(req)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
