@@ -1,6 +1,12 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  normalizeWhatsappPhone,
+  hashPhone,
+  maskPhone,
+  resolveCommunicationContactByPhone
+} from "@/lib/server/whatsappUtility";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -163,6 +169,203 @@ export async function POST(request: Request) {
       .update({ status: "failed", updated_at: new Date().toISOString() })
       .eq("provider_type", "whatsapp_waha")
       .eq("session_name", sessionName);
+  }
+
+  // Handle message received (inbound)
+  if (eventType === "message.received") {
+    const messagePayload = payload?.payload;
+    const fromMe = Boolean(messagePayload?.fromMe);
+
+    if (!fromMe) {
+      const from = String(messagePayload?.from || "").trim();
+      const to = String(messagePayload?.to || "").trim();
+
+      const senderPhone = from.split("@")[0].replace(/\D/g, "");
+      const recipientPhone = to.split("@")[0].replace(/\D/g, "");
+
+      if (senderPhone) {
+        const normalizedSender = normalizeWhatsappPhone(senderPhone);
+        if (normalizedSender) {
+          const senderPhoneHash = hashPhone(normalizedSender) || "";
+          const senderPhoneMasked = maskPhone(normalizedSender) || "";
+
+          const normalizedRecipient = normalizeWhatsappPhone(recipientPhone) || "";
+          const recipientPhoneHash = hashPhone(normalizedRecipient) || "";
+          const recipientPhoneMasked = maskPhone(normalizedRecipient) || "";
+
+          // Resolve contact in school
+          const contactInfo = await resolveCommunicationContactByPhone(
+            admin,
+            provider.school_id,
+            normalizedSender
+          );
+
+          // Find or create thread
+          const bodyText = String(messagePayload?.body || "").trim();
+          const isMedia = messagePayload?.hasMedia || ["image", "video", "document", "audio", "voice", "sticker"].includes(messagePayload?.type);
+          const finalBody = isMedia ? (bodyText || "📎 Mensagem com anexo recebida (visualização não disponível)") : bodyText;
+          const bodyPreview = finalBody.slice(0, 100);
+
+          const { data: existingThread } = await admin
+            .from("communication_threads")
+            .select("id, unread_count, status, linked_entity_type, linked_entity_id, contact_name, contact_role")
+            .eq("school_id", provider.school_id)
+            .eq("contact_phone_hash", senderPhoneHash)
+            .maybeSingle();
+
+          let threadId: string;
+          let currentRole = contactInfo.contactRole;
+          let currentEntityType = contactInfo.linkedEntityType;
+          let currentEntityId = contactInfo.linkedEntityId;
+          let currentName = contactInfo.contactName;
+
+          if (existingThread) {
+            threadId = existingThread.id;
+            if (existingThread.linked_entity_type !== "unknown") {
+              currentEntityType = existingThread.linked_entity_type;
+              currentEntityId = existingThread.linked_entity_id;
+              currentRole = existingThread.contact_role;
+              currentName = existingThread.contact_name;
+            }
+
+            await admin
+              .from("communication_threads")
+              .update({
+                last_message_preview: bodyPreview,
+                last_message_at: new Date().toISOString(),
+                unread_count: existingThread.unread_count + 1,
+                status: existingThread.status === "archived" || existingThread.status === "resolved" ? "open" : existingThread.status,
+                linked_entity_type: currentEntityType,
+                linked_entity_id: currentEntityId,
+                contact_role: currentRole,
+                contact_name: currentName || senderPhoneMasked,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", threadId);
+          } else {
+            const { data: newThread, error: createErr } = await admin
+              .from("communication_threads")
+              .insert({
+                school_id: provider.school_id,
+                channel: "whatsapp",
+                provider: "waha",
+                contact_phone_hash: senderPhoneHash,
+                contact_phone_masked: senderPhoneMasked,
+                contact_name: currentName || senderPhoneMasked,
+                contact_role: currentRole,
+                linked_entity_type: currentEntityType,
+                linked_entity_id: currentEntityId,
+                status: "open",
+                last_message_preview: bodyPreview,
+                last_message_at: new Date().toISOString(),
+                unread_count: 1
+              })
+              .select("id")
+              .single();
+
+            if (createErr) throw createErr;
+            threadId = newThread.id;
+          }
+
+          // Create message
+          await admin
+            .from("communication_messages")
+            .insert({
+              thread_id: threadId,
+              school_id: provider.school_id,
+              direction: "inbound",
+              channel: "whatsapp",
+              provider: "waha",
+              provider_message_id: providerMessageId,
+              provider_event_id: payload?.id || providerMessageId,
+              sender_phone_hash: senderPhoneHash,
+              sender_phone_masked: senderPhoneMasked,
+              recipient_phone_hash: recipientPhoneHash,
+              recipient_phone_masked: recipientPhoneMasked,
+              body: finalBody,
+              body_preview: bodyPreview,
+              body_sanitized: finalBody,
+              message_type: messagePayload?.type || "text",
+              status: "received",
+              metadata: { raw_phone: normalizedSender },
+              received_at: new Date().toISOString()
+            });
+        }
+      }
+    }
+  }
+
+  // Handle message sent (outbound)
+  if (eventType === "message.sent" || (eventType === "message.received" && payload?.payload?.fromMe)) {
+    const messagePayload = payload?.payload;
+    const to = String(messagePayload?.to || "").trim();
+    const from = String(messagePayload?.from || "").trim();
+
+    const recipientPhone = to.split("@")[0].replace(/\D/g, "");
+    const senderPhone = from.split("@")[0].replace(/\D/g, "");
+
+    if (recipientPhone) {
+      const normalizedRecipient = normalizeWhatsappPhone(recipientPhone);
+      if (normalizedRecipient) {
+        const recipientPhoneHash = hashPhone(normalizedRecipient) || "";
+        const recipientPhoneMasked = maskPhone(normalizedRecipient) || "";
+
+        const normalizedSender = normalizeWhatsappPhone(senderPhone) || "";
+        const senderPhoneHash = hashPhone(normalizedSender) || "";
+        const senderPhoneMasked = maskPhone(normalizedSender) || "";
+
+        const { data: thread } = await admin
+          .from("communication_threads")
+          .select("id")
+          .eq("school_id", provider.school_id)
+          .eq("contact_phone_hash", recipientPhoneHash)
+          .maybeSingle();
+
+        if (thread) {
+          const bodyText = String(messagePayload?.body || "").trim();
+          const bodyPreview = bodyText.slice(0, 100);
+
+          await admin
+            .from("communication_threads")
+            .update({
+              last_message_preview: bodyPreview,
+              last_message_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", thread.id);
+
+          const { data: existingMsg } = await admin
+            .from("communication_messages")
+            .select("id")
+            .eq("provider_message_id", providerMessageId)
+            .maybeSingle();
+
+          if (!existingMsg) {
+            await admin
+              .from("communication_messages")
+              .insert({
+                thread_id: thread.id,
+                school_id: provider.school_id,
+                direction: "outbound",
+                channel: "whatsapp",
+                provider: "waha",
+                provider_message_id: providerMessageId,
+                provider_event_id: payload?.id || providerMessageId,
+                sender_phone_hash: senderPhoneHash,
+                sender_phone_masked: senderPhoneMasked,
+                recipient_phone_hash: recipientPhoneHash,
+                recipient_phone_masked: recipientPhoneMasked,
+                body: bodyText,
+                body_preview: bodyPreview,
+                body_sanitized: bodyText,
+                message_type: messagePayload?.type || "text",
+                status: "sent",
+                received_at: new Date().toISOString()
+              });
+          }
+        }
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });

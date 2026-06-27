@@ -6,6 +6,9 @@ import {
   nextRetryAt,
   normalizeWhatsappPhone,
   sendWahaTextMessage,
+  hashPhone,
+  maskPhone,
+  resolveCommunicationContactByPhone,
 } from "@/lib/server/whatsappUtility";
 
 export const dynamic = "force-dynamic";
@@ -57,8 +60,13 @@ type CommunicationOutboxRow = {
   metadata: Record<string, any> | null;
   requires_approval: boolean | null;
   approved_by: string | null;
+  created_by: string | null;
   retry_count: number | null;
   idempotency_key: string;
+  recipient_phone_hash: string | null;
+  recipient_phone_masked: string | null;
+  recipient_name: string | null;
+  provider_message_id: string | null;
 };
 
 type CommunicationRateLimit = {
@@ -371,6 +379,92 @@ async function processCommunicationOutbox(admin: NonNullable<ReturnType<typeof g
         "provider.sent",
         { provider_message_id: sendResult.providerMessageId }
       );
+
+      if (schoolId) {
+        const recipientPhoneHash = row.recipient_phone_hash || hashPhone(phone) || "";
+        const recipientPhoneMasked = row.recipient_phone_masked || maskPhone(phone) || "";
+
+        const { data: thread } = await admin
+          .from("communication_threads")
+          .select("id")
+          .eq("school_id", schoolId)
+          .eq("contact_phone_hash", recipientPhoneHash)
+          .maybeSingle();
+
+        let threadId = thread?.id || null;
+
+        if (!threadId) {
+          const contactInfo = await resolveCommunicationContactByPhone(admin, schoolId, phone);
+
+          const { data: newThread, error: createErr } = await admin
+            .from("communication_threads")
+            .insert({
+              school_id: schoolId,
+              channel: "whatsapp",
+              provider: "waha",
+              contact_phone_hash: recipientPhoneHash,
+              contact_phone_masked: recipientPhoneMasked,
+              contact_name: contactInfo.contactName || row.recipient_name || recipientPhoneMasked,
+              contact_role: contactInfo.contactRole,
+              linked_entity_type: contactInfo.linkedEntityType,
+              linked_entity_id: contactInfo.linkedEntityId,
+              status: "open",
+              last_message_preview: body.slice(0, 100),
+              last_message_at: new Date().toISOString(),
+              unread_count: 0
+            })
+            .select("id")
+            .single();
+
+          if (!createErr && newThread) {
+            threadId = newThread.id;
+          }
+        } else {
+          await admin
+            .from("communication_threads")
+            .update({
+              last_message_preview: body.slice(0, 100),
+              last_message_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", threadId);
+        }
+
+        if (threadId) {
+          const { data: existingMsg } = await admin
+            .from("communication_messages")
+            .select("id")
+            .eq("provider_message_id", sendResult.providerMessageId)
+            .maybeSingle();
+
+          if (!existingMsg) {
+            const senderPhoneHash = hashPhone(provider.session_name) || "";
+            await admin
+              .from("communication_messages")
+              .insert({
+                thread_id: threadId,
+                school_id: schoolId,
+                direction: "outbound",
+                channel: "whatsapp",
+                provider: "waha",
+                provider_message_id: sendResult.providerMessageId,
+                provider_event_id: sendResult.providerMessageId,
+                sender_phone_hash: senderPhoneHash,
+                sender_phone_masked: provider.session_name,
+                recipient_phone_hash: recipientPhoneHash,
+                recipient_phone_masked: recipientPhoneMasked,
+                body: body,
+                body_preview: body.slice(0, 100),
+                body_sanitized: body,
+                message_type: "manual_message",
+                status: "sent",
+                received_at: new Date().toISOString(),
+                sent_by: (row as any).created_by || null
+              });
+          }
+        }
+      }
+
       results.push({ id: row.id, status: "sent" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
