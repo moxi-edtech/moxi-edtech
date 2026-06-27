@@ -9,6 +9,7 @@ import {
   hashPhone,
   maskPhone,
   resolveCommunicationContactByPhone,
+  toWahaMessageId,
 } from "@/lib/server/whatsappUtility";
 
 export const dynamic = "force-dynamic";
@@ -495,6 +496,7 @@ async function sendWahaText(sessionName: string, chatId: string, text: string, i
   const baseUrl = (process.env.WAHA_BASE_URL ?? "").trim().replace(/\/$/, "");
   const apiKey = (process.env.WAHA_API_KEY ?? "").trim();
   if (!baseUrl || !apiKey) throw new Error("WAHA não configurado no servidor");
+  const wahaMessageId = toWahaMessageId(id);
 
   const res = await fetch(`${baseUrl}/api/sendText`, {
     method: "POST",
@@ -506,7 +508,7 @@ async function sendWahaText(sessionName: string, chatId: string, text: string, i
       session: sessionName,
       chatId,
       text,
-      id,
+      id: wahaMessageId,
       linkPreview: false,
     }),
     cache: "no-store",
@@ -521,7 +523,7 @@ async function sendWahaText(sessionName: string, chatId: string, text: string, i
     throw new Error(message);
   }
 
-  return extractWahaMessageId(body) ?? id;
+  return extractWahaMessageId(body) ?? wahaMessageId;
 }
 
 async function processWhatsappNotifications(admin: NonNullable<ReturnType<typeof getAdminClient>>) {

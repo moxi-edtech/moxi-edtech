@@ -137,6 +137,10 @@ export function nextRetryAt(retryCount: number) {
   return new Date(Date.now() + minutes * 60 * 1000).toISOString();
 }
 
+export function toWahaMessageId(value: string) {
+  return `klasse-${crypto.createHash("sha256").update(value).digest("hex").slice(0, 24)}`;
+}
+
 export function sanitizeWahaSessionName(value: string | null | undefined) {
   if (!value) return null;
   if (value.length <= 18) return value;
@@ -181,6 +185,7 @@ export async function sendWahaTextMessage(params: {
 
   const chatId = whatsappChatIdFromPhone(params.phone);
   if (!chatId) throw new Error("Telefone WhatsApp inválido");
+  const wahaMessageId = toWahaMessageId(params.idempotencyKey);
 
   const response = await fetch(`${baseUrl}/api/sendText`, {
     method: "POST",
@@ -192,7 +197,7 @@ export async function sendWahaTextMessage(params: {
       session: params.sessionName,
       chatId,
       text: params.body,
-      id: params.idempotencyKey,
+      id: wahaMessageId,
       linkPreview: false,
     }),
     cache: "no-store",
@@ -208,7 +213,7 @@ export async function sendWahaTextMessage(params: {
   }
 
   return {
-    providerMessageId: extractProviderMessageId(payload) ?? params.idempotencyKey,
+    providerMessageId: extractProviderMessageId(payload) ?? wahaMessageId,
     payload,
   };
 }
