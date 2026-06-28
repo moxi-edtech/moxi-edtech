@@ -119,6 +119,27 @@ interface OnboardingEscola {
   uploads?: OnboardingUpload[];
 }
 
+type PartnerCommissionSummary = {
+  pending_kz: number;
+  approved_kz: number;
+  paid_kz: number;
+  blocked_kz: number;
+  total_kz: number;
+  count: number;
+};
+
+type PartnerCommissionItem = {
+  id: string;
+  tipo: string;
+  status: string;
+  base_valor_kz: number;
+  valor_kz: number;
+  competencia_inicio: string | null;
+  competencia_fim: string | null;
+  created_at: string;
+  escola_nome: string | null;
+};
+
 interface AfiliadoStats {
   total_diagnosticos: number;
   novos: number;
@@ -307,6 +328,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [assets, setAssets] = useState<MarketingAsset[]>([]);
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState<"owner" | "operator">("operator");
+  const [commissionSummary, setCommissionSummary] = useState<PartnerCommissionSummary | null>(null);
+  const [commissionItems, setCommissionItems] = useState<PartnerCommissionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'campanha' | 'crm' | 'onboarding' | 'materiais'>('crm');
   const [authError, setAuthError] = useState(false);
@@ -341,6 +364,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [nextLeadActionDate, setNextLeadActionDate] = useState("");
   const [leadActionNotes, setLeadActionNotes] = useState("");
   const [savingLeadAction, setSavingLeadAction] = useState(false);
+  const [convertingLead, setConvertingLead] = useState(false);
   const [leadHistory, setLeadHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [selectedStageToChange, setSelectedStageToChange] = useState("");
@@ -372,6 +396,24 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       console.error("Failed to load CRM leads:", err);
     } finally {
       if (showLoading) setLoadingCrm(false);
+    }
+  };
+
+  const loadCommissions = async () => {
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/commissions`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as {
+        ok?: boolean;
+        summary?: PartnerCommissionSummary;
+        items?: PartnerCommissionItem[];
+      } | null;
+
+      if (response.ok && payload?.ok) {
+        setCommissionSummary(payload.summary ?? null);
+        setCommissionItems(Array.isArray(payload.items) ? payload.items : []);
+      }
+    } catch (err) {
+      console.error("Failed to load partner commissions:", err);
     }
   };
 
@@ -433,6 +475,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       }
 
       await loadCrmLeads(false);
+      await loadCommissions();
     } catch (err) {
       console.error(err);
       setAuthError(true);
@@ -552,6 +595,42 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
   };
 
+  const handleConvertLeadToOnboarding = async () => {
+    if (!selectedCrmLead) return;
+    setConvertingLead(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${selectedCrmLead.id}/convert`, {
+        method: "POST",
+      });
+      const res = await response.json().catch(() => null) as {
+        ok?: boolean;
+        error?: string;
+        onboarding_request_id?: string;
+        tracking_token?: string;
+        already_converted?: boolean;
+      } | null;
+
+      if (!response.ok || !res?.ok) {
+        toast.error(res?.error || "Erro ao iniciar ativação.");
+        return;
+      }
+
+      toast.success(res.already_converted ? "Lead já tinha ativação vinculada." : "Ativação criada a partir do lead.");
+      await loadCrmLeads(false);
+      await loadLeadHistory(selectedCrmLead.id);
+      setSelectedCrmLead((current: any) => current ? {
+        ...current,
+        etapa: "ganho",
+        onboarding_request_id: res.onboarding_request_id,
+        tracking_token: res.tracking_token,
+      } : current);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao iniciar ativação.");
+    } finally {
+      setConvertingLead(false);
+    }
+  };
+
   const handleRegisterCall = async () => {
     if (!selectedSchoolForCall) return;
     setSavingCall(true);
@@ -656,12 +735,17 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     return basePrice * 0.25;
   };
 
-  const totalComissao = onboardingStats?.escolas?.reduce((acc, esc) => {
+  const estimatedComissao = onboardingStats?.escolas?.reduce((acc, esc) => {
     if (esc.status === 'activo') {
       return acc + calcComissaoEscola(esc.plano, esc.total_alunos);
     }
     return acc;
   }, 0) || 0;
+  const totalComissaoReal =
+    Number(commissionSummary?.pending_kz ?? 0) +
+    Number(commissionSummary?.approved_kz ?? 0) +
+    Number(commissionSummary?.paid_kz ?? 0);
+  const totalComissao = totalComissaoReal > 0 ? totalComissaoReal : estimatedComissao;
 
   // Pre-Sales CRM Commission Pipeline Value
   const getCommissionForPlan = (plano: string) => {
@@ -894,110 +978,109 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
             {/* Leads metrics grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
-                      <Target size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
+                      <Target size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Leads Ativos</p>
-                      <p className="text-3xl font-black text-slate-900">{totalCrmLeadsCount}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Leads Ativos</p>
+                      <p className="text-2xl font-bold text-zinc-900 font-mono mt-0.5">{totalCrmLeadsCount}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                      <Clock size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                      <Clock size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em Prospecção</p>
-                      <p className="text-3xl font-black text-blue-600">{newCrmLeadsCount}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Em Prospecção</p>
+                      <p className="text-2xl font-bold text-blue-600 font-mono mt-0.5">{newCrmLeadsCount}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500">
-                      <School size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                      <School size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto & Demo</p>
-                      <p className="text-3xl font-black text-purple-600">{inContactCrmCount}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Contacto & Demo</p>
+                      <p className="text-2xl font-bold text-purple-600 font-mono mt-0.5">{inContactCrmCount}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
-                      <TrendingUp size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                      <TrendingUp size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em Negociação</p>
-                      <p className="text-3xl font-black text-amber-600">{negotiatingCrmCount}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Em Negociação</p>
+                      <p className="text-2xl font-bold text-amber-600 font-mono mt-0.5">{negotiatingCrmCount}</p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
-                      <BarChart3 size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
+                      <BarChart3 size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Escolas captadas</p>
-                      <p className="text-3xl font-black text-slate-900">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Escolas captadas</p>
+                      <p className="text-2xl font-bold text-zinc-900 font-mono mt-0.5">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                      <Clock size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                      <Clock size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Novos interessados</p>
-                      <p className="text-3xl font-black text-blue-600">{onboardingStats?.pendentes ?? stats?.novos}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Novos interessados</p>
+                      <p className="text-2xl font-bold text-blue-600 font-mono mt-0.5">{onboardingStats?.pendentes ?? stats?.novos}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
-                      <ShieldCheck size={20} />
+                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                      <ShieldCheck size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em contacto</p>
-                      <p className="text-3xl font-black text-amber-600">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Em contacto</p>
+                      <p className="text-2xl font-bold text-amber-600 font-mono mt-0.5">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-3xl border-klasse-green/20 bg-klasse-green/5 shadow-sm overflow-hidden border-2">
-                  <CardContent className="p-6 space-y-2">
-                    <div className="w-10 h-10 rounded-xl bg-klasse-green flex items-center justify-center text-white">
-                      <TrendingUp size={20} />
+                <Card className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 shadow-sm overflow-hidden">
+                  <CardContent className="p-5 space-y-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
+                      <TrendingUp size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-klasse-green/60 uppercase tracking-widest">Escolas fechadas</p>
-                      <p className="text-3xl font-black text-klasse-green">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
+                      <p className="text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">Escolas fechadas</p>
+                      <p className="text-2xl font-bold text-emerald-600 font-mono mt-0.5">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-
             {/* Funil de Vendas (CRM Leads) rendering */}
             {pipelineMode === 'leads' && (
-              <Card className="rounded-[32px] border-slate-200 bg-white shadow-sm">
-                <CardHeader className="p-8 pb-0">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">CRM Pré-Vendas</p>
-                  <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Negociações Comerciais Ativas</CardTitle>
-                  <CardDescription className="text-xs text-slate-500">
+              <Card className="rounded-2xl border-zinc-200/50 bg-white shadow-sm">
+                <CardHeader className="p-6 pb-0">
+                  <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">CRM Pré-Vendas</p>
+                  <CardTitle className="text-lg font-bold text-zinc-900 tracking-tight">Negociações Comerciais Ativas</CardTitle>
+                  <CardDescription className="text-xs text-zinc-500">
                     Cadastre e faça a prospecção ativa de escolas antes do onboarding técnico. Arraste e clique para gerenciar ações de follow-up.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-8">
+                <CardContent className="p-6">
                   {/* Pipeline Value summary */}
                   {activeCrmLeads.length > 0 && (
                     <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-white mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1044,20 +1127,20 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                       {Object.entries(CRM_STAGES).map(([stageCode, stageMeta]) => {
                         const leadsInStage = crmLeads.filter(l => l.etapa === stageCode);
                         return (
-                          <div key={stageCode} className="w-72 shrink-0 flex flex-col gap-3">
-                            <div className="flex items-center justify-between px-2">
+                          <div key={stageCode} className="w-72 shrink-0 flex flex-col gap-2">
+                            <div className="flex items-center justify-between px-2 py-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">{stageMeta.label}</span>
-                                <span className="bg-slate-100 text-slate-600 font-bold text-[9px] px-1.5 py-0.5 rounded-md border border-slate-200/50">
+                                <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">{stageMeta.label}</span>
+                                <span className="bg-zinc-100 text-zinc-500 font-semibold text-[9px] px-1.5 py-0.5 rounded-md border border-zinc-200/50">
                                   {leadsInStage.length}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex-1 flex flex-col gap-2.5 p-2 rounded-2xl bg-slate-50 border border-slate-200/60 min-h-[450px]">
+                            <div className="flex-1 flex flex-col gap-2.5 p-2 rounded-xl bg-zinc-50/50 border border-zinc-200/40 min-h-[450px]">
                               {leadsInStage.length === 0 ? (
-                                <div className="flex-1 flex items-center justify-center p-6 text-center text-slate-300">
-                                  <p className="text-[9px] font-bold uppercase tracking-wider">Sem Leads</p>
+                                <div className="flex-1 flex items-center justify-center p-6 text-center text-zinc-300">
+                                  <p className="text-[9px] font-semibold uppercase tracking-wider">Sem Leads</p>
                                 </div>
                               ) : (
                                 leadsInStage.map((lead) => {
@@ -1072,53 +1155,53 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     <div
                                       key={lead.id}
                                       onClick={() => handleOpenLeadDrawer(lead)}
-                                      className={`group relative rounded-xl border p-4 shadow-sm bg-white hover:shadow-md transition-all flex flex-col gap-2.5 cursor-pointer ${
-                                        isLeadOverdue ? 'border-rose-200 ring-1 ring-rose-100' : 'border-slate-200'
+                                      className={`group relative rounded-xl border p-4 shadow-sm bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all flex flex-col gap-2.5 cursor-pointer ${
+                                        isLeadOverdue ? 'border-rose-200 bg-rose-50/10 ring-1 ring-rose-100/30' : 'border-zinc-200/60 hover:border-zinc-300'
                                       }`}
                                     >
                                       <div className="flex flex-col gap-1">
                                         <div className="flex items-start justify-between gap-2">
-                                          <p className="font-black text-slate-900 text-xs truncate" title={lead.nome_escola}>
+                                          <p className="font-semibold text-zinc-950 text-xs truncate" title={lead.nome_escola}>
                                             {lead.nome_escola}
                                           </p>
                                           {isLeadOverdue && (
-                                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-rose-100 text-rose-700 animate-pulse">
+                                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase bg-rose-50 text-rose-600 border border-rose-200/40">
                                               {delayDays === 1 ? '1d atrasado' : `${delayDays}d atrasado`}
                                             </span>
                                           )}
                                         </div>
-                                        <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                                        <div className="flex items-center justify-between text-[9px] font-medium text-zinc-400">
                                           <span className="truncate max-w-[120px]">Contato: {lead.nome_contacto || "Não informado"}</span>
-                                          {lead.alunos_estimados > 0 && <span>{lead.alunos_estimados} al.</span>}
+                                          {lead.alunos_estimados > 0 && <span className="font-mono">{lead.alunos_estimados} al.</span>}
                                         </div>
                                       </div>
 
-                                      <div className="flex flex-col gap-1.5 border-t border-slate-50 pt-2 text-[9px] font-medium text-slate-500">
+                                      <div className="flex flex-col gap-1.5 border-t border-zinc-100 pt-2 text-[9px] font-medium text-zinc-500">
                                         <div className="flex justify-between items-center">
                                           <span>Plano: {lead.plano_estimado}</span>
                                           {memberRole === 'owner' && (
-                                            <span className="font-bold text-emerald-600">
+                                            <span className="font-semibold text-emerald-600 font-mono">
                                               Kz {getCommissionForPlan(lead.plano_estimado).toLocaleString('pt-PT')}
                                             </span>
                                           )}
                                         </div>
 
                                         {lead.proxima_acao ? (
-                                          <div className={`mt-1 flex items-start gap-1 p-1.5 rounded-lg border ${
-                                            isLeadOverdue ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-slate-50 border-slate-100 text-slate-600'
+                                          <div className={`mt-1 flex items-start gap-1.5 p-1.5 rounded-lg border ${
+                                            isLeadOverdue ? 'bg-rose-50/40 border-rose-100/50 text-rose-600' : 'bg-zinc-50 border-zinc-100/50 text-zinc-600'
                                           }`}>
                                             <Clock size={10} className="mt-0.5 shrink-0" />
                                             <div className="min-w-0">
-                                              <p className="font-bold truncate text-[8px] uppercase tracking-wider">Ação: {lead.proxima_acao}</p>
+                                              <p className="font-semibold truncate text-[8px] uppercase tracking-wider">Ação: {lead.proxima_acao}</p>
                                               {lead.proxima_acao_data && (
-                                                <p className="text-[8px] mt-0.5">Prazo: {format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")}</p>
+                                                <p className="text-[8px] mt-0.5 font-mono">Prazo: {format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")}</p>
                                               )}
                                             </div>
                                           </div>
                                         ) : (
-                                          <div className="mt-1 flex items-center gap-1 p-1.5 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 text-slate-400">
+                                          <div className="mt-1 flex items-center gap-1.5 p-1.5 rounded-lg border border-dashed border-zinc-200 bg-zinc-50/30 text-zinc-400">
                                             <FileQuestion size={10} />
-                                            <span className="text-[8px] font-bold uppercase tracking-wider">Sem próxima ação definida</span>
+                                            <span className="text-[8px] font-semibold uppercase tracking-wider">Sem próxima ação definida</span>
                                           </div>
                                         )}
                                       </div>
@@ -1132,7 +1215,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                       })}
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {crmLeads.map((lead) => {
                         const isLeadOverdue = lead.proxima_acao_data && new Date(lead.proxima_acao_data).getTime() < Date.now();
                         const stageMeta = CRM_STAGES[lead.etapa as keyof typeof CRM_STAGES] || CRM_STAGES.prospeccao;
@@ -1140,43 +1223,43 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                           <div
                             key={lead.id}
                             onClick={() => handleOpenLeadDrawer(lead)}
-                            className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                            className="flex flex-col gap-3 rounded-xl border border-zinc-200/50 bg-white p-4 shadow-sm hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all cursor-pointer"
                           >
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                               <div className="min-w-0">
-                                <p className="truncate font-black text-slate-900">{lead.nome_escola}</p>
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-400">
-                                  <span>Cadastrado em: {format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
+                                <p className="truncate font-bold text-zinc-900">{lead.nome_escola}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-medium text-zinc-400">
+                                  <span className="font-mono">Cadastrado em: {format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
                                   {lead.alunos_estimados > 0 && (
                                     <>
                                       <span>•</span>
-                                      <span>{lead.alunos_estimados} alunos</span>
+                                      <span className="font-mono">{lead.alunos_estimados} alunos</span>
                                     </>
                                   )}
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
                                 {isLeadOverdue && (
-                                  <Badge className="bg-rose-100 text-rose-700 border-none font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg animate-pulse">
+                                  <Badge className="bg-rose-50 text-rose-600 border border-rose-200/40 font-semibold uppercase text-[8px] px-2 py-0.5 rounded-md shadow-none">
                                     Ação Atrasada
                                   </Badge>
                                 )}
-                                <Badge className="border border-slate-200 bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                <Badge className="border border-zinc-200 bg-zinc-50 text-[8px] font-semibold uppercase tracking-wider text-zinc-600 px-2 py-0.5 rounded-md shadow-none">
                                   Plano: {lead.plano_estimado}
                                 </Badge>
-                                <Badge className={`${stageMeta.color} border-none font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${stageMeta.dot} mr-2`} />
+                                <Badge className={`${stageMeta.color} border border-zinc-200/10 font-semibold uppercase text-[8px] px-2 py-0.5 rounded-md shadow-none`}>
+                                  <span className={`w-1 h-1 rounded-full ${stageMeta.dot} mr-1.5`} />
                                   {stageMeta.label}
                                 </Badge>
                               </div>
                             </div>
 
                             {lead.proxima_acao && (
-                              <div className="mt-1 pt-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs text-slate-500">
+                              <div className="mt-1 pt-2 border-t border-zinc-100 flex items-center justify-between gap-3 text-[11px] text-zinc-500">
                                 <p className="truncate">
-                                  Próximo Passo: <span className="font-bold text-slate-800">{lead.proxima_acao}</span>
+                                  Próximo Passo: <span className="font-semibold text-zinc-800">{lead.proxima_acao}</span>
                                   {lead.proxima_acao_data && (
-                                    <span className="text-slate-400 font-medium"> (até {format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")})</span>
+                                    <span className="text-zinc-400 font-medium font-mono"> (até {format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")})</span>
                                   )}
                                 </p>
                               </div>
@@ -1202,47 +1285,47 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
             {/* Onboarding metrics grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                <CardContent className="p-6 space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <BarChart3 size={20} />
+              <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <CardContent className="p-5 space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
+                    <BarChart3 size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Escolas captadas</p>
-                    <p className="text-3xl font-black text-slate-900">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Escolas captadas</p>
+                    <p className="text-2xl font-bold text-zinc-900 font-mono mt-0.5">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                <CardContent className="p-6 space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                    <Clock size={20} />
+              <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <CardContent className="p-5 space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                    <Clock size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Novos interessados</p>
-                    <p className="text-3xl font-black text-blue-600">{onboardingStats?.pendentes ?? stats?.novos}</p>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Novos interessados</p>
+                    <p className="text-2xl font-bold text-blue-600 font-mono mt-0.5">{onboardingStats?.pendentes ?? stats?.novos}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
-                <CardContent className="p-6 space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
-                    <ShieldCheck size={20} />
+              <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <CardContent className="p-5 space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <ShieldCheck size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Em ativação</p>
-                    <p className="text-3xl font-black text-amber-600">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Em ativação</p>
+                    <p className="text-2xl font-bold text-amber-600 font-mono mt-0.5">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-3xl border-klasse-green/20 bg-klasse-green/5 shadow-sm overflow-hidden border-2">
-                <CardContent className="p-6 space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-klasse-green flex items-center justify-center text-white">
-                    <TrendingUp size={20} />
+              <Card className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 shadow-sm overflow-hidden">
+                <CardContent className="p-5 space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-white">
+                    <TrendingUp size={16} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-klasse-green/60 uppercase tracking-widest">Escolas fechadas</p>
-                    <p className="text-3xl font-black text-klasse-green">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
+                    <p className="text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">Escolas fechadas</p>
+                    <p className="text-2xl font-bold text-emerald-600 font-mono mt-0.5">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1250,42 +1333,42 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
             {/* Funil de Ativação (Onboarding) rendering */}
             {onboardingStats && (
-              <Card className="rounded-[32px] border-slate-200 bg-white shadow-sm">
-                <CardHeader className="p-8 pb-0">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Pedido de escolas</p>
-                  <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Escolas que usaram o seu código</CardTitle>
-                  <CardDescription className="text-xs text-slate-500">
+              <Card className="rounded-2xl border-zinc-200/50 bg-white shadow-sm">
+                <CardHeader className="p-6 pb-0">
+                  <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Pedido de escolas</p>
+                  <CardTitle className="text-lg font-bold text-zinc-900 tracking-tight">Escolas que usaram o seu código</CardTitle>
+                  <CardDescription className="text-xs text-zinc-500">
                     A equipa KLASSE faz o contacto comercial. Aqui você acompanha plano escolhido e avanço do funil.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-8">
+                <CardContent className="p-6">
                   {/* Responsabilidade de Etapas Pendentes */}
                   {schoolsList.length > 0 && (
                     <div className="space-y-4 mb-6">
-                      <div className="grid grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                      <div className="grid grid-cols-3 gap-4 p-4 rounded-xl bg-zinc-50 border border-zinc-200/50 text-center">
                         <div>
-                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Ações com Escola</p>
-                          <p className="text-lg font-black text-slate-900">{pendingStepsStats['Escola'] || 0}</p>
+                          <p className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Ações com Escola</p>
+                          <p className="text-lg font-bold text-zinc-900 font-mono">{pendingStepsStats['Escola'] || 0}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Ações com Parceiro</p>
-                          <p className="text-lg font-black text-slate-900">{pendingStepsStats['Parceiro'] || 0}</p>
+                          <p className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Ações com Parceiro</p>
+                          <p className="text-lg font-bold text-zinc-900 font-mono">{pendingStepsStats['Parceiro'] || 0}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Ações com KLASSE</p>
-                          <p className="text-lg font-black text-slate-900">{pendingStepsStats['KLASSE'] || 0}</p>
+                          <p className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Ações com KLASSE</p>
+                          <p className="text-lg font-bold text-zinc-900 font-mono">{pendingStepsStats['KLASSE'] || 0}</p>
                         </div>
                       </div>
-                      <div className="rounded-2xl bg-white border border-slate-200 p-4">
+                      <div className="rounded-xl bg-zinc-50/20 border border-zinc-200 p-4">
                         <div className="flex items-center justify-between gap-3 mb-3">
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Pendências por etapa</p>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{Object.keys(pendingStepCodeStats).length} etapa(s)</span>
+                          <p className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Pendências por etapa</p>
+                          <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">{Object.keys(pendingStepCodeStats).length} etapa(s)</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(pendingStepCodeStats)
                             .sort((a, b) => b[1] - a[1])
                             .map(([code, total]) => (
-                              <Badge key={code} className="bg-slate-100 text-slate-700 border border-slate-200 font-bold text-[10px] px-2.5 py-1 rounded-lg">
+                              <Badge key={code} className="bg-zinc-100 text-zinc-600 border border-zinc-200 font-semibold text-[9px] px-2 py-0.5 rounded-md shadow-none">
                                 {getStepMeta(code, 'escola').short}: {total}
                               </Badge>
                             ))}
@@ -1297,43 +1380,43 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   {/* Filters Bar */}
                   {schoolsList.length > 0 && (
                     <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                      <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                      <div className="flex flex-wrap items-center gap-1.5 bg-zinc-100/60 p-1 rounded-lg border border-zinc-200/50">
                         <button
                           onClick={() => setOnboardingFilter('todos')}
-                          className={`px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                          className={`px-3 py-1.5 rounded-md font-semibold text-[11px] uppercase tracking-wider transition-all ${
                             onboardingFilter === 'todos'
-                              ? 'bg-slate-900 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/50'
+                              ? 'bg-zinc-950 text-white shadow-sm'
+                              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/40'
                           }`}
                         >
                           Todos ({countTodos})
                         </button>
                         <button
                           onClick={() => setOnboardingFilter('pendente')}
-                          className={`px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                          className={`px-3 py-1.5 rounded-md font-semibold text-[11px] uppercase tracking-wider transition-all ${
                             onboardingFilter === 'pendente'
                               ? 'bg-amber-500 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/50'
+                              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/40'
                           }`}
                         >
                           Pendentes ({countPendente})
                         </button>
                         <button
                           onClick={() => setOnboardingFilter('atrasado')}
-                          className={`px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                          className={`px-3 py-1.5 rounded-md font-semibold text-[11px] uppercase tracking-wider transition-all ${
                             onboardingFilter === 'atrasado'
                               ? 'bg-rose-600 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/50'
+                              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/40'
                           }`}
                         >
                           Atrasados ({countAtrasado})
                         </button>
                         <button
                           onClick={() => setOnboardingFilter('concluido')}
-                          className={`px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                          className={`px-3 py-1.5 rounded-md font-semibold text-[11px] uppercase tracking-wider transition-all ${
                             onboardingFilter === 'concluido'
                               ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/50'
+                              : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/40'
                           }`}
                         >
                           Concluídos ({countConcluido})
@@ -1341,29 +1424,29 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                       </div>
 
                       {/* Alternador de Visualização (Lista vs Kanban) */}
-                      <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                      <div className="flex items-center gap-1.5 bg-zinc-100/60 p-1 rounded-lg border border-zinc-200/50">
                         <button
                           type="button"
                           onClick={() => setViewMode('lista')}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                          className={`px-2.5 py-1.5 rounded-md font-semibold text-[11px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${
                             viewMode === 'lista'
-                              ? 'bg-slate-900 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-900'
+                              ? 'bg-zinc-950 text-white shadow-sm'
+                              : 'text-zinc-500 hover:text-zinc-900'
                           }`}
                         >
-                          <List size={14} />
+                          <List size={12} className="shrink-0" />
                           Lista
                         </button>
                         <button
                           type="button"
                           onClick={() => setViewMode('kanban')}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                          className={`px-2.5 py-1.5 rounded-md font-semibold text-[11px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${
                             viewMode === 'kanban'
-                              ? 'bg-slate-900 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-950'
+                              ? 'bg-zinc-950 text-white shadow-sm'
+                              : 'text-zinc-50 hover:text-zinc-950'
                           }`}
                         >
-                          <LayoutGrid size={14} />
+                          <LayoutGrid size={12} className="shrink-0" />
                           CRM / Kanban
                         </button>
                       </div>
@@ -1371,9 +1454,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   )}
 
                   {filteredSchools.length === 0 ? (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-                      <School className="mx-auto mb-4 h-10 w-10 text-slate-300" />
-                      <p className="text-sm font-bold text-slate-400">Nenhum pedido de escola nesta categoria.</p>
+                    <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center">
+                      <School className="mx-auto mb-4 h-10 w-10 text-zinc-300 animate-pulse" />
+                      <p className="text-xs font-semibold text-zinc-400">Nenhum pedido de escola nesta categoria.</p>
                     </div>
                   ) : viewMode === 'kanban' ? (
                     <div className="flex gap-4 overflow-x-auto pb-6 w-full scrollbar-thin">
@@ -1834,11 +1917,56 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     </CardHeader>
                     <CardContent className="p-6 pt-0 space-y-5">
                       <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Acumulado (Ativo)</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          {totalComissaoReal > 0 ? "Total em Ledger" : "Total Estimado"}
+                        </p>
                         <p className="text-2xl font-black text-klasse-gold">
                           {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(totalComissao).replace('AOA', 'Kz')}
                         </p>
+                        {commissionSummary && commissionSummary.count > 0 && (
+                          <div className="grid grid-cols-3 gap-2 pt-3 text-[10px]">
+                            <div className="rounded-xl bg-white/5 p-2">
+                              <p className="font-bold uppercase tracking-wider text-slate-500">Pendente</p>
+                              <p className="mt-1 font-black text-white">
+                                {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(commissionSummary.pending_kz).replace('AOA', 'Kz')}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-white/5 p-2">
+                              <p className="font-bold uppercase tracking-wider text-slate-500">Aprovado</p>
+                              <p className="mt-1 font-black text-white">
+                                {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(commissionSummary.approved_kz).replace('AOA', 'Kz')}
+                              </p>
+                            </div>
+                            <div className="rounded-xl bg-white/5 p-2">
+                              <p className="font-bold uppercase tracking-wider text-slate-500">Pago</p>
+                              <p className="mt-1 font-black text-white">
+                                {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(commissionSummary.paid_kz).replace('AOA', 'Kz')}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
+
+                      {commissionItems.length > 0 && (
+                        <div className="space-y-2 border-t border-white/10 pt-4">
+                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Últimas comissões</h4>
+                          <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                            {commissionItems.slice(0, 5).map((item) => (
+                              <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-bold text-white">{item.escola_nome || "Escola"}</p>
+                                    <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">{item.status}</p>
+                                  </div>
+                                  <p className="text-xs font-black text-klasse-gold">
+                                    {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(item.valor_kz).replace('AOA', 'Kz')}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Simulação interactiva de comissão */}
                       <div className="pt-4 border-t border-white/10 space-y-3">
@@ -1913,43 +2041,43 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           <TabsContent value="materiais" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {assets.map((asset) => (
-                <Card key={asset.id} className="rounded-3xl border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col">
-                  <div className="p-6 flex-1 space-y-4">
+                <Card key={asset.id} className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col">
+                  <div className="p-5 flex-1 space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 border border-slate-100">
-                        {asset.tipo === 'image' && <ImageIcon size={18} />}
-                        {asset.tipo === 'video' && <Video size={18} />}
-                        {asset.tipo === 'script' && <FileText size={18} />}
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-600 border border-zinc-100">
+                        {asset.tipo === 'image' && <ImageIcon size={14} />}
+                        {asset.tipo === 'video' && <Video size={14} />}
+                        {asset.tipo === 'script' && <FileText size={14} />}
                       </div>
-                      <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest">{asset.tipo}</Badge>
+                      <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider">{asset.tipo}</Badge>
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900">{asset.titulo}</h4>
-                      {asset.descricao && <p className="text-xs text-slate-500 mt-1 leading-relaxed">{asset.descricao}</p>}
+                      <h4 className="font-bold text-zinc-900 text-sm">{asset.titulo}</h4>
+                      {asset.descricao && <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{asset.descricao}</p>}
                     </div>
                     {asset.tipo === 'script' && asset.conteudo && (
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600 font-medium italic relative group">
+                      <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/60 text-[11px] text-zinc-600 font-medium italic relative group">
                         "{asset.conteudo}"
                       </div>
                     )}
                   </div>
-                  <div className="p-4 bg-slate-50 border-t border-slate-100">
+                  <div className="p-4 bg-zinc-50 border-t border-zinc-200/50">
                     {asset.tipo === 'script' ? (
                       <Button 
                         onClick={() => copyToClipboard(asset.conteudo!)}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs gap-2 border-none h-10"
+                        className="w-full bg-zinc-950 hover:bg-zinc-800 text-white rounded-lg font-semibold text-xs gap-2 border-none h-9"
                       >
-                        <Copy size={14} />
-                        COPIAR TEXTO
+                        <Copy size={13} />
+                        Copiar Texto
                       </Button>
                     ) : (
                       <Button 
                         asChild
-                        className="w-full bg-white hover:bg-slate-100 text-slate-900 border border-slate-200 rounded-xl font-bold text-xs gap-2 h-10"
+                        className="w-full bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 rounded-lg font-semibold text-xs gap-2 h-9 shadow-none"
                       >
                         <a href={asset.url || '#'} target="_blank" rel="noreferrer" className="flex items-center justify-center w-full h-full no-underline">
-                          {asset.tipo === 'image' ? <Download size={14} /> : <ArrowRight size={14} />}
-                          {asset.tipo === 'image' ? 'DESCARREGAR' : 'ABRIR LINK'}
+                          {asset.tipo === 'image' ? <Download size={13} /> : <ArrowRight size={13} />}
+                          {asset.tipo === 'image' ? 'Descarregar' : 'Abrir Link'}
                         </a>
                       </Button>
                     )}
@@ -1957,8 +2085,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                 </Card>
               ))}
               {assets.length === 0 && (
-                <div className="col-span-full p-20 text-center bg-white border border-dashed border-slate-200 rounded-[32px]">
-                   <p className="text-slate-400 font-medium italic">Nenhum material disponível de momento.</p>
+                <div className="col-span-full p-20 text-center bg-white border border-dashed border-zinc-200 rounded-xl">
+                   <p className="text-zinc-400 font-medium italic text-xs">Nenhum material disponível de momento.</p>
                 </div>
               )}
             </div>
@@ -1966,58 +2094,58 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             {/* Modelos de Planilhas e Importação */}
             <div className="space-y-4 pt-4">
               <div className="space-y-1">
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Modelos de Planilhas para Onboarding</h3>
-                <p className="text-xs text-slate-500 font-medium">Use estes modelos para ajudar as escolas indicadas a estruturarem os dados de alunos e professores antes da carga técnica.</p>
+                <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Modelos de Planilhas para Onboarding</h3>
+                <p className="text-xs text-zinc-500 font-medium">Use estes modelos para ajudar as escolas indicadas a estruturarem os dados de alunos e professores antes da carga técnica.</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="rounded-3xl border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col p-6 space-y-4">
+                <Card className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col p-5 space-y-4">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
-                        <FileSpreadsheet size={18} />
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                        <FileSpreadsheet size={16} />
                       </div>
-                      <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-700 border-emerald-100">Alunos</Badge>
+                      <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-100 shadow-none">Alunos</Badge>
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900">Planilha de Carga de Alunos</h4>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Modelo padrão contendo colunas obrigatórias como Nome Completo, Gênero, Data de Nascimento, BI e NIF.</p>
+                      <h4 className="font-bold text-zinc-900 text-sm">Planilha de Carga de Alunos</h4>
+                      <p className="text-xs text-zinc-500 mt-1 leading-relaxed">Modelo padrão contendo colunas obrigatórias como Nome Completo, Gênero, Data de Nascimento, BI e NIF.</p>
                     </div>
                   </div>
                   <div className="pt-2">
                     <Button 
                       asChild
-                      className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-bold text-xs gap-2 h-10 border-none"
+                      className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-lg font-semibold text-xs gap-2 h-9 border-none"
                     >
                       <a href="/templates/modelo_alunos.csv" download="modelo_importacao_alunos.csv" className="flex items-center justify-center w-full h-full no-underline">
-                        <Download size={14} />
-                        BAIXAR MODELO
+                        <Download size={13} />
+                        Baixar Modelo
                       </a>
                     </Button>
                   </div>
                 </Card>
 
-                <Card className="rounded-3xl border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col p-6 space-y-4">
+                <Card className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col p-5 space-y-4">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
-                        <FileSpreadsheet size={18} />
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
+                        <FileSpreadsheet size={16} />
                       </div>
-                      <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest bg-purple-50 text-purple-700 border-purple-100">Professores</Badge>
+                      <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-purple-50 text-purple-700 border-purple-100 shadow-none">Professores</Badge>
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900">Planilha de Carga de Professores</h4>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Modelo padrão para mapeamento do corpo docente, qualificações e disciplinas que lecionam.</p>
+                      <h4 className="font-bold text-zinc-900 text-sm">Planilha de Carga de Professores</h4>
+                      <p className="text-xs text-zinc-500 mt-1 leading-relaxed">Modelo padrão para mapeamento do corpo docente, qualificações e disciplinas que lecionam.</p>
                     </div>
                   </div>
                   <div className="pt-2">
                     <Button 
                       asChild
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs gap-2 h-10 border-none"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-xs gap-2 h-9 border-none"
                     >
                       <a href="/templates/modelo_professores.csv" download="modelo_importacao_professores.csv" className="flex items-center justify-center w-full h-full no-underline">
-                        <Download size={14} />
-                        BAIXAR MODELO
+                        <Download size={13} />
+                        Baixar Modelo
                       </a>
                     </Button>
                   </div>
@@ -2025,37 +2153,39 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               </div>
             </div>
 
-            <div className="grid gap-4 rounded-[32px] bg-slate-900 p-8 text-center md:grid-cols-2">
-              <div className="space-y-4 rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <h4 className="text-lg font-black tracking-tight text-white">Link principal da campanha</h4>
-                <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-md">
-                  <code className="flex-1 truncate px-4 text-left text-sm font-bold text-klasse-gold">
+            <div className="grid gap-4 rounded-2xl bg-[#09090b] border border-zinc-900 p-6 text-center md:grid-cols-2">
+              <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
+                <h4 className="text-sm font-bold tracking-tight text-white uppercase">Link principal da campanha</h4>
+                <div className="mx-auto flex max-w-md items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-1.5">
+                  <code className="flex-1 truncate px-3 text-left text-xs font-semibold text-amber-400 font-mono">
                     klasse.ao/escola-moderna?ref={codigo}
                   </code>
                   <Button
                     onClick={() => copyToClipboard(campaignUrl)}
-                    className="h-8 rounded-xl border-none bg-white px-4 text-[10px] font-black text-slate-900 hover:bg-slate-100"
+                    variant="ghost"
+                    className="h-8 rounded-md bg-white hover:bg-zinc-100 text-[10px] font-semibold text-zinc-950 px-3 border-none"
                   >
-                    COPIAR
+                    Copiar
                   </Button>
                 </div>
-                <p className="text-xs text-slate-500">Use em posts, stories e mensagens para pais.</p>
+                <p className="text-[10px] text-zinc-500 font-medium">Use em posts, stories e mensagens para pais.</p>
               </div>
 
-              <div className="space-y-4 rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <h4 className="text-lg font-black tracking-tight text-white">Link para diretores</h4>
-                <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-md">
-                  <code className="flex-1 truncate px-4 text-left text-sm font-bold text-slate-300">
+              <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
+                <h4 className="text-sm font-bold tracking-tight text-white uppercase">Link para diretores</h4>
+                <div className="mx-auto flex max-w-md items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-1.5">
+                  <code className="flex-1 truncate px-3 text-left text-xs font-semibold text-zinc-300 font-mono">
                     app.klasse.ao/onboarding?ref={codigo}
                   </code>
                   <Button
                     onClick={() => copyToClipboard(onboardingUrl)}
-                    className="h-8 rounded-xl border-none bg-white px-4 text-[10px] font-black text-slate-900 hover:bg-slate-100"
+                    variant="ghost"
+                    className="h-8 rounded-md bg-white hover:bg-zinc-100 text-[10px] font-semibold text-zinc-950 px-3 border-none"
                   >
-                    COPIAR
+                    Copiar
                   </Button>
                 </div>
-                <p className="text-xs text-slate-500">Use quando falar com diretores interessados.</p>
+                <p className="text-[10px] text-zinc-500 font-medium">Use quando falar com diretores interessados.</p>
               </div>
             </div>
           </TabsContent>
@@ -2663,73 +2793,73 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
       {/* Sheet Drawer for CRM Lead Details & Action Panel */}
       <Sheet open={crmLeadDrawerOpen} onOpenChange={setCrmLeadDrawerOpen}>
-        <SheetContent className="sm:max-w-xl overflow-y-auto h-full bg-white flex flex-col gap-6 p-8 border-slate-200 shadow-2xl">
+        <SheetContent className="sm:max-w-xl overflow-y-auto h-full bg-white flex flex-col gap-6 p-8 border-zinc-200/60 shadow-2xl">
           {selectedCrmLead && (
             <div className="flex flex-col gap-6 h-full">
               {/* Header details */}
-              <div className="border-b border-slate-100 pb-5">
+              <div className="border-b border-zinc-100 pb-5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Lead Comercial do CRM</span>
-                  <Badge className={`border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-lg ${
-                    CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.color || "bg-slate-100"
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Lead Comercial do CRM</span>
+                  <Badge className={`border border-zinc-200/10 font-semibold uppercase text-[8px] px-2 py-0.5 rounded-md shadow-none ${
+                    CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.color || "bg-zinc-100 text-zinc-600"
                   }`}>
                     {CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.label || selectedCrmLead.etapa}
                   </Badge>
                 </div>
-                <h3 className="font-black text-slate-900 text-xl tracking-tight leading-tight">
+                <h3 className="font-bold text-zinc-950 text-xl tracking-tight leading-tight">
                   {selectedCrmLead.nome_escola}
                 </h3>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none">
                     Plano Estimado: {selectedCrmLead.plano_estimado}
                   </Badge>
                   {selectedCrmLead.alunos_estimados > 0 && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                    <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none font-mono">
                       {selectedCrmLead.alunos_estimados} Alunos
                     </Badge>
                   )}
-                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                  <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none">
                     Segmento: {selectedCrmLead.segmento}
                   </Badge>
                 </div>
               </div>
 
               {/* Informações Gerais do Lead */}
-              <div className="space-y-3.5">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <Users size={14} className="text-slate-400" />
+              <div className="space-y-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+                  <Users size={14} className="text-zinc-400" />
                   Informações de Contato
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-xl border border-zinc-200/50 bg-zinc-50/50 p-4">
                   <div>
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Contato Decisor</span>
-                    <span className="text-xs font-bold text-slate-800">{selectedCrmLead.nome_contacto || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                    <span className="block text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Contato Decisor</span>
+                    <span className="text-xs font-semibold text-zinc-800">{selectedCrmLead.nome_contacto || <span className="italic font-medium text-zinc-400">Não informado</span>}</span>
                   </div>
                   <div>
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone</span>
-                    <span className="text-xs font-bold text-slate-800">{selectedCrmLead.telefone || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                    <span className="block text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Telefone</span>
+                    <span className="text-xs font-semibold text-zinc-800 font-mono">{selectedCrmLead.telefone || <span className="italic font-medium text-zinc-400">Não informado</span>}</span>
                   </div>
                   <div className="md:col-span-2">
-                    <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">E-mail Comercial</span>
-                    <span className="text-xs font-bold text-slate-800">{selectedCrmLead.email || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
+                    <span className="block text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">E-mail Comercial</span>
+                    <span className="text-xs font-semibold text-zinc-800">{selectedCrmLead.email || <span className="italic font-medium text-zinc-400">Não informado</span>}</span>
                   </div>
                 </div>
               </div>
 
               {/* Stage Update Area */}
-              <div className="space-y-3.5 border-t border-slate-100 pt-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <Target size={14} className="text-slate-400" />
+              <div className="space-y-3 border-t border-zinc-100 pt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+                  <Target size={14} className="text-zinc-400" />
                   Mover Etapa Comercial
                 </h4>
-                <div className="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-zinc-50/40 border border-zinc-200/50">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Selecione a Nova Etapa</label>
+                      <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Nova Etapa</label>
                       <select
                         value={selectedStageToChange}
                         onChange={(e) => setSelectedStageToChange(e.target.value)}
-                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                        className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none cursor-pointer"
                       >
                         {Object.entries(CRM_STAGES).map(([code, meta]) => (
                           <option key={code} value={code}>{meta.label}</option>
@@ -2738,13 +2868,13 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     </div>
                     {selectedStageToChange === 'perdido' && (
                       <div>
-                        <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Motivo da Perda</label>
+                        <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Motivo da Perda</label>
                         <input
                           type="text"
                           value={lossReasonText}
                           onChange={(e) => setLossReasonText(e.target.value)}
                           placeholder="Ex: Sem orçamento"
-                          className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none"
+                          className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-medium text-zinc-700 focus:outline-none"
                         />
                       </div>
                     )}
@@ -2752,57 +2882,108 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <Button
                     onClick={() => handleUpdateLeadStage(selectedCrmLead.id, selectedStageToChange)}
                     disabled={updatingLeadStage || (selectedStageToChange === 'perdido' && !lossReasonText.trim())}
-                    className="w-full mt-2 h-9 rounded-xl bg-slate-900 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 border-none"
+                    className="w-full mt-2 h-9 rounded-lg bg-zinc-950 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-50 border-none"
                   >
                     {updatingLeadStage ? "A atualizar..." : "Confirmar Mudança de Etapa"}
                   </Button>
                 </div>
               </div>
 
+              {/* Conversion to onboarding */}
+              <div className="space-y-3 border-t border-zinc-100 pt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+                  <School size={14} className="text-zinc-400" />
+                  Ativação da Escola
+                </h4>
+                <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/5 p-4">
+                  {selectedCrmLead.onboarding_request_id ? (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-700">Lead convertido para onboarding</p>
+                        <p className="mt-1 text-xs font-semibold text-emerald-800">
+                          Token: <span className="font-mono">{selectedCrmLead.tracking_token || "gerado"}</span>
+                        </p>
+                      </div>
+                      {selectedCrmLead.tracking_token && (
+                        <Link
+                          href={`/onboarding/acompanhar/${selectedCrmLead.tracking_token}`}
+                          target="_blank"
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white no-underline hover:bg-emerald-700"
+                        >
+                          Abrir portal de ativação <ExternalLink size={12} />
+                        </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium leading-relaxed text-emerald-800">
+                        Quando a negociação estiver ganha, crie o pedido de onboarding com os dados deste lead e entregue o link de acompanhamento para a escola.
+                      </p>
+                      <Button
+                        onClick={handleConvertLeadToOnboarding}
+                        disabled={convertingLead || selectedCrmLead.etapa === "perdido"}
+                        className="h-9 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 border-none"
+                      >
+                        {convertingLead ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin mr-1.5" />
+                            A criar ativação...
+                          </>
+                        ) : (
+                          <>
+                            Iniciar ativação <ArrowRight size={14} className="ml-1" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* CRM Lead Next Action & Logging */}
-              <div className="space-y-3.5 border-t border-slate-100 pt-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <Phone size={14} className="text-slate-400" />
+              <div className="space-y-3 border-t border-zinc-100 pt-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+                  <Phone size={14} className="text-zinc-400" />
                   Registrar Contato & Próximo Passo
                 </h4>
-                <div className="space-y-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="space-y-3 p-4 rounded-xl bg-zinc-50/40 border border-zinc-200/50">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
+                      <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Próxima Ação Comercial</label>
                       <input
                         type="text"
                         value={nextLeadAction}
                         onChange={(e) => setNextLeadAction(e.target.value)}
                         placeholder="Ex: Enviar proposta comercial"
-                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none"
+                        className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Prazo da Ação</label>
+                      <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Prazo da Ação</label>
                       <input
                         type="date"
                         value={nextLeadActionDate}
                         onChange={(e) => setNextLeadActionDate(e.target.value)}
-                        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                        className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none cursor-pointer"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Notas da Ligação / Reunião</label>
+                    <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Notas da Ligação / Reunião</label>
                     <textarea
                       value={leadActionNotes}
                       onChange={(e) => setLeadActionNotes(e.target.value)}
                       placeholder="Descreva o que foi conversado e alinhe o próximo passo (ex: Reunião excelente com diretor, demonstrou interesse no plano profissional. Próximo passo: formalizar proposta de valores)."
                       rows={3}
-                      className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none placeholder-slate-400 resize-none"
+                      className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-medium text-zinc-700 focus:outline-none placeholder-zinc-400 resize-none"
                     />
                   </div>
 
                   <Button
                     onClick={handleUpdateLeadAction}
                     disabled={savingLeadAction || !nextLeadAction.trim()}
-                    className="w-full h-9 rounded-xl bg-slate-900 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 border-none"
+                    className="w-full h-9 rounded-lg bg-zinc-950 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-50 border-none"
                   >
                     {savingLeadAction ? "A registrar..." : "Salvar Ação & Registrar Notas"}
                   </Button>
@@ -2810,52 +2991,52 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               </div>
 
               {/* Lead interaction timeline logs */}
-              <div className="space-y-3.5 border-t border-slate-100 pt-4 flex-1 flex flex-col min-h-0">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                  <Clock size={14} className="text-slate-400" />
+              <div className="space-y-3.5 border-t border-zinc-100 pt-4 flex-1 flex flex-col min-h-0">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
+                  <Clock size={14} className="text-zinc-400" />
                   Histórico de Interações do Lead
                 </h4>
                 
                 <div className="flex-1 overflow-y-auto pr-1 space-y-4">
                   {loadingHistory ? (
                     <div className="text-center py-6">
-                      <Loader2 className="w-6 h-6 animate-spin text-slate-400 mx-auto" />
+                      <Loader2 className="w-6 h-6 animate-spin text-zinc-400 mx-auto" />
                     </div>
                   ) : leadHistory.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum histórico comercial registrado</p>
+                    <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/50 p-4 text-center">
+                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Nenhum histórico comercial registrado</p>
                     </div>
                   ) : (
-                    <div className="relative pl-4 border-l border-slate-100 space-y-4 py-1 ml-2">
+                    <div className="relative pl-4 border-l border-zinc-100 space-y-4 py-1 ml-2">
                       {leadHistory.map((logItem) => {
                         const isMove = logItem.acao === 'CRM_LEAD_STAGE_MOVE';
                         return (
                           <div key={logItem.id} className="relative group/timeline">
-                            <span className={`absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border border-white shadow-sm ring-4 ${
-                              isMove ? 'bg-amber-400 ring-amber-50' : 'bg-blue-500 ring-blue-50'
+                            <span className={`absolute -left-[21px] top-1.5 w-2 h-2 rounded-full border border-white shadow-sm ring-4 ${
+                              isMove ? 'bg-amber-400 ring-zinc-100/50' : 'bg-blue-500 ring-zinc-100/50'
                             }`} />
                             
                             <div className="flex flex-col gap-1.5">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-black text-slate-800">
+                                <span className="text-[10px] font-semibold text-zinc-900">
                                   {isMove ? 'Etapa comercial alterada' : `${logItem.member_name} inseriu notas`}
                                 </span>
-                                <span className="text-[9px] font-semibold text-slate-400">
+                                <span className="text-[9px] font-medium text-zinc-400 font-mono">
                                   {format(new Date(logItem.created_at), "dd MMM, HH:mm", { locale: pt })}
                                 </span>
                               </div>
 
                               {isMove ? (
-                                <div className="text-xs font-semibold text-slate-600 bg-amber-50/50 border border-amber-100 p-2.5 rounded-xl">
-                                  Mapeamento de: <span className="font-bold uppercase text-[9.5px] text-slate-500">{CRM_STAGES[logItem.origem_etapa]?.label || logItem.origem_etapa}</span> ➔ <span className="font-bold uppercase text-[9.5px] text-emerald-600">{CRM_STAGES[logItem.nova_etapa]?.label || logItem.nova_etapa}</span>
+                                <div className="text-xs font-medium text-zinc-600 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-lg">
+                                  Mapeamento de: <span className="font-semibold uppercase text-[9px] text-zinc-500">{CRM_STAGES[logItem.origem_etapa]?.label || logItem.origem_etapa}</span> ➔ <span className="font-semibold uppercase text-[9px] text-emerald-600">{CRM_STAGES[logItem.nova_etapa]?.label || logItem.nova_etapa}</span>
                                   {logItem.motivo_perda && (
-                                    <p className="mt-1 font-medium text-rose-700 bg-rose-50/50 border border-rose-100/50 p-2 rounded-lg text-[10px]">
+                                    <p className="mt-1 font-medium text-rose-600 bg-rose-500/5 border border-rose-500/10 p-2 rounded-md text-[10px]">
                                       Motivo da Perda: {logItem.motivo_perda}
                                     </p>
                                   )}
                                 </div>
                               ) : (
-                                <p className="text-xs font-medium text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100/50 leading-relaxed shadow-sm">
+                                <p className="text-xs font-medium text-zinc-600 bg-zinc-50 rounded-lg p-3 border border-zinc-200/50 leading-relaxed shadow-sm">
                                   {logItem.notes}
                                 </p>
                               )}

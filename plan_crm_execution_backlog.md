@@ -466,6 +466,151 @@ Transformar o fluxo em instrumento de gestão.
 
 ---
 
+## P3 — Operação comercial pós-sincronização
+
+### P3.1 — Unificar visão de funil ponta a ponta
+
+**Status**
+
+`falta`
+
+**Objetivo**
+
+Dar ao Super Admin uma leitura única de `marketing_leads -> crm_leads -> onboarding_requests -> escolas -> assinaturas -> comissões`.
+
+**Tarefas**
+
+1. Consolidar dados hoje espalhados entre marketing, CRM, onboarding e billing.
+2. Expor métricas por etapa e pontos de conversão.
+3. Permitir drill-down por parceiro, escola e origem de captação.
+
+**Critério de pronto**
+
+- O funil comercial fica rastreável ponta a ponta sem troca manual de ecrãs.
+
+---
+
+### P3.2 — Cockpit administrativo de comissão do parceiro
+
+**Status**
+
+`parcial`
+
+**Objetivo**
+
+Operar o ledger `partner_commissions` para aprovação, bloqueio, pagamento e reabertura administrativa.
+
+**Tarefas**
+
+1. Criar listagem Super Admin das comissões geradas.
+2. Expor filtros mínimos por parceiro, estado e pesquisa textual.
+3. Permitir ações operacionais:
+   - aprovar
+   - bloquear
+   - marcar como paga
+   - cancelar
+   - reabrir
+4. Registar ações em auditoria.
+5. Fechar a camada de payout/recibo para a operação financeira completa.
+
+**Cobertura actual**
+
+- Page dedicada em [apps/web/src/app/super-admin/comissoes/page.tsx](/Users/gundja/moxi-edtech/apps/web/src/app/super-admin/comissoes/page.tsx:1)
+- Cockpit client em [apps/web/src/components/super-admin/comissoes/PartnerCommissionsClient.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/super-admin/comissoes/PartnerCommissionsClient.tsx:1)
+- API de listagem em [apps/web/src/app/api/super-admin/commissions/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/super-admin/commissions/route.ts:1)
+- API de mutação em [apps/web/src/app/api/super-admin/commissions/[id]/route.ts](/Users/gundja/moxi-edtech/apps/web/src/app/api/super-admin/commissions/[id]/route.ts:1)
+- Atalho operacional adicionado em [apps/web/src/components/super-admin/QuickActionsSection.tsx](/Users/gundja/moxi-edtech/apps/web/src/components/super-admin/QuickActionsSection.tsx:1)
+
+**Falta para fechar**
+
+- comprovativo/recibo de liquidação
+- fluxo financeiro de payout externo
+- reconciliação final da comissão paga
+
+**Critério de pronto**
+
+- O Super Admin consegue operar o ciclo administrativo da comissão sem recorrer ao banco.
+
+---
+
+### P3.3 — Trial K12 explícito de aquisição
+
+**Status**
+
+`falta`
+
+**Objetivo**
+
+Transformar o suporte genérico a `trial_days` numa experiência comercial K12 explícita dentro do funil principal.
+
+**Tarefas**
+
+1. Definir a superfície K12 que ativa o trial.
+2. Persistir estado e prazo no fluxo comercial principal.
+3. Ligar lembrete, expiração e conversão.
+
+**Critério de pronto**
+
+- O trial K12 deixa de ser implícito e passa a ser uma etapa operacional do funil.
+
+---
+
+### P3.4 — Fila persistida de follow-up comercial
+
+**Status**
+
+`falta`
+
+**Objetivo**
+
+Sair do follow-up apenas visual/manual e criar uma fila rastreável de trabalho comercial.
+
+**Tarefas**
+
+1. Persistir tarefas de follow-up com dono, prazo e estado.
+2. Alimentar a fila com leads sem próxima ação, vencidos e churn/upgrade.
+3. Expor ações de conclusão e reatribuição.
+
+**Critério de pronto**
+
+- O trabalho comercial passa a ter backlog operacional persistido e auditável.
+
+---
+
+### P3.5 — Variante “escola pública” sem financeiro transacional
+
+**Status**
+
+`fora_do_escopo_actual`
+
+**Observação**
+
+Excluído da execução actual por decisão explícita do utilizador.
+
+---
+
+### P3.6 — Canal WhatsApp rastreável para CRM comercial
+
+**Status**
+
+`falta`
+
+**Objetivo**
+
+Levar o CRM comercial do parceiro além de links estáticos de WhatsApp e dar rastreabilidade operacional às interações.
+
+**Tarefas**
+
+1. Registar interações com canal, operador e resultado.
+2. Integrar inbox/log comercial ou, no mínimo, journaling operacional das mensagens.
+3. Ligar isso ao ciclo de follow-up e ao histórico do lead.
+
+**Critério de pronto**
+
+- O canal comercial deixa de ser apenas link externo e passa a ser auditável no produto.
+
+---
+
 ## Sequência Recomendada
 
 1. `P0.1` Fila de uploads na UI
@@ -475,6 +620,11 @@ Transformar o fluxo em instrumento de gestão.
 5. `P1.1` a `P1.4` Fechar a frente do parceiro (feito)
 6. `P1.5` e `P1.6` Migrar o workflow para 7 etapas (feito)
 7. `P2.1`, `P2.2`, `P2.3` e `P2.4` concluídos
+8. `P3.2` Cockpit administrativo de comissão (parcial)
+9. `P3.1` Funil ponta a ponta unificado
+10. `P3.3` Trial K12 explícito
+11. `P3.4` Fila persistida de follow-up comercial
+12. `P3.6` Canal WhatsApp rastreável para CRM comercial
 
 ## Definição de “3 frentes cobertas”
 

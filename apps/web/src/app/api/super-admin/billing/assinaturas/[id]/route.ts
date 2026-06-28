@@ -239,6 +239,20 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         dataRenovacao: assAfter.data_renovacao,
         timestamp: nowIso,
       });
+      let partnerCommissionResult: any = null;
+
+      if (action === 'confirm_receipt') {
+        const { data: commissionData, error: commissionError } = await (s.rpc as any)(
+          'generate_partner_commission_for_saas_payment',
+          {
+            p_pagamento_id: pagamentoBefore.id,
+            p_actor_id: sess.user.id,
+          },
+        );
+
+        if (commissionError) throw commissionError;
+        partnerCommissionResult = commissionData ?? null;
+      }
 
       await recordAuditServer({
         escolaId: assBefore.escola_id,
@@ -257,10 +271,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
           pagamento_before_status: pagamentoBefore.status,
           pagamento_after_status: paymentStatus,
           formacao_center_synced: syncedFormacaoCenter,
+          partner_commission: partnerCommissionResult,
         },
       });
 
-      return NextResponse.json({ ok: true, diff, changed_fields: changedFields });
+      return NextResponse.json({ ok: true, diff, changed_fields: changedFields, partner_commission: partnerCommissionResult });
     }
 
     const { error: errorAss } = await s

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from "react";
-import { ArrowRight, Check, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Coins, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -76,6 +76,18 @@ export default function QuickActionsSection() {
         requires_confirm: false,
         audit_tag: "super_admin.ops.cobrancas_risco",
         badge: "Crítico",
+      },
+      {
+        id: "op-comissoes-parceiros",
+        label: "Comissões Parceiros",
+        icon: Coins,
+        href: "/super-admin/comissoes",
+        description: "Aprovar, bloquear e liquidar comissões do funil comercial.",
+        group: "Operação",
+        risk_level: "medium",
+        requires_confirm: false,
+        audit_tag: "super_admin.ops.partner_commissions",
+        badge: "CRM",
       },
       {
         id: "op-planos-precos",

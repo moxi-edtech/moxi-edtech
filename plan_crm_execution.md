@@ -4,6 +4,8 @@ Este plano descreve a arquitetura relacional e o roteiro de desenvolvimento para
 
 ## Estado V1
 
+Última validação live DB: 2026-06-28
+
 Referências de acompanhamento:
 
 - Cobertura actual: [plan_crm_execution_status.md](/Users/gundja/moxi-edtech/plan_crm_execution_status.md:1)
@@ -20,12 +22,17 @@ Resumo da V1 já implementada:
 - guardrails transacionais e audit log no provisionamento
 - bloqueio visual do provisionamento quando ainda há etapas pendentes
 - filtro de escolas elegíveis no modal de vinculação
+- conversão formal `crm_lead -> onboarding_request`
+- ledger de comissão recorrente do parceiro (`partner_commissions`)
 
-Pendências principais para fechar a V1 operacional e aderir ao plano completo:
+Pendências principais para aderir ao plano completo:
 
-- concluir `P0.4` com smoke test ponta a ponta e registo formal da validação
-- concluir a frente do parceiro com gestão operacional de múltiplos membros por afiliado
-- migrar do workflow actual de 4 etapas para o workflow oficial de 7 etapas
+- unificar o funil ponta a ponta entre marketing, CRM, onboarding, escola, assinatura e comissão
+- criar cockpit administrativo de comissão (aprovação, bloqueio, pagamento e recibo)
+- explicitar trial comercial K12 dentro do funil principal
+- criar fila/tarefas persistidas de follow-up comercial
+- criar variante “escola pública” sem financeiro transacional
+- integrar canal WhatsApp rastreável no CRM comercial do parceiro
 
 ---
 
@@ -102,7 +109,8 @@ O plano trata as frentes de maneira isolada e integrada, garantindo privacidade,
 ### 🏢 Frente 1: O Escritório (Emanuel Caetano / AELS - Parceiro Comercial com Controle de Equipe)
 *   **Login Individualizado (Sem compartilhamento de PIN):** O funcionário digita o código `AELS`. O painel Next.js consulta os membros cadastrados na tabela `afiliado_membros` e exibe uma lista de seleção (ex: *Emanuel Caetano*, *Especialista de Marketing*, *Entregador*). O usuário seleciona seu nome e insere seu **PIN pessoal** para entrar.
 *   **Acompanhamento Comercial:** Visualizam a lista de escolas indicadas com status dos SLAs.
-*   **Painel Financeiro:** Calculadora automática mostrando os **25% de comissão recorrente** e **100% da taxa de ativação**.
+*   **Conversão Comercial:** O lead ganho pode ser convertido formalmente para `onboarding_request`, com geração de `tracking_token` e rastreabilidade no funil.
+*   **Painel Financeiro:** O sistema já mantém ledger de comissão recorrente; o que falta é a operação administrativa completa de payout.
 *   **Rastreabilidade Operacional:** Cada upload feito pelo escritório armazena o `criado_por_membro_id` do agente que enviou o arquivo em `onboarding_uploads`, garantindo que você e a direção do escritório saibam exatamente quem realizou cada tarefa.
 
 ### 🏫 Frente 2: A Escola (Cliente / Direção Escolar)
@@ -161,16 +169,21 @@ O workflow de ativação escolar é composto por 7 fases síncronas, cada uma co
 1.  `tracking_token`, `onboarding_steps`, `onboarding_uploads` e bucket `onboarding` já existem.
 2.  `afiliado_membros` e a autoria por membro em `onboarding_uploads` já foram implementados; a evolução corrente é expandir a governança operacional e a homologação final do fluxo do parceiro.
 3.  O workflow de 7 etapas já foi aplicado e o modelo agora também registra `started_at` para medir o tempo real de cada fase.
+4.  A ligação explícita `crm_leads <-> onboarding_requests` já foi aplicada no live DB.
+5.  A tabela `partner_commissions` e as funções de geração/consulta de comissão já foram aplicadas no live DB.
 
-### ➡️ Fase 2: APIs de Back-End (Next.js) — **V1 OPERACIONAL / PARCEIRO A COMPLETAR**
+### ➡️ Fase 2: APIs de Back-End (Next.js) — **V1 OPERACIONAL / EXPANSÃO COMERCIAL PENDENTE**
 1.  **API do Cliente:** `/api/onboarding/acompanhar/[token]` já entrega checklist e status.
 2.  **API de Login de Membros:** já existe listagem pública de membros e validação por `member_id + PIN`.
 3.  **API de Upload Staging:** `/api/onboarding/[token]/upload` já aceita contexto de membro e limpa ficheiros órfãos quando a persistência falha.
 4.  **APIs de Provisionamento:** os fluxos `/api/super-admin/onboarding/[id]/provision` e `/api/super-admin/onboarding/[id]/create-and-provision` já estão implementados.
 5.  **Cron de SLA:** já existe verificação automática com cooldown por etapa e registo manual de `ligação realizada`.
+6.  **Conversão CRM → Onboarding:** `/api/influencers/[codigo]/crm/leads/[leadId]/convert` já existe.
+7.  **Comissões do Parceiro:** a leitura de comissões e a geração por confirmação de pagamento já existem.
 
 ### ➡️ Fase 3: Interfaces do Usuário (Front-End) — **V1 OPERACIONAL / AJUSTES PENDENTES**
 1.  **Página da Escola:** `/onboarding/acompanhar/[token]` já cobre 7 etapas, uploads e download de materiais de apoio.
-2.  **Portal do Parceiro:** `/influencers/[codigo]` já opera com login por membro, workflow completo, dashboard de SLA e materiais.
+2.  **Portal do Parceiro:** `/influencers/[codigo]` já opera com login por membro, CRM pré-vendas, conversão para onboarding, dashboard de SLA e materiais.
 3.  **Dashboard Super Admin:** a moderação de uploads, autoria detalhada, relatórios operacionais e provisionamento já estão activos.
 4.  **Pendência actual:** o follow-up manual já pode ser registado no portal do parceiro por escola e por etapa.
+5.  **Pendências reais de UI:** cockpit de comissão, visão unificada do funil, trial K12 explícito e tarefas comerciais persistidas.
