@@ -5,22 +5,17 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
-  ClipboardList,
   Copy,
   HelpCircle,
-  MessageSquare,
   Search,
   Send,
   ThumbsDown,
   ThumbsUp,
   X,
+  ExternalLink,
 } from "lucide-react";
-import {
-  describeContext,
-  getAssistantSuggestions,
-  type AiWidgetContext,
-  type AssistantSuggestion,
-} from "@/lib/assistant/assistant-suggestions";
+import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
+import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
 
 export type { AiWidgetContext };
@@ -32,6 +27,27 @@ type Message = {
   copyable?: boolean;
   actionId?: string | null;
   quickReplies?: Array<{ label: string; action: string }>;
+  links?: Array<{ label: string; href: string }>;
+};
+
+type AssistantSuggestionPayload = {
+  key: string;
+  title: string;
+};
+
+type AssistantResponsePayload = {
+  answer?: string;
+  links?: Array<{ label: string; href: string }>;
+  suggestions?: AssistantSuggestionPayload[];
+  mode?: string;
+};
+
+type RewriteResponsePayload = {
+  title?: string;
+  text?: string;
+  body?: string;
+  whatsappText?: string;
+  reviewNotes?: string[];
 };
 
 type FlowId =
@@ -102,6 +118,34 @@ const FLOW_TITLES: Record<FlowId, string> = {
   find_path: "Encontrar caminho no sistema",
 };
 
+const REWRITE_MODE_LABELS: Record<string, string> = {
+  more_formal: "Mais formal",
+  shorter: "Mais curto",
+  clearer: "Mais claro",
+  institutional: "Institucional",
+  whatsapp: "WhatsApp",
+  guardian: "Encarregado",
+};
+
+function formatRewriteResponse(json: RewriteResponsePayload) {
+  const title = String(json?.title ?? "Comunicado assistido").trim();
+  const body = String(json?.body ?? json?.text ?? "").trim();
+  const whatsappText = String(json?.whatsappText ?? "").trim();
+  const reviewNotes = Array.isArray(json?.reviewNotes)
+    ? json.reviewNotes.map(String).map((item) => item.trim()).filter(Boolean)
+    : [];
+
+  const parts = [`${title}\n\n${body}`];
+  if (whatsappText && whatsappText !== body) {
+    parts.push(`Versão WhatsApp:\n${whatsappText}`);
+  }
+  if (reviewNotes.length > 0) {
+    parts.push(`Revisão humana:\n${reviewNotes.map((note: string) => `- ${note}`).join("\n")}`);
+  }
+
+  return parts.join("\n\n");
+}
+
 export default function AiChatWidget({
   schoolId,
   schoolParam,
@@ -121,11 +165,11 @@ export default function AiChatWidget({
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [userRole, setUserRole] = useState("");
   const [resolvedSchoolId, setResolvedSchoolId] = useState<string | null>(null);
-  const [allowedFeatures, setAllowedFeatures] = useState<string[]>([]);
   const [helpSearch, setHelpSearch] = useState("");
   const [helpTopics, setHelpTopics] = useState<HelpTopic[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [queryCache] = useState(() => new Map<string, AssistantResponsePayload>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [position, setPosition] = useState<{ right: number; bottom: number }>({ right: 24, bottom: 24 });
@@ -136,10 +180,10 @@ export default function AiChatWidget({
   const positionRef = useRef(position);
 
   const effectiveSchoolId = resolvedSchoolId ?? schoolId;
-  const contextName = describeContext(context);
-  const suggestions = useMemo(
-    () => getAssistantSuggestions({ context, role: userRole, allowedFeatures }),
-    [context, userRole, allowedFeatures]
+  const contextName = describeScreenContext(context);
+  const actions = useMemo(
+    () => getActionsForRole(userRole, context?.module),
+    [context?.module, userRole]
   );
 
   useEffect(() => {
@@ -179,9 +223,17 @@ export default function AiChatWidget({
         const json = await res.json().catch(() => null);
         if (!active) return;
         const data = json?.data ?? {};
+        const roleStr = String(data.role ?? "").toLowerCase();
+
+        // Block student, teacher, guardian profiles from viewing the assistant completely
+        if (["aluno", "professor", "encarregado", "docente", "guardian"].includes(roleStr)) {
+          setIsAllowed(false);
+          setCheckingAccess(false);
+          return;
+        }
+
         setResolvedSchoolId(typeof data.schoolId === "string" ? data.schoolId : null);
-        setUserRole(String(data.role ?? "").toLowerCase());
-        setAllowedFeatures(Array.isArray(data.allowedFeatures) ? data.allowedFeatures.map(String) : []);
+        setUserRole(roleStr);
         setIsAllowed(Boolean(res.ok && json?.ok && data.allowed));
       } catch {
         if (active) setIsAllowed(false);
@@ -197,15 +249,26 @@ export default function AiChatWidget({
 
   useEffect(() => {
     if (!isAllowed) return;
+
+    // UI Aesthetic Guidelines: Wow the user upon opening with a highly context-specific greeting
+    let greeting = "";
+    if (context?.module === "financeiro") {
+      greeting = "Você está no Radar Financeiro. Posso ajudar a priorizar cobranças, gerar rascunhos ou abrir a Central WhatsApp.";
+    } else if (context?.module === "secretaria") {
+      greeting = "Você está na Secretaria. Posso ajudar com alunos, documentos, matrículas e comunicados.";
+    } else {
+      greeting = `Olá! Estou no KLASSE e conheço esta área. Como posso ajudar? (${describeScreenContext(context)})`;
+    }
+
     setMessages([
-      ai(`Olá! Estou vendo que você está em ${contextName}.`, {
+      ai(greeting, {
         quickReplies: [
           { label: "O que posso fazer nesta tela?", action: "screen_capabilities" },
           { label: "Abrir Central IA", action: "open_actions" },
         ],
       }),
     ]);
-  }, [isAllowed, contextName]);
+  }, [isAllowed, context, contextName]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -258,7 +321,7 @@ export default function AiChatWidget({
   }, [dragging, isOpen, hasMobileNav, schoolId]);
 
   function pushMessages(next: Message[]) {
-    setMessages((current) => [...current, ...next].slice(-8));
+    setMessages((current) => [...current, ...next].slice(-10));
   }
 
   function startFlow(id: FlowId) {
@@ -269,22 +332,26 @@ export default function AiChatWidget({
       setFlow({ id, step: 1, data: { mode: "more_formal" } });
       pushMessages([
         user(FLOW_TITLES[id]),
-        ai("Escolhe o ajuste desejado.", {
+        ai("Escolha o ajuste de tom desejado para o comunicado:", {
           quickReplies: [
             { label: "Mais formal", action: "rewrite_mode:more_formal" },
             { label: "Mais curto", action: "rewrite_mode:shorter" },
             { label: "Mais claro", action: "rewrite_mode:clearer" },
+            { label: "Institucional", action: "rewrite_mode:institutional" },
+            { label: "WhatsApp", action: "rewrite_mode:whatsapp" },
+            { label: "Encarregado", action: "rewrite_mode:guardian" },
             { label: "Cancelar", action: "cancel_flow" },
           ],
         }),
       ]);
       return;
     }
+
     if (id === "guided_notice") {
       setFlow({ id, step: 1, data: {} });
       pushMessages([
         user(FLOW_TITLES[id]),
-        ai("Qual é o público?", {
+        ai("Qual é o público-alvo deste comunicado?", {
           quickReplies: ["Alunos", "Encarregados", "Professores", "Todos"].map((label) => ({
             label,
             action: `notice_audience:${label}`,
@@ -297,9 +364,9 @@ export default function AiChatWidget({
       setFlow({ id, step: 1, data: {} });
       pushMessages([
         user(FLOW_TITLES[id]),
-        ai("Confirmas que queres criar um plano financeiro apenas como rascunho para revisão?", {
+        ai("Confirma que deseja criar um plano de cobrança como rascunho para revisão na Central de Ações?", {
           quickReplies: [
-            { label: "Criar rascunho", action: "run_finance_plan" },
+            { label: "Sim, criar rascunho", action: "run_finance_plan" },
             { label: "Cancelar", action: "cancel_flow" },
           ],
         }),
@@ -310,7 +377,7 @@ export default function AiChatWidget({
       setFlow({ id, step: 1, data: { tone: "formal" } });
       pushMessages([
         user(FLOW_TITLES[id]),
-        ai("A IA só cria rascunho. O envio precisa ser aprovado na Central WhatsApp. Qual o tom?", {
+        ai("A IA criará um rascunho de mensagem de cobrança. O envio exige revisão manual. Selecione o tom da mensagem:", {
           quickReplies: [
             { label: "Formal", action: "whatsapp_tone:formal" },
             { label: "Amigável", action: "whatsapp_tone:cordial" },
@@ -338,12 +405,17 @@ export default function AiChatWidget({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao reescrever.");
+      const displayText = formatRewriteResponse(json);
+      const copyText = String(json.body ?? json.text ?? "").trim();
       pushMessages([
-        ai(`Rascunho criado para revisão:\n\n${json.text}`, {
+        ai(`Rascunho criado para revisão:\n\n${displayText}`, {
           copyable: true,
           quickReplies: [
-            { label: "Salvar na Central", action: `save_action:communication_draft:${encodeURIComponent(json.text)}` },
-            { label: "Copiar", action: `copy:${encodeURIComponent(json.text)}` },
+            { label: "Abrir Central IA", action: "open_actions" },
+            { label: "Copiar texto", action: `copy:${encodeURIComponent(copyText)}` },
+            json.whatsappText
+              ? { label: "Copiar WhatsApp", action: `copy:${encodeURIComponent(String(json.whatsappText))}` }
+              : { label: "Salvar na Central", action: `save_action:communication_draft:${encodeURIComponent(copyText)}` },
             { label: "Refazer", action: "rewrite_mode:more_formal" },
           ],
         }),
@@ -492,11 +564,11 @@ export default function AiChatWidget({
   }
 
   function showContextCapabilities() {
-    const titles = suggestions.slice(0, 5).map((item, index) => `${index + 1}. ${item.title}`).join("\n");
+    const titles = actions.slice(0, 5).map((item, index) => `${index + 1}. ${item.title}`).join("\n");
     pushMessages([
       user("O que posso fazer nesta tela?"),
       ai(`Nesta tela você pode:\n${titles || "Nenhuma ação contextual liberada para o teu perfil."}`, {
-        quickReplies: suggestions.slice(0, 4).map((suggestion) => ({ label: suggestion.title, action: `suggestion:${suggestion.key}` })),
+        quickReplies: actions.slice(0, 4).map((action) => ({ label: action.title, action: `suggestion:${action.key}` })),
       }),
     ]);
   }
@@ -516,27 +588,29 @@ export default function AiChatWidget({
     }).catch(() => null);
   }
 
-  function handleSuggestion(suggestion: AssistantSuggestion) {
-    if (suggestion.href) {
-      router.push(suggestion.href(routeSchoolParam, context));
-      setIsOpen(false);
-      return;
+  function handleActionSuggestion(suggestionKey: string) {
+    const act = ASSISTANT_ACTIONS.find((a) => a.key === suggestionKey);
+    if (act) {
+      if (act.href) {
+        router.push(act.href(routeSchoolParam));
+        setIsOpen(false);
+        return;
+      }
+      if (act.key === "improve_notice") return startFlow("rewrite_notice");
+      if (act.key === "generate_notice") return startFlow("guided_notice");
+      if (act.key === "create_whatsapp_draft") return startFlow("whatsapp_draft");
+      if (act.key === "generate_billing_plan") return startFlow("finance_plan");
+      if (act.key === "generate_school_summary") return startFlow("screen_summary");
+      if (act.key === "explain_current_screen") return showContextCapabilities();
+      if (act.key === "find_system_path") return openHelp();
     }
-    if (suggestion.key === "screen_capabilities") return showContextCapabilities();
-    if (suggestion.key === "finance_plan") return startFlow("finance_plan");
-    if (suggestion.key === "finance_whatsapp_draft") return startFlow("whatsapp_draft");
-    if (suggestion.key === "finance_summary" || suggestion.key === "student_summary") return startFlow("screen_summary");
-    if (suggestion.key === "communication_rewrite") return startFlow("rewrite_notice");
-    if (suggestion.key === "communication_guided") return startFlow("guided_notice");
-    if (suggestion.key === "open_actions") return router.push(`/escola/${routeSchoolParam}/admin/ai/actions`);
-    openHelp();
   }
 
   function handleQuickAction(action: string) {
     if (action === "cancel_flow") {
       setFlow(null);
       setInputValue("");
-      pushMessages([ai("Fluxo cancelado. Escolhe uma próxima ação quando quiseres.")]);
+      pushMessages([ai("Fluxo cancelado. Escolha uma próxima ação quando quiser.")]);
       return;
     }
     if (action === "screen_capabilities") return showContextCapabilities();
@@ -551,14 +625,17 @@ export default function AiChatWidget({
       return;
     }
     if (action.startsWith("suggestion:")) {
-      const suggestion = suggestions.find((item) => item.key === action.replace("suggestion:", ""));
-      if (suggestion) handleSuggestion(suggestion);
+      const suggestionKey = action.replace("suggestion:", "");
+      handleActionSuggestion(suggestionKey);
       return;
     }
     if (action.startsWith("rewrite_mode:")) {
       const mode = action.replace("rewrite_mode:", "");
       setFlow({ id: "rewrite_notice", step: 2, data: { mode } });
-      pushMessages([user(mode === "shorter" ? "Mais curto" : mode === "clearer" ? "Mais claro" : "Mais formal"), ai("Cole o texto do comunicado para eu preparar o rascunho.")]);
+      pushMessages([
+        user(REWRITE_MODE_LABELS[mode] ?? "Melhorar comunicado"),
+        ai("Cole o texto do comunicado para eu preparar o rascunho estruturado. Evite dados sensíveis desnecessários."),
+      ]);
       return;
     }
     if (action.startsWith("notice_audience:")) {
@@ -566,7 +643,7 @@ export default function AiChatWidget({
       setFlow({ id: "guided_notice", step: 2, data: { audience } });
       pushMessages([
         user(audience),
-        ai("Qual é o tom?", {
+        ai("Qual é o tom do comunicado?", {
           quickReplies: ["Formal", "Amigável", "Urgente", "Institucional"].map((label) => ({
             label,
             action: `notice_tone:${label}`,
@@ -579,14 +656,14 @@ export default function AiChatWidget({
       const toneLabel = action.replace("notice_tone:", "");
       const tone = toneLabel === "Formal" ? "formal" : toneLabel === "Urgente" ? "urgente" : "cordial";
       setFlow((current) => ({ id: "guided_notice", step: 3, data: { ...(current?.data || {}), tone } }));
-      pushMessages([user(toneLabel), ai("Cole a ideia principal do comunicado.")]);
+      pushMessages([user(toneLabel), ai("Digite a ideia principal do comunicado para eu gerar o rascunho.")]);
       return;
     }
     if (action === "run_finance_plan") return runFinancePlan();
     if (action.startsWith("whatsapp_tone:")) {
       const tone = action.replace("whatsapp_tone:", "");
       setFlow({ id: "whatsapp_draft", step: 2, data: { tone } });
-      pushMessages([user(tone), ai("Escreve a ideia da mensagem. Não inclua dados sensíveis; use placeholders como [Nome] e [Valor].")]);
+      pushMessages([user(tone), ai("Descreva a ideia da mensagem. Lembre-se de não usar dados reais sensíveis.")]);
       return;
     }
     if (action.startsWith("save_action:")) {
@@ -597,7 +674,7 @@ export default function AiChatWidget({
     if (action.startsWith("prepare_whatsapp:")) {
       const content = decodeURIComponent(action.replace("prepare_whatsapp:", ""));
       pushMessages([
-        ai("Para criar rascunho WhatsApp, informe um contato manual autorizado na Central WhatsApp. O assistente não envia mensagens nem aprova envios.", {
+        ai("Para criar rascunho WhatsApp, informe um contato manual autorizado na Central WhatsApp. O assistente não envia mensagens nem aprova envios diretamente.", {
           quickReplies: [
             { label: "Abrir Central WhatsApp", action: "open_whatsapp" },
             { label: "Salvar na Central IA", action: `save_action:communication_draft:${encodeURIComponent(content)}` },
@@ -611,33 +688,81 @@ export default function AiChatWidget({
     }
   }
 
-  function submitInput(e: React.FormEvent) {
-    e.preventDefault();
-    const text = inputValue.trim();
-    if (!text || !flow) return;
-    setInputValue("");
-    pushMessages([user(text)]);
-    if (flow.id === "rewrite_notice" && flow.step === 2) {
-      runRewrite(text, flow.data.mode || "more_formal");
-      return;
+  async function handleGeneralQuery(text: string) {
+    setThinking(true);
+
+    // Client-side local Cache logic for high performance & instant responses
+    const cacheKey = `${effectiveSchoolId}:${userRole}:${text.toLowerCase().trim()}:${context?.module || "any"}`;
+    if (queryCache.has(cacheKey)) {
+      const cached = queryCache.get(cacheKey);
+      if (cached && cached.answer) {
+        pushMessages([
+          ai(cached.answer, {
+            links: cached.links,
+            quickReplies: cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
+          }),
+        ]);
+        setThinking(false);
+        return;
+      }
     }
-    if (flow.id === "guided_notice" && flow.step === 3) {
-      runCommunicationDraft(text, flow.data);
-      return;
-    }
-    if (flow.id === "whatsapp_draft" && flow.step === 2) {
-      const content = `[Rascunho WhatsApp - ${flow.data.tone}]\n\n${text}`;
-      saveAction(content, "finance_message");
-      setFlow(null);
+
+    try {
+      const res = await fetch("/api/admin/ai/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schoolId: effectiveSchoolId,
+          message: text,
+          context,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao consultar assistente.");
+
+      if (json.mode === "fast_path") {
+        queryCache.set(cacheKey, json);
+      }
+
+      pushMessages([
+        ai(json.answer, {
+          links: json.links,
+          quickReplies: json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` })),
+        }),
+      ]);
+    } catch (err) {
+      pushMessages([ai(errorMessage(err, "Erro ao obter resposta do assistente."))]);
+    } finally {
+      setThinking(false);
     }
   }
 
-  const inputRequired = Boolean(
-    flow &&
-      ((flow.id === "rewrite_notice" && flow.step === 2) ||
-        (flow.id === "guided_notice" && flow.step === 3) ||
-        (flow.id === "whatsapp_draft" && flow.step === 2))
-  );
+  function submitInput(e: React.FormEvent) {
+    e.preventDefault();
+    const text = inputValue.trim();
+    if (!text) return;
+    setInputValue("");
+    pushMessages([user(text)]);
+
+    if (flow) {
+      if (flow.id === "rewrite_notice" && flow.step === 2) {
+        runRewrite(text, flow.data.mode || "more_formal");
+        return;
+      }
+      if (flow.id === "guided_notice" && flow.step === 3) {
+        runCommunicationDraft(text, flow.data);
+        return;
+      }
+      if (flow.id === "whatsapp_draft" && flow.step === 2) {
+        const content = `[Rascunho WhatsApp - ${flow.data.tone}]\n\n${text}`;
+        saveAction(content, "finance_message");
+        setFlow(null);
+      }
+    } else {
+      // General question answering
+      handleGeneralQuery(text);
+    }
+  }
 
   if (checkingAccess || !isAllowed) return null;
 
@@ -678,7 +803,7 @@ export default function AiChatWidget({
               <AssistantMark size="sm" />
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">Assistente KLASSE</h3>
-                <p className="text-[11px] text-slate-500">Ajuda rápida e ações inteligentes</p>
+                <p className="text-[11px] text-slate-500">Ajuda rápida e rotas seguras</p>
               </div>
             </div>
             <button type="button" onClick={() => setIsOpen(false)} className="rounded-md p-1 text-slate-400 hover:bg-slate-50">
@@ -757,14 +882,14 @@ export default function AiChatWidget({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3">
                 <div className="mb-3 flex flex-wrap gap-2">
-                  {suggestions.slice(0, 4).map((suggestion) => (
+                  {actions.slice(0, 4).map((act) => (
                     <button
-                      key={suggestion.key}
+                      key={act.key}
                       type="button"
-                      onClick={() => handleSuggestion(suggestion)}
+                      onClick={() => handleActionSuggestion(act.key)}
                       className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
                     >
-                      {suggestion.title}
+                      {act.title}
                     </button>
                   ))}
                 </div>
@@ -776,6 +901,26 @@ export default function AiChatWidget({
                       <div key={message.id} className={`flex ${isAi ? "justify-start" : "justify-end"}`}>
                         <div className={`max-w-[88%] rounded-lg px-3 py-2 text-xs leading-relaxed ${isAi ? "border bg-white text-slate-800" : "bg-slate-900 text-white"}`}>
                           <p className="whitespace-pre-wrap">{message.text}</p>
+
+                          {/* Rendering internal routes returned by the assistant */}
+                          {isAi && message.links && message.links.length > 0 ? (
+                            <div className="mt-2 space-y-1">
+                              {message.links.map((link, idx) => (
+                                <button
+                                  key={`${message.id}-link-${idx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    router.push(link.href);
+                                    setIsOpen(false);
+                                  }}
+                                  className="flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-200"
+                                >
+                                  <ExternalLink className="h-3 w-3" /> {link.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+
                           {isAi && message.copyable ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               <button
@@ -817,40 +962,48 @@ export default function AiChatWidget({
                   })}
                   {thinking ? (
                     <div className="flex justify-start">
-                      <div className="rounded-lg border bg-white px-3 py-2 text-xs text-slate-500">Preparando rascunho...</div>
+                      <div className="rounded-lg border bg-white px-3 py-2 text-xs text-slate-500">
+                        <span className="inline-block animate-pulse">Processando...</span>
+                      </div>
                     </div>
                   ) : null}
                   <div ref={messagesEndRef} />
                 </div>
               </div>
 
-              {inputRequired ? (
-                <form onSubmit={submitInput} className="border-t border-slate-100 bg-white p-2">
-                  <div className="flex gap-2">
-                    <textarea
-                      value={inputValue}
-                      onChange={(event) => setInputValue(event.target.value)}
-                      disabled={thinking}
-                      rows={2}
-                      className="min-h-10 flex-1 resize-none rounded-md border px-3 py-2 text-xs outline-none focus:border-slate-400"
-                      placeholder="Escreva apenas o texto necessário para este fluxo..."
-                    />
-                    <button type="submit" disabled={thinking || !inputValue.trim()} className="rounded-md bg-slate-900 px-3 text-white disabled:bg-slate-200">
-                      <Send className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <button type="button" onClick={() => handleQuickAction("cancel_flow")} className="mt-2 w-full rounded-md border border-dashed px-3 py-1.5 text-[11px] text-slate-500">
-                    Cancelar fluxo
-                  </button>
-                </form>
-              ) : (
-                <div className="flex items-center justify-between border-t bg-white px-3 py-2 text-[11px] text-slate-500">
-                  <span>Sem chat livre. Escolha uma ação.</span>
-                  <button type="button" onClick={openHelp} className="flex items-center gap-1 font-semibold text-slate-700">
-                    <HelpCircle className="h-3 w-3" /> Ajuda
+              <form onSubmit={submitInput} className="border-t border-slate-100 bg-white p-2">
+                <div className="flex gap-2">
+                  <textarea
+                    value={inputValue}
+                    onChange={(event) => setInputValue(event.target.value)}
+                    disabled={thinking}
+                    rows={1}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        submitInput(e);
+                      }
+                    }}
+                    className="min-h-9 flex-1 resize-none rounded-md border px-3 py-2 text-xs outline-none focus:border-slate-400"
+                    placeholder={flow ? "Escreva para este fluxo..." : "Pergunte algo ao KLASSE Brain..."}
+                  />
+                  <button type="submit" disabled={thinking || !inputValue.trim()} className="rounded-md bg-slate-900 px-3 text-white disabled:bg-slate-200">
+                    <Send className="h-4 w-4" />
                   </button>
                 </div>
-              )}
+                {flow ? (
+                  <button type="button" onClick={() => handleQuickAction("cancel_flow")} className="mt-2 w-full rounded-md border border-dashed px-3 py-1 text-[10px] text-slate-500">
+                    Cancelar fluxo
+                  </button>
+                ) : (
+                  <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                    <span>Busca de rotas e ajuda oficial.</span>
+                    <button type="button" onClick={openHelp} className="flex items-center gap-0.5 font-semibold text-slate-600 hover:text-slate-900">
+                      <HelpCircle className="h-3 w-3" /> Ajuda
+                    </button>
+                  </div>
+                )}
+              </form>
             </section>
           )}
         </div>

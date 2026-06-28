@@ -1,0 +1,1244 @@
+{
+  "buildTimestamp": "2026-06-28T18:37:56.218Z",
+  "documentCount": 24,
+  "chunkCount": 84,
+  "documents": [
+    {
+      "id": "doc-routes-registry",
+      "title": "Route Registry Oficial",
+      "sourceType": "registry",
+      "sourcePath": "lib/assistant/route-registry.ts",
+      "module": "any",
+      "content": "# Rotas do Sistema KLASSE\n\nEste é o registro oficial de rotas do sistema KLASSE:\n\n- **Dashboard Geral** (Chave: `dashboard_geral`, Módulo: `dashboard`):\n  Descrição: Painel inicial com indicadores gerais e operacionais rápidos da escola.\n  Nomes/Aliases: dashboard, painel, resumo, inicio, página inicial, indicadores\n  Função URL: `/escola/ID_DA_ESCOLA/admin`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Lista de Alunos** (Chave: `alunos_lista`, Módulo: `secretaria`):\n  Descrição: Visualizar, pesquisar e gerenciar a lista de alunos matriculados.\n  Nomes/Aliases: alunos, lista de alunos, pesquisar aluno, procurar aluno, buscar aluno, estudantes\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Novo Aluno** (Chave: `aluno_novo`, Módulo: `secretaria`):\n  Descrição: Cadastrar um novo aluno no sistema.\n  Nomes/Aliases: novo aluno, cadastrar aluno, adicionar aluno, matricular aluno, criar aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/novo`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Ficha do Aluno** (Chave: `aluno_ficha`, Módulo: `secretaria`):\n  Descrição: Detalhes e histórico completo do aluno.\n  Nomes/Aliases: ficha do aluno, perfil do aluno, dados do aluno, dossiê do aluno, detalhes do aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/ID_DO_ALUNO`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Turmas** (Chave: `turmas`, Módulo: `secretaria`):\n  Descrição: Gerenciar salas, turmas e enturmações de alunos.\n  Nomes/Aliases: turmas, ver turmas, salas, classes, criar turma\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/turmas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Notas** (Chave: `notas`, Módulo: `academico`):\n  Descrição: Lançamento de notas, pautas escolares e avaliações dos alunos.\n  Nomes/Aliases: notas, lançar notas, pautas, avaliações, boletim, boletins\n  Função URL: `/escola/ID_DA_ESCOLA/admin/notas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Presenças / Frequência** (Chave: `presencas`, Módulo: `academico`):\n  Descrição: Registro de presenças e controle de faltas dos alunos.\n  Nomes/Aliases: presenças, frequência, faltas, registrar faltas, calendário, chamada\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/calendario`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Radar Financeiro** (Chave: `radar_financeiro`, Módulo: `financeiro`):\n  Descrição: Radar de inadimplência e identificação de propinas/mensalidades em atraso.\n  Nomes/Aliases: radar, inadimplentes, radar financeiro, atrasos, devedores, cobrança, propinas atrasadas\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/radar`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Pagamentos** (Chave: `pagamentos`, Módulo: `financeiro`):\n  Descrição: Lançamento de pagamentos, mensalidades e emissão de recibos.\n  Nomes/Aliases: pagamentos, lançar pagamento, receber propina, recibos, mensalidades, caixa\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/pagamentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Comunicados / Avisos** (Chave: `comunicados`, Módulo: `comunicacao`):\n  Descrição: Criação e publicação de avisos no portal para a comunidade escolar.\n  Nomes/Aliases: comunicados, avisos, criar aviso, notificações, mensagens\n  Função URL: `/escola/ID_DA_ESCOLA/admin/avisos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Documentos** (Chave: `documentos`, Módulo: `secretaria`):\n  Descrição: Emissão de declarações de frequência, boletins e outros documentos oficiais.\n  Nomes/Aliases: documentos, declaração, emitir declaração, certidão, documentos oficiais\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/documentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **KLASSE AI** (Chave: `klasse_ai`, Módulo: `classe_ai`):\n  Descrição: Painel administrativo do KLASSE AI, consumo de créditos e estatísticas.\n  Nomes/Aliases: klasse ai, ia, painel ia, créditos ia, configurar ia, assistente virtual\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central de Ações IA** (Chave: `central_acoes_ai`, Módulo: `classe_ai`):\n  Descrição: Gerenciar rascunhos de comunicados, planos de cobrança e resumos gerados por IA.\n  Nomes/Aliases: central de ações, ações ia, rascunhos ia, aprovar rascunhos, ações do assistente\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai/actions`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central WhatsApp** (Chave: `central_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Visualizar conversas, status da conexão e rascunhos pendentes de envio pelo WhatsApp.\n  Nomes/Aliases: central whatsapp, whatsapp, inbox whatsapp, mensagens whatsapp, conversas\n  Função URL: `/escola/ID_DA_ESCOLA/admin/comunicacao/whatsapp`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Configuração WhatsApp** (Chave: `configuracao_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Configuração da API do WhatsApp (WAHA) e vinculação de dispositivo via QR Code.\n  Nomes/Aliases: configurar whatsapp, qr code whatsapp, conectar whatsapp, waha, configuração de comunicação\n  Função URL: `/escola/ID_DA_ESCOLA/admin/configuracoes/comunicacao`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Acesso de Alunos** (Chave: `acesso_alunos`, Módulo: `secretaria`):\n  Descrição: Gerenciar credenciais de acesso dos alunos ao Portal do Aluno.\n  Nomes/Aliases: acesso de alunos, liberar acesso, credenciais alunos, login alunos, senha alunos\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/acesso`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-actions-registry",
+      "title": "Action Registry Oficial",
+      "sourceType": "registry",
+      "sourcePath": "lib/assistant/action-registry.ts",
+      "module": "any",
+      "content": "# Ações Disponíveis do Assistente KLASSE\n\nEste é o catálogo de ações oficiais que a IA pode sugerir:\n\n- **Abrir tela** (Chave: `navigate_to_screen`, Módulo: `any`):\n  Descrição: Navegar para uma tela específica do sistema usando a barra lateral ou link.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Explicar tela atual** (Chave: `explain_current_screen`, Módulo: `any`):\n  Descrição: Obter explicações e ações rápidas sobre a tela onde você se encontra.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Melhorar comunicado** (Chave: `improve_notice`, Módulo: `comunicacao`):\n  Descrição: IA reescreve ou melhora um aviso de comunicação de forma mais formal ou clara.\n  Tipo de ação: rewrite\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar comunicado** (Chave: `generate_notice`, Módulo: `comunicacao`):\n  Descrição: IA gera rascunho de comunicado com base em ideias principais.\n  Tipo de ação: create_ai_action\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar resumo da escola** (Chave: `generate_school_summary`, Módulo: `dashboard`):\n  Descrição: IA gera um resumo executivo com indicadores consolidados para a direção.\n  Tipo de ação: summary\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Gerar plano de cobrança** (Chave: `generate_billing_plan`, Módulo: `financeiro`):\n  Descrição: IA monta um plano com regras e cronograma para reaver propinas em atraso.\n  Tipo de ação: create_ai_action\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho financeiro** (Chave: `create_finance_draft`, Módulo: `financeiro`):\n  Descrição: Gerar um rascunho de plano de ação de cobrança para posterior aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho WhatsApp** (Chave: `create_whatsapp_draft`, Módulo: `whatsapp`):\n  Descrição: IA gera mensagem com placeholders para envio posterior via WhatsApp.\n  Tipo de ação: create_whatsapp_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Salvar na Central de Ações IA** (Chave: `save_in_ai_actions`, Módulo: `classe_ai`):\n  Descrição: Salvar o rascunho gerado pela IA na Central de Ações para auditoria e aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Abrir Central WhatsApp** (Chave: `open_whatsapp_inbox`, Módulo: `whatsapp`):\n  Descrição: Acessar a Central WhatsApp da escola para enviar mensagens ou gerenciar contatos.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Encontrar caminho no sistema** (Chave: `find_system_path`, Módulo: `any`):\n  Descrição: Perguntar onde se encontra uma funcionalidade no sistema e obter o caminho e link oficial.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-dashboard_admin",
+      "title": "Ajuda: Acessar o Painel Geral / Dashboard",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Acessar o Painel Geral / Dashboard (Categoria: Administração)\nChave: dashboard_admin\nAliases: dashboard, painel, resumo, inicio, página inicial\nPapéis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\nResposta: Acesse o painel geral da escola para visualizar indicadores operacionais rápidos.\nPasso a passo:\n1. Acesse a página inicial do portal.\n2. Clique no menu principal ou no logotipo para ir para o Dashboard.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-cadastrar_aluno",
+      "title": "Ajuda: Cadastrar Novo Aluno",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Cadastrar Novo Aluno (Categoria: Secretaria)\nChave: cadastrar_aluno\nAliases: novo aluno, matricular aluno, adicionar aluno, cadastro aluno, matrícula\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para cadastrar um novo aluno, acesse Secretaria > Alunos > Novo Aluno.\nPasso a passo:\n1. No menu lateral, selecione Secretaria.\n2. Clique na opção Alunos.\n3. Clique em Novo (ou Novo Aluno).\n4. Preencha as informações obrigatórias e salve o cadastro.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-listar_alunos",
+      "title": "Ajuda: Listar ou Procurar Alunos",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Listar ou Procurar Alunos (Categoria: Secretaria)\nChave: listar_alunos\nAliases: procurar aluno, buscar aluno, lista de alunos, pesquisar aluno, alunos\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\nResposta: Pesquise os alunos cadastrados e aceda às suas fichas detalhadas.\nPasso a passo:\n1. Acesse Secretaria ou Painel no menu lateral.\n2. Clique em Alunos para ver a listagem.\n3. Utilize a barra de pesquisa para filtrar por nome ou número de matrícula.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-listar_turmas",
+      "title": "Ajuda: Ver ou Criar Turmas",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Ver ou Criar Turmas (Categoria: Acadêmico)\nChave: listar_turmas\nAliases: turmas, criar turma, nova turma, ver turmas, classes\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Acesse a seção de turmas para ver a distribuição de alunos e gerenciar salas.\nPasso a passo:\n1. No menu lateral, selecione Secretaria.\n2. Clique em Turmas.\n3. Você verá a lista de turmas ativas ou poderá criar uma nova.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-ver_inadimplentes",
+      "title": "Ajuda: Ver Inadimplentes (Radar de Cobrança)",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Ver Inadimplentes (Radar de Cobrança) (Categoria: Financeiro)\nChave: ver_inadimplentes\nAliases: inadimplentes, radar, atrasados, devedores, propinas atrasadas, cobrança\nPapéis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\nResposta: Acesse o Radar de Inadimplência para identificar cobranças em atraso e acionar a IA de cobrança.\nPasso a passo:\n1. No menu lateral, selecione Financeiro.\n2. Clique em Radar.\n3. Visualize a lista de devedores e propinas pendentes.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-lancar_pagamento",
+      "title": "Ajuda: Lançar Pagamento / Propinas",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Lançar Pagamento / Propinas (Categoria: Financeiro)\nChave: lancar_pagamento\nAliases: lançar pagamento, receber propina, pagar mensalidade, receber pagamento, recibo\nPapéis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro\nResposta: Para efetuar lançamentos de pagamentos de propinas ou outras taxas administrativas.\nPasso a passo:\n1. Selecione o menu Financeiro.\n2. Clique na opção Pagamentos.\n3. Selecione o aluno e o mês correspondente, insira o valor e registre o pagamento.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-criar_comunicado",
+      "title": "Ajuda: Criar Comunicado ou Aviso",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Criar Comunicado ou Aviso (Categoria: Comunicação)\nChave: criar_comunicado\nAliases: comunicado, criar aviso, novo comunicado, enviar mensagem, avisos\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para publicar comunicados e avisos no portal para alunos e encarregados, com suporte da IA para polimento.\nPasso a passo:\n1. No menu lateral, selecione Administração.\n2. Selecione Avisos.\n3. Clique em Novo e escreva o rascunho.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-abrir_klasse_ai",
+      "title": "Ajuda: Aceder ao Dashboard KLASSE AI",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Aceder ao Dashboard KLASSE AI (Categoria: KLASSE AI)\nChave: abrir_klasse_ai\nAliases: assistente, klasse ai, dashboard ai, painel ia, créditos ia, configurar ia\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\nResposta: Para acompanhar o consumo de créditos de IA da escola, ver logs de uso e gerenciar configurações.\nPasso a passo:\n1. Selecione Administração no menu lateral.\n2. Clique na opção KLASSE AI.\n3. Visualize estatísticas de uso diário/mensal e feedbacks.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-lancar_notes",
+      "title": "Ajuda: Lançar Notas / Pautas",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Lançar Notas / Pautas (Categoria: Acadêmico)\nChave: lancar_notes\nAliases: notas, pautas, lançar notas, cadastrar notas, avaliacoes\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Permite a visualização e lançamento de notas escolares diretamente no sistema.\nPasso a passo:\n1. Selecione Administração no menu lateral.\n2. Acesse a página de Notas.\n3. Selecione a turma, período e disciplina para registrar as avaliações.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-registrar_presenca",
+      "title": "Ajuda: Registrar Presença / Frequência",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Registrar Presença / Frequência (Categoria: Acadêmico)\nChave: registrar_presenca\nAliases: presença, frequência, faltas, registrar presença, calendário faltas\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para consultar e registrar faltas de alunos por dia letivo ou turma.\nPasso a passo:\n1. Acesse Secretaria no menu lateral.\n2. Clique em Calendário.\n3. Selecione a data e a turma correspondente para efetuar a chamada.\n",
+      "status": "active"
+    },
+    {
+      "id": "topic-emitir_declaracao",
+      "title": "Ajuda: Emitir Declaração ou Documento Oficial",
+      "sourceType": "topic",
+      "sourcePath": "lib/klasse-help/help-topics.ts",
+      "module": "any",
+      "content": "## Emitir Declaração ou Documento Oficial (Categoria: Secretaria)\nChave: emitir_declaracao\nAliases: declaração, emitir documento, documentos, boletim, certidão\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para gerar declarações de frequência, boletins ou cartões de estudantes.\nPasso a passo:\n1. No menu lateral, clique em Secretaria.\n2. Selecione a opção Documentos.\n3. Selecione o tipo de documento, filtre pelo aluno e faça o download.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-manual-central-acoes-ai",
+      "title": "Manual: manual central acoes ai",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/manual-central-acoes-ai.md",
+      "module": "classe_ai",
+      "content": "# Manual Curto da Central de Ações IA\n\nA Central de Ações IA é o local centralizado onde são guardados os rascunhos de comunicados, planos de cobrança e resumos executivos sugeridos pela IA.\n\n## 1. Funcionamento Geral\n- Acessível em **Administração > Central de Ações IA** (rota: `/escola/[schoolId]/admin/ai/actions`).\n- Sempre que o assistente do KLASSE gera um texto estruturado, um plano financeiro ou comunicado, ele oferece a opção \"Salvar na Central\".\n- Ao salvar, uma entrada com o estado \"draft\" é criada na tabela `ai_actions`.\n\n## 2. Auditoria e Risco\n- Cada ação gerada por IA possui um nível de risco associado (`low`, `medium`, `high`).\n- Ações financeiras ou com impacto em dados externos possuem risco `high` e exigem confirmação visual do usuário administrativo.\n- O histórico de geração de rascunhos registra o ID do usuário que solicitou a criação para fins de auditoria no sistema.\n- A IA nunca executa comandos destrutivos no banco de dados nem publica mensagens públicas sem aprovação na Central de Ações.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-manual-financeiro",
+      "title": "Manual: manual financeiro",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/manual-financeiro.md",
+      "module": "financeiro",
+      "content": "# Manual Curto do Portal Financeiro\n\nO Portal Financeiro do KLASSE gerencia todas as cobranças de mensalidades (propinas), recebimentos, controle de fluxo de caixa e o Radar de Inadimplência.\n\n## 1. Radar de Inadimplência\n- Acessível em **Financeiro > Radar** (rota: `/escola/[schoolId]/financeiro/radar`).\n- O Radar lista todos os encarregados de educação com parcelas ou propinas em atraso no ano letivo ativo.\n- Permite filtrar devedores por turmas, dias de atraso ou valores.\n- O assistente de IA pode analisar o Radar para ajudar a estruturar e sugerir prioridades de cobrança, mas o usuário deve validar as ações antes de enviá-las.\n\n## 2. Registro de Pagamentos\n- Acessível em **Financeiro > Pagamentos** (rota: `/escola/[schoolId]/financeiro/pagamentos`).\n- Selecione o aluno, identifique as parcelas em aberto, selecione a forma de pagamento (Dinheiro, TPA, Transferência Bancária, KWIK) e lance o valor.\n- O sistema bloqueia lançamentos de pagamentos de mensalidades futuras se houver mensalidades anteriores em aberto, garantindo a ordem cronológica.\n- A emissão de recibos oficiais e notas de crédito/débito é realizada e assinada digitalmente de forma automática.\n\n## 3. Planos de Cobrança e Regras de Negócio\n- Não é permitida a exclusão ou alteração de dados financeiros consolidados diretamente por IA.\n- A IA pode atuar sugerindo rascunhos de planos de cobrança amigáveis ou urgentes.\n- Rascunhos devem ser salvos na Central de Ações IA para posterior revisão e ativação pelo administrador financeiro.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-manual-secretaria",
+      "title": "Manual: manual secretaria",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/manual-secretaria.md",
+      "module": "secretaria",
+      "content": "# Manual Curto do Portal Secretaria\n\nO Portal da Secretaria do KLASSE é o centro operacional para gerenciar o ciclo de vida dos alunos, matrículas, turmas e emissão de documentos oficiais.\n\n## 1. Cadastro e Matrícula de Alunos\n- Para cadastrar um aluno, acesse **Secretaria > Alunos > Novo Aluno** (rota: `/escola/[schoolId]/secretaria/alunos/novo`).\n- Preencha os dados pessoais básicos, contatos e informações do encarregado de educação.\n- O campo de e-mail do encarregado é essencial para comunicações de cobrança e envio de acessos.\n- Após o cadastro, o aluno recebe um número de matrícula único gerado pelo sistema.\n\n## 2. Gestão de Turmas e Enturmação\n- O controle de turmas é feito em **Secretaria > Turmas** (rota: `/escola/[schoolId]/secretaria/turmas`).\n- O sistema permite criar turmas vinculadas ao ano letivo ativo.\n- Para enturmar alunos, acesse a ficha da turma desejada e clique em \"Adicionar Alunos\" ou gerencie individualmente pela ficha de cada aluno.\n- As turmas possuem limite de capacidade configurado por padrão para 70 alunos.\n\n## 3. Emissão de Documentos Oficiais\n- Para emitir declarações de frequência, boletins, pautas nominais ou cartões de estudante, acesse **Secretaria > Documentos** (rota: `/escola/[schoolId]/secretaria/documentos`).\n- Selecione o aluno ou turma, filtre pelo tipo de documento pretendido e clique em \"Gerar Documento\".\n- Todos os documentos emitidos oficialmente contêm controle de autenticidade rastreável.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-manual-whatsapp-utility",
+      "title": "Manual: manual whatsapp utility",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/manual-whatsapp-utility.md",
+      "module": "whatsapp",
+      "content": "# Manual Curto do WhatsApp Utility\n\nO KLASSE integra-se ao WhatsApp via API WAHA para permitir o envio automatizado e manual de comunicados e notificações de cobrança.\n\n## 1. Conexão e Status do Dispositivo\n- Acessível em **Administração > Configurações > Comunicação** (rota: `/escola/[schoolId]/admin/configuracoes/comunicacao`).\n- Para emparelhar um dispositivo, leia o QR Code gerado na tela com o aplicativo do WhatsApp do smartphone da escola.\n- O status da conexão (\"CONNECTED\", \"DISCONNECTED\") é atualizado em tempo real.\n\n## 2. Fluxo de Rascunhos e Envios\n- O assistente de IA pode preparar rascunhos de mensagens para o WhatsApp com base nos inadimplentes do Radar ou comunicados escolares.\n- **Importante:** A IA nunca envia mensagens diretamente para o destinatário sem supervisão.\n- Todo rascunho criado pelo assistente deve ser enviado para a Central de Comunicação WhatsApp, onde passa por revisão humana obrigatória.\n- As mensagens utilizam placeholders como `[Nome]` e `[Valor]` para proteger a privacidade dos dados antes da aprovação do envio.\n\n## 3. Central de Mensagens (Inbox)\n- A Central WhatsApp (rota: `/escola/[schoolId]/admin/comunicacao/whatsapp`) centraliza as conversas iniciadas com encarregados e o histórico de mensagens enviadas.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-readme-klasse-ai",
+      "title": "Manual: readme klasse ai",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/readme-klasse-ai.md",
+      "module": "classe_ai",
+      "content": "# README do KLASSE AI\n\nBem-vindo ao KLASSE AI — o assistente de produtividade e suporte integrado do sistema KLASSE.\n\n## 1. Diretrizes de Operação e Segurança\n- O KLASSE AI opera como um assistente contextual. Ele analisa a tela atual para sugerir ações relevantes.\n- O assistente **nunca** possui autonomia para alterar dados críticos do sistema diretamente. Não é possível, por meio de comandos de texto, alterar notas de alunos, lançar pagamentos reais, reverter transações fiscais ou excluir matrículas.\n- Todas as tarefas administrativas críticas geram rascunhos que exigem revisão e aprovação humana explícita.\n\n## 2. Proteção de Dados e PII\n- O KLASSE AI foi desenhado seguindo princípios estritos de privacidade.\n- Dados de identificação pessoal (PII) sensíveis de alunos, como números de telefone e e-mails pessoais, não são enviados para provedores externos de IA.\n- O assistente usa dados agregados e placeholders (`[Nome]`, `[Valor]`) para formular rascunhos de cobrança e avisos.\n\n## 3. Créditos e Limites\n- Cada escola possui limites diários e mensais de uso de IA gerenciados via `ai_school_settings`.\n- Cada chamada de IA consome um slot do plano, que é registrado na tabela `ai_usage_logs` via RPC `claim_ai_usage_slot`.\n- O caminho rápido (Fast Path) de respostas baseadas em registries locais não consome créditos de IA da escola.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-regras-negocio-academico",
+      "title": "Manual: regras negocio academico",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/regras-negocio-academico.md",
+      "module": "academico",
+      "content": "# Regras de Negócio — Acadêmico, Notas e Horários\n\nEste documento resume regras oficiais acadêmicas que o KLASSE Brain pode usar ao orientar Secretaria, Direção e Professores autorizados.\n\n## Lançamento de notas\n\n- O lançamento de notas é centralizado na RPC `lancar_notas_batch`.\n- As rotas de professor e secretaria exigem header `Idempotency-Key`.\n- O lançamento deve informar turma, disciplina, turma-disciplina, trimestre/tipo de avaliação e lista de notas.\n- A nota aceita valor numérico entre 0 e 100 conforme validação de payload.\n- A RPC é a fonte central para validação e persistência, reduzindo divergência entre portais.\n\nFontes:\n- `apps/web/src/app/api/professor/notas/route.ts`\n- `apps/web/src/app/api/secretaria/notas/route.ts`\n- `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Permissão para notas\n\n- Professor e Secretaria usam rotas distintas, mas o lançamento não deve ignorar validação de escola e papel.\n- A rota de Secretaria verifica autorização para gestão de turmas antes de chamar a RPC.\n- A regra de negócio de professor atribuído/admin fica centralizada na RPC.\n\nFontes:\n- `apps/web/src/app/api/secretaria/notas/route.ts`\n- `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Travas de período e turma\n\n- O sistema bloqueia lançamento/alteração de notas quando a turma está fechada.\n- O sistema também bloqueia lançamento/alteração quando o período letivo está travado.\n- Essas travas são regras operacionais; o assistente deve orientar o usuário a verificar fecho de turma/período em vez de sugerir alteração direta.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Fórmulas e modelos de avaliação\n\n- `modelos_avaliacao.formula` é a fonte principal para componentes e pesos.\n- A pauta geral e pauta anual devem usar o modelo oficial resolvido pelo backend.\n- Ainda existe risco residual de divergência com engines legadas; se a pergunta envolver cálculo avançado, o assistente deve responder com cautela e indicar que o cálculo oficial vem do backend/modelo de avaliação.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## Notificações de notas\n\n- Após lançamento por professor, o sistema pode notificar alunos.\n- Notas abaixo da média mínima operacional de 10 podem gerar notificação específica de nota baixa.\n- O assistente não deve enviar notificação diretamente; deve apenas explicar que o fluxo oficial pode disparar notificações.\n\nFonte: `apps/web/src/app/api/professor/notas/route.ts`\n\n## Horários\n\n- O sistema bloqueia conflitos de professor e sala no mesmo slot.\n- No modo de publicação, o fluxo também valida cobertura de carga horária.\n- O scheduler automático evita colisões de turma, professor e sala por slot.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`\n\n## O que o assistente pode dizer\n\n- Pode explicar por que o lançamento exige idempotency key.\n- Pode explicar bloqueio por turma fechada ou período travado.\n- Pode orientar o usuário a usar a tela de notas/pauta correta.\n- Pode resumir a regra geral de cálculo sem inventar fórmula específica não documentada.\n\n## O que o assistente não pode inventar\n\n- Não inventar média, fórmula ou regra de aprovação quando não estiver no modelo oficial.\n- Não prometer destravar período/turma.\n- Não lançar, alterar ou apagar notas diretamente.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro",
+      "title": "Manual: regras negocio financeiro",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/regras-negocio-financeiro.md",
+      "module": "financeiro",
+      "content": "# Regras de Negócio — Financeiro, Cobranças e Pagamentos\n\nEste documento resume regras financeiras oficiais que o KLASSE Brain pode usar em respostas sobre Radar, cobranças, pagamentos e recibos.\n\n## Radar de inadimplência\n\n- O Radar Financeiro mostra parcelas/propinas em atraso no ano letivo ativo.\n- O usuário pode filtrar devedores por turma, dias de atraso ou valores.\n- O assistente pode ajudar a priorizar cobranças e preparar rascunhos, mas não deve executar cobrança crítica sozinho.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-financeiro.md`\n\n## Registro de pagamentos\n\n- Pagamentos devem ser registrados em Financeiro > Pagamentos.\n- O usuário deve selecionar aluno, parcelas em aberto, forma de pagamento e valor.\n- O sistema bloqueia lançamentos de mensalidades futuras se houver mensalidades anteriores em aberto.\n- Recibos oficiais e notas de crédito/débito são emitidos/assinados pelo fluxo oficial.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-financeiro.md`\n\n## Cobranças financeiras\n\n- Cobranças podem usar canal `whatsapp`, `sms`, `email` ou `manual`.\n- Status de cobrança pode incluir `enviada`, `entregue`, `respondida`, `paga` ou `falha`.\n- A criação de cobranças registra escola, aluno, mensalidade, canal, mensagem, status, data de envio e usuário criador.\n- O assistente deve tratar cobrança como rascunho/apoio operacional, não como execução automática de cobrança sem revisão.\n\nFonte: `apps/web/src/app/api/financeiro/cobrancas/route.ts`\n\n## Templates de cobrança\n\n- Templates de cobrança exigem nome, canal e corpo.\n- Canais aceitos para template incluem `whatsapp`, `sms`, `email` e `push`.\n- Templates pertencem à escola e registram usuário criador.\n\nFonte: `apps/web/src/app/api/financeiro/cobrancas/templates/nova/route.ts`\n\n## Planos de cobrança com IA\n\n- A IA pode sugerir planos de cobrança, mensagens e priorização.\n- Rascunhos financeiros devem ser revisados por usuário financeiro autorizado.\n- A IA não deve excluir, alterar ou consolidar dados financeiros diretamente.\n- Mensagens financeiras devem usar placeholders quando possível, como `[Nome]`, `[Valor]` e `[Data]`.\n\nFontes:\n- `apps/web/src/lib/assistant/docs/manual-financeiro.md`\n- `apps/web/src/lib/assistant/docs/manual-whatsapp-utility.md`\n\n## O que o assistente pode dizer\n\n- Pode indicar o Radar Financeiro para inadimplentes.\n- Pode explicar por que pagamento futuro pode ser bloqueado por parcelas anteriores.\n- Pode gerar rascunho de cobrança ou plano de ação para revisão.\n- Pode orientar abertura da Central WhatsApp ou Central de Ações IA.\n\n## O que o assistente não pode inventar\n\n- Não confirmar pagamento que não foi lançado no fluxo oficial.\n- Não prometer emissão de recibo se o pagamento não foi registrado.\n- Não enviar cobrança ou WhatsApp sem revisão humana.\n- Não expor dados financeiros individuais desnecessários no prompt de IA.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp",
+      "title": "Manual: regras negocio ia whatsapp",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/regras-negocio-ia-whatsapp.md",
+      "module": "whatsapp",
+      "content": "# Regras de Negócio — KLASSE AI, Central de Ações e WhatsApp\n\nEste documento define limites oficiais para respostas e ações assistidas por IA no KLASSE.\n\n## Princípio geral\n\n- O assistente responde com base em rotas, permissões, ações, tópicos de ajuda e documentação oficial.\n- O assistente não deve inventar telas, rotas, permissões ou ações administrativas.\n- Se não houver documentação suficiente, deve responder: \"Não encontrei essa informação documentada no KLASSE ainda.\"\n\nFonte: contrato do sprint KLASSE Brain V1 e registries em `apps/web/src/lib/assistant/`.\n\n## Fast path e smart path\n\n- Perguntas simples de navegação e ajuda devem usar fast path sem IA.\n- Geração, reescrita, resumo, planos de cobrança e respostas elaboradas podem usar IA server-side.\n- Chamadas ao provider de IA não devem ocorrer no client.\n- Fast path não deve consumir créditos de IA.\n\nFontes:\n- `apps/web/src/lib/assistant/klasse-brain.ts`\n- `apps/web/src/app/api/admin/ai/assistant/route.ts`\n\n## Rewrite de comunicados\n\n- O rewrite pode melhorar texto em modos formal, curto, claro, institucional, WhatsApp ou encarregado.\n- A resposta estruturada contém título, corpo, versão curta para WhatsApp e notas de revisão humana.\n- O texto gerado é rascunho; publicação ou envio exige revisão humana.\n- O assistente não deve inventar datas, valores, promessas ou fatos que não estejam no texto original.\n\nFonte: `apps/web/src/app/api/admin/ai/rewrite/route.ts`\n\n## Central de Ações IA\n\n- Rascunhos gerados por IA devem ser salvos na Central de Ações IA quando precisarem de auditoria, revisão ou aprovação.\n- A Central de Ações IA é o local para acompanhar rascunhos de comunicados, resumos e mensagens financeiras.\n- A IA não deve executar ação crítica sozinha; deve preparar rascunho e orientar revisão.\n\nFontes:\n- `apps/web/src/lib/assistant/action-registry.ts`\n- `apps/web/src/lib/assistant/docs/manual-central-acoes-ai.md`\n\n## WhatsApp\n\n- Integração WhatsApp usa WAHA e depende de conexão/configuração oficial.\n- O assistente pode preparar rascunhos com placeholders.\n- A IA nunca envia mensagens diretamente para destinatários sem supervisão.\n- Todo rascunho de WhatsApp deve ser revisado na Central WhatsApp ou Central de Ações apropriada.\n- Mensagens devem evitar PII desnecessária e preferir placeholders antes da aprovação.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-whatsapp-utility.md`\n\n## Perfis não permitidos nesta versão\n\n- O assistente não deve aparecer para `aluno`, `professor` ou `encarregado` nesta versão do KLASSE Brain administrativo.\n- O uso é voltado a perfis administrativos como admin, admin_escola, staff_admin, direção, secretaria e financeiro.\n\nFontes:\n- `apps/web/src/lib/assistant/permission-registry.ts`\n- `apps/web/src/components/ai/AiChatWidget.tsx`\n\n## O que o assistente pode dizer\n\n- Pode explicar a tela atual e sugerir ações seguras.\n- Pode gerar ou melhorar rascunhos.\n- Pode indicar links internos oficiais.\n- Pode explicar que uma ação exige aprovação.\n\n## O que o assistente não pode inventar\n\n- Não inventar rota ou botão.\n- Não executar pagamento, nota, matrícula, envio WhatsApp ou documento oficial sozinho.\n- Não enviar lista inteira de alunos ou dados sensíveis para IA sem necessidade.\n- Não apresentar rascunho como ação final concluída.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria",
+      "title": "Manual: regras negocio secretaria",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/regras-negocio-secretaria.md",
+      "module": "secretaria",
+      "content": "# Regras de Negócio — Secretaria, Admissões e Matrículas\n\nEste documento resume regras oficiais de Secretaria que o KLASSE Brain pode usar ao orientar usuários administrativos. Quando houver dúvida, o assistente deve citar que a operação final acontece nas telas e APIs oficiais do KLASSE, não executar a ação sozinho.\n\n## Cadastro de aluno\n\n- O cadastro de aluno deve ser feito em Secretaria > Alunos > Novo Aluno.\n- Dados pessoais, contatos e encarregado de educação devem ser preenchidos com atenção porque alimentam documentos, acessos e comunicação.\n- O assistente pode orientar o caminho e explicar campos, mas não deve cadastrar aluno automaticamente.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-secretaria.md`\n\n## Matrícula e admissão\n\n- A finalização de admissão para matrícula usa fluxo canônico via RPC `admissao_finalizar_matricula`.\n- A finalização valida escola, candidatura, turma, preço/pagamento, capacidade e idempotência.\n- A operação transforma a candidatura em matrícula dentro de fluxo transacional, evitando duplicidade.\n- Requisições duplicadas devem reutilizar resultado idempotente quando disponível.\n- Se o aluno/documento já tiver admissão em andamento, o usuário deve retomar o rascunho existente.\n- Se já houver matrícula finalizada no ano letivo, o usuário deve abrir a matrícula existente ou corrigir a candidatura duplicada.\n\nFonte: `apps/web/src/app/api/secretaria/admissoes/convert/route.ts`\n\n## Capacidade de turma\n\n- Turma lotada bloqueia a finalização normal da matrícula.\n- Override de capacidade só é permitido a responsável autorizado.\n- Override de capacidade exige motivo obrigatório.\n- Quando há override, o sistema registra auditoria específica com capacidade, matriculados anteriores e motivo.\n\nFonte: `apps/web/src/app/api/secretaria/admissoes/convert/route.ts`\n\n## Comprovante e auditoria\n\n- Após matrícula finalizada, o sistema tenta emitir comprovante de matrícula automaticamente.\n- A conversão de admissão em matrícula registra auditoria.\n- A emissão de comprovante também registra evento de auditoria.\n- Se o comprovante falhar, a matrícula pode estar concluída e o usuário deve tratar a emissão do documento separadamente.\n\nFonte: `apps/web/src/app/api/secretaria/admissoes/convert/route.ts`\n\n## Documentos oficiais\n\n- Documentos oficiais devem ser emitidos pela área Secretaria > Documentos.\n- O assistente pode explicar o caminho e preparar texto auxiliar, mas não deve emitir documento oficial sem ação explícita do usuário na tela própria.\n- Documentos oficiais podem ter valor legal; respostas devem evitar sugerir atalhos fora do fluxo oficial.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-secretaria.md`\n\n## O que o assistente pode dizer\n\n- Pode explicar onde cadastrar aluno, abrir ficha, matricular, acessar documentos ou verificar turmas.\n- Pode explicar por que uma matrícula pode estar bloqueada por duplicidade, turma lotada ou falta de permissão.\n- Pode sugerir abrir a tela correta.\n\n## O que o assistente não pode inventar\n\n- Não inventar matrícula sem candidatura/turma válida.\n- Não prometer override de capacidade para usuário sem autorização.\n- Não dizer que documento oficial foi emitido se a emissão não ocorreu.\n- Não sugerir correção direta em banco de dados.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-tutoriais-alunos-turmas",
+      "title": "Manual: tutoriais alunos turmas",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/tutoriais-alunos-turmas.md",
+      "module": "classe_ai",
+      "content": "# Tutoriais de Alunos, Turmas, Notas e Presenças\n\nEste documento reúne procedimentos comuns para professores e secretaria sobre a gestão acadêmica dos estudantes.\n\n## 1. Cadastro de Estudante e Ano Letivo\n- Para cadastrar um aluno, certifique-se de que o ano letivo atual esteja configurado e ativo.\n- Vá para **Secretaria > Alunos > Novo Aluno** e insira os dados cadastrais obrigatórios.\n- Se o aluno for menor de idade, é obrigatório registrar pelo menos um encarregado de educação e a sua relação de parentesco.\n\n## 2. Enturmação e Criação de Turmas\n- As turmas devem ser abertas no início do ano letivo em **Secretaria > Turmas > Nova Turma**.\n- Cada turma está associada a uma classe e curso específicos.\n- O remanejamento de alunos entre turmas da mesma classe pode ser feito via funcionalidade \"Transferir Aluno\" disponível na ficha do aluno.\n\n## 3. Lançamento de Notas\n- Professores e administradores podem lançar notas de avaliações em **Administração > Notas** (rota: `/escola/[schoolId]/admin/notas`).\n- As notas de cada trimestre contam para a média de aproveitamento.\n- O sistema possui regras de validação para impedir lançamentos em períodos letivos já encerrados ou bloqueados pela direção.\n\n## 4. Presenças e Faltas\n- O registro diário de faltas e presenças é feito em **Secretaria > Calendário** (ou pelo portal do professor).\n- Faltas em excesso podem impactar a elegibilidade do aluno para aprovação direta, conforme regras definidas no regulamento da escola.\n",
+      "status": "active"
+    },
+    {
+      "id": "doc-file-tutoriais-comunicados-documentos",
+      "title": "Manual: tutoriais comunicados documentos",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/tutoriais-comunicados-documentos.md",
+      "module": "classe_ai",
+      "content": "# Tutoriais de Comunicados e Documentos\n\nGuia rápido sobre a publicação de comunicados e a emissão de boletins e certidões na secretaria escolar.\n\n## 1. Criação de Avisos e Comunicados\n- Para publicar avisos que serão exibidos no painel dos alunos e encarregados, acesse **Administração > Avisos** e clique em **Novo**.\n- Digite o título, defina o público-alvo (Alunos, Encarregados, Professores ou Todos) e redija o corpo do aviso.\n- Você pode usar o assistente de IA na barra lateral para reescrever o texto em tom formal, cordial ou reduzir a extensão para mensagens curtas.\n- Salve o comunicado como rascunho ou publique imediatamente.\n\n## 2. Emissão de Boletins Escolares\n- A emissão de boletins de notas é feita em **Secretaria > Documentos** ou pela ficha de cada aluno.\n- Selecione a turma ou o estudante, escolha o trimestre desejado e clique em \"Emitir Boletim\".\n- O boletim consolidará as notas lançadas até o momento e calculará a média trimestral automaticamente.\n\n## 3. Declarações e Certidões\n- As declarações de matrícula ou frequência com ou sem notas podem ser geradas instantaneamente em formato PDF.\n- A escola pode configurar a inserção de assinatura digital ou QR code de autenticidade nas configurações de identidade da escola.\n- Todos os downloads de declarações geram um registro nas tabelas de auditoria do sistema.\n",
+      "status": "active"
+    }
+  ],
+  "chunks": [
+    {
+      "id": "doc-routes-registry-chunk-0",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "# Rotas do Sistema KLASSE\n\nEste é o registro oficial de rotas do sistema KLASSE:\n\n- **Dashboard Geral** (Chave: `dashboard_geral`, Módulo: `dashboard`):\n  Descrição: Painel inicial com indicadores gerais e operacionais rápidos da escola.\n  Nomes/Aliases: dashboard, painel, resumo, inicio, página inicial, indicadores\n  Função URL: `/escola/ID_DA_ESCOLA/admin`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Lista de Alunos** (Chave: `alunos_lista`, Módulo: `secretaria`):\n  Descrição: Visualizar, pesquisar e gerenciar a lista de alunos matriculados.\n  Nomes/Aliases: alunos, lista de alunos, pesquisar aluno, procurar aluno, buscar aluno, estudantes\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Novo Aluno** (Chave: `aluno_novo`, Módulo: `secretaria`):\n  Descrição: Cadastrar um novo aluno no sistema.\n  Nomes/Aliases: novo aluno, cadastrar aluno, adicionar aluno, matricular aluno, criar aluno",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-routes-registry-chunk-1",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 1,
+      "content": "Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/novo`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Ficha do Aluno** (Chave: `aluno_ficha`, Módulo: `secretaria`):\n  Descrição: Detalhes e histórico completo do aluno.\n  Nomes/Aliases: ficha do aluno, perfil do aluno, dados do aluno, dossiê do aluno, detalhes do aluno\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/alunos/ID_DO_ALUNO`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Turmas** (Chave: `turmas`, Módulo: `secretaria`):\n  Descrição: Gerenciar salas, turmas e enturmações de alunos.\n  Nomes/Aliases: turmas, ver turmas, salas, classes, criar turma\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/turmas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Notas** (Chave: `notas`, Módulo: `academico`):\n  Descrição: Lançamento de notas, pautas escolares e avaliações dos alunos.",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-routes-registry-chunk-2",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 2,
+      "content": "Nomes/Aliases: notas, lançar notas, pautas, avaliações, boletim, boletins\n  Função URL: `/escola/ID_DA_ESCOLA/admin/notas`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Presenças / Frequência** (Chave: `presencas`, Módulo: `academico`):\n  Descrição: Registro de presenças e controle de faltas dos alunos.\n  Nomes/Aliases: presenças, frequência, faltas, registrar faltas, calendário, chamada\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/calendario`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Radar Financeiro** (Chave: `radar_financeiro`, Módulo: `financeiro`):\n  Descrição: Radar de inadimplência e identificação de propinas/mensalidades em atraso.\n  Nomes/Aliases: radar, inadimplentes, radar financeiro, atrasos, devedores, cobrança, propinas atrasadas\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/radar`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-routes-registry-chunk-3",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 3,
+      "content": "- **Pagamentos** (Chave: `pagamentos`, Módulo: `financeiro`):\n  Descrição: Lançamento de pagamentos, mensalidades e emissão de recibos.\n  Nomes/Aliases: pagamentos, lançar pagamento, receber propina, recibos, mensalidades, caixa\n  Função URL: `/escola/ID_DA_ESCOLA/financeiro/pagamentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Comunicados / Avisos** (Chave: `comunicados`, Módulo: `comunicacao`):\n  Descrição: Criação e publicação de avisos no portal para a comunidade escolar.\n  Nomes/Aliases: comunicados, avisos, criar aviso, notificações, mensagens\n  Função URL: `/escola/ID_DA_ESCOLA/admin/avisos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **Documentos** (Chave: `documentos`, Módulo: `secretaria`):\n  Descrição: Emissão de declarações de frequência, boletins e outros documentos oficiais.\n  Nomes/Aliases: documentos, declaração, emitir declaração, certidão, documentos oficiais",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-routes-registry-chunk-4",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 4,
+      "content": "Função URL: `/escola/ID_DA_ESCOLA/secretaria/documentos`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\n\n- **KLASSE AI** (Chave: `klasse_ai`, Módulo: `classe_ai`):\n  Descrição: Painel administrativo do KLASSE AI, consumo de créditos e estatísticas.\n  Nomes/Aliases: klasse ai, ia, painel ia, créditos ia, configurar ia, assistente virtual\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Central de Ações IA** (Chave: `central_acoes_ai`, Módulo: `classe_ai`):\n  Descrição: Gerenciar rascunhos de comunicados, planos de cobrança e resumos gerados por IA.\n  Nomes/Aliases: central de ações, ações ia, rascunhos ia, aprovar rascunhos, ações do assistente\n  Função URL: `/escola/ID_DA_ESCOLA/admin/ai/actions`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-routes-registry-chunk-5",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 5,
+      "content": "- **Central WhatsApp** (Chave: `central_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Visualizar conversas, status da conexão e rascunhos pendentes de envio pelo WhatsApp.\n  Nomes/Aliases: central whatsapp, whatsapp, inbox whatsapp, mensagens whatsapp, conversas\n  Função URL: `/escola/ID_DA_ESCOLA/admin/comunicacao/whatsapp`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\n\n- **Configuração WhatsApp** (Chave: `configuracao_whatsapp`, Módulo: `whatsapp`):\n  Descrição: Configuração da API do WhatsApp (WAHA) e vinculação de dispositivo via QR Code.\n  Nomes/Aliases: configurar whatsapp, qr code whatsapp, conectar whatsapp, waha, configuração de comunicação\n  Função URL: `/escola/ID_DA_ESCOLA/admin/configuracoes/comunicacao`\n  Perfis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Acesso de Alunos** (Chave: `acesso_alunos`, Módulo: `secretaria`):\n  Descrição: Gerenciar credenciais de acesso dos alunos ao Portal do Aluno.",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-routes-registry-chunk-6",
+      "documentId": "doc-routes-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 6,
+      "content": "Nomes/Aliases: acesso de alunos, liberar acesso, credenciais alunos, login alunos, senha alunos\n  Função URL: `/escola/ID_DA_ESCOLA/secretaria/acesso`\n  Perfis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria",
+      "metadata": {
+        "title": "Route Registry",
+        "section": "Rotas do Sistema KLASSE"
+      }
+    },
+    {
+      "id": "doc-actions-registry-chunk-0",
+      "documentId": "doc-actions-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "# Ações Disponíveis do Assistente KLASSE\n\nEste é o catálogo de ações oficiais que a IA pode sugerir:\n\n- **Abrir tela** (Chave: `navigate_to_screen`, Módulo: `any`):\n  Descrição: Navegar para uma tela específica do sistema usando a barra lateral ou link.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Explicar tela atual** (Chave: `explain_current_screen`, Módulo: `any`):\n  Descrição: Obter explicações e ações rápidas sobre a tela onde você se encontra.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Melhorar comunicado** (Chave: `improve_notice`, Módulo: `comunicacao`):\n  Descrição: IA reescreve ou melhora um aviso de comunicação de forma mais formal ou clara.",
+      "metadata": {
+        "title": "Action Registry",
+        "section": "Ações Disponíveis do Assistente KLASSE"
+      }
+    },
+    {
+      "id": "doc-actions-registry-chunk-1",
+      "documentId": "doc-actions-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 1,
+      "content": "Tipo de ação: rewrite\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar comunicado** (Chave: `generate_notice`, Módulo: `comunicacao`):\n  Descrição: IA gera rascunho de comunicado com base em ideias principais.\n  Tipo de ação: create_ai_action\n  Nível de Risco: medium\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria\n\n- **Gerar resumo da escola** (Chave: `generate_school_summary`, Módulo: `dashboard`):\n  Descrição: IA gera um resumo executivo com indicadores consolidados para a direção.\n  Tipo de ação: summary\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria\n\n- **Gerar plano de cobrança** (Chave: `generate_billing_plan`, Módulo: `financeiro`):\n  Descrição: IA monta um plano com regras e cronograma para reaver propinas em atraso.\n  Tipo de ação: create_ai_action",
+      "metadata": {
+        "title": "Action Registry",
+        "section": "Ações Disponíveis do Assistente KLASSE"
+      }
+    },
+    {
+      "id": "doc-actions-registry-chunk-2",
+      "documentId": "doc-actions-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 2,
+      "content": "Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho financeiro** (Chave: `create_finance_draft`, Módulo: `financeiro`):\n  Descrição: Gerar um rascunho de plano de ação de cobrança para posterior aprovação.\n  Tipo de ação: create_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Criar rascunho WhatsApp** (Chave: `create_whatsapp_draft`, Módulo: `whatsapp`):\n  Descrição: IA gera mensagem com placeholders para envio posterior via WhatsApp.\n  Tipo de ação: create_whatsapp_draft\n  Nível de Risco: high\n  Exige Confirmação: Sim\n  Perfis autorizados: admin, admin_escola, direcao, diretoria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Salvar na Central de Ações IA** (Chave: `save_in_ai_actions`, Módulo: `classe_ai`):\n  Descrição: Salvar o rascunho gerado pela IA na Central de Ações para auditoria e aprovação.",
+      "metadata": {
+        "title": "Action Registry",
+        "section": "Ações Disponíveis do Assistente KLASSE"
+      }
+    },
+    {
+      "id": "doc-actions-registry-chunk-3",
+      "documentId": "doc-actions-registry",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 3,
+      "content": "Tipo de ação: create_draft\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Abrir Central WhatsApp** (Chave: `open_whatsapp_inbox`, Módulo: `whatsapp`):\n  Descrição: Acessar a Central WhatsApp da escola para enviar mensagens ou gerenciar contatos.\n  Tipo de ação: navigate\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro\n\n- **Encontrar caminho no sistema** (Chave: `find_system_path`, Módulo: `any`):\n  Descrição: Perguntar onde se encontra uma funcionalidade no sistema e obter o caminho e link oficial.\n  Tipo de ação: help\n  Nível de Risco: low\n  Exige Confirmação: Não\n  Perfis autorizados: admin, admin_escola, staff_admin, direcao, diretoria, secretaria, financeiro, admin_financeiro, secretaria_financeiro",
+      "metadata": {
+        "title": "Action Registry",
+        "section": "Ações Disponíveis do Assistente KLASSE"
+      }
+    },
+    {
+      "id": "topic-dashboard_admin-chunk-0",
+      "documentId": "topic-dashboard_admin",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Acessar o Painel Geral / Dashboard (Categoria: Administração)\nChave: dashboard_admin\nAliases: dashboard, painel, resumo, inicio, página inicial\nPapéis com acesso: admin, admin_escola, staff_admin, direcao, diretoria\nResposta: Acesse o painel geral da escola para visualizar indicadores operacionais rápidos.\nPasso a passo:\n1. Acesse a página inicial do portal.\n2. Clique no menu principal ou no logotipo para ir para o Dashboard.\n",
+      "metadata": {
+        "title": "Acessar o Painel Geral / Dashboard",
+        "key": "dashboard_admin",
+        "category": "Administração"
+      }
+    },
+    {
+      "id": "topic-cadastrar_aluno-chunk-0",
+      "documentId": "topic-cadastrar_aluno",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Cadastrar Novo Aluno (Categoria: Secretaria)\nChave: cadastrar_aluno\nAliases: novo aluno, matricular aluno, adicionar aluno, cadastro aluno, matrícula\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para cadastrar um novo aluno, acesse Secretaria > Alunos > Novo Aluno.\nPasso a passo:\n1. No menu lateral, selecione Secretaria.\n2. Clique na opção Alunos.\n3. Clique em Novo (ou Novo Aluno).\n4. Preencha as informações obrigatórias e salve o cadastro.\n",
+      "metadata": {
+        "title": "Cadastrar Novo Aluno",
+        "key": "cadastrar_aluno",
+        "category": "Secretaria"
+      }
+    },
+    {
+      "id": "topic-listar_alunos-chunk-0",
+      "documentId": "topic-listar_alunos",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Listar ou Procurar Alunos (Categoria: Secretaria)\nChave: listar_alunos\nAliases: procurar aluno, buscar aluno, lista de alunos, pesquisar aluno, alunos\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\nResposta: Pesquise os alunos cadastrados e aceda às suas fichas detalhadas.\nPasso a passo:\n1. Acesse Secretaria ou Painel no menu lateral.\n2. Clique em Alunos para ver a listagem.\n3. Utilize a barra de pesquisa para filtrar por nome ou número de matrícula.\n",
+      "metadata": {
+        "title": "Listar ou Procurar Alunos",
+        "key": "listar_alunos",
+        "category": "Secretaria"
+      }
+    },
+    {
+      "id": "topic-listar_turmas-chunk-0",
+      "documentId": "topic-listar_turmas",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Ver ou Criar Turmas (Categoria: Acadêmico)\nChave: listar_turmas\nAliases: turmas, criar turma, nova turma, ver turmas, classes\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Acesse a seção de turmas para ver a distribuição de alunos e gerenciar salas.\nPasso a passo:\n1. No menu lateral, selecione Secretaria.\n2. Clique em Turmas.\n3. Você verá a lista de turmas ativas ou poderá criar uma nova.\n",
+      "metadata": {
+        "title": "Ver ou Criar Turmas",
+        "key": "listar_turmas",
+        "category": "Acadêmico"
+      }
+    },
+    {
+      "id": "topic-ver_inadimplentes-chunk-0",
+      "documentId": "topic-ver_inadimplentes",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Ver Inadimplentes (Radar de Cobrança) (Categoria: Financeiro)\nChave: ver_inadimplentes\nAliases: inadimplentes, radar, atrasados, devedores, propinas atrasadas, cobrança\nPapéis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\nResposta: Acesse o Radar de Inadimplência para identificar cobranças em atraso e acionar a IA de cobrança.\nPasso a passo:\n1. No menu lateral, selecione Financeiro.\n2. Clique em Radar.\n3. Visualize a lista de devedores e propinas pendentes.\n",
+      "metadata": {
+        "title": "Ver Inadimplentes (Radar de Cobrança)",
+        "key": "ver_inadimplentes",
+        "category": "Financeiro"
+      }
+    },
+    {
+      "id": "topic-lancar_pagamento-chunk-0",
+      "documentId": "topic-lancar_pagamento",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Lançar Pagamento / Propinas (Categoria: Financeiro)\nChave: lancar_pagamento\nAliases: lançar pagamento, receber propina, pagar mensalidade, receber pagamento, recibo\nPapéis com acesso: admin, admin_escola, staff_admin, financeiro, admin_financeiro, secretaria_financeiro\nResposta: Para efetuar lançamentos de pagamentos de propinas ou outras taxas administrativas.\nPasso a passo:\n1. Selecione o menu Financeiro.\n2. Clique na opção Pagamentos.\n3. Selecione o aluno e o mês correspondente, insira o valor e registre o pagamento.\n",
+      "metadata": {
+        "title": "Lançar Pagamento / Propinas",
+        "key": "lancar_pagamento",
+        "category": "Financeiro"
+      }
+    },
+    {
+      "id": "topic-criar_comunicado-chunk-0",
+      "documentId": "topic-criar_comunicado",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Criar Comunicado ou Aviso (Categoria: Comunicação)\nChave: criar_comunicado\nAliases: comunicado, criar aviso, novo comunicado, enviar mensagem, avisos\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para publicar comunicados e avisos no portal para alunos e encarregados, com suporte da IA para polimento.\nPasso a passo:\n1. No menu lateral, selecione Administração.\n2. Selecione Avisos.\n3. Clique em Novo e escreva o rascunho.\n",
+      "metadata": {
+        "title": "Criar Comunicado ou Aviso",
+        "key": "criar_comunicado",
+        "category": "Comunicação"
+      }
+    },
+    {
+      "id": "topic-abrir_klasse_ai-chunk-0",
+      "documentId": "topic-abrir_klasse_ai",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Aceder ao Dashboard KLASSE AI (Categoria: KLASSE AI)\nChave: abrir_klasse_ai\nAliases: assistente, klasse ai, dashboard ai, painel ia, créditos ia, configurar ia\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, financeiro, admin_financeiro, secretaria_financeiro, direcao, diretoria\nResposta: Para acompanhar o consumo de créditos de IA da escola, ver logs de uso e gerenciar configurações.\nPasso a passo:\n1. Selecione Administração no menu lateral.\n2. Clique na opção KLASSE AI.\n3. Visualize estatísticas de uso diário/mensal e feedbacks.\n",
+      "metadata": {
+        "title": "Aceder ao Dashboard KLASSE AI",
+        "key": "abrir_klasse_ai",
+        "category": "KLASSE AI"
+      }
+    },
+    {
+      "id": "topic-lancar_notes-chunk-0",
+      "documentId": "topic-lancar_notes",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Lançar Notas / Pautas (Categoria: Acadêmico)\nChave: lancar_notes\nAliases: notas, pautas, lançar notas, cadastrar notas, avaliacoes\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Permite a visualização e lançamento de notas escolares diretamente no sistema.\nPasso a passo:\n1. Selecione Administração no menu lateral.\n2. Acesse a página de Notas.\n3. Selecione a turma, período e disciplina para registrar as avaliações.\n",
+      "metadata": {
+        "title": "Lançar Notas / Pautas",
+        "key": "lancar_notes",
+        "category": "Acadêmico"
+      }
+    },
+    {
+      "id": "topic-registrar_presenca-chunk-0",
+      "documentId": "topic-registrar_presenca",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Registrar Presença / Frequência (Categoria: Acadêmico)\nChave: registrar_presenca\nAliases: presença, frequência, faltas, registrar presença, calendário faltas\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para consultar e registrar faltas de alunos por dia letivo ou turma.\nPasso a passo:\n1. Acesse Secretaria no menu lateral.\n2. Clique em Calendário.\n3. Selecione a data e a turma correspondente para efetuar a chamada.\n",
+      "metadata": {
+        "title": "Registrar Presença / Frequência",
+        "key": "registrar_presenca",
+        "category": "Acadêmico"
+      }
+    },
+    {
+      "id": "topic-emitir_declaracao-chunk-0",
+      "documentId": "topic-emitir_declaracao",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "## Emitir Declaração ou Documento Oficial (Categoria: Secretaria)\nChave: emitir_declaracao\nAliases: declaração, emitir documento, documentos, boletim, certidão\nPapéis com acesso: admin, admin_escola, staff_admin, secretaria, direcao, diretoria\nResposta: Para gerar declarações de frequência, boletins ou cartões de estudantes.\nPasso a passo:\n1. No menu lateral, clique em Secretaria.\n2. Selecione a opção Documentos.\n3. Selecione o tipo de documento, filtre pelo aluno e faça o download.\n",
+      "metadata": {
+        "title": "Emitir Declaração ou Documento Oficial",
+        "key": "emitir_declaracao",
+        "category": "Secretaria"
+      }
+    },
+    {
+      "id": "doc-file-manual-central-acoes-ai-chunk-0",
+      "documentId": "doc-file-manual-central-acoes-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 0,
+      "content": "# Manual Curto da Central de Ações IA\n\nA Central de Ações IA é o local centralizado onde são guardados os rascunhos de comunicados, planos de cobrança e resumos executivos sugeridos pela IA.",
+      "metadata": {
+        "title": "manual-central-acoes-ai.md",
+        "section": "Manual Curto da Central de Ações IA"
+      }
+    },
+    {
+      "id": "doc-file-manual-central-acoes-ai-chunk-1",
+      "documentId": "doc-file-manual-central-acoes-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 1,
+      "content": "## 1. Funcionamento Geral\n- Acessível em **Administração > Central de Ações IA** (rota: `/escola/[schoolId]/admin/ai/actions`).\n- Sempre que o assistente do KLASSE gera um texto estruturado, um plano financeiro ou comunicado, ele oferece a opção \"Salvar na Central\".\n- Ao salvar, uma entrada com o estado \"draft\" é criada na tabela `ai_actions`.",
+      "metadata": {
+        "title": "manual-central-acoes-ai.md",
+        "section": "1. Funcionamento Geral"
+      }
+    },
+    {
+      "id": "doc-file-manual-central-acoes-ai-chunk-2",
+      "documentId": "doc-file-manual-central-acoes-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 2,
+      "content": "## 2. Auditoria e Risco\n- Cada ação gerada por IA possui um nível de risco associado (`low`, `medium`, `high`).\n- Ações financeiras ou com impacto em dados externos possuem risco `high` e exigem confirmação visual do usuário administrativo.\n- O histórico de geração de rascunhos registra o ID do usuário que solicitou a criação para fins de auditoria no sistema.\n- A IA nunca executa comandos destrutivos no banco de dados nem publica mensagens públicas sem aprovação na Central de Ações.",
+      "metadata": {
+        "title": "manual-central-acoes-ai.md",
+        "section": "2. Auditoria e Risco"
+      }
+    },
+    {
+      "id": "doc-file-manual-financeiro-chunk-0",
+      "documentId": "doc-file-manual-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 0,
+      "content": "# Manual Curto do Portal Financeiro\n\nO Portal Financeiro do KLASSE gerencia todas as cobranças de mensalidades (propinas), recebimentos, controle de fluxo de caixa e o Radar de Inadimplência.",
+      "metadata": {
+        "title": "manual-financeiro.md",
+        "section": "Manual Curto do Portal Financeiro"
+      }
+    },
+    {
+      "id": "doc-file-manual-financeiro-chunk-1",
+      "documentId": "doc-file-manual-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 1,
+      "content": "## 1. Radar de Inadimplência\n- Acessível em **Financeiro > Radar** (rota: `/escola/[schoolId]/financeiro/radar`).\n- O Radar lista todos os encarregados de educação com parcelas ou propinas em atraso no ano letivo ativo.\n- Permite filtrar devedores por turmas, dias de atraso ou valores.\n- O assistente de IA pode analisar o Radar para ajudar a estruturar e sugerir prioridades de cobrança, mas o usuário deve validar as ações antes de enviá-las.",
+      "metadata": {
+        "title": "manual-financeiro.md",
+        "section": "1. Radar de Inadimplência"
+      }
+    },
+    {
+      "id": "doc-file-manual-financeiro-chunk-2",
+      "documentId": "doc-file-manual-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 2,
+      "content": "## 2. Registro de Pagamentos\n- Acessível em **Financeiro > Pagamentos** (rota: `/escola/[schoolId]/financeiro/pagamentos`).\n- Selecione o aluno, identifique as parcelas em aberto, selecione a forma de pagamento (Dinheiro, TPA, Transferência Bancária, KWIK) e lance o valor.\n- O sistema bloqueia lançamentos de pagamentos de mensalidades futuras se houver mensalidades anteriores em aberto, garantindo a ordem cronológica.\n- A emissão de recibos oficiais e notas de crédito/débito é realizada e assinada digitalmente de forma automática.",
+      "metadata": {
+        "title": "manual-financeiro.md",
+        "section": "2. Registro de Pagamentos"
+      }
+    },
+    {
+      "id": "doc-file-manual-financeiro-chunk-3",
+      "documentId": "doc-file-manual-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 3,
+      "content": "## 3. Planos de Cobrança e Regras de Negócio\n- Não é permitida a exclusão ou alteração de dados financeiros consolidados diretamente por IA.\n- A IA pode atuar sugerindo rascunhos de planos de cobrança amigáveis ou urgentes.\n- Rascunhos devem ser salvos na Central de Ações IA para posterior revisão e ativação pelo administrador financeiro.",
+      "metadata": {
+        "title": "manual-financeiro.md",
+        "section": "3. Planos de Cobrança e Regras de Negócio"
+      }
+    },
+    {
+      "id": "doc-file-manual-secretaria-chunk-0",
+      "documentId": "doc-file-manual-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 0,
+      "content": "# Manual Curto do Portal Secretaria\n\nO Portal da Secretaria do KLASSE é o centro operacional para gerenciar o ciclo de vida dos alunos, matrículas, turmas e emissão de documentos oficiais.",
+      "metadata": {
+        "title": "manual-secretaria.md",
+        "section": "Manual Curto do Portal Secretaria"
+      }
+    },
+    {
+      "id": "doc-file-manual-secretaria-chunk-1",
+      "documentId": "doc-file-manual-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 1,
+      "content": "## 1. Cadastro e Matrícula de Alunos\n- Para cadastrar um aluno, acesse **Secretaria > Alunos > Novo Aluno** (rota: `/escola/[schoolId]/secretaria/alunos/novo`).\n- Preencha os dados pessoais básicos, contatos e informações do encarregado de educação.\n- O campo de e-mail do encarregado é essencial para comunicações de cobrança e envio de acessos.\n- Após o cadastro, o aluno recebe um número de matrícula único gerado pelo sistema.",
+      "metadata": {
+        "title": "manual-secretaria.md",
+        "section": "1. Cadastro e Matrícula de Alunos"
+      }
+    },
+    {
+      "id": "doc-file-manual-secretaria-chunk-2",
+      "documentId": "doc-file-manual-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 2,
+      "content": "## 2. Gestão de Turmas e Enturmação\n- O controle de turmas é feito em **Secretaria > Turmas** (rota: `/escola/[schoolId]/secretaria/turmas`).\n- O sistema permite criar turmas vinculadas ao ano letivo ativo.\n- Para enturmar alunos, acesse a ficha da turma desejada e clique em \"Adicionar Alunos\" ou gerencie individualmente pela ficha de cada aluno.\n- As turmas possuem limite de capacidade configurado por padrão para 70 alunos.",
+      "metadata": {
+        "title": "manual-secretaria.md",
+        "section": "2. Gestão de Turmas e Enturmação"
+      }
+    },
+    {
+      "id": "doc-file-manual-secretaria-chunk-3",
+      "documentId": "doc-file-manual-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 3,
+      "content": "## 3. Emissão de Documentos Oficiais\n- Para emitir declarações de frequência, boletins, pautas nominais ou cartões de estudante, acesse **Secretaria > Documentos** (rota: `/escola/[schoolId]/secretaria/documentos`).\n- Selecione o aluno ou turma, filtre pelo tipo de documento pretendido e clique em \"Gerar Documento\".\n- Todos os documentos emitidos oficialmente contêm controle de autenticidade rastreável.",
+      "metadata": {
+        "title": "manual-secretaria.md",
+        "section": "3. Emissão de Documentos Oficiais"
+      }
+    },
+    {
+      "id": "doc-file-manual-whatsapp-utility-chunk-0",
+      "documentId": "doc-file-manual-whatsapp-utility",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 0,
+      "content": "# Manual Curto do WhatsApp Utility\n\nO KLASSE integra-se ao WhatsApp via API WAHA para permitir o envio automatizado e manual de comunicados e notificações de cobrança.",
+      "metadata": {
+        "title": "manual-whatsapp-utility.md",
+        "section": "Manual Curto do WhatsApp Utility"
+      }
+    },
+    {
+      "id": "doc-file-manual-whatsapp-utility-chunk-1",
+      "documentId": "doc-file-manual-whatsapp-utility",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 1,
+      "content": "## 1. Conexão e Status do Dispositivo\n- Acessível em **Administração > Configurações > Comunicação** (rota: `/escola/[schoolId]/admin/configuracoes/comunicacao`).\n- Para emparelhar um dispositivo, leia o QR Code gerado na tela com o aplicativo do WhatsApp do smartphone da escola.\n- O status da conexão (\"CONNECTED\", \"DISCONNECTED\") é atualizado em tempo real.",
+      "metadata": {
+        "title": "manual-whatsapp-utility.md",
+        "section": "1. Conexão e Status do Dispositivo"
+      }
+    },
+    {
+      "id": "doc-file-manual-whatsapp-utility-chunk-2",
+      "documentId": "doc-file-manual-whatsapp-utility",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 2,
+      "content": "## 2. Fluxo de Rascunhos e Envios\n- O assistente de IA pode preparar rascunhos de mensagens para o WhatsApp com base nos inadimplentes do Radar ou comunicados escolares.\n- **Importante:** A IA nunca envia mensagens diretamente para o destinatário sem supervisão.\n- Todo rascunho criado pelo assistente deve ser enviado para a Central de Comunicação WhatsApp, onde passa por revisão humana obrigatória.\n- As mensagens utilizam placeholders como `[Nome]` e `[Valor]` para proteger a privacidade dos dados antes da aprovação do envio.",
+      "metadata": {
+        "title": "manual-whatsapp-utility.md",
+        "section": "2. Fluxo de Rascunhos e Envios"
+      }
+    },
+    {
+      "id": "doc-file-manual-whatsapp-utility-chunk-3",
+      "documentId": "doc-file-manual-whatsapp-utility",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 3,
+      "content": "## 3. Central de Mensagens (Inbox)\n- A Central WhatsApp (rota: `/escola/[schoolId]/admin/comunicacao/whatsapp`) centraliza as conversas iniciadas com encarregados e o histórico de mensagens enviadas.",
+      "metadata": {
+        "title": "manual-whatsapp-utility.md",
+        "section": "3. Central de Mensagens (Inbox)"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-0",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 0,
+      "content": "# README do KLASSE AI\n\nBem-vindo ao KLASSE AI — o assistente de produtividade e suporte integrado do sistema KLASSE.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "README do KLASSE AI"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-1",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 1,
+      "content": "## 1. Diretrizes de Operação e Segurança\n- O KLASSE AI opera como um assistente contextual. Ele analisa a tela atual para sugerir ações relevantes.\n- O assistente **nunca** possui autonomia para alterar dados críticos do sistema diretamente. Não é possível, por meio de comandos de texto, alterar notas de alunos, lançar pagamentos reais, reverter transações fiscais ou excluir matrículas.\n- Todas as tarefas administrativas críticas geram rascunhos que exigem revisão e aprovação humana explícita.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "1. Diretrizes de Operação e Segurança"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-2",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 2,
+      "content": "## 2. Proteção de Dados e PII\n- O KLASSE AI foi desenhado seguindo princípios estritos de privacidade.\n- Dados de identificação pessoal (PII) sensíveis de alunos, como números de telefone e e-mails pessoais, não são enviados para provedores externos de IA.\n- O assistente usa dados agregados e placeholders (`[Nome]`, `[Valor]`) para formular rascunhos de cobrança e avisos.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "2. Proteção de Dados e PII"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-3",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 3,
+      "content": "## 3. Créditos e Limites\n- Cada escola possui limites diários e mensais de uso de IA gerenciados via `ai_school_settings`.\n- Cada chamada de IA consome um slot do plano, que é registrado na tabela `ai_usage_logs` via RPC `claim_ai_usage_slot`.\n- O caminho rápido (Fast Path) de respostas baseadas em registries locais não consome créditos de IA da escola.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "3. Créditos e Limites"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-0",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 0,
+      "content": "# Regras de Negócio — Acadêmico, Notas e Horários\n\nEste documento resume regras oficiais acadêmicas que o KLASSE Brain pode usar ao orientar Secretaria, Direção e Professores autorizados.",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Regras de Negócio — Acadêmico, Notas e Horários"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-1",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 1,
+      "content": "## Lançamento de notas\n\n- O lançamento de notas é centralizado na RPC `lancar_notas_batch`.\n- As rotas de professor e secretaria exigem header `Idempotency-Key`.\n- O lançamento deve informar turma, disciplina, turma-disciplina, trimestre/tipo de avaliação e lista de notas.\n- A nota aceita valor numérico entre 0 e 100 conforme validação de payload.\n- A RPC é a fonte central para validação e persistência, reduzindo divergência entre portais.\n\nFontes:\n- `apps/web/src/app/api/professor/notas/route.ts`\n- `apps/web/src/app/api/secretaria/notas/route.ts`\n- `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Lançamento de notas"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-2",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 2,
+      "content": "## Permissão para notas\n\n- Professor e Secretaria usam rotas distintas, mas o lançamento não deve ignorar validação de escola e papel.\n- A rota de Secretaria verifica autorização para gestão de turmas antes de chamar a RPC.\n- A regra de negócio de professor atribuído/admin fica centralizada na RPC.\n\nFontes:\n- `apps/web/src/app/api/secretaria/notas/route.ts`\n- `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Permissão para notas"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-3",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 3,
+      "content": "## Travas de período e turma\n\n- O sistema bloqueia lançamento/alteração de notas quando a turma está fechada.\n- O sistema também bloqueia lançamento/alteração quando o período letivo está travado.\n- Essas travas são regras operacionais; o assistente deve orientar o usuário a verificar fecho de turma/período em vez de sugerir alteração direta.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Travas de período e turma"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-4",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 4,
+      "content": "## Fórmulas e modelos de avaliação\n\n- `modelos_avaliacao.formula` é a fonte principal para componentes e pesos.\n- A pauta geral e pauta anual devem usar o modelo oficial resolvido pelo backend.\n- Ainda existe risco residual de divergência com engines legadas; se a pergunta envolver cálculo avançado, o assistente deve responder com cautela e indicar que o cálculo oficial vem do backend/modelo de avaliação.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Fórmulas e modelos de avaliação"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-5",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 5,
+      "content": "## Notificações de notas\n\n- Após lançamento por professor, o sistema pode notificar alunos.\n- Notas abaixo da média mínima operacional de 10 podem gerar notificação específica de nota baixa.\n- O assistente não deve enviar notificação diretamente; deve apenas explicar que o fluxo oficial pode disparar notificações.\n\nFonte: `apps/web/src/app/api/professor/notas/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Notificações de notas"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-6",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 6,
+      "content": "## Horários\n\n- O sistema bloqueia conflitos de professor e sala no mesmo slot.\n- No modo de publicação, o fluxo também valida cobertura de carga horária.\n- O scheduler automático evita colisões de turma, professor e sala por slot.\n\nFonte: `agents/outputs/STATUS_REPORT_PIPELINE_APROVACAO_NOTAS.md`",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "Horários"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-7",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 7,
+      "content": "## O que o assistente pode dizer\n\n- Pode explicar por que o lançamento exige idempotency key.\n- Pode explicar bloqueio por turma fechada ou período travado.\n- Pode orientar o usuário a usar a tela de notas/pauta correta.\n- Pode resumir a regra geral de cálculo sem inventar fórmula específica não documentada.",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "O que o assistente pode dizer"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-academico-chunk-8",
+      "documentId": "doc-file-regras-negocio-academico",
+      "schoolId": null,
+      "module": "academico",
+      "chunkIndex": 8,
+      "content": "## O que o assistente não pode inventar\n\n- Não inventar média, fórmula ou regra de aprovação quando não estiver no modelo oficial.\n- Não prometer destravar período/turma.\n- Não lançar, alterar ou apagar notas diretamente.",
+      "metadata": {
+        "title": "regras-negocio-academico.md",
+        "section": "O que o assistente não pode inventar"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-0",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 0,
+      "content": "# Regras de Negócio — Financeiro, Cobranças e Pagamentos\n\nEste documento resume regras financeiras oficiais que o KLASSE Brain pode usar em respostas sobre Radar, cobranças, pagamentos e recibos.",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "Regras de Negócio — Financeiro, Cobranças e Pagamentos"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-1",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 1,
+      "content": "## Radar de inadimplência\n\n- O Radar Financeiro mostra parcelas/propinas em atraso no ano letivo ativo.\n- O usuário pode filtrar devedores por turma, dias de atraso ou valores.\n- O assistente pode ajudar a priorizar cobranças e preparar rascunhos, mas não deve executar cobrança crítica sozinho.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-financeiro.md`",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "Radar de inadimplência"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-2",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 2,
+      "content": "## Registro de pagamentos\n\n- Pagamentos devem ser registrados em Financeiro > Pagamentos.\n- O usuário deve selecionar aluno, parcelas em aberto, forma de pagamento e valor.\n- O sistema bloqueia lançamentos de mensalidades futuras se houver mensalidades anteriores em aberto.\n- Recibos oficiais e notas de crédito/débito são emitidos/assinados pelo fluxo oficial.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-financeiro.md`",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "Registro de pagamentos"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-3",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 3,
+      "content": "## Cobranças financeiras\n\n- Cobranças podem usar canal `whatsapp`, `sms`, `email` ou `manual`.\n- Status de cobrança pode incluir `enviada`, `entregue`, `respondida`, `paga` ou `falha`.\n- A criação de cobranças registra escola, aluno, mensalidade, canal, mensagem, status, data de envio e usuário criador.\n- O assistente deve tratar cobrança como rascunho/apoio operacional, não como execução automática de cobrança sem revisão.\n\nFonte: `apps/web/src/app/api/financeiro/cobrancas/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "Cobranças financeiras"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-4",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 4,
+      "content": "## Templates de cobrança\n\n- Templates de cobrança exigem nome, canal e corpo.\n- Canais aceitos para template incluem `whatsapp`, `sms`, `email` e `push`.\n- Templates pertencem à escola e registram usuário criador.\n\nFonte: `apps/web/src/app/api/financeiro/cobrancas/templates/nova/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "Templates de cobrança"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-5",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 5,
+      "content": "## Planos de cobrança com IA\n\n- A IA pode sugerir planos de cobrança, mensagens e priorização.\n- Rascunhos financeiros devem ser revisados por usuário financeiro autorizado.\n- A IA não deve excluir, alterar ou consolidar dados financeiros diretamente.\n- Mensagens financeiras devem usar placeholders quando possível, como `[Nome]`, `[Valor]` e `[Data]`.\n\nFontes:\n- `apps/web/src/lib/assistant/docs/manual-financeiro.md`\n- `apps/web/src/lib/assistant/docs/manual-whatsapp-utility.md`",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "Planos de cobrança com IA"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-6",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 6,
+      "content": "## O que o assistente pode dizer\n\n- Pode indicar o Radar Financeiro para inadimplentes.\n- Pode explicar por que pagamento futuro pode ser bloqueado por parcelas anteriores.\n- Pode gerar rascunho de cobrança ou plano de ação para revisão.\n- Pode orientar abertura da Central WhatsApp ou Central de Ações IA.",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "O que o assistente pode dizer"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-financeiro-chunk-7",
+      "documentId": "doc-file-regras-negocio-financeiro",
+      "schoolId": null,
+      "module": "financeiro",
+      "chunkIndex": 7,
+      "content": "## O que o assistente não pode inventar\n\n- Não confirmar pagamento que não foi lançado no fluxo oficial.\n- Não prometer emissão de recibo se o pagamento não foi registrado.\n- Não enviar cobrança ou WhatsApp sem revisão humana.\n- Não expor dados financeiros individuais desnecessários no prompt de IA.",
+      "metadata": {
+        "title": "regras-negocio-financeiro.md",
+        "section": "O que o assistente não pode inventar"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-0",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 0,
+      "content": "# Regras de Negócio — KLASSE AI, Central de Ações e WhatsApp\n\nEste documento define limites oficiais para respostas e ações assistidas por IA no KLASSE.",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "Regras de Negócio — KLASSE AI, Central de Ações e WhatsApp"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-1",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 1,
+      "content": "## Princípio geral\n\n- O assistente responde com base em rotas, permissões, ações, tópicos de ajuda e documentação oficial.\n- O assistente não deve inventar telas, rotas, permissões ou ações administrativas.\n- Se não houver documentação suficiente, deve responder: \"Não encontrei essa informação documentada no KLASSE ainda.\"\n\nFonte: contrato do sprint KLASSE Brain V1 e registries em `apps/web/src/lib/assistant/`.",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "Princípio geral"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-2",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 2,
+      "content": "## Fast path e smart path\n\n- Perguntas simples de navegação e ajuda devem usar fast path sem IA.\n- Geração, reescrita, resumo, planos de cobrança e respostas elaboradas podem usar IA server-side.\n- Chamadas ao provider de IA não devem ocorrer no client.\n- Fast path não deve consumir créditos de IA.\n\nFontes:\n- `apps/web/src/lib/assistant/klasse-brain.ts`\n- `apps/web/src/app/api/admin/ai/assistant/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "Fast path e smart path"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-3",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 3,
+      "content": "## Rewrite de comunicados\n\n- O rewrite pode melhorar texto em modos formal, curto, claro, institucional, WhatsApp ou encarregado.\n- A resposta estruturada contém título, corpo, versão curta para WhatsApp e notas de revisão humana.\n- O texto gerado é rascunho; publicação ou envio exige revisão humana.\n- O assistente não deve inventar datas, valores, promessas ou fatos que não estejam no texto original.\n\nFonte: `apps/web/src/app/api/admin/ai/rewrite/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "Rewrite de comunicados"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-4",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 4,
+      "content": "## Central de Ações IA\n\n- Rascunhos gerados por IA devem ser salvos na Central de Ações IA quando precisarem de auditoria, revisão ou aprovação.\n- A Central de Ações IA é o local para acompanhar rascunhos de comunicados, resumos e mensagens financeiras.\n- A IA não deve executar ação crítica sozinha; deve preparar rascunho e orientar revisão.\n\nFontes:\n- `apps/web/src/lib/assistant/action-registry.ts`\n- `apps/web/src/lib/assistant/docs/manual-central-acoes-ai.md`",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "Central de Ações IA"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-5",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 5,
+      "content": "## WhatsApp\n\n- Integração WhatsApp usa WAHA e depende de conexão/configuração oficial.\n- O assistente pode preparar rascunhos com placeholders.\n- A IA nunca envia mensagens diretamente para destinatários sem supervisão.\n- Todo rascunho de WhatsApp deve ser revisado na Central WhatsApp ou Central de Ações apropriada.\n- Mensagens devem evitar PII desnecessária e preferir placeholders antes da aprovação.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-whatsapp-utility.md`",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "WhatsApp"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-6",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 6,
+      "content": "## Perfis não permitidos nesta versão\n\n- O assistente não deve aparecer para `aluno`, `professor` ou `encarregado` nesta versão do KLASSE Brain administrativo.\n- O uso é voltado a perfis administrativos como admin, admin_escola, staff_admin, direção, secretaria e financeiro.\n\nFontes:\n- `apps/web/src/lib/assistant/permission-registry.ts`\n- `apps/web/src/components/ai/AiChatWidget.tsx`",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "Perfis não permitidos nesta versão"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-7",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 7,
+      "content": "## O que o assistente pode dizer\n\n- Pode explicar a tela atual e sugerir ações seguras.\n- Pode gerar ou melhorar rascunhos.\n- Pode indicar links internos oficiais.\n- Pode explicar que uma ação exige aprovação.",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "O que o assistente pode dizer"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-ia-whatsapp-chunk-8",
+      "documentId": "doc-file-regras-negocio-ia-whatsapp",
+      "schoolId": null,
+      "module": "whatsapp",
+      "chunkIndex": 8,
+      "content": "## O que o assistente não pode inventar\n\n- Não inventar rota ou botão.\n- Não executar pagamento, nota, matrícula, envio WhatsApp ou documento oficial sozinho.\n- Não enviar lista inteira de alunos ou dados sensíveis para IA sem necessidade.\n- Não apresentar rascunho como ação final concluída.",
+      "metadata": {
+        "title": "regras-negocio-ia-whatsapp.md",
+        "section": "O que o assistente não pode inventar"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-0",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 0,
+      "content": "# Regras de Negócio — Secretaria, Admissões e Matrículas\n\nEste documento resume regras oficiais de Secretaria que o KLASSE Brain pode usar ao orientar usuários administrativos. Quando houver dúvida, o assistente deve citar que a operação final acontece nas telas e APIs oficiais do KLASSE, não executar a ação sozinho.",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "Regras de Negócio — Secretaria, Admissões e Matrículas"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-1",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 1,
+      "content": "## Cadastro de aluno\n\n- O cadastro de aluno deve ser feito em Secretaria > Alunos > Novo Aluno.\n- Dados pessoais, contatos e encarregado de educação devem ser preenchidos com atenção porque alimentam documentos, acessos e comunicação.\n- O assistente pode orientar o caminho e explicar campos, mas não deve cadastrar aluno automaticamente.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-secretaria.md`",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "Cadastro de aluno"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-2",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 2,
+      "content": "## Matrícula e admissão\n\n- A finalização de admissão para matrícula usa fluxo canônico via RPC `admissao_finalizar_matricula`.\n- A finalização valida escola, candidatura, turma, preço/pagamento, capacidade e idempotência.\n- A operação transforma a candidatura em matrícula dentro de fluxo transacional, evitando duplicidade.\n- Requisições duplicadas devem reutilizar resultado idempotente quando disponível.\n- Se o aluno/documento já tiver admissão em andamento, o usuário deve retomar o rascunho existente.\n- Se já houver matrícula finalizada no ano letivo, o usuário deve abrir a matrícula existente ou corrigir a candidatura duplicada.\n\nFonte: `apps/web/src/app/api/secretaria/admissoes/convert/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "Matrícula e admissão"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-3",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 3,
+      "content": "## Capacidade de turma\n\n- Turma lotada bloqueia a finalização normal da matrícula.\n- Override de capacidade só é permitido a responsável autorizado.\n- Override de capacidade exige motivo obrigatório.\n- Quando há override, o sistema registra auditoria específica com capacidade, matriculados anteriores e motivo.\n\nFonte: `apps/web/src/app/api/secretaria/admissoes/convert/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "Capacidade de turma"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-4",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 4,
+      "content": "## Comprovante e auditoria\n\n- Após matrícula finalizada, o sistema tenta emitir comprovante de matrícula automaticamente.\n- A conversão de admissão em matrícula registra auditoria.\n- A emissão de comprovante também registra evento de auditoria.\n- Se o comprovante falhar, a matrícula pode estar concluída e o usuário deve tratar a emissão do documento separadamente.\n\nFonte: `apps/web/src/app/api/secretaria/admissoes/convert/route.ts`",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "Comprovante e auditoria"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-5",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 5,
+      "content": "## Documentos oficiais\n\n- Documentos oficiais devem ser emitidos pela área Secretaria > Documentos.\n- O assistente pode explicar o caminho e preparar texto auxiliar, mas não deve emitir documento oficial sem ação explícita do usuário na tela própria.\n- Documentos oficiais podem ter valor legal; respostas devem evitar sugerir atalhos fora do fluxo oficial.\n\nFonte: `apps/web/src/lib/assistant/docs/manual-secretaria.md`",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "Documentos oficiais"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-6",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 6,
+      "content": "## O que o assistente pode dizer\n\n- Pode explicar onde cadastrar aluno, abrir ficha, matricular, acessar documentos ou verificar turmas.\n- Pode explicar por que uma matrícula pode estar bloqueada por duplicidade, turma lotada ou falta de permissão.\n- Pode sugerir abrir a tela correta.",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "O que o assistente pode dizer"
+      }
+    },
+    {
+      "id": "doc-file-regras-negocio-secretaria-chunk-7",
+      "documentId": "doc-file-regras-negocio-secretaria",
+      "schoolId": null,
+      "module": "secretaria",
+      "chunkIndex": 7,
+      "content": "## O que o assistente não pode inventar\n\n- Não inventar matrícula sem candidatura/turma válida.\n- Não prometer override de capacidade para usuário sem autorização.\n- Não dizer que documento oficial foi emitido se a emissão não ocorreu.\n- Não sugerir correção direta em banco de dados.",
+      "metadata": {
+        "title": "regras-negocio-secretaria.md",
+        "section": "O que o assistente não pode inventar"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-alunos-turmas-chunk-0",
+      "documentId": "doc-file-tutoriais-alunos-turmas",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 0,
+      "content": "# Tutoriais de Alunos, Turmas, Notas e Presenças\n\nEste documento reúne procedimentos comuns para professores e secretaria sobre a gestão acadêmica dos estudantes.",
+      "metadata": {
+        "title": "tutoriais-alunos-turmas.md",
+        "section": "Tutoriais de Alunos, Turmas, Notas e Presenças"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-alunos-turmas-chunk-1",
+      "documentId": "doc-file-tutoriais-alunos-turmas",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 1,
+      "content": "## 1. Cadastro de Estudante e Ano Letivo\n- Para cadastrar um aluno, certifique-se de que o ano letivo atual esteja configurado e ativo.\n- Vá para **Secretaria > Alunos > Novo Aluno** e insira os dados cadastrais obrigatórios.\n- Se o aluno for menor de idade, é obrigatório registrar pelo menos um encarregado de educação e a sua relação de parentesco.",
+      "metadata": {
+        "title": "tutoriais-alunos-turmas.md",
+        "section": "1. Cadastro de Estudante e Ano Letivo"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-alunos-turmas-chunk-2",
+      "documentId": "doc-file-tutoriais-alunos-turmas",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 2,
+      "content": "## 2. Enturmação e Criação de Turmas\n- As turmas devem ser abertas no início do ano letivo em **Secretaria > Turmas > Nova Turma**.\n- Cada turma está associada a uma classe e curso específicos.\n- O remanejamento de alunos entre turmas da mesma classe pode ser feito via funcionalidade \"Transferir Aluno\" disponível na ficha do aluno.",
+      "metadata": {
+        "title": "tutoriais-alunos-turmas.md",
+        "section": "2. Enturmação e Criação de Turmas"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-alunos-turmas-chunk-3",
+      "documentId": "doc-file-tutoriais-alunos-turmas",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 3,
+      "content": "## 3. Lançamento de Notas\n- Professores e administradores podem lançar notas de avaliações em **Administração > Notas** (rota: `/escola/[schoolId]/admin/notas`).\n- As notas de cada trimestre contam para a média de aproveitamento.\n- O sistema possui regras de validação para impedir lançamentos em períodos letivos já encerrados ou bloqueados pela direção.",
+      "metadata": {
+        "title": "tutoriais-alunos-turmas.md",
+        "section": "3. Lançamento de Notas"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-alunos-turmas-chunk-4",
+      "documentId": "doc-file-tutoriais-alunos-turmas",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 4,
+      "content": "## 4. Presenças e Faltas\n- O registro diário de faltas e presenças é feito em **Secretaria > Calendário** (ou pelo portal do professor).\n- Faltas em excesso podem impactar a elegibilidade do aluno para aprovação direta, conforme regras definidas no regulamento da escola.",
+      "metadata": {
+        "title": "tutoriais-alunos-turmas.md",
+        "section": "4. Presenças e Faltas"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-comunicados-documentos-chunk-0",
+      "documentId": "doc-file-tutoriais-comunicados-documentos",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 0,
+      "content": "# Tutoriais de Comunicados e Documentos\n\nGuia rápido sobre a publicação de comunicados e a emissão de boletins e certidões na secretaria escolar.",
+      "metadata": {
+        "title": "tutoriais-comunicados-documentos.md",
+        "section": "Tutoriais de Comunicados e Documentos"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-comunicados-documentos-chunk-1",
+      "documentId": "doc-file-tutoriais-comunicados-documentos",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 1,
+      "content": "## 1. Criação de Avisos e Comunicados\n- Para publicar avisos que serão exibidos no painel dos alunos e encarregados, acesse **Administração > Avisos** e clique em **Novo**.\n- Digite o título, defina o público-alvo (Alunos, Encarregados, Professores ou Todos) e redija o corpo do aviso.\n- Você pode usar o assistente de IA na barra lateral para reescrever o texto em tom formal, cordial ou reduzir a extensão para mensagens curtas.\n- Salve o comunicado como rascunho ou publique imediatamente.",
+      "metadata": {
+        "title": "tutoriais-comunicados-documentos.md",
+        "section": "1. Criação de Avisos e Comunicados"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-comunicados-documentos-chunk-2",
+      "documentId": "doc-file-tutoriais-comunicados-documentos",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 2,
+      "content": "## 2. Emissão de Boletins Escolares\n- A emissão de boletins de notas é feita em **Secretaria > Documentos** ou pela ficha de cada aluno.\n- Selecione a turma ou o estudante, escolha o trimestre desejado e clique em \"Emitir Boletim\".\n- O boletim consolidará as notas lançadas até o momento e calculará a média trimestral automaticamente.",
+      "metadata": {
+        "title": "tutoriais-comunicados-documentos.md",
+        "section": "2. Emissão de Boletins Escolares"
+      }
+    },
+    {
+      "id": "doc-file-tutoriais-comunicados-documentos-chunk-3",
+      "documentId": "doc-file-tutoriais-comunicados-documentos",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 3,
+      "content": "## 3. Declarações e Certidões\n- As declarações de matrícula ou frequência com ou sem notas podem ser geradas instantaneamente em formato PDF.\n- A escola pode configurar a inserção de assinatura digital ou QR code de autenticidade nas configurações de identidade da escola.\n- Todos os downloads de declarações geram um registro nas tabelas de auditoria do sistema.",
+      "metadata": {
+        "title": "tutoriais-comunicados-documentos.md",
+        "section": "3. Declarações e Certidões"
+      }
+    }
+  ]
+}
