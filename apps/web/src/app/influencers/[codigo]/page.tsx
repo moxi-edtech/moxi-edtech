@@ -352,6 +352,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [newLeadSegment, setNewLeadSegment] = useState<"publica" | "privada" | "comparticipada">("privada");
   const [newLeadAlunos, setNewLeadAlunos] = useState(300);
   const [newLeadPlan, setNewLeadPlan] = useState<"essencial" | "profissional" | "premium">("essencial");
+  const [newLeadTrialDays, setNewLeadTrialDays] = useState(30);
   const [newLeadAction, setNewLeadAction] = useState("");
   const [newLeadActionDate, setNewLeadActionDate] = useState("");
   const [savingLead, setSavingLead] = useState(false);
@@ -503,6 +504,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           plano_estimado: newLeadPlan,
           proxima_acao: newLeadAction.trim() || null,
           proxima_acao_data: newLeadActionDate || null,
+          trial_days: newLeadTrialDays,
         }),
       });
       const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
@@ -520,6 +522,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       setNewLeadSegment("privada");
       setNewLeadAlunos(300);
       setNewLeadPlan("essencial");
+      setNewLeadTrialDays(30);
       setNewLeadAction("");
       setNewLeadActionDate("");
       
@@ -1093,7 +1096,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                             </p>
                           </div>
                           <div className="text-xs text-slate-400 max-w-md font-medium">
-                            Comissão potencial calculada com base na conversão de todos os leads ativos (25% do valor da mensalidade estimativa).
+                            Comissão potencial estimada com base nos leads ativos.
                           </div>
                         </>
                       ) : (
@@ -1912,7 +1915,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         Sua Comissão
                       </CardTitle>
                       <CardDescription className="text-slate-400 text-xs">
-                        Ganhe 25% do valor da primeira mensalidade paga por cada escola ativada.
+                        Acompanhamento de comissões e faturamento estimado.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 pt-0 space-y-5">
@@ -2019,7 +2022,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         </div>
                       </div>
 
-                      <p className="text-[10px] text-slate-500 italic">Os pagamentos são processados entre o dia 1 e 5 de cada mês.</p>
+                      <p className="text-[10px] text-slate-500 italic">Os pagamentos são processados até o dia 10 de cada mês subsequente.</p>
                     </CardContent>
                   </Card>
                 )}
@@ -2365,6 +2368,20 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   />
                 </div>
                 <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Período de Degustação (Dias - Máx 30)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={newLeadTrialDays}
+                    onChange={(e) => setNewLeadTrialDays(Math.min(30, Math.max(0, Number(e.target.value))))}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Prazo da Ação</label>
                   <input
                     type="date"
@@ -2373,17 +2390,16 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none cursor-pointer"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
-                <input
-                  type="text"
-                  value={newLeadAction}
-                  onChange={(e) => setNewLeadAction(e.target.value)}
-                  placeholder="Ex: Ligar para agendar apresentação"
-                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
-                />
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
+                  <input
+                    type="text"
+                    value={newLeadAction}
+                    onChange={(e) => setNewLeadAction(e.target.value)}
+                    placeholder="Ex: Ligar para agendar apresentação"
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
