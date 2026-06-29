@@ -67,271 +67,57 @@ import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Database, Json } from "~types/supabase";
 import PartnerAppShell from "@/components/layout/influencer/PartnerAppShell";
+import { OnboardingSchoolDetailsSheet } from "./_components/OnboardingSchoolDetailsSheet";
+import { CrmLeadDetailsSheet } from "./_components/CrmLeadDetailsSheet";
 
-interface OnboardingStep {
-  code: string;
-  title: string;
-  status: string;
-  owner: string;
-  deadline?: string | null;
-  completed_at?: string | null;
-}
-
-interface OnboardingCall {
-  id: string;
-  realizado_em: string;
-  member_name: string;
-  step_title: string;
-  notes: string;
-}
-
-interface OnboardingUpload {
-  id: string;
-  step_code: string;
-  file_path: string;
-  status: string;
-  rejection_reason: string | null;
-  created_by: string;
-  created_at: string;
-}
-
-interface OnboardingEscola {
-  data: string;
-  status: string;
-  escola: string;
-  plano: string | null;
-  plano_label: string | null;
-  total_alunos: string | null;
-  token?: string;
-  faixa_propina?: string | null;
-  escola_tel?: string | null;
-  escola_email?: string | null;
-  director_nome?: string | null;
-  director_tel?: string | null;
-  escola_morada?: string | null;
-  escola_municipio?: string | null;
-  escola_provincia?: string | null;
-  escola_nif?: string | null;
-  steps?: OnboardingStep[];
-  calls?: OnboardingCall[];
-  uploads?: OnboardingUpload[];
-}
-
-type PartnerCommissionSummary = {
-  pending_kz: number;
-  approved_kz: number;
-  paid_kz: number;
-  blocked_kz: number;
-  total_kz: number;
-  count: number;
-};
-
-type PartnerCommissionItem = {
-  id: string;
-  tipo: string;
-  status: string;
-  base_valor_kz: number;
-  valor_kz: number;
-  competencia_inicio: string | null;
-  competencia_fim: string | null;
-  created_at: string;
-  escola_nome: string | null;
-};
-
-interface AfiliadoStats {
-  total_diagnosticos: number;
-  novos: number;
-  em_contacto: number;
-  convertidos: number;
-  onboarding?: {
-    total: number;
-    pendentes: number;
-    em_configuracao: number;
-    fechadas: number;
-    escolas: OnboardingEscola[];
-  };
-  trend: {
-    dia: string;
-    total: number;
-  }[];
-  leads: {
-    data: string;
-    status: string;
-    score: number;
-    escola_hint: string;
-  }[];
-}
-
-type MarketingAssetRow = Database["public"]["Tables"]["marketing_assets"]["Row"];
-type MarketingAsset = Omit<MarketingAssetRow, "tipo"> & {
-  tipo: "image" | "video" | "script" | "document";
-};
-
-type AfiliadoPortalResponse = {
-  ok: boolean;
-  codigo: string;
-  nome: string;
-  member?: {
-    id: string;
-    name: string;
-  };
-  materiais: Json;
-  stats: AfiliadoStats;
-};
-
-const STEP_META: Record<string, { short: string; ownerLabel: string }> = {
-  diagnostico: { short: "Diagnóstico", ownerLabel: "Parceiro Comercial" },
-  docs_legais: { short: "Docs Legais", ownerLabel: "Escola" },
-  planilhas: { short: "Planilhas", ownerLabel: "Escola" },
-  validacao: { short: "Validação", ownerLabel: "KLASSE" },
-  config: { short: "Configuração", ownerLabel: "Parceiro Comercial" },
-  treinamento: { short: "Treinamento", ownerLabel: "Parceiro Comercial" },
-  live: { short: "Go-live", ownerLabel: "KLASSE" },
-};
-
-const CRM_STAGES: Record<string, { label: string; dot: string; color: string }> = {
-  prospeccao: { label: "Prospecção", dot: "bg-slate-400", color: "bg-slate-100 text-slate-700" },
-  contacto: { label: "Contacto Iniciado", dot: "bg-blue-500", color: "bg-blue-50 text-blue-700" },
-  apresentacao: { label: "Demonstração", dot: "bg-purple-500", color: "bg-purple-50 text-purple-700" },
-  negociacao: { label: "Negociação", dot: "bg-amber-500", color: "bg-amber-50 text-amber-700" },
-  ganho: { label: "Fechado Ganho", dot: "bg-emerald-500", color: "bg-emerald-50 text-emerald-700" },
-  perdido: { label: "Fechado Perdido", dot: "bg-rose-500", color: "bg-rose-50 text-rose-700" },
-};
-
-function getStepMeta(stepCode: string, owner: string) {
-  return STEP_META[stepCode] ?? {
-    short: stepCode,
-    ownerLabel: owner === "escola" ? "Escola" : owner === "parceiro" ? "Parceiro Comercial" : "KLASSE",
-  };
-}
-
-function getLatestOnboardingCall(escola?: OnboardingEscola | null): OnboardingCall | null {
-  if (!escola?.calls?.length) return null;
-  return [...escola.calls].sort(
-    (a, b) => new Date(b.realizado_em).getTime() - new Date(a.realizado_em).getTime()
-  )[0] ?? null;
-}
-
-function getLatestOnboardingCallForStep(
-  escola: OnboardingEscola | null | undefined,
-  stepCode: string,
-  stepTitle: string
-): OnboardingCall | null {
-  if (!escola?.calls?.length) return null;
-
-  return (
-    [...escola.calls]
-      .filter((call) => {
-        if (!call.step_title) return false;
-        const normalizedCall = call.step_title.trim().toLowerCase();
-        const normalizedTitle = stepTitle.trim().toLowerCase();
-        const normalizedMeta = getStepMeta(stepCode, "").short.trim().toLowerCase();
-        return normalizedCall === normalizedTitle || normalizedCall === normalizedMeta;
-      })
-      .sort((a, b) => new Date(b.realizado_em).getTime() - new Date(a.realizado_em).getTime())[0] ?? null
-  );
-}
-
-function isMarketingAsset(value: MarketingAssetRow): value is MarketingAsset {
-  return ["image", "video", "script", "document"].includes(value.tipo);
-}
-
-function isAfiliadoStats(value: unknown): value is AfiliadoStats {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-
-  const candidate = value as Record<string, Json | undefined>;
-  return (
-    typeof candidate.total_diagnosticos === "number" &&
-    typeof candidate.novos === "number" &&
-    typeof candidate.em_contacto === "number" &&
-    typeof candidate.convertidos === "number" &&
-    Array.isArray(candidate.leads) &&
-    Array.isArray(candidate.trend)
-  );
-}
-
-function isAfiliadoPortalResponse(value: unknown): value is AfiliadoPortalResponse {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-
-  const candidate = value as Record<string, Json | undefined>;
-  return (
-    typeof candidate.ok === "boolean" &&
-    typeof candidate.codigo === "string" &&
-    typeof candidate.nome === "string" &&
-    isAfiliadoStats(candidate.stats ?? null)
-  );
-}
-
-const STATUS_CONFIG = {
-  'NOVO': { label: "Novo", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-  'EM_CONTACTO': { label: "Em Contacto", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  'CONVERTIDO': { label: "Convertido", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  'PERDIDO': { label: "Arquivado", color: "bg-slate-100 text-slate-500", dot: "bg-slate-400" },
-};
-
-const ONBOARDING_STATUS_CONFIG = {
-  pendente: { label: "Pendente", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-  em_configuracao: { label: "Em atendimento", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  activo: { label: "Fechada", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  cancelado: { label: "Arquivada", color: "bg-slate-100 text-slate-500", dot: "bg-slate-400" },
-};
-
-const WEEKLY_ACTIONS = [
-  "Publicar 1 story sobre matrícula online e portal do aluno.",
-  "Enviar a mensagem pronta para 10 diretores ou coordenadores.",
-  "Responder interessados com o link de diagnóstico da escola.",
-];
-
-const CAMPAIGN_KITS = [
-  {
-    title: "Post para pais",
-    audience: "Pais e alunos",
-    icon: Users,
-    linkType: "campaign",
-    copy: "A escola do seu filho ainda depende de fila, papel e WhatsApp para matrícula, notas e documentos? Uma escola moderna já oferece matrícula online e portal do aluno. Envie isto para a direção.",
-  },
-  {
-    title: "Story com enquete",
-    audience: "Instagram/TikTok",
-    icon: Megaphone,
-    linkType: "campaign",
-    copy: "Enquete: A escola do seu filho já tem portal do aluno? Responde: Sim, já tem / Ainda não tem. Se ainda não tem, envia este link para a direção.",
-  },
-  {
-    title: "Mensagem para grupo de encarregados",
-    audience: "Grupos WhatsApp",
-    icon: Send,
-    linkType: "campaign",
-    copy: "Pais, encontrei uma solução que ajuda escolas a terem matrícula online, portal do aluno, notas, avisos e documentos digitais. Acho que devíamos partilhar com a direção da escola.",
-  },
-  {
-    title: "Mensagem para diretor",
-    audience: "Direção escolar",
-    icon: School,
-    linkType: "diagnosis",
-    copy: "Diretor, os pais já começam a comparar escolas pela experiência digital. O KLASSE ajuda com matrícula online, portal do aluno e gestão escolar. Inicie o pedido para a equipa avaliar a modernização da sua escola.",
-  },
-  {
-    title: "Comentário curto para marcar escola",
-    audience: "Comentários",
-    icon: Target,
-    linkType: "campaign",
-    copy: "A nossa escola precisa ver isto. Matrícula online e portal do aluno já deviam ser padrão.",
-  },
-] as const;
+import {
+  CAMPAIGN_KITS,
+  COMMERCIAL_STATUS_OPTIONS,
+  CRM_PLAN_OPTIONS,
+  CRM_STAGES,
+  DEFAULT_IMPLANTATION_CHECKLIST,
+  IMPLANTATION_STATUS_CONFIG,
+  MANAGEABLE_PARTNER_MEMBER_ROLES,
+  ONBOARDING_STATUS_CONFIG,
+  PARTNER_ROLE_LABELS,
+  STATUS_CONFIG,
+  WEEKLY_ACTIONS,
+  getImplantationProgress,
+  getLatestOnboardingCall,
+  getLatestOnboardingCallForStep,
+  getLeadConversionBlockers,
+  getStepMeta,
+  isAfiliadoPortalResponse,
+  isMarketingAsset,
+  normalizeImplantationChecklist,
+  type AfiliadoStats,
+  type MarketingAsset,
+  type OnboardingEscola,
+  type OnboardingImplantationItem,
+  type PartnerCommissionItem,
+  type PartnerCommissionSummary,
+  type PartnerLoginMember,
+  type PartnerMemberRole,
+  type PartnerTab,
+  type PartnerTeamMember,
+  type AfiliadoPortalResponse,
+  type MarketingAssetRow,
+  PARTNER_MEMBER_ROLES,
+  STEP_META,
+} from "./_components/partner-dashboard-model";
 
 export default function AfiliadoDashboardPage({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = use(params);
   const [stats, setStats] = useState<AfiliadoStats | null>(null);
   const [assets, setAssets] = useState<MarketingAsset[]>([]);
   const [memberName, setMemberName] = useState("");
-  const [memberRole, setMemberRole] = useState<"owner" | "operator">("operator");
+  const [memberId, setMemberId] = useState("");
+  const [memberRole, setMemberRole] = useState<PartnerMemberRole>("operator");
   const [commissionSummary, setCommissionSummary] = useState<PartnerCommissionSummary | null>(null);
   const [commissionItems, setCommissionItems] = useState<PartnerCommissionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'campanha' | 'crm' | 'onboarding' | 'materiais'>('crm');
+  const [activeTab, setActiveTab] = useState<PartnerTab>('crm');
   const [authError, setAuthError] = useState(false);
   const router = useRouter();
   const campaignUrl = `https://klasse.ao/escola-moderna?ref=${codigo}`;
@@ -352,9 +138,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [newLeadSegment, setNewLeadSegment] = useState<"publica" | "privada" | "comparticipada">("privada");
   const [newLeadAlunos, setNewLeadAlunos] = useState(300);
   const [newLeadPlan, setNewLeadPlan] = useState<"essencial" | "profissional" | "premium">("essencial");
-  const [newLeadTrialDays, setNewLeadTrialDays] = useState(30);
+  const [newLeadTrialDays, setNewLeadTrialDays] = useState(15);
+  const [newLeadTaxaAtivacao, setNewLeadTaxaAtivacao] = useState(50000);
   const [newLeadAction, setNewLeadAction] = useState("");
   const [newLeadActionDate, setNewLeadActionDate] = useState("");
+  const [newLeadResponsavelId, setNewLeadResponsavelId] = useState("");
   const [savingLead, setSavingLead] = useState(false);
 
   // Detail states for CRM leads (Drawer)
@@ -363,6 +151,17 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [updatingLeadStage, setUpdatingLeadStage] = useState(false);
   const [nextLeadAction, setNextLeadAction] = useState("");
   const [nextLeadActionDate, setNextLeadActionDate] = useState("");
+  const [selectedLeadResponsavelId, setSelectedLeadResponsavelId] = useState("");
+  const [commercialPlan, setCommercialPlan] = useState<"essencial" | "profissional" | "premium">("essencial");
+  const [commercialAlunos, setCommercialAlunos] = useState(0);
+  const [commercialTrialDays, setCommercialTrialDays] = useState(15);
+  const [commercialTaxaAtivacao, setCommercialTaxaAtivacao] = useState(50000);
+  const [commercialMensalidade, setCommercialMensalidade] = useState(0);
+  const [commercialStatus, setCommercialStatus] = useState<(typeof COMMERCIAL_STATUS_OPTIONS)[number]["value"]>("rascunho");
+  const [savingCommercialTerms, setSavingCommercialTerms] = useState(false);
+  const [proposalDocumentFile, setProposalDocumentFile] = useState<File | null>(null);
+  const [uploadingProposalFile, setUploadingProposalFile] = useState(false);
+  const [openingProposalFile, setOpeningProposalFile] = useState(false);
   const [leadActionNotes, setLeadActionNotes] = useState("");
   const [savingLeadAction, setSavingLeadAction] = useState(false);
   const [convertingLead, setConvertingLead] = useState(false);
@@ -377,7 +176,19 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [selectedStepCodeForCall, setSelectedStepCodeForCall] = useState("");
   const [savingCall, setSavingCall] = useState(false);
   const [selectedSchoolForDetails, setSelectedSchoolForDetails] = useState<OnboardingEscola | null>(null);
+  const [implantationChecklistDraft, setImplantationChecklistDraft] = useState<OnboardingImplantationItem[]>(DEFAULT_IMPLANTATION_CHECKLIST);
+  const [savingImplantationChecklist, setSavingImplantationChecklist] = useState(false);
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<PartnerTeamMember[]>([]);
+  const [partnerMembers, setPartnerMembers] = useState<PartnerLoginMember[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [savingTeamMember, setSavingTeamMember] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberPin, setNewMemberPin] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState<(typeof MANAGEABLE_PARTNER_MEMBER_ROLES)[number]>("vendas");
+  const [resetPins, setResetPins] = useState<Record<string, string>>({});
+
+  const canManageTeam = memberRole === "owner" || memberRole === "admin";
 
   const loadCrmLeads = async (showLoading = false) => {
     if (showLoading) setLoadingCrm(true);
@@ -418,6 +229,48 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
   };
 
+  const loadPartnerMembers = async () => {
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/members`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as {
+        ok?: boolean;
+        members?: PartnerLoginMember[];
+      } | null;
+
+      if (response.ok && payload?.ok) {
+        setPartnerMembers(Array.isArray(payload.members) ? payload.members : []);
+      }
+    } catch (err) {
+      console.error("Failed to load partner members:", err);
+    }
+  };
+
+  const loadTeamMembers = async (showLoading = false) => {
+    if (showLoading) setLoadingTeam(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/team`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as {
+        ok?: boolean;
+        members?: PartnerTeamMember[];
+        error?: string;
+      } | null;
+
+      if (response.ok && payload?.ok) {
+        setTeamMembers(Array.isArray(payload.members) ? payload.members : []);
+        return;
+      }
+
+      if (response.status !== 403) {
+        toast.error(payload?.error || "Falha ao carregar a equipe.");
+      }
+    } catch (err) {
+      console.error("Failed to load partner team:", err);
+      toast.error("Falha ao carregar a equipe.");
+    } finally {
+      if (showLoading) setLoadingTeam(false);
+    }
+  };
+
   const loadLeadHistory = async (leadId: string) => {
     setLoadingHistory(true);
     try {
@@ -434,9 +287,21 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   };
 
   const handleOpenLeadDrawer = async (lead: any) => {
+    const trialDays = Number(lead.trial_days);
+    const taxaAtivacao = Number(lead.taxa_ativacao);
     setSelectedCrmLead(lead);
     setNextLeadAction(lead.proxima_acao || "");
     setNextLeadActionDate(lead.proxima_acao_data ? new Date(lead.proxima_acao_data).toISOString().split('T')[0] : "");
+    setSelectedLeadResponsavelId(lead.responsavel_membro_id || lead.membro_id || memberId || "");
+    setCommercialPlan(CRM_PLAN_OPTIONS.some((plan) => plan.value === lead.plano_estimado) ? lead.plano_estimado : "essencial");
+    setCommercialAlunos(Number(lead.alunos_estimados) || 0);
+    setCommercialTrialDays(Number.isFinite(trialDays) ? trialDays : 15);
+    setCommercialTaxaAtivacao(Number.isFinite(taxaAtivacao) ? taxaAtivacao : 50000);
+    setCommercialMensalidade(Number(lead.mensalidade_kz) || 0);
+    setCommercialStatus(COMMERCIAL_STATUS_OPTIONS.some((item) => item.value === lead.commercial_status)
+      ? lead.commercial_status
+      : "rascunho");
+    setProposalDocumentFile(null);
     setLeadActionNotes("");
     setSelectedStageToChange(lead.etapa);
     setLossReasonText(lead.motivo_perda || "");
@@ -452,7 +317,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         ok?: boolean;
         portal?: AfiliadoPortalResponse;
         assets?: MarketingAssetRow[];
-        member?: { name?: string; role?: string };
+        member?: { id?: string; name?: string; role?: string };
       } | null;
 
       if (!response.ok || !payload?.ok || !payload.portal || !isAfiliadoPortalResponse(payload.portal)) {
@@ -462,8 +327,12 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
       setAuthError(false);
       setStats(payload.portal.stats);
+      setMemberId(typeof payload.member?.id === "string" ? payload.member.id : "");
       setMemberName(typeof payload.member?.name === "string" ? payload.member.name : "");
-      setMemberRole((payload.member?.role === "owner" || payload.member?.role === "operator") ? payload.member.role : "operator");
+      const normalizedRole = PARTNER_MEMBER_ROLES.includes(payload.member?.role as PartnerMemberRole)
+        ? payload.member?.role as PartnerMemberRole
+        : "operator";
+      setMemberRole(normalizedRole);
       setAssets((payload.assets || []).filter(isMarketingAsset));
 
       if (selectedSchoolForDetails) {
@@ -477,6 +346,10 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
       await loadCrmLeads(false);
       await loadCommissions();
+      await loadPartnerMembers();
+      if (normalizedRole === "owner" || normalizedRole === "admin") {
+        await loadTeamMembers(false);
+      }
     } catch (err) {
       console.error(err);
       setAuthError(true);
@@ -504,7 +377,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           plano_estimado: newLeadPlan,
           proxima_acao: newLeadAction.trim() || null,
           proxima_acao_data: newLeadActionDate || null,
+          responsavel_membro_id: newLeadResponsavelId || memberId || null,
           trial_days: newLeadTrialDays,
+          taxa_ativacao: newLeadTaxaAtivacao,
         }),
       });
       const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
@@ -522,9 +397,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       setNewLeadSegment("privada");
       setNewLeadAlunos(300);
       setNewLeadPlan("essencial");
-      setNewLeadTrialDays(30);
+      setNewLeadTrialDays(15);
+      setNewLeadTaxaAtivacao(50000);
       setNewLeadAction("");
       setNewLeadActionDate("");
+      setNewLeadResponsavelId("");
       
       await loadCrmLeads(false);
     } catch (err: any) {
@@ -578,6 +455,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           proxima_acao: nextLeadAction.trim() || null,
           proxima_acao_data: nextLeadActionDate || null,
           interaction_note: leadActionNotes.trim() || null,
+          responsavel_membro_id: selectedLeadResponsavelId || null,
         }),
       });
       const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
@@ -634,6 +512,114 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
   };
 
+  const handleSaveCommercialTerms = async () => {
+    if (!selectedCrmLead) return;
+    setSavingCommercialTerms(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${selectedCrmLead.id}/commercial`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          plano_estimado: commercialPlan,
+          alunos_estimados: commercialAlunos,
+          trial_days: commercialTrialDays,
+          taxa_ativacao: commercialTaxaAtivacao,
+          mensalidade_kz: commercialMensalidade,
+          commercial_status: commercialStatus,
+        }),
+      });
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !res?.ok) {
+        toast.error(res?.error || "Erro ao salvar termos comerciais.");
+        return;
+      }
+
+      toast.success("Termos comerciais atualizados.");
+      setSelectedCrmLead((current: any) => current ? {
+        ...current,
+        plano_estimado: commercialPlan,
+        alunos_estimados: commercialAlunos,
+        trial_days: commercialTrialDays,
+        taxa_ativacao: commercialTaxaAtivacao,
+        mensalidade_kz: commercialMensalidade,
+        commercial_status: commercialStatus,
+      } : current);
+      await loadCrmLeads(false);
+      await loadLeadHistory(selectedCrmLead.id);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar termos comerciais.");
+    } finally {
+      setSavingCommercialTerms(false);
+    }
+  };
+
+  const handleUploadCommercialProposal = async () => {
+    if (!selectedCrmLead || !proposalDocumentFile) return;
+    setUploadingProposalFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", proposalDocumentFile);
+
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${selectedCrmLead.id}/proposal`, {
+        method: "POST",
+        body: formData,
+      });
+      const res = await response.json().catch(() => null) as {
+        ok?: boolean;
+        error?: string;
+        fileName?: string;
+        commercial_status?: string;
+      } | null;
+
+      if (!response.ok || !res?.ok) {
+        toast.error(res?.error || "Erro ao anexar proposta.");
+        return;
+      }
+
+      toast.success("Documento comercial anexado.");
+      setProposalDocumentFile(null);
+      setCommercialStatus(
+        COMMERCIAL_STATUS_OPTIONS.some((item) => item.value === res.commercial_status)
+          ? (res.commercial_status as (typeof COMMERCIAL_STATUS_OPTIONS)[number]["value"])
+          : commercialStatus
+      );
+      setSelectedCrmLead((current: any) => current ? {
+        ...current,
+        proposal_file_name: res.fileName || proposalDocumentFile.name,
+        commercial_status: res.commercial_status || current.commercial_status,
+      } : current);
+      await loadCrmLeads(false);
+      await loadLeadHistory(selectedCrmLead.id);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao anexar proposta.");
+    } finally {
+      setUploadingProposalFile(false);
+    }
+  };
+
+  const handleOpenCommercialProposal = async () => {
+    if (!selectedCrmLead?.proposal_file_name) return;
+    setOpeningProposalFile(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/crm/leads/${selectedCrmLead.id}/proposal`, {
+        cache: "no-store",
+      });
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string; signedUrl?: string } | null;
+      if (!response.ok || !res?.ok || !res.signedUrl) {
+        toast.error(res?.error || "Não foi possível abrir o documento.");
+        return;
+      }
+
+      window.open(res.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      toast.error(err.message || "Não foi possível abrir o documento.");
+    } finally {
+      setOpeningProposalFile(false);
+    }
+  };
+
   const handleRegisterCall = async () => {
     if (!selectedSchoolForCall) return;
     setSavingCall(true);
@@ -668,6 +654,71 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       toast.error(err.message || "Erro ao registrar a ligação.");
     } finally {
       setSavingCall(false);
+    }
+  };
+
+  const handleCreateTeamMember = async () => {
+    if (!newMemberName.trim() || !newMemberPin.trim()) {
+      toast.error("Informe o nome e o PIN do membro.");
+      return;
+    }
+
+    setSavingTeamMember(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/team`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          nome: newMemberName.trim(),
+          pin: newMemberPin.trim(),
+          role: newMemberRole,
+          ativo: true,
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        toast.error(payload?.error || "Falha ao criar membro.");
+        return;
+      }
+
+      toast.success("Membro criado com sucesso.");
+      setNewMemberName("");
+      setNewMemberPin("");
+      setNewMemberRole("vendas");
+      await loadTeamMembers(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Falha ao criar membro.");
+    } finally {
+      setSavingTeamMember(false);
+    }
+  };
+
+  const handleUpdateTeamMember = async (
+    memberId: string,
+    changes: Partial<Pick<PartnerTeamMember, "nome" | "role" | "ativo">> & { pin?: string }
+  ) => {
+    setSavingTeamMember(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/team`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ memberId, ...changes }),
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        toast.error(payload?.error || "Falha ao atualizar membro.");
+        return;
+      }
+
+      toast.success("Membro atualizado.");
+      setResetPins((current) => ({ ...current, [memberId]: "" }));
+      await loadTeamMembers(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Falha ao atualizar membro.");
+    } finally {
+      setSavingTeamMember(false);
     }
   };
 
@@ -763,10 +814,35 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const newCrmLeadsCount = activeCrmLeads.filter(l => l.etapa === 'prospeccao').length;
   const inContactCrmCount = activeCrmLeads.filter(l => l.etapa === 'contacto' || l.etapa === 'apresentacao').length;
   const negotiatingCrmCount = activeCrmLeads.filter(l => l.etapa === 'negociacao').length;
+  const openCrmTasks = crmLeads
+    .filter((lead) => lead.etapa !== "ganho" && lead.etapa !== "perdido" && lead.proxima_acao)
+    .sort((a, b) => {
+      const left = a.proxima_acao_data ? new Date(a.proxima_acao_data).getTime() : Number.MAX_SAFE_INTEGER;
+      const right = b.proxima_acao_data ? new Date(b.proxima_acao_data).getTime() : Number.MAX_SAFE_INTEGER;
+      return left - right;
+    });
+  const overdueCrmTasks = openCrmTasks.filter(
+    (lead) => lead.proxima_acao_data && new Date(lead.proxima_acao_data).getTime() < Date.now()
+  );
+  const nextCrmTasks = openCrmTasks.filter(
+    (lead) => !lead.proxima_acao_data || new Date(lead.proxima_acao_data).getTime() >= Date.now()
+  );
+  const visibleCrmTasks = [...overdueCrmTasks, ...nextCrmTasks].slice(0, 6);
 
   const totalCrmPipelineValue = activeCrmLeads.reduce((acc, lead) => {
     return acc + getCommissionForPlan(lead.plano_estimado);
   }, 0);
+  const selectedCommercialStatusMeta = COMMERCIAL_STATUS_OPTIONS.find((item) => item.value === commercialStatus) || COMMERCIAL_STATUS_OPTIONS[0];
+  const selectedLeadDraft = selectedCrmLead ? {
+    ...selectedCrmLead,
+    plano_estimado: commercialPlan,
+    alunos_estimados: commercialAlunos,
+    trial_days: commercialTrialDays,
+    taxa_ativacao: commercialTaxaAtivacao,
+    mensalidade_kz: commercialMensalidade,
+    commercial_status: commercialStatus,
+  } : null;
+  const selectedLeadConversionBlockers = selectedLeadDraft ? getLeadConversionBlockers(selectedLeadDraft) : [];
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -776,6 +852,71 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   useEffect(() => {
     loadData(true);
   }, [codigo]);
+
+  useEffect(() => {
+    setImplantationChecklistDraft(normalizeImplantationChecklist(selectedSchoolForDetails?.implantation_checklist));
+  }, [selectedSchoolForDetails]);
+
+  const handleToggleImplantationItem = (code: string) => {
+    setImplantationChecklistDraft((current) =>
+      current.map((item) => {
+        if (item.code !== code) return item;
+        const nextCompleted = !item.completed;
+        return {
+          ...item,
+          completed: nextCompleted,
+          completed_at: nextCompleted ? item.completed_at ?? new Date().toISOString() : null,
+        };
+      })
+    );
+  };
+
+  const handleChangeImplantationNote = (code: string, note: string) => {
+    setImplantationChecklistDraft((current) =>
+      current.map((item) => (
+        item.code === code
+          ? { ...item, note }
+          : item
+      ))
+    );
+  };
+
+  const handleSaveImplantationChecklist = async () => {
+    if (!selectedSchoolForDetails?.token) return;
+    setSavingImplantationChecklist(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/onboarding/${selectedSchoolForDetails.token}/checklist`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          items: implantationChecklistDraft.map((item) => ({
+            code: item.code,
+            label: item.label,
+            completed: item.completed,
+            note: item.note ?? null,
+            completed_at: item.completed ? item.completed_at ?? new Date().toISOString() : null,
+          })),
+        }),
+      });
+      const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !res?.ok) {
+        if (response.status === 401) {
+          setAuthError(true);
+        }
+        toast.error(res?.error || "Erro ao salvar checklist de implantação.");
+        return;
+      }
+
+      toast.success("Checklist de implantação atualizado.");
+      await loadData(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar checklist de implantação.");
+    } finally {
+      setSavingImplantationChecklist(false);
+    }
+  };
 
   const handleLogout = async () => {
     await fetch("/api/influencers/session", { method: "DELETE" }).catch(() => null);
@@ -1026,53 +1167,70 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   </CardContent>
                 </Card>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-5 space-y-2">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
-                      <BarChart3 size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Escolas captadas</p>
-                      <p className="text-2xl font-bold text-zinc-900 font-mono mt-0.5">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-5 space-y-2">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                      <Clock size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Novos interessados</p>
-                      <p className="text-2xl font-bold text-blue-600 font-mono mt-0.5">{onboardingStats?.pendentes ?? stats?.novos}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
-                  <CardContent className="p-5 space-y-2">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
-                      <ShieldCheck size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Em contacto</p>
-                      <p className="text-2xl font-bold text-amber-600 font-mono mt-0.5">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 shadow-sm overflow-hidden">
-                  <CardContent className="p-5 space-y-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
-                      <TrendingUp size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">Escolas fechadas</p>
-                      <p className="text-2xl font-bold text-emerald-600 font-mono mt-0.5">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+
+            <Card className="rounded-2xl border-zinc-200/50 bg-white shadow-sm">
+              <CardHeader className="p-6 pb-0">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Mesa do operador</p>
+                    <CardTitle className="text-lg font-bold text-zinc-900 tracking-tight">Próximas ações comerciais</CardTitle>
+                    <CardDescription className="text-xs text-zinc-500">
+                      Lista curta para o operador fechar o dia sem perder follow-up de escolas em prospecção.
+                    </CardDescription>
+                  </div>
+                  <Badge className="rounded-lg bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700 border border-rose-100 shadow-none">
+                    {overdueCrmTasks.length} atrasadas
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {visibleCrmTasks.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center">
+                    <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-emerald-500" />
+                    <p className="text-sm font-bold text-zinc-700">Nenhuma próxima ação pendente.</p>
+                    <p className="mt-1 text-xs text-zinc-500">Cadastre follow-ups nos leads para manter o funil ativo.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleCrmTasks.map((lead) => {
+                      const isOverdue = lead.proxima_acao_data && new Date(lead.proxima_acao_data).getTime() < Date.now();
+                      return (
+                        <button
+                          key={lead.id}
+                          type="button"
+                          onClick={() => handleOpenLeadDrawer(lead)}
+                          className={`rounded-xl border p-4 text-left transition hover:shadow-sm ${
+                            isOverdue
+                              ? "border-rose-200 bg-rose-50/50"
+                              : "border-zinc-200 bg-zinc-50/60 hover:bg-white"
+                          }`}
+                        >
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-zinc-900">{lead.nome_escola}</p>
+                              <p className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                                {CRM_STAGES[lead.etapa]?.label ?? lead.etapa}
+                              </p>
+                              <p className="mt-1 truncate text-[10px] font-bold text-zinc-500">
+                                Responsável: {lead.responsavel_membro_nome || lead.membro_nome || "Sem responsável"}
+                              </p>
+                            </div>
+                            <ArrowRight size={14} className="shrink-0 text-zinc-400" />
+                          </div>
+                          <p className="line-clamp-2 text-xs font-semibold leading-relaxed text-zinc-700">{lead.proxima_acao}</p>
+                          <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-zinc-500">
+                            <Clock size={12} />
+                            {lead.proxima_acao_data
+                              ? format(new Date(lead.proxima_acao_data), "dd/MM/yyyy")
+                              : "Sem data definida"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
             {/* Funil de Vendas (CRM Leads) rendering */}
             {pipelineMode === 'leads' && (
               <Card className="rounded-2xl border-zinc-200/50 bg-white shadow-sm">
@@ -1177,6 +1335,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                           <span className="truncate max-w-[120px]">Contato: {lead.nome_contacto || "Não informado"}</span>
                                           {lead.alunos_estimados > 0 && <span className="font-mono">{lead.alunos_estimados} al.</span>}
                                         </div>
+                                        <p className="text-[9px] font-semibold text-zinc-500">
+                                          Resp.: {lead.responsavel_membro_nome || lead.membro_nome || "Sem dono"}
+                                        </p>
                                       </div>
 
                                       <div className="flex flex-col gap-1.5 border-t border-zinc-100 pt-2 text-[9px] font-medium text-zinc-500">
@@ -1233,6 +1394,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 <p className="truncate font-bold text-zinc-900">{lead.nome_escola}</p>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-medium text-zinc-400">
                                   <span className="font-mono">Cadastrado em: {format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
+                                  <span>Responsável: {lead.responsavel_membro_nome || lead.membro_nome || "Sem responsável"}</span>
                                   {lead.alunos_estimados > 0 && (
                                     <>
                                       <span>•</span>
@@ -1250,6 +1412,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 <Badge className="border border-zinc-200 bg-zinc-50 text-[8px] font-semibold uppercase tracking-wider text-zinc-600 px-2 py-0.5 rounded-md shadow-none">
                                   Plano: {lead.plano_estimado}
                                 </Badge>
+                                {lead.commercial_status && (
+                                  <Badge className={`${COMMERCIAL_STATUS_OPTIONS.find((item) => item.value === lead.commercial_status)?.color || "bg-zinc-100 text-zinc-700"} border border-zinc-200/20 text-[8px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-none`}>
+                                    {COMMERCIAL_STATUS_OPTIONS.find((item) => item.value === lead.commercial_status)?.label || lead.commercial_status}
+                                  </Badge>
+                                )}
                                 <Badge className={`${stageMeta.color} border border-zinc-200/10 font-semibold uppercase text-[8px] px-2 py-0.5 rounded-md shadow-none`}>
                                   <span className={`w-1 h-1 rounded-full ${stageMeta.dot} mr-1.5`} />
                                   {stageMeta.label}
@@ -1535,6 +1702,22 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                              Última ligação: {lastCall.member_name} · {format(new Date(lastCall.realizado_em), "dd MMM, HH:mm", { locale: pt })}
                                            </div>
                                          )}
+                                         <div className="flex items-center gap-2 text-[9px] font-bold text-slate-500">
+                                           <span>
+                                             Implantação: {getImplantationProgress(escola).completed}/{getImplantationProgress(escola).total}
+                                           </span>
+                                           <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 ${(
+                                             IMPLANTATION_STATUS_CONFIG[
+                                               (escola.implantation_status as keyof typeof IMPLANTATION_STATUS_CONFIG) || "implantacao_em_andamento"
+                                             ] || IMPLANTATION_STATUS_CONFIG.implantacao_em_andamento
+                                           ).color}`}>
+                                             {(
+                                               IMPLANTATION_STATUS_CONFIG[
+                                                 (escola.implantation_status as keyof typeof IMPLANTATION_STATUS_CONFIG) || "implantacao_em_andamento"
+                                               ] || IMPLANTATION_STATUS_CONFIG.implantacao_em_andamento
+                                             ).label}
+                                           </span>
+                                         </div>
                                        </div>
 
                                        {escola.steps && escola.steps.length > 0 && (
@@ -1685,9 +1868,23 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 <Badge className="border border-klasse-gold-200 bg-klasse-gold-100 text-[9px] font-black uppercase tracking-widest text-klasse-gold-700">
                                   Plano: {escola.plano_label || escola.plano || "Não informado"}
                                 </Badge>
+                                <Badge className="border border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                  Implantação: {getImplantationProgress(escola).completed}/{getImplantationProgress(escola).total}
+                                </Badge>
                                 <Badge className={`${status.color} border-none font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg`}>
                                   <span className={`w-1 h-1 rounded-full ${status.dot} mr-2`} />
                                   {status.label}
+                                </Badge>
+                                <Badge className={`${(
+                                  IMPLANTATION_STATUS_CONFIG[
+                                    (escola.implantation_status as keyof typeof IMPLANTATION_STATUS_CONFIG) || "implantacao_em_andamento"
+                                  ] || IMPLANTATION_STATUS_CONFIG.implantacao_em_andamento
+                                ).color} font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg`}>
+                                  {(
+                                    IMPLANTATION_STATUS_CONFIG[
+                                      (escola.implantation_status as keyof typeof IMPLANTATION_STATUS_CONFIG) || "implantacao_em_andamento"
+                                    ] || IMPLANTATION_STATUS_CONFIG.implantacao_em_andamento
+                                  ).label}
                                 </Badge>
                               </div>
                             </div>
@@ -1915,7 +2112,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         Sua Comissão
                       </CardTitle>
                       <CardDescription className="text-slate-400 text-xs">
-                        Acompanhamento de comissões e faturamento estimado.
+                        Você ganha 100% da taxa de ativação (50k-100k Kz) + 25% de todas as mensalidades recorrentes.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 pt-0 space-y-5">
@@ -2008,17 +2205,31 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                           />
                         </div>
 
-                        <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
-                          <span className="font-bold text-slate-400">Comissão Prevista:</span>
-                          <span className="font-black text-klasse-gold">
-                            {(() => {
-                              let basePrice = 80000;
-                              if (calcPlan === 'profissional') basePrice = 140000;
-                              if (calcPlan === 'premium') basePrice = 250000;
-                              const value = basePrice * 0.25;
-                              return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value).replace('AOA', 'Kz');
-                            })()}
-                          </span>
+                        <div className="space-y-2 pt-2">
+                          <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
+                            <span className="font-bold text-slate-400">Ativação (100% único):</span>
+                            <span className="font-black text-klasse-gold">
+                              {(() => {
+                                let actFee = 50000;
+                                if (calcPlan === 'profissional') actFee = 80000;
+                                if (calcPlan === 'premium') actFee = 100000;
+                                return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(actFee).replace('AOA', 'Kz');
+                              })()}
+                            </span>
+                          </div>
+
+                          <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
+                            <span className="font-bold text-slate-400">Recorrência Mensal (25%):</span>
+                            <span className="font-black text-klasse-gold">
+                              {(() => {
+                                let basePrice = 80000;
+                                if (calcPlan === 'profissional') basePrice = 140000;
+                                if (calcPlan === 'premium') basePrice = 250000;
+                                const value = basePrice * 0.25;
+                                return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(value).replace('AOA', 'Kz');
+                              })()}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -2039,6 +2250,190 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="equipe" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Operação AELS</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Equipe do Parceiro</h2>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  Controle quem entra no CRM e qual responsabilidade cada operador assume no fluxo comercial.
+                </p>
+              </div>
+              <Button
+                onClick={() => loadTeamMembers(true)}
+                disabled={loadingTeam || !canManageTeam}
+                className="h-10 rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-widest text-white hover:bg-slate-800"
+              >
+                {loadingTeam ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
+                Atualizar
+              </Button>
+            </div>
+
+            {!canManageTeam ? (
+              <Card className="rounded-2xl border-amber-100 bg-amber-50 shadow-sm">
+                <CardContent className="flex items-start gap-4 p-6">
+                  <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-amber-700" />
+                  <div>
+                    <h3 className="text-sm font-black text-amber-950">Acesso reservado</h3>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-amber-800">
+                      Apenas o proprietário ou admin do parceiro pode gerir membros, papéis e PINs de acesso.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+                <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base font-black text-zinc-900">Novo membro</CardTitle>
+                    <CardDescription className="text-xs">
+                      Crie operadores para vendas, implantação e suporte L1 sem partilhar o PIN do proprietário.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Nome</label>
+                      <input
+                        value={newMemberName}
+                        onChange={(event) => setNewMemberName(event.target.value)}
+                        placeholder="Ex: Maria Comercial"
+                        className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
+                      />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Papel</label>
+                        <select
+                          value={newMemberRole}
+                          onChange={(event) => setNewMemberRole(event.target.value as typeof newMemberRole)}
+                          className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
+                        >
+                          {MANAGEABLE_PARTNER_MEMBER_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {PARTNER_ROLE_LABELS[role]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">PIN inicial</label>
+                        <input
+                          value={newMemberPin}
+                          onChange={(event) => setNewMemberPin(event.target.value)}
+                          placeholder="mínimo 4 dígitos"
+                          type="password"
+                          className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleCreateTeamMember}
+                      disabled={savingTeamMember}
+                      className="h-11 w-full rounded-xl bg-klasse-gold text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-klasse-gold/90"
+                    >
+                      {savingTeamMember ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                      Adicionar membro
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base font-black text-zinc-900">Membros cadastrados</CardTitle>
+                    <CardDescription className="text-xs">
+                      Papéis definem responsabilidade operacional; admin também consegue gerir a equipe.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingTeam ? (
+                      <div className="flex h-48 items-center justify-center text-zinc-400">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : teamMembers.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center">
+                        <Users className="mx-auto mb-3 h-8 w-8 text-zinc-300" />
+                        <p className="text-sm font-bold text-zinc-600">Nenhum membro encontrado.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {teamMembers.map((member) => (
+                          <div key={member.id} className="rounded-xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="truncate text-sm font-black text-zinc-900">{member.nome}</p>
+                                  <Badge className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-none ${
+                                    member.ativo
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                      : "bg-zinc-200 text-zinc-500 border border-zinc-300"
+                                  }`}>
+                                    {member.ativo ? "Ativo" : "Inativo"}
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                                  {PARTNER_ROLE_LABELS[member.role] ?? member.role}
+                                </p>
+                              </div>
+
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                {member.role !== "owner" && (
+                                  <select
+                                    value={member.role}
+                                    disabled={savingTeamMember}
+                                    onChange={(event) =>
+                                      handleUpdateTeamMember(member.id, { role: event.target.value as PartnerMemberRole })
+                                    }
+                                    className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-bold text-zinc-700 outline-none"
+                                  >
+                                    {MANAGEABLE_PARTNER_MEMBER_ROLES.map((role) => (
+                                      <option key={role} value={role}>
+                                        {PARTNER_ROLE_LABELS[role]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                                {member.role !== "owner" && (
+                                  <Button
+                                    onClick={() => handleUpdateTeamMember(member.id, { ativo: !member.ativo })}
+                                    disabled={savingTeamMember}
+                                    variant="outline"
+                                    className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700"
+                                  >
+                                    {member.ativo ? "Desativar" : "Ativar"}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 flex flex-col gap-2 border-t border-zinc-200/70 pt-4 sm:flex-row">
+                              <div className="relative flex-1">
+                                <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                                <input
+                                  value={resetPins[member.id] ?? ""}
+                                  onChange={(event) => setResetPins((current) => ({ ...current, [member.id]: event.target.value }))}
+                                  placeholder="Novo PIN"
+                                  type="password"
+                                  className="h-9 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-3 text-xs font-semibold text-zinc-900 outline-none"
+                                />
+                              </div>
+                              <Button
+                                onClick={() => handleUpdateTeamMember(member.id, { pin: resetPins[member.id] ?? "" })}
+                                disabled={savingTeamMember || !(resetPins[member.id] ?? "").trim()}
+                                className="h-9 rounded-lg bg-zinc-900 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-zinc-800"
+                              >
+                                Redefinir PIN
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="materiais" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -2120,9 +2515,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                       asChild
                       className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-lg font-semibold text-xs gap-2 h-9 border-none"
                     >
-                      <a href="/templates/modelo_alunos.csv" download="modelo_importacao_alunos.csv" className="flex items-center justify-center w-full h-full no-underline">
+                      <a href="/templates/KLASSE_Modelo_Importacao_Alunos_v1.xlsx" download="KLASSE_Modelo_Importacao_Alunos_v1.xlsx" className="flex items-center justify-center w-full h-full no-underline">
                         <Download size={13} />
-                        Baixar Modelo
+                        Baixar Modelo (.xlsx)
                       </a>
                     </Button>
                   </div>
@@ -2146,9 +2541,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                       asChild
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-xs gap-2 h-9 border-none"
                     >
-                      <a href="/templates/modelo_professores.csv" download="modelo_importacao_professores.csv" className="flex items-center justify-center w-full h-full no-underline">
+                      <a href="/templates/06_professores_atribuicoes_template.xlsx" download="06_professores_atribuicoes_template.xlsx" className="flex items-center justify-center w-full h-full no-underline">
                         <Download size={13} />
-                        Baixar Modelo
+                        Baixar Modelo (.xlsx)
                       </a>
                     </Button>
                   </div>
@@ -2329,6 +2724,21 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                 />
               </div>
 
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Responsável pelo Follow-up</label>
+                <select
+                  value={newLeadResponsavelId || memberId}
+                  onChange={(e) => setNewLeadResponsavelId(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none cursor-pointer"
+                >
+                  {(partnerMembers.length > 0 ? partnerMembers : [{ membro_id: memberId, membro_nome: memberName } as PartnerLoginMember]).map((member) => (
+                    <option key={member.membro_id} value={member.membro_id}>
+                      {member.membro_nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Segmento</label>
@@ -2356,7 +2766,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Alunos Estimados</label>
                   <input
@@ -2375,6 +2785,16 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     max={30}
                     value={newLeadTrialDays}
                     onChange={(e) => setNewLeadTrialDays(Math.min(30, Math.max(0, Number(e.target.value))))}
+                    className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Taxa de Ativação (Kz)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newLeadTaxaAtivacao}
+                    onChange={(e) => setNewLeadTaxaAtivacao(Math.max(0, Number(e.target.value)))}
                     className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
                   />
                 </div>
@@ -2422,652 +2842,64 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         </DialogContent>
       </Dialog>
 
-      {/* Sheet Drawer for Onboarding School Details */}
-      <Sheet open={detailsDrawerOpen} onOpenChange={setDetailsDrawerOpen}>
-        <SheetContent className="sm:max-w-xl overflow-y-auto h-full bg-white flex flex-col gap-6 p-8 border-slate-200 shadow-2xl">
-          {selectedSchoolForDetails && (
-            <div className="flex flex-col gap-6 h-full">
-              {/* Header */}
-              <div className="border-b border-slate-100 pb-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Escola em Onboarding</span>
-                  <Badge className={`border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-lg ${
-                    selectedSchoolForDetails.status === 'activo'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {selectedSchoolForDetails.status === 'activo' ? 'Ativo' : 'Pendente'}
-                  </Badge>
-                </div>
-                <h3 className="font-black text-slate-900 text-xl tracking-tight leading-tight">
-                  {selectedSchoolForDetails.escola}
-                </h3>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
-                    Plano: {selectedSchoolForDetails.plano_label || selectedSchoolForDetails.plano || "Não informado"}
-                  </Badge>
-                  {selectedSchoolForDetails.total_alunos && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
-                      {selectedSchoolForDetails.total_alunos} Alunos Estimados
-                    </Badge>
-                  )}
-                  {selectedSchoolForDetails.escola_nif && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
-                      NIF: {selectedSchoolForDetails.escola_nif}
-                    </Badge>
-                  )}
-                  {getLatestOnboardingCall(selectedSchoolForDetails) && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border-blue-200">
-                      Último follow-up: {format(new Date(getLatestOnboardingCall(selectedSchoolForDetails)!.realizado_em), "dd MMM, HH:mm", { locale: pt })}
-                    </Badge>
-                  )}
-                </div>
-                {selectedSchoolForDetails.status !== 'activo' && (
-                  <div className="mt-4">
-                    <Button
-                      onClick={() => {
-                        const nextPending = selectedSchoolForDetails.steps?.find((st) => st.status !== 'concluido');
-                        setSelectedSchoolForCall(selectedSchoolForDetails);
-                        setSelectedStepCodeForCall(nextPending?.code || "");
-                        setCallModalOpen(true);
-                      }}
-                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
-                    >
-                      <Phone size={12} className="text-slate-400" />
-                      REGISTRAR LIGAÇÃO
-                    </Button>
-                  </div>
-                )}
-              </div>
+      <OnboardingSchoolDetailsSheet
+        open={detailsDrawerOpen}
+        onOpenChange={setDetailsDrawerOpen}
+        selectedSchoolForDetails={selectedSchoolForDetails}
+        setSelectedSchoolForCall={setSelectedSchoolForCall}
+        setSelectedStepCodeForCall={setSelectedStepCodeForCall}
+        setCallModalOpen={setCallModalOpen}
+        copyToClipboard={copyToClipboard}
+      />
 
-              {/* Share/Copy tracking link */}
-              {selectedSchoolForDetails.token && (
-                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                      <Share2 size={12} className="text-[#1F6B3B]" /> LINK DE ACOMPANHAMENTO DA ESCOLA
-                    </span>
-                    <Link
-                      href={`/onboarding/acompanhar/${selectedSchoolForDetails.token}`}
-                      target="_blank"
-                      className="text-[10px] font-bold text-[#1F6B3B] hover:underline flex items-center gap-1 no-underline"
-                    >
-                      Ver página pública <ExternalLink size={10} />
-                    </Link>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2.5">
-                    <span className="text-xs font-mono font-medium text-slate-500 truncate flex-1 select-all">
-                      {typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : ''}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : '';
-                        copyToClipboard(trackingUrl);
-                      }}
-                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-900 transition-colors"
-                      title="Copiar Link"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : '';
-                        copyToClipboard(trackingUrl);
-                      }}
-                      className="flex-1 h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 shadow-none"
-                    >
-                      <Copy size={12} /> COPIAR LINK
-                    </Button>
-                    <a
-                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `Olá! Acompanhe o processo de ativação da sua escola (${selectedSchoolForDetails.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : ''}`
-                      )}${
-                        selectedSchoolForDetails.director_tel || selectedSchoolForDetails.escola_tel
-                          ? `&phone=${(selectedSchoolForDetails.director_tel || selectedSchoolForDetails.escola_tel || '').replace(/\D/g, '')}`
-                          : ''
-                      }`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 h-9 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-black text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
-                    >
-                      <Send size={12} /> COMPARTILHAR WHATSAPP
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              <Tabs defaultValue="progresso" className="w-full flex-1 flex flex-col min-h-0">
-                <TabsList className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl mb-2">
-                  <TabsTrigger value="progresso" className="rounded-lg font-bold text-xs uppercase tracking-wider">
-                    Progresso (SLA)
-                  </TabsTrigger>
-                  <TabsTrigger value="ficha" className="rounded-lg font-bold text-xs uppercase tracking-wider">
-                    Ficha da Escola
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* TAB 1: Progresso e Etapas */}
-                <TabsContent value="progresso" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
-                  {/* Progress circular indicator */}
-                  {(() => {
-                    const steps = selectedSchoolForDetails.steps || [];
-                    const completedSteps = steps.filter(s => s.status === 'concluido').length;
-                    const progressPercent = steps.length > 0 ? Math.round((completedSteps / steps.length) * 100) : 0;
-                    
-                    return (
-                      <div className="bg-slate-950 text-white rounded-3xl p-5 shadow-lg flex items-center justify-between border border-white/5 gap-4">
-                        <div className="space-y-1.5">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-white/10 text-klasse-gold">
-                            Resumo de Ativação
-                          </span>
-                          <h4 className="text-sm font-black tracking-tight">Etapas concluídas</h4>
-                          <p className="text-[10px] text-slate-400 leading-normal">
-                            O onboarding é composto por 7 fases oficiais síncronas.
-                          </p>
-                        </div>
-                        
-                        <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.05)" strokeWidth="6" fill="transparent" />
-                            <circle cx="40" cy="40" r="34" stroke="#E3B23C" strokeWidth="6" fill="transparent"
-                              strokeDasharray={2 * Math.PI * 34}
-                              strokeDashoffset={2 * Math.PI * 34 * (1 - progressPercent / 100)}
-                              strokeLinecap="round"
-                              className="transition-all duration-1000 ease-out"
-                            />
-                          </svg>
-                          <div className="absolute flex flex-col items-center">
-                            <span className="text-base font-black text-white">{progressPercent}%</span>
-                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{completedSteps}/{steps.length}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Checklist of Steps */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                      Roteiro de Ativação
-                    </h4>
-                    
-                    <div className="space-y-3">
-                      {(selectedSchoolForDetails.steps || []).map((step, index) => {
-                        const isCompleted = step.status === "concluido";
-                        const isProgress = step.status === "em_progresso";
-                        const isOverdue = step.deadline && new Date() >= new Date(step.deadline) && !isCompleted;
-                        const meta = getStepMeta(step.code, step.owner as any);
-                        const latestStepCall = getLatestOnboardingCallForStep(selectedSchoolForDetails, step.code, step.title);
-
-                        return (
-                          <div key={step.code} className={`bg-white border rounded-2xl p-4 transition-all flex items-start gap-3.5 shadow-sm hover:shadow-md ${isProgress ? 'border-[#1F6B3B] ring-1 ring-[#1F6B3B]/10' : 'border-slate-200'}`}>
-                            <div className="flex flex-col items-center gap-1.5 flex-shrink-0 mt-0.5">
-                              <div className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs
-                                ${isCompleted ? 'bg-[#E8F5EE] text-[#1F6B3B]' : isProgress ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
-                                {isCompleted ? <Check size={14} /> : index + 1}
-                              </div>
-                              <div className="text-[7px] font-black uppercase text-slate-400">{meta.short}</div>
-                            </div>
-                            
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                              <div className="flex flex-wrap items-center justify-between gap-1.5">
-                                <h5 className="font-bold text-slate-900 text-xs truncate">{step.title}</h5>
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold border
-                                    ${step.owner === 'escola' ? 'bg-blue-50 text-blue-700 border-blue-100' : step.owner === 'parceiro' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-slate-50 text-slate-600 border-slate-100'}`}>
-                                    {meta.ownerLabel}
-                                  </span>
-                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold border
-                                    ${isCompleted ? 'bg-[#E8F5EE] text-[#1F6B3B] border-emerald-100' : isOverdue ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
-                                    {isCompleted ? 'Concluído' : isOverdue ? 'Atrasado SLA' : 'No Prazo'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500 font-semibold">
-                                {step.deadline && (
-                                  <span className="flex items-center gap-1.5">
-                                    <Calendar size={10} /> Limite: {format(new Date(step.deadline), "dd 'de' MMMM", { locale: pt })}
-                                  </span>
-                                )}
-                                {step.completed_at && (
-                                  <span className="flex items-center gap-1.5 text-klasse-green">
-                                    <CheckCircle2 size={10} /> Concluído a: {format(new Date(step.completed_at), "dd/MM/yyyy", { locale: pt })}
-                                  </span>
-                                )}
-                              </div>
-                              {latestStepCall && (
-                                <div className="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-[10px] font-semibold text-blue-700">
-                                  Última ligação nesta etapa: {latestStepCall.member_name} · {format(new Date(latestStepCall.realizado_em), "dd MMM, HH:mm", { locale: pt })}
-                                </div>
-                              )}
-                              {!isCompleted && (
-                                <div className="pt-1">
-                                  <Button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedSchoolForCall(selectedSchoolForDetails);
-                                      setSelectedStepCodeForCall(step.code);
-                                      setCallModalOpen(true);
-                                    }}
-                                    className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
-                                  >
-                                    <Phone size={11} className="text-slate-400" />
-                                    REGISTRAR LIGAÇÃO DE FOLLOW-UP
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* TAB 2: Ficha da Escola */}
-                <TabsContent value="ficha" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
-                  {/* Informações de Contato */}
-                  <div className="space-y-3.5">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                      <Users size={14} className="text-slate-400" />
-                      Contatos e Responsáveis
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-                      <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Diretor</span>
-                        <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_nome || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Diretor</span>
-                        <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">E-mail Escola</span>
-                        <span className="text-xs font-bold text-slate-800 break-all">{selectedSchoolForDetails.escola_email || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Escola</span>
-                        <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.escola_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
-                      </div>
-                      <div className="md:col-span-2">
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Morada</span>
-                        <span className="text-xs font-bold text-slate-800">
-                          {[selectedSchoolForDetails.escola_morada, selectedSchoolForDetails.escola_municipio, selectedSchoolForDetails.escola_provincia].filter(Boolean).join(', ') || <span className="italic font-medium text-slate-400">Não informada</span>}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fila de Uploads */}
-                  <div className="space-y-3.5">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                      <FileText size={14} className="text-slate-400" />
-                      Arquivos e Staging de Importação
-                    </h4>
-                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                      {!selectedSchoolForDetails.uploads || selectedSchoolForDetails.uploads.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum upload realizado pela escola</p>
-                        </div>
-                      ) : (
-                        selectedSchoolForDetails.uploads.map((up) => {
-                          const meta = getStepMeta(up.step_code, up.created_by as any);
-                          return (
-                            <div key={up.id} className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm flex flex-col gap-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wide">{meta.short}</span>
-                                <Badge className={`border-none font-bold uppercase text-[8px] px-2 py-0.5 rounded-md ${
-                                  up.status === 'aprovado'
-                                    ? 'bg-emerald-50 text-emerald-700'
-                                    : up.status === 'rejeitado'
-                                    ? 'bg-rose-50 text-rose-700'
-                                    : 'bg-blue-50 text-blue-700'
-                                }`}>
-                                  {up.status}
-                                </Badge>
-                              </div>
-                              
-                              <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 font-bold">
-                                <span className="truncate max-w-[200px]" title={up.file_path.split('/').pop()}>
-                                  {up.file_path.split('/').pop()}
-                                </span>
-                                <a
-                                  href={`https://<project-ref>.supabase.co/storage/v1/object/public/onboarding/${up.file_path}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-blue-600 hover:text-blue-700 underline text-[9px] font-semibold"
-                                >
-                                  BAIXAR
-                                </a>
-                              </div>
-
-                              {up.status === 'rejeitado' && up.rejection_reason && (
-                                <div className="mt-1 rounded-lg bg-rose-50 border border-rose-100 p-2 text-[9px] font-semibold text-rose-700 leading-relaxed">
-                                  Motivo da rejeição: {up.rejection_reason}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Timeline de Atividades */}
-                  <div className="space-y-3.5 flex-grow flex flex-col min-h-0">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                      <Clock size={14} className="text-slate-400" />
-                      Timeline de Atividades (SLA)
-                    </h4>
-                    <div className="overflow-y-auto pr-1 space-y-4 max-h-[250px]">
-                      {!selectedSchoolForDetails.calls || selectedSchoolForDetails.calls.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-center">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nenhum contato registrado</p>
-                        </div>
-                      ) : (
-                        <div className="relative pl-4 border-l border-slate-100 space-y-4 py-1 ml-2">
-                          {selectedSchoolForDetails.calls.map((call) => (
-                            <div key={call.id} className="relative group/timeline">
-                              <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-white shadow-sm ring-4 ring-blue-50" />
-                              
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[10px] font-black text-slate-800">
-                                    {call.member_name} realizou ligação
-                                  </span>
-                                  <span className="text-[9px] font-semibold text-slate-400">
-                                    {format(new Date(call.realizado_em), "dd MMM, HH:mm", { locale: pt })}
-                                  </span>
-                                </div>
-                                {call.step_title && (
-                                  <Badge className="w-fit border-none bg-blue-50 text-blue-700 font-bold text-[8px] px-1.5 py-0.5 rounded">
-                                    Etapa: {call.step_title}
-                                  </Badge>
-                                )}
-                                <p className="text-xs font-medium text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100/50 leading-relaxed shadow-sm">
-                                  {call.notes}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Sheet Drawer for CRM Lead Details & Action Panel */}
-      <Sheet open={crmLeadDrawerOpen} onOpenChange={setCrmLeadDrawerOpen}>
-        <SheetContent className="sm:max-w-xl overflow-y-auto h-full bg-white flex flex-col gap-6 p-8 border-zinc-200/60 shadow-2xl">
-          {selectedCrmLead && (
-            <div className="flex flex-col gap-6 h-full">
-              {/* Header details */}
-              <div className="border-b border-zinc-100 pb-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Lead Comercial do CRM</span>
-                  <Badge className={`border border-zinc-200/10 font-semibold uppercase text-[8px] px-2 py-0.5 rounded-md shadow-none ${
-                    CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.color || "bg-zinc-100 text-zinc-600"
-                  }`}>
-                    {CRM_STAGES[selectedCrmLead.etapa as keyof typeof CRM_STAGES]?.label || selectedCrmLead.etapa}
-                  </Badge>
-                </div>
-                <h3 className="font-bold text-zinc-950 text-xl tracking-tight leading-tight">
-                  {selectedCrmLead.nome_escola}
-                </h3>
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none">
-                    Plano Estimado: {selectedCrmLead.plano_estimado}
-                  </Badge>
-                  {selectedCrmLead.alunos_estimados > 0 && (
-                    <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none font-mono">
-                      {selectedCrmLead.alunos_estimados} Alunos
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none">
-                    Segmento: {selectedCrmLead.segmento}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Informações Gerais do Lead */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
-                  <Users size={14} className="text-zinc-400" />
-                  Informações de Contato
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-xl border border-zinc-200/50 bg-zinc-50/50 p-4">
-                  <div>
-                    <span className="block text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Contato Decisor</span>
-                    <span className="text-xs font-semibold text-zinc-800">{selectedCrmLead.nome_contacto || <span className="italic font-medium text-zinc-400">Não informado</span>}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Telefone</span>
-                    <span className="text-xs font-semibold text-zinc-800 font-mono">{selectedCrmLead.telefone || <span className="italic font-medium text-zinc-400">Não informado</span>}</span>
-                  </div>
-                  <div className="md:col-span-2">
-                    <span className="block text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">E-mail Comercial</span>
-                    <span className="text-xs font-semibold text-zinc-800">{selectedCrmLead.email || <span className="italic font-medium text-zinc-400">Não informado</span>}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stage Update Area */}
-              <div className="space-y-3 border-t border-zinc-100 pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
-                  <Target size={14} className="text-zinc-400" />
-                  Mover Etapa Comercial
-                </h4>
-                <div className="flex flex-col gap-3 p-4 rounded-xl bg-zinc-50/40 border border-zinc-200/50">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Nova Etapa</label>
-                      <select
-                        value={selectedStageToChange}
-                        onChange={(e) => setSelectedStageToChange(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none cursor-pointer"
-                      >
-                        {Object.entries(CRM_STAGES).map(([code, meta]) => (
-                          <option key={code} value={code}>{meta.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {selectedStageToChange === 'perdido' && (
-                      <div>
-                        <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Motivo da Perda</label>
-                        <input
-                          type="text"
-                          value={lossReasonText}
-                          onChange={(e) => setLossReasonText(e.target.value)}
-                          placeholder="Ex: Sem orçamento"
-                          className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-medium text-zinc-700 focus:outline-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    onClick={() => handleUpdateLeadStage(selectedCrmLead.id, selectedStageToChange)}
-                    disabled={updatingLeadStage || (selectedStageToChange === 'perdido' && !lossReasonText.trim())}
-                    className="w-full mt-2 h-9 rounded-lg bg-zinc-950 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-50 border-none"
-                  >
-                    {updatingLeadStage ? "A atualizar..." : "Confirmar Mudança de Etapa"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Conversion to onboarding */}
-              <div className="space-y-3 border-t border-zinc-100 pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
-                  <School size={14} className="text-zinc-400" />
-                  Ativação da Escola
-                </h4>
-                <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/5 p-4">
-                  {selectedCrmLead.onboarding_request_id ? (
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-700">Lead convertido para onboarding</p>
-                        <p className="mt-1 text-xs font-semibold text-emerald-800">
-                          Token: <span className="font-mono">{selectedCrmLead.tracking_token || "gerado"}</span>
-                        </p>
-                      </div>
-                      {selectedCrmLead.tracking_token && (
-                        <Link
-                          href={`/onboarding/acompanhar/${selectedCrmLead.tracking_token}`}
-                          target="_blank"
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white no-underline hover:bg-emerald-700"
-                        >
-                          Abrir portal de ativação <ExternalLink size={12} />
-                        </Link>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-xs font-medium leading-relaxed text-emerald-800">
-                        Quando a negociação estiver ganha, crie o pedido de onboarding com os dados deste lead e entregue o link de acompanhamento para a escola.
-                      </p>
-                      <Button
-                        onClick={handleConvertLeadToOnboarding}
-                        disabled={convertingLead || selectedCrmLead.etapa === "perdido"}
-                        className="h-9 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 border-none"
-                      >
-                        {convertingLead ? (
-                          <>
-                            <Loader2 size={14} className="animate-spin mr-1.5" />
-                            A criar ativação...
-                          </>
-                        ) : (
-                          <>
-                            Iniciar ativação <ArrowRight size={14} className="ml-1" />
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* CRM Lead Next Action & Logging */}
-              <div className="space-y-3 border-t border-zinc-100 pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
-                  <Phone size={14} className="text-zinc-400" />
-                  Registrar Contato & Próximo Passo
-                </h4>
-                <div className="space-y-3 p-4 rounded-xl bg-zinc-50/40 border border-zinc-200/50">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Próxima Ação Comercial</label>
-                      <input
-                        type="text"
-                        value={nextLeadAction}
-                        onChange={(e) => setNextLeadAction(e.target.value)}
-                        placeholder="Ex: Enviar proposta comercial"
-                        className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Prazo da Ação</label>
-                      <input
-                        type="date"
-                        value={nextLeadActionDate}
-                        onChange={(e) => setNextLeadActionDate(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Notas da Ligação / Reunião</label>
-                    <textarea
-                      value={leadActionNotes}
-                      onChange={(e) => setLeadActionNotes(e.target.value)}
-                      placeholder="Descreva o que foi conversado e alinhe o próximo passo (ex: Reunião excelente com diretor, demonstrou interesse no plano profissional. Próximo passo: formalizar proposta de valores)."
-                      rows={3}
-                      className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-medium text-zinc-700 focus:outline-none placeholder-zinc-400 resize-none"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleUpdateLeadAction}
-                    disabled={savingLeadAction || !nextLeadAction.trim()}
-                    className="w-full h-9 rounded-lg bg-zinc-950 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-50 border-none"
-                  >
-                    {savingLeadAction ? "A registrar..." : "Salvar Ação & Registrar Notas"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Lead interaction timeline logs */}
-              <div className="space-y-3.5 border-t border-zinc-100 pt-4 flex-1 flex flex-col min-h-0">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
-                  <Clock size={14} className="text-zinc-400" />
-                  Histórico de Interações do Lead
-                </h4>
-                
-                <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-                  {loadingHistory ? (
-                    <div className="text-center py-6">
-                      <Loader2 className="w-6 h-6 animate-spin text-zinc-400 mx-auto" />
-                    </div>
-                  ) : leadHistory.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/50 p-4 text-center">
-                      <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Nenhum histórico comercial registrado</p>
-                    </div>
-                  ) : (
-                    <div className="relative pl-4 border-l border-zinc-100 space-y-4 py-1 ml-2">
-                      {leadHistory.map((logItem) => {
-                        const isMove = logItem.acao === 'CRM_LEAD_STAGE_MOVE';
-                        return (
-                          <div key={logItem.id} className="relative group/timeline">
-                            <span className={`absolute -left-[21px] top-1.5 w-2 h-2 rounded-full border border-white shadow-sm ring-4 ${
-                              isMove ? 'bg-amber-400 ring-zinc-100/50' : 'bg-blue-500 ring-zinc-100/50'
-                            }`} />
-                            
-                            <div className="flex flex-col gap-1.5">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-semibold text-zinc-900">
-                                  {isMove ? 'Etapa comercial alterada' : `${logItem.member_name} inseriu notas`}
-                                </span>
-                                <span className="text-[9px] font-medium text-zinc-400 font-mono">
-                                  {format(new Date(logItem.created_at), "dd MMM, HH:mm", { locale: pt })}
-                                </span>
-                              </div>
-
-                              {isMove ? (
-                                <div className="text-xs font-medium text-zinc-600 bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-lg">
-                                  Mapeamento de: <span className="font-semibold uppercase text-[9px] text-zinc-500">{CRM_STAGES[logItem.origem_etapa]?.label || logItem.origem_etapa}</span> ➔ <span className="font-semibold uppercase text-[9px] text-emerald-600">{CRM_STAGES[logItem.nova_etapa]?.label || logItem.nova_etapa}</span>
-                                  {logItem.motivo_perda && (
-                                    <p className="mt-1 font-medium text-rose-600 bg-rose-500/5 border border-rose-500/10 p-2 rounded-md text-[10px]">
-                                      Motivo da Perda: {logItem.motivo_perda}
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-xs font-medium text-zinc-600 bg-zinc-50 rounded-lg p-3 border border-zinc-200/50 leading-relaxed shadow-sm">
-                                  {logItem.notes}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      <CrmLeadDetailsSheet
+        open={crmLeadDrawerOpen}
+        onOpenChange={setCrmLeadDrawerOpen}
+        selectedCrmLead={selectedCrmLead}
+        commercialPlan={commercialPlan}
+        setCommercialPlan={setCommercialPlan}
+        commercialAlunos={commercialAlunos}
+        setCommercialAlunos={setCommercialAlunos}
+        commercialTrialDays={commercialTrialDays}
+        setCommercialTrialDays={setCommercialTrialDays}
+        commercialTaxaAtivacao={commercialTaxaAtivacao}
+        setCommercialTaxaAtivacao={setCommercialTaxaAtivacao}
+        commercialMensalidade={commercialMensalidade}
+        setCommercialMensalidade={setCommercialMensalidade}
+        commercialStatus={commercialStatus}
+        setCommercialStatus={setCommercialStatus}
+        handleOpenCommercialProposal={handleOpenCommercialProposal}
+        openingProposalFile={openingProposalFile}
+        proposalDocumentFile={proposalDocumentFile}
+        setProposalDocumentFile={setProposalDocumentFile}
+        handleUploadCommercialProposal={handleUploadCommercialProposal}
+        uploadingProposalFile={uploadingProposalFile}
+        handleSaveCommercialTerms={handleSaveCommercialTerms}
+        savingCommercialTerms={savingCommercialTerms}
+        selectedStageToChange={selectedStageToChange}
+        setSelectedStageToChange={setSelectedStageToChange}
+        lossReasonText={lossReasonText}
+        setLossReasonText={setLossReasonText}
+        handleUpdateLeadStage={handleUpdateLeadStage}
+        updatingLeadStage={updatingLeadStage}
+        convertingLead={convertingLead}
+        handleConvertLeadToOnboarding={handleConvertLeadToOnboarding}
+        selectedLeadResponsavelId={selectedLeadResponsavelId}
+        setSelectedLeadResponsavelId={setSelectedLeadResponsavelId}
+        partnerMembers={partnerMembers}
+        memberId={memberId}
+        memberName={memberName}
+        nextLeadAction={nextLeadAction}
+        setNextLeadAction={setNextLeadAction}
+        nextLeadActionDate={nextLeadActionDate}
+        setNextLeadActionDate={setNextLeadActionDate}
+        leadActionNotes={leadActionNotes}
+        setLeadActionNotes={setLeadActionNotes}
+        handleUpdateLeadAction={handleUpdateLeadAction}
+        savingLeadAction={savingLeadAction}
+        loadingHistory={loadingHistory}
+        leadHistory={leadHistory}
+      />
     </PartnerAppShell>
   );
 }
