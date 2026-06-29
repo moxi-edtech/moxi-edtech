@@ -58,15 +58,44 @@ export async function GET(
       ok: true,
       history: data.map(log => {
         const details = (log.details || {}) as any;
+        const before = details.before && typeof details.before === "object" ? details.before : {};
+        const after = details.after && typeof details.after === "object" ? details.after : {};
+        const monthlyValue = typeof after.mensalidade_kz === "number"
+          ? `Kz ${Number(after.mensalidade_kz).toLocaleString("pt-PT")}`
+          : null;
+        const commercialSummary = log.acao === "CRM_LEAD_COMMERCIAL_UPDATED"
+          ? [
+              after.plano_estimado ? `Plano: ${after.plano_estimado}` : null,
+              monthlyValue ? `Mensalidade: ${monthlyValue}` : null,
+              typeof after.trial_days === "number" ? `Trial: ${after.trial_days} dias` : null,
+              typeof after.taxa_ativacao === "number" ? `Taxa: Kz ${Number(after.taxa_ativacao).toLocaleString("pt-PT")}` : null,
+              after.commercial_status ? `Status: ${after.commercial_status}` : null,
+            ].filter(Boolean).join(" • ")
+          : "";
+        const proposalUploadSummary = log.acao === "CRM_LEAD_PROPOSAL_UPLOADED"
+          ? `Documento comercial anexado: ${details.file_name || "arquivo"}`
+          : "";
+        const convertSummary = log.acao === "CRM_LEAD_CONVERTED_TO_ONBOARDING"
+          ? `Lead convertido para onboarding. Token: ${details.tracking_token || "gerado"}`
+          : "";
+        const fallbackNotes =
+          proposalUploadSummary ||
+          convertSummary ||
+          commercialSummary ||
+          details.notes ||
+          "";
+
         return {
           id: log.id,
           created_at: log.created_at,
           acao: log.acao,
           member_name: details.member_name || details.member_name === "" ? details.member_name : "Sistema",
-          notes: details.notes || "",
+          notes: fallbackNotes,
           origem_etapa: details.origem_etapa || "",
           nova_etapa: details.nova_etapa || "",
           motivo_perda: details.motivo_perda || "",
+          before,
+          after,
         };
       }),
     });

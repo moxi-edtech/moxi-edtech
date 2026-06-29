@@ -1,5 +1,28 @@
 # CHANGELOG - POP Admin da Escola
 
+## 2026-06-28 - v1.11.0
+
+### Alterado
+- Pacote validado contra a worktree actual em `apps/web/src/app/escola/[id]/(portal)` e `apps/web/src/app/api`.
+- `index.md` passou a declarar regras de fidelidade ao codigo.
+- `matriz-sop-rota-endpoint.md` actualizado para:
+  - marcar export de relatorios como nao operacional por ausencia de rota `admin/relatorios/export`
+  - incluir alias `/escola/{id}/operacoes/migracao/alunos`
+- `p2-relatorios-auditoria-admin.md` corrigido para nao prometer export CSV/JSON sem endpoint.
+- `p3-migracao-matriculas-em-massa.md` alinhado ao wizard real e ao alias operacional.
+- `p3-funcionarios-acessos.md` ajustado para diferenciar credenciais temporarias de usuario novo e convite de usuario existente.
+- `p0-dashboard-admin.md` alinhado aos blocos reais do dashboard e aos alertas reais do `Radar Operacional`.
+- `p0-alunos-admin.md` alinhado aos filtros reais e exportacao CSV disponivel.
+- `p1-setup-configuracoes.md` alinhado ao hub real de configuracoes, checklist real e etapas reais do assistente.
+- `p1-fechamento-periodo-pauta-oficial.md` alinhado ao detalhe real da turma, fechamento de periodo e bloqueios de pauta oficial.
+- `p1-professores-atribuicoes.md` ajustado para tratar o guardrail de consistencia como apoio tecnico, nao acao visivel da UI.
+- `p0-turmas-curriculo.md` alinhado aos labels reais da pagina `Gestão de Turmas & Currículo`.
+- `p0-avaliacao-quadro-horario.md` alinhado aos labels reais de edicao, slots e quadro.
+- `p2-configuracoes-financeiras.md` marcado como validado contra codigo, com blocos, toasts e endpoints reais.
+- `p2-mensalidades-emolumentos.md` alinhado as acoes reais de catalogo e preco rapido.
+- `p3-documentos-oficiais-lote.md` alinhado ao componente real de documentos em lote.
+- `p3-operacoes-academicas-monitor.md` alinhado ao wrapper Admin, SSOT/dry-run e secoes reais da tela.
+
 ## 2026-04-03 - v1.10.0
 
 ### Alterado

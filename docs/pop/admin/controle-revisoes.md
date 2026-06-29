@@ -43,6 +43,7 @@ Escopo: revisao continua do pacote POP em sincronia com codigo
 
 | Data revisao | Revisor | Escopo | Resultado | Acoes |
 |---|---|---|---|---|
+| 2026-06-28 | Codex | POPs Admin x codigo actual | Concluido | Corrigida matriz, relatorios/export, migracao, funcionarios, dashboard, setup, turmas/curriculo, avaliacao/horarios, alunos, fechamento/pautas, professores, financeiro, mensalidades, documentos em lote e operacoes academicas |
 | 2026-04-03 | Codex | Baseline v1.4.0 | Concluido | Publicacao inicial de governanca |
 
 ## 6) Convenio de versionamento do pacote

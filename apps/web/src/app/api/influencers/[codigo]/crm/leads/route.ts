@@ -80,11 +80,17 @@ export async function POST(
       plano_estimado,
       proxima_acao,
       proxima_acao_data,
+      trial_days,
+      taxa_ativacao,
+      responsavel_membro_id,
     } = body;
 
     if (!nome_escola) {
       return NextResponse.json({ ok: false, error: "Nome da escola é obrigatório." }, { status: 400 });
     }
+
+    const trialDaysNumber = Number(trial_days);
+    const taxaAtivacaoNumber = Number(taxa_ativacao);
 
     const supabase = await supabaseRouteClient();
     const { data, error } = await (supabase.rpc as any)("create_influencer_crm_lead", {
@@ -99,6 +105,9 @@ export async function POST(
       p_plano_estimado: plano_estimado || "essencial",
       p_proxima_acao: proxima_acao || null,
       p_proxima_acao_data: proxima_acao_data || null,
+      p_trial_days: Number.isFinite(trialDaysNumber) ? Math.min(30, Math.max(0, trialDaysNumber)) : 15,
+      p_taxa_ativacao: Number.isFinite(taxaAtivacaoNumber) ? Math.max(0, taxaAtivacaoNumber) : 50000,
+      p_responsavel_membro_id: responsavel_membro_id || null,
     });
 
     if (error || !data?.ok) {

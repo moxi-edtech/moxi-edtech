@@ -41,7 +41,7 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { proxima_acao, proxima_acao_data, interaction_note } = body;
+    const { proxima_acao, proxima_acao_data, interaction_note, responsavel_membro_id } = body;
 
     const supabase = await supabaseRouteClient();
     const { data, error } = await (supabase.rpc as any)("update_influencer_crm_lead_action", {
@@ -51,6 +51,7 @@ export async function PATCH(
       p_proxima_acao: proxima_acao || null,
       p_proxima_acao_data: proxima_acao_data || null,
       p_interaction_note: interaction_note || null,
+      p_responsavel_membro_id: responsavel_membro_id || null,
     });
 
     if (error || !data?.ok) {

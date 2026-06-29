@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP/SOP · Portal do Parceiro Comercial</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+a {
+  color: var(--v);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Índice Geral · Parceiro</div>
+    </div>
+    <div class="hd-title">Portal do Parceiro <span>Comercial</span><br>(CRM & Onboarding).</div>
+    <div class="hd-sub">
+      <strong>Versão do Pacote:</strong> 1.2.0 &nbsp;·&nbsp; 
+      <strong>Data Base:</strong> 2026-06-29 &nbsp;·&nbsp; 
+      <strong>Escopo:</strong> Equipe operacional e comercial do parceiro (CLARUS AN).
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo do pacote</div>
+    <div class="content-block">
+      <p>Este pacote documenta os Procedimentos Operacionais Padrão (POP/SOP) para que a equipe comercial do Parceiro utilize o portal <code>/influencers/[codigo]</code> de forma segura, padronizada e eficaz. Ele cobre desde a prospecção inicial de leads até a ativação das escolas, acompanhamento de comissões e gestão de operadores.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Estado de fidelidade ao código</div>
+    <div class="content-block">
+      <p>Validado contra a API e rotas em <code>apps/web/src/app/influencers/[codigo]/page.tsx</code> e <code>apps/web/src/app/api/influencers/[codigo]</code> em 2026-06-29.</p>
+      <ul>
+        <li>O portal do parceiro suporta funil de leads, proposta comercial, aceite comercial, upload de documento preliminar, ativação de escolas para onboarding, consulta a uploads e arquivos de migração, ledger de comissões e simulador de ganhos.</li>
+        <li>O portal possui gestão de equipe com criação, ativação/desativação e reset de PIN em <code>/api/influencers/[codigo]/team</code>.</li>
+        <li>O portal <u>não</u> fornece botões para aprovação de uploads nem solicitação eletrônica de resgates de comissão.</li>
+        <li>Funções indisponíveis no namespace <code>api/influencers</code> são marcadas nos documentos correspondentes como <code>NÃO OPERACIONAL NO CÓDIGO ACTUAL</code>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Documentos do Pacote</div>
+    <div class="content-block">
+      <strong>1. Prospecção e CRM Pré-Vendas:</strong>
+      <ul style="margin-top: 5px; margin-bottom: 15px;">
+        <li><a href="sop-crm-01-cadastro-leads.html">SOP-CRM-01 · Cadastro e Qualificação de Leads (Escolas) no CRM Comercial</a></li>
+      </ul>
+
+      <strong>2. Conversão e Moderação de Onboarding:</strong>
+      <ul style="margin-top: 5px; margin-bottom: 15px;">
+        <li><a href="sop-crm-02-conversao-onboarding.html">SOP-CRM-02 · Conversão de Lead Ganho e Acompanhamento de Onboarding</a></li>
+        <li><a href="sop-crm-03-moderacao-documental.html">SOP-CRM-03 · Acompanhamento de Documentos de Onboarding no CRM</a></li>
+      </ul>
+
+      <strong>3. Gestão Financeira e Equipe:</strong>
+      <ul style="margin-top: 5px;">
+        <li><a href="sop-crm-04-gestao-comissoes.html">SOP-CRM-04 · Gestão de Comissões, Ledger e Solicitação de Payout</a></li>
+        <li><a href="sop-crm-05-administracao-membros.html">SOP-CRM-05 · Gestão de Operadores Internos e PINs de Acesso</a></li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Matriz de Papéis x Processos</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Processo</th>
+            <th>afiliado_admin (Emanuel)</th>
+            <th>afiliado_membro (Operadores)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cadastrar e gerir leads no CRM</td>
+            <td><strong>E</strong> (Executa)</td>
+            <td><strong>E</strong> (Executa)</td>
+          </tr>
+          <tr>
+            <td>Converter lead ganho em Onboarding</td>
+            <td><strong>E</strong> (Executa)</td>
+            <td><strong>E</strong> (Executa)</td>
+          </tr>
+          <tr>
+            <td>Visualizar documentos de onboarding</td>
+            <td><strong>E</strong> (Executa)</td>
+            <td><strong>E</strong> (Executa)</td>
+          </tr>
+          <tr>
+            <td>Aprovar/rejeitar documentos de onboarding</td>
+            <td><strong>NA</strong> (Não Aplicável)</td>
+            <td><strong>NA</strong> (Não Aplicável)</td>
+          </tr>
+          <tr>
+            <td>Visualizar comissões e financeiro</td>
+            <td><strong>E</strong> (Executa)</td>
+            <td><strong>V</strong> (Visualiza)</td>
+          </tr>
+          <tr>
+            <td>Solicitar payout / emitir recibo</td>
+            <td><strong>NA</strong> (Não Aplicável)</td>
+            <td><strong>NA</strong> (Não Aplicável)</td>
+          </tr>
+          <tr>
+            <td>Cadastrar novos membros / resetar PINs</td>
+            <td><strong>E</strong> (Executa)</td>
+            <td><strong>NA</strong> (Não Aplicável)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 10px; color: var(--muted); margin-top: 5px;">
+        *Legenda: <code>E</code> = Executa diretamente; <code>V</code> = Visualiza/Acompanha; <code>NA</code> = Não Aplicável no portal.
+      </p>
+    </div>
+
+    <div class="sec-lbl">05 · SLA e Regras de Negócio Importantes</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Período de Degustação (Trial):</strong> O limite máximo de teste cortesia negociável pelo parceiro com cada escola é de **30 dias** (padrão do sistema: 15 dias).</li>
+        <li><strong>Taxa de Ativação / Treinamento:</strong> 100% repassada ao parceiro de vendas. O valor de tabela recomendado é de **50.000 Kz a 100.000 Kz**, dependendo da complexidade do colégio.</li>
+        <li><strong>Documentação de Onboarding:</strong> O parceiro de vendas apenas faz a triagem visual rápida de arquivos e cobra correções. A aprovação/rejeição formal de documentos é executada pelo Super Admin da KLASSE.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="footer">
+      <div class="footer-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="footer-logo-word">KLASSE</span>
+          <span class="footer-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

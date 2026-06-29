@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P3-01 · Gestão de Funcionários e Acessos (Admin)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P3-01</div>
+    </div>
+    <div class="hd-title">Funcionários e <span>Acessos</span><br>(Admin).</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.1.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar o cadastro de novos funcionários (convite/liberação de acessos) e a verificação periódica da equipa ativa no portal Admin.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Admissão de novo colaborador administrativo ou operacional na escola.</li>
+        <li>Parametrização de papéis de acesso na fase de onboarding interno.</li>
+        <li>Conferência sistemática de utilizadores ativos e convites pendentes.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável:</strong> Recursos Humanos (RH) / Secretaria</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Acesso ao menu de <code>Admin &gt; Funcionários</code>.</li>
+        <li>Escola correta selecionada no contexto de gerenciamento.</li>
+        <li>Operador logado com permissão nativa de <code>criar_usuario</code> ou <code>editar_usuario</code>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>A página administrativa <code>admin/funcionarios</code> funciona como um wrapper contendo duas abas principais: <strong>Funcionários</strong> e <strong>Cadastrar</strong>.</li>
+        <li>A aba <strong>Funcionários</strong> reutiliza o código fonte do componente em: <code>apps/web/src/app/escola/[id]/(portal)/funcionarios/page.tsx</code>.</li>
+        <li>A aba <strong>Cadastrar</strong> reutiliza a rotina de cadastro em: <code>apps/web/src/app/escola/[id]/(portal)/funcionarios/novo/page.tsx</code>.</li>
+        <li>O backend retorna a variável <code>senha_temp</code> exclusivamente ao criar um utilizador inédito no módulo de Auth. Para utilizadores preexistentes no sistema, a ação dispara apenas um convite e pode omitir a senha temporária na interface.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Procedimento A · Consultar funcionários cadastrados</div>
+    <div class="content-block">
+      <ol>
+        <li>Navegar até o menu de <strong>Admin &gt; Funcionários</strong>.</li>
+        <li>Manter ativa a aba de visualização: <strong>Funcionários</strong>.</li>
+        <li>Utilizar o campo de pesquisa <code>Buscar funcionário</code> para filtrar os registros por nome, e-mail de acesso ou telefone.</li>
+        <li>Revisar as colunas da listagem:
+          <ul>
+            <li><code>Nome</code> e login associado.</li>
+            <li><code>Contato</code> (e-mail / telefone).</li>
+            <li><code>Papel</code> (atribuição de permissão).</li>
+            <li><code>Status</code> (exibe <code>Ativo</code> na existência de <code>last_login</code> registrado no banco, ou <code>Pendente</code> caso o primeiro acesso ainda não tenha sido efetuado).</li>
+          </ul>
+          <img class="step-print" src="prints/p3-funcionarios-lista.png" alt="Listagem de Funcionários Cadastrados">
+        </li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">06 · Procedimento B · Cadastrar novo funcionário</div>
+    <div class="content-block">
+      <ol>
+        <li>Na página de funcionários, clicar no separador <strong>Cadastrar</strong>.</li>
+        <li>Inserir as informações obrigatórias exigidas no formulário:
+          <ul>
+            <li><code>Nome Completo</code>.</li>
+            <li><code>Email</code> de acesso do colaborador.</li>
+            <li><code>Papel</code> (nível de acesso de destino).</li>
+          </ul>
+        </li>
+        <li>Inserir o número de <code>Telefone</code> (se disponível).</li>
+        <li>Selecionar o papel adequado à função operacional do colaborador:
+          <ul>
+            <li><code>Secretaria</code></li>
+            <li><code>Financeiro</code></li>
+            <li><code>Secretaria + Financeiro</code></li>
+            <li><code>Admin + Financeiro</code></li>
+            <li><code>Staff Admin</code></li>
+            <li><code>Administrador</code></li>
+          </ul>
+        </li>
+        <li>Clicar em <strong>Criar Funcionário</strong>.
+          <img class="step-print" src="prints/p3-funcionarios-cadastrar-form.png" alt="Formulário de Cadastro de Novo Funcionário">
+        </li>
+        <li>Validar o alerta de conclusão do cadastro: <code>Funcionário criado com sucesso!</code>.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">07 · Procedimento C · Entregar credenciais iniciais</div>
+    <div class="content-block">
+      <ol>
+        <li>No painel informativo de <strong>Credenciais geradas</strong> (quando renderizado na tela), verificar:
+          <ul>
+            <li>E-mail final do colaborador.</li>
+            <li>Senha temporária de segurança (quando fornecida transacionalmente pelo banco).</li>
+          </ul>
+        </li>
+        <li>Se o atalho <strong>Copiar credenciais</strong> estiver visível, acioná-lo para facilitar a transferência.
+          <img class="step-print" src="prints/p3-funcionarios-credenciais-box.png" alt="Credenciais de Acesso Temporárias">
+        </li>
+        <li>Caso o sistema retorne apenas a confirmação de convite por e-mail (sem senha temporária), validar o <code>emailStatus</code> / aviso de sucesso e registrar internamente a entrega padrão via e-mail.</li>
+        <li>Enviar as credenciais temporárias coletadas ao utilizador por meio de canal interno seguro de comunicação corporativa.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">08 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Novo utilizador vinculado à escola ativa com seu papel de acesso devidamente associado.</li>
+        <li>Nome do colaborador constando na tabela de funcionários.</li>
+        <li>Credenciais de acesso entregues ao colaborador sem exposição pública.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">09 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Informe um email válido.</td>
+            <td>Formatação do e-mail inserido inválida ou contendo caracteres não aceitos</td>
+            <td>Corrigir a escrita do e-mail no formulário e submeter novamente</td>
+            <td>Se o e-mail estiver no formato correto e a validação continuar falhando</td>
+          </tr>
+          <tr>
+            <td>Sem permissão para cadastrar</td>
+            <td>O perfil do operador logado não possui privilégio de criação de novos utilizadores</td>
+            <td>Executar a operação por meio de perfil administrador autorizado</td>
+            <td>Caso o perfil conste com permissão correta e persista a rejeição</td>
+          </tr>
+          <tr>
+            <td>Escola suspensa por pagamento.</td>
+            <td>A escola ativa está com status bloqueado devido a pendências comerciais com a plataforma</td>
+            <td>Contatar a administração financeira ou gestor da plataforma para regularização</td>
+            <td>Se a escola estiver operando em conformidade e o erro surgir</td>
+          </tr>
+          <tr>
+            <td>Falha ao criar funcionário</td>
+            <td>Conflito de ID ou e-mail já existente na base de dados de Auth</td>
+            <td>Confirmar se o e-mail não foi cadastrado anteriormente em outra escola e corrigir</td>
+            <td>Caso ocorram falhas sistêmicas consecutivas sem justificativa de dados</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">10 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela do formulário preenchido antes do envio (omitindo a senha por governança).</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Formulário de Cadastro Preenchido]</span>
+        </div>
+        <li>Captura de tela exibindo o alerta de confirmação de sucesso de criação.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Alerta de Funcionário Criado]</span>
+        </div>
+        <li>Dados do operador, data/hora da criação e responsável pela entrega das credenciais.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">11 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Consulta de Integrantes:</strong>
+          <ul>
+            <li><code>GET /api/escolas/{id}/funcionarios?q=&page=&pageSize=</code> (Carregamento forçado via <code>cache: no-store</code>)</li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Cadastro via Convite:</strong>
+          <ul>
+            <li><code>POST /api/escolas/{id}/usuarios/invite</code></li>
+            <li>Campos do payload: <code>nome</code>, <code>email</code>, <code>telefone</code>, <code>papel</code></li>
+            <li>Retorno JSON: <code>ok</code>, <code>userId</code>, <code>senha_temp</code>, <code>numero_processo_login</code></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">12 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Ajustado o passo a passo de credenciais para distinguir o fluxo de utilizadores novos vs. existentes no endpoint de convite.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

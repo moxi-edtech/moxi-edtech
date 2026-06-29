@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P3-04 · Monitor de Operações Acadêmicas (Admin)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P3-04</div>
+    </div>
+    <div class="hd-title">Monitor de Operações <span>Académicas</span><br>(Admin).</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.2.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar o acompanhamento e o monitoramento em tempo real de jobs acadêmicos (operações de fechamento letivo e processamento de pautas em lote), controlando filtros de consulta, estado operacional e exportação de relatórios.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Acompanhamento diário da integridade de processamentos acadêmicos.</li>
+        <li>Investigação fina de jobs de lote travados, lentificados ou falhados.</li>
+        <li>Preparação de relatórios de status operacional para a coordenação.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável:</strong> Secretaria acadêmica</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico / Engenharia</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Acesso ao menu de <code>Admin &gt; Operações Académicas</code>.</li>
+        <li>Perfil de operador ativamente associado à escola no banco de dados.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>Validado contra <code>apps/web/src/app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx</code> e o wrapper de controle em <code>apps/web/src/app/escola/[id]/(portal)/admin/operacoes-academicas/page.tsx</code>.</li>
+        <li>A rota do Admin funciona como um wrapper que renderiza de forma direta o componente da Secretaria.</li>
+        <li>Além de jobs de fechamento e pautas de lote, a interface expõe as seções: <strong>SSOT virada</strong>, <strong>Saúde da Virada de Ano (SSOT)</strong>, o botão utilitário <code>Executar dry-run</code>, listagens de bloqueadores/alertas de cutover e a área de <code>Receitas de reprocessamento</code>.</li>
+        <li>Os botões <strong>Abrir monitor</strong> redirecionam para as telas específicas de detalhes: <code>/admin/operacoes-academicas/fechamento-academico?...</code> e <code>/admin/operacoes-academicas/documentos-oficiais?...</code>.</li>
+        <li>Formatos de exportação disponíveis na UI: <code>Exportar JSON</code> e <code>Exportar CSV</code>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Procedimento A · Abrir monitor e definir filtros</div>
+    <div class="content-block">
+      <ol>
+        <li>Navegar até a tela de <strong>Operações Académicas</strong>.</li>
+        <li>Configurar os filtros no topo da página:
+          <ul>
+            <li><code>Período</code> (selecionar entre <code>24h</code>, <code>7d</code> ou <code>30d</code>).</li>
+            <li><code>Status</code> (selecionar entre <code>Todos</code>, <code>Sucesso</code>, <code>Falha</code> ou <code>Em processamento</code>).</li>
+            <li><code>Tipo</code> (filtrar por <code>Todos</code>, <code>Fechamento</code> ou <code>Documentos</code>).</li>
+          </ul>
+        </li>
+        <li>Clicar no botão <strong>Aplicar filtros</strong>.
+          <img class="step-print" src="prints/p3-operacoes-monitor-filtros.png" alt="Filtros do Monitor de Operações Acadêmicas">
+        </li>
+        <li>Para auditoria externa, utilizar os botões de exportação de dados:
+          <ul>
+            <li><code>Exportar JSON</code></li>
+            <li><code>Exportar CSV</code></li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">06 · Procedimento B · Ler indicadores operacionais</div>
+    <div class="content-block">
+      <ol>
+        <li>Avaliar as métricas e resumos nos cards principais:
+          <ul>
+            <li><code>SSOT virada</code> (indicador de status).</li>
+            <li><code>Fechamentos em aberto</code> (contagem ativa).</li>
+            <li><code>Lotes em aberto</code> (documentos em fila).</li>
+            <li><code>Falhas recentes</code> (contagem de incidentes).</li>
+          </ul>
+        </li>
+        <li>Auditar minuciosamente o bloco <strong>Saúde da Virada de Ano (SSOT)</strong> nas categorias:
+          <ul>
+            <li>Turmas ou matrículas sem sessão acadêmica ativa.</li>
+            <li>Histórico anual e locks de fechamento de snapshots.</li>
+            <li>Mensalidades fora da janela padrão de cobrança ou alunos sem matrícula ativa.</li>
+            <li>Currículos, pautas anuais e snapshots pedagógicos em aberto.</li>
+          </ul>
+          <img class="step-print" src="prints/p3-operacoes-monitor-saude.png" alt="Indicadores de Saúde da Virada de Ano SSOT">
+        </li>
+        <li>Priorizar correções imediatas sempre que houver falhas catalogadas ou status marcado como <code>BLOCKED</code> no SSOT.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">07 · Procedimento C · Tratar jobs de fechamento</div>
+    <div class="content-block">
+      <ol>
+        <li>No painel de <strong>Fechamento Académico</strong>, monitorar os jobs de fechamento letivo:
+          <ul>
+            <li>Tipo do fechamento.</li>
+            <li>Identificador exclusivo curto (<code>run_id</code>).</li>
+            <li>Última etapa executada pelo processador.</li>
+            <li>Estado de progresso.</li>
+          </ul>
+          <img class="step-print" src="prints/p3-operacoes-monitor-jobs.png" alt="Listagem de Jobs de Fechamento Acadêmico">
+        </li>
+        <li>Jobs que permanecerem no estado de processamento por mais de 30 minutos devem ser registrados como incidente de lentidão.</li>
+        <li>Clicar na ação <strong>Abrir monitor</strong> correspondente para direcionar a tratativa na tela da secretaria.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">08 · Procedimento D · Tratar jobs de documentos em lote</div>
+    <div class="content-block">
+      <ol>
+        <li>No bloco de <strong>Documentos Oficiais (Lote)</strong>, acompanhar:
+          <ul>
+            <li>Tipo de documento/lote em andamento.</li>
+            <li>Taxa de progresso (<code>processadas / total</code>).</li>
+            <li>Status atual da fila.</li>
+          </ul>
+        </li>
+        <li>Caso o lote permaneça travado em processamento por mais de 30 minutos, abrir chamado técnico para a engenharia.</li>
+        <li>Clicar no atalho <strong>Abrir monitor</strong> correspondente para interagir com a fila de geração de documentos oficiais.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">09 · Procedimento E · Checklist de saúde de endpoints críticos</div>
+    <div class="content-block">
+      <p><em>Esta rotina de monitoramento de backend é executada de forma assistida com o suporte técnico para garantir compliance.</em></p>
+      <ol>
+        <li>Confirmar a ocorrência e integridade das 3 operações cruciais de escrita no banco da escola no período:
+          <ul>
+            <li><code>academico.horario_quadro_post</code> (gravação de horários).</li>
+            <li><code>academico.professor_create</code> (cadastro docente).</li>
+            <li><code>academico.atribuir_professor_turma</code> (vínculo de disciplinas).</li>
+          </ul>
+        </li>
+        <li>Para cada tipo de transação, avaliar:
+          <ul>
+            <li>Taxa de erros retornados (<code>payload.status = error</code>).</li>
+            <li>Percentil 95 (p95) de tempo de resposta da API (<code>payload.duration_ms</code>).</li>
+            <li>Códigos de falhas reportados (<code>payload.error_code</code>).</li>
+          </ul>
+        </li>
+        <li>Caso a taxa de erro supere <strong>2%</strong> no intervalo de 15 minutos, abrir chamado crítico de suporte.</li>
+        <li>Caso a latência média (p95) ultrapasse a linha base do servidor por 30 minutos, direcionar incidente de performance para o banco de dados.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">09B · Procedimento F · Saúde da virada de ano</div>
+    <div class="content-block">
+      <ol>
+        <li>No bloco <strong>Saúde da Virada de Ano (SSOT)</strong>, certificar-se de que o status geral do relatório está em <code>OK</code> ou <code>WARN</code>. Se estiver em <code>BLOCKED</code>, resolva as pendências listadas.</li>
+        <li>Para realizar uma simulação prévia do processo de virada escolar, clicar em <strong>Executar dry-run</strong>.</li>
+        <li>Para saneamentos básicos detectados pelo relatório na UI, acionar as sugestões contidas no painel de <code>CutoverResolveActions</code>.</li>
+        <li>Registrar o log do relatório do dry-run de virada para fins de homologação interna da secretaria.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">10 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Jobs acadêmicos de pauta e fechamento letivo monitorados sem atrasos.</li>
+        <li>Alertas críticos do SSOT mapeados e direcionados para resolução.</li>
+        <li>Relatório de eventos e dry-run exportados em CSV/JSON para fins de compliance.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">11 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A tela do monitor está em branco</td>
+            <td>O perfil do operador logado não possui vínculo com a escola ativa ou filtros muito restritivos</td>
+            <td>Limpar todos os filtros da tela e verificar a seleção da escola no portal</td>
+            <td>Se a listagem persistir em branco após redefinição de filtros e nova autenticação</td>
+          </tr>
+          <tr>
+            <td>Jobs travados no estado de processamento por &gt; 30 min</td>
+            <td>Fila de tarefas de segundo plano (workers) do servidor congestionada ou falha crítica</td>
+            <td>Acessar o monitor de destino e forçar um reprocessamento ou cancelamento do job</td>
+            <td>Caso o job permaneça travado na fila sem alteração após tentativa de reprocesso</td>
+          </tr>
+          <tr>
+            <td>Exportação de dados falha ou gera dados incorretos</td>
+            <td>O operador tentou extrair a planilha sem redefinir ou limpar filtros de busca anteriores</td>
+            <td>Reaplicar os filtros de interesse na tela e clicar novamente em Exportar JSON/CSV</td>
+            <td>Se o arquivo gerado contiver erros de estruturação de colunas de forma recorrente</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">12 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela exibindo os cartões de monitoramento ativos na tela.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Cartões de Jobs em Processamento]</span>
+        </div>
+        <li>Captura de tela do bloco Saúde da Virada mostrando o resultado da simulação.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Painel SSOT e Resultado do Dry-run]</span>
+        </div>
+        <li>Tamanho e nome do arquivo de logs exportado (JSON/CSV) com o timestamp da ação.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">13 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Agregação de Banco de Dados:</strong>
+          <ul>
+            <li>Tabela de jobs de fechamento letivo: <code>fechamento_academico_jobs</code> / <code>fechamento_academico_job_steps</code></li>
+            <li>Tabela de jobs de pauta em lote: <code>pautas_lote_jobs</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Saúde e Cutover:</strong>
+          <ul>
+            <li>Orquestrador do relatório: <code>buildCutoverHealthReport</code></li>
+            <li>Simulação de virada: <code>POST /api/secretaria/operacoes-academicas/virada/dry-run</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>APIs de Apoio:</strong>
+          <ul>
+            <li>Exportação de logs: <code>GET /api/secretaria/operacoes-academicas/export?...&format=json|csv</code></li>
+            <li>Visualização de detalhes: <code>/secretaria/fechamento-academico?...</code> / <code>/secretaria/documentos-oficiais?...</code></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">14 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Alinhado com o componente real de monitoramento do Admin, incluindo rotinas de dry-run de virada e logs de cutover.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

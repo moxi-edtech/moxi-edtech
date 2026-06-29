@@ -14,7 +14,8 @@ import {
   X,
   Target,
   Clock,
-  ChevronDown
+  ChevronDown,
+  UserCog
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -23,9 +24,9 @@ type PartnerAppShellProps = {
   children: React.ReactNode;
   codigo: string;
   memberName: string;
-  memberRole?: 'owner' | 'operator';
-  activeTab: 'campanha' | 'crm' | 'onboarding' | 'materiais';
-  setActiveTab: (tab: 'campanha' | 'crm' | 'onboarding' | 'materiais') => void;
+  memberRole?: 'owner' | 'admin' | 'vendas' | 'implantacao' | 'suporte_l1' | 'operator';
+  activeTab: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe';
+  setActiveTab: (tab: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe') => void;
   stats: {
     total_diagnosticos: number;
     convertidos: number;
@@ -66,7 +67,7 @@ export default function PartnerAppShell({
   }
 
   interface NavigationItem {
-    id: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'desempenho-parent';
+    id: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe' | 'desempenho-parent';
     label: string;
     icon: React.ComponentType<any>;
     badge?: number;
@@ -94,10 +95,13 @@ export default function PartnerAppShell({
         }
       ]
     },
-    { id: 'materiais', label: 'Materiais', icon: FileText }
+    { id: 'materiais', label: 'Materiais', icon: FileText },
+    ...(memberRole === "owner" || memberRole === "admin"
+      ? [{ id: 'equipe' as const, label: 'Equipe', icon: UserCog }]
+      : [])
   ];
 
-  const handleTabClick = (tabId: 'campanha' | 'crm' | 'onboarding' | 'materiais') => {
+  const handleTabClick = (tabId: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe') => {
     setActiveTab(tabId);
     setMobileMenuOpen(false);
   };
@@ -133,7 +137,7 @@ export default function PartnerAppShell({
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                   : 'bg-zinc-800 text-zinc-400 border-zinc-700'
               }`}>
-                {memberRole === 'owner' ? 'PROPRIETÁRIO' : 'OPERADOR'}
+                {memberRole === 'owner' ? 'PROPRIETÁRIO' : memberRole.toUpperCase()}
               </Badge>
               <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider">{codigo}</span>
             </div>

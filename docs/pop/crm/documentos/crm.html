@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · Parceria Comercial e Operacional</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#091a10;
+  --vl:#2d8a50;
+  --vll:#f0f7f3;
+  --o:#C8902A;
+  --ol:#d9a03a;
+  --oll:#fbf8f2;
+  --cr:#f8fafc;
+  --w:#ffffff;
+  --slate:#0f172a;
+  --muted:#475569;
+  --border:#e2e8f0;
+}
+
+html{background:#f1f5f9;}
+body{
+  font-family: system-ui, -apple-system, sans-serif;
+  color:var(--slate);
+  max-width:940px;margin:0 auto;
+  padding:40px 0 120px;
+  line-height: 1.5;
+}
+
+@media print{
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  html, body {
+    background: #f1f5f9 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 297mm !important;
+    height: 210mm !important;
+  }
+  .nav, .nav-spacer {
+    display: none !important;
+  }
+  .page {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 297mm !important;
+    max-width: 297mm !important;
+    background: transparent !important;
+  }
+  .slide {
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    width: 297mm !important;
+    height: 210mm !important;
+    min-height: 210mm !important;
+    padding: 40px 60px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+  .s1 {
+    padding: 0 !important;
+  }
+  .s1-left {
+    padding: 40px 60px !important;
+    min-height: 210mm !important;
+    height: 210mm !important;
+    box-sizing: border-box !important;
+  }
+  .s6 {
+    padding: 40px 60px !important;
+    min-height: 210mm !important;
+    height: 210mm !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* ── PAGE WRAPPER ── */
+.page{
+  background:var(--w);
+  box-shadow:0 20px 80px rgba(15,23,42,0.04);
+  border-radius:24px;
+  overflow:hidden;
+  border:1px solid rgba(15,23,42,0.06);
+}
+
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(15,23,42,0.06);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px 20px;
+}
+.nav a{
+  font-size:10px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;
+  text-decoration:none;padding:6px 12px;border-radius:100px;
+  transition:all .15s;
+}
+.nav a:hover{background:rgba(15,23,42,0.04);color:var(--slate);}
+.nav-spacer{margin-top:64px;}
+
+.slide{background:var(--w);padding:80px 72px;border-bottom:1px solid #f1f5f9;position:relative;overflow:hidden;}
+.slide:last-child{border-bottom:none;}
+
+/* ══════════════════════
+   SLIDE 1 · CAPA
+══════════════════════ */
+.s1{
+  min-height:560px;background:var(--vd);
+  display:flex;flex-direction:column;
+  justify-content:center;
+  border-bottom:none;
+}
+.s1-atm{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 60% at -10% 20%, rgba(31,107,59,.18) 0%,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 110% 80%, rgba(200,144,42,.06) 0%,transparent 50%);
+}
+.s1-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(31,107,59,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(31,107,59,.03) 1px,transparent 1px);
+  background-size:44px 44px;
+}
+.s1::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--v) 20%,var(--o) 80%,transparent);
+  z-index:5;
+}
+.s1-left{padding:80px 72px;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2;min-height:560px;}
+.logo-row{display:flex;align-items:center;gap:9px;margin-bottom:36px;}
+.logo-name{font-size:16px;font-weight:800;color:white;letter-spacing:.05em;}
+.logo-sub{font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.14em;font-weight:600;margin-left:2px;}
+.s1-tag{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(200,144,42,.12);border:1px solid rgba(200,144,42,.22);
+  border-radius:100px;padding:6px 14px;
+  font-size:10px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:.12em;
+  width:fit-content;margin-bottom:28px;
+}
+.s1-headline{
+  font-size:clamp(40px,5vw,56px);font-weight:900;color:white;
+  line-height:1.05;letter-spacing:-1.5px;margin-bottom:20px;
+}
+.s1-headline em{color:var(--o);font-style:normal;}
+.s1-sub{font-size:15px;color:rgba(255,255,255,.45);line-height:1.6;max-width:400px;margin-bottom:44px;}
+.s1-to{font-size:11px;font-weight:700;color:var(--o);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;letter-spacing:.04em;}
+
+
+/* ══════════════════════
+   SECTIONS SHARED
+══════════════════════ */
+.sec-tag{
+  display:inline-flex;align-items:center;gap:7px;
+  border-radius:100px;padding:6px 14px;
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;margin-bottom:18px;
+}
+.sec-tag.green{background:var(--vll);color:var(--v);}
+.sec-tag.amber{background:var(--oll);color:var(--o);}
+.sec-tag-dot{width:5px;height:5px;border-radius:50%;}
+.sec-headline{
+  font-size:clamp(32px,3.8vw,44px);font-weight:800;color:var(--slate);
+  line-height:1.1;letter-spacing:-1px;margin-bottom:16px;
+}
+.sec-headline em{color:var(--v);font-style:normal;}
+.sec-headline em.amber{color:var(--o);}
+.sec-intro{font-size:14px;color:var(--muted);line-height:1.65;max-width:640px;margin-bottom:44px;}
+.sec-intro strong{color:var(--slate);font-weight:700;}
+
+/* ══════════════════════
+   SLIDE 2 · O ALINHAMENTO
+══════════════════════ */
+.s2{background:var(--w);}
+
+/* ══════════════════════
+   SLIDE 3 · DIVISÃO DE TRINCHEIRAS
+══════════════════════ */
+.s3{background:var(--cr);}
+.trincheiras-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:8px;}
+.trincheira-col{
+  background:var(--w);border:1px solid var(--border);border-radius:20px;overflow:hidden;
+  box-shadow:0 4px 20px rgba(15,23,42,0.015);
+}
+.trincheira-header{padding:24px 28px 20px;border-bottom:1px solid var(--border);}
+.trincheira-tag{
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+  margin-bottom:4px;
+}
+.trincheira-col.front .trincheira-tag{color:var(--v);}
+.trincheira-col.back .trincheira-tag{color:var(--o);}
+.trincheira-title{
+  font-size:18px;font-weight:800;color:var(--slate);letter-spacing:-0.5px;
+}
+.trincheira-body{padding:20px 28px 28px;}
+.trincheira-item{
+  display:flex;gap:16px;padding:16px 0;
+  border-bottom:1px solid #f1f5f9;
+}
+.trincheira-item:last-child{border-bottom:none;}
+.trincheira-icon{
+  width:32px;height:32px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:2px;
+}
+.trincheira-col.front .trincheira-icon{background:var(--vll);}
+.trincheira-col.back .trincheira-icon{background:var(--oll);}
+.trincheira-item h5{font-size:13px;font-weight:850;color:var(--slate);margin-bottom:4px;}
+.trincheira-item p{font-size:12px;color:var(--muted);line-height:1.5;}
+
+/* ══════════════════════
+   SLIDE 4 · MODELO FINANCEIRO
+══════════════════════ */
+.s4{background:var(--w);}
+.planos-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;
+}
+.plano-card{
+  background:var(--w);border:1px solid var(--border);border-radius:18px;
+  padding:24px;display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:0 4px 20px rgba(15,23,42,0.015);
+  position:relative;
+}
+.plano-card.destaque::before{
+  content:'RECOMENDADO';position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+  background:var(--v);color:white;font-size:8px;font-weight:850;padding:3px 10px;
+  border-radius:100px;letter-spacing:1px;
+}
+.plano-header{margin-bottom:12px;}
+.plano-title{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.plano-card.destaque .plano-title{color:var(--v);}
+.plano-price{font-size:26px;font-weight:900;color:var(--slate);margin:6px 0;}
+.plano-comissao{
+  background:var(--vll);color:var(--v);font-size:11px;font-weight:800;
+  padding:8px 12px;border-radius:10px;margin-top:14px;text-align:center;
+}
+.plano-card.premium .plano-comissao{background:var(--oll);color:var(--o);}
+.plano-features{font-size:11px;color:var(--muted);line-height:1.5;margin-top:10px;}
+
+.proj-title{font-size:13px;font-weight:800;color:var(--slate);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+.proj-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.proj-card{
+  background:var(--cr);border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 4px 20px rgba(15,23,42,0.015);
+}
+.proj-card .pc-lbl{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.proj-card .pc-val{font-size:24px;font-weight:900;color:var(--v);letter-spacing:-0.5px;line-height:1;margin-bottom:4px;}
+.proj-card .pc-sub{font-size:11px;color:var(--muted);}
+.proj-card.amber .pc-val{color:var(--o);}
+
+/* ══════════════════════
+   SLIDE 5 · GANHOS INSTITUCIONAIS
+══════════════════════ */
+.s5{background:var(--cr);}
+.ganhos-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.ganho-card{
+  background:var(--w);border:1px solid var(--border);border-radius:20px;padding:32px 28px;
+  position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.015);
+}
+.ganho-icon{
+  width:40px;height:40px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;margin-bottom:18px;
+}
+.ganho-card h3{font-size:16px;font-weight:800;color:var(--slate);margin-bottom:10px;letter-spacing:-0.3px;}
+.ganho-card p{font-size:13px;color:var(--muted);line-height:1.6;}
+.ganho-card p strong{color:var(--slate);}
+
+/* ══════════════════════
+   SLIDE 6 · FECHO
+══════════════════════ */
+.s6{
+  background:var(--vd);padding:80px 72px;
+  display:grid;grid-template-columns:1fr auto;gap:80px;align-items:end;min-height:340px;
+  border-bottom:none;
+}
+.s6-quote{
+  font-size:clamp(18px,2.2vw,24px);font-weight:700;color:white;
+  line-height:1.45;letter-spacing:-0.5px;font-style:italic;margin-bottom:48px;
+}
+.s6-quote em{color:var(--o);font-style:normal;}
+.s6-sigs{display:flex;flex-direction:column;gap:28px;}
+.s6-sig-line{width:48px;height:1px;background:rgba(255,255,255,.2);margin-bottom:8px;}
+.s6-sig-name{font-size:13px;font-weight:800;color:white;margin-bottom:2px;}
+.s6-sig-role{font-size:11px;color:rgba(255,255,255,.45);}
+.s6-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.s6-logo-row{display:flex;align-items:center;gap:8px;}
+.s6-logo-name{font-size:18px;font-weight:900;color:white;letter-spacing:.04em;}
+.s6-url{font-size:10px;color:rgba(255,255,255,.3);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;letter-spacing:.04em;}
+</style>
+</head>
+<body>
+
+<div class="nav-spacer"></div>
+<nav class="nav">
+  <a href="#s1">Abertura</a>
+  <a href="#s2">O Alinhamento</a>
+  <a href="#s3">Divisão de Trabalho</a>
+  <a href="#s4">Partilha Financeira</a>
+  <a href="#s5">Benefícios Mútuos</a>
+  <a href="#s6">Fecho</a>
+</nav>
+
+<div class="page">
+
+<!-- ══════════════════════
+  SLIDE 1 · CAPA
+══════════════════════ -->
+<div class="slide s1" id="s1">
+  <div class="s1-atm"></div>
+  <div class="s1-grid"></div>
+
+  <div class="s1-left">
+    <div>
+      <div class="logo-row">
+        <img src="../Imagens/logo-klasse.png" alt="K" style="height: 32px; width: auto;">
+        <div>
+          <div class="logo-name">KLASSE</div>
+          <div class="logo-sub">Gestão Escolar</div>
+        </div>
+      </div>
+
+      <div class="s1-tag">Parceria Comercial e Operacional</div>
+
+      <div class="s1-headline">
+        Presença comercial local.<br>Tecnologia escolar <em>avançada.</em>
+      </div>
+
+      <p class="s1-sub">Uma parceria estratégica de benefício mútuo: somamos a vossa força de mercado em Luanda à nossa plataforma para expandir a presença nas escolas e partilhar receitas.</p>
+    </div>
+
+    <div class="s1-to">DE: David Chocaliye · PARA: [Nome do Escritório]</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+  SLIDE 2 · O ALINHAMENTO
+══════════════════════ -->
+<div class="slide s2" id="s2">
+  <div class="sec-tag green">
+    <div class="sec-tag-dot" style="background:var(--v);"></div>
+    O Alinhamento
+  </div>
+
+  <div class="sec-headline">Duas forças.<br><em>Um único objetivo.</em></div>
+
+  <div class="contexto-card" style="background:var(--vll);border-radius:18px;padding:32px 36px;margin-bottom:28px;border:1px solid rgba(31,107,59,0.06);">
+    <p style="font-size:14.5px;color:var(--slate);line-height:1.75;">O KLASSE possui um sistema de gestão escolar consolidado, mas precisa de <strong>presença comercial e suporte local de proximidade</strong> em Luanda. O vosso escritório possui a estrutura ideal para realizar essa operação local e precisa de um <strong>parceiro de tecnologia de peso</strong> para gerar receita previsível e recorrente.<br><br>Alinhamos estes dois ativos num acordo comercial onde ambos ganham: vocês assumem a operação local e nós fornecemos a infraestrutura de software.</p>
+  </div>
+
+  <div class="alinhamento-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;">
+    <div class="align-card" style="background:#ffffff;border:1px solid var(--border);border-radius:18px;padding:26px 28px;box-shadow:0 4px 20px rgba(15,23,42,0.015);">
+      <h4 style="font-size:10px;font-weight:800;color:var(--v);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">O que o KLASSE ganha com o acordo</h4>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;font-weight:500;">Presença física em Luanda, contacto comercial ativo de proximidade e suporte de primeiro nível rápido para as escolas.</p>
+    </div>
+    <div class="align-card" style="background:#ffffff;border:1px solid var(--border);border-radius:18px;padding:26px 28px;box-shadow:0 4px 20px rgba(15,23,42,0.015);">
+      <h4 style="font-size:10px;font-weight:800;color:var(--o);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">O que o vosso escritório ganha com o acordo</h4>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;font-weight:500;">Um produto tecnológico maduro e pronto para comercializar, gerando receita imediata de instalação e participação mensal nas assinaturas.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+  SLIDE 3 · DIVISÃO DE TRINCHEIRAS
+══════════════════════ -->
+<div class="slide s3" id="s3">
+  <div class="sec-tag amber">
+    <div class="sec-tag-dot" style="background:var(--o);"></div>
+    Divisão de Trabalho
+  </div>
+
+  <div class="sec-headline">Foco nas<br><em class="amber">responsabilidades.</em></div>
+  <p class="sec-intro">Cada parte assume a responsabilidade direta no campo em que é especialista, maximizando a eficiência geral do acordo.</p>
+
+  <div class="trincheiras-grid">
+
+    <!-- Front office -->
+    <div class="trincheira-col front">
+      <div class="trincheira-header">
+        <div class="trincheira-tag">Operação Local</div>
+        <div class="trincheira-title">[Nome do Escritório]</div>
+      </div>
+      <div class="trincheira-body">
+        <div class="trincheira-item">
+          <div class="trincheira-icon" style="background:var(--vll);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1F6B3B" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <div>
+            <h5>Apresentação e Vendas</h5>
+            <p>Contacto presencial com os diretores de colégios privados em Luanda para demonstração comercial e fecho de novos contratos.</p>
+          </div>
+        </div>
+        <div class="trincheira-item">
+          <div class="trincheira-icon" style="background:var(--vll);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1F6B3B" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div>
+            <h5>Configuração e Ativação</h5>
+            <p>Formalização do acordo físico com as escolas e acompanhamento na inserção de dados iniciais (turmas, professores e alunos).</p>
+          </div>
+        </div>
+        <div class="trincheira-item">
+          <div class="trincheira-icon" style="background:var(--vll);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1F6B3B" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81 19.79 19.79 0 01.13 2.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
+          </div>
+          <div>
+            <h5>Suporte de Proximidade</h5>
+            <p>Atendimento direto (telefone e WhatsApp) para esclarecer dúvidas rotineiras dos colégios e restabelecer acessos.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Back office -->
+    <div class="trincheira-col back">
+      <div class="trincheira-header">
+        <div class="trincheira-tag">Tecnologia e Produto</div>
+        <div class="trincheira-title">KLASSE</div>
+      </div>
+      <div class="trincheira-body">
+        <div class="trincheira-item">
+          <div class="trincheira-icon" style="background:var(--oll);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8902A" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+          <div>
+            <h5>Infraestrutura e Software</h5>
+            <p>Manutenção técnica dos servidores na nuvem, segurança dos dados armazenados e lançamento contínuo de atualizações.</p>
+          </div>
+        </div>
+        <div class="trincheira-item">
+          <div class="trincheira-icon" style="background:var(--oll);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8902A" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <div>
+            <h5>Apoio Comercial Avançado</h5>
+            <p>Participação remota em negociações com escolas de grande porte que demandem validação técnica do software.</p>
+          </div>
+        </div>
+        <div class="trincheira-item">
+          <div class="trincheira-icon" style="background:var(--oll);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C8902A" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </div>
+          <div>
+            <h5>Suporte Especializado</h5>
+            <p>Correção de falhas de programação de segundo nível reportadas pelo vosso atendimento local.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+  SLIDE 4 · MODELO FINANCEIRO
+══════════════════════ -->
+<div class="slide s4" id="s4">
+  <div class="sec-tag green">
+    <div class="sec-tag-dot" style="background:var(--v);"></div>
+    Partilha Financeira
+  </div>
+
+  <div class="fin-headline-row">
+    <div class="sec-headline" style="margin-bottom:0;">Receita partilhada.<br><em>Alinhamento de incentivos.</em></div>
+  </div>
+  <p class="sec-intro" style="margin-bottom:20px;">Cada nova escola parceira gera ganho de ativação e participação mensal recorrente no suporte.</p>
+
+  <!-- Setup Info Banner -->
+  <div style="background:var(--vd);color:white;padding:16px 20px;border-radius:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--o);display:block;margin-bottom:2px;">Configuração Inicial</span>
+      <span style="font-size:13px;color:rgba(255,255,255,0.75);">Taxa paga pela escola para configuração e formação do sistema</span>
+    </div>
+    <div style="text-align:right;">
+      <span style="font-size:20px;font-weight:900;color:white;display:block;">50K – 100K<span style="font-size:12px;color:var(--o);"> Kz</span></span>
+      <span style="font-size:10px;font-weight:800;color:var(--vl);text-transform:uppercase;letter-spacing:0.5px;">100% para o vosso escritório</span>
+    </div>
+  </div>
+
+  <!-- Planos Grid -->
+  <div class="planos-grid">
+    <!-- Essencial -->
+    <div class="plano-card">
+      <div class="plano-header">
+        <span class="plano-title">Essencial</span>
+        <div class="plano-price">80.000<span style="font-size:11px;color:var(--muted);font-weight:600;"> Kz/mês</span></div>
+        <div class="plano-features">Até 600 alunos · 10 utilizadores · Portais · Docs MED · Suporte 48h</div>
+      </div>
+      <div class="plano-comissao">A vossa fatia (25%): 20.000 Kz/mês</div>
+    </div>
+    <!-- Profissional -->
+    <div class="plano-card destaque">
+      <div class="plano-header">
+        <span class="plano-title">Profissional</span>
+        <div class="plano-price">140.000<span style="font-size:11px;color:var(--muted);font-weight:600;"> Kz/mês</span></div>
+        <div class="plano-features">Até 1500 alunos · 30 utilizadores · Suporte 24h + Chat · Network completo</div>
+      </div>
+      <div class="plano-comissao">A vossa fatia (25%): 35.000 Kz/mês</div>
+    </div>
+    <!-- Premium -->
+    <div class="plano-card premium">
+      <div class="plano-header">
+        <span class="plano-title">Premium</span>
+        <div class="plano-price" style="font-size:18px;">Sob Consulta</div>
+        <div class="plano-features">Alunos ilimitados · Multi-campus · API + Suporte dedicado · Network completo</div>
+      </div>
+      <div class="plano-comissao" style="background:var(--oll);color:var(--o);">A vossa fatia: 25% do valor</div>
+    </div>
+  </div>
+
+  <div class="proj-title">Projeção Financeira — Exemplo com 10 Escolas</div>
+  <div class="proj-grid">
+    <div class="proj-card" style="padding:20px 24px;">
+      <div class="pc-lbl">10 colégios configurados</div>
+      <div class="pc-val">500K – 1M<span style="font-size:12px;color:var(--muted);font-family:inherit;"> Kz</span></div>
+      <div class="pc-sub">Ganho imediato gerado com as taxas de ativação.</div>
+    </div>
+    <div class="proj-card amber" style="padding:20px 24px;">
+      <div class="pc-lbl">Faturação recorrente mensal</div>
+      <div class="pc-val">200K – 350K<span style="font-size:12px;color:var(--muted);font-family:inherit;"> Kz/mês</span></div>
+      <div class="pc-sub">Comissão recorrente mensal (baseada nos planos ativados).</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+  SLIDE 5 · GANHOS INSTITUCIONAIS
+══════════════════════ -->
+<div class="slide s5" id="s5">
+  <div class="sec-tag green">
+    <div class="sec-tag-dot" style="background:var(--v);"></div>
+    Benefícios Mútuos
+  </div>
+
+  <div class="sec-headline">O valor gerado<br><em>para cada lado.</em></div>
+  <p class="sec-intro">Além do retorno financeiro direto, o acordo consolida ativos estratégicos importantes para o futuro das duas empresas.</p>
+
+  <div class="ganhos-grid">
+    <div class="ganho-card v">
+      <div class="ganho-icon" style="background:var(--vll);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F6B3B" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M9 9h1m4 0h1M9 13h1m4 0h1M9 17h1m4 0h1"/></svg>
+      </div>
+      <h3>Para o KLASSE: Presença e Credibilidade</h3>
+      <p>Ganhamos representação comercial física e um canal de suporte humanizado de proximidade em Luanda, aumentando a segurança institucional da nossa marca.</p>
+    </div>
+    <div class="ganho-card a">
+      <div class="ganho-icon" style="background:var(--oll);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8902A" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
+      <h3>Para o vosso escritório: Portfólio e Ativo Tecnológico</h3>
+      <p>Iniciam a operação associados a um software escolar maduro e de grande escala, construindo um portfólio de alta relevância comercial no setor de tecnologia.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+   SLIDE 6 · FECHO
+══════════════════════ -->
+<div class="slide s6" id="s6">
+  <div>
+    <p class="s6-quote">"Esta parceria une o melhor de dois mundos: a nossa capacidade técnica de produto e a vossa força comercial de mercado. <em>Crescemos juntos à medida que as escolas parceiras prosperam.</em>"</p>
+    <div class="s6-sigs">
+      <div class="s6-sig">
+        <div class="s6-sig-line"></div>
+        <div class="s6-sig-name">David Chocaliye</div>
+        <div class="s6-sig-role">Fundador & CEO — KLASSE</div>
+      </div>
+      <div class="s6-sig">
+        <div class="s6-sig-line"></div>
+        <div class="s6-sig-name">[Nome do Escritório]</div>
+        <div class="s6-sig-role">Parceiro Comercial & Operacional</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="s6-right">
+    <div class="s6-logo-row">
+      <img src="../Imagens/logo-klasse.png" alt="K" style="height: 26px; width: auto;">
+      <span class="s6-logo-name">KLASSE</span>
+    </div>
+    <div class="s6-url">klasse.ao · 2026</div>
+    <div style="font-size:9px;color:rgba(255,255,255,.18);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;margin-top:4px;letter-spacing:.03em;">Documento confidencial</div>
+  </div>
+</div>
+
+</div><!-- /page -->
+</body>
+</html>

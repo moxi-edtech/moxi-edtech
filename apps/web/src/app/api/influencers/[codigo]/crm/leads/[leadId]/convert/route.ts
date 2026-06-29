@@ -5,6 +5,27 @@ import { INFLUENCER_SESSION_COOKIE } from "@/lib/influencerSession";
 
 export const dynamic = "force-dynamic";
 
+function getConvertLeadErrorMessage(errorCode: string | undefined) {
+  switch (errorCode) {
+    case "lost_lead_cannot_convert":
+      return "Leads marcados como perdidos não podem iniciar ativação.";
+    case "lead_stage_not_ready":
+      return "Marque o lead como Fechado Ganho antes de iniciar a ativação.";
+    case "missing_plan":
+      return "Defina o plano comercial antes de converter o lead.";
+    case "commercial_status_not_ready":
+      return "Registre a proposta e o aceite comercial antes de iniciar a ativação.";
+    case "invalid_trial_days":
+      return "O trial precisa estar entre 0 e 30 dias.";
+    case "invalid_taxa_ativacao":
+      return "A taxa de ativação precisa ser maior que zero para liberar a ativação.";
+    case "lead_not_found_or_access_denied":
+      return "Lead não encontrado para este parceiro.";
+    default:
+      return "Falha ao converter lead.";
+  }
+}
+
 async function requireInfluencerSession(codigo: string) {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get(INFLUENCER_SESSION_COOKIE)?.value ?? "";
@@ -49,7 +70,7 @@ export async function POST(
 
     if (error || !data?.ok) {
       return NextResponse.json(
-        { ok: false, error: data?.error || error?.message || "Falha ao converter lead." },
+        { ok: false, error: getConvertLeadErrorMessage(data?.error || error?.message) },
         { status: 400 },
       );
     }

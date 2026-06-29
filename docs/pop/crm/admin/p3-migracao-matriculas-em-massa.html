@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P3-02 · Migração de Alunos e Matrículas em Massa</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P3-02</div>
+    </div>
+    <div class="hd-title">Migração de Alunos <span>e Matrículas</span><br>em Massa (Admin).</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.1.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Secretaria / Migração &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar o processo de importação de dados de alunos e a geração de matrículas automáticas por lote, estabelecendo diretrizes para validação dos dados, mapeamento de estrutura e tratamento de erros.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Migração inicial da base de dados de alunos vinda de sistemas legados.</li>
+        <li>Entrada em massa de novos alunos por planilhas CSV ou Excel.</li>
+        <li>Regularização rápida de cadastros e matrículas no início do ano letivo.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável:</strong> Secretaria acadêmica</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Acesso ao assistente do sistema pela rota: <code>/escola/{id}/secretaria/migracao/alunos</code>.</li>
+        <li>Disponibilidade do alias alternativo configurado no código: <code>/escola/{id}/operacoes/migracao/alunos</code>.</li>
+        <li>Arquivo de planilha pronto (formatos <code>.csv</code> ou <code>.xlsx</code>).</li>
+        <li>Colunas mínimas de dados identificadas: <strong>Nome</strong> e <strong>Data de Nascimento</strong>.</li>
+        <li>Para execução de matrícula automática: Coluna contendo o código identificador da turma preenchida.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>A interface visual do wizard de importação é fornecida pelo componente: <code>apps/web/src/app/migracao/alunos/wizard.tsx</code>.</li>
+        <li>Este wizard é reutilizado em múltiplas rotas dentro do portal escolar. O operador deve guiar-se pelas etapas descritas na tela, independentemente da URL atual de exibição.</li>
+        <li>As etapas reais identificadas no wizard são: <code>Upload</code>, <code>Mapeamento</code>, <code>Revisão</code>, <code>Estrutura</code>, <code>Configuração Final</code> e <code>Importação Concluída</code>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Procedimento A · Executar wizard de importação</div>
+    <div class="content-block">
+      <ol>
+        <li>Aceder à tela de <strong>Migração de Alunos</strong>.</li>
+        <li>Na etapa <strong>Upload</strong>: Enviar o arquivo de planilha correspondente e clicar em <strong>Continuar para Mapeamento</strong>.</li>
+        <li>Na etapa <strong>Mapeamento</strong>: Associar as colunas da planilha às chaves equivalentes do sistema e indicar o <code>Ano Letivo de Destino</code>.</li>
+        <li>Clicar no botão <strong>Validar Dados</strong>.</li>
+        <li>Na etapa <strong>Revisão</strong>: Inspecionar visualmente o preview gerado dos dados dos alunos e avançar.</li>
+        <li>Na etapa <strong>Estrutura</strong>: Concluir a análise e confirmar a criação da estrutura de turmas/classes base (se necessário).</li>
+        <li>Na etapa <strong>Configuração Final</strong>, parametrizar:
+          <ul>
+            <li><code>Modo de Operação</code> (selecionar entre <code>migracao</code> ou <code>onboarding</code>).</li>
+            <li>Marcar a opção <code>Apenas Cadastro</code> se não pretender realizar as matrículas automáticas de imediato.</li>
+            <li><code>Mês de Início</code> e <code>Data Base</code> de cobranças aplicados no módulo financeiro.</li>
+          </ul>
+          <img class="step-print" src="prints/p3-migracao-wizard-steps.png" alt="Passos do Wizard de Migração de Alunos">
+        </li>
+        <li>Clicar no botão <strong>Processar Importação</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">06 · Procedimento B · Tratar resumo e pendências no passo final</div>
+    <div class="content-block">
+      <ol>
+        <li>Na etapa final <strong>Importação Concluída</strong>, analisar com detalhe os blocos e métricas expostas:
+          <ul>
+            <li>Cards de resumo: <code>Importados</code>, <code>Criados</code>, <code>Ignorados</code> e <code>Erros</code>.</li>
+            <li>O painel de <code>Resumo Financeiro</code> com o total de cobranças projetadas.</li>
+            <li>O bloco de <code>Bloqueios de importação</code> (se renderizado pelo backend devido a inconsistências).</li>
+          </ul>
+          <img class="step-print" src="prints/p3-migracao-resultado-concluido.png" alt="Resultado e Métricas da Importação">
+        </li>
+        <li>Caso o painel reporte <code>Pendências Financeiras</code>, reportar a lista ao setor financeiro antes da consolidação de cobranças.</li>
+        <li>Caso ocorram <code>Erros de Importação</code>, exportar a listagem de rejeitados para atuar na correção.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">07 · Procedimento C · Executar matrículas em massa</div>
+    <div class="content-block">
+      <ol>
+        <li>No bloco correspondente a <strong>Matrícula Automática</strong>, clicar em <strong>Atualizar Lista</strong>.</li>
+        <li>Identificar e selecionar as linhas de lotes que exibam status de <code>Aguardando</code> ou <code>ready</code>.</li>
+        <li>Clicar no botão <strong>Confirmar Matrículas</strong>.</li>
+        <li>Monitorar as etapas de execução através da:
+          <ul>
+            <li>Barra de progresso de matrículas em lote.</li>
+            <li>Tabela de resumo indicando os sucessos (<code>OK</code>) e erros individuais ocorridos por turma.</li>
+          </ul>
+          <img class="step-print" src="prints/p3-migracao-matriculas-massa.png" alt="Interface de Matrículas Automáticas por Lote">
+        </li>
+        <li>Repetir a operação de confirmação apenas para os lotes que restarem pendentes.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">08 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Base de alunos importada no banco e vinculada corretamente à escola ativa.</li>
+        <li>Matrículas efetuadas e vínculos criados de forma em massa nas turmas de destino.</li>
+        <li>Relatório de erros gerado contendo dados dirigidos para correções na planilha.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">09 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Mapeie pelo menos Nome e Data de Nascimento.</td>
+            <td>As colunas fundamentais de identificação não foram mapeadas na etapa 2</td>
+            <td>Retornar ao passo de Mapeamento, associar os inputs e avançar</td>
+            <td>Se as colunas estiverem mapeadas e o validador continuar negando</td>
+          </tr>
+          <tr>
+            <td>PLAN_LIMIT / limite do plano</td>
+            <td>A quantidade de alunos importada no lote excede o limite ativo do plano da escola</td>
+            <td>Dividir a planilha em arquivos menores ou contatar o gestor para ajuste de cota</td>
+            <td>Se o limite do plano for maior que a planilha e o erro persistir</td>
+          </tr>
+          <tr>
+            <td>Erro Estrutura na listagem final</td>
+            <td>A turma ou código de turma indicado no lote não existe no ano letivo ativo</td>
+            <td>Verificar os códigos das turmas cadastrados no Command Center e corrigir a planilha</td>
+            <td>Inconsistências persistentes com códigos de turma corretos</td>
+          </tr>
+          <tr>
+            <td>Falha ao matricular grupo</td>
+            <td>Interrupção na fila de processamento assíncrono do backend</td>
+            <td>Clicar em Confirmar Matrículas sobre o lote afetado para tentar novamente</td>
+            <td>Se o lote falhar sistematicamente após nova execução direcionada</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">10 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela exibindo a etapa de Mapeamento com as colunas associadas com sucesso.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Mapeamento de Colunas do CSV]</span>
+        </div>
+        <li>Captura de tela exibindo o resumo final (cards de sucesso/erro) ao concluir a migração.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Resumo Final da Importação]</span>
+        </div>
+        <li>Relatório CSV de registros contendo erros ou o nome do arquivo processado arquivado.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">11 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Rotinas de API do Wizard:</strong>
+          <ul>
+            <li>Envio de arquivo físico: <code>POST /api/migracao/upload</code></li>
+            <li>Etapa de validação de dados: <code>POST /api/migracao/alunos/validar</code></li>
+            <li>Gravação/Importação definitiva: <code>POST /api/migracao/alunos/importar</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Rotinas de Matrícula e Erros:</strong>
+          <ul>
+            <li>Leitura de lotes e preview: <code>GET /api/migracao/{importId}/matricula/preview?escola_id={id}</code></li>
+            <li>Processamento das matrículas: <code>POST /api/matriculas/massa/por-turma</code></li>
+            <li>Log de erros do lote: <code>GET /api/migracao/{importId}/erros</code></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">12 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Documentado o alias alternativo de rota <code>/operacoes/migracao/alunos</code> e detalhado o fluxo dinâmico do componente wizard.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · Anexo de SLA e Comissões</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 1cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; padding-bottom: 0px; overflow: visible !important; display: block !important; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 16px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 9px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 7px; }
+  .contract-text { font-size: 8.5px !important; margin-bottom: 10px !important; }
+  .clause { margin-bottom: 8px !important; }
+  .clause h4 { font-size: 9px !important; }
+  .signatures { margin-top: 15px !important; gap: 20px !important; }
+  .sig-box { padding-top: 5px !important; }
+  
+  .footer { 
+    width: 100%; 
+    padding: 10px 35px !important;
+    background: var(--vd) !important;
+  }
+  .footer-info::after {
+    content: " | Pág. " counter(page);
+  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 28px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:10px;display:flex;align-items:center;gap:5px;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.contract-text {
+  font-size: 11px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+.clause {
+  margin-bottom: 18px;
+}
+
+.clause h4 {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--v);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clause p {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.signatures {
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.sig-box {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  text-align: center;
+}
+
+.sig-name {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--slate);
+}
+
+.sig-title {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+/* Tabelas Operacionais */
+.table-wrapper {
+  width: 100%;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 5px 0 10px;
+}
+.custom-table th {
+  background: var(--vd);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid var(--vd);
+}
+.custom-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: 9.5px;
+  color: var(--slate);
+  vertical-align: middle;
+}
+.custom-table tr:nth-child(even) {
+  background-color: #fcfcfc;
+}
+
+.callout-box {
+  background: var(--vll);
+  border-left: 4px solid var(--v);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 10px;
+  margin-bottom: 18px;
+  color: var(--slate);
+  line-height: 1.5;
+}
+.callout-title {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  margin-bottom: 4px;
+  color: var(--v);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+<table style="width: 100%; border-collapse: collapse; border: none;">
+  <tbody>
+    <tr>
+      <td style="padding: 0;">
+        <div class="content-wrapper">
+          
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">ANEXO OPERACIONAL</div>
+    </div>
+    <div class="hd-title">Anexo I: Níveis de <span>SLA</span>,<br>Responsabilidades e Ganhos.</div>
+    <div class="hd-sub">Este anexo estabelece de forma detalhada as metas, divisão de tarefas e regras de partilha financeira.</div>
+  </div>
+
+  <div class="body">
+    
+    <div class="sec-lbl">01 · Matriz de Responsabilidades (Divisão de Atividades)</div>
+    <div class="contract-text">
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Atividade</th>
+              <th style="width: 25%;">Responsável</th>
+              <th style="width: 50%;">Detalhes Operacionais</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Prospecção Comercial</strong></td>
+              <td>PARCEIRO OPERACIONAL</td>
+              <td>Realizar contactos comerciais e agendar visitas/demonstrações com colégios de Luanda.</td>
+            </tr>
+            <tr>
+              <td><strong>Demonstração do Sistema</strong></td>
+              <td>PARCEIRO OPERACIONAL</td>
+              <td>Apresentar as funcionalidades e utilidades da plataforma aos diretores de escolas.</td>
+            </tr>
+            <tr>
+              <td><strong>Apoio de Vendas Técnico</strong></td>
+              <td>KLASSE</td>
+              <td>Participar de reuniões remotas com grandes redes ou colégios para apoiar na validação de engenharia.</td>
+            </tr>
+            <tr>
+              <td><strong>Fechamento de Assinaturas</strong></td>
+              <td>KLASSE</td>
+              <td>Processar e validar a assinatura jurídica do contrato principal com os colégios.</td>
+            </tr>
+            <tr>
+              <td><strong>Setup de Dados</strong></td>
+              <td>PARCEIRO OPERACIONAL</td>
+              <td>Coletar pautas das turmas, alunos e realizar a inserção e parametrização inicial no sistema.</td>
+            </tr>
+            <tr>
+              <td><strong>Capacitação de Usuários</strong></td>
+              <td>PARCEIRO OPERACIONAL</td>
+              <td>Conduzir a formação da equipe de secretaria, diretoria e corpo docente de cada escola.</td>
+            </tr>
+            <tr>
+              <td><strong>Suporte Nível 1 (L1)</strong></td>
+              <td>PARCEIRO OPERACIONAL</td>
+              <td>Primeiro atendimento diário (telefone/WhatsApp) para suporte funcional, dúvidas e troca de senhas.</td>
+            </tr>
+            <tr>
+              <td><strong>Suporte Nível 2 e 3 (L2/L3)</strong></td>
+              <td>KLASSE</td>
+              <td>Resolução de bugs, intervenções em servidores na nuvem e atualizações corretivas do software.</td>
+            </tr>
+            <tr>
+              <td><strong>Faturamento e Cobrança</strong></td>
+              <td>KLASSE</td>
+              <td>Geração e envio das cobranças mensais e controle direto do recebimento das escolas.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec-lbl">02 · Checklist e Protocolo de Aceite de Implantação</div>
+    <div class="contract-text">
+      <p style="margin-bottom: 12px; line-height: 1.5;">O PARCEIRO OPERACIONAL terá direito a **100% da taxa de instalação/ativação inicial** paga pela escola contratante (entre **50.000 Kz e 100.000 Kz**, de acordo com o tamanho do colégio).</p>
+      
+      <div class="callout-box">
+        <div class="callout-title">⚠️ Requisitos Obrigatórios para Validação da Implantação (Checklist)</div>
+        <p>A taxa de instalação só será liberada para repasse comercial mediante apresentação física ou digital do <strong>Termo de Aceite de Implantação</strong>, contendo a assinatura do diretor do colégio e os seguintes itens executados:</p>
+        <ul style="margin-left: 15px; margin-top: 5px;">
+          <li>1. Configuração completa da estrutura curricular oficial (turmas, disciplinas e pautas regulamentadas pelo MED);</li>
+          <li>2. Importação e cadastro completo do total de alunos ativos e seus respectivos encarregados;</li>
+          <li>3. Realização de formação da equipe de secretaria e sessões de treinamento específicas para os docentes;</li>
+          <li>4. Sistema ativado e plenamente operável pelos usuários.</li>
+        </ul>
+      </div>
+      <p style="line-height: 1.5; font-style: italic; color: var(--muted); font-size: 9px;">* A falta da entrega do termo assinado suspende a liberação de pagamento da taxa correspondente.</p>
+    </div>
+
+    <div class="sec-lbl">03 · Níveis de Serviço (SLA) - Suporte de Proximidade (L1)</div>
+    <div class="contract-text">
+      <div class="clause">
+        <h4>Canais e Horários</h4>
+        <p>O PARCEIRO OPERACIONAL deve disponibilizar suporte via canal dedicado no WhatsApp Business e número de telefone direto, operando de Segunda a Sexta-feira, das **07:30 às 17:30** (horário comercial escolar).</p>
+      </div>
+
+      <div class="clause">
+        <h4>Prazos de Suporte e Escalonamento L1</h4>
+        <div class="table-wrapper">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th style="width: 20%;">Gravidade</th>
+                <th style="width: 25%;">Tempo de Resposta (FRT)</th>
+                <th style="width: 25%;">Tempo de Resolução</th>
+                <th style="width: 30%;">Exemplos de Incidentes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Alta</strong></td>
+                <td>Até 15 minutos</td>
+                <td>Até 2 horas</td>
+                <td>Usuários sem conseguir acesso administrativo ao painel de matrículas ou faturamento travado.</td>
+              </tr>
+              <tr>
+                <td><strong>Média</strong></td>
+                <td>Até 1 hora</td>
+                <td>Até 8 horas</td>
+                <td>Incongruência em pautas de notas ou falha de notificações enviadas aos encarregados.</td>
+              </tr>
+              <tr>
+                <td><strong>Baixa</strong></td>
+                <td>Até 4 horas</td>
+                <td>Até 24 horas</td>
+                <td>Dúvidas gerais de navegação, edição menor de cadastros ou alteração de configurações básicas.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="clause">
+        <h4>Penalidades de Performance</h4>
+        <p>Caso o PARCEIRO OPERACIONAL descumpra os prazos contratuais em mais de 15% (quinze por cento) dos chamados válidos no mês, a sua comissão recorrente daquela respectiva carteira sofrerá uma redução proporcional de 5% (cinco por cento) no fechamento financeiro do mês específico.</p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">04 · Tabela de Comissões e Mensalidades</div>
+    <div class="contract-text">
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Plano Comercial</th>
+              <th style="width: 25%;">Valor da Mensalidade</th>
+              <th style="width: 25%;">Comissão do Parceiro (25%)</th>
+              <th style="width: 25%;">Limitações e Recursos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Essencial</strong></td>
+              <td>80.000 Kz/mês</td>
+              <td><strong>20.000 Kz/mês</strong></td>
+              <td>Até 600 alunos, 10 utilizadores, 5 GB storage, documentos MED e suporte em até 48h.</td>
+            </tr>
+            <tr>
+              <td><strong>Profissional</strong></td>
+              <td>140.000 Kz/mês</td>
+              <td><strong>35.000 Kz/mês</strong></td>
+              <td>Até 1500 alunos, 30 utilizadores, 20 GB storage, suporte 24h + chat, rede completa.</td>
+            </tr>
+            <tr>
+              <td><strong>Premium</strong></td>
+              <td>Negociado</td>
+              <td><strong>25% do valor liquidado</strong></td>
+              <td>Alunos/utilizadores ilimitados, multi-campus, integrações API e suporte dedicado.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="line-height: 1.5; margin-top: 5px;">* **Subscrições Anuais:** Em assinaturas anuais com desconto de 2 meses grátis (10 mensalidades no ano), a comissão recorrente do parceiro acompanha proporcionalmente o valor liquidado pela escola no regime de caixa.</p>
+      <p style="line-height: 1.5;">* **Regra de Inadimplência:** Inadimplências suspendem de forma automática os repasses daquela respectiva escola, sendo retomados e apurados retroativamente somente após a compensação efetiva do débito.</p>
+    </div>
+
+    <div class="sec-lbl">05 · Assinaturas de Aceite</div>
+    <div class="contract-text">
+      <p style="margin-top: 15px; font-weight: 800;">Luanda, ____ de __________________ de 2026.</p>
+
+      <div class="signatures">
+        <div class="sig-box">
+          <div style="width: 100%; height: 1px; background: var(--slate); margin-bottom: 8px; opacity: 0.3;"></div>
+          <div class="sig-name">MOXI SOLUÇÕES, (SU), LDA</div>
+          <div class="sig-title">Contratante</div>
+        </div>
+        <div class="sig-box">
+          <div style="width: 100%; height: 1px; background: var(--slate); margin-bottom: 8px; opacity: 0.3;"></div>
+          <div class="sig-name">[NOME DO PARCEIRO / ESCRITÓRIO]</div>
+          <div class="sig-title">Parceiro Operacional</div>
+        </div>
+      </div>
+    </div>
+  </div>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td style="padding: 0;">
+        <div class="footer-spacer" style="height: 20px;"></div>
+        <div class="footer">
+          <div class="footer-brand">
+            <img src="../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+              <span class="footer-logo-word">KLASSE</span>
+              <span class="footer-tagline">Gestão Escolar</span>
+            </div>
+          </div>
+          <div class="footer-info"><span>parcerias@klasse.ao</span> · klasse.ao<br>Confidencial · 2026</div>
+        </div>
+      </td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</body>
+</html>

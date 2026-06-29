@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · Checklist de Recolha de Dados</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 1cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; padding-bottom: 0px; overflow: visible !important; display: block !important; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 16px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 9px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 7px; }
+  .contract-text { font-size: 8.5px !important; margin-bottom: 10px !important; }
+  .signatures { margin-top: 15px !important; gap: 20px !important; }
+  
+  .footer { 
+    width: 100%; 
+    padding: 10px 35px !important;
+    background: var(--vd) !important;
+  }
+  .footer-info::after {
+    content: " | Pág. " counter(page);
+  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 28px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:10px;display:flex;align-items:center;gap:5px;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.contract-text {
+  font-size: 11px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+.clause {
+  margin-bottom: 18px;
+}
+
+.clause h4 {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--v);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.clause p {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+/* Tabelas */
+.table-wrapper {
+  width: 100%;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 5px 0 10px;
+}
+.custom-table th {
+  background: var(--vd);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid var(--vd);
+}
+.custom-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: 9.5px;
+  color: var(--slate);
+  vertical-align: middle;
+}
+.custom-table tr:nth-child(even) {
+  background-color: #fcfcfc;
+}
+
+.callout-box {
+  background: var(--vll);
+  border-left: 4px solid var(--v);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 10px;
+  margin-bottom: 18px;
+  color: var(--slate);
+  line-height: 1.5;
+}
+.callout-title {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  margin-bottom: 4px;
+  color: var(--v);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+<table style="width: 100%; border-collapse: collapse; border: none;">
+  <tbody>
+    <tr>
+      <td style="padding: 0;">
+        <div class="content-wrapper">
+          
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">KIT OPERACIONAL AELS</div>
+    </div>
+    <div class="hd-title">Ficha de Recolha de Dados<span></span><br>e Ativação do Sistema.</div>
+    <div class="hd-sub">Guia de conferência operacional e solicitação de informações para implantação de novos colégios.</div>
+  </div>
+
+  <div class="body">
+    
+    <div class="sec-lbl">01 · Como Solicitar (Fluxo por Pacotes)</div>
+    <div class="contract-text">
+      <p style="margin-bottom: 12px; line-height: 1.5;">O PARCEIRO OPERACIONAL (AELS) não deve solicitar todas as informações de forma desordenada à diretoria da escola. A solicitação deve ser estruturada em <strong>6 pacotes específicos</strong> para evitar ruídos e agilizar a conferência:</p>
+      
+      <div class="callout-box">
+        <p><strong>• Pacote 1 — Institucional e Financeiro:</strong> Dados de NIF, endereço oficial, dados bancários e IBAN para recebimentos e cobranças.</p>
+        <p><strong>• Pacote 2 — Calendário e Regras Pedagógicas:</strong> Períodos letivos (trimestres), turnos em funcionamento e parâmetros de avaliação.</p>
+        <p><strong>• Pacote 3 — Estrutura Curricular e Turmas:</strong> Cursos lecionados, lista de turmas por classe e mapa de salas.</p>
+        <p><strong>• Pacote 4 — Base de Alunos:</strong> Planilha preenchida com a base de alunos matriculados e seus respectivos encarregados.</p>
+        <p><strong>• Pacote 5 — Base de Professores:</strong> Planilha com dados de contacto e habilitações de todo o corpo docente.</p>
+        <p><strong>• Pacote 6 — Atribuições Docentes:</strong> Mapa de distribuição com indicação de qual professor leciona em qual turma e disciplina.</p>
+      </div>
+    </div>
+
+    <div class="sec-lbl">02 · Padrão de Ficheiros e Nomenclatura</div>
+    <div class="contract-text">
+      <p style="margin-bottom: 12px;">Para garantir a importação automática correta, todos os ficheiros recebidos devem seguir o formato e nomenclatura recomendados abaixo:</p>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Nome do Ficheiro</th>
+              <th style="width: 20%;">Formato Recomendado</th>
+              <th style="width: 50%;">Descrição do Conteúdo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>01_identidade_escola.pdf</strong></td>
+              <td>PDF ou imagem (PNG)</td>
+              <td>Logótipo em alta qualidade + Ficha com nome oficial, NIF e morada física.</td>
+            </tr>
+            <tr>
+              <td><strong>02_dados_bancarios.xlsx</strong></td>
+              <td>Excel (.xlsx) ou PDF</td>
+              <td>Ficha bancária oficial com IBAN, titular e chave Kwik de recebimento.</td>
+            </tr>
+            <tr>
+              <td><strong>03_calendario_letivo.xlsx</strong></td>
+              <td>Excel (.xlsx) ou PDF</td>
+              <td>Despacho oficial de calendário, datas de início/fim de trimestres e exames.</td>
+            </tr>
+            <tr>
+              <td><strong>04_matriz_curricular.xlsx</strong></td>
+              <td>Excel (.xlsx)</td>
+              <td>Grade de disciplinas por classe, cursos associados e turnos ativos.</td>
+            </tr>
+            <tr>
+              <td><strong>05_alunos.xlsx</strong></td>
+              <td>Excel (.xlsx)</td>
+              <td>Planilha padrão preenchida com dados pessoais, contactos e encarregados.</td>
+            </tr>
+            <tr>
+              <td><strong>06_professores.xlsx</strong></td>
+              <td>Excel (.xlsx)</td>
+              <td>Planilha padrão preenchida com dados dos professores e habilitações.</td>
+            </tr>
+            <tr>
+              <td><strong>07_atribuicoes_docentes.xlsx</strong></td>
+              <td>Excel (.xlsx)</td>
+              <td>Mapa de atribuição com relacionamento entre professor, turma e disciplina.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-style: italic; color: var(--muted); font-size: 9px; line-height: 1.4;">* Nota: Evitar terminantemente o envio de fotografias de tabelas escritas à mão via WhatsApp, pois inviabiliza o processo de importação em lote.</p>
+    </div>
+
+    <div class="sec-lbl">03 · Mapeamento dos Dados no Sistema</div>
+    <div class="contract-text">
+      <p style="margin-bottom: 12px;">Destinação de cada bloco de informação dentro dos painéis da plataforma KLASSE:</p>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Bloco de Dados</th>
+              <th style="width: 35%;">O que Coletar</th>
+              <th style="width: 40%;">Destino na Plataforma</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Identidade</strong></td>
+              <td>Nome oficial, NIF, morada, logótipo da escola e plano contratado.</td>
+              <td>Admin > Configurações > Identidade</td>
+            </tr>
+            <tr>
+              <td><strong>Pagamentos</strong></td>
+              <td>Titular da conta, Banco, IBAN, Nº Conta e Chave Kwik.</td>
+              <td>Admin > Configurações > Identidade</td>
+            </tr>
+            <tr>
+              <td><strong>Ano Letivo</strong></td>
+              <td>Ano de exercício, data de início, data de fim e períodos de avaliação.</td>
+              <td>Onboarding > Sessão</td>
+            </tr>
+            <tr>
+              <td><strong>Turnos</strong></td>
+              <td>Manhã, Tarde, Noite (horários de entrada e saída por turno).</td>
+              <td>Onboarding > Sessão</td>
+            </tr>
+            <tr>
+              <td><strong>Regras Académicas</strong></td>
+              <td>Lançamento de frequência (aula/período), % mínima de presença, modelo de avaliação.</td>
+              <td>Onboarding > Regras</td>
+            </tr>
+            <tr>
+              <td><strong>Estrutura Curricular</strong></td>
+              <td>Cursos lecionados, classes associadas por curso e disciplinas por classe.</td>
+              <td>Onboarding > Matriz</td>
+            </tr>
+            <tr>
+              <td><strong>Turmas</strong></td>
+              <td>Lista de turmas abertas por classe e por turno (capacidade de alunos).</td>
+              <td>Onboarding > Matriz/Gerar</td>
+            </tr>
+            <tr>
+              <td><strong>Preçário</strong></td>
+              <td>Valores de matrícula, propina mensal, data de vencimento e exceções de cursos.</td>
+              <td>Onboarding > Financeiro</td>
+            </tr>
+            <tr>
+              <td><strong>Alunos</strong></td>
+              <td>Nome completo, género, data de nascimento, BI, NIF, morada, encarregado e contactos.</td>
+              <td>Secretaria > Importações ou Novo Aluno</td>
+            </tr>
+            <tr>
+              <td><strong>Professores</strong></td>
+              <td>Nome, e-mail, telefone, BI, habilitações e vínculo contratual.</td>
+              <td>Professores > Adicionar ou Importar</td>
+            </tr>
+            <tr>
+              <td><strong>Atribuições</strong></td>
+              <td>Definição de professor titular de cada turma e atribuição de aulas (disciplina x turma).</td>
+              <td>Professores > Atribuir</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sec-lbl">04 · Checklist de Validação AELS (Pré-Ativação)</div>
+    <div class="contract-text">
+      <p style="margin-bottom: 12px; line-height: 1.5;">O PARCEIRO OPERACIONAL (AELS) deve conferir e validar os seguintes itens antes de considerar a implantação concluída e solicitar a liberação do sistema para produção comercial:</p>
+      
+      <div class="callout-box" style="background:#fffcf5; border-left:4px solid var(--o);">
+        <div class="callout-title" style="color:var(--o);">📋 Roteiro de Verificação de Ativação</div>
+        <p>[ ] <strong>Identidade Escolar completa:</strong> Logótipo oficial em PNG transparente cadastrado e NIF verificado.</p>
+        <p>[ ] <strong>Conta Bancária ativada:</strong> IBAN inserido e chave Kwik configurada para o recebimento de propinas.</p>
+        <p>[ ] <strong>Períodos letivos gerados:</strong> Datas de início e fim dos 3 trimestres configurados na sessão atual.</p>
+        <p>[ ] <strong>Matriz Curricular parametrizada:</strong> Todas as disciplinas associadas às suas respectivas classes.</p>
+        <p>[ ] <strong>Valores Financeiros definidos:</strong> Tabela de propinas e vencimentos devidamente configurada para cada curso.</p>
+        <p>[ ] <strong>Alunos e Professores cadastrados:</strong> Importação das planilhas concluída com sucesso e acessos liberados.</p>
+        <p>[ ] <strong>Distribuição docente vinculada:</strong> Professores devidamente vinculados às turmas e matérias correspondentes.</p>
+      </div>
+    </div>
+  </div>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td style="padding: 0;">
+        <div class="footer-spacer" style="height: 20px;"></div>
+        <div class="footer">
+          <div class="footer-brand">
+            <img src="../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+              <span class="footer-logo-word">KLASSE</span>
+              <span class="footer-tagline">Gestão Escolar</span>
+            </div>
+          </div>
+          <div class="footer-info"><span>parcerias@klasse.ao</span> · klasse.ao<br>Confidencial · 2026</div>
+        </div>
+      </td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</body>
+</html>

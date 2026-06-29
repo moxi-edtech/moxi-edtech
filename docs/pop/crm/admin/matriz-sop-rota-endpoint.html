@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · Matriz SOP x Rota x Endpoint</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 8px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 16px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 9px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 8px !important; }
+  table { font-size: 7.5px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 5px !important; }
+  ul, ol { margin-left: 12px !important; margin-bottom: 6px !important; font-size: 8px !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 9.5px;
+  word-break: break-all;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 8.5px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Matriz Técnica · Admin</div>
+    </div>
+    <div class="hd-title">Matriz SOP x Rota <span>x Endpoint</span>.</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.4.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Objetivo:</strong> Rastreabilidade técnica dos SOPs para manutenção e auditoria de sistemas.
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Estado de validação</div>
+    <div class="content-block">
+      <p>Validado por verificação de existência de ficheiros e rotas ativas na worktree em 2026-06-28. Esta matriz documenta estritamente rotas e fontes de código presentes na base física. Caso alguma interface visual referencie uma ação sem suporte do servidor no código atual, o SOP correspondente marca a função como inativa/não operacional.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Matriz Principal</div>
+    <div class="content-block" style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 15%;">SOP</th>
+            <th style="width: 25%;">Rota funcional (UI)</th>
+            <th style="width: 35%;">Endpoint(s) principais</th>
+            <th style="width: 25%;">Fonte de código</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>p0-dashboard-admin.md</code></td>
+            <td><code>/escola/{id}/admin</code></td>
+            <td>
+              <code>/api/escolas/{id}/admin/dashboard</code><br>
+              <code>/api/escolas/{id}/admin/financeiro/inadimplencia-top</code><br>
+              <code>/api/escolas/{id}/admin/financeiro/pagamentos-recentes</code><br>
+              <code>/api/escolas/{id}/admin/dashboard/pending-turmas-count</code><br>
+              <code>/api/escola/{id}/admin/activity-feed</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/page.tsx</code><br>
+              <code>apps/web/src/components/layout/escola-admin/*</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p0-alunos-admin.md</code></td>
+            <td><code>/escola/{id}/admin/alunos</code></td>
+            <td>
+              <code>/api/escolas/{id}/admin/alunos</code><br>
+              <code>/api/escolas/{id}/admin/alunos/{alunoId}</code><br>
+              <code>/api/escolas/{id}/admin/alunos/{alunoId}/archive</code><br>
+              <code>/api/escolas/{id}/admin/alunos/{alunoId}/restore</code><br>
+              <code>/api/escolas/{id}/usuarios/invite</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/alunos/page.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p0-turmas-curriculo.md</code></td>
+            <td><code>/escola/{id}/admin/configuracoes/turmas</code></td>
+            <td>
+              <code>/api/escola/{id}/admin/curriculo/status</code><br>
+              <code>/api/escola/{id}/admin/curriculo/publish</code><br>
+              <code>/api/escola/{id}/admin/curriculo/install-preset</code><br>
+              <code>/api/escola/{id}/admin/curriculo/apply-preset</code><br>
+              <code>/api/escola/{id}/admin/turmas/generate</code><br>
+              <code>/api/escola/{id}/admin/turmas/{turmaId}/fecho</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/turmas/page.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p0-avaliacao-quadro-horario.md</code></td>
+            <td>
+              <code>/escola/{id}/admin/configuracoes/avaliacao</code><br>
+              <code>/escola/{id}/horarios/slots</code><br>
+              <code>/escola/{id}/horarios/quadro</code>
+            </td>
+            <td>
+              <code>/api/escola/{id}/admin/configuracoes/avaliacao-frequencia</code><br>
+              <code>/api/escolas/{id}/modelos-avaliacao</code><br>
+              <code>/api/escolas/{id}/horarios/slots</code><br>
+              <code>/api/escolas/{id}/horarios/quadro</code><br>
+              <code>/api/escolas/{id}/horarios/cargas/auto</code><br>
+              <code>/api/escolas/{id}/horarios/auto</code><br>
+              <code>/api/secretaria/turmas/{turmaId}/atribuir-professor</code><br>
+              <code>/api/escolas/{id}/turmas/{turmaId}/sala</code><br>
+              <code>/api/secretaria/turmas/{turmaId}/horario/versao</code><br>
+              <code>/api/secretaria/turmas/{turmaId}/disciplinas</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/avaliacao/page.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/horarios/slots/page.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/horarios/quadro/page.tsx</code><br>
+              <code>apps/web/src/hooks/useHorarioData.ts</code><br>
+              <code>apps/web/src/lib/rules/scheduler-rules.ts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p1-setup-configuracoes.md</code></td>
+            <td><code>/escola/{id}/admin/configuracoes</code></td>
+            <td>
+              <code>/api/escola/{id}/admin/setup/status</code><br>
+              <code>/api/escola/{id}/admin/setup/state</code><br>
+              <code>/api/escola/{id}/admin/setup/impact</code><br>
+              <code>/api/escola/{id}/admin/setup/preview</code><br>
+              <code>/api/escola/{id}/admin/setup/commit</code><br>
+              <code>/api/escola/{id}/admin/periodos-letivos</code><br>
+              <code>/api/escola/{id}/admin/periodos-letivos/upsert-bulk</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/page.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/*</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p1-fechamento-periodo-pauta-oficial.md</code></td>
+            <td><code>/escola/{id}/admin/turmas/{turmaId}</code></td>
+            <td>
+              <code>/api/escola/{id}/admin/frequencias/fechar-periodo</code><br>
+              <code>/api/escola/{id}/admin/turmas/{turmaId}/fecho</code><br>
+              <code>/api/secretaria/turmas/{turmaId}/pauta-geral/oficial</code><br>
+              <code>/api/secretaria/turmas/{turmaId}/pauta-anual/oficial</code>
+            </td>
+            <td>
+              <code>apps/web/src/components/secretaria/TurmaDetailClient.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/turmas/[turmaId]/page.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p1-professores-atribuicoes.md</code></td>
+            <td><code>/escola/{id}/professores</code><br><small>(alias: <code>/escola/{id}/admin/professores</code>)</small></td>
+            <td>
+              <code>/api/secretaria/professores</code><br>
+              <code>/api/escolas/{id}/professores/create</code><br>
+              <code>/api/escolas/{id}/professores/{profileId}/update</code><br>
+              <code>/api/escolas/{id}/usuarios/resend</code><br>
+              <code>/api/escolas/{id}/professores/{profileId}/reset-password</code><br>
+              <code>/api/escolas/{id}/professores/{profileId}/pendencias</code><br>
+              <code>/api/escolas/{id}/turmas/{turmaId}/disciplinas</code><br>
+              <code>/api/escolas/{id}/turmas/{turmaId}/atribuir-professor</code><br>
+              <code>/api/escolas/{id}/turmas/{turmaId}/disciplinas/{disciplinaId}</code><br>
+              <code>/api/escola/{id}/admin/academico/consistencia-professores</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/professores/page.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/professores/page.tsx</code><br>
+              <code>apps/web/src/app/api/secretaria/professores/route.ts</code><br>
+              <code>apps/web/src/app/api/secretaria/turmas/[id]/atribuir-professor/route.ts</code><br>
+              <code>apps/web/src/app/api/escola/[id]/admin/academico/consistencia-professores/route.ts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p2-configuracoes-financeiras.md</code></td>
+            <td><code>/escola/{id}/admin/configuracoes/financeiro</code></td>
+            <td>
+              <code>/api/escola/{id}/admin/configuracoes/financeiro</code><br>
+              <code>/api/escola/{id}/admin/setup/commit</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/financeiro/page.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p2-mensalidades-emolumentos.md</code></td>
+            <td><code>/escola/{id}/admin/configuracoes/mensalidades</code></td>
+            <td>
+              <code>/api/financeiro/tabelas</code><br>
+              <code>/api/escolas/{id}/cursos</code><br>
+              <code>/api/escolas/{id}/classes</code><br>
+              <code>/api/secretaria/school-sessions</code><br>
+              <code>/api/escola/{id}/admin/servicos</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/mensalidades/page.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/financeiro/configuracoes/precos/*</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p2-relatorios-auditoria-admin.md</code></td>
+            <td><code>/escola/{id}/admin/relatorios</code></td>
+            <td>
+              Consulta server-side na tabela <code>audit_logs</code>.<br>
+              <small style="color: #991b1b;">Link de exportação inativo no código.</small>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/relatorios/page.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p3-funcionarios-acessos.md</code></td>
+            <td><code>/escola/{id}/admin/funcionarios</code></td>
+            <td>
+              <code>/api/escolas/{id}/funcionarios</code><br>
+              <code>/api/escolas/{id}/usuarios/invite</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/funcionarios/page.tsx</code><br>
+              <code>apps/web/src/app/escola/[id]/(portal)/funcionarios/*</code><br>
+              <code>apps/web/src/app/api/escolas/[id]/funcionarios/route.ts</code><br>
+              <code>apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p3-migracao-matriculas-em-massa.md</code></td>
+            <td>
+              <code>/escola/{id}/secretaria/migracao/alunos</code><br>
+              <small>(alias: <code>/escola/{id}/operacoes/migracao/alunos</code>)</small>
+            </td>
+            <td>
+              <code>/api/migracao/upload</code><br>
+              <code>/api/migracao/alunos/validar</code><br>
+              <code>/api/migracao/alunos/importar</code><br>
+              <code>/api/migracao/{importId}/matricula/preview</code><br>
+              <code>/api/matriculas/massa/por-turma</code><br>
+              <code>/api/migracao/{importId}/erros</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/migracao/alunos/wizard.tsx</code><br>
+              <code>apps/web/src/components/migracao/MatriculasEmMassa.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p3-documentos-oficiais-lote.md</code></td>
+            <td><code>/escola/{id}/admin/documentos-oficiais</code></td>
+            <td>
+              <code>/api/secretaria/documentos-oficiais/turmas</code><br>
+              <code>/api/secretaria/documentos-oficiais/lote</code><br>
+              <code>/api/secretaria/documentos-oficiais/lote/reprocess</code><br>
+              <code>/api/secretaria/documentos-oficiais/lote/cancel</code><br>
+              <code>/api/secretaria/documentos-oficiais/turmas/{turmaId}/pendencias</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/documentos-oficiais/page.tsx</code><br>
+              <code>apps/web/src/components/secretaria/DocumentosOficiaisBatchClient.tsx</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>p3-operacoes-academicas-monitor.md</code></td>
+            <td><code>/escola/{id}/admin/operacoes-academicas</code></td>
+            <td>
+              <code>/api/secretaria/operacoes-academicas/export</code><br>
+              Consulta em tabelas <code>fechamento_academico_jobs</code>, <code>fechamento_academico_job_steps</code>, <code>pautas_lote_jobs</code>
+            </td>
+            <td>
+              <code>apps/web/src/app/escola/[id]/(portal)/admin/operacoes-academicas/page.tsx</code><br>
+              <code>apps/web/src/app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx</code>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">03 · Notas de manutenção</div>
+    <div class="content-block">
+      <ul>
+        <li>Existem fluxos do módulo Admin que reutilizam diretamente componentes e endpoints criados para o módulo da Secretaria.</li>
+        <li>Ao revisar ou atualizar qualquer SOP, verifique primeiramente o funcionamento da rota na interface (UI) e, subsequentemente, a integridade dos endpoints descritos nesta matriz.</li>
+        <li>Sempre que houver alteração ou substituição de endpoints no código-fonte, atualize este arquivo e o SOP correspondente no mesmo ciclo de desenvolvimento.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Matriz Técnica · 2026</div>
+  </div>
+</div>
+</body>
+</html>

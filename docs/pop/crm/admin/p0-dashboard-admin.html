@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P0-01 · Operar Dashboard Admin</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P0-01</div>
+    </div>
+    <div class="hd-title">Operar Dashboard <span>Admin</span>.</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.1.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Permitir que o Admin da Escola abra o Dashboard, interprete os indicadores principais, identifique alertas críticos e encaminhe ações operacionais no mesmo turno.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Início do turno do admin.</li>
+        <li>Antes de reunião operacional diária.</li>
+        <li>Antes de executar processos de alunos, turmas, currículo ou financeiro.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Aprovador Interno:</strong> Coordenação administrativa (quando houver ação de impacto)</li>
+        <li><strong>Escalonamento:</strong> Suporte interno/gestão da plataforma</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Usuário autenticado no portal da escola.</li>
+        <li>Acesso ao módulo <code>Admin</code>.</li>
+        <li>Escola selecionada corretamente.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>A rota <code>/escola/{id}/admin</code> e o alias <code>/escola/{id}/admin/dashboard</code> renderizam <code>EscolaAdminDashboard</code>.</li>
+        <li>O conteúdo real vem de <code>apps/web/src/components/layout/escola-admin/EscolaAdminDashboardContent.tsx</code>.</li>
+        <li>O <code>Radar Operacional</code> cria alertas apenas para:
+          <ul>
+            <li>turmas pendentes de validação</li>
+            <li>tabelas de preço pendentes</li>
+          </ul>
+        </li>
+        <li>Pendências de avaliação, currículo e turmas também aparecem no <code>PostWizardChecklist</code>, não necessariamente como alertas do radar.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">06 · Passo a Passo (Execução)</div>
+    <div class="content-block">
+      <ol>
+        <li>Na barra lateral, entrar em <strong>Dashboard</strong> do módulo Admin.</li>
+        <li>Validar no topo da página:
+          <ul>
+            <li>título <code>Dashboard</code></li>
+            <li>saudação (<em>Bom dia</em> / <em>Boa tarde</em> / <em>Boa noite</em>)</li>
+            <li>nome da escola</li>
+            <li>selo <code>Live</code></li>
+            <li>selo <code>Ano Letivo ...</code> (quando disponível)</li>
+          </ul>
+        </li>
+        <li>Ler o bloco <strong>Radar Operacional</strong>.
+          <img class="step-print" src="prints/p0-dashboard-admin-radar-operacional.png" alt="Radar Operacional">
+        </li>
+        <li>Se existir alerta de <code>turma(s) pendente(s) de validação</code>, abrir <code>Ver turmas</code> e criar tarefa de tratativa no mesmo dia.</li>
+        <li>Se existir alerta de <code>Tabelas de preço pendentes</code>, abrir <code>Configurar preços</code> e alinhar com o financeiro.</li>
+        <li>Ler os KPIs gerais (alunos, turmas, professores, avaliações e blocos financeiros disponíveis).</li>
+        <li>No bloco <strong>Recebido no Mês (Caixa)</strong>, verificar:
+          <img class="step-print" src="prints/p0-dashboard-admin-caixa.png" alt="Recebido no Mês (Caixa)">
+          <ul>
+            <li>valor realizado</li>
+            <li>valor previsto quando existir meta</li>
+            <li>percentual <code>Realizado Total</code></li>
+            <li>indicador de cobrança da competência</li>
+          </ul>
+        </li>
+        <li>Ler <strong>Fluxo de Caixa</strong>:
+          <ul>
+            <li>confirmar novos pagamentos</li>
+            <li>observar método de pagamento e status</li>
+          </ul>
+        </li>
+        <li>Ler <strong>Radar Financeiro</strong>:
+          <img class="step-print" src="prints/p0-dashboard-admin-radar-financeiro.png" alt="Radar Financeiro">
+          <ul>
+            <li>identificar alunos com atraso</li>
+            <li>priorizar os casos com maior valor e maior número de dias em atraso</li>
+          </ul>
+        </li>
+        <li>Verificar <code>Quick Actions</code>, <code>Notices</code>, <code>PostWizardChecklist</code> e <code>Operational Feed</code>.</li>
+        <li>Registrar o resumo operacional do turno com 3 itens:
+          <ul>
+            <li>risco acadêmico</li>
+            <li>risco financeiro</li>
+            <li>ação imediata definida</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">07 · Resultado Esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Dashboard validado sem erros de carregamento.</li>
+        <li>Alertas críticos mapeados e encaminhados.</li>
+        <li>Prioridades do turno definidas e registadas.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">08 · Erros Comuns e Correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>KPIs zerados inesperadamente</td>
+            <td>Falha de dados ou contexto de escola incorreto</td>
+            <td>Atualizar página e confirmar escola ativa</td>
+            <td>Se persistir por mais de 15 min</td>
+          </tr>
+          <tr>
+            <td>Blocos financeiros vazios</td>
+            <td>Sem movimento no período ou falha de carga</td>
+            <td>Confirmar período e tentar novamente</td>
+            <td>Se houver movimento conhecido sem exibição</td>
+          </tr>
+          <tr>
+            <td>Alerta recorrente sem resolução</td>
+            <td>Ação não foi executada no módulo destino</td>
+            <td>Abrir link do alerta e executar tratativa</td>
+            <td>Se não houver permissão para concluir</td>
+          </tr>
+          <tr>
+            <td>Dashboard não abre</td>
+            <td>Sessão expirada ou permissão insuficiente</td>
+            <td>Reautenticar e verificar perfil</td>
+            <td>Se continuar após novo login</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">09 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Print do Dashboard do início do turno.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Dashboard do Início do Turno]</span>
+        </div>
+        <li>Lista de alertas encontrados (ou registro de "sem alertas").</li>
+        <li>Registro das 3 prioridades operacionais do dia.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">10 · KPI Operacional do Procedimento</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>SLA de leitura inicial do dashboard:</strong> até 12 min.</li>
+        <li><strong>Taxa de alerta crítico sem encaminhamento no turno:</strong> 0%.</li>
+        <li><strong>Taxa de incidentes por falha de leitura de dashboard:</strong> &lt; 2%.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">11 · Riscos e Controles</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Risco:</strong> Ignorar alerta crítico de turma/currículo.
+          <br><strong>Controle:</strong> Obrigar registro de tratativa no mesmo turno.
+        </li>
+        <li style="margin-top: 10px;"><strong>Risco:</strong> Focar apenas no financeiro e perder risco acadêmico.
+          <br><strong>Controle:</strong> Checklist obrigatória com 3 categorias (acadêmico, financeiro, operação).
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">12 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Alinhado aos blocos e alertas reais do <code>EscolaAdminDashboardContent</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="../../Imagens/logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

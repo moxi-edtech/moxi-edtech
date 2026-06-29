@@ -1,5 +1,5 @@
 # KLASSE — Relatório de Validação de Contratos
-> Gerado em: 2026-06-21T20:27:06.824Z  
+> Gerado em: 2026-06-28T19:25:28.123Z  
 > Contratos: agents/specs/performance.md v1.1 · agents/ops/PILOT_CHECKLIST.md v1.2 · agents/specs/FEATURES_PRIORITY.json v1.2
 
 ## Sumário
@@ -56,6 +56,10 @@
 > count: 'exact' detectado — proibido em produção (usar MV de contagem)
 > **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
 
+🔴 `apps/web/src/app/api/super-admin/influencers/[id]/members/route.ts`
+> count: 'exact' detectado — proibido em produção (usar MV de contagem)
+> **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
+
 🔴 `apps/web/src/app/api/secretaria/rematricula/janelas/route.ts`
 > count: 'exact' detectado — proibido em produção (usar MV de contagem)
 > **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
@@ -81,6 +85,10 @@
 > **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
 
 🔴 `apps/web/src/app/api/matriculas/massa/por-turma/route.ts`
+> count: 'exact' detectado — proibido em produção (usar MV de contagem)
+> **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
+
+🔴 `apps/web/src/app/api/jobs/outbox/route.ts`
 > count: 'exact' detectado — proibido em produção (usar MV de contagem)
 > **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
 
@@ -230,6 +238,10 @@ if (!planCheck.allowed) return NextResponse.json({ ok: false, error: 'Plano não
 **Contrato:** agents/specs/performance.md → Pilar C
 
 ℹ️ `apps/web/src/components/super-admin/planos/PlanosComerciaisClient.tsx`
+> Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
+> **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
+
+ℹ️ `apps/web/src/components/super-admin/comissoes/PartnerCommissionsClient.tsx`
 > Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
 > **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
 
