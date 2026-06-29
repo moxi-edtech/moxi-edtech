@@ -20,7 +20,11 @@ import {
   Save,
   Building2,
   TrendingUp,
-  Layout
+  Layout,
+  Info,
+  Sunrise,
+  Sun,
+  Moon
 } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -218,7 +222,7 @@ function InfoBox({ children, variant = "gold" }: { children: React.ReactNode; va
   };
   return (
     <div className={`flex gap-3 p-4 rounded-2xl border text-sm leading-relaxed mb-6 ${styles[variant]}`}>
-      <span className="text-base flex-shrink-0 mt-0.5">{variant === "gold" ? "💡" : "✓"}</span>
+      <span className="text-base flex-shrink-0 mt-0.5">{variant === "gold" ? <Info size={16} className="text-amber-600" /> : "✓"}</span>
       <span>{children}</span>
     </div>
   );
@@ -608,9 +612,9 @@ function OnboardingContent() {
 
             <div className="grid grid-cols-3 gap-3 mb-8">
               {[
-                { code: "M", label: "Manhã",  icon: "🌅" },
-                { code: "T", label: "Tarde",  icon: "☀️" },
-                { code: "N", label: "Noite",  icon: "🌙" },
+                { code: "M", label: "Manhã",  icon: <Sunrise className="w-6 h-6 mx-auto text-amber-500" /> },
+                { code: "T", label: "Tarde",  icon: <Sun className="w-6 h-6 mx-auto text-amber-500" /> },
+                { code: "N", label: "Noite",  icon: <Moon className="w-6 h-6 mx-auto text-indigo-500" /> },
               ].map(t => {
                 const activo = form.turnos.includes(t.code);
                 return (
@@ -623,7 +627,7 @@ function OnboardingContent() {
                         ? "border-[#1F6B3B] bg-[#E8F5EE]"
                         : "border-slate-200 bg-white hover:border-slate-300"}`}
                   >
-                    <div className="text-2xl mb-1">{t.icon}</div>
+                    <div className="flex justify-center mb-1">{t.icon}</div>
                     <div className={`text-xl font-black ${activo ? "text-[#1F6B3B]" : "text-slate-700"}`}>
                       {t.code}
                     </div>

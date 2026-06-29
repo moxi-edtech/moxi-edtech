@@ -75,11 +75,15 @@ const withBundleAnalyzer = bundleAnalyzer({
 // Export final configuration with bundle analyzer and Sentry
 const finalConfig = withBundleAnalyzer(nextConfig);
 
-export default withSentryConfig(finalConfig, {
-  // Sentry SDK options
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  hideSourceMaps: true,
-});
+const isSentryEnabled = !!process.env.SENTRY_AUTH_TOKEN;
+
+export default isSentryEnabled
+  ? withSentryConfig(finalConfig, {
+      // Sentry SDK options
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      hideSourceMaps: true,
+    })
+  : finalConfig;
