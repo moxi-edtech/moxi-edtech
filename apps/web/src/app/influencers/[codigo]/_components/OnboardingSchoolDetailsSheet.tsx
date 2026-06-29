@@ -1,7 +1,27 @@
-import { Calendar, Check, CheckCircle2, Clock, Copy, ExternalLink, FileText, Phone, Send, Share2, Users } from "lucide-react";
+import { 
+  Calendar, 
+  Check, 
+  CheckCircle2, 
+  Clock, 
+  Copy, 
+  ExternalLink, 
+  FileText, 
+  Phone, 
+  Send, 
+  Share2, 
+  Users, 
+  CheckSquare, 
+  AlertCircle, 
+  UploadCloud, 
+  Loader2, 
+  Download,
+  ShieldCheck
+} from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -11,7 +31,9 @@ import {
   getLatestOnboardingCall,
   getLatestOnboardingCallForStep,
   getStepMeta,
+  IMPLANTATION_STATUS_CONFIG,
   type OnboardingEscola,
+  type OnboardingImplantationItem,
 } from "./partner-dashboard-model";
 
 type OnboardingSchoolDetailsSheetProps = {
@@ -22,6 +44,13 @@ type OnboardingSchoolDetailsSheetProps = {
   setSelectedStepCodeForCall: (stepCode: string) => void;
   setCallModalOpen: (open: boolean) => void;
   copyToClipboard: (text: string) => void;
+  implantationChecklistDraft: OnboardingImplantationItem[];
+  handleToggleImplantationItem: (code: string) => void;
+  handleChangeImplantationNote: (code: string, note: string) => void;
+  handleSaveImplantationChecklist: () => Promise<void>;
+  savingImplantationChecklist: boolean;
+  codigo: string;
+  loadData: (force?: boolean) => Promise<void>;
 };
 
 export function OnboardingSchoolDetailsSheet({
@@ -32,7 +61,62 @@ export function OnboardingSchoolDetailsSheet({
   setSelectedStepCodeForCall,
   setCallModalOpen,
   copyToClipboard,
+  implantationChecklistDraft,
+  handleToggleImplantationItem,
+  handleChangeImplantationNote,
+  handleSaveImplantationChecklist,
+  savingImplantationChecklist,
+  codigo,
+  loadData,
 }: OnboardingSchoolDetailsSheetProps) {
+  const [acceptanceFile, setAcceptanceFile] = useState<File | null>(null);
+  const [signedBy, setSignedBy] = useState("");
+  const [signedRole, setSignedRole] = useState("Director Geral");
+  const [signedAt, setSignedAt] = useState("");
+  const [acceptanceNotes, setAcceptanceNotes] = useState("");
+  const [submittingAcceptance, setSubmittingAcceptance] = useState(false);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+
+  const handleUploadAndValidateAcceptance = async () => {
+    if (!selectedSchoolForDetails?.token || !acceptanceFile || !signedBy.trim() || !signedAt.trim()) {
+      toast.error("Preencha todos os campos obrigatórios e anexe o arquivo.");
+      return;
+    }
+
+    setSubmittingAcceptance(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", acceptanceFile);
+      formData.append("signed_by", signedBy);
+      formData.append("signed_role", signedRole);
+      formData.append("signed_at", new Date(signedAt).toISOString());
+      formData.append("notes", acceptanceNotes);
+
+      const res = await fetch(`/api/influencers/${codigo}/onboarding/${selectedSchoolForDetails.token}/acceptance`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        toast.error(data?.error || "Erro ao validar o Termo de Aceite.");
+        return;
+      }
+
+      toast.success("Termo de Aceite validado com sucesso! Escola ativada.");
+      setAcceptanceFile(null);
+      setSignedBy("");
+      setSignedAt("");
+      setAcceptanceNotes("");
+      await loadData(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro de conexão ao validar Termo de Aceite.");
+    } finally {
+      setSubmittingAcceptance(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       {/* Sheet Drawer for Onboarding School Details */}
@@ -154,9 +238,12 @@ export function OnboardingSchoolDetailsSheet({
               )}
 
               <Tabs defaultValue="progresso" className="w-full flex-1 flex flex-col min-h-0">
-                <TabsList className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl mb-2">
+                <TabsList className="grid grid-cols-3 bg-slate-100 p-1 rounded-xl mb-2">
                   <TabsTrigger value="progresso" className="rounded-lg font-bold text-xs uppercase tracking-wider">
                     Progresso (SLA)
+                  </TabsTrigger>
+                  <TabsTrigger value="implantacao" className="rounded-lg font-bold text-xs uppercase tracking-wider">
+                    Implantação
                   </TabsTrigger>
                   <TabsTrigger value="ficha" className="rounded-lg font-bold text-xs uppercase tracking-wider">
                     Ficha da Escola
@@ -248,7 +335,7 @@ export function OnboardingSchoolDetailsSheet({
                                   </span>
                                 )}
                                 {step.completed_at && (
-                                  <span className="flex items-center gap-1.5 text-klasse-green">
+                                  <span className="flex items-center gap-1.5 text-[#1F6B3B]">
                                     <CheckCircle2 size={10} /> Concluído a: {format(new Date(step.completed_at), "dd/MM/yyyy", { locale: pt })}
                                   </span>
                                 )}
@@ -282,7 +369,206 @@ export function OnboardingSchoolDetailsSheet({
                   </div>
                 </TabsContent>
 
-                {/* TAB 2: Ficha da Escola */}
+                {/* TAB 2: Implantação e Checklist */}
+                <TabsContent value="implantacao" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
+                  {/* Status da Implantação */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-[#1F6B3B]" />
+                      Estado de Implantação
+                    </h4>
+                    {(() => {
+                      const impStatus = selectedSchoolForDetails.implantation_status || "implantacao_em_andamento";
+                      const statusMeta = IMPLANTATION_STATUS_CONFIG[impStatus as keyof typeof IMPLANTATION_STATUS_CONFIG] || IMPLANTATION_STATUS_CONFIG.implantacao_em_andamento;
+                      return (
+                        <div className={`p-4 rounded-2xl border ${statusMeta.color} flex items-center justify-between`}>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status Atual</p>
+                            <p className="text-xs font-black mt-0.5">{statusMeta.label}</p>
+                          </div>
+                          {impStatus === "aceite_validado" ? (
+                            <Badge className="bg-emerald-600 text-white font-bold uppercase text-[8px] border-none px-2 py-0.5 rounded shadow-none">Ativação Pronta</Badge>
+                          ) : impStatus === "aguardando_aceite" ? (
+                            <Badge className="bg-amber-500 text-white font-bold uppercase text-[8px] border-none px-2 py-0.5 rounded shadow-none animate-pulse">Aguardando Termo</Badge>
+                          ) : (
+                            <Badge className="bg-blue-600 text-white font-bold uppercase text-[8px] border-none px-2 py-0.5 rounded shadow-none">Em Progresso</Badge>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Checklist */}
+                  <div className="space-y-3 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                        <CheckSquare size={14} className="text-slate-400" />
+                        Checklist de Implantação Técnica
+                      </h4>
+                      {savingImplantationChecklist && (
+                        <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#1F6B3B]" /> A salvar...
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Estes itens operacionais devem estar concluídos para formalizar a entrega que ativa a escola e libera as comissões.
+                    </p>
+
+                    <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                      {implantationChecklistDraft.map((item) => (
+                        <div key={item.code} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200/60 bg-white shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={item.completed}
+                              onChange={() => handleToggleImplantationItem(item.code)}
+                              disabled={savingImplantationChecklist || selectedSchoolForDetails.implantation_status === 'aceite_validado'}
+                              className="w-4 h-4 text-[#1F6B3B] border-slate-300 rounded focus:ring-[#1F6B3B] cursor-pointer disabled:opacity-50"
+                            />
+                            <span className={`text-xs font-bold ${item.completed ? 'text-[#1F6B3B]' : 'text-slate-700'}`}>
+                              {item.label}
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={item.note || ''}
+                            onChange={(e) => handleChangeImplantationNote(item.code, e.target.value)}
+                            placeholder="Adicionar nota técnica..."
+                            disabled={savingImplantationChecklist || selectedSchoolForDetails.implantation_status === 'aceite_validado'}
+                            className="w-full text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:bg-white placeholder-slate-400"
+                          />
+                        </div>
+                      ))}
+                      {selectedSchoolForDetails.implantation_status !== 'aceite_validado' && (
+                        <Button
+                          onClick={handleSaveImplantationChecklist}
+                          disabled={savingImplantationChecklist}
+                          className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-black text-xs h-10 mt-2 border-none"
+                        >
+                          {savingImplantationChecklist ? "A salvar checklist..." : "Salvar Checklist Técnica"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Termo de Aceite */}
+                  <div className="space-y-3 border-t border-slate-100 pt-4">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <FileText size={14} className="text-slate-400" />
+                      Termo de Aceite de Ativação
+                    </h4>
+
+                    {selectedSchoolForDetails.implantation_status === "aceite_validado" ? (
+                      <div className="rounded-2xl border border-emerald-500/10 bg-emerald-500/5 p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-[#1f6b3b] text-xs font-bold">
+                          <CheckCircle2 size={16} className="text-emerald-600" />
+                          Termo de Aceite validado com sucesso!
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                          <p>Signatário: <span className="font-bold text-slate-800">{selectedSchoolForDetails.acceptance_signed_by}</span></p>
+                          <p>Cargo: <span className="font-bold text-slate-800">{selectedSchoolForDetails.acceptance_signed_role || "Diretor Geral"}</span></p>
+                          <p className="col-span-2">Assinado em: <span className="font-bold text-slate-800">{selectedSchoolForDetails.acceptance_signed_at ? format(new Date(selectedSchoolForDetails.acceptance_signed_at), "dd/MM/yyyy HH:mm", { locale: pt }) : "N/I"}</span></p>
+                          {selectedSchoolForDetails.acceptance_notes && <p className="col-span-2">Notas: <span className="font-semibold text-slate-500 italic">"{selectedSchoolForDetails.acceptance_notes}"</span></p>}
+                        </div>
+                        {selectedSchoolForDetails.acceptance_term_file_path && (
+                          <Button asChild className="w-full h-9 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-zinc-700 shadow-none">
+                            <a href={`${supabaseUrl}/storage/v1/object/public/onboarding/${selectedSchoolForDetails.acceptance_term_file_path}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 no-underline">
+                              <Download size={13} /> Descarregar Termo de Aceite
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    ) : selectedSchoolForDetails.implantation_status === "aguardando_aceite" ? (
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-4">
+                        <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                          O checklist técnico está concluído! Para ativar o faturamento da escola e liberar as comissões do parceiro, anexe o Termo de Aceite assinado pelo diretor e submeta.
+                        </p>
+                        <div className="space-y-3 bg-white border border-slate-200/50 p-3.5 rounded-xl">
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Nome do Diretor/Signatário</label>
+                            <input
+                              type="text"
+                              value={signedBy}
+                              onChange={(e) => setSignedBy(e.target.value)}
+                              placeholder="Ex: Dr. António Manuel"
+                              className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-900 focus:bg-white outline-none"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Cargo</label>
+                              <input
+                                type="text"
+                                value={signedRole}
+                                onChange={(e) => setSignedRole(e.target.value)}
+                                placeholder="Ex: Diretor Geral"
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-900 focus:bg-white outline-none"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Data de Assinatura</label>
+                              <input
+                                type="date"
+                                value={signedAt}
+                                onChange={(e) => setSignedAt(e.target.value)}
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-900 focus:bg-white outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Observações de Aceite (opcional)</label>
+                            <textarea
+                              value={acceptanceNotes}
+                              onChange={(e) => setAcceptanceNotes(e.target.value)}
+                              placeholder="Notas ou comentários adicionais..."
+                              rows={2}
+                              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:bg-white outline-none resize-none"
+                            />
+                          </div>
+                          <div className="space-y-2 pt-2 border-t border-slate-100">
+                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Ficheiro do Termo (.pdf, imagens, Word)</label>
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                              onChange={(e) => setAcceptanceFile(e.target.files?.[0] ?? null)}
+                              className="block w-full text-xs text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-2"
+                            />
+                          </div>
+                          <Button
+                            onClick={handleUploadAndValidateAcceptance}
+                            disabled={submittingAcceptance || !signedBy.trim() || !signedAt.trim() || !acceptanceFile}
+                            className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-black text-xs h-10 mt-2 border-none"
+                          >
+                            {submittingAcceptance ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 text-white" />
+                                Validando Termo...
+                              </>
+                            ) : (
+                              <>
+                                <UploadCloud size={14} className="mr-1.5 text-white" />
+                                Submeter e Validar Termo de Aceite
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-500/10 bg-amber-500/5 p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h5 className="text-xs font-bold text-amber-955">Checklist Incompleto</h5>
+                          <p className="text-[11px] text-amber-900 mt-1 leading-relaxed font-semibold">
+                            Para poder carregar o Termo de Aceite assinado, você precisa primeiro concluir todos os 8 itens do Checklist de Implantação técnica acima e clicar em "Salvar Checklist Técnica".
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* TAB 3: Ficha da Escola */}
                 <TabsContent value="ficha" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
                   {/* Informações de Contato */}
                   <div className="space-y-3.5">
@@ -350,7 +636,7 @@ export function OnboardingSchoolDetailsSheet({
                                   {up.file_path.split('/').pop()}
                                 </span>
                                 <a
-                                  href={`https://<project-ref>.supabase.co/storage/v1/object/public/onboarding/${up.file_path}`}
+                                  href={`${supabaseUrl}/storage/v1/object/public/onboarding/${up.file_path}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-blue-600 hover:text-blue-700 underline text-[9px] font-semibold"
@@ -416,7 +702,7 @@ export function OnboardingSchoolDetailsSheet({
               </Tabs>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+      </SheetContent>
+    </Sheet>
   );
 }

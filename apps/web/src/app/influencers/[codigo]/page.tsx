@@ -2430,6 +2430,13 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         setSelectedStepCodeForCall={setSelectedStepCodeForCall}
         setCallModalOpen={setCallModalOpen}
         copyToClipboard={copyToClipboard}
+        implantationChecklistDraft={implantationChecklistDraft}
+        handleToggleImplantationItem={handleToggleImplantationItem}
+        handleChangeImplantationNote={handleChangeImplantationNote}
+        handleSaveImplantationChecklist={handleSaveImplantationChecklist}
+        savingImplantationChecklist={savingImplantationChecklist}
+        codigo={codigo}
+        loadData={loadData}
       />
 
       <CrmLeadDetailsSheet

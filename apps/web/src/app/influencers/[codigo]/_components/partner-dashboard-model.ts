@@ -62,6 +62,13 @@ export interface OnboardingEscola {
   steps?: OnboardingStep[];
   calls?: OnboardingCall[];
   uploads?: OnboardingUpload[];
+  acceptance_term_file_path?: string | null;
+  acceptance_signed_by?: string | null;
+  acceptance_signed_role?: string | null;
+  acceptance_signed_at?: string | null;
+  acceptance_validated_at?: string | null;
+  acceptance_validated_by?: string | null;
+  acceptance_notes?: string | null;
 }
 
 export type PartnerCommissionSummary = {
