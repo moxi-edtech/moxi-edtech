@@ -70,6 +70,9 @@ import { useRouter } from "next/navigation";
 import PartnerAppShell from "@/components/layout/influencer/PartnerAppShell";
 import { OnboardingSchoolDetailsSheet } from "./_components/OnboardingSchoolDetailsSheet";
 import { CrmLeadDetailsSheet } from "./_components/CrmLeadDetailsSheet";
+import { CampanhaTabContent } from "./_components/CampanhaTabContent";
+import { EquipeTabContent } from "./_components/EquipeTabContent";
+import { MateriaisTabContent } from "./_components/MateriaisTabContent";
 
 import {
   CAMPAIGN_KITS,
@@ -979,129 +982,12 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     >
       <Tabs defaultValue="crm" value={activeTab} onValueChange={setActiveTab as any} className="w-full">
           <TabsContent value="campanha" className="m-0 space-y-8">
-            <Card className="overflow-hidden rounded-[32px] border-slate-200 bg-slate-950 text-white shadow-xl">
-              <CardContent className="grid gap-8 p-8 lg:grid-cols-[1.1fr_0.9fr] lg:p-10">
-                <div className="space-y-6">
-                  <Badge className="w-fit border border-white/10 bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-klasse-gold">
-                    Missão da semana
-                  </Badge>
-                  <div className="space-y-3">
-                    <h2 className="max-w-2xl text-3xl font-black tracking-tight md:text-5xl">
-                      Fazer escolas sentirem que precisam de matrícula online e portal do aluno.
-                  </h2>
-                    <p className="max-w-2xl text-sm font-medium leading-relaxed text-slate-300 md:text-base">
-                      A campanha pública cria pressão social. O diagnóstico entra depois, quando o diretor quer saber se a escola está pronta para modernizar.
-                    </p>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {WEEKLY_ACTIONS.map((action, index) => (
-                      <div key={action} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-xl bg-klasse-gold text-xs font-black text-slate-950">
-                          {index + 1}
-                        </div>
-                        <p className="text-xs font-bold leading-relaxed text-slate-200">{action}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur">
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-klasse-gold text-slate-950">
-                      <Megaphone size={22} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Oferta pública</p>
-                      <h3 className="font-black text-white">Escola Moderna</h3>
-                    </div>
-                  </div>
-                  <p className="mb-5 text-sm font-medium leading-relaxed text-slate-300">
-                    Use este link para posts, stories e mensagens para pais. Ele apresenta a ideia de modernização antes de pedir o diagnóstico.
-                  </p>
-                  <div className="space-y-3">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
-                      <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Link principal</p>
-                      <div className="flex items-center gap-2">
-                        <code className="min-w-0 flex-1 truncate text-xs font-bold text-klasse-gold">{campaignUrl}</code>
-                        <Button onClick={() => copyToClipboard(campaignUrl)} className="h-9 rounded-xl bg-white px-3 text-[10px] font-black text-slate-950 hover:bg-slate-100">
-                          <Copy size={13} />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
-                      <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Pedido para diretores</p>
-                      <div className="flex items-center gap-2">
-                        <code className="min-w-0 flex-1 truncate text-xs font-bold text-slate-300">{onboardingUrl}</code>
-                        <Button onClick={() => copyToClipboard(onboardingUrl)} className="h-9 rounded-xl bg-white/10 px-3 text-[10px] font-black text-white hover:bg-white/20">
-                          <Copy size={13} />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
-              {CAMPAIGN_KITS.map((kit) => (
-                <Card key={kit.title} className="rounded-[28px] border-slate-200 bg-white shadow-sm">
-                  <CardContent className="flex h-full flex-col gap-5 p-6">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-                        <kit.icon size={22} />
-                      </div>
-                      <Badge variant="outline" className="rounded-xl text-[9px] font-black uppercase tracking-widest">
-                        {kit.audience}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-black tracking-tight text-slate-900">{kit.title}</h3>
-                      <p className="text-sm font-medium leading-relaxed text-slate-600">{kit.copy}</p>
-                    </div>
-                    <Button
-                      onClick={() => copyToClipboard(`${kit.copy}\n\n${kit.linkType === "diagnosis" ? onboardingUrl : campaignUrl}`)}
-                      className="mt-auto h-11 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800"
-                    >
-                      <Copy size={14} />
-                      Copiar mensagem
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <Card className="rounded-[28px] border-amber-100 bg-amber-50 shadow-sm">
-                <CardContent className="space-y-4 p-6">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-                    <Target size={22} />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-black text-amber-950">Quando usar o pedido da escola</h3>
-                    <p className="text-sm font-medium leading-relaxed text-amber-900">
-                      Use depois que a escola demonstrar interesse. A pergunta certa é: "Quer iniciar o pedido para a equipa KLASSE avaliar a modernização da sua escola?"
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-[28px] border-slate-200 bg-white shadow-sm">
-                <CardContent className="grid gap-4 p-6 sm:grid-cols-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passo 1</p>
-                    <p className="mt-2 text-sm font-bold text-slate-800">Criar pressão pública com portal do aluno e matrícula online.</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passo 2</p>
-                    <p className="mt-2 text-sm font-bold text-slate-800">Direcionar diretores interessados para o pedido de onboarding.</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passo 3</p>
-                    <p className="mt-2 text-sm font-bold text-slate-800">A equipe KLASSE faz follow-up com o contexto do resultado.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <CampanhaTabContent
+              codigo={codigo}
+              campaignUrl={campaignUrl}
+              onboardingUrl={onboardingUrl}
+              copyToClipboard={copyToClipboard}
+            />
           </TabsContent>
 
           <TabsContent value="crm" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -2253,339 +2139,33 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           </TabsContent>
 
           <TabsContent value="equipe" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Operação AELS</p>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Equipe do Parceiro</h2>
-                <p className="mt-1 text-xs font-medium text-slate-500">
-                  Controle quem entra no CRM e qual responsabilidade cada operador assume no fluxo comercial.
-                </p>
-              </div>
-              <Button
-                onClick={() => loadTeamMembers(true)}
-                disabled={loadingTeam || !canManageTeam}
-                className="h-10 rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-widest text-white hover:bg-slate-800"
-              >
-                {loadingTeam ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
-                Atualizar
-              </Button>
-            </div>
-
-            {!canManageTeam ? (
-              <Card className="rounded-2xl border-amber-100 bg-amber-50 shadow-sm">
-                <CardContent className="flex items-start gap-4 p-6">
-                  <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-amber-700" />
-                  <div>
-                    <h3 className="text-sm font-black text-amber-950">Acesso reservado</h3>
-                    <p className="mt-1 text-xs font-semibold leading-relaxed text-amber-800">
-                      Apenas o proprietário ou admin do parceiro pode gerir membros, papéis e PINs de acesso.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-                <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base font-black text-zinc-900">Novo membro</CardTitle>
-                    <CardDescription className="text-xs">
-                      Crie operadores para vendas, implantação e suporte L1 sem partilhar o PIN do proprietário.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Nome</label>
-                      <input
-                        value={newMemberName}
-                        onChange={(event) => setNewMemberName(event.target.value)}
-                        placeholder="Ex: Maria Comercial"
-                        className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
-                      />
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Papel</label>
-                        <select
-                          value={newMemberRole}
-                          onChange={(event) => setNewMemberRole(event.target.value as typeof newMemberRole)}
-                          className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
-                        >
-                          {MANAGEABLE_PARTNER_MEMBER_ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {PARTNER_ROLE_LABELS[role]}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">PIN inicial</label>
-                        <input
-                          value={newMemberPin}
-                          onChange={(event) => setNewMemberPin(event.target.value)}
-                          placeholder="mínimo 4 dígitos"
-                          type="password"
-                          className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleCreateTeamMember}
-                      disabled={savingTeamMember}
-                      className="h-11 w-full rounded-xl bg-klasse-gold text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-klasse-gold/90"
-                    >
-                      {savingTeamMember ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                      Adicionar membro
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base font-black text-zinc-900">Membros cadastrados</CardTitle>
-                    <CardDescription className="text-xs">
-                      Papéis definem responsabilidade operacional; admin também consegue gerir a equipe.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingTeam ? (
-                      <div className="flex h-48 items-center justify-center text-zinc-400">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                      </div>
-                    ) : teamMembers.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center">
-                        <Users className="mx-auto mb-3 h-8 w-8 text-zinc-300" />
-                        <p className="text-sm font-bold text-zinc-600">Nenhum membro encontrado.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {teamMembers.map((member) => (
-                          <div key={member.id} className="rounded-xl border border-zinc-200/70 bg-zinc-50/70 p-4">
-                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="truncate text-sm font-black text-zinc-900">{member.nome}</p>
-                                  <Badge className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-none ${
-                                    member.ativo
-                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                      : "bg-zinc-200 text-zinc-500 border border-zinc-300"
-                                  }`}>
-                                    {member.ativo ? "Ativo" : "Inativo"}
-                                  </Badge>
-                                </div>
-                                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                                  {PARTNER_ROLE_LABELS[member.role] ?? member.role}
-                                </p>
-                              </div>
-
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                {member.role !== "owner" && (
-                                  <select
-                                    value={member.role}
-                                    disabled={savingTeamMember}
-                                    onChange={(event) =>
-                                      handleUpdateTeamMember(member.id, { role: event.target.value as PartnerMemberRole })
-                                    }
-                                    className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-bold text-zinc-700 outline-none"
-                                  >
-                                    {MANAGEABLE_PARTNER_MEMBER_ROLES.map((role) => (
-                                      <option key={role} value={role}>
-                                        {PARTNER_ROLE_LABELS[role]}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                                {member.role !== "owner" && (
-                                  <Button
-                                    onClick={() => handleUpdateTeamMember(member.id, { ativo: !member.ativo })}
-                                    disabled={savingTeamMember}
-                                    variant="outline"
-                                    className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700"
-                                  >
-                                    {member.ativo ? "Desativar" : "Ativar"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex flex-col gap-2 border-t border-zinc-200/70 pt-4 sm:flex-row">
-                              <div className="relative flex-1">
-                                <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-                                <input
-                                  value={resetPins[member.id] ?? ""}
-                                  onChange={(event) => setResetPins((current) => ({ ...current, [member.id]: event.target.value }))}
-                                  placeholder="Novo PIN"
-                                  type="password"
-                                  className="h-9 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-3 text-xs font-semibold text-zinc-900 outline-none"
-                                />
-                              </div>
-                              <Button
-                                onClick={() => handleUpdateTeamMember(member.id, { pin: resetPins[member.id] ?? "" })}
-                                disabled={savingTeamMember || !(resetPins[member.id] ?? "").trim()}
-                                className="h-9 rounded-lg bg-zinc-900 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-zinc-800"
-                              >
-                                Redefinir PIN
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+            <EquipeTabContent
+              loadingTeam={loadingTeam}
+              canManageTeam={canManageTeam}
+              loadTeamMembers={loadTeamMembers}
+              newMemberName={newMemberName}
+              setNewMemberName={setNewMemberName}
+              newMemberRole={newMemberRole}
+              setNewMemberRole={setNewMemberRole}
+              newMemberPin={newMemberPin}
+              setNewMemberPin={setNewMemberPin}
+              savingTeamMember={savingTeamMember}
+              handleCreateTeamMember={handleCreateTeamMember}
+              teamMembers={teamMembers}
+              handleUpdateTeamMember={handleUpdateTeamMember}
+              resetPins={resetPins}
+              setResetPins={setResetPins}
+            />
           </TabsContent>
 
           <TabsContent value="materiais" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {assets.map((asset) => (
-                <Card key={asset.id} className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col">
-                  <div className="p-5 flex-1 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-600 border border-zinc-100">
-                        {asset.tipo === 'image' && <ImageIcon size={14} />}
-                        {asset.tipo === 'video' && <Video size={14} />}
-                        {asset.tipo === 'script' && <FileText size={14} />}
-                      </div>
-                      <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider">{asset.tipo}</Badge>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 text-sm">{asset.titulo}</h4>
-                      {asset.descricao && <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{asset.descricao}</p>}
-                    </div>
-                    {asset.tipo === 'script' && asset.conteudo && (
-                      <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/60 text-[11px] text-zinc-600 font-medium italic relative group">
-                        "{asset.conteudo}"
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 bg-zinc-50 border-t border-zinc-200/50">
-                    {asset.tipo === 'script' ? (
-                      <Button 
-                        onClick={() => copyToClipboard(asset.conteudo!)}
-                        className="w-full bg-zinc-950 hover:bg-zinc-800 text-white rounded-lg font-semibold text-xs gap-2 border-none h-9"
-                      >
-                        <Copy size={13} />
-                        Copiar Texto
-                      </Button>
-                    ) : (
-                      <Button 
-                        asChild
-                        className="w-full bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 rounded-lg font-semibold text-xs gap-2 h-9 shadow-none"
-                      >
-                        <a href={asset.url || '#'} target="_blank" rel="noreferrer" className="flex items-center justify-center w-full h-full no-underline">
-                          {asset.tipo === 'image' ? <Download size={13} /> : <ArrowRight size={13} />}
-                          {asset.tipo === 'image' ? 'Descarregar' : 'Abrir Link'}
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-              ))}
-              {assets.length === 0 && (
-                <div className="col-span-full p-20 text-center bg-white border border-dashed border-zinc-200 rounded-xl">
-                   <p className="text-zinc-400 font-medium italic text-xs">Nenhum material disponível de momento.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Modelos de Planilhas e Importação */}
-            <div className="space-y-4 pt-4">
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">Modelos de Planilhas para Onboarding</h3>
-                <p className="text-xs text-zinc-500 font-medium">Use estes modelos para ajudar as escolas indicadas a estruturarem os dados de alunos e professores antes da carga técnica.</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col p-5 space-y-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
-                        <FileSpreadsheet size={16} />
-                      </div>
-                      <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-100 shadow-none">Alunos</Badge>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 text-sm">Planilha de Carga de Alunos</h4>
-                      <p className="text-xs text-zinc-500 mt-1 leading-relaxed">Modelo padrão contendo colunas obrigatórias como Nome Completo, Gênero, Data de Nascimento, BI e NIF.</p>
-                    </div>
-                  </div>
-                  <div className="pt-2">
-                    <Button 
-                      asChild
-                      className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-lg font-semibold text-xs gap-2 h-9 border-none"
-                    >
-                      <a href="/templates/KLASSE_Modelo_Importacao_Alunos_v1.xlsx" download="KLASSE_Modelo_Importacao_Alunos_v1.xlsx" className="flex items-center justify-center w-full h-full no-underline">
-                        <Download size={13} />
-                        Baixar Modelo (.xlsx)
-                      </a>
-                    </Button>
-                  </div>
-                </Card>
-
-                <Card className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col p-5 space-y-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
-                        <FileSpreadsheet size={16} />
-                      </div>
-                      <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-purple-50 text-purple-700 border-purple-100 shadow-none">Professores</Badge>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-zinc-900 text-sm">Planilha de Carga de Professores</h4>
-                      <p className="text-xs text-zinc-500 mt-1 leading-relaxed">Modelo padrão para mapeamento do corpo docente, qualificações e disciplinas que lecionam.</p>
-                    </div>
-                  </div>
-                  <div className="pt-2">
-                    <Button 
-                      asChild
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-xs gap-2 h-9 border-none"
-                    >
-                      <a href="/templates/06_professores_atribuicoes_template.xlsx" download="06_professores_atribuicoes_template.xlsx" className="flex items-center justify-center w-full h-full no-underline">
-                        <Download size={13} />
-                        Baixar Modelo (.xlsx)
-                      </a>
-                    </Button>
-                  </div>
-                </Card>
-              </div>
-            </div>
-
-            <div className="grid gap-4 rounded-2xl bg-[#09090b] border border-zinc-900 p-6 text-center md:grid-cols-2">
-              <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
-                <h4 className="text-sm font-bold tracking-tight text-white uppercase">Link principal da campanha</h4>
-                <div className="mx-auto flex max-w-md items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-1.5">
-                  <code className="flex-1 truncate px-3 text-left text-xs font-semibold text-amber-400 font-mono">
-                    klasse.ao/escola-moderna?ref={codigo}
-                  </code>
-                  <Button
-                    onClick={() => copyToClipboard(campaignUrl)}
-                    variant="ghost"
-                    className="h-8 rounded-md bg-white hover:bg-zinc-100 text-[10px] font-semibold text-zinc-950 px-3 border-none"
-                  >
-                    Copiar
-                  </Button>
-                </div>
-                <p className="text-[10px] text-zinc-500 font-medium">Use em posts, stories e mensagens para pais.</p>
-              </div>
-
-              <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
-                <h4 className="text-sm font-bold tracking-tight text-white uppercase">Link para diretores</h4>
-                <div className="mx-auto flex max-w-md items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-1.5">
-                  <code className="flex-1 truncate px-3 text-left text-xs font-semibold text-zinc-300 font-mono">
-                    app.klasse.ao/onboarding?ref={codigo}
-                  </code>
-                  <Button
-                    onClick={() => copyToClipboard(onboardingUrl)}
-                    variant="ghost"
-                    className="h-8 rounded-md bg-white hover:bg-zinc-100 text-[10px] font-semibold text-zinc-950 px-3 border-none"
-                  >
-                    Copiar
-                  </Button>
-                </div>
-                <p className="text-[10px] text-zinc-500 font-medium">Use quando falar com diretores interessados.</p>
-              </div>
-            </div>
+            <MateriaisTabContent
+              assets={assets}
+              copyToClipboard={copyToClipboard}
+              codigo={codigo}
+              campaignUrl={campaignUrl}
+              onboardingUrl={onboardingUrl}
+            />
           </TabsContent>
         </Tabs>
 
