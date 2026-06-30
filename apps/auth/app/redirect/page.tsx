@@ -218,47 +218,6 @@ function buildSessionHandoffUrl(destination: string, payload: string) {
   return handoffUrl.toString();
 }
 
-function renderSessionHandoff(handoffUrl: string) {
-  const handoff = new URL(handoffUrl);
-  const payload = handoff.searchParams.get("payload") ?? "";
-  console.info(
-    JSON.stringify({
-      event: "auth_handoff_client_navigation_rendered",
-      route: "/redirect",
-      timestamp: new Date().toISOString(),
-      destination: `${handoff.origin}${handoff.pathname}`,
-      payload_size: payload.length,
-    })
-  );
-
-  return (
-    <main className="grid min-h-screen place-items-center bg-white p-6 font-sans">
-      <div className="flex flex-col items-center space-y-4 text-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
-        <p className="text-sm font-medium text-slate-600">Redirecionando...</p>
-        <p className="text-xs text-slate-400">
-          Se não avançar automaticamente,{" "}
-          <a
-            href={handoffUrl}
-            className="text-indigo-600 underline hover:text-indigo-800 font-semibold"
-          >
-            toque aqui
-          </a>.
-        </p>
-      </div>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            setTimeout(function() {
-              window.location.replace(${JSON.stringify(handoffUrl)});
-            }, 50);
-          `,
-        }}
-      />
-    </main>
-  );
-}
-
 async function resolveGlobalRole(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   userId: string,
@@ -421,16 +380,20 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
       session?.refresh_token &&
       shouldUseSessionHandoff(destination, bases.k12)
     ) {
-      return renderSessionHandoff(
-        buildSessionHandoffUrl(
+      const handoffUrl = buildSessionHandoffUrl(
+        destination,
+        createSessionHandoffPayload({
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
           destination,
-          createSessionHandoffPayload({
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
-            destination,
-          })
-        )
+        })
       );
+      logRedirectCookieState("auth_handoff_server_redirect", {
+        host,
+        destination: new URL(destination).pathname,
+        handoff_origin: new URL(handoffUrl).origin,
+      });
+      redirect(handoffUrl);
     }
     redirect(destination);
   }
@@ -529,16 +492,20 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
         session?.refresh_token &&
         shouldUseSessionHandoff(destination, bases.k12)
       ) {
-        return renderSessionHandoff(
-          buildSessionHandoffUrl(
+        const handoffUrl = buildSessionHandoffUrl(
+          destination,
+          createSessionHandoffPayload({
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
             destination,
-            createSessionHandoffPayload({
-              accessToken: session.access_token,
-              refreshToken: session.refresh_token,
-              destination,
-            })
-          )
+          })
         );
+        logRedirectCookieState("auth_handoff_server_redirect", {
+          host,
+          destination: new URL(destination).pathname,
+          handoff_origin: new URL(handoffUrl).origin,
+        });
+        redirect(handoffUrl);
       }
       redirect(destination);
     }
@@ -599,16 +566,20 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     session?.refresh_token &&
     shouldUseSessionHandoff(destination, bases.k12)
   ) {
-    return renderSessionHandoff(
-      buildSessionHandoffUrl(
+    const handoffUrl = buildSessionHandoffUrl(
+      destination,
+      createSessionHandoffPayload({
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
         destination,
-        createSessionHandoffPayload({
-          accessToken: session.access_token,
-          refreshToken: session.refresh_token,
-          destination,
-        })
-      )
+      })
     );
+    logRedirectCookieState("auth_handoff_server_redirect", {
+      host,
+      destination: new URL(destination).pathname,
+      handoff_origin: new URL(handoffUrl).origin,
+    });
+    redirect(handoffUrl);
   }
 
   redirect(destination);

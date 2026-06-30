@@ -278,90 +278,14 @@ async function handleHandoff(request: Request) {
     source: "session_handoff",
   });
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html lang="pt">
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Entrando...</title>
-      <style>
-        body {
-          margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          background-color: #ffffff;
-          color: #334155;
-        }
-        .container {
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 16px;
-        }
-        .spinner {
-          width: 32px;
-          height: 32px;
-          border: 4px solid #e2e8f0;
-          border-top-color: #475569;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        .text {
-          font-size: 14px;
-          font-weight: 500;
-        }
-        .fallback {
-          font-size: 12px;
-          color: #94a3b8;
-        }
-        .link {
-          color: #4f46e5;
-          text-decoration: underline;
-        }
-        .link:hover {
-          color: #3730a3;
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="spinner"></div>
-        <div class="text">Entrando...</div>
-        <div class="fallback">
-          Se não avançar automaticamente, <a href="${destination.toString()}" class="link">toque aqui</a>.
-        </div>
-      </div>
-      <script>
-        setTimeout(function() {
-          window.location.replace(${JSON.stringify(destination.toString())});
-        }, 50);
-      </script>
-    </body>
-    </html>
-  `;
-
-  const htmlResponse = new NextResponse(htmlContent, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-    },
-  });
-
-  clearExistingAuthCookies(request, htmlResponse);
+  const redirectResponse = NextResponse.redirect(destination);
+  clearExistingAuthCookies(request, redirectResponse);
 
   let cookieWriteMeta: { expiresAt: number; expiresIn: number; storageKey: string; chunkCount: number };
   try {
     cookieWriteMeta = writeSupabaseSessionCookies({
       requestUrl,
-      response: htmlResponse,
+      response: redirectResponse,
       accessToken: payload.access_token,
       refreshToken: payload.refresh_token,
     });
@@ -384,12 +308,12 @@ async function handleHandoff(request: Request) {
     chunk_count: cookieWriteMeta.chunkCount,
   });
 
-  logHandoffEvent("web_handoff_client_navigation_rendered", {
+  logHandoffEvent("web_handoff_http_redirect_issued", {
     method: request.method,
     destination: destination.pathname,
   });
 
-  return htmlResponse;
+  return redirectResponse;
 }
 
 export async function GET(request: Request) {
