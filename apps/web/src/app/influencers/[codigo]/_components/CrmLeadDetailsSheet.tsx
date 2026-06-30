@@ -306,16 +306,38 @@ export function CrmLeadDetailsSheet({
                         {selectedCrmLead.proposal_file_name || "Nenhum anexo comercial enviado ainda."}
                       </p>
                     </div>
-                    {selectedCrmLead.proposal_file_name ? (
+                    <div className="flex gap-2">
                       <Button
-                        onClick={handleOpenCommercialProposal}
-                        disabled={openingProposalFile}
+                        type="button"
+                        onClick={() => {
+                          const params = new URLSearchParams({
+                            escola: selectedCrmLead.nome_escola,
+                            contacto: selectedCrmLead.nome_contacto || "",
+                            plano: commercialPlan,
+                            alunos: String(commercialAlunos),
+                            trial: String(commercialTrialDays),
+                            taxa: String(commercialTaxaAtivacao),
+                            mensalidade: String(commercialMensalidade),
+                          });
+                          window.open(`/crm/proposta/preview?${params.toString()}`, '_blank');
+                        }}
                         variant="outline"
-                        className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700"
+                        className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 flex items-center gap-1"
                       >
-                        {openingProposalFile ? "A abrir..." : "Abrir documento"}
+                        <ExternalLink size={11} className="text-zinc-400" />
+                        Preview
                       </Button>
-                    ) : null}
+                      {selectedCrmLead.proposal_file_name ? (
+                        <Button
+                          onClick={handleOpenCommercialProposal}
+                          disabled={openingProposalFile}
+                          variant="outline"
+                          className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700"
+                        >
+                          {openingProposalFile ? "A abrir..." : "Abrir"}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-col gap-3 md:flex-row">
                     <input
