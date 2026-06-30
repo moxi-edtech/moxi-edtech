@@ -291,6 +291,15 @@ export default function AppShell({
 
   const topbarLabels = navRole ? TOPBAR_LABELS[navRole] : null;
   const isPrintView = safePathname.includes("/print");
+  const aiAccessRole = navRole === "operacoes" ? (userRole || inferredRole || "admin") : navRole;
+  const shouldRenderAiWidget = Boolean(
+    navEscolaId &&
+    aiAccessRole &&
+    AI_WIDGET_ROLES.includes(aiAccessRole)
+  );
+  const aiWidgetSchoolId = shouldRenderAiWidget && navEscolaId
+    ? escolaIdFromSession || navEscolaId
+    : null;
 
   if (isPrintView) {
     return <div className="min-h-screen bg-white">{children}</div>;
@@ -324,9 +333,9 @@ export default function AppShell({
         </div>
       </div>
       {mobileNav ? <div className="md:hidden">{mobileNav}</div> : null}
-      {navEscolaId && navRole && AI_WIDGET_ROLES.includes(navRole) && (
+      {aiWidgetSchoolId && navEscolaId && (
         <AiChatWidget
-          schoolId={escolaIdFromSession || navEscolaId}
+          schoolId={aiWidgetSchoolId}
           schoolParam={navEscolaId}
           hasMobileNav={!!mobileNav}
           context={aiWidgetContext}
