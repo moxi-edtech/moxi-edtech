@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P0-03 · Turmas, Currículo e Tratamento de Cursos</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  pre.diagram { padding: 8px !important; font-size: 8px !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } .callout-box, table, tr, img, .signatures, .sig-box, .clause, .content-block { page-break-inside: avoid; break-inside: avoid; } h1, h2, h3, h4, .sec-lbl { page-break-after: avoid; break-after: avoid; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+pre.diagram {
+  background: #f8faf9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 15px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  color: var(--vd);
+  line-height: 1.4;
+  overflow-x: auto;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P0-03</div>
+    </div>
+    <div class="hd-title">Turmas e <span>Currículo</span><br>Tratamento de Cursos.</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.6.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar o tratamento de cursos no sistema, cobrindo os dois caminhos operacionais reais:</p>
+      <ul>
+        <li>Fluxo assistido de <strong>Onboarding</strong> (Academic Setup Wizard).</li>
+        <li>Fluxo paralelo de <strong>Configurações</strong> (<code>Turmas & Currículo</code> + <code>Oferta Formativa</code>).</li>
+      </ul>
+      <p style="margin-top: 10px;"><em>Nota: Para quadro de horários, regras de avaliação/frequência e publicação final, consulte o POP dedicado <code>p0-avaliacao-quadro-horario.md</code>.</em></p>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Início do ano letivo com a estrutura de cursos ainda não consolidada.</li>
+        <li>Criação de novos cursos por preset ou curso customizado.</li>
+        <li>Ajuste de classes base, disciplinas e publicação de currículo.</li>
+        <li>Geração/regeneração de turmas antes de iniciar as matrículas.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável Acadêmico:</strong> Secretaria / Coordenação pedagógica</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Onde os cursos são configurados no sistema</div>
+    <div class="content-block">
+      <ol>
+        <li><strong>Admin &gt; Configurações</strong> (hub de entrada):
+          <ul>
+            <li>Abre a ação <code>Iniciar Assistente</code> (Academic Setup Wizard).</li>
+          </ul>
+        </li>
+        <li><strong>Assistente</strong> (onboarding acadêmico):
+          <ul>
+            <li>Passo <code>Oferta Formativa</code> para compor a matriz por cursos/presets.</li>
+          </ul>
+        </li>
+        <li><strong>Admin &gt; Configurações &gt; Turmas & Currículo</strong>:
+          <ul>
+            <li>O "Command Center" por curso (publicar, classes base, disciplinas, gerar turmas).</li>
+          </ul>
+        </li>
+        <li><strong>Admin &gt; Configurações &gt; Oferta Formativa</strong>:
+          <ul>
+            <li>Instalação rápida de presets.</li>
+            <li>Criação de curso customizado.</li>
+            <li>Gestão detalhada por curso (<code>turmas</code>, <code>disciplinas</code>, <code>avaliação</code>).</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">05 · Como o sistema trata um curso (modelo operacional)</div>
+    <div class="content-block">
+      <ol>
+        <li>Um curso entra no sistema por <code>preset</code> ou <code>custom</code> (manual).</li>
+        <li>O sistema materializa a estrutura acadêmica do curso (classes + matriz de disciplinas).</li>
+        <li>O currículo nasce em estado de "trabalho" (Rascunho) e precisa de publicação.</li>
+        <li>Só depois da publicação do currículo é que o curso pode gerar turmas.</li>
+        <li>As turmas geradas herdam a base curricular para operação (disciplinas/carga/turno).</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">06 · Efeito Dominó na Instalação/Adição de Curso</div>
+    <div class="content-block">
+      <ol>
+        <li><strong>Instalar/Adicionar curso:</strong> Executa lock de instalação e aplica a estrutura acadêmica (se ainda não existir publicado).</li>
+        <li><strong>Matriz curricular:</strong> Disciplinas, classes, carga horária e metadados passam a existir. O backend tenta backfill automático caso falte matriz.</li>
+        <li><strong>Publicação de currículo:</strong> Valida pendências obrigatórias (ex.: carga, classificação, períodos, avaliações, etc.). Sem isso, o fluxo é bloqueado.</li>
+        <li><strong>Geração de turmas:</strong> Exige o currículo publicado por classe. Cria as turmas físicas divididas por turno/quantidade.</li>
+        <li><strong>Commit de configuração:</strong> Fecha o ciclo operacional de setup com idempotência.</li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Impacto prático:</strong> Alterações de curso afetam toda a cadeia subsequente: <code>currículo ➔ turmas ➔ horários ➔ atribuições docentes ➔ lançamentos</code>. Concluir o ciclo com a publicação e commit final é crítico.</p>
+      
+      <pre class="diagram">
+[CURSO]
+  -> cria/atualiza estrutura academica
+  -> classes + matriz de disciplinas
+
+[CURRICULO]
+  -> rascunho -> publicado (com validacoes)
+  -> define carga, avaliacao e disciplina por classe
+
+[TURMAS]
+  -> geradas a partir do curriculo publicado
+  -> turma_disciplina passa a existir por turma
+
+[HORARIOS]
+  -> slots (capacidade) + quadro (distribuicao)
+  -> usa carga/entra_no_horario do curriculo/turma_disciplina
+
+[PROFESSORES]
+  -> atribuicao em turma x disciplina
+  -> impacta quadro e operacao docente
+
+[LANCAMENTOS]
+  -> notas/frequencias/documentos dependem da cadeia consistente acima
+      </pre>
+    </div>
+
+    <div class="sec-lbl">07 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Acesso ao módulo <code>Admin &gt; Configurações</code>.</li>
+        <li>Ano letivo e períodos com estado minimamente definido no sistema.</li>
+        <li>Janela de alteração autorizada pela coordenação.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">07.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>A página <code>/escola/{id}/admin/configuracoes/turmas</code> renderiza o título <strong>Gestão de Turmas & Currículo</strong>.</li>
+        <li>O bloco principal de operações é o <strong>Command Center de Turmas</strong>.</li>
+        <li>Os cards de curso exibem o estado (<code>Currículo Publicado</code> ou <code>Rascunho</code>), versão do currículo e contagem de classes base.</li>
+        <li>Ações disponíveis por curso: <code>Disciplinas</code>, <code>Classes base</code>, <code>Publicar</code> (se Rascunho) e <code>Gerar turmas</code> (se Publicado).</li>
+        <li>Em caso de pendências, a página expõe uma área de <code>Classes sem currículo publicado</code> com o botão <code>Publicar todas as classes</code>.</li>
+        <li>Há um link dedicado para gerenciamento manual de turmas: <code>Gerenciar turmas manualmente</code> direcionando para <code>/admin/turmas</code>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">08 · Procedimento A · Escolher o fluxo correto de cursos</div>
+    <div class="content-block">
+      <ol>
+        <li>Se a escola está em setup inicial:
+          <ul>
+            <li>Usar a opção <strong>Iniciar Assistente</strong> no hub de configurações.</li>
+          </ul>
+        </li>
+        <li>Se os cursos já existem e o objetivo é ajustar/publicar/gerar turmas:
+          <ul>
+            <li>Navegar até <strong>Configurações &gt; Turmas & Currículo</strong>.</li>
+          </ul>
+        </li>
+        <li>Se precisa criar um curso totalmente novo fora do assistente:
+          <ul>
+            <li>Aceder a <strong>Configurações &gt; Oferta Formativa</strong>.</li>
+          </ul>
+        </li>
+      </ol>
+      <img class="step-print" src="../../Admin/prints/p0-turmas-curriculo-hub.png" alt="Hub de Configurações da Escola">
+      <p style="margin-top: 10px;"><strong>Regra:</strong> Evitar executar a geração de turmas nos dois fluxos ao mesmo tempo para o mesmo curso.</p>
+    </div>
+
+    <div class="sec-lbl">09 · Procedimento B · Fluxo Onboarding (Academic Setup Wizard)</div>
+    <div class="content-block">
+      <ol>
+        <li>Em <strong>Admin &gt; Configurações</strong>, clicar em <strong>Iniciar Assistente</strong>.</li>
+        <li>No passo <strong>Sessão</strong>, configurar o ano letivo e trimestres.</li>
+        <li>No passo <strong>Regras</strong>, definir políticas de frequência e avaliação.</li>
+        <li>No passo <strong>Oferta Formativa</strong>:
+          <ul>
+            <li>Selecionar a categoria de preset (<code>Ensino Geral</code>, <code>Indústria & Tec</code> ou <code>Serviços & Saúde</code>).</li>
+            <li>Adicionar os cursos desejados.</li>
+            <li>Ajustar a matriz de turmas por turno (<code>Manhã</code>, <code>Tarde</code>, <code>Noite</code>).</li>
+            <li>Configurar a carga horária na visão macro.</li>
+          </ul>
+          <img class="step-print" src="../../Admin/prints/p0-turmas-curriculo-wizard-oferta.png" alt="Academic Setup Wizard - Oferta Formativa">
+        </li>
+        <li>Clicar em <strong>Concluir Configuração</strong> para aplicar presets e configurações básicas.</li>
+        <li>No passo final <strong>Gerar</strong>, validar os totais e clicar em <strong>Gerar Turmas e Finalizar</strong>.</li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Nota técnica:</strong> O wizard instala o preset com <code>autoPublish: false</code> e executa a publicação transacional ao final antes de gerar as turmas.</p>
+    </div>
+
+    <div class="sec-lbl">10 · Procedimento C · Fluxo paralelo em Turmas & Currículo</div>
+    <div class="content-block">
+      <ol>
+        <li>Abrir <strong>Configurações &gt; Turmas & Currículo</strong>.</li>
+        <li>Localizar o curso desejado no <strong>Command Center</strong> e validar seu estado (<code>Currículo Publicado</code> ou <code>Rascunho</code>), versão (ex.: <code>v1.0.0</code>) e <code>classes base</code>.
+          <img class="step-print" src="../../Admin/prints/p0-turmas-curriculo-command-center.png" alt="Command Center de Turmas">
+        </li>
+        <li>Para gerenciar disciplinas:
+          <ul>
+            <li>Clicar em <strong>Disciplinas</strong>.</li>
+            <li>Criar, editar ou remover disciplinas da matriz. Validar carga e avaliação aplicadas à classe.</li>
+          </ul>
+        </li>
+        <li>Para gerenciar classes:
+          <ul>
+            <li>Clicar em <strong>Classes base</strong>.</li>
+            <li>Criar novas classes, definir turno de funcionamento (<code>M</code>, <code>T</code>, <code>N</code>) e salvar.</li>
+          </ul>
+        </li>
+        <li>Para publicar alterações:
+          <ul>
+            <li>Clicar em <strong>Publicar</strong>.</li>
+            <li>Confirmar no modal e decidir sobre a sincronização de turmas (com ou sem rebuild).
+              <img class="step-print" src="../../Admin/prints/p0-turmas-curriculo-publicar-modal.png" alt="Modal de Publicação de Currículo">
+            </li>
+            <li>Validar os logs de retorno da sincronização (<code>sync_turmas</code>, <code>inserted</code>, etc.).</li>
+          </ul>
+        </li>
+        <li>Para gerar turmas de forma automatizada:
+          <ul>
+            <li>O botão <strong>Gerar turmas</strong> estará ativo após publicação. Clicar, indicar a quantidade de turmas físicas por turno/classe e confirmar.</li>
+          </ul>
+        </li>
+        <li>Finalizar a operação executando a ação de commit/salvamento do shell (<code>setup/commit</code>) quando houver pendências de setup.</li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Regra de Bloqueio:</strong> Se houver <code>Classes sem currículo publicado</code>, resolva essa pendência antes de tentar gerar turmas.</p>
+    </div>
+
+    <div class="sec-lbl">11 · Procedimento D · Fluxo de Oferta Formativa (Estruturação)</div>
+    <div class="content-block">
+      <ol>
+        <li>Aceder a <strong>Configurações &gt; Oferta Formativa</strong>.</li>
+        <li>Escolher a ação correspondente ao contexto:
+          <ul>
+            <li><code>Instalação rápida</code> de preset.</li>
+            <li><code>Configurar preset</code> customizando classes e disciplinas da base.</li>
+            <li><code>Criar curso customizado</code> do zero.</li>
+          </ul>
+        </li>
+        <li>No caso de curso customizado, preencher o formulário inicial de criação, adicionar classes e criar disciplinas correspondentes.</li>
+        <li>Abrir o painel de gerência do curso recém-criado para manutenção fina:
+          <ul>
+            <li>Separador <strong>Turmas</strong>.</li>
+            <li>Separador <strong>Disciplinas</strong>.</li>
+            <li>Separador <strong>Avaliação</strong>.</li>
+          </ul>
+          <img class="step-print" src="../../Admin/prints/p0-turmas-curriculo-oferta-formativa-manager.png" alt="Gerenciador de Oferta Formativa">
+        </li>
+        <li>Prosseguir com a publicação do currículo e a geração de turmas a partir deste ponto.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">12 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Cursos criados ou instalados no fluxo ideal sem retrabalho operacional.</li>
+        <li>Matrizes curriculares de disciplinas consistentes com a regulamentação acadêmica.</li>
+        <li>Currículo publicado com sucesso para as classes ativas.</li>
+        <li>Turmas criadas e devidamente associadas às disciplinas para o ano letivo corrente.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">13 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Nenhum curso cadastrado</td>
+            <td>Oferta formativa ainda não criada</td>
+            <td>Criar curso em Oferta Formativa ou executar o assistente</td>
+            <td>Se o curso foi criado mas não aparece no Command Center</td>
+          </tr>
+          <tr>
+            <td>"Publique o currículo..." ao tentar gerar turmas</td>
+            <td>Curso ou classe com estado em Rascunho</td>
+            <td>Publicar currículo primeiro para a classe ativa</td>
+            <td>Se o erro persistir com currículo publicado</td>
+          </tr>
+          <tr>
+            <td>permission denied: admin_escola required</td>
+            <td>Usuário sem papel operacional correto no contexto da escola</td>
+            <td>Validar perfis em <code>profiles</code> e <code>escola_users</code></td>
+            <td>Se o papel estiver correto no BD mas o erro persistir na UI</td>
+          </tr>
+          <tr>
+            <td>Falha ao salvar classes base</td>
+            <td>Dados inválidos ou conflito de turno/nome</td>
+            <td>Revisar a linha alterada no grid e repetir a ação</td>
+            <td>Falha sistemática no salvamento</td>
+          </tr>
+          <tr>
+            <td>step=orchestrator falhado no install</td>
+            <td>Erro transacional na RPC do orquestrador backend</td>
+            <td>Corrigir causa apontada na resposta JSON e repetir a instalação</td>
+            <td>Caso ocorra reincidência persistente</td>
+          </tr>
+          <tr>
+            <td>Geração de turmas parcial</td>
+            <td>Matriz de quantidade inconsistente com a capacidade</td>
+            <td>Revisar os limites da matriz e repetir a geração</td>
+            <td>Falha sistêmica contínua</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">14 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela indicando o fluxo operacional adotado.</li>
+        <li>Captura do estado final dos cursos no Command Center (publicado, versão, classes base).</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Cards de Cursos Publicados]</span>
+        </div>
+        <li>Relatório ou log de turmas físicas geradas com sucesso.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Lista de Turmas Geradas]</span>
+        </div>
+        <li>Nome do operador e data/hora local da execução.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">15 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Hub e Assistente:</strong>
+          <ul>
+            <li><code>GET /api/escola/{id}/admin/setup/status</code></li>
+            <li><code>GET /api/escola/{id}/admin/setup/state</code></li>
+            <li><code>POST /api/escola/{id}/admin/ano-letivo/upsert</code></li>
+            <li><code>POST /api/escola/{id}/admin/periodos-letivos/upsert-bulk</code></li>
+            <li><code>POST /api/escola/{id}/admin/configuracoes/avaliacao-frequencia</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Currículo e Turmas:</strong>
+          <ul>
+            <li><code>GET /api/escola/{id}/admin/curriculo/status</code></li>
+            <li><code>POST /api/escola/{id}/admin/curriculo/install-preset</code> (Chama RPC <code>curriculo_install_orchestrated</code>)</li>
+            <li><code>POST /api/escola/{id}/admin/curriculo/publish</code> (Parâmetro <code>confirmReconcileSync=true</code> quando em modo reconcile)</li>
+            <li><code>POST /api/escola/{id}/admin/turmas/generate</code> (Utiliza <code>Idempotency-Key</code> no cabeçalho)</li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Commit de Configuração:</strong>
+          <ul>
+            <li><code>POST /api/escola/{id}/admin/setup/commit</code> (Com controle de concorrência via <code>Idempotency-Key</code>)</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">16 · KPI Operacional</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Taxa de publicação de currículo sem retrabalho:</strong> &gt;= 90%.</li>
+        <li><strong>Taxa de geração de turmas sem erro:</strong> &gt;= 95%.</li>
+        <li><strong>Tempo médio por curso (publicar + gerar):</strong> até 60 min.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">17 · Riscos e Controles</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Risco:</strong> Criar/alterar cursos em fluxos paralelos conflitantes gerando inconsistências de banco de dados.
+          <br><strong>Controle:</strong> Obrigar a definição do fluxo inicial (Hub Setup Wizard vs Command Center).
+        </li>
+        <li style="margin-top: 10px;"><strong>Risco:</strong> Geração de turmas inconsistentes a partir de currículo desatualizado.
+          <br><strong>Controle:</strong> Validação automatizada pré-geração bloqueando classes sem publicação.
+        </li>
+        <li style="margin-top: 10px;"><strong>Risco:</strong> Modificações estruturais perdidas por ausência de salvamento final.
+          <br><strong>Controle:</strong> Notificação do shell exigindo a execução do `setup/commit` para consolidar o estado.
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">18 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Alinhado aos labels reais da página "Gestão de Turmas & Currículo" e "Command Center de Turmas".</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

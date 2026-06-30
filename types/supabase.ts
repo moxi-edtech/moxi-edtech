@@ -11814,6 +11814,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           whatsapp: string
+          crm_lead_id: string | null
         }
         Insert: {
           afiliado_codigo?: string | null
@@ -11829,6 +11830,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           whatsapp: string
+          crm_lead_id?: string | null
         }
         Update: {
           afiliado_codigo?: string | null
@@ -11844,6 +11846,7 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           whatsapp?: string
+          crm_lead_id?: string | null
         }
         Relationships: []
       }

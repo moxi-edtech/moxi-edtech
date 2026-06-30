@@ -101,13 +101,22 @@ export async function POST(
 
     const uploadsForStep = (stepUploads || []) as Array<{
       id: string;
-      status: "pendente" | "processando" | "aprovado" | "rejeitado";
+      status:
+        | "pendente"
+        | "processando"
+        | "em_revisao_parceiro"
+        | "pendencia_cliente"
+        | "pronto_para_klasse"
+        | "aprovado"
+        | "rejeitado";
       updated_at?: string | null;
       created_at?: string | null;
     }>;
 
     const approvedUploads = uploadsForStep.filter((item) => item.status === "aprovado");
-    const activeUploads = uploadsForStep.filter((item) => item.status === "pendente" || item.status === "processando");
+    const activeUploads = uploadsForStep.filter((item) =>
+      ["pendente", "processando", "em_revisao_parceiro", "pendencia_cliente", "pronto_para_klasse"].includes(item.status)
+    );
 
     let stepStatus: "pendente" | "em_progresso" | "concluido" = "pendente";
     let completedAt: string | null = null;

@@ -57,6 +57,7 @@ export async function GET(
       ok: true,
       summary: data.summary,
       items: data.items ?? [],
+      payouts: data.payouts ?? [],
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";

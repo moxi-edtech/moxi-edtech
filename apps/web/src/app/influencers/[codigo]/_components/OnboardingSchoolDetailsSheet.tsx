@@ -34,6 +34,7 @@ import {
   IMPLANTATION_STATUS_CONFIG,
   type OnboardingEscola,
   type OnboardingImplantationItem,
+  type OnboardingUpload,
 } from "./partner-dashboard-model";
 
 type OnboardingSchoolDetailsSheetProps = {
@@ -75,8 +76,97 @@ export function OnboardingSchoolDetailsSheet({
   const [signedAt, setSignedAt] = useState("");
   const [acceptanceNotes, setAcceptanceNotes] = useState("");
   const [submittingAcceptance, setSubmittingAcceptance] = useState(false);
+  const [uploadTriageDrafts, setUploadTriageDrafts] = useState<Record<string, {
+    status: string;
+    document_type: string;
+    note: string;
+  }>>({});
+  const [savingUploadTriageId, setSavingUploadTriageId] = useState<string | null>(null);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+
+  const documentTypeOptions = [
+    { value: "legal", label: "Legal" },
+    { value: "planilha", label: "Planilha" },
+    { value: "contrato", label: "Contrato" },
+    { value: "logotipo", label: "Logotipo" },
+    { value: "pauta", label: "Pauta" },
+    { value: "termo_aceite", label: "Termo de Aceite" },
+    { value: "outro", label: "Outro" },
+  ];
+
+  const partnerTriageStatusOptions = [
+    { value: "em_revisao_parceiro", label: "Em revisão parceiro" },
+    { value: "pendencia_cliente", label: "Pendência cliente" },
+    { value: "pronto_para_klasse", label: "Pronto para KLASSE" },
+  ];
+
+  const getUploadTriageDraft = (upload: OnboardingUpload) => (
+    uploadTriageDrafts[upload.id] ?? {
+      status: ["em_revisao_parceiro", "pendencia_cliente", "pronto_para_klasse"].includes(upload.status)
+        ? upload.status
+        : "em_revisao_parceiro",
+      document_type: upload.document_type || "",
+      note: upload.partner_review_note || upload.rejection_reason || "",
+    }
+  );
+
+  const updateUploadTriageDraft = (upload: OnboardingUpload, changes: Partial<{
+    status: string;
+    document_type: string;
+    note: string;
+  }>) => {
+    setUploadTriageDrafts((current) => ({
+      ...current,
+      [upload.id]: {
+        ...getUploadTriageDraft(upload),
+        ...changes,
+      },
+    }));
+  };
+
+  const handleSaveUploadTriage = async (upload: OnboardingUpload) => {
+    if (!selectedSchoolForDetails?.token) return;
+    const draft = getUploadTriageDraft(upload);
+    if (!draft.document_type) {
+      toast.error("Classifique o tipo de documento antes de salvar.");
+      return;
+    }
+    if (draft.status === "pendencia_cliente" && !draft.note.trim()) {
+      toast.error("Informe a pendência que deve ser devolvida ao cliente.");
+      return;
+    }
+
+    setSavingUploadTriageId(upload.id);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/onboarding/${selectedSchoolForDetails.token}/uploads/${upload.id}/triage`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          status: draft.status,
+          document_type: draft.document_type,
+          note: draft.note.trim() || null,
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        toast.error(payload?.error || "Falha ao salvar triagem documental.");
+        return;
+      }
+
+      toast.success("Triagem documental salva.");
+      setUploadTriageDrafts((current) => {
+        const next = { ...current };
+        delete next[upload.id];
+        return next;
+      });
+      await loadData(false);
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao salvar triagem documental.");
+    } finally {
+      setSavingUploadTriageId(null);
+    }
+  };
 
   const handleUploadAndValidateAcceptance = async () => {
     if (!selectedSchoolForDetails?.token || !acceptanceFile || !signedBy.trim() || !signedAt.trim()) {
@@ -616,6 +706,8 @@ export function OnboardingSchoolDetailsSheet({
                       ) : (
                         selectedSchoolForDetails.uploads.map((up) => {
                           const meta = getStepMeta(up.step_code, up.created_by as any);
+                          const triageDraft = getUploadTriageDraft(up);
+                          const isFinalReviewed = up.status === "aprovado" || up.status === "rejeitado";
                           return (
                             <div key={up.id} className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm flex flex-col gap-2">
                               <div className="flex items-center justify-between gap-2">
@@ -648,6 +740,52 @@ export function OnboardingSchoolDetailsSheet({
                               {up.status === 'rejeitado' && up.rejection_reason && (
                                 <div className="mt-1 rounded-lg bg-rose-50 border border-rose-100 p-2 text-[9px] font-semibold text-rose-700 leading-relaxed">
                                   Motivo da rejeição: {up.rejection_reason}
+                                </div>
+                              )}
+                              {up.partner_reviewed_at && (
+                                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2 text-[9px] font-semibold text-slate-500 leading-relaxed">
+                                  Triado por {up.partner_reviewed_by_name || "parceiro"} em {format(new Date(up.partner_reviewed_at), "dd/MM HH:mm", { locale: pt })}
+                                  {up.partner_review_note ? ` · ${up.partner_review_note}` : ""}
+                                </div>
+                              )}
+                              {!isFinalReviewed && (
+                                <div className="mt-1 grid gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2">
+                                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <select
+                                      value={triageDraft.document_type}
+                                      onChange={(event) => updateUploadTriageDraft(up, { document_type: event.target.value })}
+                                      className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold text-slate-700 outline-none focus:border-slate-400"
+                                    >
+                                      <option value="">Classificar documento</option>
+                                      {documentTypeOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                      ))}
+                                    </select>
+                                    <select
+                                      value={triageDraft.status}
+                                      onChange={(event) => updateUploadTriageDraft(up, { status: event.target.value })}
+                                      className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-bold text-slate-700 outline-none focus:border-slate-400"
+                                    >
+                                      {partnerTriageStatusOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <textarea
+                                    value={triageDraft.note}
+                                    onChange={(event) => updateUploadTriageDraft(up, { note: event.target.value })}
+                                    rows={2}
+                                    placeholder="Comentário para cliente, KLASSE ou nota interna"
+                                    className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2 py-2 text-[10px] font-semibold text-slate-700 outline-none focus:border-slate-400"
+                                  />
+                                  <Button
+                                    onClick={() => handleSaveUploadTriage(up)}
+                                    disabled={savingUploadTriageId === up.id}
+                                    className="h-8 rounded-lg bg-slate-950 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-slate-800"
+                                  >
+                                    {savingUploadTriageId === up.id ? <Loader2 size={12} className="animate-spin" /> : <CheckSquare size={12} />}
+                                    Salvar triagem
+                                  </Button>
                                 </div>
                               )}
                             </div>

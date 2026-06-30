@@ -26,6 +26,11 @@ export interface OnboardingUpload {
   rejection_reason: string | null;
   created_by: string;
   created_at: string;
+  document_type?: string | null;
+  partner_review_note?: string | null;
+  partner_reviewed_at?: string | null;
+  partner_reviewed_by?: string | null;
+  partner_reviewed_by_name?: string | null;
 }
 
 export interface OnboardingImplantationItem {
@@ -37,6 +42,10 @@ export interface OnboardingImplantationItem {
 }
 
 export interface OnboardingEscola {
+  id?: string;
+  onboarding_request_id?: string;
+  crm_lead_id?: string | null;
+  escola_id?: string | null;
   data: string;
   status: string;
   escola: string;
@@ -69,6 +78,10 @@ export interface OnboardingEscola {
   acceptance_validated_at?: string | null;
   acceptance_validated_by?: string | null;
   acceptance_notes?: string | null;
+  risk_score?: number | null;
+  risk_level?: "baixo" | "medio" | "alto" | null;
+  risk_reasons?: string[] | null;
+  risk_updated_at?: string | null;
 }
 
 export type PartnerCommissionSummary = {
@@ -76,6 +89,8 @@ export type PartnerCommissionSummary = {
   approved_kz: number;
   paid_kz: number;
   blocked_kz: number;
+  requested_payout_kz?: number;
+  available_payout_kz?: number;
   total_kz: number;
   count: number;
 };
@@ -90,10 +105,205 @@ export type PartnerCommissionItem = {
   competencia_fim: string | null;
   created_at: string;
   escola_nome: string | null;
+  payout_id?: string | null;
+  payout_status?: string | null;
 };
 
+export type PartnerCommissionPayout = {
+  id: string;
+  status: "requested" | "approved" | "paid" | "rejected" | "cancelled";
+  total_kz: number;
+  receipt_file_name: string | null;
+  requested_at: string;
+  approved_at: string | null;
+  paid_at: string | null;
+  commission_count: number;
+};
+
+export type PartnerCrmLead = {
+  id: string;
+  nome_escola: string;
+  nome_contacto?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  etapa?: string | null;
+  plano_estimado?: string | null;
+  alunos_estimados?: number | null;
+  commercial_status?: string | null;
+  onboarding_request_id?: string | null;
+  onboarding_tracking_token?: string | null;
+  tracking_token?: string | null;
+  proxima_acao?: string | null;
+  proxima_acao_data?: string | null;
+  created_at?: string | null;
+  [key: string]: unknown;
+};
+
+export type PartnerMarketingLead = {
+  id: string;
+  nome: string;
+  escola: string;
+  whatsapp: string | null;
+  email: string | null;
+  score: number | null;
+  status: string | null;
+  created_at: string;
+  crm_lead_id: string | null;
+  converted_at: string | null;
+};
+
+export type PartnerPopPhase = "comercial" | "onboarding" | "setup" | "treinamento" | "suporte" | "financeiro" | "equipe";
+
+export type PartnerPopGuide = {
+  id: string;
+  phase: PartnerPopPhase;
+  title: string;
+  summary: string;
+  href: string;
+  code: string;
+  status: "actual" | "needs_review";
+};
+
+export const PARTNER_CONTEXTUAL_POPS: PartnerPopGuide[] = [
+  {
+    id: "sop-crm-01",
+    phase: "comercial",
+    title: "Cadastro e qualificação de leads",
+    summary: "Registrar escola, contato, plano, trial, taxa de ativação e próxima ação comercial.",
+    href: "/crm/pops/parceiro/sop-crm-01-cadastro-leads.html",
+    code: "SOP-CRM-01",
+    status: "actual",
+  },
+  {
+    id: "sop-crm-02",
+    phase: "onboarding",
+    title: "Conversão de lead para onboarding",
+    summary: "Converter proposta aceita em ativação oficial com tracking token e 7 etapas.",
+    href: "/crm/pops/parceiro/sop-crm-02-conversao-onboarding.html",
+    code: "SOP-CRM-02",
+    status: "actual",
+  },
+  {
+    id: "sop-crm-03",
+    phase: "onboarding",
+    title: "Triagem documental do parceiro",
+    summary: "Conferir documentos, classificar pendências e encaminhar o que está pronto para KLASSE.",
+    href: "/crm/pops/parceiro/sop-crm-03-moderacao-documental.html",
+    code: "SOP-CRM-03",
+    status: "needs_review",
+  },
+  {
+    id: "p1-setup-config",
+    phase: "setup",
+    title: "Setup e configurações iniciais",
+    summary: "Configurar parâmetros gerais da escola antes do go-live.",
+    href: "/crm/pops/parceiro/guias-admin/p1-setup-configuracoes.html",
+    code: "POP-P1-01",
+    status: "actual",
+  },
+  {
+    id: "p0-turmas-curriculo",
+    phase: "setup",
+    title: "Turmas, currículo e disciplinas",
+    summary: "Montar estrutura acadêmica, classes, cursos, disciplinas e turmas.",
+    href: "/crm/pops/parceiro/guias-admin/p0-turmas-curriculo.html",
+    code: "POP-P0-03",
+    status: "actual",
+  },
+  {
+    id: "p0-alunos-admin",
+    phase: "setup",
+    title: "Gestão e importação de alunos",
+    summary: "Validar cadastro, importação, consulta e operações essenciais de alunos.",
+    href: "/crm/pops/parceiro/guias-admin/p0-alunos-admin.html",
+    code: "POP-P0-02",
+    status: "actual",
+  },
+  {
+    id: "p0-avaliacao-horario",
+    phase: "setup",
+    title: "Avaliação, frequência e horários",
+    summary: "Parametrizar avaliação, quadro de horário e integração acadêmica.",
+    href: "/crm/pops/parceiro/guias-admin/p0-avaliacao-quadro-horario.html",
+    code: "POP-P0-04",
+    status: "actual",
+  },
+  {
+    id: "p1-professores",
+    phase: "treinamento",
+    title: "Professores e atribuições",
+    summary: "Orientar formação docente, atribuições e tratamento de pendências.",
+    href: "/crm/pops/parceiro/guias-admin/p1-professores-atribuicoes.html",
+    code: "POP-P1-03",
+    status: "actual",
+  },
+  {
+    id: "p1-fechamento",
+    phase: "treinamento",
+    title: "Fechamento e pauta oficial",
+    summary: "Apoiar secretaria/direção no fechamento de período e emissão de pautas.",
+    href: "/crm/pops/parceiro/guias-admin/p1-fechamento-periodo-pauta-oficial.html",
+    code: "POP-P1-02",
+    status: "actual",
+  },
+  {
+    id: "p2-politicas-financeiras",
+    phase: "financeiro",
+    title: "Políticas financeiras",
+    summary: "Configurar cobrança, restrição automática e parâmetros financeiros da escola.",
+    href: "/crm/pops/parceiro/guias-admin/p2-configuracoes-financeiras.html",
+    code: "POP-P2-01",
+    status: "actual",
+  },
+  {
+    id: "p2-mensalidades",
+    phase: "financeiro",
+    title: "Mensalidades e emolumentos",
+    summary: "Configurar propinas, matrícula, serviços e documentos cobráveis.",
+    href: "/crm/pops/parceiro/guias-admin/p2-mensalidades-emolumentos.html",
+    code: "POP-P2-02",
+    status: "actual",
+  },
+  {
+    id: "sop-crm-04",
+    phase: "financeiro",
+    title: "Comissões e payout",
+    summary: "Conferir ledger, anexar fatura/recibo e acompanhar aprovação/pagamento.",
+    href: "/crm/pops/parceiro/sop-crm-04-gestao-comissoes.html",
+    code: "SOP-CRM-04",
+    status: "needs_review",
+  },
+  {
+    id: "p3-docs-lote",
+    phase: "suporte",
+    title: "Documentos oficiais em lote",
+    summary: "Apoiar emissão de documentos oficiais e tratamento de pendências.",
+    href: "/crm/pops/parceiro/guias-admin/p3-documentos-oficiais-lote.html",
+    code: "POP-P3-03",
+    status: "actual",
+  },
+  {
+    id: "p3-monitor",
+    phase: "suporte",
+    title: "Monitor de operações acadêmicas",
+    summary: "Monitorar incidentes, jobs e anomalias acadêmicas com suporte L1.",
+    href: "/crm/pops/parceiro/guias-admin/p3-operacoes-academicas-monitor.html",
+    code: "POP-P3-04",
+    status: "actual",
+  },
+  {
+    id: "sop-crm-05",
+    phase: "equipe",
+    title: "Membros, funções e PINs",
+    summary: "Administrar operadores locais, papéis e acesso ao portal do parceiro.",
+    href: "/crm/pops/parceiro/sop-crm-05-administracao-membros.html",
+    code: "SOP-CRM-05",
+    status: "needs_review",
+  },
+];
+
 export type PartnerMemberRole = "owner" | "admin" | "vendas" | "implantacao" | "suporte_l1" | "operator";
-export type PartnerTab = "campanha" | "crm" | "onboarding" | "materiais" | "equipe";
+export type PartnerTab = "campanha" | "crm" | "onboarding" | "escolas360" | "suporte" | "pops" | "materiais" | "equipe";
 
 export type PartnerTeamMember = {
   id: string;
@@ -111,6 +321,58 @@ export type PartnerLoginMember = {
   afiliado_nome: string;
   membro_id: string;
   membro_nome: string;
+};
+
+export type PartnerOperatorProductivity = {
+  membro_id: string;
+  membro_nome: string;
+  total_leads: number;
+  active_leads: number;
+  overdue_tasks: number;
+  missing_next_action: number;
+  won_leads: number;
+  lost_leads: number;
+  pipeline_value_kz: number;
+};
+
+export type PartnerSupportChannel = "whatsapp" | "telefone" | "email" | "presencial" | "portal" | "outro";
+export type PartnerSupportCategory = "acesso" | "pagamentos" | "matriculas" | "notas" | "documentos" | "operacional" | "tecnico" | "outro";
+export type PartnerSupportSeverity = "alta" | "media" | "baixa";
+export type PartnerSupportStatus = "aberto" | "em_atendimento" | "aguardando_cliente" | "escalado_klasse" | "resolvido";
+
+export type PartnerSupportTicket = {
+  id: string;
+  onboarding_request_id: string | null;
+  tracking_token: string | null;
+  escola_nome: string;
+  canal: PartnerSupportChannel;
+  categoria: PartnerSupportCategory;
+  gravidade: PartnerSupportSeverity;
+  status: PartnerSupportStatus;
+  titulo: string;
+  descricao: string | null;
+  responsavel_membro_id: string | null;
+  responsavel_membro_nome: string | null;
+  criado_por_membro_id: string | null;
+  criado_por_membro_nome: string | null;
+  first_response_due_at: string;
+  resolution_due_at: string;
+  first_responded_at: string | null;
+  resolved_at: string | null;
+  escalated_at: string | null;
+  escalation_reason: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PartnerSupportSummary = {
+  total: number;
+  open: number;
+  overdue_response: number;
+  overdue_resolution: number;
+  escalated: number;
+  resolved: number;
 };
 
 export const PARTNER_MEMBER_ROLES: PartnerMemberRole[] = [
@@ -211,6 +473,40 @@ export const COMMERCIAL_STATUS_OPTIONS = [
   { value: "aceite_comercial", label: "Aceite Comercial", color: "bg-emerald-50 text-emerald-700" },
   { value: "aguardando_contrato_klasse", label: "Aguardando Contrato KLASSE", color: "bg-amber-50 text-amber-700" },
 ] as const;
+
+export const SUPPORT_CHANNEL_OPTIONS: { value: PartnerSupportChannel; label: string }[] = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "telefone", label: "Telefone" },
+  { value: "email", label: "Email" },
+  { value: "presencial", label: "Presencial" },
+  { value: "portal", label: "Portal" },
+  { value: "outro", label: "Outro" },
+];
+
+export const SUPPORT_CATEGORY_OPTIONS: { value: PartnerSupportCategory; label: string }[] = [
+  { value: "acesso", label: "Acesso" },
+  { value: "pagamentos", label: "Pagamentos" },
+  { value: "matriculas", label: "Matrículas" },
+  { value: "notas", label: "Notas" },
+  { value: "documentos", label: "Documentos" },
+  { value: "operacional", label: "Operacional" },
+  { value: "tecnico", label: "Técnico" },
+  { value: "outro", label: "Outro" },
+];
+
+export const SUPPORT_SEVERITY_CONFIG: Record<PartnerSupportSeverity, { label: string; color: string; sla: string }> = {
+  alta: { label: "Alta", color: "bg-rose-50 text-rose-700 border-rose-100", sla: "15 min / 2h" },
+  media: { label: "Média", color: "bg-amber-50 text-amber-700 border-amber-100", sla: "1h / 8h" },
+  baixa: { label: "Baixa", color: "bg-emerald-50 text-emerald-700 border-emerald-100", sla: "4h / 24h" },
+};
+
+export const SUPPORT_STATUS_CONFIG: Record<PartnerSupportStatus, { label: string; color: string }> = {
+  aberto: { label: "Aberto", color: "bg-blue-50 text-blue-700 border-blue-100" },
+  em_atendimento: { label: "Em atendimento", color: "bg-purple-50 text-purple-700 border-purple-100" },
+  aguardando_cliente: { label: "Aguardando cliente", color: "bg-zinc-100 text-zinc-700 border-zinc-200" },
+  escalado_klasse: { label: "Escalado KLASSE", color: "bg-rose-50 text-rose-700 border-rose-100" },
+  resolvido: { label: "Resolvido", color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+};
 
 export const DEFAULT_IMPLANTATION_CHECKLIST: OnboardingImplantationItem[] = [
   { code: "curriculo_configurado", label: "Currículo configurado", completed: false, note: null, completed_at: null },

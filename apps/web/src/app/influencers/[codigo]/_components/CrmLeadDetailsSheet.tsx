@@ -157,6 +157,11 @@ export function CrmLeadDetailsSheet({
                 <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none font-mono">
                   Trial: {selectedCrmLead.trial_days ?? 15} dias
                 </Badge>
+                {selectedCrmLead.marketing_lead_id ? (
+                  <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-700 border-amber-200/70 shadow-none">
+                    Originado do marketing
+                  </Badge>
+                ) : null}
                 <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider bg-zinc-50 text-zinc-600 border-zinc-200/60 shadow-none font-mono">
                   Taxa: Kz {(selectedCrmLead.taxa_ativacao ?? 0).toLocaleString('pt-PT')}
                 </Badge>

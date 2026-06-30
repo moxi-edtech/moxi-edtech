@@ -15,7 +15,10 @@ import {
   Target,
   Clock,
   ChevronDown,
-  UserCog
+  UserCog,
+  Headphones,
+  Layers3,
+  BookOpenCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -25,8 +28,8 @@ type PartnerAppShellProps = {
   codigo: string;
   memberName: string;
   memberRole?: 'owner' | 'admin' | 'vendas' | 'implantacao' | 'suporte_l1' | 'operator';
-  activeTab: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe';
-  setActiveTab: (tab: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe') => void;
+  activeTab: 'campanha' | 'crm' | 'onboarding' | 'escolas360' | 'suporte' | 'pops' | 'materiais' | 'equipe';
+  setActiveTab: (tab: 'campanha' | 'crm' | 'onboarding' | 'escolas360' | 'suporte' | 'pops' | 'materiais' | 'equipe') => void;
   stats: {
     total_diagnosticos: number;
     convertidos: number;
@@ -34,6 +37,7 @@ type PartnerAppShellProps = {
   totalComissao: number;
   countPendenteLeads: number;
   countPendenteOnboarding: number;
+  countPendenteSupport: number;
   onLogout: () => void;
 };
 
@@ -48,6 +52,7 @@ export default function PartnerAppShell({
   totalComissao,
   countPendenteLeads,
   countPendenteOnboarding,
+  countPendenteSupport,
   onLogout
 }: PartnerAppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,14 +65,14 @@ export default function PartnerAppShell({
     : "0.0";
 
   interface SubNavigationItem {
-    id: 'crm' | 'onboarding';
+    id: 'crm' | 'onboarding' | 'escolas360' | 'suporte';
     label: string;
     icon: React.ComponentType<any>;
     badge?: number;
   }
 
   interface NavigationItem {
-    id: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe' | 'desempenho-parent';
+    id: 'campanha' | 'crm' | 'onboarding' | 'escolas360' | 'suporte' | 'pops' | 'materiais' | 'equipe' | 'desempenho-parent';
     label: string;
     icon: React.ComponentType<any>;
     badge?: number;
@@ -92,16 +97,28 @@ export default function PartnerAppShell({
           label: 'Ativação Escolar', 
           icon: Clock,
           badge: countPendenteOnboarding > 0 ? countPendenteOnboarding : undefined 
+        },
+        {
+          id: 'escolas360',
+          label: 'Escolas 360',
+          icon: Layers3,
+        },
+        {
+          id: 'suporte',
+          label: 'Suporte L1',
+          icon: Headphones,
+          badge: countPendenteSupport > 0 ? countPendenteSupport : undefined
         }
       ]
     },
+    { id: 'pops', label: 'Biblioteca POPs', icon: BookOpenCheck },
     { id: 'materiais', label: 'Materiais', icon: FileText },
     ...(memberRole === "owner" || memberRole === "admin"
       ? [{ id: 'equipe' as const, label: 'Equipe', icon: UserCog }]
       : [])
   ];
 
-  const handleTabClick = (tabId: 'campanha' | 'crm' | 'onboarding' | 'materiais' | 'equipe') => {
+  const handleTabClick = (tabId: 'campanha' | 'crm' | 'onboarding' | 'escolas360' | 'suporte' | 'pops' | 'materiais' | 'equipe') => {
     setActiveTab(tabId);
     setMobileMenuOpen(false);
   };
@@ -265,7 +282,9 @@ export default function PartnerAppShell({
               {activeTab === 'campanha' && "Campanha"}
               {activeTab === 'crm' && "CRM Vendas"}
               {activeTab === 'onboarding' && "Funil Ativação"}
+              {activeTab === 'suporte' && "Suporte L1"}
               {activeTab === 'materiais' && "Materiais"}
+              {activeTab === 'equipe' && "Equipe"}
             </h1>
           </div>
         </div>
@@ -389,7 +408,9 @@ export default function PartnerAppShell({
               {activeTab === 'campanha' && "Central de Campanha"}
               {activeTab === 'crm' && "Funil de Vendas (CRM)"}
               {activeTab === 'onboarding' && "Funil de Ativação / Onboarding"}
+              {activeTab === 'suporte' && "Suporte L1"}
               {activeTab === 'materiais' && "Materiais de Apoio"}
+              {activeTab === 'equipe' && "Equipe do Parceiro"}
             </h1>
           </div>
           <div className="flex items-center gap-6">

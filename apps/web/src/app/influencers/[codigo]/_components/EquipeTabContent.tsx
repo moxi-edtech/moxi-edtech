@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Users, ShieldCheck, Plus, KeyRound } from "lucide-react";
+import { Loader2, Users, ShieldCheck, Plus, KeyRound, BarChart3, Clock, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -9,7 +9,10 @@ import {
   PARTNER_ROLE_LABELS,
   type PartnerTeamMember,
   type PartnerMemberRole,
+  type PartnerOperatorProductivity,
 } from "./partner-dashboard-model";
+
+type ManageablePartnerRole = "admin" | "vendas" | "implantacao" | "suporte_l1" | "operator";
 
 type EquipeTabContentProps = {
   loadingTeam: boolean;
@@ -17,13 +20,14 @@ type EquipeTabContentProps = {
   loadTeamMembers: (force?: boolean) => void;
   newMemberName: string;
   setNewMemberName: (name: string) => void;
-  newMemberRole: "admin" | "vendas" | "implantacao" | "suporte_l1" | "operator";
-  setNewMemberRole: (role: "admin" | "vendas" | "implantacao" | "suporte_l1" | "operator") => void;
+  newMemberRole: ManageablePartnerRole;
+  setNewMemberRole: (role: ManageablePartnerRole) => void;
   newMemberPin: string;
   setNewMemberPin: (pin: string) => void;
   savingTeamMember: boolean;
   handleCreateTeamMember: () => void;
   teamMembers: PartnerTeamMember[];
+  operatorProductivity: PartnerOperatorProductivity[];
   handleUpdateTeamMember: (id: string, updates: { role?: PartnerMemberRole; ativo?: boolean; pin?: string }) => void;
   resetPins: Record<string, string>;
   setResetPins: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -42,6 +46,7 @@ export function EquipeTabContent({
   savingTeamMember,
   handleCreateTeamMember,
   teamMembers,
+  operatorProductivity,
   handleUpdateTeamMember,
   resetPins,
   setResetPins,
@@ -79,7 +84,80 @@ export function EquipeTabContent({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="space-y-6">
+          <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+                  <BarChart3 size={18} />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-black text-zinc-900">Produtividade por operador</CardTitle>
+                  <CardDescription className="text-xs">
+                    Mede carteira ativa, follow-ups vencidos, leads sem próxima ação e conversões por responsável.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {operatorProductivity.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-8 text-center">
+                  <BarChart3 className="mx-auto mb-3 h-8 w-8 text-zinc-300" />
+                  <p className="text-sm font-bold text-zinc-600">Sem dados de produtividade.</p>
+                  <p className="mt-1 text-xs text-zinc-500">Cadastre leads e atribua responsáveis para alimentar esta visão.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                  {operatorProductivity.map((operator) => (
+                    <div key={operator.membro_id} className="rounded-xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-zinc-900">{operator.membro_nome}</p>
+                          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                            {operator.active_leads} ativos · {operator.total_leads} totais
+                          </p>
+                        </div>
+                        <Badge className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-none ${
+                          operator.overdue_tasks > 0
+                            ? "bg-rose-50 text-rose-700 border border-rose-100"
+                            : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                        }`}>
+                          {operator.overdue_tasks > 0 ? `${operator.overdue_tasks} vencidos` : "Em dia"}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-lg border border-white bg-white p-2">
+                          <Clock className="mb-1 h-3.5 w-3.5 text-rose-500" />
+                          <p className="text-lg font-black leading-none text-zinc-900">{operator.overdue_tasks}</p>
+                          <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-400">Vencidos</p>
+                        </div>
+                        <div className="rounded-lg border border-white bg-white p-2">
+                          <Users className="mb-1 h-3.5 w-3.5 text-amber-500" />
+                          <p className="text-lg font-black leading-none text-zinc-900">{operator.missing_next_action}</p>
+                          <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-400">Sem ação</p>
+                        </div>
+                        <div className="rounded-lg border border-white bg-white p-2">
+                          <Trophy className="mb-1 h-3.5 w-3.5 text-emerald-500" />
+                          <p className="text-lg font-black leading-none text-zinc-900">{operator.won_leads}</p>
+                          <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-400">Ganhos</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-lg bg-zinc-950 px-3 py-2 text-white">
+                        <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Pipeline potencial</p>
+                        <p className="mt-0.5 text-sm font-black text-klasse-gold">
+                          Kz {operator.pipeline_value_kz.toLocaleString("pt-PT")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base font-black text-zinc-900">Novo membro</CardTitle>
@@ -102,7 +180,7 @@ export function EquipeTabContent({
                   <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Papel</label>
                   <select
                     value={newMemberRole}
-                    onChange={(event) => setNewMemberRole(event.target.value as any)}
+                    onChange={(event) => setNewMemberRole(event.target.value as ManageablePartnerRole)}
                     className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-zinc-400 focus:bg-white"
                   >
                     {MANAGEABLE_PARTNER_MEMBER_ROLES.map((role) => (
@@ -227,6 +305,7 @@ export function EquipeTabContent({
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
       )}
     </div>

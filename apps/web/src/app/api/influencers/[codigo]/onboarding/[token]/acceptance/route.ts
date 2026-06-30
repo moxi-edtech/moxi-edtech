@@ -146,7 +146,7 @@ export async function POST(
       p_acceptance_signed_by: signedBy.trim(),
       p_acceptance_signed_role: signedRole ? signedRole.trim() : null,
       p_acceptance_signed_at: signedAt,
-      p_actor_id: auth.session.membro_id,
+      p_actor_id: auth.session.member_id ?? null,
       p_acceptance_notes: notes ? notes.trim() : null,
     });
 

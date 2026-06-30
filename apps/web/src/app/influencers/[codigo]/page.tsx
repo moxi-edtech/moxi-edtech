@@ -73,6 +73,9 @@ import { CrmLeadDetailsSheet } from "./_components/CrmLeadDetailsSheet";
 import { CampanhaTabContent } from "./_components/CampanhaTabContent";
 import { EquipeTabContent } from "./_components/EquipeTabContent";
 import { MateriaisTabContent } from "./_components/MateriaisTabContent";
+import { SuporteTabContent } from "./_components/SuporteTabContent";
+import { Escola360TabContent } from "./_components/Escola360TabContent";
+import { PopsLibraryTabContent } from "./_components/PopsLibraryTabContent";
 
 import {
   CAMPAIGN_KITS,
@@ -99,11 +102,20 @@ import {
   type OnboardingEscola,
   type OnboardingImplantationItem,
   type PartnerCommissionItem,
+  type PartnerCommissionPayout,
   type PartnerCommissionSummary,
   type PartnerLoginMember,
   type PartnerMemberRole,
+  type PartnerOperatorProductivity,
+  type PartnerSupportCategory,
+  type PartnerSupportChannel,
+  type PartnerSupportSeverity,
+  type PartnerSupportStatus,
+  type PartnerSupportSummary,
+  type PartnerSupportTicket,
   type PartnerTab,
   type PartnerTeamMember,
+  type PartnerMarketingLead,
   type AfiliadoPortalResponse,
   type MarketingAssetRow,
   PARTNER_MEMBER_ROLES,
@@ -119,6 +131,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [memberRole, setMemberRole] = useState<PartnerMemberRole>("operator");
   const [commissionSummary, setCommissionSummary] = useState<PartnerCommissionSummary | null>(null);
   const [commissionItems, setCommissionItems] = useState<PartnerCommissionItem[]>([]);
+  const [commissionPayouts, setCommissionPayouts] = useState<PartnerCommissionPayout[]>([]);
+  const [payoutReceiptFile, setPayoutReceiptFile] = useState<File | null>(null);
+  const [requestingPayout, setRequestingPayout] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<PartnerTab>('crm');
   const [authError, setAuthError] = useState(false);
@@ -147,6 +162,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [newLeadActionDate, setNewLeadActionDate] = useState("");
   const [newLeadResponsavelId, setNewLeadResponsavelId] = useState("");
   const [savingLead, setSavingLead] = useState(false);
+  const [marketingLeads, setMarketingLeads] = useState<PartnerMarketingLead[]>([]);
+  const [selectedMarketingLeadId, setSelectedMarketingLeadId] = useState("");
 
   // Detail states for CRM leads (Drawer)
   const [selectedCrmLead, setSelectedCrmLead] = useState<any | null>(null);
@@ -190,6 +207,20 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [newMemberPin, setNewMemberPin] = useState("");
   const [newMemberRole, setNewMemberRole] = useState<(typeof MANAGEABLE_PARTNER_MEMBER_ROLES)[number]>("vendas");
   const [resetPins, setResetPins] = useState<Record<string, string>>({});
+  const [supportTickets, setSupportTickets] = useState<PartnerSupportTicket[]>([]);
+  const [supportSummary, setSupportSummary] = useState<PartnerSupportSummary | null>(null);
+  const [loadingSupport, setLoadingSupport] = useState(false);
+  const [savingSupportTicket, setSavingSupportTicket] = useState(false);
+  const [newSupportSchoolToken, setNewSupportSchoolToken] = useState("");
+  const [newSupportSchoolName, setNewSupportSchoolName] = useState("");
+  const [newSupportTitle, setNewSupportTitle] = useState("");
+  const [newSupportDescription, setNewSupportDescription] = useState("");
+  const [newSupportCanal, setNewSupportCanal] = useState<PartnerSupportChannel>("whatsapp");
+  const [newSupportCategoria, setNewSupportCategoria] = useState<PartnerSupportCategory>("operacional");
+  const [newSupportGravidade, setNewSupportGravidade] = useState<PartnerSupportSeverity>("media");
+  const [newSupportResponsavelId, setNewSupportResponsavelId] = useState("");
+  const [supportUpdateNote, setSupportUpdateNote] = useState("");
+  const [supportEscalationReason, setSupportEscalationReason] = useState("");
 
   const canManageTeam = memberRole === "owner" || memberRole === "admin";
 
@@ -221,14 +252,72 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         ok?: boolean;
         summary?: PartnerCommissionSummary;
         items?: PartnerCommissionItem[];
+        payouts?: PartnerCommissionPayout[];
       } | null;
 
       if (response.ok && payload?.ok) {
         setCommissionSummary(payload.summary ?? null);
         setCommissionItems(Array.isArray(payload.items) ? payload.items : []);
+        setCommissionPayouts(Array.isArray(payload.payouts) ? payload.payouts : []);
       }
     } catch (err) {
       console.error("Failed to load partner commissions:", err);
+    }
+  };
+
+  const loadMarketingLeads = async () => {
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/marketing/leads`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; leads?: PartnerMarketingLead[] } | null;
+      if (response.ok && payload?.ok) {
+        setMarketingLeads(Array.isArray(payload.leads) ? payload.leads : []);
+      }
+    } catch (err) {
+      console.error("Failed to load marketing leads:", err);
+    }
+  };
+
+  const approvedCommissionsAvailableForPayout = commissionItems.filter(
+    (item) => item.status === "approved" && !item.payout_status
+  );
+
+  const availablePayoutKz = approvedCommissionsAvailableForPayout.reduce(
+    (sum, item) => sum + Number(item.valor_kz || 0),
+    0
+  );
+
+  const handleRequestPayout = async () => {
+    if (approvedCommissionsAvailableForPayout.length === 0) {
+      toast.error("Não há comissões aprovadas disponíveis para payout.");
+      return;
+    }
+    if (!payoutReceiptFile) {
+      toast.error("Anexe a fatura ou recibo antes de solicitar payout.");
+      return;
+    }
+
+    setRequestingPayout(true);
+    try {
+      const form = new FormData();
+      form.set("receipt", payoutReceiptFile);
+      form.set("commission_ids", JSON.stringify(approvedCommissionsAvailableForPayout.map((item) => item.id)));
+
+      const response = await fetch(`/api/influencers/${codigo}/commissions/payouts`, {
+        method: "POST",
+        body: form,
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Falha ao solicitar payout.");
+      }
+
+      toast.success("Pedido de payout enviado para validação da KLASSE.");
+      setPayoutReceiptFile(null);
+      await loadCommissions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao solicitar payout.");
+    } finally {
+      setRequestingPayout(false);
     }
   };
 
@@ -274,6 +363,32 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
   };
 
+  const loadSupportTickets = async (showLoading = false) => {
+    if (showLoading) setLoadingSupport(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/support/tickets`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as {
+        ok?: boolean;
+        tickets?: PartnerSupportTicket[];
+        summary?: PartnerSupportSummary;
+        error?: string;
+      } | null;
+
+      if (response.ok && payload?.ok) {
+        setSupportTickets(Array.isArray(payload.tickets) ? payload.tickets : []);
+        setSupportSummary(payload.summary ?? null);
+        return;
+      }
+
+      toast.error(payload?.error || "Falha ao carregar tickets de suporte.");
+    } catch (err) {
+      console.error("Failed to load support tickets:", err);
+      toast.error("Falha ao carregar tickets de suporte.");
+    } finally {
+      if (showLoading) setLoadingSupport(false);
+    }
+  };
+
   const loadLeadHistory = async (leadId: string) => {
     setLoadingHistory(true);
     try {
@@ -310,6 +425,18 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     setLossReasonText(lead.motivo_perda || "");
     setCrmLeadDrawerOpen(true);
     await loadLeadHistory(lead.id);
+  };
+
+  const handleOpenSchool360Details = (school: OnboardingEscola) => {
+    setSelectedSchoolForDetails(school);
+    setDetailsDrawerOpen(true);
+  };
+
+  const handleRegisterSchool360Call = (school: OnboardingEscola) => {
+    const nextPending = school.steps?.find((step) => step.status !== "concluido");
+    setSelectedSchoolForCall(school);
+    setSelectedStepCodeForCall(nextPending?.code || "");
+    setCallModalOpen(true);
   };
 
   const loadData = async (showLoading = true) => {
@@ -349,7 +476,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
       await loadCrmLeads(false);
       await loadCommissions();
+      await loadMarketingLeads();
       await loadPartnerMembers();
+      await loadSupportTickets(false);
       if (normalizedRole === "owner" || normalizedRole === "admin") {
         await loadTeamMembers(false);
       }
@@ -383,6 +512,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           responsavel_membro_id: newLeadResponsavelId || memberId || null,
           trial_days: newLeadTrialDays,
           taxa_ativacao: newLeadTaxaAtivacao,
+          marketing_lead_id: selectedMarketingLeadId || null,
         }),
       });
       const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
@@ -405,13 +535,35 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       setNewLeadAction("");
       setNewLeadActionDate("");
       setNewLeadResponsavelId("");
+      setSelectedMarketingLeadId("");
       
       await loadCrmLeads(false);
+      await loadMarketingLeads();
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erro ao cadastrar o lead.");
     } finally {
       setSavingLead(false);
+    }
+  };
+
+  const handleSelectMarketingLead = (marketingLeadId: string) => {
+    setSelectedMarketingLeadId(marketingLeadId);
+    const marketingLead = marketingLeads.find((lead) => lead.id === marketingLeadId);
+    if (!marketingLead) {
+      return;
+    }
+
+    setNewLeadSchoolName(marketingLead.escola || "");
+    setNewLeadContactName(marketingLead.nome || "");
+    setNewLeadPhone(marketingLead.whatsapp || "");
+    setNewLeadEmail(marketingLead.email || "");
+  };
+
+  const handleCrmModalOpenChange = (open: boolean) => {
+    setCrmModalOpen(open);
+    if (!open) {
+      setSelectedMarketingLeadId("");
     }
   };
 
@@ -725,6 +877,99 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
   };
 
+  const handleCreateSupportTicket = async () => {
+    if (!newSupportTitle.trim()) {
+      toast.error("Informe o título do ticket.");
+      return;
+    }
+
+    if (!newSupportSchoolToken && !newSupportSchoolName.trim()) {
+      toast.error("Selecione uma ativação ou informe o nome da escola.");
+      return;
+    }
+
+    setSavingSupportTicket(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/support/tickets`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          onboarding_token: newSupportSchoolToken || null,
+          escola_nome: newSupportSchoolName.trim() || null,
+          canal: newSupportCanal,
+          categoria: newSupportCategoria,
+          gravidade: newSupportGravidade,
+          titulo: newSupportTitle.trim(),
+          descricao: newSupportDescription.trim() || null,
+          responsavel_membro_id: newSupportResponsavelId || null,
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        toast.error(payload?.error || "Falha ao abrir ticket.");
+        return;
+      }
+
+      toast.success("Ticket de suporte aberto.");
+      setNewSupportSchoolToken("");
+      setNewSupportSchoolName("");
+      setNewSupportTitle("");
+      setNewSupportDescription("");
+      setNewSupportCanal("whatsapp");
+      setNewSupportCategoria("operacional");
+      setNewSupportGravidade("media");
+      setNewSupportResponsavelId("");
+      await loadSupportTickets(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Falha ao abrir ticket.");
+    } finally {
+      setSavingSupportTicket(false);
+    }
+  };
+
+  const handleUpdateSupportTicket = async (
+    ticketId: string,
+    status: PartnerSupportStatus,
+    escalationReason?: string
+  ) => {
+    if (status === "escalado_klasse" && !String(escalationReason || "").trim()) {
+      toast.error("Informe o motivo da escalação para KLASSE.");
+      return;
+    }
+
+    setSavingSupportTicket(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/support/tickets`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ticket_id: ticketId,
+          status,
+          note: supportUpdateNote.trim() || null,
+          escalation_reason: status === "escalado_klasse" ? String(escalationReason || "").trim() : null,
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        toast.error(payload?.error || "Falha ao atualizar ticket.");
+        return;
+      }
+
+      toast.success("Ticket atualizado.");
+      setSupportUpdateNote("");
+      if (status === "escalado_klasse") {
+        setSupportEscalationReason("");
+      }
+      await loadSupportTickets(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Falha ao atualizar ticket.");
+    } finally {
+      setSavingSupportTicket(false);
+    }
+  };
+
   const [onboardingFilter, setOnboardingFilter] = useState<'todos' | 'pendente' | 'atrasado' | 'concluido'>('todos');
   const [viewMode, setViewMode] = useState<'lista' | 'kanban'>('kanban');
 
@@ -835,6 +1080,36 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const totalCrmPipelineValue = activeCrmLeads.reduce((acc, lead) => {
     return acc + getCommissionForPlan(lead.plano_estimado);
   }, 0);
+  const operatorProductivity: PartnerOperatorProductivity[] = partnerMembers
+    .map((member) => {
+      const memberLeads = crmLeads.filter((lead) =>
+        (lead.responsavel_membro_id || lead.membro_id) === member.membro_id
+      );
+      const memberActiveLeads = memberLeads.filter((lead) => lead.etapa !== "perdido" && lead.etapa !== "ganho");
+      return {
+        membro_id: member.membro_id,
+        membro_nome: member.membro_nome,
+        total_leads: memberLeads.length,
+        active_leads: memberActiveLeads.length,
+        overdue_tasks: memberLeads.filter(
+          (lead) =>
+            lead.etapa !== "ganho" &&
+            lead.etapa !== "perdido" &&
+            lead.proxima_acao_data &&
+            new Date(lead.proxima_acao_data).getTime() < Date.now()
+        ).length,
+        missing_next_action: memberLeads.filter(
+          (lead) => lead.etapa !== "ganho" && lead.etapa !== "perdido" && !lead.proxima_acao
+        ).length,
+        won_leads: memberLeads.filter((lead) => lead.etapa === "ganho").length,
+        lost_leads: memberLeads.filter((lead) => lead.etapa === "perdido").length,
+        pipeline_value_kz: memberActiveLeads.reduce(
+          (acc, lead) => acc + getCommissionForPlan(lead.plano_estimado),
+          0
+        ),
+      };
+    })
+    .sort((a, b) => b.overdue_tasks - a.overdue_tasks || b.active_leads - a.active_leads || a.membro_nome.localeCompare(b.membro_nome));
   const selectedCommercialStatusMeta = COMMERCIAL_STATUS_OPTIONS.find((item) => item.value === commercialStatus) || COMMERCIAL_STATUS_OPTIONS[0];
   const selectedLeadDraft = selectedCrmLead ? {
     ...selectedCrmLead,
@@ -966,6 +1241,14 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const countPendenteOnboarding = schoolsList.filter(
     (e) => e.status === 'pendente' || e.status === 'em_configuracao'
   ).length;
+  const countPendenteSupport = supportTickets.filter(
+    (ticket) =>
+      ticket.status !== "resolvido" &&
+      (
+        (!ticket.first_responded_at && new Date(ticket.first_response_due_at).getTime() < Date.now()) ||
+        new Date(ticket.resolution_due_at).getTime() < Date.now()
+      )
+  ).length;
 
   return (
     <PartnerAppShell
@@ -978,6 +1261,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       totalComissao={totalComissao}
       countPendenteLeads={countPendenteLeads}
       countPendenteOnboarding={countPendenteOnboarding}
+      countPendenteSupport={countPendenteSupport}
       onLogout={handleLogout}
     >
       <Tabs defaultValue="crm" value={activeTab} onValueChange={setActiveTab as any} className="w-full">
@@ -1221,9 +1505,16 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                           <span className="truncate max-w-[120px]">Contato: {lead.nome_contacto || "Não informado"}</span>
                                           {lead.alunos_estimados > 0 && <span className="font-mono">{lead.alunos_estimados} al.</span>}
                                         </div>
-                                        <p className="text-[9px] font-semibold text-zinc-500">
-                                          Resp.: {lead.responsavel_membro_nome || lead.membro_nome || "Sem dono"}
-                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="text-[9px] font-semibold text-zinc-500">
+                                            Resp.: {lead.responsavel_membro_nome || lead.membro_nome || "Sem dono"}
+                                          </p>
+                                          {lead.marketing_lead_id ? (
+                                            <Badge className="border border-amber-200 bg-amber-50 px-1.5 py-0 text-[8px] font-bold uppercase tracking-wider text-amber-700 shadow-none">
+                                              Marketing
+                                            </Badge>
+                                          ) : null}
+                                        </div>
                                       </div>
 
                                       <div className="flex flex-col gap-1.5 border-t border-zinc-100 pt-2 text-[9px] font-medium text-zinc-500">
@@ -1303,6 +1594,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     {COMMERCIAL_STATUS_OPTIONS.find((item) => item.value === lead.commercial_status)?.label || lead.commercial_status}
                                   </Badge>
                                 )}
+                                {lead.marketing_lead_id ? (
+                                  <Badge className="border border-amber-200 bg-amber-50 text-[8px] font-semibold uppercase tracking-wider text-amber-700 px-2 py-0.5 rounded-md shadow-none">
+                                    Origem marketing
+                                  </Badge>
+                                ) : null}
                                 <Badge className={`${stageMeta.color} border border-zinc-200/10 font-semibold uppercase text-[8px] px-2 py-0.5 rounded-md shadow-none`}>
                                   <span className={`w-1 h-1 rounded-full ${stageMeta.dot} mr-1.5`} />
                                   {stageMeta.label}
@@ -2033,6 +2329,45 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         )}
                       </div>
 
+                      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200">Payout disponível</p>
+                            <p className="mt-1 text-xl font-black text-white">
+                              {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(availablePayoutKz).replace('AOA', 'Kz')}
+                            </p>
+                            <p className="mt-1 text-[10px] font-semibold text-emerald-100/80">
+                              {approvedCommissionsAvailableForPayout.length} comissão(ões) aprovadas sem pedido.
+                            </p>
+                          </div>
+                          <Badge className="rounded-lg border border-emerald-300/20 bg-emerald-300/10 px-2 py-1 text-[9px] font-bold uppercase text-emerald-100 shadow-none">
+                            Sprint 7
+                          </Badge>
+                        </div>
+
+                        <label className="block">
+                          <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-slate-300">
+                            Fatura/recibo obrigatório
+                          </span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                            onChange={(event) => setPayoutReceiptFile(event.target.files?.[0] ?? null)}
+                            className="block w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-klasse-gold file:px-3 file:py-1.5 file:text-[10px] file:font-black file:uppercase file:text-slate-950"
+                          />
+                        </label>
+
+                        <Button
+                          type="button"
+                          onClick={handleRequestPayout}
+                          disabled={availablePayoutKz <= 0 || !payoutReceiptFile || requestingPayout}
+                          className="w-full rounded-xl bg-klasse-gold text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-klasse-gold/90"
+                        >
+                          {requestingPayout ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Solicitar Payout
+                        </Button>
+                      </div>
+
                       {commissionItems.length > 0 && (
                         <div className="space-y-2 border-t border-white/10 pt-4">
                           <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Últimas comissões</h4>
@@ -2043,9 +2378,39 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                   <div className="min-w-0">
                                     <p className="truncate text-xs font-bold text-white">{item.escola_nome || "Escola"}</p>
                                     <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">{item.status}</p>
+                                    {item.payout_status ? (
+                                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                                        Payout: {item.payout_status}
+                                      </p>
+                                    ) : null}
                                   </div>
                                   <p className="text-xs font-black text-klasse-gold">
                                     {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(item.valor_kz).replace('AOA', 'Kz')}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {commissionPayouts.length > 0 && (
+                        <div className="space-y-2 border-t border-white/10 pt-4">
+                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Pedidos de payout</h4>
+                          <div className="space-y-2">
+                            {commissionPayouts.slice(0, 3).map((payout) => (
+                              <div key={payout.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-white">
+                                      {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(payout.total_kz).replace('AOA', 'Kz')}
+                                    </p>
+                                    <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                                      {payout.status} · {payout.commission_count} comissão(ões)
+                                    </p>
+                                  </div>
+                                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                                    {format(new Date(payout.requested_at), "dd/MM/yyyy")}
                                   </p>
                                 </div>
                               </div>
@@ -2152,10 +2517,64 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               savingTeamMember={savingTeamMember}
               handleCreateTeamMember={handleCreateTeamMember}
               teamMembers={teamMembers}
+              operatorProductivity={operatorProductivity}
               handleUpdateTeamMember={handleUpdateTeamMember}
               resetPins={resetPins}
               setResetPins={setResetPins}
             />
+          </TabsContent>
+
+          <TabsContent value="escolas360" className="m-0">
+            <Escola360TabContent
+              codigo={codigo}
+              currentMemberId={memberId}
+              schoolsList={schoolsList}
+              crmLeads={crmLeads}
+              supportTickets={supportTickets}
+              commissionItems={commissionItems}
+              partnerMembers={partnerMembers}
+              onOpenSchoolDetails={handleOpenSchool360Details}
+              onOpenLead={handleOpenLeadDrawer}
+              onRegisterCall={handleRegisterSchool360Call}
+            />
+          </TabsContent>
+
+          <TabsContent value="suporte" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <SuporteTabContent
+              loadingSupport={loadingSupport}
+              savingSupportTicket={savingSupportTicket}
+              supportTickets={supportTickets}
+              supportSummary={supportSummary}
+              schoolsList={schoolsList}
+              partnerMembers={partnerMembers}
+              newSupportSchoolToken={newSupportSchoolToken}
+              setNewSupportSchoolToken={setNewSupportSchoolToken}
+              newSupportSchoolName={newSupportSchoolName}
+              setNewSupportSchoolName={setNewSupportSchoolName}
+              newSupportTitle={newSupportTitle}
+              setNewSupportTitle={setNewSupportTitle}
+              newSupportDescription={newSupportDescription}
+              setNewSupportDescription={setNewSupportDescription}
+              newSupportCanal={newSupportCanal}
+              setNewSupportCanal={setNewSupportCanal}
+              newSupportCategoria={newSupportCategoria}
+              setNewSupportCategoria={setNewSupportCategoria}
+              newSupportGravidade={newSupportGravidade}
+              setNewSupportGravidade={setNewSupportGravidade}
+              newSupportResponsavelId={newSupportResponsavelId}
+              setNewSupportResponsavelId={setNewSupportResponsavelId}
+              supportUpdateNote={supportUpdateNote}
+              setSupportUpdateNote={setSupportUpdateNote}
+              supportEscalationReason={supportEscalationReason}
+              setSupportEscalationReason={setSupportEscalationReason}
+              loadSupportTickets={loadSupportTickets}
+              handleCreateSupportTicket={handleCreateSupportTicket}
+              handleUpdateSupportTicket={handleUpdateSupportTicket}
+            />
+          </TabsContent>
+
+          <TabsContent value="pops" className="m-0">
+            <PopsLibraryTabContent />
           </TabsContent>
 
           <TabsContent value="materiais" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -2243,7 +2662,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       </Dialog>
 
       {/* Modal Dialog for Registering a New CRM Lead */}
-      <Dialog open={crmModalOpen} onOpenChange={setCrmModalOpen}>
+      <Dialog open={crmModalOpen} onOpenChange={handleCrmModalOpenChange}>
         <DialogContent className="sm:max-w-[500px] rounded-[32px] border-slate-200 bg-white p-8 shadow-xl">
           <DialogHeader>
             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
@@ -2259,6 +2678,27 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
           <div className="space-y-4 my-4 max-h-[380px] overflow-y-auto pr-1">
             <div className="grid grid-cols-1 gap-3.5">
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+                <label className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Aproveitar lead do marketing</label>
+                <select
+                  value={selectedMarketingLeadId}
+                  onChange={(e) => handleSelectMarketingLead(e.target.value)}
+                  className="mt-2 block w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-amber-300 focus:outline-none cursor-pointer"
+                >
+                  <option value="">Cadastro manual</option>
+                  {marketingLeads
+                    .filter((lead) => !lead.crm_lead_id || lead.crm_lead_id === selectedMarketingLeadId)
+                    .map((lead) => (
+                      <option key={lead.id} value={lead.id}>
+                        {lead.escola} · {lead.nome} · score {lead.score ?? 0}
+                      </option>
+                    ))}
+                </select>
+                <p className="mt-2 text-[11px] leading-relaxed text-amber-800">
+                  Ao selecionar um lead do diagnóstico, o CRM vincula a origem e evita reconciliação manual depois.
+                </p>
+              </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Nome da Escola</label>
                 <input
@@ -2406,7 +2846,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
           <DialogFooter className="mt-6 flex gap-2">
             <Button
-              onClick={() => setCrmModalOpen(false)}
+              onClick={() => handleCrmModalOpenChange(false)}
               className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 hover:bg-slate-50"
             >
               Cancelar

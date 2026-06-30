@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P0-04 · Avaliação, Quadro de Horário e Integração Acadêmica</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } .callout-box, table, tr, img, .signatures, .sig-box, .clause, .content-block { page-break-inside: avoid; break-inside: avoid; } h1, h2, h3, h4, .sec-lbl { page-break-after: avoid; break-after: avoid; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P0-04</div>
+    </div>
+    <div class="hd-title">Avaliação, Horários e <span>Integração</span><br>Acadêmica (Admin).</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.1.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar a operação do Admin para:</p>
+      <ul>
+        <li>Configurar regras de frequência e avaliação da escola.</li>
+        <li>Preparar a estrutura de horários (slots de tempo).</li>
+        <li>Montar e publicar o quadro de horários por turma.</li>
+        <li>Manter a coerência técnica e lógica entre <code>currículo</code>, <code>carga horária</code>, <code>regras de avaliação</code> e a <code>publicação</code> final.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>No início do ano letivo, logo após a configuração básica de cursos e turmas.</li>
+        <li>Sempre que houver alteração autorizada no modelo de avaliação ou faltas.</li>
+        <li>Sempre que for necessário ajustar a carga horária semanal de disciplinas.</li>
+        <li>Antes de publicar e oficializar o quadro de horários de qualquer turma.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável Acadêmico:</strong> Coordenação / Secretaria</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Relação operacional entre módulos</div>
+    <div class="content-block">
+      <ol>
+        <li>A configuração de <strong>Avaliação/Frequência</strong> define regras globais em <code>configuracoes_escola</code>.</li>
+        <li>No <strong>Currículo/Disciplinas</strong> define-se para cada disciplina:
+          <ul>
+            <li>Se ela entra na distribuição física de aulas (<code>entra_no_horario</code>).</li>
+            <li>A respectiva <code>carga_horaria_semanal</code>.</li>
+          </ul>
+        </li>
+        <li>A estrutura de <strong>Slots</strong> determina a capacidade máxima de aulas por turno/dia.</li>
+        <li>O <strong>Quadro</strong> distribui fisicamente as disciplinas da turma nos slots temporais.</li>
+        <li>A ação de <strong>Publicar quadro</strong> só conclui quando:
+          <ul>
+            <li>Não há conflito de professores ou salas em versões já publicadas.</li>
+            <li>Não há disciplina obrigatória marcada para o horário sem carga semanal definida.</li>
+            <li>Não há divergência entre a carga semanal esperada e a quantidade de slots alocados.</li>
+          </ul>
+        </li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Regras estruturais básicas:</strong></p>
+      <ul>
+        <li>Se <code>entra_no_horario = false</code>, a disciplina é omitida do grid.</li>
+        <li>Se <code>entra_no_horario != false</code> e <code>carga_horaria_semanal <= 0</code>, a disciplina é considerada pendente e bloqueia a publicação do quadro.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Acesso às seguintes rotas operacionais do sistema:
+          <ul>
+            <li><code>Admin &gt; Configurações &gt; Avaliação</code></li>
+            <li><code>Horários &gt; Slots</code></li>
+            <li><code>Horários &gt; Quadro</code></li>
+          </ul>
+        </li>
+        <li>Turmas e disciplinas criadas anteriormente no fluxo acadêmico.</li>
+        <li>Janela operacional de alteração devidamente autorizada.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>A página de parâmetros de notas e faltas exibe o título <strong>Avaliação & Frequência</strong>.</li>
+        <li>Em modo visualização, a ação é disparada pelo botão <code>Editar Regras</code>.</li>
+        <li>Em modo edição, os botões expostos são <code>Cancelar</code> e <code>Salvar Alterações</code>.</li>
+        <li>A página de estrutura de tempos salva as modificações via <code>Salvar estrutura de horários</code> e apresenta o link <code>Ir para o Quadro</code> ao finalizar.</li>
+        <li>A tela de distribuição do quadro utiliza:
+          <ul>
+            <li><code>Salvar agora</code> para guardar versões em Rascunho.</li>
+            <li><code>Limpar quadro</code> para apagar por completo a grade da turma selecionada.</li>
+            <li><code>Aumentar slots para X aulas/dia</code> quando há sugestão dinâmica de ampliação de capacidade.</li>
+          </ul>
+        </li>
+        <li>O sistema de horários bloqueia a publicação na existência de disciplinas sem carga, exibindo a mensagem: <code>Defina todas as cargas horárias antes de publicar.</code></li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">06 · Procedimento A · Configurar regras de avaliação/frequência</div>
+    <div class="content-block">
+      <ol>
+        <li>Navegar para <strong>Admin &gt; Configurações &gt; Avaliação</strong>.</li>
+        <li>Clicar no botão <strong>Editar Regras</strong>.</li>
+        <li>No bloco <strong>Frequência (SSOT)</strong>, configurar:
+          <ul>
+            <li>Modo de contagem de faltas (<code>Por aula</code> ou <code>Por período</code>).</li>
+            <li>O <code>% mínimo de presença</code> exigido (faixa de 0-100).</li>
+          </ul>
+        </li>
+        <li>No bloco <strong>Modelo de avaliação</strong>:
+          <ul>
+            <li>Selecionar o modelo acadêmico aplicável.</li>
+            <li>Validar os componentes e pesos na área de visualização prévia (preview).</li>
+          </ul>
+        </li>
+        <li>Clicar em <strong>Salvar Alterações</strong>.
+          <img class="step-print" src="../../Admin/prints/p0-avaliacao-frequencia-rules.png" alt="Interface de Avaliação e Frequência">
+        </li>
+        <li>Aguardar o feedback visual de sucesso e validação das regras.</li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Nota técnica:</strong> O backend valida o payload de envio, atualiza as configurações globais na tabela <code>configuracoes_escola</code> e sincroniza a fórmula do modelo de avaliação correspondente.</p>
+    </div>
+
+    <div class="sec-lbl">07 · Procedimento B · Ajustar estrutura de slots (capacidade)</div>
+    <div class="content-block">
+      <ol>
+        <li>Aceder à página de <strong>Horários &gt; Slots</strong>.</li>
+        <li>Verificar as faixas e tempos configurados para cada turno (<code>Matinal</code>, <code>Tarde</code>, <code>Noite</code>) e dias úteis.</li>
+        <li>Selecionar a turma de teste e conferir:
+          <ul>
+            <li>A <code>Carga semanal da turma</code> (total de aulas necessárias).</li>
+            <li>O total de <code>Slots disponíveis</code> no turno de vinculação da turma.</li>
+          </ul>
+        </li>
+        <li>Caso a carga horária supere a quantidade de slots físicos disponíveis:
+          <ul>
+            <li>Ajustar manualmente os slots na tela e clicar em salvar.</li>
+            <li>Ou optar por usar a correção recomendada <code>Ajustar slots</code> exibida de forma assistida no quadro.</li>
+          </ul>
+        </li>
+        <li>Clicar no botão <strong>Salvar estrutura de horários</strong>.
+          <img class="step-print" src="../../Admin/prints/p0-horarios-slots-setup.png" alt="Configuração de Slots de Horário">
+        </li>
+        <li>Confirmar o alerta de validação de persistência: <code>Estrutura de horários salva.</code></li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Validações e regras de slots no código:</strong></p>
+      <ul>
+        <li>O horário de início de aula deve ser menor que o horário final (erro: <code>SLOT_TIME_RANGE_INVALID</code>).</li>
+        <li>Sobreposição de tempos no mesmo dia e turno é bloqueada (erro: <code>SLOT_TEMPORAL_CONFLICT</code>).</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">08 · Procedimento C · Montar quadro da turma</div>
+    <div class="content-block">
+      <ol>
+        <li>Navegar até <strong>Horários &gt; Quadro</strong>.</li>
+        <li>Selecionar a turma desejada no cabeçalho.</li>
+        <li>Avaliar a existência de avisos e impedimentos listados no painel lateral de validação:
+          <ul>
+            <li>Disciplinas sem carga horária definida no currículo.</li>
+            <li>Conflitos de horários em aberto.</li>
+            <li>Turma sem sala física vinculada.</li>
+          </ul>
+          <img class="step-print" src="../../Admin/prints/p0-horarios-quadro-operacao.png" alt="Montagem do Quadro de Horários da Turma">
+        </li>
+        <li>Distribuir as matérias nos slots do grid de forma manual (arrastar e soltar) ou optar por executar o utilitário <code>Auto-Completar</code>.</li>
+        <li>Se houver alertas de falta de carga horária no topo da tela:
+          <ul>
+            <li>Clicar em <code>Auto-Configurar cargas</code> para realizar correção automática de backup.</li>
+            <li>Ou ajustar manualmente no modal de edição curricular da disciplina.</li>
+          </ul>
+        </li>
+        <li>Atribuir o respectivo docente para cada disciplina nos tempos alocados.</li>
+        <li>Garantir a seleção da sala da turma.</li>
+        <li>Para salvar rascunhos durante o progresso, clicar na ação <strong>Salvar agora</strong> exibida na barra flutuante.</li>
+        <li>Uma vez que a matriz temporal da turma esteja consistente, clicar em <strong>Publicar</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">09 · Procedimento D · Publicação e controles finais</div>
+    <div class="content-block">
+      <ol>
+        <li>Apenas realize a publicação oficial caso todas as disciplinas da matriz tenham cargas horárias válidas e as salas e docentes estejam isentos de sobreposições em outras turmas.</li>
+        <li>Resolução de falhas na publicação:
+          <ul>
+            <li><code>Conflito de horário detectado</code> (Código 409): Um mesmo professor ou sala de aula foi alocado no mesmo tempo em outra turma com quadro já publicado. Mude o slot ou reatribua.</li>
+            <li><code>CARGA_HORARIA_INCOMPLETA</code>: A quantidade de aulas alocadas no grid está menor ou maior que a carga horária semanal cadastrada. Corrija o grid ou o currículo.</li>
+          </ul>
+        </li>
+        <li>Repetir as ações de salvar/publicar após as correções indicadas.</li>
+        <li>Opcional: Executar a opção de <strong>Baixar PDF</strong> ou <strong>Imprimir</strong> para entrega física e fixação do horário.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">10 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Regras corporativas de notas e frequência salvas corretamente nas configurações escolares.</li>
+        <li>Estrutura de slots temporais dimensionada com margem suficiente para todas as aulas semanais da turma.</li>
+        <li>Grades de horários distribuídas e publicadas sem conflitos de sala ou de professores no backend.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">11 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Dados inválidos ao salvar regras</td>
+            <td>Parâmetros de notas/frequência inválidos ou fora da escala permitida</td>
+            <td>Revisar os campos preenchidos e os pesos informados no formulário</td>
+            <td>Se o erro persistir com todas as regras dentro da faixa regulamentada</td>
+          </tr>
+          <tr>
+            <td>SLOT_TIME_RANGE_INVALID</td>
+            <td>Horários de início e fim invertidos em algum slot de tempo</td>
+            <td>Corrigir o horário final do slot de modo que seja posterior ao início</td>
+            <td>Caso a ordenação visual esteja correta e o erro persista</td>
+          </tr>
+          <tr>
+            <td>SLOT_TEMPORAL_CONFLICT</td>
+            <td>Há choque de horários de slots configurados no mesmo dia/turno</td>
+            <td>Identificar e remover a sobreposição horária entre os slots cadastrados</td>
+            <td>Conflito persistente sem duplicações visíveis no grid de slots</td>
+          </tr>
+          <tr>
+            <td>Conflito de horário detectado</td>
+            <td>O professor ou a sala selecionada já possuem aulas publicadas nesse slot</td>
+            <td>Mudar a disciplina de slot ou atribuir outro docente/sala física livre</td>
+            <td>Choques contínuos sem duplicidade física real</td>
+          </tr>
+          <tr>
+            <td>CARGA_HORARIA_INCOMPLETA</td>
+            <td>Alocação de aulas no grid não bate com a carga horária do currículo</td>
+            <td>Corrigir a carga horária da disciplina ou preencher todos os slots previstos</td>
+            <td>Erro recorrente mesmo com grid e carga de currículo equivalentes</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">12 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela das regras de avaliação e faltas salvas com sucesso.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Painel de Avaliação & Frequência]</span>
+        </div>
+        <li>Captura de tela dos slots temporais homologados por turno.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Configuração de Slots]</span>
+        </div>
+        <li>Captura de tela do quadro de horários publicado da turma.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Quadro de Horários Publicado]</span>
+        </div>
+        <li>Dados do operador responsável e timestamp da ação.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">13 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Parâmetros e Regras:</strong>
+          <ul>
+            <li><code>GET /api/escola/{id}/admin/configuracoes/avaliacao-frequencia</code></li>
+            <li><code>POST /api/escola/{id}/admin/configuracoes/avaliacao-frequencia</code></li>
+            <li><code>GET /api/escolas/{id}/modelos-avaliacao?limit=50</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Manutenção de Slots:</strong>
+          <ul>
+            <li><code>GET /api/escolas/{id}/horarios/slots</code></li>
+            <li><code>POST /api/escolas/{id}/horarios/slots</code> (Lança erros: <code>SLOT_TIME_RANGE_INVALID</code>, <code>SLOT_TEMPORAL_CONFLICT</code>)</li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Gestão e Publicação do Quadro:</strong>
+          <ul>
+            <li><code>GET /api/escolas/{id}/horarios/quadro?versao_id={uuid}&turma_id={uuid}</code></li>
+            <li><code>POST /api/escolas/{id}/horarios/quadro</code> (Parâmetros <code>mode: draft|publish</code>)</li>
+            <li><code>DELETE /api/escolas/{id}/horarios/quadro?versao_id={uuid}&turma_id={uuid}</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Endpoints Operacionais de Apoio:</strong>
+          <ul>
+            <li><code>POST /api/escolas/{id}/horarios/cargas/auto</code></li>
+            <li><code>POST /api/escolas/{id}/horarios/auto</code></li>
+            <li><code>POST /api/secretaria/turmas/{turmaId}/atribuir-professor</code></li>
+            <li><code>POST /api/escolas/{id}/turmas/{turmaId}/sala</code></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">14 · KPI Operacional</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Taxa de publicação de quadro sem retrabalho:</strong> &gt;= 90%.</li>
+        <li><strong>Taxa de turmas sem pendência de carga no primeiro ciclo:</strong> &gt;= 95%.</li>
+        <li><strong>Tempo médio de configuração por turma:</strong> até 90 min.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">15 · Riscos e Controles</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Risco:</strong> Desalinhamento entre regras de avaliação e o fluxo acadêmico dos professores.
+          <br><strong>Controle:</strong> Validação de consistência do modelo de notas antes da homologação de qualquer quadro.
+        </li>
+        <li style="margin-top: 10px;"><strong>Risco:</strong> Publicação de horários incompletos gerando dias sem aula na escola.
+          <br><strong>Controle:</strong> Trava nativa de publicação bloqueando grades com divergência de carga.
+        </li>
+        <li style="margin-top: 10px;"><strong>Risco:</strong> Professores ou salas com choques físicos reais.
+          <br><strong>Controle:</strong> Bloqueio transacional automático no banco impedindo duplicidades.
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">16 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Alinhado aos campos e termos reais de "Avaliação & Frequência", slots e editor de quadro de horários.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

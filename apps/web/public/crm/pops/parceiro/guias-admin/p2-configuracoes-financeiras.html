@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P2-01 · Políticas Financeiras de Cobrança (Admin)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } .callout-box, table, tr, img, .signatures, .sig-box, .clause, .content-block { page-break-inside: avoid; break-inside: avoid; } h1, h2, h3, h4, .sec-lbl { page-break-after: avoid; break-after: avoid; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P2-01</div>
+    </div>
+    <div class="hd-title">Políticas Financeiras <span>de Cobrança</span><br>(Admin).</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.1.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar a definição e publicação das políticas financeiras globais da escola, abrangendo data de vencimento padrão, multas por atraso, juros diários (mora) e restrição/bloqueio automático de inadimplentes.</p>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Implantação ou configuração inicial do módulo financeiro da escola.</li>
+        <li>Revisões pontuais da política de cobrança escolar.</li>
+        <li>Alterações de regras contratuais ou termos de inadimplência aplicados no portal.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável:</strong> Setor Financeiro / Secretaria</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico da plataforma</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Acesso ao menu de <code>Admin &gt; Configurações &gt; Financeiro</code>.</li>
+        <li>Escola correta selecionada no contexto de administração.</li>
+        <li>Alinhamento prévio com a direção financeira sobre percentuais de juros, multas e políticas de bloqueio.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>Validado contra <code>apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/financeiro/page.tsx</code>.</li>
+        <li>A página exibe o título <strong>Financeiro · Políticas de Cobrança</strong> e carrega dados em tempo real via <code>GET /api/escola/{escola}/admin/configuracoes/financeiro</code> desabilitando cache (<code>cache: no-store</code>).</li>
+        <li>A interface expõe os blocos operacionais: <strong>Regras de Cobrança</strong>, <strong>Restrição Automática</strong> e um card informativo direcionando a <code>Mensalidades & Emolumentos</code>.</li>
+        <li>A ação de salvar consome a API de gravação e executa na sequência o commit transacional de setup (<code>POST /api/escola/{escola}/admin/setup/commit</code>) usando controle de idempotência (<code>Idempotency-Key</code>).</li>
+        <li>Mensagens do sistema na gravação:
+          <ul>
+            <li>Toast flutuante inicial: <code>Aplicando regras financeiras...</code></li>
+            <li>Sucesso: <code>Política financeira atualizada.</code></li>
+            <li>Erro: <code>Erro ao salvar regras.</code></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Procedimento A · Carregar configuração atual</div>
+    <div class="content-block">
+      <ol>
+        <li>Navegar até o menu de <strong>Admin &gt; Configurações &gt; Financeiro</strong>.</li>
+        <li>Confirmar o título da página: <strong>Financeiro · Políticas de Cobrança</strong>.</li>
+        <li>Aguardar que o formulário seja preenchido por completo (sem a mensagem de feedback <code>Carregando dados financeiros...</code>).
+          <img class="step-print" src="../../Admin/prints/p2-financeiro-politicas-cobranca.png" alt="Interface Financeiro - Políticas de Cobrança">
+        </li>
+        <li>Revisar com atenção as regras correntes antes de realizar qualquer modificação nos campos.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">06 · Procedimento B · Ajustar regras de cobrança</div>
+    <div class="content-block">
+      <ol>
+        <li>No bloco <strong>Regras de Cobrança</strong>, atualizar as variáveis financeiras:
+          <ul>
+            <li><code>Dia de Vencimento Padrão</code> (selecionar uma das opções: 1, 5, 10, 15, 20, 25, 30).</li>
+            <li><code>Multa por Atraso (%)</code> (informar a porcentagem simples).</li>
+            <li><code>Juros Diários (Mora)</code> (configurar a fração percentual de juros diários).</li>
+          </ul>
+        </li>
+        <li>Confirmar se os percentuais preenchidos estão corretos e alinhados com o contrato do ano corrente.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">07 · Procedimento C · Definir política de inadimplência</div>
+    <div class="content-block">
+      <ol>
+        <li>No bloco <strong>Restrição Automática</strong>, posicionar o toggle de <code>bloquear inadimplentes</code> na posição desejada (Ativo / Inativo).
+          <img class="step-print" src="../../Admin/prints/p2-financeiro-restricao-automatica.png" alt="Bloco de Restrição Automática">
+        </li>
+        <li>Quando o bloqueio for ativado, orientar os operadores e secretaria de que alunos com mais de 30 dias de atraso financeiro terão acesso restrito a funcionalidades selecionadas no portal do aluno.</li>
+        <li>Garantir que a ativação da restrição automática possui respaldo nas políticas internas contratuais da instituição.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">08 · Procedimento D · Salvar e publicar</div>
+    <div class="content-block">
+      <ol>
+        <li>Clicar no botão <strong>Salvar</strong> na interface do formulário financeiro.</li>
+        <li>Validar a exibição da mensagem de sincronização: <code>Aplicando regras financeiras...</code>.</li>
+        <li>Confirmar a conclusão do processo pelo toast final de sucesso: <code>Política financeira atualizada.</code>.</li>
+        <li>Para assegurar a gravação, atualizar a página manualmente e confirmar se os novos valores permanecem preenchidos nos campos.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">09 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Configurações financeiras de juros, multas e vencimento atualizadas com sucesso no banco de dados.</li>
+        <li>Políticas de restrição de acesso por inadimplência aplicadas conforme diretriz estabelecida.</li>
+        <li>Conclusão do commit do setup sem gerar incidentes.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">10 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Erro ao salvar regras.</td>
+            <td>Falha interna na requisição de gravação ou na etapa de commit do setup no backend</td>
+            <td>Verificar conexões locais, reexecutar o clique de salvamento e aguardar o toast</td>
+            <td>Caso o erro de salvamento ocorra consecutivamente por mais de 3 tentativas</td>
+          </tr>
+          <tr>
+            <td>Endpoint financeiro indisponível</td>
+            <td>Incompatibilidade temporária de comunicação com o microsserviço de finanças</td>
+            <td>Recarregar a página e tentar novamente após 2 minutos</td>
+            <td>Caso o erro de indisponibilidade de rota persista após nova autenticação</td>
+          </tr>
+          <tr>
+            <td>Valores voltam ao padrão após refresh</td>
+            <td>O commit final transacional falhou, resultando em rollback da gravação</td>
+            <td>Reexecutar a gravação e certificar-se de aguardar o toast de sucesso completa</td>
+            <td>Caso os dados cadastrados não fixem na tela após atualização forçada</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">11 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela das regras de cobrança preenchidas e salvas (vencimento, multa, juros).</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Painel Financeiro Homologado]</span>
+        </div>
+        <li>Captura de tela exibindo o estado do toggle de inadimplência (Ativo / Inativo).</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Toggle de Restrição Automática]</span>
+        </div>
+        <li>Dados do operador responsável e timestamp da ação.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">12 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Carregamento Inicial:</strong>
+          <ul>
+            <li><code>GET /api/escola/{escola}/admin/configuracoes/financeiro</code> (Com controle <code>cache: no-store</code>)</li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Salvamento das Regras:</strong>
+          <ul>
+            <li><code>POST /api/escola/{escola}/admin/configuracoes/financeiro</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Commit de Configurações:</strong>
+          <ul>
+            <li><code>POST /api/escola/{escola}/admin/setup/commit</code> (Com envio obrigatório de <code>Idempotency-Key</code> no header)</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">13 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Validado contra código fonte real e documentados blocos, mensagens de toast e endpoints reais.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

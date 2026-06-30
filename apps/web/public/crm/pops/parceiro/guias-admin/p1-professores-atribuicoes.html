@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KLASSE · POP-P1-03 · Professores, Atribuições e Pendências</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0; -webkit-font-smoothing: antialiased;}
+
+:root{
+  --v:#1F6B3B;
+  --vd:#0f3d20;
+  --vll:#e8f4ed;
+  --o:#C8902A;
+  --oll:#fdf0d8;
+  --cr:#f5f0e8;
+  --crd:#ede5d6;
+  --slate:#111c14;
+  --muted:#5a7063;
+  --border:rgba(31,107,59,.12);
+  --w:#ffffff;
+}
+
+@media print {
+  @page { margin: 0.2cm; size: A4; }
+  body { padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9px; line-height: 1.1; }
+  .page { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; margin: 0; border:none; }
+  .hd { padding: 10px 20px 8px; }
+  .hd-title { font-size: 18px; margin-bottom: 2px; }
+  .hd-top { margin-bottom: 4px; }
+  .hd-sub { font-size: 10px; }
+  .body { padding: 10px 20px 10px; }
+  .sec-lbl { margin-top: 4px; margin-bottom: 3px; font-size: 8px; }
+  .contract-text { font-size: 9px !important; }
+  table { font-size: 8px !important; margin-top: 8px !important; margin-bottom: 8px !important; }
+  th, td { padding: 4px 6px !important; }
+  ul, ol { margin-left: 15px !important; margin-bottom: 8px !important; font-size: 9px !important; }
+  .step-print { max-width: 80% !important; border: 1px solid #ccc !important; box-shadow: none !important; margin: 8px auto !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } .callout-box, table, tr, img, .signatures, .sig-box, .clause, .content-block { page-break-inside: avoid; break-inside: avoid; } h1, h2, h3, h4, .sec-lbl { page-break-after: avoid; break-after: avoid; }
+}
+
+html,body{
+  background:var(--cr);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding:10px 15px;
+  color:var(--slate);
+  line-height: 1.4;
+}
+
+.page{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--w);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.04);
+}
+
+.hd{
+  background:var(--vd);
+  padding:25px 35px 20px;
+  position:relative;overflow:hidden;
+}
+.hd-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.hd-brand{display:flex;align-items:center;gap:6px;}
+.hd-logo-word{
+  font-size:11px;font-weight:900;color:white;
+  letter-spacing:.05em;line-height: 1.1;
+}
+.hd-tagline{
+  font-size: 5.5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.hd-badge{
+  background:rgba(200,144,42,0.1) !important; 
+  color: var(--o) !important; 
+  border-radius: 99px; 
+  padding: 2px 10px; 
+  font-size: 9px; 
+  font-weight: 800; 
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+}
+.hd-title{
+  font-size: 30px;
+  font-weight: 900;color:white;
+  line-height: 1.05; letter-spacing: -1px;
+  margin-bottom:8px;
+}
+.hd-title span{color:var(--o);}
+.hd-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400;line-height: 1.5;}
+
+.body{padding:25px 35px 30px;}
+
+.sec-lbl{
+  font-size: 9px; 
+  font-weight: 800; 
+  color: var(--o);
+  text-transform: uppercase; 
+  letter-spacing: 1px;
+  margin-bottom:12px;
+  margin-top:20px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-lbl:first-of-type{
+  margin-top:0;
+}
+.sec-lbl::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+.content-block {
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+ul, ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+li {
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--vd);
+}
+
+code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  font-size: 10.5px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--vll);
+  color: var(--vd);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(31,107,59,0.01);
+}
+
+.screenshot-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.screenshot-placeholder::before {
+  content: '📸';
+  font-size: 14px;
+}
+
+.step-print {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.footer{
+  background:var(--vd);
+  padding:20px 35px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.footer-brand{display:flex;align-items:center;gap:6px;}
+.footer-logo-word{font-size:10px;font-weight:900;color:white;letter-spacing:.04em;line-height: 1.1;}
+.footer-tagline{
+  font-size: 5px;font-weight:800;color:var(--o);
+  text-transform:uppercase;letter-spacing:1.5px;opacity:0.9;
+}
+.footer-info{font-size:8px;color:rgba(255,255,255,.25);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;text-align:right;line-height:1.3;}
+.footer-info span{color:var(--o);}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="hd">
+    <div class="hd-top">
+      <div class="hd-brand">
+        <img src="logo-klasse.png" alt="K" style="height: 20px; width: auto;">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+          <span class="hd-logo-word">KLASSE</span>
+          <span class="hd-tagline">Gestão Escolar</span>
+        </div>
+      </div>
+      <div class="hd-badge">Procedimento Operacional · POP-P1-03</div>
+    </div>
+    <div class="hd-title">Professores, <span>Atribuições</span><br>e Pendências (Admin).</div>
+    <div class="hd-sub">
+      <strong>Versão:</strong> 1.2.0 &nbsp;·&nbsp; 
+      <strong>Data:</strong> 2026-06-28 &nbsp;·&nbsp; 
+      <strong>Módulo:</strong> Admin da Escola &nbsp;·&nbsp; 
+      <strong>Perfil Principal:</strong> admin_escola
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-lbl">01 · Objetivo</div>
+    <div class="content-block">
+      <p>Padronizar a operação do Admin para:</p>
+      <ul>
+        <li>Cadastrar e atualizar dados de docentes no sistema.</li>
+        <li>Atribuir professores por <code>turma x disciplina</code>.</li>
+        <li>Monitorar pendências acadêmicas e de compliance pedagógico dos docentes.</li>
+        <li>Garantir a consistência total entre a lista de <strong>Professores</strong> e o <strong>Quadro de Horário</strong>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">02 · Quando usar</div>
+    <div class="content-block">
+      <ul>
+        <li>Entrada ou admissão de novo professor na escola.</li>
+        <li>Ajustes de carga horária máxima, turnos de disponibilidade, habilitações ou disciplinas de atuação.</li>
+        <li>Atribuição ou remoção de um docente em uma turma-disciplina específica.</li>
+        <li>Acompanhamento e correção de pendências acadêmicas informadas por professor.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">03 · Responsáveis</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Executor:</strong> Admin da Escola</li>
+        <li><strong>Co-responsável:</strong> Coordenação / Secretaria</li>
+        <li><strong>Escalonamento:</strong> Suporte técnico</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04 · Entrada funcional no sistema</div>
+    <div class="content-block">
+      <ul>
+        <li>A opção <code>Admin &gt; Professores</code> redireciona para a rota <code>/escola/{id}/professores</code>.</li>
+        <li>A interface de <strong>Professores</strong> opera com 3 abas principais:
+          <ul>
+            <li><strong>Adicionar</strong> (cadastro)</li>
+            <li><strong>Atribuir</strong> (vínculos)</li>
+            <li><strong>Gerenciar</strong> (ações/status)</li>
+          </ul>
+        </li>
+        <li>A aba <strong>Gerenciar</strong> possibilita alternar entre visualizações de <code>Grid</code> e <code>Lista</code>, aplicar filtros rápidos de status, atribuições e compliance, e abrir opções de <code>Ver</code> detalhado, <code>Editar</code>, <code>Reenviar</code> convite e redefinir senha temporária (<code>Nova senha</code>).</li>
+        <li><em>Nota de Apoio Técnico: O endpoint de integridade <code>GET /api/escola/{id}/admin/academico/consistencia-professores?limit=20</code> existe no backend e é utilizado para suporte direto, não integrando a UI obrigatória do operador diário.</em></li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">04.1 · Estado Fiel ao Código</div>
+    <div class="content-block">
+      <ul>
+        <li>Validado contra <code>apps/web/src/app/escola/[id]/(portal)/professores/page.tsx</code>.</li>
+        <li>A tela consome dados via <code>GET /api/secretaria/professores?cargo=professor&days=36500&pageSize=200&escola_id=...</code> com desativação de cache (<code>cache: no-store</code>).</li>
+        <li>Cadastros, edições, convites, redefinições de acesso e atribuições operam estritamente sobre os endpoints documentados na referência técnica deste POP.</li>
+        <li>O fluxo visível de atribuição obedece à hierarquia lógica: <code>professor ➔ curso ➔ turma ➔ disciplina</code>.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">05 · Pré-condições</div>
+    <div class="content-block">
+      <ul>
+        <li>Escola correta selecionada no contexto do portal Admin.</li>
+        <li>Perfil operacional do operador com permissão de criação e edição de usuários docentes.</li>
+        <li>Matrizes de turmas e disciplinas já criadas e consistentes para receber vínculos.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">06 · Procedimento A · Cadastrar professor (aba Adicionar)</div>
+    <div class="content-block">
+      <ol>
+        <li>Aceder a <strong>Professores &gt; Adicionar</strong>.</li>
+        <li>Preencher os dados pessoais obrigatórios indicados:
+          <ul>
+            <li>Nome completo.</li>
+            <li>E-mail corporativo/pessoal.</li>
+            <li>Data de nascimento.</li>
+            <li>BI (Bilhete de Identidade - obrigatoriamente 14 caracteres alfanuméricos).</li>
+            <li>Telefone de contato.</li>
+          </ul>
+        </li>
+        <li>Preencher as especificações acadêmicas e de contrato:
+          <ul>
+            <li>Habilitações literárias.</li>
+            <li>Vínculo contratual ativo.</li>
+            <li>Carga horária semanal máxima autorizada.</li>
+            <li>Turnos de disponibilidade (<code>M</code>, <code>T</code>, <code>N</code>).</li>
+            <li>Disciplinas habilitadas para lecionar.</li>
+          </ul>
+        </li>
+        <li>Clicar no botão para confirmar a criação do docente.
+          <img class="step-print" src="../../Admin/prints/p1-professores-adicionar-cadastro.png" alt="Formulário de Cadastro de Professor">
+        </li>
+        <li>Validar se o retorno visual é de sucesso: <code>Professor criado com sucesso!</code>.</li>
+        <li>Caso o sistema forneça uma senha temporária, realizar a cópia e envio seguro ao destinatário.</li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Nota técnica:</strong> O salvamento cria o perfil de usuário, o vínculo escolar correspondente e o registro na tabela <code>teachers</code>, gravando as habilidades nas tabelas <code>teacher_skills</code>.</p>
+    </div>
+
+    <div class="sec-lbl">07 · Procedimento B · Editar professor e acessos</div>
+    <div class="content-block">
+      <ol>
+        <li>Aceder a <strong>Professores &gt; Gerenciar</strong>.</li>
+        <li>Localizar o docente desejado e clicar na ação de **Editar**.</li>
+        <li>Modificar as informações pretendidas (ajustes de carga horária máxima, turnos ou disciplinas habilitadas).</li>
+        <li>Salvar e confirmar a notificação: <code>Professor atualizado.</code></li>
+        <li>Caso o professor esteja pendente de primeiro acesso, clicar em <strong>Reenviar convite</strong>.</li>
+        <li>Para resets de acesso solicitados, utilizar a ação <strong>Gerar senha temporária</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">08 · Procedimento C · Atribuir professor em turma-disciplina</div>
+    <div class="content-block">
+      <ol>
+        <li>Aceder a <strong>Professores &gt; Atribuir</strong>.</li>
+        <li>Selecionar nos campos na ordem hierárquica exigida:
+          <ul>
+            <li>Professor de destino.</li>
+            <li>Curso correspondente.</li>
+            <li>Turma física de vinculação.</li>
+            <li>Disciplina da matriz curricular.</li>
+          </ul>
+        </li>
+        <li>Clicar no botão para confirmar a atribuição.
+          <img class="step-print" src="../../Admin/prints/p1-professores-atribuir-tela.png" alt="Interface de Atribuição de Disciplina">
+        </li>
+        <li>Validar o alerta de confirmação: <code>Atribuição salva com sucesso.</code></li>
+        <li>Para desfazer um vínculo, localizar a grade de alocações da turma e remover a associação do docente.</li>
+      </ol>
+      <p style="margin-top: 10px;"><strong>Comportamento técnico:</strong> A atribuição faz <code>upsert</code> no banco de dados baseado na combinação única de <code>escola + turma + curso_matriz_id</code>.</p>
+    </div>
+
+    <div class="sec-lbl">09 · Procedimento D · Monitorar pendências/compliance</div>
+    <div class="content-block">
+      <ol>
+        <li>Na aba <strong>Gerenciar</strong>, clicar na ação para visualizar o detalhe do professor.</li>
+        <li>Revisar as métricas de atuação do docente:
+          <ul>
+            <li>Lista de atribuições de turmas vigentes.</li>
+            <li>Carga horária acumulada real vs. limite de carga máxima do docente.</li>
+            <li>Status de compliance pedagógico geral.</li>
+            <li>Pendências de lançamentos de avaliações (por tipo e trimestre).</li>
+          </ul>
+          <img class="step-print" src="../../Admin/prints/p1-professores-compliance-detalhe.png" alt="Visualização de Compliance e Pendências">
+        </li>
+        <li>Priorizar correções para docentes que possuam status marcado como Crítico/Pendente.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">09A · Procedimento E · Guardrail técnico de consistência docente</div>
+    <div class="content-block">
+      <p><em>Este procedimento é de uso exclusivo para o Suporte Técnico em rotinas de saneamento de banco de dados. Não há botão na interface de Professores.</em></p>
+      <ol>
+        <li>Havendo suspeitas de assimetria nos diários de classe, executar via API:
+          <br><code>GET /api/escola/{id}/admin/academico/consistencia-professores?limit=20</code>
+        </li>
+        <li>Analisar o resumo retornado no JSON:
+          <ul>
+            <li>Se <code>healthy = true</code>: O banco de dados está íntegro. Seguir operação normal.</li>
+            <li>Se <code>healthy = false</code>: Iniciar o saneamento das inconsistências informadas.</li>
+          </ul>
+        </li>
+        <li>Prioridade das correções baseada nas chaves:
+          <ul>
+            <li><code>high_issues &gt; 0</code>: Requer tratativa imediata pois afeta a publicação do quadro ou diários.</li>
+            <li><code>medium_issues &gt; 0</code>: Corrigir na janela corrente de manutenção.</li>
+          </ul>
+        </li>
+        <li>Utilizar os IDs do campo <code>sample</code> para mapear os registros divergentes no banco.</li>
+      </ol>
+    </div>
+
+    <div class="sec-lbl">10 · Integração com o Quadro de Horário</div>
+    <div class="content-block">
+      <ul>
+        <li>A alocação de docentes realizada no <strong>Horários &gt; Quadro</strong> utiliza a mesma API de turma-disciplina.</li>
+        <li>Caso o editor de quadro aponte matérias sem professor associado, o operador pode regularizar diretamente:
+          <ul>
+            <li>Utilizando o atalho de atribuição rápida integrado no próprio Quadro de horários.</li>
+            <li>Ou vindo até a aba <strong>Professores &gt; Atribuir</strong> e repetindo o Procedimento C.</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">11 · Resultado esperado</div>
+    <div class="content-block">
+      <ul>
+        <li>Professores devidamente cadastrados com BI validado e credenciais de acesso operacionais.</li>
+        <li>Vínculos de turmas e disciplinas salvos sem erros de integridade.</li>
+        <li>Painel de compliance limpo de atrasos ou pendências não justificadas.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">12 · Erros comuns e correção</div>
+    <div class="content-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Erro Observado</th>
+            <th>Causa Provável</th>
+            <th>Correção Imediata</th>
+            <th>Escalar Quando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BI deve ter 14 caracteres alfanuméricos</td>
+            <td>O Bilhete de Identidade informado não obedece ao padrão do documento</td>
+            <td>Confirmar no documento físico do professor e digitar novamente sem espaços</td>
+            <td>Se o BI for inserido no formato correto e continuar rejeitado</td>
+          </tr>
+          <tr>
+            <td>Sem permissão no cadastro/atribuição</td>
+            <td>O perfil do operador logado não possui privilégio de escrita nesse módulo</td>
+            <td>Realizar a ação sob login de usuário administrador homologado</td>
+            <td>Caso o perfil de operador esteja correto na escola mas persista o bloqueio</td>
+          </tr>
+          <tr>
+            <td>Professor não encontrado</td>
+            <td>O registro de docente não foi vinculado à escola ativa no banco de dados</td>
+            <td>Confirmar se o professor foi adicionado na escola correta ou refazer vínculo</td>
+            <td>Caso o professor conste na aba Gerenciar mas dê erro na atribuição</td>
+          </tr>
+          <tr>
+            <td>Disciplina/Matriz não encontrada</td>
+            <td>A disciplina enviada no formulário de atribuição não existe no curso da turma</td>
+            <td>Recarregar a página, validar o curso da turma e repetir a seleção</td>
+            <td>Se a disciplina constar no currículo ativo mas falhar na API</td>
+          </tr>
+          <tr>
+            <td>healthy=false no guardrail técnico</td>
+            <td>Divergências de chaves estrangeiras entre tabelas de docentes e alocações</td>
+            <td>Mapear os IDs órfãos no sample do JSON e executar a query de saneamento</td>
+            <td>Caso o erro persista no json de retorno após o saneamento</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-lbl">13 · Evidências Obrigatórias</div>
+    <div class="content-block">
+      <ul>
+        <li>Captura de tela exibindo a mensagem de sucesso ao cadastrar novo professor.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Confirmação de Cadastro de Professor]</span>
+        </div>
+        <li>Captura de tela da tabela de atribuições da turma exibindo o nome do professor.</li>
+        <div class="screenshot-placeholder">
+          <span>[Área para inserção de Captura de Tela: Atribuições Salvas da Turma]</span>
+        </div>
+        <li>Detalhes do operador responsável, data e hora da alocação.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">14 · Referência Técnica (Fiel ao Código)</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Listagens de Contexto:</strong>
+          <ul>
+            <li><code>GET /api/secretaria/professores?cargo=professor&days=&pageSize=&escola_id=</code></li>
+            <li><code>GET /api/escolas/{id}/cursos</code></li>
+            <li><code>GET /api/escolas/{id}/turmas</code></li>
+            <li><code>GET /api/secretaria/disciplinas</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Cadastro e Acessos:</strong>
+          <ul>
+            <li><code>POST /api/escolas/{id}/professores/create</code></li>
+            <li><code>POST /api/escolas/{id}/professores/{profileId}/update</code></li>
+            <li><code>POST /api/escolas/{id}/usuarios/resend</code></li>
+            <li><code>POST /api/escolas/{id}/professores/{profileId}/reset-password</code></li>
+            <li><code>GET /api/escolas/{id}/professores/{profileId}/pendencias</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Vínculos de Turmas (Atribuição):</strong>
+          <ul>
+            <li><code>GET /api/escolas/{id}/turmas/{turmaId}/disciplinas</code></li>
+            <li><code>POST /api/escolas/{id}/turmas/{turmaId}/atribuir-professor</code></li>
+            <li><code>DELETE /api/escolas/{id}/turmas/{turmaId}/disciplinas/{disciplinaId}</code></li>
+          </ul>
+        </li>
+        <li style="margin-top: 10px;"><strong>Integridade (Guardrail):</strong>
+          <ul>
+            <li><code>GET /api/escola/{id}/admin/academico/consistencia-professores?limit=20</code></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">15 · KPI Operacional</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Tempo médio de atribuição professor-turma-disciplina:</strong> até 5 min.</li>
+        <li><strong>Taxa de atribuições realizadas sem necessidade de refação:</strong> &gt;= 95%.</li>
+        <li><strong>Contagem de pendências de notas pendentes críticas sem resolução:</strong> zero.</li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">16 · Riscos e Controles</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Risco:</strong> Alocar professor em disciplinas ou turnos incompatíveis com seu contrato escolar.
+          <br><strong>Controle:</strong> Validação em tempo real dos turnos e disciplinas habilitadas na UI de Atribuição.
+        </li>
+        <li style="margin-top: 10px;"><strong>Risco:</strong> Divergências cadastrais órfãs entre os diários de classe e o quadro de horários.
+          <br><strong>Controle:</strong> Bloqueio transacional de exclusão de docente caso possua aulas publicadas ativas no quadro.
+        </li>
+      </ul>
+    </div>
+
+    <div class="sec-lbl">17 · Revisão e Versão</div>
+    <div class="content-block">
+      <ul>
+        <li><strong>Última revisão:</strong> 2026-06-28</li>
+        <li><strong>Próxima revisão:</strong> 2026-07-12</li>
+        <li><strong>Mudanças desta versão:</strong> Reclassificação do guardrail de integridade de banco como ferramenta de suporte (sem botão integrado na UI).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      <img src="logo-klasse.png" alt="K" style="height: 18px; width: auto;">
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0;">
+        <span class="footer-logo-word">KLASSE</span>
+        <span class="footer-tagline">Gestão Escolar</span>
+      </div>
+    </div>
+    <div class="footer-info"><span>suporte@klasse.ao</span> · klasse.ao<br>Procedimento Operacional · 2026</div>
+  </div>
+</div>
+</body>
+</html>

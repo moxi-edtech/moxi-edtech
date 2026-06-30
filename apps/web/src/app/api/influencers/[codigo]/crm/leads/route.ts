@@ -83,6 +83,7 @@ export async function POST(
       trial_days,
       taxa_ativacao,
       responsavel_membro_id,
+      marketing_lead_id,
     } = body;
 
     if (!nome_escola) {
@@ -108,6 +109,7 @@ export async function POST(
       p_trial_days: Number.isFinite(trialDaysNumber) ? Math.min(30, Math.max(0, trialDaysNumber)) : 15,
       p_taxa_ativacao: Number.isFinite(taxaAtivacaoNumber) ? Math.max(0, taxaAtivacaoNumber) : 50000,
       p_responsavel_membro_id: responsavel_membro_id || null,
+      p_marketing_lead_id: marketing_lead_id || null,
     });
 
     if (error || !data?.ok) {
