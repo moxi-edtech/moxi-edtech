@@ -53,6 +53,7 @@ DECLARE
   v_horarios_ok boolean := false;
   v_portais_ok boolean := false;
   v_operational_ok boolean := false;
+  v_matriculas_count integer := 0;
   v_blockers jsonb := '[]'::jsonb;
 BEGIN
   SELECT
@@ -234,6 +235,11 @@ BEGIN
   WHERE p.escola_id = p_escola_id;
 
   v_professores_ok := v_professores_count > 0;
+
+  SELECT count(*)::int
+    INTO v_matriculas_count
+  FROM public.matriculas m
+  WHERE m.escola_id = p_escola_id;
 
   SELECT COALESCE(sum(total)::int, 0)
     INTO v_professor_consistency_high
@@ -490,6 +496,16 @@ BEGIN
         'detail', 'O portal do professor depende de docentes válidos e consistentes.'
       ));
     END IF;
+  END IF;
+
+  IF v_matriculas_count = 0 THEN
+    v_blockers := v_blockers || jsonb_build_array(jsonb_build_object(
+      'code', 'STUDENTS_MISSING',
+      'area', 'alunos',
+      'severity', 'medium',
+      'title', 'Nenhum aluno matriculado',
+      'detail', 'A escola não possui alunos cadastrados ou matriculados. Importe os alunos para iniciar as operações.'
+    ));
   END IF;
 
   RETURN jsonb_build_object(
