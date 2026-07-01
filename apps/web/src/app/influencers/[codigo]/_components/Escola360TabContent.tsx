@@ -348,8 +348,8 @@ export function Escola360TabContent({
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Carteira operacional</p>
-          <h2 className="text-2xl font-black tracking-tight text-slate-900">Painel 360 da Escola</h2>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Carteira operacional</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Painel 360 da Escola</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
@@ -419,32 +419,32 @@ export function Escola360TabContent({
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Card className="rounded-xl border-slate-200 bg-white shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <Users className="mb-3 h-5 w-5 text-slate-400" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Escolas na carteira</p>
-            <p className="mt-1 text-2xl font-black text-slate-950">{summary.total}</p>
+            <Users className="mb-3 h-5 w-5 text-zinc-400" />
+            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Escolas na carteira</p>
+            <p className="mt-1 text-2xl font-bold text-zinc-900">{summary.total}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-emerald-100 bg-emerald-50/40 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <BadgeCheck className="mb-3 h-5 w-5 text-emerald-600" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-700">Ativas</p>
-            <p className="mt-1 text-2xl font-black text-emerald-700">{summary.active}</p>
+            <BadgeCheck className="mb-3 h-5 w-5 text-emerald-500" />
+            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Ativas</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600">{summary.active}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-rose-100 bg-rose-50/40 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <ShieldAlert className="mb-3 h-5 w-5 text-rose-600" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-rose-700">Com risco</p>
-            <p className="mt-1 text-2xl font-black text-rose-700">{summary.risk}</p>
+            <ShieldAlert className="mb-3 h-5 w-5 text-rose-500" />
+            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Com risco</p>
+            <p className="mt-1 text-2xl font-bold text-rose-600">{summary.risk}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-sky-100 bg-sky-50/40 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <Banknote className="mb-3 h-5 w-5 text-sky-600" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-sky-700">Payout disponível</p>
-            <p className="mt-1 text-xl font-black text-sky-700">{formatCurrency(summary.availableCommissionKz)}</p>
+            <Banknote className="mb-3 h-5 w-5 text-sky-500" />
+            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Payout disponível</p>
+            <p className="mt-1 text-xl font-bold text-sky-600 font-mono">{formatCurrency(summary.availableCommissionKz)}</p>
           </CardContent>
         </Card>
       </div>
@@ -475,11 +475,11 @@ export function Escola360TabContent({
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="truncate text-lg font-black text-slate-950">{row.school.escola}</h3>
-                      <Badge className={`border text-[9px] font-black uppercase tracking-wider ${onboardingStatus?.color || "bg-slate-100 text-slate-700"}`}>
+                      <h3 className="truncate text-lg font-bold text-slate-950">{row.school.escola}</h3>
+                      <Badge className={`border text-[9px] font-bold uppercase tracking-wider ${onboardingStatus?.color || "bg-slate-100 text-slate-700"}`}>
                         {onboardingStatus?.label || row.school.status}
                       </Badge>
-                      <Badge className={`border text-[9px] font-black uppercase tracking-wider ${risk.badge}`}>
+                      <Badge className={`border text-[9px] font-bold uppercase tracking-wider ${risk.badge}`}>
                         <RiskIcon className="mr-1 h-3 w-3" />
                         {risk.label} · {row.riskScore}
                       </Badge>
@@ -512,7 +512,7 @@ export function Escola360TabContent({
 
                 <div className="mt-5 grid gap-3 xl:grid-cols-4">
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <Target className="h-4 w-4" />
                       Lead / Contrato
                     </div>
@@ -536,7 +536,7 @@ export function Escola360TabContent({
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <FileCheck2 className="h-4 w-4" />
                       Onboarding
                     </div>
@@ -549,7 +549,7 @@ export function Escola360TabContent({
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <CheckCircle2 className="h-4 w-4" />
                       Implantação
                     </div>
@@ -570,7 +570,7 @@ export function Escola360TabContent({
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <Headphones className="h-4 w-4" />
                       Suporte / SLA
                     </div>
@@ -590,28 +590,28 @@ export function Escola360TabContent({
 
                 <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_1fr_1.15fr]">
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <Banknote className="h-4 w-4" />
                       Comissões
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="rounded-lg bg-slate-50 p-2">
                         <p className="text-slate-400">Aprovadas</p>
-                        <p className="font-black text-slate-900">{formatCurrency(row.availableCommissions.reduce((sum, item) => sum + Number(item.valor_kz || 0), 0))}</p>
+                        <p className="font-bold text-slate-900">{formatCurrency(row.availableCommissions.reduce((sum, item) => sum + Number(item.valor_kz || 0), 0))}</p>
                       </div>
                       <div className="rounded-lg bg-slate-50 p-2">
                         <p className="text-slate-400">Pagas</p>
-                        <p className="font-black text-slate-900">{formatCurrency(row.paidCommissions.reduce((sum, item) => sum + Number(item.valor_kz || 0), 0))}</p>
+                        <p className="font-bold text-slate-900">{formatCurrency(row.paidCommissions.reduce((sum, item) => sum + Number(item.valor_kz || 0), 0))}</p>
                       </div>
                       <div className="rounded-lg bg-slate-50 p-2">
                         <p className="text-slate-400">Bloqueadas</p>
-                        <p className="font-black text-slate-900">{row.blockedCommissions.length}</p>
+                        <p className="font-bold text-slate-900">{row.blockedCommissions.length}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <TrendingUp className="h-4 w-4" />
                       Risco operacional
                     </div>
@@ -632,7 +632,7 @@ export function Escola360TabContent({
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <BookOpenCheck className="h-4 w-4" />
                       POPs da fase
                     </div>
@@ -651,14 +651,14 @@ export function Escola360TabContent({
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{pop.code}</span>
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{pop.code}</span>
                                   {pop.status === "needs_review" ? (
                                     <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-700">
                                       revisar texto
                                     </span>
                                   ) : null}
                                 </div>
-                                <p className="mt-1 text-xs font-black text-slate-900">{pop.title}</p>
+                                <p className="mt-1 text-xs font-bold text-slate-900">{pop.title}</p>
                                 <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-relaxed text-slate-500">
                                   {pop.summary}
                                 </p>

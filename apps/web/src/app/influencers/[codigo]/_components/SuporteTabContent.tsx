@@ -159,8 +159,8 @@ export function SuporteTabContent({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Operação AELS</p>
-          <h2 className="text-2xl font-black tracking-tight text-slate-900">Suporte L1</h2>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Operação AELS</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Suporte L1</h2>
           <p className="mt-1 text-xs font-medium text-slate-500">
             Registre chamados da escola, acompanhe SLA de primeira resposta e escale para KLASSE quando sair do suporte operacional.
           </p>
@@ -186,39 +186,39 @@ export function SuporteTabContent({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
             <Headphones className="mb-3 h-5 w-5 text-zinc-500" />
             <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Abertos</p>
             <p className="mt-1 font-mono text-2xl font-bold text-zinc-900">{supportSummary?.open ?? 0}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-rose-100 bg-rose-50/50 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <AlertTriangle className="mb-3 h-5 w-5 text-rose-600" />
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-rose-700">Resposta vencida</p>
-            <p className="mt-1 font-mono text-2xl font-bold text-rose-700">{supportSummary?.overdue_response ?? 0}</p>
+            <AlertTriangle className="mb-3 h-5 w-5 text-rose-500" />
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Resposta vencida</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-rose-600">{supportSummary?.overdue_response ?? 0}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-amber-100 bg-amber-50/50 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <Clock className="mb-3 h-5 w-5 text-amber-600" />
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-700">Resolução vencida</p>
-            <p className="mt-1 font-mono text-2xl font-bold text-amber-700">{supportSummary?.overdue_resolution ?? 0}</p>
+            <Clock className="mb-3 h-5 w-5 text-amber-500" />
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Resolução vencida</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-amber-600">{supportSummary?.overdue_resolution ?? 0}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-emerald-100 bg-emerald-50/50 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-600" />
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-700">Resolvidos</p>
-            <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">{supportSummary?.resolved ?? 0}</p>
+            <CheckCircle2 className="mb-3 h-5 w-5 text-emerald-500" />
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Resolvidos</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-emerald-600">{supportSummary?.resolved ?? 0}</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl border-purple-100 bg-purple-50/50 shadow-sm">
+        <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
-            <ShieldAlert className="mb-3 h-5 w-5 text-purple-600" />
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-purple-700">Escalados</p>
-            <p className="mt-1 font-mono text-2xl font-bold text-purple-700">{supportSummary?.escalated ?? 0}</p>
+            <ShieldAlert className="mb-3 h-5 w-5 text-purple-500" />
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400">Escalados</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-purple-600">{supportSummary?.escalated ?? 0}</p>
           </CardContent>
         </Card>
       </div>
@@ -226,14 +226,14 @@ export function SuporteTabContent({
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base font-black text-zinc-900">Novo ticket</CardTitle>
+            <CardTitle className="text-base font-bold text-zinc-900">Novo ticket</CardTitle>
             <CardDescription className="text-xs">
               Use a ativação existente quando houver token; para escola avulsa, preencha o nome manualmente.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Escola em ativação</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Escola em ativação</label>
               <select
                 value={newSupportSchoolToken}
                 onChange={(event) => {
@@ -256,7 +256,7 @@ export function SuporteTabContent({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Nome da escola</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Nome da escola</label>
               <input
                 value={newSupportSchoolName}
                 onChange={(event) => setNewSupportSchoolName(event.target.value)}
@@ -267,7 +267,7 @@ export function SuporteTabContent({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Título</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Título</label>
               <input
                 value={newSupportTitle}
                 onChange={(event) => setNewSupportTitle(event.target.value)}
@@ -278,7 +278,7 @@ export function SuporteTabContent({
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Canal</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Canal</label>
                 <select
                   value={newSupportCanal}
                   onChange={(event) => setNewSupportCanal(event.target.value as PartnerSupportChannel)}
@@ -290,7 +290,7 @@ export function SuporteTabContent({
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Categoria</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Categoria</label>
                 <select
                   value={newSupportCategoria}
                   onChange={(event) => setNewSupportCategoria(event.target.value as PartnerSupportCategory)}
@@ -302,7 +302,7 @@ export function SuporteTabContent({
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Gravidade</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Gravidade</label>
                 <select
                   value={newSupportGravidade}
                   onChange={(event) => setNewSupportGravidade(event.target.value as PartnerSupportSeverity)}
@@ -316,7 +316,7 @@ export function SuporteTabContent({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Responsável</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Responsável</label>
               <select
                 value={newSupportResponsavelId}
                 onChange={(event) => setNewSupportResponsavelId(event.target.value)}
@@ -330,7 +330,7 @@ export function SuporteTabContent({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Descrição</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Descrição</label>
               <textarea
                 value={newSupportDescription}
                 onChange={(event) => setNewSupportDescription(event.target.value)}
@@ -343,7 +343,7 @@ export function SuporteTabContent({
             <Button
               onClick={handleCreateSupportTicket}
               disabled={savingSupportTicket}
-              className="h-11 w-full rounded-xl bg-klasse-gold text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-klasse-gold/90"
+              className="h-11 w-full rounded-xl bg-zinc-900 text-xs font-semibold uppercase tracking-wider text-white hover:bg-zinc-800 transition-all border-none"
             >
               {savingSupportTicket ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               Abrir ticket
@@ -353,7 +353,7 @@ export function SuporteTabContent({
 
         <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base font-black text-zinc-900">Fila de atendimento</CardTitle>
+            <CardTitle className="text-base font-bold text-zinc-900">Fila de atendimento</CardTitle>
             <CardDescription className="text-xs">
               Os tickets vencidos sobem primeiro. Use nota curta antes de escalar ou resolver.
             </CardDescription>
@@ -400,11 +400,11 @@ export function SuporteTabContent({
                             <Badge className={`${severityMeta.color} rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-none`}>
                               {severityMeta.label}
                             </Badge>
-                            <span className={`text-[10px] font-black uppercase tracking-wider ${deadlineState.color}`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${deadlineState.color}`}>
                               {deadlineState.label}
                             </span>
                           </div>
-                          <p className="text-sm font-black text-zinc-900">{ticket.titulo}</p>
+                          <p className="text-sm font-bold text-zinc-900">{ticket.titulo}</p>
                           <p className="mt-1 text-xs font-semibold text-zinc-600">{ticket.escola_nome}</p>
                           {ticket.descricao && (
                             <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-500">{ticket.descricao}</p>
@@ -420,13 +420,13 @@ export function SuporteTabContent({
                           </div>
                           {ticket.escalation_reason ? (
                             <div className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] text-rose-800">
-                              <p className="text-[9px] font-black uppercase tracking-wider text-rose-600">Motivo da escalação</p>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-rose-600">Motivo da escalação</p>
                               <p className="mt-1 leading-relaxed">{ticket.escalation_reason}</p>
                             </div>
                           ) : null}
                           {ticket.notes ? (
                             <div className="mt-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[11px] text-zinc-700">
-                              <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Notas operacionais</p>
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Notas operacionais</p>
                               <p className="mt-1 whitespace-pre-line leading-relaxed">{ticket.notes}</p>
                             </div>
                           ) : null}
@@ -437,7 +437,7 @@ export function SuporteTabContent({
                             <Button
                               onClick={() => handleUpdateSupportTicket(ticket.id, "em_atendimento")}
                               disabled={savingSupportTicket}
-                              className="h-8 rounded-lg bg-zinc-950 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-zinc-800"
+                              className="h-8 rounded-lg bg-zinc-950 px-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-zinc-800"
                             >
                               <Headphones size={12} />
                               Atender
@@ -448,7 +448,7 @@ export function SuporteTabContent({
                               <Button
                                 onClick={() => handleUpdateSupportTicket(ticket.id, "aguardando_cliente")}
                                 disabled={savingSupportTicket}
-                                className="h-8 rounded-lg border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700 hover:bg-zinc-50"
+                                className="h-8 rounded-lg border border-zinc-200 bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-700 hover:bg-zinc-50"
                               >
                                 <Clock size={12} />
                                 Cliente
@@ -456,7 +456,7 @@ export function SuporteTabContent({
                               <Button
                                 onClick={() => handleUpdateSupportTicket(ticket.id, "escalado_klasse", supportEscalationReason)}
                                 disabled={savingSupportTicket}
-                                className="h-8 rounded-lg border border-rose-200 bg-rose-50 px-3 text-[10px] font-black uppercase tracking-wider text-rose-700 hover:bg-rose-100"
+                                className="h-8 rounded-lg border border-rose-200 bg-rose-50 px-3 text-[10px] font-bold uppercase tracking-wider text-rose-700 hover:bg-rose-100"
                               >
                                 <ShieldAlert size={12} />
                                 Escalar
@@ -464,7 +464,7 @@ export function SuporteTabContent({
                               <Button
                                 onClick={() => handleUpdateSupportTicket(ticket.id, "resolvido")}
                                 disabled={savingSupportTicket}
-                                className="h-8 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-black uppercase tracking-wider text-emerald-700 hover:bg-emerald-100"
+                                className="h-8 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:bg-emerald-100"
                               >
                                 <Send size={12} />
                                 Resolver

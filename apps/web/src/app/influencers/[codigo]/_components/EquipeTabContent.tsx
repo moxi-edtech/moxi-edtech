@@ -55,8 +55,8 @@ export function EquipeTabContent({
     <div className="space-y-8">
       <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Operação AELS</p>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Equipe do Parceiro</h2>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Operação AELS</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Equipe do Parceiro</h2>
           <p className="mt-1 text-xs font-medium text-slate-500">
             Controle quem entra no CRM e qual responsabilidade cada operador assume no fluxo comercial.
           </p>
@@ -76,7 +76,7 @@ export function EquipeTabContent({
           <CardContent className="flex items-start gap-4 p-6">
             <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-amber-700" />
             <div>
-              <h3 className="text-sm font-black text-amber-950">Acesso reservado</h3>
+              <h3 className="text-sm font-bold text-amber-950">Acesso reservado</h3>
               <p className="mt-1 text-xs font-semibold leading-relaxed text-amber-800">
                 Apenas o proprietário ou admin do parceiro pode gerir membros, papéis e PINs de acesso.
               </p>
@@ -92,7 +92,7 @@ export function EquipeTabContent({
                   <BarChart3 size={18} />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-black text-zinc-900">Produtividade por operador</CardTitle>
+                  <CardTitle className="text-base font-bold text-zinc-900">Produtividade por operador</CardTitle>
                   <CardDescription className="text-xs">
                     Mede carteira ativa, follow-ups vencidos, leads sem próxima ação e conversões por responsável.
                   </CardDescription>
@@ -112,7 +112,7 @@ export function EquipeTabContent({
                     <div key={operator.membro_id} className="rounded-xl border border-zinc-200/70 bg-zinc-50/70 p-4">
                       <div className="mb-4 flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-black text-zinc-900">{operator.membro_nome}</p>
+                          <p className="truncate text-sm font-bold text-zinc-900">{operator.membro_nome}</p>
                           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                             {operator.active_leads} ativos · {operator.total_leads} totais
                           </p>
@@ -129,24 +129,24 @@ export function EquipeTabContent({
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-lg border border-white bg-white p-2">
                           <Clock className="mb-1 h-3.5 w-3.5 text-rose-500" />
-                          <p className="text-lg font-black leading-none text-zinc-900">{operator.overdue_tasks}</p>
+                          <p className="text-lg font-bold leading-none text-zinc-900">{operator.overdue_tasks}</p>
                           <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-400">Vencidos</p>
                         </div>
                         <div className="rounded-lg border border-white bg-white p-2">
                           <Users className="mb-1 h-3.5 w-3.5 text-amber-500" />
-                          <p className="text-lg font-black leading-none text-zinc-900">{operator.missing_next_action}</p>
+                          <p className="text-lg font-bold leading-none text-zinc-900">{operator.missing_next_action}</p>
                           <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-400">Sem ação</p>
                         </div>
                         <div className="rounded-lg border border-white bg-white p-2">
                           <Trophy className="mb-1 h-3.5 w-3.5 text-emerald-500" />
-                          <p className="text-lg font-black leading-none text-zinc-900">{operator.won_leads}</p>
+                          <p className="text-lg font-bold leading-none text-zinc-900">{operator.won_leads}</p>
                           <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-zinc-400">Ganhos</p>
                         </div>
                       </div>
 
                       <div className="mt-3 rounded-lg bg-zinc-950 px-3 py-2 text-white">
                         <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Pipeline potencial</p>
-                        <p className="mt-0.5 text-sm font-black text-klasse-gold">
+                        <p className="mt-0.5 text-sm font-bold text-klasse-gold">
                           Kz {operator.pipeline_value_kz.toLocaleString("pt-PT")}
                         </p>
                       </div>
@@ -160,14 +160,14 @@ export function EquipeTabContent({
           <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base font-black text-zinc-900">Novo membro</CardTitle>
+              <CardTitle className="text-base font-bold text-zinc-900">Novo membro</CardTitle>
               <CardDescription className="text-xs">
                 Crie operadores para vendas, implantação e suporte L1 sem partilhar o PIN do proprietário.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Nome</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Nome</label>
                 <input
                   value={newMemberName}
                   onChange={(event) => setNewMemberName(event.target.value)}
@@ -177,7 +177,7 @@ export function EquipeTabContent({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Papel</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Papel</label>
                   <select
                     value={newMemberRole}
                     onChange={(event) => setNewMemberRole(event.target.value as ManageablePartnerRole)}
@@ -191,7 +191,7 @@ export function EquipeTabContent({
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">PIN inicial</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">PIN inicial</label>
                   <input
                     value={newMemberPin}
                     onChange={(event) => setNewMemberPin(event.target.value)}
@@ -204,7 +204,7 @@ export function EquipeTabContent({
               <Button
                 onClick={handleCreateTeamMember}
                 disabled={savingTeamMember}
-                className="h-11 w-full rounded-xl bg-klasse-gold text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-klasse-gold/90"
+                className="h-11 w-full rounded-xl bg-zinc-900 text-xs font-semibold uppercase tracking-wider text-white hover:bg-zinc-800 transition-all border-none"
               >
                 {savingTeamMember ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Adicionar membro
@@ -214,7 +214,7 @@ export function EquipeTabContent({
 
           <Card className="rounded-2xl border-zinc-200/70 bg-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base font-black text-zinc-900">Membros cadastrados</CardTitle>
+              <CardTitle className="text-base font-bold text-zinc-900">Membros cadastrados</CardTitle>
               <CardDescription className="text-xs">
                 Papéis definem responsabilidade operacional; admin também consegue gerir a equipe.
               </CardDescription>
@@ -236,7 +236,7 @@ export function EquipeTabContent({
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-black text-zinc-900">{member.nome}</p>
+                            <p className="truncate text-sm font-bold text-zinc-900">{member.nome}</p>
                             <Badge className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shadow-none ${
                               member.ativo
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
@@ -272,7 +272,7 @@ export function EquipeTabContent({
                               onClick={() => handleUpdateTeamMember(member.id, { ativo: !member.ativo })}
                               disabled={savingTeamMember}
                               variant="outline"
-                              className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-zinc-700"
+                              className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-700"
                             >
                               {member.ativo ? "Desativar" : "Ativar"}
                             </Button>
@@ -294,7 +294,7 @@ export function EquipeTabContent({
                         <Button
                           onClick={() => handleUpdateTeamMember(member.id, { pin: resetPins[member.id] ?? "" })}
                           disabled={savingTeamMember || !(resetPins[member.id] ?? "").trim()}
-                          className="h-9 rounded-lg bg-zinc-900 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-zinc-800"
+                          className="h-9 rounded-lg bg-zinc-900 px-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-zinc-800"
                         >
                           Redefinir PIN
                         </Button>

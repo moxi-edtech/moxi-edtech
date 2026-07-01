@@ -1209,7 +1209,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             <ShieldCheck size={40} />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-slate-900">Acesso Restrito</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Acesso Restrito</h2>
             <p className="text-slate-500">A sua sessão expirou ou o acesso é inválido. Por favor, valide o seu código e PIN novamente.</p>
           </div>
           <Button onClick={() => router.push('/influencers')} className="w-full bg-slate-900 py-6 rounded-2xl font-bold">
@@ -1278,12 +1278,12 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             {/* Leads header with Button */}
             <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">CRM Pré-Vendas</p>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Leads Comerciais</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">CRM Pré-Vendas</p>
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Leads Comerciais</h2>
               </div>
               <Button
                 onClick={() => setCrmModalOpen(true)}
-                className="bg-klasse-gold hover:bg-klasse-gold/90 text-slate-950 font-bold text-xs uppercase tracking-widest px-5 py-3 h-auto rounded-xl border-none shadow-sm flex items-center gap-1.5"
+                className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs uppercase tracking-wider px-5 py-2.5 h-auto rounded-xl border-none shadow-sm flex items-center gap-1.5 transition-all"
               >
                 <Plus size={16} />
                 Novo Lead
@@ -1292,7 +1292,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
             {/* Leads metrics grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
                   <CardContent className="p-5 space-y-2">
                     <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
                       <Target size={16} />
@@ -1303,7 +1303,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
                   <CardContent className="p-5 space-y-2">
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
                       <Clock size={16} />
@@ -1314,7 +1314,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
                   <CardContent className="p-5 space-y-2">
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
                       <School size={16} />
@@ -1325,7 +1325,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="rounded-xl border-zinc-200/50 shadow-sm overflow-hidden bg-white">
+                <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)] overflow-hidden">
                   <CardContent className="p-5 space-y-2">
                     <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
                       <TrendingUp size={16} />
@@ -1419,7 +1419,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <>
                           <div>
                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Potencial de Receita Comercial</p>
-                            <p className="text-xl font-black text-klasse-gold">
+                            <p className="text-xl font-bold text-klasse-gold">
                               Kz {totalCrmPipelineValue.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                             </p>
                           </div>
@@ -1431,7 +1431,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <>
                           <div>
                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Negociações em Curso</p>
-                            <p className="text-xl font-black text-[#10b981]">
+                            <p className="text-xl font-bold text-[#10b981]">
                               {activeCrmLeads.length} {activeCrmLeads.length === 1 ? 'Lead Ativo' : 'Leads Ativos'}
                             </p>
                           </div>
@@ -1630,8 +1630,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             {/* Onboarding Header */}
             <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Processo de Ativação</p>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Ativação Escolar</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Processo de Ativação</p>
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ativação Escolar</h2>
               </div>
             </div>
 
@@ -1825,12 +1825,12 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                           <div key={stepCode} className="w-72 shrink-0 flex flex-col gap-3">
                             <div className="flex items-center justify-between px-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">{meta.short}</span>
+                                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">{meta.short}</span>
                                 <span className="bg-slate-100 text-slate-600 font-bold text-[9px] px-1.5 py-0.5 rounded-md border border-slate-200/50">
                                   {schoolsInStep.length}
                                 </span>
                               </div>
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{meta.ownerLabel}</span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{meta.ownerLabel}</span>
                             </div>
 
                             <div className="flex-1 flex flex-col gap-2.5 p-2 rounded-2xl bg-slate-50 border border-slate-200/60 min-h-[450px]">
@@ -1866,11 +1866,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                      >
                                        <div className="flex flex-col gap-1">
                                          <div className="flex items-start justify-between gap-2">
-                                           <p className="font-black text-slate-900 text-xs truncate" title={escola.escola}>
+                                           <p className="font-bold text-slate-900 text-xs truncate" title={escola.escola}>
                                              {escola.escola}
                                            </p>
                                            {isSchoolOverdue && (
-                                             <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-rose-100 text-rose-700 animate-pulse">
+                                             <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-rose-100 text-rose-700 animate-pulse">
                                                {delayDays === 1 ? '1d atraso' : `${delayDays}d atraso`}
                                              </span>
                                            )}
@@ -2022,7 +2022,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                           >
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                               <div className="min-w-0">
-                                <p className="truncate font-black text-slate-900">{escola.escola}</p>
+                                <p className="truncate font-bold text-slate-900">{escola.escola}</p>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-400">
                                   <span>{format(new Date(escola.data), "dd MMM, HH:mm", { locale: pt })}</span>
                                   {escola.total_alunos && (
@@ -2047,10 +2047,10 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     Atrasado (SLA)
                                   </Badge>
                                 )}
-                                <Badge className="border border-klasse-gold-200 bg-klasse-gold-100 text-[9px] font-black uppercase tracking-widest text-klasse-gold-700">
+                                <Badge className="border border-klasse-gold-200 bg-klasse-gold-100 text-[9px] font-bold uppercase tracking-widest text-klasse-gold-700">
                                   Plano: {escola.plano_label || escola.plano || "Não informado"}
                                 </Badge>
-                                <Badge className="border border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                <Badge className="border border-slate-200 bg-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-700">
                                   Implantação: {getImplantationProgress(escola).completed}/{getImplantationProgress(escola).total}
                                 </Badge>
                                 <Badge className={`${status.color} border-none font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg`}>
@@ -2076,7 +2076,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                               <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="flex flex-col gap-2">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-bold">Workflow 7 etapas:</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 font-bold">Workflow 7 etapas:</span>
                                     <div className="flex items-center gap-1">
                                       {escola.steps.map((st, sIdx) => {
                                         const isDone = st.status === 'concluido';
@@ -2103,7 +2103,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                   </div>
                                   {nextPendingStep ? (
                                     <p className="text-[11px] font-medium text-slate-600">
-                                      Próxima fase: <span className="font-black text-slate-900">{getStepMeta(nextPendingStep.code, nextPendingStep.owner).short}</span>
+                                      Próxima fase: <span className="font-bold text-slate-900">{getStepMeta(nextPendingStep.code, nextPendingStep.owner).short}</span>
                                       {" · "}
                                       <span className="text-slate-500">Responsável: {getStepMeta(nextPendingStep.code, nextPendingStep.owner).ownerLabel}</span>
                                     </p>
@@ -2115,11 +2115,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap sm:justify-end">
                                   {nextPendingStep ? (
-                                    <Badge className="border border-slate-200 bg-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                    <Badge className="border border-slate-200 bg-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-700">
                                       Em curso: {getStepMeta(nextPendingStep.code, nextPendingStep.owner).short}
                                     </Badge>
                                   ) : (
-                                    <Badge className="border border-emerald-200 bg-emerald-100 text-[9px] font-black uppercase tracking-widest text-emerald-700">
+                                    <Badge className="border border-emerald-200 bg-emerald-100 text-[9px] font-bold uppercase tracking-widest text-emerald-700">
                                       Go-live pronto
                                     </Badge>
                                   )}
@@ -2131,7 +2131,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                         setSelectedStepCodeForCall(nextPendingStep?.code || "");
                                         setCallModalOpen(true);
                                       }}
-                                      className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                                      className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
                                     >
                                       <Phone size={12} className="text-slate-400" />
                                       REGISTRAR LIGAÇÃO
@@ -2145,7 +2145,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                           const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : '';
                                           copyToClipboard(trackingUrl);
                                         }}
-                                        className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                                        className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
                                       >
                                         <Copy size={12} className="text-slate-400" />
                                         COPIAR LINK
@@ -2161,7 +2161,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="h-8 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-black text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
+                                        className="h-8 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-bold text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
                                       >
                                         <Send size={12} /> WHATSAPP
                                       </a>
@@ -2191,8 +2191,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             <Card className="rounded-[32px] border-slate-200 shadow-sm overflow-hidden bg-white">
               <CardHeader className="p-8 pb-0 flex flex-row items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Tendência de Crescimento</p>
-                  <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Diagnósticos concluídos (últimos 7 dias)</CardTitle>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Tendência de Crescimento</p>
+                  <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">Diagnósticos concluídos (últimos 7 dias)</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-klasse-gold animate-pulse" />
@@ -2302,26 +2302,26 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           {totalComissaoReal > 0 ? "Total em Ledger" : "Total Estimado"}
                         </p>
-                        <p className="text-2xl font-black text-klasse-gold">
+                        <p className="text-2xl font-bold text-klasse-gold">
                           {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(totalComissao).replace('AOA', 'Kz')}
                         </p>
                         {commissionSummary && commissionSummary.count > 0 && (
                           <div className="grid grid-cols-3 gap-2 pt-3 text-[10px]">
                             <div className="rounded-xl bg-white/5 p-2">
                               <p className="font-bold uppercase tracking-wider text-slate-500">Pendente</p>
-                              <p className="mt-1 font-black text-white">
+                              <p className="mt-1 font-bold text-white">
                                 {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(commissionSummary.pending_kz).replace('AOA', 'Kz')}
                               </p>
                             </div>
                             <div className="rounded-xl bg-white/5 p-2">
                               <p className="font-bold uppercase tracking-wider text-slate-500">Aprovado</p>
-                              <p className="mt-1 font-black text-white">
+                              <p className="mt-1 font-bold text-white">
                                 {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(commissionSummary.approved_kz).replace('AOA', 'Kz')}
                               </p>
                             </div>
                             <div className="rounded-xl bg-white/5 p-2">
                               <p className="font-bold uppercase tracking-wider text-slate-500">Pago</p>
-                              <p className="mt-1 font-black text-white">
+                              <p className="mt-1 font-bold text-white">
                                 {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(commissionSummary.paid_kz).replace('AOA', 'Kz')}
                               </p>
                             </div>
@@ -2333,7 +2333,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200">Payout disponível</p>
-                            <p className="mt-1 text-xl font-black text-white">
+                            <p className="mt-1 text-xl font-bold text-white">
                               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(availablePayoutKz).replace('AOA', 'Kz')}
                             </p>
                             <p className="mt-1 text-[10px] font-semibold text-emerald-100/80">
@@ -2353,7 +2353,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                             type="file"
                             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
                             onChange={(event) => setPayoutReceiptFile(event.target.files?.[0] ?? null)}
-                            className="block w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-klasse-gold file:px-3 file:py-1.5 file:text-[10px] file:font-black file:uppercase file:text-slate-950"
+                          className="block w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:uppercase file:text-white hover:file:bg-zinc-700 transition-all cursor-pointer"
                           />
                         </label>
 
@@ -2361,7 +2361,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                           type="button"
                           onClick={handleRequestPayout}
                           disabled={availablePayoutKz <= 0 || !payoutReceiptFile || requestingPayout}
-                          className="w-full rounded-xl bg-klasse-gold text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-klasse-gold/90"
+                          className="w-full rounded-xl bg-zinc-900 text-xs font-semibold uppercase tracking-wider text-white hover:bg-zinc-800 transition-all"
                         >
                           {requestingPayout ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                           Solicitar Payout
@@ -2384,7 +2384,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                       </p>
                                     ) : null}
                                   </div>
-                                  <p className="text-xs font-black text-klasse-gold">
+                                  <p className="text-xs font-bold text-klasse-gold">
                                     {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(item.valor_kz).replace('AOA', 'Kz')}
                                   </p>
                                 </div>
@@ -2431,7 +2431,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                 key={p}
                                 type="button"
                                 onClick={() => setCalcPlan(p)}
-                                className={`py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all
+                                className={`py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all
                                   ${calcPlan === p ? 'bg-klasse-gold text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`}
                               >
                                 {p}
@@ -2443,7 +2443,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <div className="space-y-1.5">
                           <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
                             <span>Nº de Alunos</span>
-                            <span className="text-white font-black">{calcAlunos}</span>
+                            <span className="text-white font-bold">{calcAlunos}</span>
                           </div>
                           <input 
                             type="range" 
@@ -2459,7 +2459,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                         <div className="space-y-2 pt-2">
                           <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
                             <span className="font-bold text-slate-400">Ativação (100% único):</span>
-                            <span className="font-black text-klasse-gold">
+                            <span className="font-bold text-klasse-gold">
                               {(() => {
                                 let actFee = 50000;
                                 if (calcPlan === 'profissional') actFee = 80000;
@@ -2471,7 +2471,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
                           <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs">
                             <span className="font-bold text-slate-400">Recorrência Mensal (25%):</span>
-                            <span className="font-black text-klasse-gold">
+                            <span className="font-bold text-klasse-gold">
                               {(() => {
                                 let basePrice = 80000;
                                 if (calcPlan === 'profissional') basePrice = 140000;
@@ -2595,7 +2595,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
               <Phone size={24} />
             </div>
-            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">
+            <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
               Registrar Ligação de Cobrança
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -2606,13 +2606,13 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           {selectedSchoolForCall && (
             <div className="space-y-4 my-4">
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Escola</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Escola</label>
                 <p className="text-sm font-bold text-slate-900">{selectedSchoolForCall.escola}</p>
               </div>
 
               {selectedSchoolForCall.steps && selectedSchoolForCall.steps.length > 0 && (
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Referente à Etapa</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Referente à Etapa</label>
                   <select
                     value={selectedStepCodeForCall}
                     onChange={(e) => setSelectedStepCodeForCall(e.target.value)}
@@ -2631,7 +2631,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               )}
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Notas da Conversa</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Notas da Conversa</label>
                 <textarea
                   value={callNotes}
                   onChange={(e) => setCallNotes(e.target.value)}
@@ -2668,7 +2668,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
               <Target size={24} />
             </div>
-            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight">
+            <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
               Cadastrar Nova Escola (Lead)
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -2679,7 +2679,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           <div className="space-y-4 my-4 max-h-[380px] overflow-y-auto pr-1">
             <div className="grid grid-cols-1 gap-3.5">
               <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
-                <label className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Aproveitar lead do marketing</label>
+                <label className="text-[10px] font-bold uppercase text-amber-700 tracking-wider">Aproveitar lead do marketing</label>
                 <select
                   value={selectedMarketingLeadId}
                   onChange={(e) => handleSelectMarketingLead(e.target.value)}
@@ -2700,7 +2700,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Nome da Escola</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Nome da Escola</label>
                 <input
                   type="text"
                   value={newLeadSchoolName}
@@ -2712,7 +2712,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Diretor / Decisor</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Diretor / Decisor</label>
                   <input
                     type="text"
                     value={newLeadContactName}
@@ -2722,7 +2722,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Telefone</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Telefone</label>
                   <input
                     type="text"
                     value={newLeadPhone}
@@ -2734,7 +2734,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">E-mail</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">E-mail</label>
                 <input
                   type="email"
                   value={newLeadEmail}
@@ -2745,7 +2745,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Responsável pelo Follow-up</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Responsável pelo Follow-up</label>
                 <select
                   value={newLeadResponsavelId || memberId}
                   onChange={(e) => setNewLeadResponsavelId(e.target.value)}
@@ -2761,7 +2761,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Segmento</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Segmento</label>
                   <select
                     value={newLeadSegment}
                     onChange={(e) => setNewLeadSegment(e.target.value as any)}
@@ -2773,7 +2773,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Plano Estimado</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Plano Estimado</label>
                   <select
                     value={newLeadPlan}
                     onChange={(e) => setNewLeadPlan(e.target.value as any)}
@@ -2788,7 +2788,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Alunos Estimados</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Alunos Estimados</label>
                   <input
                     type="number"
                     value={newLeadAlunos}
@@ -2798,7 +2798,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Período de Degustação (Dias - Máx 30)</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Período de Degustação (Dias - Máx 30)</label>
                   <input
                     type="number"
                     min={0}
@@ -2809,7 +2809,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Taxa de Ativação (Kz)</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Taxa de Ativação (Kz)</label>
                   <input
                     type="number"
                     min={0}
@@ -2822,7 +2822,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Prazo da Ação</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Prazo da Ação</label>
                   <input
                     type="date"
                     value={newLeadActionDate}
@@ -2831,7 +2831,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Próxima Ação Comercial</label>
                   <input
                     type="text"
                     value={newLeadAction}

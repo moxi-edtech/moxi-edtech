@@ -216,7 +216,7 @@ export function OnboardingSchoolDetailsSheet({
               {/* Header */}
               <div className="border-b border-slate-100 pb-5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Escola em Onboarding</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Escola em Onboarding</span>
                   <Badge className={`border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-lg ${
                     selectedSchoolForDetails.status === 'activo'
                       ? 'bg-emerald-100 text-emerald-700'
@@ -225,25 +225,25 @@ export function OnboardingSchoolDetailsSheet({
                     {selectedSchoolForDetails.status === 'activo' ? 'Ativo' : 'Pendente'}
                   </Badge>
                 </div>
-                <h3 className="font-black text-slate-900 text-xl tracking-tight leading-tight">
+                <h3 className="font-bold text-slate-900 text-xl tracking-tight leading-tight">
                   {selectedSchoolForDetails.escola}
                 </h3>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                  <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
                     Plano: {selectedSchoolForDetails.plano_label || selectedSchoolForDetails.plano || "Não informado"}
                   </Badge>
                   {selectedSchoolForDetails.total_alunos && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
                       {selectedSchoolForDetails.total_alunos} Alunos Estimados
                     </Badge>
                   )}
                   {selectedSchoolForDetails.escola_nif && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-slate-50 text-slate-700 border-slate-200">
                       NIF: {selectedSchoolForDetails.escola_nif}
                     </Badge>
                   )}
                   {getLatestOnboardingCall(selectedSchoolForDetails) && (
-                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border-blue-200">
                       Último follow-up: {format(new Date(getLatestOnboardingCall(selectedSchoolForDetails)!.realizado_em), "dd MMM, HH:mm", { locale: pt })}
                     </Badge>
                   )}
@@ -257,7 +257,7 @@ export function OnboardingSchoolDetailsSheet({
                         setSelectedStepCodeForCall(nextPending?.code || "");
                         setCallModalOpen(true);
                       }}
-                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
                     >
                       <Phone size={12} className="text-slate-400" />
                       REGISTRAR LIGAÇÃO
@@ -270,7 +270,7 @@ export function OnboardingSchoolDetailsSheet({
               {selectedSchoolForDetails.token && (
                 <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
                       <Share2 size={12} className="text-[#1F6B3B]" /> LINK DE ACOMPANHAMENTO DA ESCOLA
                     </span>
                     <Link
@@ -305,7 +305,7 @@ export function OnboardingSchoolDetailsSheet({
                         const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : '';
                         copyToClipboard(trackingUrl);
                       }}
-                      className="flex-1 h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 shadow-none"
+                      className="flex-1 h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 shadow-none"
                     >
                       <Copy size={12} /> COPIAR LINK
                     </Button>
@@ -319,7 +319,7 @@ export function OnboardingSchoolDetailsSheet({
                       }`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 h-9 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-black text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
+                      className="flex-1 h-9 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 px-3 text-[10px] font-bold text-white flex items-center justify-center gap-1.5 shadow-none no-underline"
                     >
                       <Send size={12} /> COMPARTILHAR WHATSAPP
                     </a>
@@ -351,10 +351,10 @@ export function OnboardingSchoolDetailsSheet({
                     return (
                       <div className="bg-slate-950 text-white rounded-3xl p-5 shadow-lg flex items-center justify-between border border-white/5 gap-4">
                         <div className="space-y-1.5">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-white/10 text-klasse-gold">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest bg-white/10 text-klasse-gold">
                             Resumo de Ativação
                           </span>
-                          <h4 className="text-sm font-black tracking-tight">Etapas concluídas</h4>
+                          <h4 className="text-sm font-bold tracking-tight">Etapas concluídas</h4>
                           <p className="text-[10px] text-slate-400 leading-normal">
                             O onboarding é composto por 7 fases oficiais síncronas.
                           </p>
@@ -371,8 +371,8 @@ export function OnboardingSchoolDetailsSheet({
                             />
                           </svg>
                           <div className="absolute flex flex-col items-center">
-                            <span className="text-base font-black text-white">{progressPercent}%</span>
-                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{completedSteps}/{steps.length}</span>
+                            <span className="text-base font-bold text-white">{progressPercent}%</span>
+                            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">{completedSteps}/{steps.length}</span>
                           </div>
                         </div>
                       </div>
@@ -381,7 +381,7 @@ export function OnboardingSchoolDetailsSheet({
 
                   {/* Checklist of Steps */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                       Roteiro de Ativação
                     </h4>
                     
@@ -400,7 +400,7 @@ export function OnboardingSchoolDetailsSheet({
                                 ${isCompleted ? 'bg-[#E8F5EE] text-[#1F6B3B]' : isProgress ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
                                 {isCompleted ? <Check size={14} /> : index + 1}
                               </div>
-                              <div className="text-[7px] font-black uppercase text-slate-400">{meta.short}</div>
+                              <div className="text-[7px] font-bold uppercase text-slate-400">{meta.short}</div>
                             </div>
                             
                             <div className="min-w-0 flex-1 space-y-1.5">
@@ -444,7 +444,7 @@ export function OnboardingSchoolDetailsSheet({
                                       setSelectedStepCodeForCall(step.code);
                                       setCallModalOpen(true);
                                     }}
-                                    className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
+                                    className="h-8 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 shadow-none"
                                   >
                                     <Phone size={11} className="text-slate-400" />
                                     REGISTRAR LIGAÇÃO DE FOLLOW-UP
@@ -463,7 +463,7 @@ export function OnboardingSchoolDetailsSheet({
                 <TabsContent value="implantacao" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
                   {/* Status da Implantação */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                       <ShieldCheck size={14} className="text-[#1F6B3B]" />
                       Estado de Implantação
                     </h4>
@@ -474,7 +474,7 @@ export function OnboardingSchoolDetailsSheet({
                         <div className={`p-4 rounded-2xl border ${statusMeta.color} flex items-center justify-between`}>
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status Atual</p>
-                            <p className="text-xs font-black mt-0.5">{statusMeta.label}</p>
+                            <p className="text-xs font-bold mt-0.5">{statusMeta.label}</p>
                           </div>
                           {impStatus === "aceite_validado" ? (
                             <Badge className="bg-emerald-600 text-white font-bold uppercase text-[8px] border-none px-2 py-0.5 rounded shadow-none">Ativação Pronta</Badge>
@@ -491,7 +491,7 @@ export function OnboardingSchoolDetailsSheet({
                   {/* Checklist */}
                   <div className="space-y-3 border-t border-slate-100 pt-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                         <CheckSquare size={14} className="text-slate-400" />
                         Checklist de Implantação Técnica
                       </h4>
@@ -534,7 +534,7 @@ export function OnboardingSchoolDetailsSheet({
                         <Button
                           onClick={handleSaveImplantationChecklist}
                           disabled={savingImplantationChecklist}
-                          className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-black text-xs h-10 mt-2 border-none"
+                          className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-bold text-xs h-10 mt-2 border-none"
                         >
                           {savingImplantationChecklist ? "A salvar checklist..." : "Salvar Checklist Técnica"}
                         </Button>
@@ -544,7 +544,7 @@ export function OnboardingSchoolDetailsSheet({
 
                   {/* Termo de Aceite */}
                   <div className="space-y-3 border-t border-slate-100 pt-4">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                       <FileText size={14} className="text-slate-400" />
                       Termo de Aceite de Ativação
                     </h4>
@@ -576,7 +576,7 @@ export function OnboardingSchoolDetailsSheet({
                         </p>
                         <div className="space-y-3 bg-white border border-slate-200/50 p-3.5 rounded-xl">
                           <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Nome do Diretor/Signatário</label>
+                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Nome do Diretor/Signatário</label>
                             <input
                               type="text"
                               value={signedBy}
@@ -587,7 +587,7 @@ export function OnboardingSchoolDetailsSheet({
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Cargo</label>
+                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Cargo</label>
                               <input
                                 type="text"
                                 value={signedRole}
@@ -597,7 +597,7 @@ export function OnboardingSchoolDetailsSheet({
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Data de Assinatura</label>
+                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Data de Assinatura</label>
                               <input
                                 type="date"
                                 value={signedAt}
@@ -607,7 +607,7 @@ export function OnboardingSchoolDetailsSheet({
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Observações de Aceite (opcional)</label>
+                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Observações de Aceite (opcional)</label>
                             <textarea
                               value={acceptanceNotes}
                               onChange={(e) => setAcceptanceNotes(e.target.value)}
@@ -617,7 +617,7 @@ export function OnboardingSchoolDetailsSheet({
                             />
                           </div>
                           <div className="space-y-2 pt-2 border-t border-slate-100">
-                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400">Ficheiro do Termo (.pdf, imagens, Word)</label>
+                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Ficheiro do Termo (.pdf, imagens, Word)</label>
                             <input
                               type="file"
                               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
@@ -628,7 +628,7 @@ export function OnboardingSchoolDetailsSheet({
                           <Button
                             onClick={handleUploadAndValidateAcceptance}
                             disabled={submittingAcceptance || !signedBy.trim() || !signedAt.trim() || !acceptanceFile}
-                            className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-black text-xs h-10 mt-2 border-none"
+                            className="w-full bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white rounded-xl font-bold text-xs h-10 mt-2 border-none"
                           >
                             {submittingAcceptance ? (
                               <>
@@ -662,29 +662,29 @@ export function OnboardingSchoolDetailsSheet({
                 <TabsContent value="ficha" className="m-0 flex-1 overflow-y-auto space-y-6 pr-1 pt-2">
                   {/* Informações de Contato */}
                   <div className="space-y-3.5">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                       <Users size={14} className="text-slate-400" />
                       Contatos e Responsáveis
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
                       <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Diretor</span>
+                        <span className="block text-[9px] font-bold uppercase text-slate-400 tracking-wider">Diretor</span>
                         <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_nome || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Diretor</span>
+                        <span className="block text-[9px] font-bold uppercase text-slate-400 tracking-wider">Telefone Diretor</span>
                         <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.director_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">E-mail Escola</span>
+                        <span className="block text-[9px] font-bold uppercase text-slate-400 tracking-wider">E-mail Escola</span>
                         <span className="text-xs font-bold text-slate-800 break-all">{selectedSchoolForDetails.escola_email || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Telefone Escola</span>
+                        <span className="block text-[9px] font-bold uppercase text-slate-400 tracking-wider">Telefone Escola</span>
                         <span className="text-xs font-bold text-slate-800">{selectedSchoolForDetails.escola_tel || <span className="italic font-medium text-slate-400">Não informado</span>}</span>
                       </div>
                       <div className="md:col-span-2">
-                        <span className="block text-[9px] font-black uppercase text-slate-400 tracking-wider">Morada</span>
+                        <span className="block text-[9px] font-bold uppercase text-slate-400 tracking-wider">Morada</span>
                         <span className="text-xs font-bold text-slate-800">
                           {[selectedSchoolForDetails.escola_morada, selectedSchoolForDetails.escola_municipio, selectedSchoolForDetails.escola_provincia].filter(Boolean).join(', ') || <span className="italic font-medium text-slate-400">Não informada</span>}
                         </span>
@@ -694,7 +694,7 @@ export function OnboardingSchoolDetailsSheet({
 
                   {/* Fila de Uploads */}
                   <div className="space-y-3.5">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                       <FileText size={14} className="text-slate-400" />
                       Arquivos e Staging de Importação
                     </h4>
@@ -711,7 +711,7 @@ export function OnboardingSchoolDetailsSheet({
                           return (
                             <div key={up.id} className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm flex flex-col gap-2">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-black text-slate-800 uppercase tracking-wide">{meta.short}</span>
+                                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wide">{meta.short}</span>
                                 <Badge className={`border-none font-bold uppercase text-[8px] px-2 py-0.5 rounded-md ${
                                   up.status === 'aprovado'
                                     ? 'bg-emerald-50 text-emerald-700'
@@ -781,7 +781,7 @@ export function OnboardingSchoolDetailsSheet({
                                   <Button
                                     onClick={() => handleSaveUploadTriage(up)}
                                     disabled={savingUploadTriageId === up.id}
-                                    className="h-8 rounded-lg bg-slate-950 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-slate-800"
+                                    className="h-8 rounded-lg bg-slate-950 px-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-slate-800"
                                   >
                                     {savingUploadTriageId === up.id ? <Loader2 size={12} className="animate-spin" /> : <CheckSquare size={12} />}
                                     Salvar triagem
@@ -797,7 +797,7 @@ export function OnboardingSchoolDetailsSheet({
 
                   {/* Timeline de Atividades */}
                   <div className="space-y-3.5 flex-grow flex flex-col min-h-0">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                       <Clock size={14} className="text-slate-400" />
                       Timeline de Atividades (SLA)
                     </h4>
@@ -814,7 +814,7 @@ export function OnboardingSchoolDetailsSheet({
                               
                               <div className="flex flex-col gap-1.5">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[10px] font-black text-slate-800">
+                                  <span className="text-[10px] font-bold text-slate-800">
                                     {call.member_name} realizou ligação
                                   </span>
                                   <span className="text-[9px] font-semibold text-slate-400">
