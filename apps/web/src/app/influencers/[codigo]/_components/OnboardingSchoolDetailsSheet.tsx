@@ -15,7 +15,9 @@ import {
   UploadCloud, 
   Loader2, 
   Download,
-  ShieldCheck
+  ShieldCheck,
+  Activity,
+  Info
 } from "lucide-react";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -565,6 +567,84 @@ export function OnboardingSchoolDetailsSheet({
                       )}
                     </div>
                   </div>
+
+                  {/* Validação Automática do Sistema (Real-Time) */}
+                  {selectedSchoolForDetails.operational_readiness && (
+                    <div className="space-y-3 border-t border-slate-100 pt-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                        <Activity size={14} className="text-[#1F6B3B]" />
+                        Prontidão Operacional Automática (Real-Time)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Validação automática baseada nos registros reais do banco de dados da escola.
+                      </p>
+
+                      <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4">
+                        {/* Resumo de Status */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-600">Maturidade do Sistema:</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            selectedSchoolForDetails.operational_readiness.summary?.operational_ok 
+                              ? 'bg-emerald-50 text-emerald-700' 
+                              : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            {selectedSchoolForDetails.operational_readiness.summary?.operational_ok ? "100% Pronta" : "Pendente"}
+                          </span>
+                        </div>
+
+                         {/* Listar Bloqueadores Críticos se houver */}
+                         {selectedSchoolForDetails.operational_readiness.blockers && 
+                          selectedSchoolForDetails.operational_readiness.blockers.filter((b: any) => b.severity === 'critical' || b.severity === 'high').length > 0 ? (
+                           <div className="space-y-2">
+                             <p className="text-[10px] font-bold uppercase tracking-wider text-rose-500">Bloqueadores Críticos no Banco ({
+                               selectedSchoolForDetails.operational_readiness.blockers.filter((b: any) => b.severity === 'critical' || b.severity === 'high').length
+                             })</p>
+                             <div className="space-y-1.5">
+                               {selectedSchoolForDetails.operational_readiness.blockers
+                                 .filter((b: any) => b.severity === 'critical' || b.severity === 'high')
+                                 .map((blocker: any, idx: number) => (
+                                   <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-rose-50 border border-rose-100 text-rose-800 text-xs font-medium animate-in fade-in slide-in-from-top-1">
+                                     <AlertCircle size={13} className="shrink-0 mt-0.5 text-rose-600" />
+                                     <div>
+                                       <p className="font-bold">{blocker.area?.toUpperCase()}: {blocker.title}</p>
+                                       {blocker.detail && <p className="text-[10px] text-rose-600/90 mt-0.5 leading-relaxed">{blocker.detail}</p>}
+                                     </div>
+                                   </div>
+                                 ))}
+                             </div>
+                           </div>
+                         ) : (
+                           <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-emerald-800 text-xs font-medium flex items-center gap-2">
+                             <CheckCircle2 size={14} className="text-emerald-600" />
+                             Nenhum bloqueador crítico de banco detectado. O sistema está estruturalmente pronto!
+                           </div>
+                         )}
+
+                         {/* Listar Alertas Recomendados se houver */}
+                         {selectedSchoolForDetails.operational_readiness.blockers && 
+                          selectedSchoolForDetails.operational_readiness.blockers.filter((b: any) => b.severity === 'medium' || b.severity === 'low').length > 0 && (
+                           <div className="space-y-2 pt-2 border-t border-slate-100">
+                             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Alertas Recomendados ({
+                               selectedSchoolForDetails.operational_readiness.blockers.filter((b: any) => b.severity === 'medium' || b.severity === 'low').length
+                             })</p>
+                             <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                               {selectedSchoolForDetails.operational_readiness.blockers
+                                 .filter((b: any) => b.severity === 'medium' || b.severity === 'low')
+                                 .map((blocker: any, idx: number) => (
+                                   <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-amber-50/50 border border-amber-100/60 text-amber-800 text-xs font-medium animate-in fade-in slide-in-from-top-1">
+                                     <Info size={13} className="shrink-0 mt-0.5 text-amber-600" />
+                                     <div>
+                                       <p className="font-bold">{blocker.area?.toUpperCase()}: {blocker.title}</p>
+                                       {blocker.detail && <p className="text-[10px] text-amber-600/90 mt-0.5 leading-relaxed">{blocker.detail}</p>}
+                                     </div>
+                                   </div>
+                                 ))}
+                             </div>
+                           </div>
+                         )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Termo de Aceite */}
                   <div className="space-y-3 border-t border-slate-100 pt-4">
