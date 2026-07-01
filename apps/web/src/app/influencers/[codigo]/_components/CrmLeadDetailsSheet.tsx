@@ -218,6 +218,19 @@ export function CrmLeadDetailsSheet({
                         <option key={plan.value} value={plan.value}>{plan.label}</option>
                       ))}
                     </select>
+                    {(() => {
+                      const tiers = { essencial: 1, profissional: 2, premium: 3 };
+                      const recommended = commercialAlunos <= 300 ? "essencial" : commercialAlunos <= 800 ? "profissional" : "premium";
+                      const isBelow = tiers[commercialPlan] < tiers[recommended];
+                      if (isBelow) {
+                        return (
+                          <p className="mt-1 text-[9px] font-bold text-amber-600 animate-pulse">
+                            ⚠️ Recomendado: Plano {recommended.charAt(0).toUpperCase() + recommended.slice(1)} para {commercialAlunos} alunos.
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   <div>
                     <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Alunos Estimados</label>
@@ -225,7 +238,17 @@ export function CrmLeadDetailsSheet({
                       type="number"
                       min={0}
                       value={commercialAlunos}
-                      onChange={(e) => setCommercialAlunos(Math.max(0, Number(e.target.value || 0)))}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value || 0));
+                        setCommercialAlunos(val);
+                        if (val <= 300) {
+                          setCommercialPlan("essencial");
+                        } else if (val <= 800) {
+                          setCommercialPlan("profissional");
+                        } else {
+                          setCommercialPlan("premium");
+                        }
+                      }}
                       className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none"
                     />
                   </div>
@@ -415,13 +438,13 @@ export function CrmLeadDetailsSheet({
             <div className="space-y-3 border-t border-zinc-100 pt-4">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 flex items-center gap-1.5">
                 <School size={14} className="text-zinc-400" />
-                Ativação da Escola
+                Conversão para Onboarding
               </h4>
               <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/5 p-4">
                 {selectedCrmLead.onboarding_request_id ? (
                   <div className="space-y-3">
                     <div>
-                      <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-700">Lead convertido para onboarding</p>
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-emerald-700">Lead convertido em pedido de onboarding</p>
                       <p className="mt-1 text-xs font-semibold text-emerald-800">
                         Token: <span className="font-mono">{selectedCrmLead.tracking_token || "gerado"}</span>
                       </p>
@@ -432,14 +455,14 @@ export function CrmLeadDetailsSheet({
                         target="_blank"
                         className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white no-underline hover:bg-emerald-700"
                       >
-                        Abrir portal de ativação <ExternalLink size={12} />
+                        Abrir portal de onboarding <ExternalLink size={12} />
                       </Link>
                     )}
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-xs font-medium leading-relaxed text-emerald-800">
-                      Quando a negociação estiver ganha, crie o pedido de onboarding com os dados deste lead e entregue o link de acompanhamento para a escola.
+                      Quando a negociação estiver ganha, crie o pedido de onboarding com os dados deste lead. O provisionamento e o setup da escola acontecem depois, em fluxos separados.
                     </p>
                     {selectedLeadConversionBlockers.length > 0 && (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
@@ -459,11 +482,11 @@ export function CrmLeadDetailsSheet({
                       {convertingLead ? (
                         <>
                           <Loader2 size={14} className="animate-spin mr-1.5" />
-                          A criar ativação...
+                          A criar onboarding...
                         </>
                       ) : (
                         <>
-                          Iniciar ativação <ArrowRight size={14} className="ml-1" />
+                          Criar pedido de onboarding <ArrowRight size={14} className="ml-1" />
                         </>
                       )}
                     </Button>

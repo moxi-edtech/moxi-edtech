@@ -2791,6 +2791,19 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <option value="profissional">Profissional</option>
                     <option value="premium">Premium</option>
                   </select>
+                  {(() => {
+                    const tiers = { essencial: 1, profissional: 2, premium: 3 };
+                    const recommended = newLeadAlunos <= 300 ? "essencial" : newLeadAlunos <= 800 ? "profissional" : "premium";
+                    const isBelow = tiers[newLeadPlan] < tiers[recommended];
+                    if (isBelow) {
+                      return (
+                        <p className="mt-1 text-[10px] font-bold text-amber-600">
+                          ⚠️ Recomendado: Plano {recommended.charAt(0).toUpperCase() + recommended.slice(1)} para {newLeadAlunos} alunos.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
@@ -2800,7 +2813,17 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <input
                     type="number"
                     value={newLeadAlunos}
-                    onChange={(e) => setNewLeadAlunos(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setNewLeadAlunos(val);
+                      if (val <= 300) {
+                        setNewLeadPlan("essencial");
+                      } else if (val <= 800) {
+                        setNewLeadPlan("profissional");
+                      } else {
+                        setNewLeadPlan("premium");
+                      }
+                    }}
                     placeholder="Ex: 500"
                     className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 focus:border-slate-300 focus:bg-white focus:outline-none"
                   />
