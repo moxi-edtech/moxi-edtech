@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, Video, FileText, Copy, Download, ArrowRight, FileSpreadsheet } from "lucide-react";
+import { ImageIcon, Video, Download, ArrowRight, FileSpreadsheet } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -21,17 +21,18 @@ export function MateriaisTabContent({
   campaignUrl,
   onboardingUrl,
 }: MateriaisTabContentProps) {
+  const nonScriptAssets = assets.filter((asset) => asset.tipo !== "script");
+
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {assets.map((asset) => (
+        {nonScriptAssets.map((asset) => (
           <Card key={asset.id} className="rounded-xl border-zinc-200/50 overflow-hidden bg-white shadow-sm flex flex-col">
             <div className="p-5 flex-1 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-600 border border-zinc-100">
                   {asset.tipo === 'image' && <ImageIcon size={14} />}
                   {asset.tipo === 'video' && <Video size={14} />}
-                  {asset.tipo === 'script' && <FileText size={14} />}
                 </div>
                 <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider">{asset.tipo}</Badge>
               </div>
@@ -39,36 +40,21 @@ export function MateriaisTabContent({
                 <h4 className="font-bold text-zinc-900 text-sm">{asset.titulo}</h4>
                 {asset.descricao && <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{asset.descricao}</p>}
               </div>
-              {asset.tipo === 'script' && asset.conteudo && (
-                <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200/60 text-[11px] text-zinc-600 font-medium italic relative group">
-                  "{asset.conteudo}"
-                </div>
-              )}
             </div>
             <div className="p-4 bg-zinc-50 border-t border-zinc-200/50">
-              {asset.tipo === 'script' ? (
-                <Button 
-                  onClick={() => copyToClipboard(asset.conteudo!)}
-                  className="w-full bg-zinc-950 hover:bg-zinc-800 text-white rounded-lg font-semibold text-xs gap-2 border-none h-9"
-                >
-                  <Copy size={13} />
-                  Copiar Texto
-                </Button>
-              ) : (
-                <Button 
-                  asChild
-                  className="w-full bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 rounded-lg font-semibold text-xs gap-2 h-9 shadow-none"
-                >
-                  <a href={asset.url || '#'} target="_blank" rel="noreferrer" className="flex items-center justify-center w-full h-full no-underline">
-                    {asset.tipo === 'image' ? <Download size={13} /> : <ArrowRight size={13} />}
-                    {asset.tipo === 'image' ? 'Descarregar' : 'Abrir Link'}
-                  </a>
-                </Button>
-              )}
+              <Button 
+                asChild
+                className="w-full bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 rounded-lg font-semibold text-xs gap-2 h-9 shadow-none"
+              >
+                <a href={asset.url || '#'} target="_blank" rel="noreferrer" className="flex items-center justify-center w-full h-full no-underline">
+                  {asset.tipo === 'image' ? <Download size={13} /> : <ArrowRight size={13} />}
+                  {asset.tipo === 'image' ? 'Descarregar' : 'Abrir Link'}
+                </a>
+              </Button>
             </div>
           </Card>
         ))}
-        {assets.length === 0 && (
+        {nonScriptAssets.length === 0 && (
           <div className="col-span-full p-20 text-center bg-white border border-dashed border-zinc-200 rounded-xl">
              <p className="text-zinc-400 font-medium italic text-xs">Nenhum material disponível de momento.</p>
           </div>
