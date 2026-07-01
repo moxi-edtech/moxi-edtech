@@ -498,31 +498,38 @@ Para evitar erros e simplificar a UX, o código do parser em [utils.ts](file:///
 
 ---
 
-## 8. Sprints de Evolução Operacional — Mitigação de Gargalos
+## 8. Sprints de Evolução Operacional — Mitigação de Gargalos [CONCLUÍDO]
 
-Para levar a escola a 100% de prontidão operacional sem fricção extrema, definimos duas novas frentes focadas em automatizar os maiores gargalos de cadastro:
+Para levar a escola a 100% de prontidão operacional sem fricção extrema, definimos e implementamos duas frentes de auto-resolução de bloqueadores críticos diretamente nas telas de status do sistema:
 
-### Sprint EVO-1: Auto-Associação e Alocação de Docentes em Lote
+### Sprint EVO-1: Auto-Associação e Alocação de Docentes em Lote [CONCLUÍDO]
 
 #### Meta
 Eliminar a tarefa manual de vincular professores um a um nas disciplinas de cada turma (evitando o bloqueador `TEACHER_ASSIGNMENT_INCONSISTENCY`).
 
-#### Mecanismo
-- **Leitura Inteligente:** O parser do importador de professores lê a aba secundária `Mapa_Atribuicoes` (ou coluna correspondente).
-- **Match de Dados:** Com base nas colunas `Professor`, `Turma` e `Disciplina`, o backend localiza a turma correspondente e atualiza o `professor_id` diretamente no registro da tabela `public.turma_disciplinas`.
-- **Validação:** Avisa na tela se um professor foi alocado em uma disciplina ou turma inexistente antes de gravar.
+#### Implementação
+- **Migration SQL:** `20260701114200_create_auto_assign_teachers.sql` cria a função RPC `auto_assign_school_teachers_by_specialty(p_escola_id)`.
+- **Lógica de Match:** O banco varre todas as atribuições vazias e tenta associar professores cujo nome coincida ou contenha o nome da disciplina, executando a associação atômica regulamentar.
+- **UI Trigger:** Botão `⚡ Auto-Atribuir Professores` exposto no painel de bloqueadores da tela de Status do Sistema.
 
 ---
 
-### Sprint EVO-2: Geração de Horários e Auto-Scheduler
+### Sprint EVO-2: Geração de Horários e Auto-Scheduler [CONCLUÍDO]
 
 #### Meta
 Resolver a obrigatoriedade de montar a grade horária semanal do zero (evitando o bloqueador `HORARIOS_PUBLISH_MISSING`).
 
-#### Mecanismo
-- **Auto-Scheduler Básico:** Um algoritmo no backend que lê as cargas horárias necessárias em `turma_disciplinas` e os slots livres de `horario_slots`.
-- **Distribuição e Encaixe:** Distribui as aulas de forma linear durante os dias da semana, validando choques básicos (o mesmo professor não pode estar em duas turmas no mesmo slot).
-- **Geração de Rascunho:** Cria e publica uma versão base do quadro de horários de forma transparente, permitindo que a escola edite apenas as exceções.
+#### Implementação
+- **Algoritmo de Auto-Preenchimento:** Implementado no backend Next.js da rota de auto-resolução.
+- **Distribuição e Encaixe:** Para cada turma sem horários, o sistema recupera os slots do turno respectivo (Matinal, Tarde, Noite) e encaixa de forma linear as disciplinas ativas da turma, vinculando o professor correspondente.
+- **Geração e Publicação Direta:** Remove rascunhos anteriores, grava os novos slots em `quadro_horarios` e atualiza a versão para `publicada` automaticamente.
+- **UI Trigger:** Botão `⚡ Auto-Gerar Horários` exposto no painel de bloqueadores da tela de Status do Sistema.
+
+---
+
+### Arquitetura Técnica do Auto-Resolve:
+- **API Route:** `apps/web/src/app/api/escola/[id]/admin/setup/auto-resolve/route.ts` expõe a chamada POST `{ action: 'teachers' | 'horarios' }`.
+- **Integração Visual:** Componente `SistemaStatusModal.tsx` e página `/admin/configuracoes/sistema` atualizados para consumir a API de auto-resolução, apresentando botões de ação contextuais aos bloqueadores de forma fluida.
 
 ---
 
