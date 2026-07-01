@@ -21,8 +21,8 @@ O CRM deve permitir que os operadores trabalhem com inicio, meio e fim, mantendo
 - [x] Etapas do funil comercial.
 - [ ] Agenda de demonstracoes.
 - [x] Historico de contactos.
-- [ ] Proposta comercial.
-- [ ] Aceite comercial.
+- [x] Proposta comercial.
+- [x] Aceite comercial.
 - [x] Proxima acao comercial com data.
 - [x] Painel de pendencias comerciais vencidas.
 
@@ -122,7 +122,7 @@ Fechar o ciclo comercial antes do onboarding.
 
 - [x] Criar bloco de proposta comercial no lead.
 - [x] Campos: plano, alunos, trial, taxa de ativacao, mensalidade.
-- [ ] Gerar proposta/preview.
+- [x] Gerar proposta/preview.
 - [x] Registrar aceite comercial.
 - [x] Upload de proposta ou contrato preliminar.
 - [x] Status: `proposta_enviada`, `aceite_comercial`, `aguardando_contrato_klasse`.
@@ -140,7 +140,7 @@ Fechar o ciclo comercial antes do onboarding.
 - [x] Taxa de ativacao registrada no onboarding.
 - [x] Historico mostra quem converteu.
 
-### Implementado em 2026-06-29
+### Implementado em 2026-06-30
 
 - Drawer do lead comercial no portal do parceiro com bloco `Proposta Comercial`.
 - Campos ativos no lead: `plano_estimado`, `alunos_estimados`, `trial_days`, `taxa_ativacao`, `mensalidade_kz`.
@@ -149,10 +149,11 @@ Fechar o ciclo comercial antes do onboarding.
 - Edicao dos termos comerciais via endpoint `/api/influencers/[codigo]/crm/leads/[leadId]/commercial`.
 - Conversao para onboarding agora bloqueia sem etapa `ganho`, sem `trial_days` valido, sem `taxa_ativacao > 0` e sem status comercial pronto para conversao.
 - Dados comerciais enviados para o onboarding incluem `trial_days`, `taxa_ativacao`, `mensalidade_kz`, `commercial_status` e `proposal_file_name`.
+- Geração e impressão de proposta comercial print-ready em `/crm/proposta/preview` alimentada via query parameters do lead.
+- Integração da UI: Botão de "Preview" adicionado ao bloco de Proposta Comercial no `CrmLeadDetailsSheet.tsx` para abrir a proposta preenchida em nova aba.
 
 ### Pendencias restantes da Sprint 2
 
-- Gerar proposta/preview automatico a partir dos termos comerciais.
 - Definir se o aceite comercial exigira campo explicito de aprovador/canal ou se o status manual e suficiente.
 - Decidir se o documento comercial deve migrar para bucket dedicado em vez de ficar no bucket `onboarding`.
 
