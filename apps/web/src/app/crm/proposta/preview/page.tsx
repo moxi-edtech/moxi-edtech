@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Printer, ArrowLeft, ShieldCheck, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
-export default function ProposalPreviewPage() {
+function ProposalPreviewContent() {
   const searchParams = useSearchParams();
 
   const escola = searchParams?.get("escola") || "Escola Exemplo";
@@ -198,5 +199,13 @@ export default function ProposalPreviewPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ProposalPreviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50 py-10 px-4 text-center text-xs font-semibold text-zinc-500">A carregar proposta...</div>}>
+      <ProposalPreviewContent />
+    </Suspense>
   );
 }
