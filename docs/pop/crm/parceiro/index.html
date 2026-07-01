@@ -209,8 +209,8 @@ tr:nth-child(even) {
     </div>
     <div class="hd-title">Portal do Parceiro <span>Comercial</span><br>(CRM & Onboarding).</div>
     <div class="hd-sub">
-      <strong>Versão do Pacote:</strong> 1.2.0 &nbsp;·&nbsp; 
-      <strong>Data Base:</strong> 2026-06-29 &nbsp;·&nbsp; 
+      <strong>Versão do Pacote:</strong> 1.3.0 &nbsp;·&nbsp; 
+      <strong>Data Base:</strong> 2026-07-01 &nbsp;·&nbsp; 
       <strong>Escopo:</strong> Equipe operacional e comercial do parceiro (CLARUS AN).
     </div>
   </div>
@@ -218,16 +218,17 @@ tr:nth-child(even) {
   <div class="body">
     <div class="sec-lbl">01 · Objetivo do pacote</div>
     <div class="content-block">
-      <p>Este pacote documenta os Procedimentos Operacionais Padrão (POP/SOP) para que a equipe comercial do Parceiro utilize o portal <code>/influencers/[codigo]</code> de forma segura, padronizada e eficaz. Ele cobre desde a prospecção inicial de leads até a ativação das escolas, acompanhamento de comissões e gestão de operadores.</p>
+      <p>Este pacote documenta os Procedimentos Operacionais Padrão (POP/SOP) para que a equipe comercial do Parceiro utilize o portal <code>/influencers/[codigo]</code> de forma segura, padronizada e eficaz. Ele cobre desde a prospecção inicial de leads até a conversão em pedido de onboarding, triagem documental, acompanhamento de comissões e gestão de operadores.</p>
     </div>
 
     <div class="sec-lbl">02 · Estado de fidelidade ao código</div>
     <div class="content-block">
-      <p>Validado contra a API e rotas em <code>apps/web/src/app/influencers/[codigo]/page.tsx</code> e <code>apps/web/src/app/api/influencers/[codigo]</code> em 2026-06-29.</p>
+      <p>Validado contra a API e rotas em <code>apps/web/src/app/influencers/[codigo]/page.tsx</code> e <code>apps/web/src/app/api/influencers/[codigo]</code> em 2026-07-01.</p>
       <ul>
-        <li>O portal do parceiro suporta funil de leads, proposta comercial, aceite comercial, upload de documento preliminar, ativação de escolas para onboarding, consulta a uploads e arquivos de migração, ledger de comissões e simulador de ganhos.</li>
+        <li>O portal do parceiro suporta funil de leads, proposta comercial, aceite comercial, upload de documento preliminar, conversão para pedido de onboarding, consulta a uploads, triagem preliminar documental, ledger de comissões e simulador de ganhos.</li>
         <li>O portal possui gestão de equipe com criação, ativação/desativação e reset de PIN em <code>/api/influencers/[codigo]/team</code>.</li>
-        <li>O portal <u>não</u> fornece botões para aprovação de uploads nem solicitação eletrônica de resgates de comissão.</li>
+        <li>O portal <u>não</u> fornece aprovação/rejeição final de uploads nem provisionamento de escola.</li>
+        <li>A triagem do parceiro encaminha o documento, mas não conclui a etapa; a aprovação final é responsabilidade da KLASSE.</li>
         <li>Funções indisponíveis no namespace <code>api/influencers</code> são marcadas nos documentos correspondentes como <code>NÃO OPERACIONAL NO CÓDIGO ACTUAL</code>.</li>
       </ul>
     </div>
@@ -241,8 +242,8 @@ tr:nth-child(even) {
 
       <strong>2. Conversão e Moderação de Onboarding:</strong>
       <ul style="margin-top: 5px; margin-bottom: 15px;">
-        <li><a href="sop-crm-02-conversao-onboarding.html">SOP-CRM-02 · Conversão de Lead Ganho e Acompanhamento de Onboarding</a></li>
-        <li><a href="sop-crm-03-moderacao-documental.html">SOP-CRM-03 · Acompanhamento de Documentos de Onboarding no CRM</a></li>
+        <li><a href="sop-crm-02-conversao-onboarding.html">SOP-CRM-02 · Conversão de Lead Ganho em Pedido de Onboarding</a></li>
+        <li><a href="sop-crm-03-moderacao-documental.html">SOP-CRM-03 · Triagem e Acompanhamento de Documentos de Onboarding no CRM</a></li>
       </ul>
 
       <strong>3. Gestão Financeira e Equipe:</strong>
@@ -279,6 +280,11 @@ tr:nth-child(even) {
             <td><strong>E</strong> (Executa)</td>
           </tr>
           <tr>
+            <td>Triage de documentos de onboarding</td>
+            <td><strong>E</strong> (Executa)</td>
+            <td><strong>E</strong> (Executa)</td>
+          </tr>
+          <tr>
             <td>Aprovar/rejeitar documentos de onboarding</td>
             <td><strong>NA</strong> (Não Aplicável)</td>
             <td><strong>NA</strong> (Não Aplicável)</td>
@@ -310,7 +316,8 @@ tr:nth-child(even) {
       <ul>
         <li><strong>Período de Degustação (Trial):</strong> O limite máximo de teste cortesia negociável pelo parceiro com cada escola é de **30 dias** (padrão do sistema: 15 dias).</li>
         <li><strong>Taxa de Ativação / Treinamento:</strong> 100% repassada ao parceiro de vendas. O valor de tabela recomendado é de **50.000 Kz a 100.000 Kz**, dependendo da complexidade do colégio.</li>
-        <li><strong>Documentação de Onboarding:</strong> O parceiro de vendas apenas faz a triagem visual rápida de arquivos e cobra correções. A aprovação/rejeição formal de documentos é executada pelo Super Admin da KLASSE.</li>
+        <li><strong>Documentação de Onboarding:</strong> O parceiro faz triagem preliminar, cobra correções e encaminha para a KLASSE. A aprovação/rejeição formal de documentos é executada pelo Super Admin da KLASSE.</li>
+        <li><strong>Workflow Real:</strong> Upload move etapa para <code>em_progresso</code>; triagem do parceiro não conclui etapa; aprovação final da KLASSE conclui a etapa; provisionamento só ocorre quando as 7 etapas estiverem concluídas.</li>
       </ul>
     </div>
   </div>

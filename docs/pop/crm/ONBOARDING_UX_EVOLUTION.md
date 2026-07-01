@@ -180,7 +180,9 @@ Transformar o onboarding numa jornada continua e compreensivel, com estados huma
 - [x] Unificar a narrativa entre portal de acompanhamento e setup escolar.
 - [x] Revisar todos os textos de status com foco em linguagem operacional.
 - [x] Exibir em cada fase um card fixo "O que falta agora".
+- [x] Explicitar no tracking publico o evento que realmente move cada etapa.
 - [x] Exibir em cada pendencia o dono da acao: escola, parceiro ou KLASSE.
+- [x] Diferenciar no historico de envios: recebido, triagem do parceiro, correcao solicitada, pronto para KLASSE e aprovacao final.
 - [ ] Introduzir marcos visuais distintos para:
   - [ ] pedido criado
   - [ ] onboarding em curso
@@ -195,18 +197,21 @@ Transformar o onboarding numa jornada continua e compreensivel, com estados huma
 - A escola entende onde esta sem precisar de explicacao externa.
 - O parceiro consegue acompanhar e comunicar o estado certo sem ambiguidade.
 - O produto deixa de usar "ativa" como sinonimo de provisionada.
+- O motor do onboarding deixa de depender de leitura silenciosa apenas no frontend e passa a sincronizar etapas a partir de uploads e review final.
 
 ### Criterios de Aceite
 
 - [x] Nenhum ecrã orientado para escola usa `activo` como equivalente a "pronta para operar".
 - [x] Cada pagina de onboarding mostra exatamente um proximo passo principal.
 - [x] Cada pendencia relevante mostra responsavel e consequencia.
+- [x] O tracking publico deixa explicito que follow-up comercial isolado nao conclui etapa.
 - [ ] A escola provisionada recebe orientacao clara para iniciar o setup interno sem depender de explicacao manual.
 
 ### Dependencias
 
 - Payloads de onboarding com estado consolidado.
 - Uso consistente de `onboarding_finalizado` e `operational_readiness`.
+- RPC de sincronizacao do workflow apos upload e revisao final.
 
 ### Fora de Escopo
 
@@ -416,6 +421,12 @@ Justificativa:
 - Validador cliente e parser do backend atualizados para ignorar automaticamente as 3 linhas instrucionais dos templates oficiais do Kit Onboarding AELS.
 - Suporte a normalização de cabeçalhos (remoção de asteriscos, acentos e espaços) e mapeamento automático de aliases (ex: `Nome*` -> `NOME_COMPLETO`, `Data de Nascimento*` -> `DATA_NASCIMENTO`, `BI*` -> `BI_NUMERO`).
 - Adequação das regras de validação de professores no frontend para suportar o formato sem a coluna `DISCIPLINAS_CODIGOS` na aba principal, alinhando com a estrutura real da planilha oficial.
+- Classificação fina da escola provisionada no portal público: provisionada, setup concluído mas ainda não operacional, e operacional plena, com base em `operational_readiness`.
+- CTA directo no portal público para abrir o setup interno da escola quando `escola_id` já existe.
+- Resumo operacional do staging de planilhas com contadores de linhas analisadas, válidas, corrigíveis, bloqueantes e linhas ignoradas automaticamente.
+- Biblioteca de modelos do portal público expandida para expor os templates oficiais `.xlsx` de alunos e professores, além dos CSVs simplificados.
+- Alerta operacional de etapa parada por tempo excessivo no portal público, com destaque do responsável atual e recomendação de ação para retomada do fluxo.
+- Painel de prontidão operacional passou a destacar o primeiro bloqueador a resolver e a sinalizar dependências/desbloqueios entre blockers críticos.
 - Integração do Painel de Prontidão Operacional (Go-Live) na página pública de acompanhamento do Onboarding para escolas provisionadas (`activo`).
 - Exibição de estatísticas e métricas de configuração (total de cursos, turmas, professores, períodos) na barra lateral direita como controle de progresso.
 - Criação da tabela e políticas RLS de `onboarding_doubts` para registrar dúvidas e conversações de onboarding.
