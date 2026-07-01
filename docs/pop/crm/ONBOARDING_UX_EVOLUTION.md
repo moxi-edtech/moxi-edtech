@@ -498,7 +498,35 @@ Para evitar erros e simplificar a UX, o código do parser em [utils.ts](file:///
 
 ---
 
-## 8. Riscos se Nada For Feito
+## 8. Sprints de Evolução Operacional — Mitigação de Gargalos
+
+Para levar a escola a 100% de prontidão operacional sem fricção extrema, definimos duas novas frentes focadas em automatizar os maiores gargalos de cadastro:
+
+### Sprint EVO-1: Auto-Associação e Alocação de Docentes em Lote
+
+#### Meta
+Eliminar a tarefa manual de vincular professores um a um nas disciplinas de cada turma (evitando o bloqueador `TEACHER_ASSIGNMENT_INCONSISTENCY`).
+
+#### Mecanismo
+- **Leitura Inteligente:** O parser do importador de professores lê a aba secundária `Mapa_Atribuicoes` (ou coluna correspondente).
+- **Match de Dados:** Com base nas colunas `Professor`, `Turma` e `Disciplina`, o backend localiza a turma correspondente e atualiza o `professor_id` diretamente no registro da tabela `public.turma_disciplinas`.
+- **Validação:** Avisa na tela se um professor foi alocado em uma disciplina ou turma inexistente antes de gravar.
+
+---
+
+### Sprint EVO-2: Geração de Horários e Auto-Scheduler
+
+#### Meta
+Resolver a obrigatoriedade de montar a grade horária semanal do zero (evitando o bloqueador `HORARIOS_PUBLISH_MISSING`).
+
+#### Mecanismo
+- **Auto-Scheduler Básico:** Um algoritmo no backend que lê as cargas horárias necessárias em `turma_disciplinas` e os slots livres de `horario_slots`.
+- **Distribuição e Encaixe:** Distribui as aulas de forma linear durante os dias da semana, validando choques básicos (o mesmo professor não pode estar em duas turmas no mesmo slot).
+- **Geração de Rascunho:** Cria e publica uma versão base do quadro de horários de forma transparente, permitindo que a escola edite apenas as exceções.
+
+---
+
+## 9. Riscos se Nada For Feito
 
 - escolas provisionadas continuam a travar no setup
 - parceiro continua a usar linguagem incorreta sobre activacao
@@ -506,7 +534,7 @@ Para evitar erros e simplificar a UX, o código do parser em [utils.ts](file:///
 - importacao de dados continua a ser fonte de abandono
 - readiness operacional continua invisivel para o cliente final
 
-## 9. Definicao de Sucesso
+## 10. Definicao de Sucesso
 
 Esta evolucao sera bem-sucedida quando:
 

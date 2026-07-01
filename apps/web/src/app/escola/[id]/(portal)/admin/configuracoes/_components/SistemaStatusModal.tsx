@@ -17,17 +17,19 @@ import {
 } from "lucide-react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { fetchSetupState, setupProgressFromBadges } from "@/lib/setupStateClient";
+import { fetchSetupState, setupProgressFromBadges, type OperationalReadiness } from "@/lib/setupStateClient";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { buildPortalHref } from "@/lib/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 
 // Copied from sistema/page.tsx
 // --- TYPES ---
 type SetupState = {
   stage: string;
   next_action?: { label: string; href: string };
-  blockers?: Array<{ title: string; detail: string; severity: string }>;
+  blockers?: Array<{ code?: string; title: string; detail: string; severity: string }>;
+  operational_readiness?: OperationalReadiness;
   badges?: {
     calendario?: boolean;
     avaliacao?: boolean;
@@ -110,6 +112,30 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
   const [impact, setImpact] = useState<ImpactData | null>(null);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
+  const [resolvingAction, setResolvingAction] = useState<string | null>(null);
+
+  const handleResolve = async (action: 'teachers' | 'horarios') => {
+    setResolvingAction(action);
+    try {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/setup/auto-resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.ok) {
+        toast.success(json.message || "Resolvido com sucesso!");
+        // Force refresh
+        window.location.reload();
+      } else {
+        toast.error(json.error || "Erro ao resolver automaticamente");
+      }
+    } catch {
+      toast.error("Erro de conexão ao tentar resolver.");
+    } finally {
+      setResolvingAction(null);
+    }
+  };
 
   // --- FETCH ---
   useEffect(() => {
@@ -143,19 +169,21 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                 }
               : undefined,
             blockers: Array.isArray(setupRes.data.blockers)
-              ? setupRes.data.blockers.map((blocker) => ({
+              ? (setupRes.data.blockers as any[]).map((blocker) => ({
+                  code: blocker?.code ?? "",
                   title: blocker?.title ?? "",
                   detail: blocker?.detail ?? "",
                   severity: blocker?.severity ?? "warning",
                 }))
               : [],
+            operational_readiness: setupRes.data.operational_readiness,
             badges: {
               calendario: Boolean(badges.ano_letivo_ok) && Boolean(badges.periodos_ok),
               avaliacao: Boolean(badges.avaliacao_ok),
               turmas: Boolean(badges.turmas_ok),
-              financeiro: false,
-              fluxos: false,
-              sistema: false,
+              financeiro: Boolean(setupRes.data.operational_readiness?.summary?.financeiro_ok),
+              fluxos: Boolean(setupRes.data.operational_readiness?.summary?.equipe_ok),
+              sistema: Boolean(setupRes.data.operational_readiness?.summary?.operational_ok),
             },
             completion_percent: total > 0 ? percent : 0,
           });
@@ -263,7 +291,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
 
             {/* BLOCKERS (Erros Críticos) */}
             {setupState?.blockers && setupState.blockers.length > 0 && (
-            <div className="rounded-xl border border-red-100 bg-red-50/50 p-4">
+            <div className="rounded-xl border border-red-100 bg-red-50/50 p-4 space-y-3">
                 <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                 <div>
@@ -278,6 +306,30 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                     </ul>
                 </div>
                 </div>
+                {/* Assistente de Auto-Resolução */}
+                {(setupState.blockers.some((b) => b.code === 'TEACHER_ASSIGNMENT_INCONSISTENCY') ||
+                  setupState.blockers.some((b) => b.code === 'HORARIOS_PUBLISH_MISSING')) && (
+                  <div className="pt-2 border-t border-red-200/40 flex flex-wrap gap-2">
+                    {setupState.blockers.some((b) => b.code === 'TEACHER_ASSIGNMENT_INCONSISTENCY') && (
+                      <button
+                        onClick={() => handleResolve('teachers')}
+                        disabled={!!resolvingAction}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
+                      >
+                        {resolvingAction === 'teachers' ? 'A atribuir...' : '⚡ Auto-Atribuir Professores'}
+                      </button>
+                    )}
+                    {setupState.blockers.some((b) => b.code === 'HORARIOS_PUBLISH_MISSING') && (
+                      <button
+                        onClick={() => handleResolve('horarios')}
+                        disabled={!!resolvingAction}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
+                      >
+                        {resolvingAction === 'horarios' ? 'A gerar...' : '⚡ Auto-Gerar Horários'}
+                      </button>
+                    )}
+                  </div>
+                )}
             </div>
             )}
 
