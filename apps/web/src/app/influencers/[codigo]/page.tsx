@@ -2793,7 +2793,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   </select>
                   {(() => {
                     const tiers = { essencial: 1, profissional: 2, premium: 3 };
-                    const recommended = newLeadAlunos <= 300 ? "essencial" : newLeadAlunos <= 800 ? "profissional" : "premium";
+                    const recommended = newLeadAlunos <= 600 ? "essencial" : newLeadAlunos <= 1500 ? "profissional" : "premium";
                     const isBelow = tiers[newLeadPlan] < tiers[recommended];
                     if (isBelow) {
                       return (
@@ -2816,9 +2816,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       setNewLeadAlunos(val);
-                      if (val <= 300) {
+                      if (val <= 600) {
                         setNewLeadPlan("essencial");
-                      } else if (val <= 800) {
+                      } else if (val <= 1500) {
                         setNewLeadPlan("profissional");
                       } else {
                         setNewLeadPlan("premium");

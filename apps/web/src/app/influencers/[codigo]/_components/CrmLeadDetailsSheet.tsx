@@ -220,7 +220,7 @@ export function CrmLeadDetailsSheet({
                     </select>
                     {(() => {
                       const tiers = { essencial: 1, profissional: 2, premium: 3 };
-                      const recommended = commercialAlunos <= 300 ? "essencial" : commercialAlunos <= 800 ? "profissional" : "premium";
+                      const recommended = commercialAlunos <= 600 ? "essencial" : commercialAlunos <= 1500 ? "profissional" : "premium";
                       const isBelow = tiers[commercialPlan] < tiers[recommended];
                       if (isBelow) {
                         return (
@@ -241,9 +241,9 @@ export function CrmLeadDetailsSheet({
                       onChange={(e) => {
                         const val = Math.max(0, Number(e.target.value || 0));
                         setCommercialAlunos(val);
-                        if (val <= 300) {
+                        if (val <= 600) {
                           setCommercialPlan("essencial");
-                        } else if (val <= 800) {
+                        } else if (val <= 1500) {
                           setCommercialPlan("profissional");
                         } else {
                           setCommercialPlan("premium");
