@@ -34,6 +34,13 @@ Conforme implementado no banco de dados e na interface de triagem, os arquivos d
 * **`pronto_para_klasse`:** O parceiro validou a triagem básica e encaminhou para a homologação definitiva da equipe KLASSE.
 * **`aprovado` / `rejeitado`:** Status finais e imutáveis definidos pelo Super Admin da KLASSE. Uma vez neste estado, a triagem do parceiro é travada para este arquivo.
 
+Regra de workflow:
+
+- O upload da escola move a etapa para `em_progresso`.
+- A triagem do parceiro muda o status do arquivo, mas nao conclui a etapa.
+- A etapa so fica `concluido` quando a KLASSE aprovar pelo menos um upload daquela etapa.
+- `validacao` depende do fecho conjunto de `docs_legais` e `planilhas`.
+
 ## 5. Passo a passo (execução)
 
 1. **Acessar os Uploads:** No portal do parceiro, abra o Drawer de Detalhes da Escola e role até a seção **Arquivos e Staging de Importação**.
@@ -53,11 +60,24 @@ Conforme implementado no banco de dados e na interface de triagem, os arquivos d
    - No campo de texto correspondente, insira observações relevantes. **Importante:** Se o status for `Pendência Cliente`, descreva detalhadamente o erro técnico para orientar a escola na correção.
 7. **Salvar a Triagem:** Clique em `Salvar triagem`. A ação atualizará o banco via API de forma transparente e notificará a equipe de auditoria da KLASSE.
 
+## 5.1 Como cada etapa anda de verdade
+
+- `docs_legais`: upload da escola -> triagem do parceiro -> aprovacao final KLASSE
+- `planilhas`: upload da escola -> triagem basica do parceiro -> homologacao tecnica KLASSE
+- `validacao`: etapa da KLASSE; so fecha quando `docs_legais` e `planilhas` estiverem concluidas
+
+Importante:
+
+- Follow-up comercial nao move etapa.
+- `Pronto para KLASSE` nao significa etapa concluida.
+- `Pendência Cliente` exige nova acao da escola.
+
 ## 6. Resultado esperado
 
 - Triagem documental realizada de forma fluida pelo operador comercial.
 - Pendências técnicas sinalizadas imediatamente à escola parceira com descrições claras de correção.
 - Documentação limpa e classificada disponível para homologação final da KLASSE.
+- Parceiro entende claramente que triagem nao substitui homologacao final.
 
 ## 7. Erros comuns e correção
 
@@ -66,11 +86,13 @@ Conforme implementado no banco de dados e na interface de triagem, os arquivos d
 | Erro "Classifique o tipo de documento antes de salvar" | O operador tentou salvar a triagem sem escolher a categoria do arquivo. | Selecione o tipo correto no dropdown "Classificar documento". | - |
 | Erro "Informe a pendência..." ao selecionar Pendência Cliente | O operador tentou recusar o documento sem preencher o campo de observações. | Escreva uma nota explicativa sobre a correção necessária no campo de comentário. | - |
 | Opções de triagem bloqueadas ou ocultas | O documento já foi analisado e obteve parecer final (`aprovado` ou `rejeitado`) pelo Super Admin da KLASSE. | Nenhuma ação necessária; documentos com parecer final não podem ser retriados pelo parceiro. | Se houver erro material no parecer final que exija reabertura pela KLASSE. |
+| Etapa ainda nao concluiu mesmo após `Pronto para KLASSE` | A triagem do parceiro apenas encaminha; a homologacao final da KLASSE ainda nao ocorreu. | Aguardar ou cobrar a revisao final da KLASSE. | Se o upload ja estiver aprovado pela KLASSE e a etapa permanecer desfasada. |
 
 ## 8. Evidências obrigatórias
 
-- Registro visual do status updated do arquivo na seção de staging da escola.
+- Registro visual do status atualizado do arquivo na seção de staging da escola.
 - Notas de pendências enviadas à escola em caso de reenvio necessário.
+- Quando houver encaminhamento, registo do status `Pronto para KLASSE`.
 
 ## 9. KPI operacional do procedimento
 
