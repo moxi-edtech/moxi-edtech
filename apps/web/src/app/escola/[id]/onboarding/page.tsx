@@ -13,7 +13,7 @@ export default async function OnboardingPage({ params }: { params: Promise<{ id:
   const escolaId = resolved.escolaId
   let escolaParam = resolved.slug ?? id
 
-  // Se o onboarding já foi concluído, ou já existe ano letivo ativo, envia para o dashboard
+  // Só envia para o admin quando o setup escolar foi realmente concluído.
   try {
     const [{ data: escolaRows }, shouldGoAdmin] = await Promise.all([
       s

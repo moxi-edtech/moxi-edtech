@@ -28,11 +28,14 @@ import { Card, CardContent } from "@/components/ui/Card";
 import {
   COMMERCIAL_STATUS_OPTIONS,
   CRM_STAGES,
+  getOnboardingLifecycleMeta,
   IMPLANTATION_STATUS_CONFIG,
   ONBOARDING_STATUS_CONFIG,
   PARTNER_CONTEXTUAL_POPS,
   SUPPORT_STATUS_CONFIG,
   getImplantationProgress,
+  isSchoolOperational,
+  isSchoolSetupCompleted,
   getLatestOnboardingCall,
   getStepMeta,
   type OnboardingEscola,
@@ -390,7 +393,7 @@ export function Escola360TabContent({
           >
             <option value="all">Todos status</option>
             <option value="pendente">Pendente</option>
-            <option value="em_configuracao">Em ativação</option>
+            <option value="em_configuracao">Onboarding em curso</option>
             <option value="activo">Ativa</option>
             <option value="cancelado">Cancelada</option>
           </select>
@@ -429,7 +432,7 @@ export function Escola360TabContent({
         <Card className="rounded-xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
           <CardContent className="p-5">
             <BadgeCheck className="mb-3 h-5 w-5 text-emerald-500" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Ativas</p>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Provisionadas</p>
             <p className="mt-1 text-2xl font-bold text-emerald-600">{summary.active}</p>
           </CardContent>
         </Card>
@@ -460,6 +463,7 @@ export function Escola360TabContent({
             const risk = riskMeta(row.risk);
             const RiskIcon = risk.icon;
             const onboardingStatus = ONBOARDING_STATUS_CONFIG[row.school.status as keyof typeof ONBOARDING_STATUS_CONFIG];
+            const lifecycleMeta = getOnboardingLifecycleMeta(row.school);
             const implantationStatus = IMPLANTATION_STATUS_CONFIG[
               (row.school.implantation_status || "implantacao_em_andamento") as keyof typeof IMPLANTATION_STATUS_CONFIG
             ];
@@ -476,6 +480,9 @@ export function Escola360TabContent({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="truncate text-lg font-bold text-slate-950">{row.school.escola}</h3>
+                      <Badge className={`border text-[9px] font-bold uppercase tracking-wider ${lifecycleMeta.color}`}>
+                        {lifecycleMeta.shortLabel}
+                      </Badge>
                       <Badge className={`border text-[9px] font-bold uppercase tracking-wider ${onboardingStatus?.color || "bg-slate-100 text-slate-700"}`}>
                         {onboardingStatus?.label || row.school.status}
                       </Badge>
@@ -541,7 +548,8 @@ export function Escola360TabContent({
                       Onboarding
                     </div>
                     <div className="space-y-2 text-xs text-slate-600">
-                      <p>Próxima etapa: <span className="font-bold text-slate-900">{nextStep ? getStepMeta(nextStep.code, nextStep.owner).short : "Concluído"}</span></p>
+                      <p className="font-bold text-slate-900">{lifecycleMeta.label}</p>
+                      <p>Próxima etapa: <span className="font-bold text-slate-900">{nextStep ? getStepMeta(nextStep.code, nextStep.owner).short : isSchoolOperational(row.school) ? "Concluído" : isSchoolSetupCompleted(row.school) ? "Readiness operacional" : "Setup escolar no portal"}</span></p>
                       <p>Prazo: <span className={row.lateSteps.length > 0 ? "font-bold text-rose-700" : "font-bold"}>{formatDate(nextStep?.deadline)}</span></p>
                       <p>Docs pendentes: <span className="font-bold">{row.pendingUploads.length}</span></p>
                       <p>Último follow-up: <span className="font-bold">{row.latestCall ? formatDate(row.latestCall.realizado_em) : "Sem registro"}</span></p>

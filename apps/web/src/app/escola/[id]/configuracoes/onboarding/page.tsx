@@ -46,7 +46,7 @@ export default function ConfiguracoesPage({ params }: Props) {
 
         const setupData = setupStatusJson?.data ?? {};
         const hasSetupByStatus = Boolean(
-          setupData.turmas_ok ?? setupData.has_turmas_no_ano
+          setupData.onboarding_finalizado || setupData.needs_academic_setup === false
         );
         setSetupComplete(setupStatusRes.ok && hasSetupByStatus);
 

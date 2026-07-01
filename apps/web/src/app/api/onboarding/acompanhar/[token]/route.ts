@@ -27,11 +27,29 @@ export async function GET(
       return NextResponse.json({ ok: false, error: data?.error || "Pedido não encontrado" }, { status: 404 });
     }
 
+    let operationalReadiness = null;
+    const escolaId = data.request.escola_id;
+    if (escolaId) {
+      const { data: readiness, error: readinessError } = await (supabase.rpc as any)(
+        "get_school_operational_readiness",
+        {
+          p_escola_id: escolaId,
+          p_ano_letivo: null
+        }
+      );
+      if (!readinessError) {
+        operationalReadiness = readiness;
+      } else {
+        console.warn("Error fetching operational readiness for onboarding:", readinessError);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       request: data.request,
       steps: data.steps || [],
       uploads: data.uploads || [],
+      operational_readiness: operationalReadiness,
     });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message || "Erro interno" }, { status: 500 });

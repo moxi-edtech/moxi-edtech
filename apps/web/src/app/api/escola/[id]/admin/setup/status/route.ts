@@ -31,6 +31,22 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     }
     const userEscolaId = access.escolaId;
 
+    const { data: escolaRow, error: escolaError } = await supabase
+      .from('escolas')
+      .select('onboarding_finalizado, needs_academic_setup')
+      .eq('id', userEscolaId)
+      .maybeSingle();
+    if (escolaError) {
+      console.error('Error fetching escola onboarding lifecycle:', escolaError);
+      return NextResponse.json({ ok: false, error: 'Erro ao consultar ciclo de onboarding da escola.' }, { status: 500 });
+    }
+
+    const onboardingFinalizado = Boolean(escolaRow?.onboarding_finalizado);
+    const needsAcademicSetup =
+      typeof escolaRow?.needs_academic_setup === 'boolean'
+        ? escolaRow.needs_academic_setup
+        : !onboardingFinalizado;
+
     let anoLetivoAtivo: number | null = null;
     let activeYearQuery = supabase
       .from('anos_letivos')
@@ -65,6 +81,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         turmas_ok: false,
         progress_percent: 0,
         modelo_avaliacao: '',
+        onboarding_finalizado: onboardingFinalizado,
+        needs_academic_setup: needsAcademicSetup,
       } }, { status: 200 });
     }
 
@@ -75,6 +93,18 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     if (stateError) {
       console.error('Error fetching setup state via RPC:', stateError);
       return NextResponse.json({ ok: false, error: 'Erro ao consultar status do setup.' }, { status: 500 });
+    }
+
+    const { data: operationalReadiness, error: operationalError } = await (supabase as any).rpc(
+      'get_school_operational_readiness',
+      {
+        p_escola_id: userEscolaId,
+        p_ano_letivo: anoLetivoAtivo,
+      }
+    );
+    if (operationalError) {
+      console.error('Error fetching operational readiness:', operationalError);
+      return NextResponse.json({ ok: false, error: 'Erro ao consultar readiness operacional.' }, { status: 500 });
     }
 
     const badges = stateData?.badges ?? {};
@@ -136,6 +166,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         turmas_ok: setupData.has_turmas_no_ano,
         progress_percent: progressPercent,
         modelo_avaliacao: modeloAvaliacao,
+        onboarding_finalizado: onboardingFinalizado,
+        needs_academic_setup: needsAcademicSetup,
+        operational_readiness: operationalReadiness,
         estrutura_counts: estruturaCounts
           ? {
             cursos_total: estruturaCounts.cursos_total ?? 0,

@@ -9,6 +9,24 @@ export type SetupBadges = {
   turmas_ok?: boolean;
 };
 
+export type OperationalReadiness = {
+  ok?: boolean;
+  ano_letivo?: number | null;
+  summary?: {
+    school_status_ok?: boolean;
+    onboarding_setup_ok?: boolean;
+    academico_ok?: boolean;
+    financeiro_ok?: boolean;
+    equipe_ok?: boolean;
+    horarios_ok?: boolean;
+    portais_ok?: boolean;
+    operational_ok?: boolean;
+  };
+  badges?: Record<string, boolean | undefined>;
+  metrics?: Record<string, number | null | undefined>;
+  blockers?: Array<{ code?: string; area?: string; severity?: string; title?: string; detail?: string }>;
+};
+
 type SetupStateResponse = {
   ok: boolean;
   data?: {
@@ -17,6 +35,9 @@ type SetupStateResponse = {
     blockers?: Array<{ title?: string; detail?: string; severity?: string }>;
     badges?: SetupBadges;
     completion_percent?: number;
+    onboarding_finalizado?: boolean;
+    needs_academic_setup?: boolean;
+    operational_readiness?: OperationalReadiness;
   };
   error?: string;
 };

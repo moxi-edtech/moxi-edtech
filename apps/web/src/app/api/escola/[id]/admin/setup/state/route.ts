@@ -43,6 +43,21 @@ export async function GET(
     });
     if (roleCheck.error) return roleCheck.error;
 
+    const { data: escolaRow, error: escolaError } = await (supabase as any)
+      .from('escolas')
+      .select('onboarding_finalizado, needs_academic_setup')
+      .eq('id', userEscolaId)
+      .maybeSingle();
+    if (escolaError) {
+      return NextResponse.json({ ok: false, error: escolaError.message }, { status: 500 });
+    }
+
+    const onboardingFinalizado = Boolean(escolaRow?.onboarding_finalizado);
+    const needsAcademicSetup =
+      typeof escolaRow?.needs_academic_setup === "boolean"
+        ? escolaRow.needs_academic_setup
+        : !onboardingFinalizado;
+
     let anoLetivo = anoParam ? Number(anoParam) : null;
     if (!anoLetivo) {
       let activeYearQuery = (supabase as any)
@@ -73,6 +88,18 @@ export async function GET(
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
+    const { data: operationalReadiness, error: operationalError } = await (supabase as any).rpc(
+      'get_school_operational_readiness',
+      {
+        p_escola_id: userEscolaId,
+        p_ano_letivo: anoLetivo,
+      }
+    );
+
+    if (operationalError) {
+      return NextResponse.json({ ok: false, error: operationalError.message }, { status: 500 });
+    }
+
     const badges = data?.badges ?? {};
     const setupSteps = [
       Boolean(badges.ano_letivo_ok),
@@ -90,6 +117,9 @@ export async function GET(
       data: {
         ...data,
         completion_percent: completionPercent,
+        onboarding_finalizado: onboardingFinalizado,
+        needs_academic_setup: needsAcademicSetup,
+        operational_readiness: operationalReadiness,
       },
     });
   } catch (e) {

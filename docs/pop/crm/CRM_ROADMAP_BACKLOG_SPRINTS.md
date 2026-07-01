@@ -1,17 +1,135 @@
 # CRM KLASSE - Roadmap, Checklist e Backlog por Sprint
 
-Versao: 1.3.0
+Versao: 1.4.0
 Data: 2026-06-29
-Atualizado em: 2026-06-30
+Atualizado em: 2026-07-01
 Escopo: CRM comercial, onboarding, implantacao, capacitacao, suporte L1, comissoes e equipe do parceiro operacional
 
 ## 1. Objetivo
 
 Transformar o CRM do parceiro em uma central operacional completa, cobrindo o fluxo:
 
-`prospeccao -> demonstracao -> fechamento -> onboarding -> setup -> capacitacao -> go-live -> suporte L1 -> comissoes/payout`
+`prospeccao -> demonstracao -> fechamento -> conversao para onboarding -> onboarding operacional -> provisionamento -> setup no portal da escola -> capacitacao -> suporte L1 -> comissoes/payout`
 
 O CRM deve permitir que os operadores trabalhem com inicio, meio e fim, mantendo evidencias, SLAs, responsabilidades e comissoes rastreaveis.
+
+## 1.1 Fluxo Real e Semantica de Estados
+
+O fluxo actual no codigo tem 4 camadas diferentes e elas nao devem ser tratadas como sinonimos na documentacao, na UI ou nas regras operacionais.
+
+### Camada 1 - Conversao comercial
+
+Quando o lead cumpre os pre-requisitos comerciais, a conversao cria apenas um `onboarding_request` com `status = pendente`, gera `tracking_token` e vincula o lead ao onboarding. Essa conversao nao cria a escola.
+
+Pre-requisitos minimos actuais:
+
+- etapa do lead = `ganho`
+- plano comercial definido
+- `commercial_status` em `aceite_comercial` ou `aguardando_contrato_klasse`
+- `trial_days` entre 0 e 30
+- `taxa_ativacao > 0`
+
+### Camada 2 - Onboarding operacional do CRM
+
+Depois da conversao, o pedido segue 7 etapas operacionais reais em `onboarding_steps`:
+
+- `diagnostico`
+- `docs_legais`
+- `planilhas`
+- `validacao`
+- `config`
+- `treinamento`
+- `live`
+
+Os donos actuais das etapas sao:
+
+- Parceiro: `diagnostico`, `config`, `treinamento`
+- Escola: `docs_legais`, `planilhas`
+- KLASSE: `validacao`, `live`
+
+Importante: `em_configuracao` no backoffice actual e apenas um rotulo administrativo/manual. Nao e prova de provisionamento e nao conclui o setup da escola.
+
+### Camada 3 - Provisionamento da escola
+
+A escola so e provisionada quando o fluxo administrativo executa o provisionamento e todas as 7 etapas estao concluidas. Nesse ponto, o sistema vincula `escola_id` ao onboarding, marca `onboarding_requests.status = activo` e cria os artefactos iniciais da operacao escolar.
+
+Semantica correcta:
+
+- `pendente` = lead convertido, pedido criado
+- `em_configuracao` = onboarding em curso / marcador manual do backoffice
+- `activo` = escola provisionada
+
+`activo` nao significa setup academico finalizado, faturamento activo ou onboarding escolar concluido.
+
+### Camada 4 - Setup da escola no portal escolar
+
+Depois do provisionamento, o setup real da escola continua noutro fluxo, dentro do portal da escola, via wizard academico/financeiro.
+
+Passos UI actuais:
+
+- `Sessao`
+- `Regras`
+- `Matriz`
+- `Financeiro`
+- `Gerar`
+
+O setup so termina quando o fluxo final grava os dados finais e marca:
+
+- `escolas.onboarding_finalizado = true`
+- `needs_academic_setup = false`
+
+### Trilha paralela - Implantacao e aceite
+
+`implantation_status` e outro trilho, separado do status do onboarding e separado do setup escolar. Hoje ele representa o checklist tecnico de implantacao e o Termo de Aceite:
+
+- `implantacao_em_andamento`
+- `aguardando_aceite`
+- `aceite_validado`
+
+O aceite validado libera a comissao de activacao para o fluxo financeiro, mas nao finaliza sozinho o onboarding academico da escola.
+
+## 1.2 Contrato de Escola Operacional
+
+Para o CRM e para os portais ficarem em sintonia com a plataforma real, a escola nao deve ser tratada como "ativa" apenas porque foi provisionada ou porque concluiu o wizard inicial. O marco correcto para operacao plena passa a ser `operational_readiness.summary.operational_ok = true`.
+
+Este readiness operacional agrega 5 grupos de criterios reais:
+
+### Academico
+
+- Ano letivo activo.
+- Periodos lectivos validos e sem sobreposicao.
+- Regras de avaliacao configuradas.
+- Cursos existentes.
+- Matriz/curriculo publicado.
+- Turmas criadas.
+- Nenhuma turma sem disciplinas operacionais.
+
+### Financeiro
+
+- IBAN registado na escola.
+- Tabela de mensalidades/precos criada para o ano letivo activo.
+- Dia de vencimento configurado.
+- Configuracoes financeiras minimas presentes.
+
+### Equipe
+
+- Pelo menos um admin/operador escolar com acesso.
+- Professores cadastrados.
+- Sem inconsistencias criticas entre `professores`, `teacher_profiles`, alocacoes e competencias operacionais.
+
+### Horarios
+
+- Disciplinas que entram no horario devidamente associadas.
+- Slots/estrutura de horario disponiveis quando exigidos.
+- Horarios publicados para as turmas que exigem grade.
+
+### Portais
+
+- Portal administrativo acessivel.
+- Portal do aluno habilitado.
+- Portal do professor com estrutura minima para operacao.
+
+Sem todos estes grupos concluidos, a escola pode estar provisionada ou com setup em curso, mas ainda nao deve ser tratada como operacao plena no CRM.
 
 ## 2. Checklist Macro
 
@@ -28,10 +146,12 @@ O CRM deve permitir que os operadores trabalhem com inicio, meio e fim, mantendo
 
 ### Onboarding
 
-- [x] Conversao do lead para escola em ativacao.
+- [x] Conversao do lead para pedido de onboarding.
 - [x] Checklist de implantacao.
 - [x] Uploads/documentos.
-- [x] Setup de dados.
+- [x] Acompanhamento do onboarding operacional por etapas.
+- [x] Provisionamento administrativo da escola.
+- [x] Setup de dados no portal da escola.
 - [x] Status por fase.
 - [x] Termo de aceite assinado.
 
@@ -40,7 +160,9 @@ O CRM deve permitir que os operadores trabalhem com inicio, meio e fim, mantendo
 - [ ] Formacao da secretaria.
 - [ ] Formacao dos docentes.
 - [ ] Evidencias de treinamento.
-- [ ] Ativacao/go-live.
+- [ ] Go-live operacional apos provisionamento e setup escolar.
+- [x] Contrato de readiness operacional documentado.
+- [x] Criticos operacionais consolidados em academia, financeiro, equipe, horarios e portais.
 
 ### Suporte L1
 
@@ -116,7 +238,7 @@ Garantir que o parceiro consegue gerir equipe, leads e tarefas sem depender do S
 
 ### Meta
 
-Fechar o ciclo comercial antes do onboarding.
+Fechar o ciclo comercial antes da conversao para onboarding.
 
 ### Backlog
 
@@ -126,11 +248,11 @@ Fechar o ciclo comercial antes do onboarding.
 - [x] Registrar aceite comercial.
 - [x] Upload de proposta ou contrato preliminar.
 - [x] Status: `proposta_enviada`, `aceite_comercial`, `aguardando_contrato_klasse`.
-- [x] Melhorar botao `Iniciar ativacao` com validacoes.
+- [x] Melhorar botao de criacao do pedido de onboarding com validacoes.
 
 ### Entrega
 
-- Lead so vira onboarding com dados comerciais minimos.
+- Lead so vira pedido de onboarding com dados comerciais minimos.
 - KLASSE consegue ver o que foi negociado.
 
 ### Criterios de Aceite
@@ -151,6 +273,10 @@ Fechar o ciclo comercial antes do onboarding.
 - Dados comerciais enviados para o onboarding incluem `trial_days`, `taxa_ativacao`, `mensalidade_kz`, `commercial_status` e `proposal_file_name`.
 - Geração e impressão de proposta comercial print-ready em `/crm/proposta/preview` alimentada via query parameters do lead.
 - Integração da UI: Botão de "Preview" adicionado ao bloco de Proposta Comercial no `CrmLeadDetailsSheet.tsx` para abrir a proposta preenchida em nova aba.
+- Terminologia alinhada no portal do parceiro para mostrar que a conversao cria um pedido de onboarding, nao uma escola pronta.
+- Banco remoto: função `public.get_school_operational_readiness(uuid, integer)` criada para consolidar readiness operacional da escola.
+- Portal do parceiro: payload de onboarding passa a expor `operational_readiness` para diferenciar provisionamento, setup concluido e operacao plena.
+- Portal escolar: endpoints de status/setup passam a devolver readiness operacional agregado, com blockers accionaveis.
 
 ### Pendencias restantes da Sprint 2
 
@@ -161,7 +287,7 @@ Fechar o ciclo comercial antes do onboarding.
 
 ### Meta
 
-Provar a entrega que libera os 100% da taxa de ativacao.
+Provar a entrega tecnica de implantacao que libera a comissao de activacao, sem confundir este aceite com provisionamento ou setup final da escola.
 
 ### Backlog
 
@@ -182,7 +308,8 @@ Provar a entrega que libera os 100% da taxa de ativacao.
 ### Entrega
 
 - Implantacao passa a ter inicio, meio e fim.
-- Comissao de ativacao fica ligada a evidencia contratual.
+- Comissao de activacao fica ligada a evidencia contratual.
+- O aceite fica explicitamente separado do setup academico/financeiro da escola.
 
 ### Criterios de Aceite
 
@@ -200,6 +327,7 @@ Provar a entrega que libera os 100% da taxa de ativacao.
 - Gate financeiro: trigger `trg_activation_commission_acceptance_gate` impede aprovar ou pagar comissao de ativacao sem `aceite_validado` e termo assinado.
 - UI do portal do parceiro: aba "Implantação" no drawer de detalhes da escola expondo os checkboxes e notas do checklist de implantação integrado à API PATCH `/checklist`.
 - UI de Termo de Aceite: formulário operacional de upload do documento, preenchimento do signatário, cargo, data e notas com chamada integrada ao endpoint `/acceptance` (SLA de comissão liberado após validação).
+- Semantica operacional documentada: `aceite_validado` libera a comissao e o trilho financeiro, mas nao marca a escola como academicamente finalizada.
 
 ### Pendencias restantes da Sprint 3
 
@@ -255,7 +383,7 @@ Dar ao parceiro controle real sobre recolha e preparacao dos dados.
 
 ### Meta
 
-Registrar formacao e ativacao real da escola.
+Registrar capacitacao e readiness operacional da escola depois do provisionamento e durante/apos o setup escolar.
 
 ### Backlog
 
@@ -268,18 +396,18 @@ Registrar formacao e ativacao real da escola.
 - [ ] Lista de participantes.
 - [ ] Evidencia: foto, ata, documento ou assinatura.
 - [ ] Checklist pos-treinamento.
-- [ ] Status de go-live.
-- [ ] Registro de data oficial de ativacao.
+- [ ] Status de go-live operacional.
+- [ ] Registro de data oficial de entrada em operacao.
 
 ### Entrega
 
 - O parceiro comprova capacitacao.
-- A escola so vai para operacao quando treinada.
+- A escola so vai para operacao quando provisionada, com setup minimo concluido e treinamentos obrigatorios registados.
 
 ### Criterios de Aceite
 
 - [ ] Cada treinamento tem data, responsavel e evidencia.
-- [ ] Go-live exige treinamentos minimos.
+- [ ] Go-live exige provisionamento, setup minimo e treinamentos minimos.
 - [ ] Historico fica no perfil da escola.
 
 ## Sprint 6 - Suporte L1 com SLA
@@ -326,7 +454,7 @@ Cumprir o anexo contratual de suporte e medir performance.
 - SLAs automáticos por gravidade: alta `15 min / 2h`, media `1h / 8h`, baixa `4h / 24h`.
 - API: `/api/influencers/[codigo]/support/tickets` com `GET`, `POST` e `PATCH`.
 - UI do portal do parceiro: aba `Suporte L1` em `/influencers/[codigo]`.
-- Operador consegue abrir ticket, selecionar escola em ativacao ou nome manual, definir canal/categoria/gravidade/responsavel, ver SLA vencido e mover status.
+- Operador consegue abrir ticket, selecionar escola em onboarding/provisionada ou nome manual, definir canal/categoria/gravidade/responsavel, ver SLA vencido e mover status.
 - Escalonamento para KLASSE exige motivo e grava historico em `audit_logs`.
 
 ### Pendencias restantes da Sprint 6
@@ -441,6 +569,7 @@ Consolidar a operacao diaria numa tela unica.
 - Score de risco persistido em `onboarding_requests.crm_risk_score`, `crm_risk_level`, `crm_risk_reasons`, `crm_risk_snapshot` e `crm_risk_updated_at`.
 - API: `/api/influencers/[codigo]/school-360/risk` sincroniza risco calculado no painel para o backend via RPC `sync_influencer_school_360_risk`.
 - FK explicita reforcada: `crm_leads.onboarding_request_id` e `onboarding_requests.crm_lead_id` sincronizados e expostos no payload do portal.
+- Ajuste semantico do painel 360: `activo` passa a ser lido como escola provisionada, e nao como escola fechada ou setup concluido.
 
 ### Pendencias restantes da Sprint 8
 
@@ -462,7 +591,7 @@ Para operar com um fluxo minimo de inicio, meio e fim, implementar primeiro:
 
 - [x] Gestao de operadores.
 - [x] Lead com responsavel e proxima acao.
-- [x] Conversao para onboarding.
+- [x] Conversao para pedido de onboarding.
 - [x] Checklist de implantacao.
 - [x] Termo de aceite.
 - [x] Tickets L1 com SLA.
@@ -495,10 +624,15 @@ Para operar com um fluxo minimo de inicio, meio e fim, implementar primeiro:
 ## 7. Regras de Negocio Obrigatorias
 
 - Trial maximo: 30 dias.
+- Conversao comercial nao cria a escola; cria um `onboarding_request` com `tracking_token`.
+- `onboarding_requests.status = activo` significa escola provisionada, nao setup academico finalizado.
+- `implantation_status` e independente de `onboarding_requests.status` e de `escolas.onboarding_finalizado`.
+- `escolas.onboarding_finalizado = true` e o marco real de conclusao do setup da escola no portal escolar.
+- `operational_readiness.summary.operational_ok = true` e o marco real de escola operacional para CRM, portais e acompanhamento do parceiro.
 - Taxa de ativacao: 100% do parceiro.
 - Comissao recorrente: 25% sobre valor liquidado.
 - Inadimplencia suspende repasse.
-- Ativacao so libera comissao apos termo de aceite.
+- Aceite validado libera a comissao de activacao, mas nao substitui o setup final da escola.
 - SLA L1:
   - Alta: resposta em ate 15 minutos; resolucao em ate 2 horas.
   - Media: resposta em ate 1 hora; resolucao em ate 8 horas.

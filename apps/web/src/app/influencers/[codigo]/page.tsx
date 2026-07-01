@@ -93,6 +93,7 @@ import {
   getLatestOnboardingCall,
   getLatestOnboardingCallForStep,
   getLeadConversionBlockers,
+  getOnboardingLifecycleMeta,
   getStepMeta,
   isAfiliadoPortalResponse,
   isMarketingAsset,
@@ -651,7 +652,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         return;
       }
 
-      toast.success(res.already_converted ? "Lead já tinha ativação vinculada." : "Ativação criada a partir do lead.");
+      toast.success(res.already_converted ? "Lead já tinha onboarding vinculado." : "Pedido de onboarding criado a partir do lead.");
       await loadCrmLeads(false);
       await loadLeadHistory(selectedCrmLead.id);
       setSelectedCrmLead((current: any) => current ? {
@@ -1630,8 +1631,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             {/* Onboarding Header */}
             <div className="flex items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Processo de Ativação</p>
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ativação Escolar</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Processo de Onboarding</p>
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Onboarding e Provisionamento</h2>
               </div>
             </div>
 
@@ -1643,7 +1644,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <BarChart3 size={16} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Escolas captadas</p>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Pedidos criados</p>
                     <p className="text-2xl font-bold text-zinc-900 font-mono mt-0.5">{onboardingStats?.total ?? stats?.total_diagnosticos}</p>
                   </div>
                 </CardContent>
@@ -1654,7 +1655,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <Clock size={16} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Novos interessados</p>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Pedidos pendentes</p>
                     <p className="text-2xl font-bold text-blue-600 font-mono mt-0.5">{onboardingStats?.pendentes ?? stats?.novos}</p>
                   </div>
                 </CardContent>
@@ -1665,7 +1666,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <ShieldCheck size={16} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Em ativação</p>
+                    <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Onboarding em curso</p>
                     <p className="text-2xl font-bold text-amber-600 font-mono mt-0.5">{onboardingStats?.em_configuracao ?? stats?.em_contacto}</p>
                   </div>
                 </CardContent>
@@ -1676,7 +1677,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <TrendingUp size={16} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">Escolas fechadas</p>
+                    <p className="text-[9px] font-semibold text-emerald-700 uppercase tracking-wider">Escolas provisionadas</p>
                     <p className="text-2xl font-bold text-emerald-600 font-mono mt-0.5">{onboardingStats?.fechadas ?? stats?.convertidos}</p>
                   </div>
                 </CardContent>
@@ -1690,7 +1691,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                   <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">Pedido de escolas</p>
                   <CardTitle className="text-lg font-bold text-zinc-900 tracking-tight">Escolas que usaram o seu código</CardTitle>
                   <CardDescription className="text-xs text-zinc-500">
-                    A equipa KLASSE faz o contacto comercial. Aqui você acompanha plano escolhido e avanço do funil.
+                    Depois da conversão do lead, aqui você acompanha onboarding operacional, provisionamento e aceite de implantação. O setup académico final acontece no portal da escola.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -1771,7 +1772,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                               : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/40'
                           }`}
                         >
-                          Concluídos ({countConcluido})
+                          Provisionadas ({countConcluido})
                         </button>
                       </div>
 
@@ -1967,7 +1968,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                                 </button>
                                                 <a
                                                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                                    `Olá! Acompanhe o processo de ativação da sua escola (${escola.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : ''}`
+                                                    `Olá! Acompanhe o processo de onboarding da sua escola (${escola.escola}) em tempo real no nosso Portal de Onboarding. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : ''}`
                                                   )}${
                                                     escola.director_tel || escola.escola_tel
                                                       ? `&phone=${(escola.director_tel || escola.escola_tel || '').replace(/\D/g, '')}`
@@ -2007,6 +2008,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <div className="space-y-3">
                       {filteredSchools.map((escola, idx) => {
                         const status = ONBOARDING_STATUS_CONFIG[escola.status as keyof typeof ONBOARDING_STATUS_CONFIG] || ONBOARDING_STATUS_CONFIG.pendente;
+                        const lifecycleMeta = getOnboardingLifecycleMeta(escola);
                         const nextPendingStep = escola.steps?.find(step => step.status !== 'concluido') ?? null;
                         const isSchoolOverdue = escola.steps?.some(st => st.status !== 'concluido' && st.deadline && new Date(st.deadline).getTime() < Date.now()) ?? false;
                         const lastCall = getLatestOnboardingCall(escola);
@@ -2057,6 +2059,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                   <span className={`w-1 h-1 rounded-full ${status.dot} mr-2`} />
                                   {status.label}
                                 </Badge>
+                                <Badge className={`${lifecycleMeta.color} font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg`}>
+                                  {lifecycleMeta.shortLabel}
+                                </Badge>
                                 <Badge className={`${(
                                   IMPLANTATION_STATUS_CONFIG[
                                     (escola.implantation_status as keyof typeof IMPLANTATION_STATUS_CONFIG) || "implantacao_em_andamento"
@@ -2075,6 +2080,9 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                             {escola.steps && escola.steps.length > 0 && (
                               <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="flex flex-col gap-2">
+                                  <p className="text-[11px] font-semibold leading-relaxed text-slate-600">
+                                    {lifecycleMeta.description}
+                                  </p>
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 font-bold">Workflow 7 etapas:</span>
                                     <div className="flex items-center gap-1">
@@ -2109,7 +2117,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     </p>
                                   ) : (
                                     <p className="text-[11px] font-medium text-emerald-700">
-                                      Workflow completo. Escola pronta para go-live.
+                                      Workflow operacional concluído. Escola provisionada no backoffice.
                                     </p>
                                   )}
                                 </div>
@@ -2120,7 +2128,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                     </Badge>
                                   ) : (
                                     <Badge className="border border-emerald-200 bg-emerald-100 text-[9px] font-bold uppercase tracking-widest text-emerald-700">
-                                      Go-live pronto
+                                      Provisionada
                                     </Badge>
                                   )}
                                   {escola.status !== 'activo' && (
@@ -2152,7 +2160,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                       </Button>
                                       <a
                                         href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                          `Olá! Acompanhe o processo de ativação da sua escola (${escola.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : ''}`
+                                          `Olá! Acompanhe o processo de onboarding da sua escola (${escola.escola}) em tempo real no nosso Portal de Onboarding. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${escola.token}` : ''}`
                                         )}${
                                           escola.director_tel || escola.escola_tel
                                             ? `&phone=${(escola.director_tel || escola.escola_tel || '').replace(/\D/g, '')}`

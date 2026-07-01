@@ -42,7 +42,8 @@ export default function AcademicStep1({
   creatingSession,
   onCreateSession,
   templates = [],
-  onApplyTemplate
+  onApplyTemplate,
+  onApplyRecommendedLocks,
 }: AcademicStep1Props) {
   
   const [showTemplates, setShowTemplates] = useState(false);
@@ -257,8 +258,24 @@ export default function AcademicStep1({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900">Períodos Letivos</h3>
-            <p className="text-xs text-slate-500">Defina as datas de cada trimestre e o bloqueio de notas.</p>
+            <p className="text-xs text-slate-500">Defina as datas de cada trimestre. O bloqueio de notas é sugerido automaticamente 15 dias após cada término.</p>
           </div>
+        </div>
+
+        <div className="mb-5 flex flex-col gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-bold text-amber-800">Menos preenchimento manual</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-amber-700">
+              Se preferir, aplique a regra recomendada para todos os trimestres agora e ajuste apenas casos excepcionais.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onApplyRecommendedLocks}
+            className="inline-flex items-center justify-center rounded-lg border border-amber-200 bg-white px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100"
+          >
+            Aplicar travas recomendadas
+          </button>
         </div>
 
         <div className="space-y-4">

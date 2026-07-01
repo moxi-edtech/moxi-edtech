@@ -11,8 +11,11 @@ export default function AcademicStep2Config({
   onModeloAvaliacaoChange,
   modelosAvaliacao = [],
   avaliacaoConfig,
+  recommendedModeloId,
+  isLoadingModelos = false,
 }: AcademicStep2ConfigProps) {
   const componentes = avaliacaoConfig?.componentes ?? [];
+  const recommendedModel = modelosAvaliacao.find((item) => item.id === recommendedModeloId);
 
   return (
     <div className="space-y-6">
@@ -58,9 +61,17 @@ export default function AcademicStep2Config({
           <h3 className="text-sm font-bold text-slate-800">Modelo de avaliação</h3>
           <p className="text-xs text-slate-500">Define o formato de notas trimestrais.</p>
         </div>
+        {recommendedModel ? (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+            <span className="font-semibold">Modelo recomendado:</span> {recommendedModel.nome}.
+            Use este padrão para começar rápido e ajuste depois se a escola tiver uma política própria.
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
-          {modelosAvaliacao.length === 0 ? (
-            <p className="text-xs text-slate-500">Sem modelos cadastrados.</p>
+          {isLoadingModelos ? (
+            <p className="text-xs text-slate-500">A carregar modelos de avaliação...</p>
+          ) : modelosAvaliacao.length === 0 ? (
+            <p className="text-xs text-slate-500">Nenhum modelo encontrado. Vamos usar uma configuração simplificada para não travar o setup.</p>
           ) : (
             modelosAvaliacao.map((opt) => (
               <button
@@ -73,7 +84,14 @@ export default function AcademicStep2Config({
                     : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
                 }`}
               >
-                {opt.nome}
+                <span>{opt.nome}</span>
+                {opt.id === recommendedModeloId || opt.isDefault ? (
+                  <span className={`ml-1 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
+                    modeloAvaliacao === opt.id ? "bg-white/15 text-white" : "bg-emerald-50 text-emerald-700"
+                  }`}>
+                    Recomendado
+                  </span>
+                ) : null}
               </button>
             ))
           )}

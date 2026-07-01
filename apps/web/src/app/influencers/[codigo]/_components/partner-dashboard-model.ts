@@ -1,5 +1,6 @@
 import { Megaphone, School, Send, Target, Users } from "lucide-react";
 import type { Database, Json } from "~types/supabase";
+import type { OperationalReadiness } from "@/lib/setupStateClient";
 
 export interface OnboardingStep {
   code: string;
@@ -78,10 +79,33 @@ export interface OnboardingEscola {
   acceptance_validated_at?: string | null;
   acceptance_validated_by?: string | null;
   acceptance_notes?: string | null;
+  onboarding_finalizado?: boolean;
+  needs_academic_setup?: boolean;
+  has_turmas_no_ano?: boolean;
+  operational_readiness?: OperationalReadiness | null;
   risk_score?: number | null;
   risk_level?: "baixo" | "medio" | "alto" | null;
   risk_reasons?: string[] | null;
   risk_updated_at?: string | null;
+}
+
+export type OnboardingLifecycleMeta = {
+  shortLabel: string;
+  label: string;
+  description: string;
+  color: string;
+};
+
+export function isSchoolProvisioned(escola: OnboardingEscola) {
+  return escola.status === "activo" || Boolean(escola.escola_id);
+}
+
+export function isSchoolSetupCompleted(escola: OnboardingEscola) {
+  return Boolean(escola.onboarding_finalizado) || escola.needs_academic_setup === false;
+}
+
+export function isSchoolOperational(escola: OnboardingEscola) {
+  return Boolean(escola.operational_readiness?.summary?.operational_ok);
 }
 
 export type PartnerCommissionSummary = {
@@ -178,7 +202,7 @@ export const PARTNER_CONTEXTUAL_POPS: PartnerPopGuide[] = [
     id: "sop-crm-02",
     phase: "onboarding",
     title: "Conversão de lead para onboarding",
-    summary: "Converter proposta aceita em ativação oficial com tracking token e 7 etapas.",
+    summary: "Converter proposta aceite em pedido de onboarding com tracking token e workflow operacional de 7 etapas.",
     href: "/crm/pops/parceiro/sop-crm-02-conversao-onboarding.html",
     code: "SOP-CRM-02",
     status: "actual",
@@ -187,7 +211,7 @@ export const PARTNER_CONTEXTUAL_POPS: PartnerPopGuide[] = [
     id: "sop-crm-03",
     phase: "onboarding",
     title: "Triagem documental do parceiro",
-    summary: "Conferir documentos, classificar pendências e encaminhar o que está pronto para KLASSE.",
+    summary: "Conferir documentos, atualizar checklist de implantação, recolher aceite e encaminhar o que está pronto para a KLASSE.",
     href: "/crm/pops/parceiro/sop-crm-03-moderacao-documental.html",
     code: "SOP-CRM-03",
     status: "needs_review",
@@ -602,6 +626,73 @@ export function getStepMeta(stepCode: string, owner: string) {
   };
 }
 
+export function getOnboardingLifecycleMeta(escola: OnboardingEscola): OnboardingLifecycleMeta {
+  const isProvisioned = isSchoolProvisioned(escola);
+  const isSetupCompleted = isSchoolSetupCompleted(escola);
+  const isOperational = isSchoolOperational(escola);
+  const nextPendingStep = escola.steps?.find((step) => step.status !== "concluido") ?? null;
+
+  if (!isProvisioned) {
+    const nextStepMeta = nextPendingStep ? getStepMeta(nextPendingStep.code, nextPendingStep.owner) : null;
+    return {
+      shortLabel: "Onboarding em curso",
+      label: "Onboarding operacional",
+      description: nextStepMeta
+        ? `Pedido criado a partir do lead. A escola ainda não foi provisionada. Próxima etapa real: ${nextStepMeta.short} (${nextStepMeta.ownerLabel}).`
+        : "Pedido criado a partir do lead. A escola ainda não foi provisionada.",
+      color: "bg-blue-50 text-blue-700 border-blue-100",
+    };
+  }
+
+  if (isOperational) {
+    return {
+      shortLabel: "Operacional",
+      label: "Operacional · portais em sintonia",
+      description:
+        "A escola foi provisionada, concluiu o setup e já cumpre os critérios operacionais de académico, financeiro, equipe, horários e portais.",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    };
+  }
+
+  if (isSetupCompleted) {
+    return {
+      shortLabel: "Setup concluído",
+      label: "Provisionada · setup concluído · operação pendente",
+      description:
+        "A escola já foi provisionada e concluiu o setup académico/financeiro no portal escolar, mas ainda há pendências operacionais para colocar todos os portais em sintonia.",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    };
+  }
+
+  if (escola.implantation_status === "aceite_validado") {
+    return {
+      shortLabel: "Setup em curso",
+      label: "Provisionada · aceite validado · setup em curso",
+      description:
+        "Escola provisionada no backoffice. O aceite foi validado e a comissão de activação já pode seguir o fluxo financeiro. O setup académico final ainda continua no portal da escola.",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    };
+  }
+
+  if (escola.implantation_status === "aguardando_aceite") {
+    return {
+      shortLabel: "Setup em curso",
+      label: "Provisionada · aceite pendente · setup em curso",
+      description:
+        "Escola provisionada no backoffice. O checklist técnico foi concluído, mas o Termo de Aceite ainda precisa ser validado. O setup académico final continua no portal da escola.",
+      color: "bg-amber-50 text-amber-700 border-amber-100",
+    };
+  }
+
+  return {
+    shortLabel: "Setup em curso",
+    label: "Provisionada · setup escolar em curso",
+    description:
+      "Escola provisionada no backoffice. O parceiro acompanha implantação e aceite, enquanto o setup académico final ainda precisa ser concluído dentro do portal da escola.",
+    color: "bg-violet-50 text-violet-700 border-violet-100",
+  };
+}
+
 export function getLatestOnboardingCall(escola?: OnboardingEscola | null): OnboardingCall | null {
   if (!escola?.calls?.length) return null;
   return [...escola.calls].sort(
@@ -667,10 +758,10 @@ export const STATUS_CONFIG = {
 };
 
 export const ONBOARDING_STATUS_CONFIG = {
-  pendente: { label: "Pendente", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-  em_configuracao: { label: "Em atendimento", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  activo: { label: "Fechada", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  cancelado: { label: "Arquivada", color: "bg-slate-100 text-slate-500", dot: "bg-slate-400" },
+  pendente: { label: "Pedido criado", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
+  em_configuracao: { label: "Onboarding em curso", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+  activo: { label: "Escola provisionada", color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
+  cancelado: { label: "Cancelada", color: "bg-slate-100 text-slate-500", dot: "bg-slate-400" },
 };
 
 export const WEEKLY_ACTIONS = [

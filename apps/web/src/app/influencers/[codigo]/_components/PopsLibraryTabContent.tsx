@@ -77,7 +77,7 @@ export function PopsLibraryTabContent() {
   const [search, setSearch] = useState("");
   const [phaseFilter, setPhaseFilter] = useState<"all" | PartnerPopPhase>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "actual" | "needs_review">("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   const filteredPops = useMemo(() => {
     const needle = normalize(search);

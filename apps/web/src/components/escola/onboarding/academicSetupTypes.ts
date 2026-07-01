@@ -63,6 +63,7 @@ export interface AcademicStep1Props {
   // Dynamic Templates
   templates?: any[];
   onApplyTemplate?: (template: any) => void;
+  onApplyRecommendedLocks?: () => void;
 }
 
 export interface AcademicStepFinancialProps {
@@ -95,8 +96,10 @@ export interface AcademicStep2ConfigProps {
   onFrequenciaMinPercentChange: (val: number) => void;
   modeloAvaliacao: string;
   onModeloAvaliacaoChange: (val: string) => void;
-  modelosAvaliacao?: { id: string; nome: string }[];
+  modelosAvaliacao?: { id: string; nome: string; isDefault?: boolean }[];
   avaliacaoConfig: { componentes?: { code: string; peso: number; ativo: boolean }[] };
+  recommendedModeloId?: string;
+  isLoadingModelos?: boolean;
 }
 
 export type CurriculumCategory = "geral" | "tecnico_ind" | "tecnico_serv";

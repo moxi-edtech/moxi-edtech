@@ -12,10 +12,14 @@ import {
   Wand2,
   CalendarCheck,
   Banknote,
-  ChevronDown
+  ChevronDown,
+  Info,
+  CalendarDays
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { format } from "date-fns";
+import { pt } from "date-fns/locale";
 
 // Componentes Filhos
 import AcademicStep1 from "./AcademicStep1";
@@ -57,6 +61,12 @@ type PricingRule = {
   valorMensalidade: number;
 };
 
+type WizardStatusMeta = {
+  badge: string;
+  title: string;
+  description: string;
+};
+
 const toDateInput = (value?: string | null) => {
   if (!value) return "";
   return String(value).slice(0, 10);
@@ -67,6 +77,21 @@ const toDateTimeLocalInput = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
   return date.toISOString().slice(0, 16);
+};
+
+const buildRecommendedLock = (dateValue?: string | null) => {
+  if (!dateValue) return "";
+  const lockDate = new Date(`${dateValue}T23:59:00`);
+  if (Number.isNaN(lockDate.getTime())) return "";
+  lockDate.setDate(lockDate.getDate() + 15);
+  return lockDate.toISOString().slice(0, 16);
+};
+
+const safeFormatDate = (dateStr?: string | null, formatStr: string = "dd/MM/yyyy") => {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return format(date, formatStr, { locale: pt });
 };
 
 // --- COMPONENTE VISUAL: STEPPER ---
@@ -187,7 +212,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           numero: Number(i.numero || 1),
           data_inicio: i.data_inicio,
           data_fim: i.data_fim,
-          trava_notas_em: ""
+          trava_notas_em: buildRecommendedLock(i.data_fim)
         })));
       }
       setShowTemplates(false);
@@ -199,9 +224,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   // --- STATES (STEP 2) ---
   const [frequenciaModelo, setFrequenciaModelo] = useState<'POR_AULA' | 'POR_PERIODO'>('POR_AULA');
   const [frequenciaMinPercent, setFrequenciaMinPercent] = useState<number>(75);
-  const [modelosAvaliacao, setModelosAvaliacao] = useState<Array<{ id: string; nome: string }>>([]);
+  const [modelosAvaliacao, setModelosAvaliacao] = useState<Array<{ id: string; nome: string; isDefault?: boolean }>>([]);
+  const [modelosAvaliacaoConfigMap, setModelosAvaliacaoConfigMap] = useState<Record<string, Array<{ code: string; peso: number; ativo: boolean }>>>({});
   const [modeloAvaliacao, setModeloAvaliacao] = useState<string>('');
   const [avaliacaoConfig, setAvaliacaoConfig] = useState<any>({ componentes: [] });
+  const [loadingModelosAvaliacao, setLoadingModelosAvaliacao] = useState(false);
+  const [recommendedModeloId, setRecommendedModeloId] = useState<string>("");
 
   // --- STATES (STEP 4) ---
   const [valorMatricula, setValorMatricula] = useState<number>(0);
@@ -219,7 +247,72 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [showFinalSuccess, setShowFinalSuccess] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
 
+  const totalTurmas = useMemo(() => {
+    let count = 0;
+    matrix.forEach((row) => {
+      if (turnos["Manhã"]) count += Number(row.manha || 0);
+      if (turnos["Tarde"]) count += Number(row.tarde || 0);
+      if (turnos["Noite"]) count += Number(row.noite || 0);
+    });
+    return count;
+  }, [matrix, turnos]);
+
+  const sampleNomeTurma = useMemo(() => {
+    if (!matrix[0]) return "Ex: Informática 10ª Turma A";
+    const primeiraClasse = matrix[0];
+    const cursoNome = primeiraClasse?.cursoNome || "Curso";
+    const classeNome = primeiraClasse?.nome || "10ª Classe";
+    const turnoAtivo = turnos["Manhã"] ? "manha" : turnos["Tarde"] ? "tarde" : "noite";
+    
+    const sigla = cursoNome.substring(0,3).toUpperCase();
+    const ano = anoLetivo ? `(${anoLetivo})` : "";
+    const turnoCode = turnoAtivo.toUpperCase().charAt(0);
+    const turnoLabel = turnoCode === "M" ? "Manhã" : turnoCode === "T" ? "Tarde" : "Noite";
+    const classeLimpa = `${classeNome.replace(/\D/g, "")}ª`;
+    const letra = "A";
+
+    switch (padraoNomenclatura) {
+      case "descritivo_completo": return `${cursoNome} ${classeLimpa} Turma ${letra} ${ano}`.trim();
+      case "descritivo_simples": return `${sigla} - ${classeLimpa} Turma ${letra} - ${turnoLabel}`;
+      case "abreviado": return `${sigla}-${classeLimpa.replace("ª", "")}-${turnoCode}-${letra}`;
+      default: return `${cursoNome} ${classeLimpa}`;
+    }
+  }, [matrix, turnos, padraoNomenclatura, anoLetivo]);
+
   const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
+
+  const applyRecommendedLocks = () => {
+    setPeriodosConfig((prev) =>
+      prev.map((periodo) => ({
+        ...periodo,
+        trava_notas_em: buildRecommendedLock(periodo.data_fim),
+      }))
+    );
+  };
+
+  const handlePeriodoChange = (
+    numero: number,
+    field: "data_inicio" | "data_fim" | "trava_notas_em",
+    value: string
+  ) => {
+    setPeriodosConfig((prev) =>
+      prev.map((periodo) => {
+        if (periodo.numero !== numero) return periodo;
+        if (field !== "data_fim") return { ...periodo, [field]: value };
+
+        const previousRecommended = buildRecommendedLock(periodo.data_fim);
+        const nextRecommended = buildRecommendedLock(value);
+        const shouldAutoUpdateLock =
+          !periodo.trava_notas_em || periodo.trava_notas_em === previousRecommended;
+
+        return {
+          ...periodo,
+          data_fim: value,
+          trava_notas_em: shouldAutoUpdateLock ? nextRecommended : periodo.trava_notas_em,
+        };
+      })
+    );
+  };
 
   useEffect(() => {
     const nextRules = matrix
@@ -293,6 +386,104 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     }
     loadActiveSession();
   }, [isContextReady, escolaContextId]);
+
+  useEffect(() => {
+    async function loadEvaluationModels() {
+      try {
+        if (!isContextReady) return;
+        setLoadingModelosAvaliacao(true);
+
+        const [configRes, modelosRes] = await Promise.all([
+          fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
+          fetch(`/api/escolas/${escolaContextId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
+        ]);
+
+        const configJson = await configRes.json().catch(() => null);
+        const modelosJson = await modelosRes.json().catch(() => null);
+
+        const remoteModelos: Array<{
+          id: string;
+          nome: string;
+          isDefault: boolean;
+          componentes: Array<{ code: string; peso: number; ativo: boolean }>;
+        }> = Array.isArray(modelosJson?.data)
+          ? modelosJson.data.map((item: any) => ({
+              id: String(item.id),
+              nome: String(item.nome),
+              isDefault: Boolean(item.is_default),
+              componentes: Array.isArray(item.componentes)
+                ? item.componentes
+                : Array.isArray(item.componentes?.componentes)
+                  ? item.componentes.componentes
+                  : [],
+            }))
+          : [];
+
+        const fallbackModelos: Array<{
+          id: string;
+          nome: string;
+          isDefault: boolean;
+          componentes: Array<{ code: string; peso: number; ativo: boolean }>;
+        }> = remoteModelos.length > 0
+          ? remoteModelos
+          : [{
+              id: "SIMPLIFICADO",
+              nome: "Modelo Simplificado",
+              isDefault: true,
+              componentes: [
+                { code: "MAC", peso: 40, ativo: true },
+                { code: "NPP", peso: 60, ativo: true },
+              ],
+            }];
+
+        setModelosAvaliacaoConfigMap(
+          fallbackModelos.reduce<Record<string, Array<{ code: string; peso: number; ativo: boolean }>>>((acc, item) => {
+            acc[item.id] = Array.isArray(item.componentes) ? item.componentes : [];
+            return acc;
+          }, {})
+        );
+
+        setModelosAvaliacao(
+          fallbackModelos.map((item) => ({
+            id: item.id,
+            nome: item.nome,
+            isDefault: item.isDefault,
+          }))
+        );
+
+        const defaultModelo = fallbackModelos.find((item) => item.isDefault) ?? fallbackModelos[0] ?? null;
+        const savedModelRef = String(configJson?.data?.modelo_avaliacao ?? "").trim();
+        const savedModel =
+          fallbackModelos.find((item) => item.id === savedModelRef) ??
+          fallbackModelos.find((item) => item.nome === savedModelRef) ??
+          null;
+        const activeModel = savedModel ?? defaultModelo;
+
+        if (activeModel) {
+          setRecommendedModeloId(defaultModelo?.id ?? activeModel.id);
+          setModeloAvaliacao((current) => current || activeModel.id);
+        }
+
+        const configComponentes = configJson?.data?.avaliacao_config?.componentes;
+        if (Array.isArray(configComponentes) && configComponentes.length > 0) {
+          setAvaliacaoConfig({ componentes: configComponentes });
+        } else if (activeModel?.componentes?.length) {
+          setAvaliacaoConfig({ componentes: activeModel.componentes });
+        }
+
+        if (configJson?.data) {
+          setFrequenciaModelo(configJson.data.frequencia_modelo ?? 'POR_AULA');
+          setFrequenciaMinPercent(configJson.data.frequencia_min_percent ?? 75);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingModelosAvaliacao(false);
+      }
+    }
+
+    loadEvaluationModels();
+  }, [isContextReady, escolaContextId, escolaParam]);
 
   const handleCreateSession = async () => {
     if (!isContextReady) return false;
@@ -402,6 +593,47 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     if (step === 5) { await handleGenerateTurmas(); }
   };
 
+  const handleModeloAvaliacaoChange = (nextModelId: string) => {
+    setModeloAvaliacao(nextModelId);
+    const nextComponentes = modelosAvaliacaoConfigMap[nextModelId];
+    if (Array.isArray(nextComponentes) && nextComponentes.length > 0) {
+      setAvaliacaoConfig({ componentes: nextComponentes });
+    }
+  };
+
+  const selectedModeloMeta = modelosAvaliacao.find((item) => item.id === modeloAvaliacao);
+  const wizardStatusMeta: WizardStatusMeta = step === 1
+    ? {
+        badge: "O que falta agora",
+        title: "Configure o ano letivo e confirme os períodos.",
+        description: "O sistema já sugere o travamento de notas 15 dias após o fim de cada trimestre para reduzir digitação manual.",
+      }
+    : step === 2
+      ? {
+          badge: "Próximo passo",
+          title: selectedModeloMeta
+            ? `Confirme as regras de avaliação com base em ${selectedModeloMeta.nome}.`
+            : "Defina frequência e modelo de avaliação.",
+          description: "Pode começar pelo modelo recomendado e ajustar depois, sem travar o setup.",
+        }
+      : step === 3
+        ? {
+            badge: "Próximo passo",
+            title: "Monte a matriz e a estrutura de turmas.",
+            description: "Nesta etapa a escola define a base operacional para currículo, classes e turnos.",
+          }
+        : step === 4
+          ? {
+              badge: "Próximo passo",
+              title: "Confirme preços, matrícula e vencimento.",
+              description: "Estes dados alimentam o financeiro inicial da escola e fazem parte do readiness operacional.",
+            }
+          : {
+              badge: "Reta final",
+              title: "Gerar os artefactos iniciais da escola.",
+              description: "Ao finalizar, o setup base é concluído e a escola segue para a verificação de prontidão operacional.",
+            };
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 font-sans text-left">
       <div className="mx-auto mb-10 max-w-5xl text-center">
@@ -409,6 +641,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           <School className="h-3 w-3" /> Setup Inicial
         </div>
         <h1 className="text-3xl font-bold text-slate-900 text-center">Setup do {schoolDisplayName || "Sistema"}</h1>
+      </div>
+
+      <div className="mx-auto mb-8 max-w-5xl rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-5 text-left">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">{wizardStatusMeta.badge}</p>
+        <h2 className="mt-1 text-lg font-bold text-slate-900">{wizardStatusMeta.title}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">{wizardStatusMeta.description}</p>
       </div>
 
       <WizardStepper currentStep={step} />
@@ -421,18 +659,20 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
               setSchoolDisplayName={setSchoolDisplayName} logoUrl={logoUrl} onLogoUrlChange={setLogoUrl}
               anoLetivo={anoLetivo} setAnoLetivo={setAnoLetivo}
               dataInicio={dataInicio} setDataInicio={setDataInicio} dataFim={dataFim} setDataFim={setDataFim}
-              periodosConfig={periodosConfig} onPeriodoChange={(n,f,v) => setPeriodosConfig(prev => prev.map(p => p.numero === n ? {...p, [f]: v} : p))}
+              periodosConfig={periodosConfig} onPeriodoChange={handlePeriodoChange}
               turnos={turnos} onTurnoToggle={handleTurnoToggle} iban={iban} onIbanChange={setIban}
               sessaoAtiva={sessaoAtiva} periodos={periodos} creatingSession={creatingSession} onCreateSession={handleCreateSession}
-              templates={templates} onApplyTemplate={applyTemplate}
+              templates={templates} onApplyTemplate={applyTemplate} onApplyRecommendedLocks={applyRecommendedLocks}
             />
           )}
           {step === 2 && (
             <AcademicStep2Config
               frequenciaModelo={frequenciaModelo} onFrequenciaModeloChange={setFrequenciaModelo}
               frequenciaMinPercent={frequenciaMinPercent} onFrequenciaMinPercentChange={v => setFrequenciaMinPercent(Number(v))}
-              modeloAvaliacao={modeloAvaliacao} onModeloAvaliacaoChange={setModeloAvaliacao}
+              modeloAvaliacao={modeloAvaliacao} onModeloAvaliacaoChange={handleModeloAvaliacaoChange}
               modelosAvaliacao={modelosAvaliacao} avaliacaoConfig={avaliacaoConfig}
+              recommendedModeloId={recommendedModeloId}
+              isLoadingModelos={loadingModelosAvaliacao}
             />
           )}
           {step === 3 && (
@@ -467,12 +707,128 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
             />
           )}
           {step === 5 && (
-            <div className="space-y-6 text-center py-10">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                <Wand2 className="h-8 w-8" />
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="text-center max-w-xl mx-auto space-y-3">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">
+                  <Wand2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Resumo e Preview de Geração</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Revise abaixo todos os parâmetros do ano letivo de {anoLetivo} antes de iniciar a geração dos registros no banco de dados.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-slate-900">Tudo pronto!</h3>
-              <p className="text-slate-600">Clique em finalizar para ativar o dashboard da sua escola.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                {/* CARD 1: CALENDÁRIO & PERÍODOS */}
+                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <CalendarCheck className="h-4 w-4 text-[#1F6B3B]" />
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Sessão & Trimestres</h4>
+                  </div>
+                  <div className="text-xs text-slate-600 space-y-1">
+                    <p><strong>Período Letivo:</strong> {safeFormatDate(dataInicio)} a {safeFormatDate(dataFim)}</p>
+                  </div>
+                  <div className="space-y-2.5">
+                    {periodosConfig.map((p) => (
+                      <div key={p.numero} className="p-3 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                        <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                          <span>{p.numero}º Trimestre</span>
+                          <span className="text-[9px] text-[#1F6B3B] bg-[#1F6B3B]/10 px-1.5 py-0.5 rounded-md font-semibold">Ativo</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">
+                          Datas: {safeFormatDate(p.data_inicio)} a {safeFormatDate(p.data_fim)}
+                        </p>
+                        {p.trava_notas_em && (
+                          <p className="text-[9px] text-amber-700 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5 inline-block font-mono font-semibold">
+                            Bloqueio de Notas: {safeFormatDate(p.trava_notas_em, "dd/MM/yyyy HH:mm")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CARD 2: REGRAS PEDAGÓGICAS */}
+                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <GraduationCap className="h-4 w-4 text-[#1F6B3B]" />
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Regras de Lançamento</h4>
+                  </div>
+                  <div className="space-y-3 text-xs text-slate-600">
+                    <div>
+                      <p className="font-semibold text-slate-800">Modelo de Avaliação:</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{selectedModeloMeta?.nome || "Modelo Padrão"}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {avaliacaoConfig?.componentes?.map((c: any) => (
+                          <span key={c.code} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[9px] font-bold">
+                            {c.code}: {c.peso}%
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-slate-100 space-y-1">
+                      <p><strong>Frequência Mínima:</strong> {frequenciaMinPercent}%</p>
+                      <p><strong>Controle de Presença:</strong> {frequenciaModelo === "POR_AULA" ? "Por Aula (Carga Horária)" : "Por Período (Global)"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 3: ESTRUTURA ACADÉMICA (TURMAS) */}
+                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <Layers className="h-4 w-4 text-[#1F6B3B]" />
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Estrutura & Turmas</h4>
+                  </div>
+                  <div className="space-y-3 text-xs text-slate-600">
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                        <span className="block text-lg font-black text-slate-800">{matrix.length}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Classes Ativas</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                        <span className="block text-lg font-black text-[#1F6B3B]">{totalTurmas}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#1F6B3B]/70">Total Turmas</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 space-y-1.5">
+                      <p><strong>Turnos Ativos:</strong> {Object.entries(turnos).filter(([_, active]) => active).map(([name]) => name).join(", ")}</p>
+                      <p><strong>Exemplo de Nome:</strong> <code className="bg-slate-50 border border-slate-200/60 px-1 py-0.5 rounded text-[10.5px] font-mono text-slate-800 leading-normal">{sampleNomeTurma}</code></p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CARD 4: MENSALIDADES & PREÇOS */}
+                <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <Banknote className="h-4 w-4 text-[#1F6B3B]" />
+                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Financeiro Base</h4>
+                  </div>
+                  <div className="space-y-3 text-xs text-slate-600">
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                        <span className="block text-base font-black text-slate-800">{valorMatricula.toLocaleString("pt-PT")} Kz</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Matrícula Padrão</span>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                        <span className="block text-base font-black text-slate-800">{valorMensalidade.toLocaleString("pt-PT")} Kz</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Propina Padrão</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 space-y-1">
+                      <p><strong>Vencimento:</strong> Dia {diaVencimento} de cada mês</p>
+                      <p><strong>IBAN da Escola:</strong> {iban || <span className="text-amber-600 font-semibold italic">Não configurado</span>}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* WARNING / NOTICE CARD */}
+              <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4.5 text-center flex items-center justify-center gap-3 text-left">
+                <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <p className="text-xs text-blue-800 leading-relaxed font-medium">
+                  Ao clicar em <strong>Finalizar</strong>, o sistema irá criar automaticamente o novo ano letivo, gerar os trimestres configurados, aplicar as regras de avaliação e instanciar as {totalTurmas} turmas e tabelas de propina.
+                </p>
+              </div>
             </div>
           )}
         </div>

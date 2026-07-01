@@ -30,8 +30,10 @@ import {
   getImplantationProgress,
   getLatestOnboardingCall,
   getLatestOnboardingCallForStep,
+  getOnboardingLifecycleMeta,
   getStepMeta,
   IMPLANTATION_STATUS_CONFIG,
+  isSchoolOperational,
   type OnboardingEscola,
   type OnboardingImplantationItem,
   type OnboardingUpload,
@@ -84,6 +86,7 @@ export function OnboardingSchoolDetailsSheet({
   const [savingUploadTriageId, setSavingUploadTriageId] = useState<string | null>(null);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const lifecycleMeta = selectedSchoolForDetails ? getOnboardingLifecycleMeta(selectedSchoolForDetails) : null;
 
   const documentTypeOptions = [
     { value: "legal", label: "Legal" },
@@ -194,7 +197,7 @@ export function OnboardingSchoolDetailsSheet({
         return;
       }
 
-      toast.success("Termo de Aceite validado com sucesso! Escola ativada.");
+      toast.success("Termo de Aceite validado. A comissão de activação pode seguir o próximo passo.");
       setAcceptanceFile(null);
       setSignedBy("");
       setSignedAt("");
@@ -217,12 +220,8 @@ export function OnboardingSchoolDetailsSheet({
               <div className="border-b border-slate-100 pb-5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Escola em Onboarding</span>
-                  <Badge className={`border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-lg ${
-                    selectedSchoolForDetails.status === 'activo'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {selectedSchoolForDetails.status === 'activo' ? 'Ativo' : 'Pendente'}
+                  <Badge className={`border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-lg ${lifecycleMeta?.color || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                    {lifecycleMeta?.shortLabel || 'Onboarding'}
                   </Badge>
                 </div>
                 <h3 className="font-bold text-slate-900 text-xl tracking-tight leading-tight">
@@ -248,6 +247,31 @@ export function OnboardingSchoolDetailsSheet({
                     </Badge>
                   )}
                 </div>
+                {lifecycleMeta ? (
+                  <div className={`mt-4 rounded-2xl border p-3 ${lifecycleMeta.color}`}>
+                    <p className="text-[10px] font-black uppercase tracking-widest">{lifecycleMeta.label}</p>
+                    <p className="mt-1 text-xs font-medium leading-relaxed">
+                      {lifecycleMeta.description}
+                    </p>
+                  </div>
+                ) : null}
+                {selectedSchoolForDetails.operational_readiness?.summary && !isSchoolOperational(selectedSchoolForDetails) ? (
+                  <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50 p-3 text-rose-800">
+                    <p className="text-[10px] font-black uppercase tracking-widest">Readiness operacional pendente</p>
+                    <p className="mt-1 text-xs font-medium leading-relaxed">
+                      A escola já pode estar provisionada ou com setup concluído, mas ainda não está operacional em todos os portais.
+                    </p>
+                    {selectedSchoolForDetails.operational_readiness?.blockers?.length ? (
+                      <div className="mt-2 space-y-1">
+                        {selectedSchoolForDetails.operational_readiness.blockers.slice(0, 3).map((blocker, index) => (
+                          <p key={`${blocker.code || blocker.title || "blocker"}-${index}`} className="text-[11px] leading-relaxed">
+                            • {blocker.title || blocker.code}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 {selectedSchoolForDetails.status !== 'activo' && (
                   <div className="mt-4">
                     <Button
@@ -311,7 +335,7 @@ export function OnboardingSchoolDetailsSheet({
                     </Button>
                     <a
                       href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `Olá! Acompanhe o processo de ativação da sua escola (${selectedSchoolForDetails.escola}) em tempo real no nosso Portal de Ativação. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : ''}`
+                        `Olá! Acompanhe o processo de onboarding da sua escola (${selectedSchoolForDetails.escola}) em tempo real no nosso Portal de Onboarding. Por lá, você poderá enviar documentos e planilhas pendentes, além de acompanhar o prazo de cada etapa.\n\nLink de acesso seguro: ${typeof window !== 'undefined' ? `${window.location.origin}/onboarding/acompanhar/${selectedSchoolForDetails.token}` : ''}`
                       )}${
                         selectedSchoolForDetails.director_tel || selectedSchoolForDetails.escola_tel
                           ? `&phone=${(selectedSchoolForDetails.director_tel || selectedSchoolForDetails.escola_tel || '').replace(/\D/g, '')}`
@@ -546,7 +570,7 @@ export function OnboardingSchoolDetailsSheet({
                   <div className="space-y-3 border-t border-slate-100 pt-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                       <FileText size={14} className="text-slate-400" />
-                      Termo de Aceite de Ativação
+                      Termo de Aceite da Implantação
                     </h4>
 
                     {selectedSchoolForDetails.implantation_status === "aceite_validado" ? (
@@ -555,6 +579,9 @@ export function OnboardingSchoolDetailsSheet({
                           <CheckCircle2 size={16} className="text-emerald-600" />
                           Termo de Aceite validado com sucesso!
                         </div>
+                        <p className="text-[11px] font-medium leading-relaxed text-emerald-800">
+                          Este aceite libera a comissão de activação para o fluxo financeiro. O setup académico final da escola continua no portal da escola.
+                        </p>
                         <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
                           <p>Signatário: <span className="font-bold text-slate-800">{selectedSchoolForDetails.acceptance_signed_by}</span></p>
                           <p>Cargo: <span className="font-bold text-slate-800">{selectedSchoolForDetails.acceptance_signed_role || "Diretor Geral"}</span></p>
@@ -572,7 +599,7 @@ export function OnboardingSchoolDetailsSheet({
                     ) : selectedSchoolForDetails.implantation_status === "aguardando_aceite" ? (
                       <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-4">
                         <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
-                          O checklist técnico está concluído! Para ativar o faturamento da escola e liberar as comissões do parceiro, anexe o Termo de Aceite assinado pelo diretor e submeta.
+                          O checklist técnico está concluído. Para liberar a comissão de activação e o próximo passo financeiro, anexe o Termo de Aceite assinado pelo diretor e submeta.
                         </p>
                         <div className="space-y-3 bg-white border border-slate-200/50 p-3.5 rounded-xl">
                           <div className="space-y-1.5">
