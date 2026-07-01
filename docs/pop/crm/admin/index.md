@@ -46,6 +46,9 @@ Regras deste pacote:
 - [`p3-documentos-oficiais-lote.md`](/Users/gundja/moxi-edtech/docs/pop/admin/p3-documentos-oficiais-lote.md)
 - [`p3-operacoes-academicas-monitor.md`](/Users/gundja/moxi-edtech/docs/pop/admin/p3-operacoes-academicas-monitor.md)
 
+## P4 - Onboarding e Provisionamento
+- [`p4-handoff-onboarding-provisionamento.md`](/Users/gundja/moxi-edtech/docs/pop/admin/p4-handoff-onboarding-provisionamento.md)
+
 ## Governanca do pacote
 - [`CHANGELOG.md`](/Users/gundja/moxi-edtech/docs/pop/admin/CHANGELOG.md)
 - [`controle-revisoes.md`](/Users/gundja/moxi-edtech/docs/pop/admin/controle-revisoes.md)
@@ -67,8 +70,9 @@ Regras deste pacote:
 13. `p3-migracao-matriculas-em-massa.md`
 14. `p3-documentos-oficiais-lote.md`
 15. `p3-operacoes-academicas-monitor.md`
-16. `matriz-sop-rota-endpoint.md`
-17. `controle-revisoes.md`
+16. `p4-handoff-onboarding-provisionamento.md`
+17. `matriz-sop-rota-endpoint.md`
+18. `controle-revisoes.md`
 
 ## Convencoes de uso
 - Cada POP deve ser executado exatamente na ordem dos passos.

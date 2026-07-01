@@ -28,6 +28,7 @@ import { toast } from "sonner";
 interface OnboardingRequest {
   id: string;
   escola_nome: string;
+  escola_id?: string | null;
   tracking_token: string;
   status: "pendente" | "em_configuracao" | "activo" | "cancelado";
   financeiro: {
@@ -51,8 +52,17 @@ interface OnboardingUpload {
   id: string;
   step_code: string;
   file_path: string;
-  status: "pendente" | "processando" | "aprovado" | "rejeitado";
+  status:
+    | "pendente"
+    | "processando"
+    | "em_revisao_parceiro"
+    | "pendencia_cliente"
+    | "pronto_para_klasse"
+    | "aprovado"
+    | "rejeitado";
   rejection_reason: string | null;
+  partner_review_note?: string | null;
+  document_type?: string | null;
   created_by: "escola" | "parceiro";
   created_at: string;
 }
@@ -63,6 +73,29 @@ type PublicLifecycleMeta = {
   description: string;
   nextOwner: string;
   tone: string;
+};
+
+type StageStallMeta = {
+  overdueDays: number;
+  title: string;
+  description: string;
+  ownerLabel: string;
+  tone: string;
+} | null;
+
+type WorkflowActionMeta = {
+  badge: string;
+  title: string;
+  description: string;
+  actor: string;
+  tone: string;
+};
+
+type ReadinessBlockerDependency = {
+  code: string;
+  blockedBy: string[];
+  unlocks: string[];
+  priority: number;
 };
 
 const STEP_META: Record<string, { short: string; ownerLabel: string; uploadableBySchool: boolean }> = {
@@ -87,12 +120,36 @@ function getStepMeta(stepCode: string, ownerType: OnboardingStep["owner_type"]) 
 
 function getLifecycleMeta(
   status: OnboardingRequest["status"],
-  steps: OnboardingStep[]
+  steps: OnboardingStep[],
+  operationalReadiness?: any | null
 ): PublicLifecycleMeta {
   const nextPendingStep = steps.find((step) => step.status !== "concluido") ?? null;
   const nextStepMeta = nextPendingStep ? getStepMeta(nextPendingStep.step_code, nextPendingStep.owner_type) : null;
 
   if (status === "activo") {
+    const setupOk = Boolean(operationalReadiness?.summary?.onboarding_setup_ok);
+    const operationalOk = Boolean(operationalReadiness?.summary?.operational_ok);
+
+    if (operationalOk) {
+      return {
+        badge: "Escola operacional",
+        title: "A escola já está pronta para operar.",
+        description: "Provisionamento, setup interno e readiness operacional já foram concluídos. O portal pode seguir para a rotina académica e administrativa.",
+        nextOwner: "Escola",
+        tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
+      };
+    }
+
+    if (setupOk) {
+      return {
+        badge: "Setup concluído",
+        title: "O setup interno já terminou, mas a escola ainda não está operacional.",
+        description: "Agora o foco é eliminar os bloqueadores de go-live mostrados no painel de prontidão operacional abaixo.",
+        nextOwner: "Escola / KLASSE",
+        tone: "border-violet-100 bg-violet-50 text-violet-800",
+      };
+    }
+
     return {
       badge: "Escola provisionada",
       title: "A base da escola já foi provisionada pela KLASSE.",
@@ -123,6 +180,275 @@ function getLifecycleMeta(
     nextOwner: nextStepMeta?.ownerLabel ?? "Parceiro Comercial",
     tone: "border-blue-100 bg-blue-50 text-blue-800",
   };
+}
+
+function getUploadStatusMeta(status: OnboardingUpload["status"]) {
+  switch (status) {
+    case "aprovado":
+      return {
+        label: "Aprovado pela KLASSE",
+        color: "text-emerald-600 bg-emerald-500/5 border-emerald-500/10",
+        help: "Este envio já validou a etapa correspondente.",
+      };
+    case "rejeitado":
+      return {
+        label: "Rejeitado pela KLASSE",
+        color: "text-rose-600 bg-rose-500/5 border-rose-500/10",
+        help: "Este envio foi recusado na revisão final.",
+      };
+    case "pronto_para_klasse":
+      return {
+        label: "Pronto para KLASSE",
+        color: "text-blue-600 bg-blue-500/5 border-blue-500/10",
+        help: "O parceiro já triou; agora o avanço depende da validação final da KLASSE.",
+      };
+    case "pendencia_cliente":
+      return {
+        label: "Correção solicitada",
+        color: "text-amber-700 bg-amber-500/5 border-amber-500/10",
+        help: "A escola precisa corrigir ou reenviar este item para o fluxo voltar a andar.",
+      };
+    case "em_revisao_parceiro":
+      return {
+        label: "Em triagem do parceiro",
+        color: "text-violet-700 bg-violet-500/5 border-violet-500/10",
+        help: "O parceiro está a classificar o documento antes de encaminhar para a KLASSE.",
+      };
+    case "processando":
+      return {
+        label: "Processando",
+        color: "text-sky-600 bg-sky-500/5 border-sky-500/10",
+        help: "O envio foi recebido e está a ser preparado para triagem.",
+      };
+    default:
+      return {
+        label: "Recebido",
+        color: "text-zinc-600 bg-zinc-500/5 border-zinc-500/10",
+        help: "O envio entrou no portal, mas ainda não passou pela triagem.",
+      };
+  }
+}
+
+function getWorkflowActionMeta(
+  request: OnboardingRequest,
+  steps: OnboardingStep[],
+  uploads: OnboardingUpload[],
+  nextSchoolStep: OnboardingStep | null
+): WorkflowActionMeta {
+  const nextPendingStep = steps.find((step) => step.status !== "concluido") ?? null;
+
+  if (request.status === "activo") {
+    return {
+      badge: "Fluxo seguinte",
+      title: "O onboarding documental terminou e o fluxo continua no portal da escola.",
+      description:
+        "Daqui em diante, a escola só fica realmente operacional quando concluir setup académico, financeiro, equipe, horários e portais no ambiente interno.",
+      actor: "Escola",
+      tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
+    };
+  }
+
+  if (!nextPendingStep) {
+    return {
+      badge: "Sem bloqueio visível",
+      title: "Não há etapa pendente identificada neste painel.",
+      description:
+        "Se o pedido ainda não foi provisionado, revise com a equipa KLASSE se existe alguma pendência fora do tracking padrão.",
+      actor: "Parceiro / KLASSE",
+      tone: "border-zinc-200 bg-zinc-50 text-zinc-800",
+    };
+  }
+
+  const stepMeta = getStepMeta(nextPendingStep.step_code, nextPendingStep.owner_type);
+  const latestUpload = uploads.find((upload) => upload.step_code === nextPendingStep.step_code) ?? null;
+
+  if (nextSchoolStep && nextPendingStep.step_code === nextSchoolStep.step_code) {
+    return {
+      badge: "O que move esta etapa",
+      title: `A escola precisa enviar ${stepMeta.short.toLowerCase()} para o fluxo avançar.`,
+      description:
+        "O primeiro upload da escola coloca a etapa em progresso. Ela só fecha quando a KLASSE aprovar pelo menos um envio desta etapa.",
+      actor: "Escola agora, depois Parceiro e KLASSE",
+      tone: "border-blue-100 bg-blue-50 text-blue-800",
+    };
+  }
+
+  if (latestUpload?.status === "pendencia_cliente") {
+    return {
+      badge: "Ação pendente da escola",
+      title: `A etapa ${stepMeta.short} voltou para correção.`,
+      description:
+        latestUpload.partner_review_note?.trim()
+          ? latestUpload.partner_review_note
+          : "O parceiro sinalizou pendência do cliente. Corrija o item pedido e reenvie o documento para destravar o fluxo.",
+      actor: "Escola",
+      tone: "border-amber-100 bg-amber-50 text-amber-800",
+    };
+  }
+
+  if (latestUpload?.status === "pronto_para_klasse") {
+    return {
+      badge: "Aguardando KLASSE",
+      title: `A etapa ${stepMeta.short} já saiu da triagem do parceiro.`,
+      description:
+        "O próximo movimento agora é a revisão final da KLASSE. A escola não precisa enviar novo ficheiro até receber retorno.",
+      actor: "KLASSE",
+      tone: "border-sky-100 bg-sky-50 text-sky-800",
+    };
+  }
+
+  if (latestUpload?.status === "em_revisao_parceiro") {
+    return {
+      badge: "Aguardando parceiro",
+      title: `O parceiro está a triar a etapa ${stepMeta.short}.`,
+      description:
+        "Depois da triagem, o documento segue para correção da escola ou encaminhamento à KLASSE. O follow-up comercial não conclui esta etapa sozinho.",
+      actor: "Parceiro Comercial",
+      tone: "border-violet-100 bg-violet-50 text-violet-800",
+    };
+  }
+
+  return {
+    badge: "Aguardando responsável atual",
+    title: `A etapa ${stepMeta.short} está com ${stepMeta.ownerLabel}.`,
+    description:
+      nextPendingStep.step_code === "diagnostico"
+        ? "Esta fase não anda com follow-up isolado. O fluxo só ganha tração quando a escola passa a ter uma pendência documental real ou quando o pedido progride internamente."
+        : "Neste momento não há upload pendente da escola para esta etapa. Acompanhe acima quem precisa agir para o fluxo continuar.",
+    actor: stepMeta.ownerLabel,
+    tone: "border-zinc-200 bg-zinc-50 text-zinc-800",
+  };
+}
+
+function getStageStallMeta(steps: OnboardingStep[]): StageStallMeta {
+  const pendingStep = steps.find((step) => step.status !== "concluido") ?? null;
+  if (!pendingStep?.deadline_at) return null;
+
+  const deadline = new Date(pendingStep.deadline_at);
+  if (Number.isNaN(deadline.getTime())) return null;
+
+  const now = new Date();
+  const diffMs = now.getTime() - deadline.getTime();
+  if (diffMs <= 0) return null;
+
+  const overdueDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const stepMeta = getStepMeta(pendingStep.step_code, pendingStep.owner_type);
+
+  return {
+    overdueDays,
+    title: `Etapa parada há ${overdueDays} dia${overdueDays > 1 ? "s" : ""}`,
+    description:
+      pendingStep.owner_type === "escola"
+        ? `A etapa ${stepMeta.short} já passou do prazo. Se a escola ainda não enviou o que falta, use o painel abaixo para corrigir a pendência ou falar com o consultor.`
+        : `A etapa ${stepMeta.short} já passou do prazo e está com ${stepMeta.ownerLabel}. Use o canal de ajuda para cobrar a atualização e manter rastreabilidade.`,
+    ownerLabel: stepMeta.ownerLabel,
+    tone:
+      pendingStep.owner_type === "escola"
+        ? "border-rose-100 bg-rose-50 text-rose-800"
+        : "border-amber-100 bg-amber-50 text-amber-800",
+  };
+}
+
+function buildReadinessDependencyMap(blockers: Array<{ code?: string }>): Record<string, ReadinessBlockerDependency> {
+  const presentCodes = new Set(blockers.map((blocker) => String(blocker.code || "")).filter(Boolean));
+  const baseMap: Record<string, ReadinessBlockerDependency> = {
+    ONBOARDING_NOT_FINISHED: {
+      code: "ONBOARDING_NOT_FINISHED",
+      blockedBy: [],
+      unlocks: [
+        "ACADEMIC_YEAR_MISSING",
+        "ACADEMIC_PERIODS_INVALID",
+        "ACADEMIC_EVALUATION_MISSING",
+        "ACADEMIC_COURSES_MISSING",
+        "ACADEMIC_CURRICULUM_UNPUBLISHED",
+        "ACADEMIC_TURMAS_INVALID",
+        "FINANCE_IBAN_MISSING",
+        "FINANCE_PRICING_MISSING",
+        "FINANCE_CONFIG_MISSING",
+      ],
+      priority: 10,
+    },
+    ACADEMIC_YEAR_MISSING: {
+      code: "ACADEMIC_YEAR_MISSING",
+      blockedBy: ["ONBOARDING_NOT_FINISHED"],
+      unlocks: [
+        "ACADEMIC_PERIODS_INVALID",
+        "ACADEMIC_EVALUATION_MISSING",
+        "ACADEMIC_COURSES_MISSING",
+        "ACADEMIC_CURRICULUM_UNPUBLISHED",
+        "ACADEMIC_TURMAS_INVALID",
+        "FINANCE_PRICING_MISSING",
+      ],
+      priority: 20,
+    },
+    ACADEMIC_COURSES_MISSING: {
+      code: "ACADEMIC_COURSES_MISSING",
+      blockedBy: ["ACADEMIC_YEAR_MISSING", "ONBOARDING_NOT_FINISHED"],
+      unlocks: ["ACADEMIC_CURRICULUM_UNPUBLISHED", "ACADEMIC_TURMAS_INVALID", "HORARIOS_PUBLISH_MISSING"],
+      priority: 30,
+    },
+    ACADEMIC_CURRICULUM_UNPUBLISHED: {
+      code: "ACADEMIC_CURRICULUM_UNPUBLISHED",
+      blockedBy: ["ACADEMIC_COURSES_MISSING", "ACADEMIC_YEAR_MISSING"],
+      unlocks: ["ACADEMIC_TURMAS_INVALID", "HORARIOS_PUBLISH_MISSING", "TEAM_TEACHER_CONSISTENCY"],
+      priority: 40,
+    },
+    ACADEMIC_TURMAS_INVALID: {
+      code: "ACADEMIC_TURMAS_INVALID",
+      blockedBy: ["ACADEMIC_CURRICULUM_UNPUBLISHED", "ACADEMIC_COURSES_MISSING", "ACADEMIC_YEAR_MISSING"],
+      unlocks: ["HORARIOS_PUBLISH_MISSING", "STUDENTS_MISSING"],
+      priority: 50,
+    },
+    TEAM_TEACHERS_MISSING: {
+      code: "TEAM_TEACHERS_MISSING",
+      blockedBy: [],
+      unlocks: ["TEAM_TEACHER_CONSISTENCY", "PORTAL_PROFESSOR_BLOCKED", "HORARIOS_PUBLISH_MISSING"],
+      priority: 60,
+    },
+    TEAM_TEACHER_CONSISTENCY: {
+      code: "TEAM_TEACHER_CONSISTENCY",
+      blockedBy: ["TEAM_TEACHERS_MISSING", "ACADEMIC_CURRICULUM_UNPUBLISHED"],
+      unlocks: ["PORTAL_PROFESSOR_BLOCKED", "HORARIOS_PUBLISH_MISSING"],
+      priority: 70,
+    },
+    HORARIOS_SLOTS_MISSING: {
+      code: "HORARIOS_SLOTS_MISSING",
+      blockedBy: ["ACADEMIC_TURMAS_INVALID"],
+      unlocks: ["HORARIOS_PUBLISH_MISSING"],
+      priority: 80,
+    },
+    FINANCE_IBAN_MISSING: {
+      code: "FINANCE_IBAN_MISSING",
+      blockedBy: ["ONBOARDING_NOT_FINISHED"],
+      unlocks: [],
+      priority: 90,
+    },
+    FINANCE_PRICING_MISSING: {
+      code: "FINANCE_PRICING_MISSING",
+      blockedBy: ["ACADEMIC_YEAR_MISSING", "ONBOARDING_NOT_FINISHED"],
+      unlocks: [],
+      priority: 100,
+    },
+    FINANCE_CONFIG_MISSING: {
+      code: "FINANCE_CONFIG_MISSING",
+      blockedBy: ["FINANCE_PRICING_MISSING"],
+      unlocks: [],
+      priority: 110,
+    },
+  };
+
+  const resolved: Record<string, ReadinessBlockerDependency> = {};
+  for (const code of presentCodes) {
+    const fallbackPriority = 1000;
+    const item = baseMap[code] ?? { code, blockedBy: [], unlocks: [], priority: fallbackPriority };
+    resolved[code] = {
+      ...item,
+      blockedBy: item.blockedBy.filter((blockedCode) => presentCodes.has(blockedCode)),
+      unlocks: item.unlocks.filter((unlockCode) => presentCodes.has(unlockCode)),
+    };
+  }
+
+  return resolved;
 }
 const validateSingleRow = (rowData: any, isAlunos: boolean, headers: string[]): Record<string, string> => {
   const rowErrors: Record<string, string> = {};
@@ -216,6 +542,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
   const [isAlunosStaged, setIsAlunosStaged] = useState(true);
   const [stagedHeaders, setStagedHeaders] = useState<string[]>([]);
   const [operationalReadiness, setOperationalReadiness] = useState<any | null>(null);
+  const [ignoredRowsCount, setIgnoredRowsCount] = useState(0);
 
   const [helpMessages, setHelpMessages] = useState<any[]>([]);
   const [newDoubtText, setNewDoubtText] = useState("");
@@ -315,6 +642,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
     headers: string[];
     allRows: any[];
     invalidRows: any[];
+    ignoredRowsCount: number;
   }> => {
     const parseLine = (line: string, delim: string): string[] => {
       const result: string[] = [];
@@ -341,8 +669,9 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
       headers: string[];
       allRows: any[];
       invalidRows: any[];
+      ignoredRowsCount: number;
     } => {
-      if (rows.length === 0) return { errors: ["O arquivo está vazio."], isAlunos: true, headers: [], allRows: [], invalidRows: [] };
+      if (rows.length === 0) return { errors: ["O arquivo está vazio."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount: 0 };
 
       // Verificar se a primeira linha contem a assinatura do template KLASSE
       let headerRowIndex = 0;
@@ -350,9 +679,10 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
       if (firstCell.includes("KLASSE") && (firstCell.includes("Modelo de Importação") || firstCell.includes("Importação") || firstCell.includes("Mapa de Atribuições"))) {
         headerRowIndex = 3; // Linha 4 (0-indexed: 3)
       }
+      let ignoredRowsCount = headerRowIndex;
 
       if (rows.length <= headerRowIndex) {
-        return { errors: ["O arquivo não contém cabeçalho ou dados."], isAlunos: true, headers: [], allRows: [], invalidRows: [] };
+        return { errors: ["O arquivo não contém cabeçalho ou dados."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount };
       }
 
       const normalizeHeader = (h: string) => {
@@ -384,7 +714,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
       const isProfessores = headers.includes("HABILITACOES") || headers.includes("VINCULO_CONTRATUAL") || headers.includes("TIPO_VINCULO");
 
       if (!isAlunos && !isProfessores) {
-        return { errors: ["O cabeçalho do arquivo não corresponde aos modelos oficiais de Alunos ou Professores. Use o modelo sugerido abaixo ou ajuste os nomes das colunas."], isAlunos: true, headers: [], allRows: [], invalidRows: [] };
+        return { errors: ["O cabeçalho do arquivo não corresponde aos modelos oficiais de Alunos ou Professores. Use o modelo sugerido abaixo ou ajuste os nomes das colunas."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount };
       }
 
       const required = isAlunos
@@ -393,7 +723,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
 
       const missing = required.filter((col) => !headers.includes(col));
       if (missing.length > 0) {
-        return { errors: [`Cabeçalho de ${isAlunos ? "Alunos" : "Professores"} inválido. Colunas em falta: ${missing.join(", ")}`], isAlunos, headers, allRows: [], invalidRows: [] };
+        return { errors: [`Cabeçalho de ${isAlunos ? "Alunos" : "Professores"} inválido. Colunas em falta: ${missing.join(", ")}`], isAlunos, headers, allRows: [], invalidRows: [], ignoredRowsCount };
       }
 
       const allRows: any[] = [];
@@ -401,7 +731,10 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
 
       for (let idx = headerRowIndex + 1; idx < rows.length; idx++) {
         const cols = rows[idx].map((item) => String(item ?? "").trim());
-        if (cols.length === 0 || cols.every((col) => !col)) continue;
+        if (cols.length === 0 || cols.every((col) => !col)) {
+          ignoredRowsCount += 1;
+          continue;
+        }
 
         const rowNum = idx + 1;
 
@@ -431,7 +764,8 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
         isAlunos,
         headers,
         allRows,
-        invalidRows
+        invalidRows,
+        ignoredRowsCount,
       };
     };
 
@@ -446,7 +780,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
         const targetSheetName = workbook.SheetNames.find(n => n === "Importacao_Alunos" || n === "Lista_Professores") || workbook.SheetNames[0];
         const sheet = workbook.Sheets[targetSheetName];
         if (!sheet) {
-          return { errors: ["Não foi possível ler as planilhas do arquivo Excel."], isAlunos: true, headers: [], allRows: [], invalidRows: [] };
+          return { errors: ["Não foi possível ler as planilhas do arquivo Excel."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount: 0 };
         }
         const rows = utils.sheet_to_json<(string | number | null)[]>(sheet, {
           header: 1,
@@ -456,7 +790,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
         return validateRows(rows);
       } catch (error) {
         console.error(error);
-        return { errors: ["Erro ao ler o arquivo Excel. Tente novamente ou use o modelo CSV oficial."], isAlunos: true, headers: [], allRows: [], invalidRows: [] };
+        return { errors: ["Erro ao ler o arquivo Excel. Tente novamente ou use o modelo CSV oficial."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount: 0 };
       }
     }
 
@@ -466,7 +800,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
         const text = e.target?.result as string;
         const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
         if (lines.length === 0) {
-          resolve({ errors: ["O arquivo está vazio."], isAlunos: true, headers: [], allRows: [], invalidRows: [] });
+          resolve({ errors: ["O arquivo está vazio."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount: 0 });
           return;
         }
 
@@ -475,7 +809,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
         const rows = lines.map((line) => parseLine(line, delimiter));
         resolve(validateRows(rows));
       };
-      reader.onerror = () => resolve({ errors: ["Erro ao ler o arquivo CSV."], isAlunos: true, headers: [], allRows: [], invalidRows: [] });
+      reader.onerror = () => resolve({ errors: ["Erro ao ler o arquivo CSV."], isAlunos: true, headers: [], allRows: [], invalidRows: [], ignoredRowsCount: 0 });
       reader.readAsText(file);
     });
   };
@@ -587,6 +921,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
           setInvalidRows(result.invalidRows);
           setStagedHeaders(result.headers);
           setIsAlunosStaged(result.isAlunos);
+          setIgnoredRowsCount(result.ignoredRowsCount);
           setIsEditingErrors(true);
           
           setValidationErrors(result.errors.slice(0, 10)); // Exibir apenas os 10 primeiros erros na UI
@@ -663,8 +998,12 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
   const schoolUploadableSteps = steps.filter(
     (step) => step.status !== "concluido" && getStepMeta(step.step_code, step.owner_type).uploadableBySchool
   );
-  const lifecycleMeta = getLifecycleMeta(request.status, steps);
+  const lifecycleMeta = getLifecycleMeta(request.status, steps, operationalReadiness);
   const nextSchoolStep = schoolUploadableSteps[0] ?? null;
+  const stageStallMeta = request.status !== "activo" ? getStageStallMeta(steps) : null;
+  const workflowActionMeta = getWorkflowActionMeta(request, steps, uploads, nextSchoolStep);
+  const stagedValidCount = Math.max(0, stagedRows.length - invalidRows.length);
+  const stagedBlockingCount = invalidRows.filter((row) => Object.keys(row._errors ?? {}).length > 0).length;
   const renderReadinessDashboard = () => {
     if (!operationalReadiness) return null;
 
@@ -678,6 +1017,13 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
     ];
 
     const actualBlockers = Array.isArray(blockers) ? blockers : [];
+    const dependencyMap = buildReadinessDependencyMap(actualBlockers);
+    const blockersSorted = [...actualBlockers].sort((a: any, b: any) => {
+      const priorityA = dependencyMap[a.code]?.priority ?? 1000;
+      const priorityB = dependencyMap[b.code]?.priority ?? 1000;
+      return priorityA - priorityB;
+    });
+    const firstActionableBlocker = blockersSorted.find((blocker: any) => (dependencyMap[blocker.code]?.blockedBy.length ?? 0) === 0) ?? blockersSorted[0] ?? null;
 
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
@@ -727,14 +1073,29 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
         ) : (
           /* List of Blockers */
           <div className="space-y-4">
+            {firstActionableBlocker ? (
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700">Resolver primeiro</p>
+                <h4 className="mt-1 text-sm font-bold text-slate-900">{firstActionableBlocker.title}</h4>
+                <p className="mt-2 text-xs leading-relaxed text-slate-700">{firstActionableBlocker.detail}</p>
+                {dependencyMap[firstActionableBlocker.code]?.unlocks?.length ? (
+                  <p className="mt-2 text-[11px] font-medium text-blue-800">
+                    Desbloqueia {dependencyMap[firstActionableBlocker.code].unlocks.length} pendência{dependencyMap[firstActionableBlocker.code].unlocks.length > 1 ? "s" : ""} dependente{dependencyMap[firstActionableBlocker.code].unlocks.length > 1 ? "s" : ""}.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-zinc-800 text-sm">Bloqueadores Pendentes ({actualBlockers.length})</h4>
               <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider font-mono">Status: Aguardando Prontidão</span>
             </div>
 
             <div className="space-y-3">
-              {actualBlockers.map((blocker: any, idx: number) => {
+              {blockersSorted.map((blocker: any, idx: number) => {
                 const isCritical = blocker.severity === "critical";
+                const dependencyMeta = dependencyMap[blocker.code] ?? null;
+                const isFirstAction = firstActionableBlocker?.code === blocker.code;
                 return (
                   <div 
                     key={idx}
@@ -748,13 +1109,30 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <h5 className="font-bold text-zinc-900 text-sm truncate">{blocker.title}</h5>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase
-                          ${isCritical ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                          {isCritical ? "Crítico" : "Recomendado"}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isFirstAction ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase bg-blue-100 text-blue-700">
+                              Resolver agora
+                            </span>
+                          ) : null}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase
+                            ${isCritical ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                            {isCritical ? "Crítico" : "Recomendado"}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-zinc-500 leading-relaxed font-medium">{blocker.detail}</p>
                       <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pt-1">Módulo: {blocker.area}</p>
+                      {dependencyMeta?.blockedBy?.length ? (
+                        <p className="text-[10px] text-amber-700 font-medium">
+                          Depende antes de: {dependencyMeta.blockedBy.join(", ")}.
+                        </p>
+                      ) : null}
+                      {dependencyMeta?.unlocks?.length ? (
+                        <p className="text-[10px] text-emerald-700 font-medium">
+                          Ao resolver, desbloqueia: {dependencyMeta.unlocks.join(", ")}.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -840,7 +1218,55 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
               <p className="mt-2 text-slate-600">
                 {nextSchoolStep
                   ? `Próxima pendência da escola: ${getStepMeta(nextSchoolStep.step_code, nextSchoolStep.owner_type).short}.`
-                  : "Sem pendência documental da escola neste momento."}
+                  : request.status === "activo"
+                    ? "A próxima ação é concluir o setup interno e eliminar os bloqueadores de go-live."
+                    : "Sem pendência documental da escola neste momento."}
+              </p>
+              {request.status === "activo" && request.escola_id ? (
+                <Link
+                  href={`/escola/${request.escola_id}/configuracoes/onboarding`}
+                  className="mt-3 inline-flex items-center rounded-lg bg-zinc-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-zinc-800"
+                >
+                  Abrir setup da escola
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {stageStallMeta ? (
+          <div className={`rounded-xl border p-5 shadow-sm ${stageStallMeta.tone}`}>
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Alerta de atraso</p>
+                <h3 className="mt-1 text-base font-bold text-slate-900">{stageStallMeta.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700">{stageStallMeta.description}</p>
+              </div>
+              <div className="rounded-lg bg-white/70 px-4 py-3 text-xs shadow-sm">
+                <p className="font-black uppercase tracking-widest text-slate-500">Responsável atual</p>
+                <p className="mt-1 font-semibold text-slate-900">{stageStallMeta.ownerLabel}</p>
+                <p className="mt-2 text-slate-600">
+                  {stageStallMeta.overdueDays} dia{stageStallMeta.overdueDays > 1 ? "s" : ""} acima do prazo da etapa.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className={`rounded-xl border p-5 shadow-sm ${workflowActionMeta.tone}`}>
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">{workflowActionMeta.badge}</p>
+              <h3 className="text-base font-bold text-slate-900">{workflowActionMeta.title}</h3>
+              <p className="text-sm leading-relaxed text-slate-700">{workflowActionMeta.description}</p>
+            </div>
+            <div className="rounded-lg bg-white/70 px-4 py-3 text-xs shadow-sm md:min-w-[220px]">
+              <p className="font-black uppercase tracking-widest text-slate-500">Quem move agora</p>
+              <p className="mt-1 font-semibold text-slate-900">{workflowActionMeta.actor}</p>
+              <p className="mt-2 text-slate-600">
+                {nextSchoolStep
+                  ? "Se a escola enviar um ficheiro válido nesta etapa, o status passa para em progresso."
+                  : "Se não houver pendência da escola, o avanço depende da triagem do parceiro ou da revisão da KLASSE."}
               </p>
             </div>
           </div>
@@ -1197,9 +1623,32 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                       ))}
                     </tbody>
                   </table>
-                </div>
+	                </div>
 
-                {validationErrors.length > 0 && (
+	                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+	                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-center">
+	                    <span className="block text-lg font-black text-zinc-800">{stagedRows.length}</span>
+	                    <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Analisadas</span>
+	                  </div>
+	                  <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-center">
+	                    <span className="block text-lg font-black text-emerald-700">{stagedValidCount}</span>
+	                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">Válidas</span>
+	                  </div>
+	                  <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-center">
+	                    <span className="block text-lg font-black text-amber-700">{invalidRows.length}</span>
+	                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600">Corrigíveis</span>
+	                  </div>
+	                  <div className="rounded-lg border border-rose-100 bg-rose-50 p-3 text-center">
+	                    <span className="block text-lg font-black text-rose-700">{stagedBlockingCount}</span>
+	                    <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600">Bloqueantes</span>
+	                  </div>
+	                </div>
+
+	                <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-[10px] leading-relaxed text-blue-800">
+	                  <span className="font-semibold">Linhas ignoradas automaticamente:</span> {ignoredRowsCount}. O portal desconsidera linhas vazias e, nos templates oficiais, também ignora as linhas superiores de instrução antes do cabeçalho real.
+	                </div>
+
+	                {validationErrors.length > 0 && (
                   <div className="rounded-lg border border-rose-200 bg-rose-500/5 p-3 space-y-1">
                     <div className="flex items-center gap-1.5 text-rose-700 font-bold text-[10px]">
                       <AlertCircle size={12} />
@@ -1276,11 +1725,11 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                 </div>
                 {nextSchoolStep ? (
                   <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[11px] leading-relaxed text-blue-800">
-                    <span className="font-semibold">O que falta agora:</span> {nextSchoolStep.title}. Esta etapa está com a escola.
+                    <span className="font-semibold">O que falta agora:</span> {nextSchoolStep.title}. Esta etapa está com a escola e entra em progresso assim que o primeiro envio válido for registado.
                   </div>
                 ) : (
                   <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-[11px] leading-relaxed text-zinc-600">
-                    Neste momento não há uma ação documental pendente para a escola. Acompanhe a timeline acima para ver em que fase o onboarding está.
+                    Neste momento não há uma ação documental pendente para a escola. O avanço depende da triagem do parceiro ou da revisão final da KLASSE, conforme indicado acima.
                   </div>
                 )}
                 
@@ -1302,7 +1751,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                   </div>
                   {schoolUploadableSteps.length === 0 && (
                     <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-[11px] font-medium text-zinc-600 leading-relaxed">
-                      No momento não há pendências documentais da escola. As próximas fases estão com o parceiro comercial ou com a equipa KLASSE.
+                      No momento não há pendências documentais da escola. Follow-up comercial isolado não muda etapa; o próximo movimento real está com o parceiro comercial ou com a equipa KLASSE.
                     </div>
                   )}
                   
@@ -1368,24 +1817,24 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
               </div>
               <div className="space-y-2">
                 <a
-                  href="/templates/modelo_alunos.csv"
-                  download="modelo_importacao_alunos.csv"
+                  href="/templates/KLASSE_Modelo_Importacao_Alunos_v1.xlsx"
+                  download="KLASSE_Modelo_Importacao_Alunos_v1.xlsx"
                   className="w-full flex items-center justify-between p-3 rounded-lg bg-zinc-50 border border-zinc-200/40 hover:bg-zinc-100/70 transition-all text-xs font-semibold text-zinc-700 no-underline"
                 >
                   <span className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-600" />
-                    Planilha de Alunos (.csv)
+                    Planilha Oficial de Alunos (.xlsx)
                   </span>
                   <span className="text-[9px] text-zinc-400 font-semibold uppercase tracking-wider">Baixar</span>
                 </a>
                 <a
-                  href="/templates/modelo_professores.csv"
-                  download="modelo_importacao_professores.csv"
+                  href="/templates/06_professores_atribuicoes_template.xlsx"
+                  download="06_professores_atribuicoes_template.xlsx"
                   className="w-full flex items-center justify-between p-3 rounded-lg bg-zinc-50 border border-zinc-200/40 hover:bg-zinc-100/70 transition-all text-xs font-semibold text-zinc-700 no-underline"
                 >
                   <span className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-purple-600" />
-                    Planilha de Professores (.csv)
+                    Planilha Oficial de Professores (.xlsx)
                   </span>
                   <span className="text-[9px] text-zinc-400 font-semibold uppercase tracking-wider">Baixar</span>
                 </a>
@@ -1407,15 +1856,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                   </div>
                 ) : (
                   uploads.map((upload) => {
-                    const statusText = 
-                      upload.status === "aprovado" ? "Aprovado" :
-                      upload.status === "rejeitado" ? "Rejeitado" :
-                      upload.status === "processando" ? "Processando" : "Aguardando Revisão";
-                      
-                    const statusColor = 
-                      upload.status === "aprovado" ? "text-emerald-600 bg-emerald-500/5 border-emerald-500/10" :
-                      upload.status === "rejeitado" ? "text-rose-600 bg-rose-500/5 border-rose-500/10" :
-                      upload.status === "processando" ? "text-blue-600 bg-blue-500/5 border-blue-500/10" : "text-amber-600 bg-amber-500/5 border-amber-500/10";
+                    const statusMeta = getUploadStatusMeta(upload.status);
 
                     return (
                       <div key={upload.id} className="p-3 rounded-lg border border-zinc-200/50 space-y-2 bg-zinc-50/30">
@@ -1426,10 +1867,14 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                               Etapa: {getStepMeta(upload.step_code, upload.created_by === "escola" ? "escola" : "parceiro").short}
                             </p>
                           </div>
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold border ${statusColor} shadow-none`}>
-                            {statusText}
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold border ${statusMeta.color} shadow-none`}>
+                            {statusMeta.label}
                           </span>
                         </div>
+
+                        <p className="text-[10px] text-zinc-500 leading-relaxed font-medium">
+                          {statusMeta.help}
+                        </p>
                         
                         {upload.rejection_reason && (
                           <div className="p-2 rounded bg-rose-500/5 border border-rose-500/10 text-[10px] text-rose-600 leading-relaxed font-medium">
@@ -1437,6 +1882,13 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                             Motivo: {upload.rejection_reason}
                           </div>
                         )}
+
+                        {!upload.rejection_reason && upload.partner_review_note ? (
+                          <div className="p-2 rounded bg-amber-500/5 border border-amber-500/10 text-[10px] text-amber-700 leading-relaxed font-medium">
+                            <Info size={10} className="inline mr-1" />
+                            Observação: {upload.partner_review_note}
+                          </div>
+                        ) : null}
                         
                         <p className="text-[9px] text-zinc-400 font-medium text-right font-mono">
                           {format(new Date(upload.created_at), "dd/MM/yyyy HH:mm")}

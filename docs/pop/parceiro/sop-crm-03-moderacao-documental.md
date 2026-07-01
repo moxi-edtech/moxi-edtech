@@ -1,13 +1,13 @@
-# SOP-CRM-03 - Acompanhamento de Documentos de Onboarding no CRM
+# SOP-CRM-03 - Triagem e Acompanhamento de Documentos de Onboarding no CRM
 
-Versao: 1.1.0
-Data: 2026-06-29
+Versao: 2.0.0
+Data: 2026-07-01
 Modulo: CRM / Portal do Parceiro
 Perfil principal: afiliado_membro (Operador do Parceiro)
 
 ## 1. Objetivo
 
-Acompanhar documentos administrativos e cadastrais enviados pelos colégios parceiros durante as fases iniciais de onboarding, baixando arquivos, verificando pendencias visuais e cobrando reenvios quando necessario.
+Acompanhar e realizar a triagem preliminar dos documentos administrativos e cadastrais enviados pelos colégios parceiros durante as fases de onboarding, classificando tipos de documento, apontando pendências imediatas e encaminhando arquivos validados para a homologação final da KLASSE.
 
 ## 2. Quando usar
 
@@ -16,67 +16,68 @@ Acompanhar documentos administrativos e cadastrais enviados pelos colégios parc
 
 ## 3. Responsáveis
 
-- **Acompanhamento Administrativo:** Equipe do parceiro (`afiliado_membro`), que baixa e confere visualmente documentos para cobrar correcoes da escola.
-- **Validador Formal:** Super Admin da KLASSE (David Chocaliye) — responsavel pela aprovação/rejeição no sistema e pela aprovação final das planilhas de importação.
-- **Escalonamento:** David Chocaliye (para redefinição de termos ou tratamento de exceções cadastrais).
+- **Triagem Preliminar (Parceiro Comercial):** Operador do parceiro (`afiliado_membro`), responsável por inspecionar os arquivos baixados, classificar o tipo do documento e mover o status de triagem para a próxima etapa.
+- **Validador Final (Super Admin da KLASSE):** Responsável por aprovar ou rejeitar definitivamente o documento no banco de dados para concluir a etapa de onboarding correspondente.
 
 ## 4. Pré-condições
 
 - Operador logado no portal `/influencers/[codigo]`.
-- Escola em onboarding com uploads visiveis no detalhe da escola.
+- Gaveta de detalhes da escola aberta (`OnboardingSchoolDetailsSheet`).
+- Presença de uploads no bloco `Arquivos e Staging de Importação`.
 
-## 4.1 Estado fiel ao codigo
+## 4.1 Lógica de Status de Triagem no Código
 
-Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/app/api/influencers/[codigo]/portal/route.ts` e `apps/web/src/app/api/super-admin/onboarding/uploads/[uploadId]/review/route.ts`.
-
-- No portal do parceiro, os uploads aparecem no detalhe da escola em `Arquivos e Staging de Importação`.
-- A UI do parceiro mostra nome do arquivo, status (`pendente`, `aprovado`, `rejeitado`), link `BAIXAR` e motivo quando estiver rejeitado.
-- Nao existem botoes `Aprovar`, `Rejeitar` ou `Pré-validada pelo Parceiro` no portal `/influencers/[codigo]`.
-- A revisao formal de upload existe no Super Admin em `POST /api/super-admin/onboarding/uploads/{uploadId}/review`.
-- Portanto, aprovar/rejeitar documentos pelo parceiro e `NAO OPERACIONAL NO CODIGO ACTUAL`.
+Conforme implementado no banco de dados e na interface de triagem, os arquivos de upload possuem os seguintes estados operacionais:
+* **`pendente` / `processando`:** Estado inicial após o upload pela escola.
+* **`em_revisao_parceiro`:** O operador do parceiro iniciou a análise do documento.
+* **`pendencia_cliente`:** O parceiro identificou um erro (ex: documento ilegível ou incompleto) e devolveu para correção da escola (exige nota explicativa).
+* **`pronto_para_klasse`:** O parceiro validou a triagem básica e encaminhou para a homologação definitiva da equipe KLASSE.
+* **`aprovado` / `rejeitado`:** Status finais e imutáveis definidos pelo Super Admin da KLASSE. Uma vez neste estado, a triagem do parceiro é travada para este arquivo.
 
 ## 5. Passo a passo (execução)
 
-1. **Abrir a escola em onboarding:** No portal do parceiro, acesse a area de onboarding e abra o detalhe da escola.
-2. **Visualizar Arquivos:** No bloco `Arquivos e Staging de Importação`, identifique o colégio, a etapa, o status e baixe o arquivo em `BAIXAR`.
-3. **Executar conferência visual (Critérios por Etapa):**
-   - **NIF (docs_legais):** Abra o arquivo PDF e verifique se o número do NIF no documento oficial emitido pela AGT condiz com a Razão Social cadastrada. O documento deve estar legível e válido.
-   - **Regulamento Interno (docs_legais):** Certifique-se de que o colégio submeteu o arquivo correto contendo o regimento administrativo escolar (usado para parametrização pedagógica posterior).
-   - **Contrato Assinado (docs_legais):** Validar se o contrato está com todas as páginas e assinado digitalmente ou fisicamente com carimbo oficial do diretor legal da instituição.
-   - **Planilha de Alunos/Professores (planilhas):** O parceiro realiza apenas uma conferencia visual rápida (se as colunas estão preenchidas e sem caracteres quebrados). A aprovação final e carga do banco são realizadas pelo Super Admin.
-4. **Comunicar pendencias:** Se houver inconsistências, envie mensagem à secretaria da escola explicando o motivo e solicitando reenvio.
-5. **Escalar para Super Admin:** Quando o arquivo estiver legivel e completo, sinalize ao Super Admin para revisao formal quando necessario.
-
-NAO OPERACIONAL NO CODIGO ACTUAL:
-- Aprovar upload pelo portal do parceiro.
-- Rejeitar upload pelo portal do parceiro.
-- Marcar planilha como `Pré-validada pelo Parceiro` no sistema.
+1. **Acessar os Uploads:** No portal do parceiro, abra o Drawer de Detalhes da Escola e role até a seção **Arquivos e Staging de Importação**.
+2. **Baixar o Documento:** Clique em `BAIXAR` para inspecionar o arquivo enviado pela escola.
+3. **Executar Conferência Visual (Critérios por Categoria):**
+   - **Documento Legal (NIF, etc.):** Verifique se o NIF no papel coincide com a Razão Social da escola e se está nítido.
+   - **Regulamento Interno / Matriz:** Verifique se as páginas estão completas e se o arquivo corresponde ao regimento pedagógico da escola.
+   - **Contrato Assinado:** Valide a assinatura do Diretor Geral da escola e o carimbo oficial.
+4. **Classificar o Documento:**
+   - No dropdown **"Classificar documento"**, selecione a categoria apropriada: `legal` (docs legais), `planilha` (dados escolares), `contrato` (contrato assinado), `logotipo`, `pauta`, `termo_aceite` ou `outro`.
+5. **Definir Status da Triagem:**
+   - No dropdown de status, selecione:
+     * `Em Revisão (Parceiro)` se estiver analisando.
+     * `Pendência Cliente` se houver alguma pendência e precisar de reenvio.
+     * `Pronto para KLASSE` se o documento estiver correto.
+6. **Escrever Nota Técnica:**
+   - No campo de texto correspondente, insira observações relevantes. **Importante:** Se o status for `Pendência Cliente`, descreva detalhadamente o erro técnico para orientar a escola na correção.
+7. **Salvar a Triagem:** Clique em `Salvar triagem`. A ação atualizará o banco via API de forma transparente e notificará a equipe de auditoria da KLASSE.
 
 ## 6. Resultado esperado
 
-- Escola orientada sobre pendencias de arquivo.
-- Uploads acompanhados pelo parceiro, com status visivel no detalhe da escola.
-- Revisao formal realizada pelo Super Admin quando aplicavel.
+- Triagem documental realizada de forma fluida pelo operador comercial.
+- Pendências técnicas sinalizadas imediatamente à escola parceira com descrições claras de correção.
+- Documentação limpa e classificada disponível para homologação final da KLASSE.
 
 ## 7. Erros comuns e correção
 
 | Erro observado | Causa provável | Correção imediata | Escalar quando |
 |---|---|---|---|
-| Arquivo não abre (formato inválido) | A escola submeteu formato não suportado ou corrompido. | Solicitar reenvio em formato PDF ou PNG/JPG e escalar a revisão formal ao Super Admin quando necessario. | Caso o painel de visualização web apresente erro contínuo para formatos válidos. |
-| Nao aparece botao Aprovar/Rejeitar | Funcao nao existe no portal do parceiro. | Encaminhar para Super Admin revisar no painel proprio. | Se houver necessidade de implementar revisao pelo parceiro. |
+| Erro "Classifique o tipo de documento antes de salvar" | O operador tentou salvar a triagem sem escolher a categoria do arquivo. | Selecione o tipo correto no dropdown "Classificar documento". | - |
+| Erro "Informe a pendência..." ao selecionar Pendência Cliente | O operador tentou recusar o documento sem preencher o campo de observações. | Escreva uma nota explicativa sobre a correção necessária no campo de comentário. | - |
+| Opções de triagem bloqueadas ou ocultas | O documento já foi analisado e obteve parecer final (`aprovado` ou `rejeitado`) pelo Super Admin da KLASSE. | Nenhuma ação necessária; documentos com parecer final não podem ser retriados pelo parceiro. | Se houver erro material no parecer final que exija reabertura pela KLASSE. |
 
 ## 8. Evidências obrigatórias
 
-- Print do arquivo/status no detalhe da escola.
-- Print ou mensagem enviada à escola quando houver pendencia.
-- Quando o Super Admin revisar, print do novo status no portal.
+- Registro visual do status updated do arquivo na seção de staging da escola.
+- Notas de pendências enviadas à escola em caso de reenvio necessário.
 
 ## 9. KPI operacional do procedimento
 
-- **SLA de Acompanhamento:** Conferencia visual e cobrança de pendencias em até **24 horas úteis** após a submissão.
-- **Taxa de acerto cadastral:** 100% dos NIFs aprovados correspondendo ao cadastro oficial na AGT.
+- **SLA de Triagem:** Triagem documental realizada em até **24 horas úteis** após a submissão da escola.
+- **Índice de Retrabalho:** Menos de 5% de documentos classificados como "Pronto para KLASSE" rejeitados posteriormente na homologação final.
 
-## 10. Riscos e controles
+## 10. Risks e controles
 
-- **Risco:** Informar à escola que o documento foi aprovado sem revisão formal.
-  - *Controle:* O parceiro deve tratar sua conferencia como triagem; aprovação/rejeição formal fica no Super Admin no codigo atual.
+- **Risco:** Encaminhar documentos ilegíveis ou incompletos para a KLASSE, atrasando a homologação final.
+  - *Controle:* O operador deve baixar e conferir visualmente 100% dos arquivos antes de marcar como `pronto_para_klasse`.
