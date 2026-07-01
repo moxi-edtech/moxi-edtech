@@ -425,6 +425,7 @@ Justificativa:
 - Suporte a configurações em lote para replicação de mensalidades e turmas por turno para todas as classes da matriz com um clique.
 - Ajuste na biblioteca de POPs no CRM para carregar por padrão no formato de Lista (`viewMode = 'list'`).
 - Integração do Painel de Validação Automática (Real-Time) no Drawer de detalhes da escola no portal do parceiro, exibindo bloqueadores críticos de banco de dados (como slots de horário vazios e quadros não publicados) e alertas recomendados de forma inteligente.
+- Adição da verificação automatizada de alunos matriculados (`public.matriculas` count) na RPC `get_school_operational_readiness`, notificando se o banco ainda não possuir alunos importados.
 
 ## 7.2 Especificação Detalhada das Planilhas de Importação (Kit Onboarding AELS)
 
