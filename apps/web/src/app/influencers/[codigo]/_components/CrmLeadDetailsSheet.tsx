@@ -365,7 +365,7 @@ export function CrmLeadDetailsSheet({
                   <div className="mt-3 flex flex-col gap-3 md:flex-row">
                     <input
                       type="file"
-                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
                       onChange={(e) => setProposalDocumentFile(e.target.files?.[0] ?? null)}
                       className="block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-medium text-zinc-700"
                     />
