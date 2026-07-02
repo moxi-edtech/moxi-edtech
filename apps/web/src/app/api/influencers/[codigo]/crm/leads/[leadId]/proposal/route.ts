@@ -12,8 +12,6 @@ const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
 ]);
 
 async function requireInfluencerSession(codigo: string) {
@@ -141,7 +139,7 @@ export async function POST(
     }
 
     if (!ALLOWED_TYPES.has(file.type)) {
-      return NextResponse.json({ ok: false, error: "Formato inválido. Use PDF, DOC, DOCX, PNG, JPG ou WEBP." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Formato inválido. Use PDF, PNG, JPG ou WEBP." }, { status: 400 });
     }
 
     if (file.size > MAX_FILE_BYTES) {

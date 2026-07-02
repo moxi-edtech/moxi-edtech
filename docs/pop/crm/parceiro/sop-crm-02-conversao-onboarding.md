@@ -99,7 +99,7 @@ Regras operacionais importantes:
 |---|---|---|---|
 | Lead marcado como "Perdido" não pode ser convertido | Regra do banco impede converter leads no estado de perda. | Reabrir o lead no CRM, movendo-o para a etapa de negociação ou proposta antes de convertê-lo. | Caso o lead não permita alteração de estado no painel. |
 | Botao `Criar pedido de onboarding` desabilitado com aviso amarelo | Falta etapa `ganho`, aceite comercial ou algum termo financeiro obrigatório. | Revisar o bloco `Proposta Comercial`, preencher mensalidade, validar trial/taxa e definir status `aceite_comercial` ou `aguardando_contrato_klasse`. | Se todos os campos estiverem corretos e o bloqueio persistir. |
-| Upload da proposta falha | Formato ou tamanho do arquivo nao permitido. | Reenviar em PDF, DOC, DOCX, PNG, JPG ou WEBP com até 10 MB. | Se o arquivo respeitar o limite e continuar falhando. |
+| Upload da proposta falha | Formato ou tamanho do arquivo nao permitido. | Reenviar em PDF, PNG, JPG ou WEBP com até 10 MB. | Se o arquivo respeitar o limite e continuar falhando. |
 | Token de rastreamento não aparece | Falha temporária na geração do registro pela RPC. | Atualizar a página. Se o erro persistir, verificar na listagem de Onboarding se o registro já não foi criado. | Se a conversão falhar no banco (erro técnico na chamada). |
 | Escola ou parceiro esperam provisionamento imediato | Confusao entre conversao comercial e provisionamento real. | Explicar que a conversao apenas cria o pedido de onboarding; o provisionamento depende da conclusao das 7 etapas. | Se a escola ja tiver cumprido todas as etapas e o provisionamento seguir bloqueado. |
 
