@@ -24,6 +24,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { toast } from "sonner";
+import { getOperationalBlockerAction } from "@/lib/setupStateClient";
 
 interface OnboardingRequest {
   id: string;
@@ -66,6 +67,16 @@ interface OnboardingUpload {
   created_by: "escola" | "parceiro";
   created_at: string;
 }
+
+type SetupHandoff = {
+  ano_letivo?: number | null;
+  onboarding_finalizado?: boolean;
+  needs_academic_setup?: boolean;
+  completion_percent?: number;
+  next_action?: { key?: string; label?: string; href?: string } | null;
+  blockers?: Array<{ title?: string; detail?: string; severity?: string }>;
+  badges?: Record<string, boolean | undefined>;
+} | null;
 
 type PublicLifecycleMeta = {
   badge: string;
@@ -320,6 +331,23 @@ function getWorkflowActionMeta(
   };
 }
 
+function mapSetupActionKeyToWizardStep(actionKey?: string | null) {
+  switch (actionKey) {
+    case "CONFIGURE_ANO_LETIVO":
+    case "CONFIGURE_PERIODOS":
+      return 1;
+    case "CONFIGURE_AVALIACAO":
+      return 2;
+    case "APPLY_PRESET":
+    case "PUBLISH_CURRICULO":
+      return 3;
+    case "GENERATE_TURMAS":
+      return 5;
+    default:
+      return 1;
+  }
+}
+
 function getStageStallMeta(steps: OnboardingStep[]): StageStallMeta {
   const pendingStep = steps.find((step) => step.status !== "concluido") ?? null;
   if (!pendingStep?.deadline_at) return null;
@@ -542,6 +570,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
   const [isAlunosStaged, setIsAlunosStaged] = useState(true);
   const [stagedHeaders, setStagedHeaders] = useState<string[]>([]);
   const [operationalReadiness, setOperationalReadiness] = useState<any | null>(null);
+  const [setupHandoff, setSetupHandoff] = useState<SetupHandoff>(null);
   const [ignoredRowsCount, setIgnoredRowsCount] = useState(0);
 
   const [helpMessages, setHelpMessages] = useState<any[]>([]);
@@ -608,6 +637,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
       setSteps(data.steps);
       setUploads(data.uploads);
       setOperationalReadiness(data.operational_readiness || null);
+      setSetupHandoff(data.setup_handoff || null);
       
       const pendingSchoolStep = data.steps.find(
         (s: OnboardingStep) => s.status !== "concluido" && getStepMeta(s.step_code, s.owner_type).uploadableBySchool
@@ -1002,6 +1032,24 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
   const nextSchoolStep = schoolUploadableSteps[0] ?? null;
   const stageStallMeta = request.status !== "activo" ? getStageStallMeta(steps) : null;
   const workflowActionMeta = getWorkflowActionMeta(request, steps, uploads, nextSchoolStep);
+  const setupIncompleteAfterProvisioning =
+    request.status === "activo" &&
+    Boolean(request.escola_id) &&
+    Boolean(setupHandoff) &&
+    !Boolean(setupHandoff?.onboarding_finalizado || setupHandoff?.needs_academic_setup === false);
+  const setupNextActionLabel = setupHandoff?.next_action?.label?.trim() || "Continuar configuração";
+  const setupBlocker = setupHandoff?.blockers?.[0] ?? null;
+  const setupChecklistDone = [
+    Boolean(setupHandoff?.badges?.ano_letivo_ok),
+    Boolean(setupHandoff?.badges?.periodos_ok),
+    Boolean(setupHandoff?.badges?.avaliacao_ok),
+    Boolean(setupHandoff?.badges?.curriculo_published_ok),
+    Boolean(setupHandoff?.badges?.turmas_ok),
+  ].filter(Boolean).length;
+  const setupWizardStep = mapSetupActionKeyToWizardStep(setupHandoff?.next_action?.key);
+  const setupHubHref = request.escola_id
+    ? `/escola/${request.escola_id}/admin/configuracoes?source=public-onboarding&setup=wizard&step=${setupWizardStep}`
+    : "";
   const stagedValidCount = Math.max(0, stagedRows.length - invalidRows.length);
   const stagedBlockingCount = invalidRows.filter((row) => Object.keys(row._errors ?? {}).length > 0).length;
   const renderReadinessDashboard = () => {
@@ -1024,6 +1072,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
       return priorityA - priorityB;
     });
     const firstActionableBlocker = blockersSorted.find((blocker: any) => (dependencyMap[blocker.code]?.blockedBy.length ?? 0) === 0) ?? blockersSorted[0] ?? null;
+    const firstActionableBlockerAction = getOperationalBlockerAction(request.escola_id, firstActionableBlocker);
 
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
@@ -1083,6 +1132,23 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                     Desbloqueia {dependencyMap[firstActionableBlocker.code].unlocks.length} pendência{dependencyMap[firstActionableBlocker.code].unlocks.length > 1 ? "s" : ""} dependente{dependencyMap[firstActionableBlocker.code].unlocks.length > 1 ? "s" : ""}.
                   </p>
                 ) : null}
+                {firstActionableBlockerAction ? (
+                  firstActionableBlockerAction.kind === "link" ? (
+                    <Link
+                      href={firstActionableBlockerAction.href}
+                      className="mt-3 inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-blue-700"
+                    >
+                      {firstActionableBlockerAction.label}
+                    </Link>
+                  ) : (
+                    <Link
+                      href={setupHubHref}
+                      className="mt-3 inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-blue-700"
+                    >
+                      {firstActionableBlockerAction.label}
+                    </Link>
+                  )
+                ) : null}
               </div>
             ) : null}
 
@@ -1096,6 +1162,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                 const isCritical = blocker.severity === "critical";
                 const dependencyMeta = dependencyMap[blocker.code] ?? null;
                 const isFirstAction = firstActionableBlocker?.code === blocker.code;
+                const blockerAction = getOperationalBlockerAction(request.escola_id, blocker);
                 return (
                   <div 
                     key={idx}
@@ -1132,6 +1199,23 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                         <p className="text-[10px] text-emerald-700 font-medium">
                           Ao resolver, desbloqueia: {dependencyMeta.unlocks.join(", ")}.
                         </p>
+                      ) : null}
+                      {blockerAction ? (
+                        blockerAction.kind === "link" ? (
+                          <Link
+                            href={blockerAction.href}
+                            className="inline-flex items-center rounded-lg bg-zinc-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-zinc-800"
+                          >
+                            {blockerAction.label}
+                          </Link>
+                        ) : (
+                          <Link
+                            href={setupHubHref}
+                            className="inline-flex items-center rounded-lg bg-zinc-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-zinc-800"
+                          >
+                            {blockerAction.label}
+                          </Link>
+                        )
                       ) : null}
                     </div>
                   </div>
@@ -1224,15 +1308,55 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
               </p>
               {request.status === "activo" && request.escola_id ? (
                 <Link
-                  href={`/escola/${request.escola_id}/configuracoes/onboarding`}
+                  href={setupHubHref}
                   className="mt-3 inline-flex items-center rounded-lg bg-zinc-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-zinc-800"
                 >
-                  Abrir setup da escola
+                  {setupIncompleteAfterProvisioning ? setupNextActionLabel : "Abrir hub da escola"}
                 </Link>
               ) : null}
             </div>
           </div>
         </div>
+
+        {setupIncompleteAfterProvisioning ? (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-5 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Handoff para a escola</p>
+                <h3 className="text-base font-bold text-slate-900">
+                  A escola já foi provisionada. O próximo passo agora é continuar o setup interno.
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-700">
+                  O portal público já cumpriu o papel documental. Para a escola ficar pronta para operar, o responsável interno deve abrir o hub de configurações e seguir o próximo passo guiado.
+                </p>
+                {setupBlocker?.title ? (
+                  <div className="rounded-lg border border-emerald-200 bg-white/80 px-3 py-2 text-xs text-slate-700">
+                    <span className="font-black uppercase tracking-widest text-emerald-700">Próxima ação real</span>
+                    <p className="mt-1 font-semibold text-slate-900">{setupBlocker.title}</p>
+                    {setupBlocker.detail ? <p className="mt-1 text-slate-600">{setupBlocker.detail}</p> : null}
+                  </div>
+                ) : null}
+              </div>
+              <div className="rounded-lg bg-white px-4 py-4 text-xs shadow-sm md:min-w-[260px]">
+                <p className="font-black uppercase tracking-widest text-slate-500">Setup interno</p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {typeof setupHandoff?.completion_percent === "number"
+                    ? `${setupHandoff.completion_percent}% concluído`
+                    : "Em andamento"}
+                </p>
+                <p className="mt-2 text-slate-600">
+                  Checklist principal: {setupChecklistDone}/5 concluído. O CTA abaixo leva direto ao passo certo do assistente interno.
+                </p>
+                <Link
+                  href={setupHubHref}
+                  className="mt-3 inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-emerald-700"
+                >
+                  {setupNextActionLabel}
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {stageStallMeta ? (
           <div className={`rounded-xl border p-5 shadow-sm ${stageStallMeta.tone}`}>

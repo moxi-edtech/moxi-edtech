@@ -2,8 +2,8 @@
 data: 2026-06-28
 base: reunião de 2026-06-20 20:38 GMT-03
 escopo: Super Admin, Escritório/Parceiro, Escola
-atualizado_em: 2026-06-29
-validacao_live_db: confirmada e sincronizada com migrations `20270628120000`, `20270628123000`, `20270628130000`, `20270628131000`, `20270629100000` e `20270629103000`
+atualizado_em: 2026-06-30
+validacao_live_db: confirmada e sincronizada com migrations `20270628120000`, `20270628123000`, `20270628130000`, `20270628131000`, `20270629100000`, `20270629103000`, `20270629120000`, `20270629123000`, `20270629124000`, `20270629130000`, `20270630100000`, `20270630113000`, `20270630122000`, `20270630133000` e `20270630143000`
 docs_pop_consultados: `docs/pop/parceiro`, `docs/pop/admin` sincronizados com `/Users/gundja/Desktop/Projetos/KLASSE/Kit_Onboarding_AELS/POPs`
 
 ## Veredito
@@ -21,10 +21,16 @@ O principal ponto de evolução não é criar o CRM do zero. É fechar a costura
 - Conversão formal `crm_lead -> onboarding_request` existe em `supabase/migrations/20270628120000_crm_lead_to_onboarding_conversion.sql` e foi aplicada no DB remoto.
 - Ledger de comissão do parceiro existe em `supabase/migrations/20270628123000_partner_commissions_ledger.sql` e foi aplicado no DB remoto.
 - Comissão de ativação 100% e trial comercial de 15 dias foram modelados em `supabase/migrations/20270628130000_partner_commission_activation_and_trial.sql`.
+- Solicitação de payout com fatura/recibo obrigatório foi formalizada em `supabase/migrations/20270630113000_partner_commission_payouts_sprint7.sql` e aplicada no DB remoto.
+- Fluxo Super Admin de payout foi formalizado em `/api/super-admin/commissions/payouts`, `/api/super-admin/commissions/payouts/[id]` e no cockpit `PartnerCommissionsClient`; migration `20270630122000_partner_payout_reopen_unique_index.sql` aplicada no DB remoto.
 - Responsabilidade compartilhada Escola + Parceiro na etapa `planilhas` foi formalizada em `supabase/migrations/20270628131000_onboarding_planilhas_shared_owner.sql`.
 - Gestão de equipe do parceiro, papéis operacionais e reset de PIN foram formalizados em `supabase/migrations/20270629100000_partner_portal_team_management.sql`.
 - Responsável operacional por lead/follow-up foi formalizado em `supabase/migrations/20270629103000_crm_lead_responsavel_membro.sql`.
+- Checklist de implantação, termo de aceite e gate de comissão de ativação foram formalizados em `20270629120000`, `20270629123000` e expostos ao portal do parceiro em `20270629124000`.
+- Suporte L1 com tickets, gravidade, SLA e escalação para KLASSE foi formalizado em `supabase/migrations/20270629130000_partner_support_tickets_l1.sql`, API `/api/influencers/[codigo]/support/tickets` e aba `Suporte L1` no portal do parceiro.
+- Triagem documental do parceiro foi formalizada em `supabase/migrations/20270630100000_partner_document_triage_sprint4.sql`, API `/api/influencers/[codigo]/onboarding/[token]/uploads/[uploadId]/triage` e controles no drawer da escola.
 - Cockpit administrativo de comissões existe em `apps/web/src/app/super-admin/comissoes/page.tsx`, `apps/web/src/components/super-admin/comissoes/PartnerCommissionsClient.tsx` e APIs `/api/super-admin/commissions`.
+- Portal do parceiro agora permite solicitar payout de comissões aprovadas ainda não solicitadas, anexando fatura/recibo obrigatório via `/api/influencers/[codigo]/commissions/payouts`; Super Admin agora aprova/rejeita/cancela/marca como pago pelo cockpit de comissões.
 - Super Admin tem zona CRM pós-venda em `apps/web/src/components/super-admin/CrmSection.tsx`.
 - Materiais comerciais existem em `apps/web/public/influencers/` e modelos de importação em `apps/web/public/templates/`.
 - POPs operacionais do parceiro e admin existem em `docs/pop/parceiro` e `docs/pop/admin`.
@@ -42,9 +48,20 @@ O principal ponto de evolução não é criar o CRM do zero. É fechar a costura
 - Pipeline visual no portal do parceiro.
 - Aba `Equipe` no portal do parceiro para `owner/admin` cria membros, altera papel, ativa/desativa e redefine PIN.
 - Leads têm responsável operacional explícito para follow-up, além do membro criador.
+- Aba `Equipe` mostra produtividade por operador: carteira ativa, follow-ups vencidos, leads sem próxima ação, ganhos e pipeline potencial.
+- Drawer de onboarding do parceiro inclui aba `Implantação` com checklist técnico, upload de Termo de Aceite, signatário, data e validação que libera a comissão de ativação.
+- Drawer de onboarding do parceiro permite classificar uploads por tipo documental, marcar `em_revisao_parceiro`, `pendencia_cliente` ou `pronto_para_klasse` e registrar comentário antes da aprovação final KLASSE.
+- Aba `Suporte L1` permite abrir tickets por escola, definir canal/categoria/gravidade/responsável, acompanhar SLA de resposta/resolução e escalar para KLASSE com motivo auditado.
+- Aba `Escolas 360` consolida lead, contrato comercial, onboarding, checklist de implantacao/treinamento, tickets, SLA, comissoes e risco operacional por escola no portal do parceiro.
+- Biblioteca contextual de POPs foi ligada ao Painel 360 via `PARTNER_CONTEXTUAL_POPS`, com HTMLs servidos por `apps/web/public/crm/pops/parceiro`.
+- UI dedicada `Biblioteca POPs` foi adicionada ao portal do parceiro para busca e filtragem por fase/status de revisão.
+- Painel 360 ganhou filtros por operador, risco, status de onboarding, SLA e carteira.
+- Score de risco 360 passou a ser persistido no backend por `sync_influencer_school_360_risk` e colunas `crm_risk_*` em `onboarding_requests`.
+- Ligacao explicita lead/escola/onboarding foi reforcada no payload do portal com `onboarding_request_id`, `crm_lead_id` e `escola_id`.
 - Conversão formal de lead ganho para onboarding com `tracking_token`.
 - Comissão de ativação 100% preparada para ser gerada no provisionamento da escola.
 - Ledger de comissão recorrente por pagamento SaaS.
+- Solicitação de payout com recibo/fatura obrigatório para comissões aprovadas.
 - Acompanhamento de onboarding por SLA.
 - Materiais comerciais e roteiros de WhatsApp/venda.
 
@@ -62,13 +79,16 @@ O principal ponto de evolução não é criar o CRM do zero. É fechar a costura
    - próxima ação vencida
    - leads parados por etapa
    - SLA de onboarding vencido
-   - métricas por responsável
+   - metas mensais por responsável
 
 3. Integrar WhatsApp Business/Meta como canal rastreável.
    Hoje há links/roteiros e textos, mas não há inbox multiusuário ou log automático de conversas.
 
-4. Implementar moderação/pré-validação documental no portal do parceiro.
-   O SOP `sop-crm-03-moderacao-documental.md` prevê que o parceiro valide documentos administrativos e faça pré-validação visual de planilhas, mas hoje o parceiro visualiza uploads e a ação formal de aprovar/rejeitar está concentrada no Super Admin.
+4. Refinar moderação/pré-validação documental no portal do parceiro.
+   A triagem do parceiro já existe; falta melhorar filtros dedicados no Super Admin e transformar o checklist de recolha em uma visão visual por tipo de documento.
+
+5. Completar suporte L1 com anexos e relatório mensal.
+   A fila de tickets e SLAs já existe; faltam upload de prints/evidências por ticket e agregação mensal de cumprimento de SLA.
 
 ## Frente 2 — Escola
 
@@ -148,8 +168,8 @@ O principal ponto de evolução não é criar o CRM do zero. É fechar a costura
    - SLA de resposta ao lead
    - auditoria de alterações de etapa
 
-4. Transformar CRM pós-venda em tarefas acionáveis.
-   A zona CRM identifica churn e upgrades, mas precisa gerar tarefas, dono, prazo e conclusão.
+4. Expandir tarefas acionáveis para pós-venda.
+   A base relacional de tarefas/agenda já existe para follow-up comercial; ainda falta gerar tarefas automáticas de churn, upgrade e pós-go-live com dono, prazo e conclusão.
 
 ## Lacunas estruturais encontradas
 
@@ -160,17 +180,21 @@ O principal ponto de evolução não é criar o CRM do zero. É fechar a costura
 
 2. A captura por landing grava `marketing_leads`; o parceiro usa `crm_leads`; o onboarding usa `onboarding_requests`.
 
-3. A ponte explícita e auditável para converter lead ganho em onboarding já existe no código e no DB remoto, mas a visão analítica ponta a ponta continua fragmentada.
+3. A ponte explícita e auditável para converter lead ganho em onboarding já existe no código e no DB remoto; a visão 360 ponta a ponta já usa FK explícita quando disponível e persiste score de risco para relatório executivo.
 
-4. O ledger de comissão recorrente e o cockpit administrativo de payout já existem; falta ligar essa visão ao dashboard unificado de funil e aos relatórios executivos.
+4. O ledger de comissão recorrente, cockpit administrativo de comissões e aprovação/rejeição/pagamento de payout pelo Super Admin já existem; falta ligar essa visão aos relatórios executivos e ao extrato mensal.
 
 5. A regra de trial de 15 dias já entrou no caminho comercial local, mas ainda precisa de experiência de aquisição K12 com expiração, lembrete e conversão visíveis.
 
-6. A moderação documental do parceiro está descrita no POP, mas ainda não tem endpoint/tela de ação no portal do parceiro.
+6. A moderação documental do parceiro já tem endpoint/tela de ação no portal do parceiro; falta filtro operacional dedicado para `pronto_para_klasse` no Super Admin.
 
-7. Os POPs/Admin da Escola existem como documentação, mas ainda não estão amarrados ao onboarding como checklist técnico de aceite.
+7. Os POPs/Admin da Escola já estão amarrados ao painel 360 como biblioteca contextual por fase; ainda falta revisar textos antigos que declaram `NAO OPERACIONAL NO CODIGO ACTUAL` em fluxos que já evoluíram no código.
 
 8. WhatsApp/Meta está tratado como links, scripts e rascunhos, não como operação centralizada multiusuário.
+
+9. Suporte L1 já tem ticket/SLA/escalação, mas ainda não tem anexos por chamado nem relatório mensal de performance.
+
+10. Tarefas comerciais e propostas comerciais já têm tabelas normalizadas no DB remoto (`partner_tasks` e `crm_commercial_proposals`), sincronizadas pelas RPCs atuais do CRM.
 
 ## Ordem sugerida
 
@@ -179,7 +203,7 @@ O principal ponto de evolução não é criar o CRM do zero. É fechar a costura
 3. Completar trial K12 de 15 dias com expiração, lembrete e conversão visíveis.
 4. Implementar moderação/pré-validação documental do parceiro antes da validação técnica KLASSE.
 5. Criar checklist de aceite de implantação baseado nos POPs/Admin da Escola.
-6. Criar tarefas comerciais automáticas para follow-up vencido e churn/upgrade.
+6. Criar agenda visual e tarefas automáticas para follow-up vencido, churn e upgrade.
 7. Criar pacote “escola pública” sem financeiro transacional.
 8. Integrar WhatsApp Business/Meta ou, no mínimo, registrar manualmente interações com canal, operador e resultado.
 

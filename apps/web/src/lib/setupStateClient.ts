@@ -1,5 +1,7 @@
 "use client";
 
+import { buildPortalHref } from "@/lib/navigation";
+
 export type SetupBadges = {
   ano_letivo_ok?: boolean;
   periodos_ok?: boolean;
@@ -24,14 +26,25 @@ export type OperationalReadiness = {
   };
   badges?: Record<string, boolean | undefined>;
   metrics?: Record<string, number | null | undefined>;
-  blockers?: Array<{ code?: string; area?: string; severity?: string; title?: string; detail?: string }>;
+  blockers?: Array<{
+    code?: string;
+    area?: string;
+    severity?: string;
+    title?: string;
+    detail?: string;
+    fix_cta?: { label?: string; href?: string };
+  }>;
 };
+
+export type OperationalBlockerAction =
+  | { kind: "link"; label: string; href: string }
+  | { kind: "auto"; label: string; action: "teachers" | "horarios" };
 
 type SetupStateResponse = {
   ok: boolean;
   data?: {
     stage?: string;
-    next_action?: { label?: string; href?: string };
+    next_action?: { key?: string; label?: string; href?: string };
     blockers?: Array<{ title?: string; detail?: string; severity?: string }>;
     badges?: SetupBadges;
     completion_percent?: number;
@@ -97,4 +110,50 @@ export function setupProgressFromBadges(badges?: SetupBadges) {
     Boolean(badges?.turmas_ok),
   ];
   return Math.round((steps.filter(Boolean).length / steps.length) * 100);
+}
+
+export function getOperationalBlockerAction(
+  escolaParam: string | null | undefined,
+  blocker?: NonNullable<OperationalReadiness["blockers"]>[number]
+): OperationalBlockerAction | null {
+  if (!blocker || !escolaParam) return null;
+
+  if (blocker.fix_cta?.href) {
+    return {
+      kind: "link",
+      label: blocker.fix_cta.label || "Abrir correção",
+      href: buildPortalHref(escolaParam, blocker.fix_cta.href),
+    };
+  }
+
+  switch (blocker.code) {
+    case "TEAM_TEACHERS_MISSING":
+      return { kind: "link", label: "Cadastrar professores", href: buildPortalHref(escolaParam, "/admin/professores") };
+    case "TEAM_TEACHER_CONSISTENCY":
+    case "TEACHER_ASSIGNMENT_INCONSISTENCY":
+    case "PORTAL_PROFESSOR_BLOCKED":
+      return { kind: "auto", label: "Auto-atribuir professores", action: "teachers" };
+    case "HORARIOS_SLOTS_MISSING":
+    case "HORARIOS_PUBLISH_MISSING":
+      return { kind: "auto", label: "Auto-gerar horários", action: "horarios" };
+    case "FINANCE_IBAN_MISSING":
+    case "FINANCE_PRICING_MISSING":
+    case "FINANCE_CONFIG_MISSING":
+      return { kind: "link", label: "Abrir financeiro", href: buildPortalHref(escolaParam, "/admin/configuracoes/financeiro") };
+    case "PORTAL_ALUNO_DISABLED":
+      return { kind: "link", label: "Revisar sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+    case "STUDENTS_MISSING":
+      return { kind: "link", label: "Importar alunos", href: buildPortalHref(escolaParam, "/admin/migracao") };
+    case "ACADEMIC_COURSES_MISSING":
+    case "ACADEMIC_CURRICULUM_UNPUBLISHED":
+    case "ACADEMIC_TURMAS_INVALID":
+      return { kind: "link", label: "Abrir turmas e currículo", href: buildPortalHref(escolaParam, "/admin/configuracoes/turmas") };
+    case "ACADEMIC_YEAR_MISSING":
+    case "ACADEMIC_PERIODS_INVALID":
+      return { kind: "link", label: "Abrir calendário", href: buildPortalHref(escolaParam, "/admin/configuracoes/calendario") };
+    case "ACADEMIC_EVALUATION_MISSING":
+      return { kind: "link", label: "Abrir avaliação", href: buildPortalHref(escolaParam, "/admin/configuracoes/avaliacao-frequencia") };
+    default:
+      return { kind: "link", label: "Ver painel do sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+  }
 }

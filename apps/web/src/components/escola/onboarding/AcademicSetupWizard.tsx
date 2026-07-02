@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Check, 
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildPortalHref } from "@/lib/navigation";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -28,7 +30,11 @@ import AcademicStep2Config from "./AcademicStep2Config";
 import AcademicStepFinancial from "./AcademicStepFinancial";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { ConfirmacaoContextual } from "@/components/harmonia";
-import { invalidateSetupStateCache } from "@/lib/setupStateClient";
+import {
+  fetchSetupState,
+  invalidateSetupStateCache,
+  type OperationalReadiness,
+} from "@/lib/setupStateClient";
 
 import {
   type TurnosState,
@@ -44,6 +50,7 @@ type Props = {
   escolaId: string;
   onComplete?: () => void;
   initialSchoolName?: string;
+  initialStep?: number;
 };
 
 type PeriodoConfig = {
@@ -66,6 +73,19 @@ type WizardStatusMeta = {
   title: string;
   description: string;
 };
+
+type SetupGuideState = {
+  next_action?: { key?: string; label?: string; href?: string };
+  blockers?: Array<{ title?: string; detail?: string; severity?: string }>;
+  completion_percent?: number;
+  operational_readiness?: OperationalReadiness;
+} | null;
+
+type ReadinessBlocker = NonNullable<OperationalReadiness["blockers"]>[number];
+
+type ReadinessBlockerAction =
+  | { kind: "link"; label: string; href: string }
+  | { kind: "auto"; label: string; action: "teachers" | "horarios" };
 
 const toDateInput = (value?: string | null) => {
   if (!value) return "";
@@ -93,6 +113,69 @@ const safeFormatDate = (dateStr?: string | null, formatStr: string = "dd/MM/yyyy
   if (Number.isNaN(date.getTime())) return dateStr;
   return format(date, formatStr, { locale: pt });
 };
+
+function mapSetupActionKeyToWizardStep(actionKey?: string | null) {
+  switch (actionKey) {
+    case "CONFIGURE_ANO_LETIVO":
+    case "CONFIGURE_PERIODOS":
+      return 1;
+    case "CONFIGURE_AVALIACAO":
+      return 2;
+    case "APPLY_PRESET":
+    case "PUBLISH_CURRICULO":
+      return 3;
+    case "GENERATE_TURMAS":
+      return 5;
+    default:
+      return null;
+  }
+}
+
+function getReadinessBlockerAction(
+  escolaParam: string | null,
+  blocker?: ReadinessBlocker
+): ReadinessBlockerAction | null {
+  if (!blocker || !escolaParam) return null;
+
+  if (blocker.fix_cta?.href) {
+    return {
+      kind: "link",
+      label: blocker.fix_cta.label || "Abrir correção",
+      href: buildPortalHref(escolaParam, blocker.fix_cta.href),
+    };
+  }
+
+  switch (blocker.code) {
+    case "TEAM_TEACHERS_MISSING":
+      return { kind: "link", label: "Cadastrar professores", href: buildPortalHref(escolaParam, "/admin/professores") };
+    case "TEAM_TEACHER_CONSISTENCY":
+    case "TEACHER_ASSIGNMENT_INCONSISTENCY":
+    case "PORTAL_PROFESSOR_BLOCKED":
+      return { kind: "auto", label: "Auto-atribuir professores", action: "teachers" };
+    case "HORARIOS_SLOTS_MISSING":
+    case "HORARIOS_PUBLISH_MISSING":
+      return { kind: "auto", label: "Auto-gerar horários", action: "horarios" };
+    case "FINANCE_IBAN_MISSING":
+    case "FINANCE_PRICING_MISSING":
+    case "FINANCE_CONFIG_MISSING":
+      return { kind: "link", label: "Abrir financeiro", href: buildPortalHref(escolaParam, "/admin/configuracoes/financeiro") };
+    case "PORTAL_ALUNO_DISABLED":
+      return { kind: "link", label: "Revisar sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+    case "STUDENTS_MISSING":
+      return { kind: "link", label: "Importar alunos", href: buildPortalHref(escolaParam, "/admin/migracao") };
+    case "ACADEMIC_COURSES_MISSING":
+    case "ACADEMIC_CURRICULUM_UNPUBLISHED":
+    case "ACADEMIC_TURMAS_INVALID":
+      return { kind: "link", label: "Abrir turmas e currículo", href: buildPortalHref(escolaParam, "/admin/configuracoes/turmas") };
+    case "ACADEMIC_YEAR_MISSING":
+    case "ACADEMIC_PERIODS_INVALID":
+      return { kind: "link", label: "Abrir calendário", href: buildPortalHref(escolaParam, "/admin/configuracoes/calendario") };
+    case "ACADEMIC_EVALUATION_MISSING":
+      return { kind: "link", label: "Abrir avaliação", href: buildPortalHref(escolaParam, "/admin/configuracoes/avaliacao-frequencia") };
+    default:
+      return { kind: "link", label: "Ver painel do sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+  }
+}
 
 // --- COMPONENTE VISUAL: STEPPER ---
 function WizardStepper({ currentStep }: { currentStep: number }) {
@@ -143,7 +226,7 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 }
 
 // --- MAIN COMPONENT ---
-export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
+export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName, initialStep = 1 }: Props) {
   const { toast, dismiss, success, error, warning } = useToast();
   const confirm = useConfirm();
   const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
@@ -154,7 +237,9 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const escolaContextId = escolaParam;
   const isContextReady = Boolean(escolaContextId && escolaContextId !== "null");
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => Math.min(5, Math.max(1, Number(initialStep) || 1)));
+  const [setupGuide, setSetupGuide] = useState<SetupGuideState>(null);
+  const [resolvingAction, setResolvingAction] = useState<"teachers" | "horarios" | null>(null);
 
   // --- STATES (STEP 1) ---
   const [schoolDisplayName, setSchoolDisplayName] = useState<string>(initialSchoolName || "");
@@ -183,6 +268,28 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const supabase = useMemo(() => createClient(), []);
   const presetCacheRef = useRef<Record<string, Array<{ nome: string; classe: string; horas: number }>>>({});
+
+  useEffect(() => {
+    const normalizedInitialStep = Math.min(5, Math.max(1, Number(initialStep) || 1));
+    setStep((current) => (current === normalizedInitialStep ? current : normalizedInitialStep));
+  }, [initialStep]);
+
+  useEffect(() => {
+    async function loadSetupGuide() {
+      if (!escolaParam) return;
+      const response = await fetchSetupState(escolaParam);
+      if (response.ok && response.data) {
+        setSetupGuide({
+          next_action: response.data.next_action,
+          blockers: response.data.blockers,
+          completion_percent: response.data.completion_percent,
+          operational_readiness: response.data.operational_readiness,
+        });
+      }
+    }
+
+    loadSetupGuide();
+  }, [escolaParam]);
 
   useEffect(() => {
     async function loadTemplates() {
@@ -487,6 +594,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleCreateSession = async () => {
     if (!isContextReady) return false;
+    const contextKey = escolaContextId;
+    if (!contextKey) return false;
     setCreatingSession(true);
     const tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
     try {
@@ -514,6 +623,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       setAnoLetivoId(json.data.id);
       setSessaoAtiva(json.data);
       if (json.periodos) setPeriodos(json.periodos);
+      await refreshSetupGuide(contextKey);
       dismiss(tid);
       success("Sessão configurada.");
       return true;
@@ -522,6 +632,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleSavePreferences = async () => {
     if (!isContextReady) return false;
+    const contextKey = escolaContextId;
+    if (!contextKey) return false;
     const tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
     try {
       const r = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
@@ -529,6 +641,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         body: JSON.stringify({ frequencia_modelo: frequenciaModelo, frequencia_min_percent: frequenciaMinPercent, modelo_avaliacao: modeloAvaliacao, avaliacao_config: avaliacaoConfig })
       });
       if (!r.ok) throw new Error("Erro");
+      await refreshSetupGuide(contextKey);
       dismiss(tid);
       success("Regras salvas.");
       return true;
@@ -537,10 +650,13 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleApplyCurriculumPreset = async () => {
     if (!matrix.length || !isContextReady) return;
+    const contextKey = escolaContextId;
+    if (!contextKey) return;
     setApplyingPreset(true);
     let tid = toast({ variant: "syncing", title: "Processando...", duration: 0 });
     try {
       setStep(4);
+      await refreshSetupGuide(contextKey);
       dismiss(tid);
       success("Matriz confirmada.");
     } catch (e: any) { dismiss(tid); error("Erro"); } finally { setApplyingPreset(false); }
@@ -585,6 +701,43 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     }
   };
 
+  const refreshSetupGuide = async (contextKey: string) => {
+    invalidateSetupStateCache(contextKey);
+    const refreshed = await fetchSetupState(contextKey);
+    if (refreshed.ok && refreshed.data) {
+      setSetupGuide({
+        next_action: refreshed.data.next_action,
+        blockers: refreshed.data.blockers,
+        completion_percent: refreshed.data.completion_percent,
+        operational_readiness: refreshed.data.operational_readiness,
+      });
+    }
+  };
+
+  const handleAutoResolve = async (action: "teachers" | "horarios") => {
+    const contextKey = escolaContextId;
+    if (!contextKey) return;
+
+    setResolvingAction(action);
+    try {
+      const response = await fetch(`/api/escola/${contextKey}/admin/setup/auto-resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.ok === false) {
+        throw new Error(json?.error || "Erro ao tentar resolver automaticamente.");
+      }
+      success(json?.message || "Ação automática concluída.");
+      await refreshSetupGuide(contextKey);
+    } catch (e: any) {
+      error(e?.message || "Erro ao tentar resolver automaticamente.");
+    } finally {
+      setResolvingAction(null);
+    }
+  };
+
   const handleNext = async () => {
     if (step === 1) { if (await handleCreateSession()) setStep(2); return; }
     if (step === 2) { if (await handleSavePreferences()) setStep(3); return; }
@@ -602,6 +755,48 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   };
 
   const selectedModeloMeta = modelosAvaliacao.find((item) => item.id === modeloAvaliacao);
+  const setupGuideStep = mapSetupActionKeyToWizardStep(setupGuide?.next_action?.key);
+  const primaryGuideBlocker = setupGuide?.blockers?.[0] ?? null;
+  const stepIsRecommended = setupGuideStep === step;
+  const readinessSummary = setupGuide?.operational_readiness?.summary;
+  const readinessAreas = [
+    {
+      key: "academico",
+      label: "Académico",
+      ok: Boolean(readinessSummary?.academico_ok),
+      description: "Ano letivo, avaliação, currículo e turmas.",
+    },
+    {
+      key: "financeiro",
+      label: "Financeiro",
+      ok: Boolean(readinessSummary?.financeiro_ok),
+      description: "IBAN, preços e cobrança base.",
+    },
+    {
+      key: "equipe",
+      label: "Equipe",
+      ok: Boolean(readinessSummary?.equipe_ok),
+      description: "Professores e acessos administrativos.",
+    },
+    {
+      key: "horarios",
+      label: "Horários",
+      ok: Boolean(readinessSummary?.horarios_ok),
+      description: "Slots e quadros publicados.",
+    },
+    {
+      key: "portais",
+      label: "Portais",
+      ok: Boolean(readinessSummary?.portais_ok),
+      description: "Portais de alunos, encarregados e professores.",
+    },
+  ];
+  const readinessBlockers = setupGuide?.operational_readiness?.blockers ?? [];
+  const topReadinessBlockers = readinessBlockers.slice(0, 3);
+  const readinessBlockersWithActions = topReadinessBlockers.map((blocker) => ({
+    blocker,
+    action: getReadinessBlockerAction(escolaParam, blocker),
+  }));
   const wizardStatusMeta: WizardStatusMeta = step === 1
     ? {
         badge: "O que falta agora",
@@ -648,6 +843,52 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         <h2 className="mt-1 text-lg font-bold text-slate-900">{wizardStatusMeta.title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">{wizardStatusMeta.description}</p>
       </div>
+
+      {setupGuide?.next_action?.label || primaryGuideBlocker?.title ? (
+        <div
+          className={`mx-auto mb-8 max-w-5xl rounded-2xl border px-6 py-5 text-left ${
+            stepIsRecommended
+              ? "border-blue-100 bg-blue-50"
+              : "border-amber-100 bg-amber-50"
+          }`}
+        >
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p
+                className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                  stepIsRecommended ? "text-blue-700" : "text-amber-700"
+                }`}
+              >
+                {stepIsRecommended ? "Este passo destrava o setup" : "Próximo passo sugerido pelo sistema"}
+              </p>
+              <h3 className="mt-1 text-base font-bold text-slate-900">
+                {stepIsRecommended
+                  ? setupGuide?.next_action?.label || "Continue este passo para destravar o setup."
+                  : setupGuide?.next_action?.label || "O sistema detectou uma pendência anterior."}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {primaryGuideBlocker?.detail ||
+                  (stepIsRecommended
+                    ? "Ao concluir esta etapa, o fluxo interno avança automaticamente para a próxima pendência real."
+                    : "Se preferir reduzir fricção, conclua primeiro o passo recomendado antes de avançar para os demais.")}
+              </p>
+            </div>
+            <div className="rounded-lg bg-white/80 px-4 py-3 text-xs shadow-sm md:min-w-[210px]">
+              <p className="font-black uppercase tracking-widest text-slate-500">Progresso real</p>
+              <p className="mt-1 font-semibold text-slate-900">
+                {typeof setupGuide?.completion_percent === "number"
+                  ? `${setupGuide.completion_percent}% concluído`
+                  : "Em andamento"}
+              </p>
+              {setupGuideStep ? (
+                <p className="mt-2 text-slate-600">
+                  Passo recomendado agora: {setupGuideStep}/5.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <WizardStepper currentStep={step} />
 
@@ -820,6 +1061,99 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-700">
+                      Prontidão operacional
+                    </p>
+                    <h4 className="mt-1 text-sm font-bold text-slate-900">
+                      O setup base termina aqui, mas a escola só fica operacional quando as áreas abaixo estiverem verdes.
+                    </h4>
+                  </div>
+                  <div className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-violet-700 shadow-sm">
+                    {readinessSummary?.operational_ok ? "Operacional" : "Go-live pendente"}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                  {readinessAreas.map((area) => (
+                    <div
+                      key={area.key}
+                      className={`rounded-xl border px-3 py-3 shadow-sm ${
+                        area.ok ? "border-emerald-100 bg-white" : "border-amber-100 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          {area.label}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+                            area.ok
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {area.ok ? "OK" : "Pendente"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-slate-600">{area.description}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {topReadinessBlockers.length > 0 ? (
+                  <div className="rounded-xl border border-amber-200 bg-white p-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700">
+                      O que ainda impede a escola de operar
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {readinessBlockersWithActions.map(({ blocker, action }, index) => (
+                        <div key={`${blocker.code || blocker.title || "blocker"}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {blocker.title || "Bloqueador operacional"}
+                            </p>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                              {blocker.area || "setup"}
+                            </span>
+                          </div>
+                          {blocker.detail ? (
+                            <p className="mt-1 text-xs leading-relaxed text-slate-600">{blocker.detail}</p>
+                          ) : null}
+                          {action ? (
+                            <div className="mt-3">
+                              {action.kind === "link" ? (
+                                <Link
+                                  href={action.href}
+                                  className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-bold text-white no-underline transition-colors hover:bg-slate-800"
+                                >
+                                  {action.label}
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutoResolve(action.action)}
+                                  disabled={Boolean(resolvingAction)}
+                                  className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                                >
+                                  {resolvingAction === action.action ? "A executar..." : action.label}
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-emerald-200 bg-white p-4 text-sm text-emerald-800">
+                    Nenhum bloqueador operacional crítico foi identificado neste momento. Ao finalizar, a escola pode seguir para a validação final de go-live.
+                  </div>
+                )}
               </div>
 
               {/* WARNING / NOTICE CARD */}

@@ -146,6 +146,17 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Erro ao atualizar etapa de onboarding: " + updateStepError.message }, { status: 400 });
     }
 
+    const { error: syncError } = await (auth.supabase.rpc as any)("sync_onboarding_workflow_state", {
+      p_onboarding_id: upload.onboarding_id,
+    });
+
+    if (syncError) {
+      return NextResponse.json(
+        { ok: false, error: "Upload revisto, mas falhou a sincronização do workflow: " + syncError.message },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       message: `Upload revisado com sucesso. Status da etapa: ${stepStatus}`,

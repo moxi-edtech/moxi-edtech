@@ -137,11 +137,19 @@ export function csvToJsonLines(csv: string): AlunoCSV[] {
   if (!csv) return [];
   
   try {
-    const lines = csv.split(/\r?\n/).filter(line => line.trim().length > 0);
+    let lines = csv.split(/\r?\n/).filter(line => line.trim().length > 0);
     if (lines.length === 0) return [];
 
     // Detecção automática de delimitador (conta ocorrências na primeira linha)
-    const headerLine = lines[0];
+    let headerLine = lines[0];
+    
+    // Se a primeira linha contiver a assinatura do template KLASSE, pula as 3 primeiras linhas
+    if (headerLine.includes("KLASSE") && (headerLine.includes("Modelo de Importação") || headerLine.includes("Importação") || headerLine.includes("Mapa de Atribuições"))) {
+      lines = lines.slice(3);
+      if (lines.length === 0) return [];
+      headerLine = lines[0];
+    }
+
     const countSemi = (headerLine.match(/;/g) || []).length;
     const countComma = (headerLine.match(/,/g) || []).length;
     const delimiter = countSemi >= countComma ? ";" : ",";
@@ -153,8 +161,6 @@ export function csvToJsonLines(csv: string): AlunoCSV[] {
 
     return lines.slice(1).map((line) => {
       // Tratamento básico para CSV quotes (não perfeito, mas melhor que split simples)
-      // Nota: Para produção pesada, recomenda-se uma lib como 'papaparse', 
-      // mas para manter zero deps, este split funciona para casos simples.
       const values = line.split(delimiter);
       
       const entry: AlunoCSV = {};
@@ -190,9 +196,27 @@ export async function fileToCsvText(
 
   if (isXlsx) {
     const wb = XLSX.read(buffer, { type: "buffer" });
-    const firstSheet = wb.SheetNames[0];
-    if (!firstSheet) return "";
-    return XLSX.utils.sheet_to_csv(wb.Sheets[firstSheet], { FS: "," });
+    const targetSheetName = wb.SheetNames.find(n => n === "Importacao_Alunos" || n === "Lista_Professores") || wb.SheetNames[0];
+    if (!targetSheetName) return "";
+    const sheet = wb.Sheets[targetSheetName];
+    if (!sheet) return "";
+
+    const a1Val = String(sheet["A1"]?.v || "");
+    const isKlasseTemplate = a1Val.includes("KLASSE") && (a1Val.includes("Modelo de Importação") || a1Val.includes("Importação") || a1Val.includes("Mapa de Atribuições"));
+
+    const json = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, range: isKlasseTemplate ? 3 : 0 });
+    const csvLines = json.map((row) => {
+      if (!Array.isArray(row)) return "";
+      return row.map(cell => {
+        const str = cell === null || cell === undefined ? "" : String(cell).trim();
+        if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }).join(",");
+    });
+    
+    return csvLines.join("\n");
   }
 
   // Fallback: trata como texto (CSV)

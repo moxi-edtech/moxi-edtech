@@ -184,13 +184,13 @@ Transformar o onboarding numa jornada continua e compreensivel, com estados huma
 - [x] Exibir em cada pendencia o dono da acao: escola, parceiro ou KLASSE.
 - [x] Diferenciar no historico de envios: recebido, triagem do parceiro, correcao solicitada, pronto para KLASSE e aprovacao final.
 - [ ] Introduzir marcos visuais distintos para:
-  - [ ] pedido criado
-  - [ ] onboarding em curso
-  - [ ] escola provisionada
-  - [ ] setup escolar em curso
+  - [x] pedido criado
+  - [x] onboarding em curso
+  - [x] escola provisionada
+  - [x] setup escolar em curso
   - [ ] setup concluido
-  - [ ] operacional
-- [ ] Criar regra de transicao visual entre provisionamento e setup sem ruptura de contexto.
+  - [x] operacional
+- [x] Criar regra de transicao visual entre provisionamento e setup sem ruptura de contexto.
 
 ### Entrega
 
@@ -205,7 +205,7 @@ Transformar o onboarding numa jornada continua e compreensivel, com estados huma
 - [x] Cada pagina de onboarding mostra exatamente um proximo passo principal.
 - [x] Cada pendencia relevante mostra responsavel e consequencia.
 - [x] O tracking publico deixa explicito que follow-up comercial isolado nao conclui etapa.
-- [ ] A escola provisionada recebe orientacao clara para iniciar o setup interno sem depender de explicacao manual.
+- [x] A escola provisionada recebe orientacao clara para iniciar o setup interno sem depender de explicacao manual.
 
 ### Dependencias
 
@@ -423,6 +423,15 @@ Justificativa:
 - Adequação das regras de validação de professores no frontend para suportar o formato sem a coluna `DISCIPLINAS_CODIGOS` na aba principal, alinhando com a estrutura real da planilha oficial.
 - Classificação fina da escola provisionada no portal público: provisionada, setup concluído mas ainda não operacional, e operacional plena, com base em `operational_readiness`.
 - CTA directo no portal público para abrir o setup interno da escola quando `escola_id` já existe.
+- Payload público de acompanhamento enriquecido com `setup_handoff`, expondo ano letivo activo, percentagem de configuração, próximos passos e bloqueadores do setup interno.
+- Card de handoff no portal público para escolas provisionadas, explicando que o onboarding externo terminou e que a continuação acontece no hub interno da escola.
+- Hub interno de configurações da escola passou a reconhecer entrada vinda do portal público e mostra banner de continuidade do onboarding com progresso do setup.
+- CTA do portal público passou a abrir directamente o assistente interno no passo sugerido por `next_action.key`, reduzindo um clique e a ambiguidade do handoff.
+- Hub interno passou a autoabrir o wizard quando a navegação vem do onboarding público com `setup=wizard`, preservando o contexto da jornada.
+- Wizard interno passou a carregar `next_action` e `blockers` reais do setup para destacar, em cada passo, o que destrava o fluxo e qual pendência sistémica deve ser resolvida primeiro.
+- Passo final `Gerar` passou a exibir checklist de prontidão operacional com áreas críticas (académico, financeiro, equipe, horários e portais) e os principais bloqueadores de go-live antes da finalização.
+- Bloqueadores da prontidão operacional no passo final passaram a expor CTAs accionáveis, incluindo links diretos para o módulo certo e auto-resolução para professores/horários quando disponível.
+- Portal público de onboarding e hub interno de configurações passaram a reutilizar a mesma lógica de CTA por bloqueador operacional, mantendo a recomendação de ação consistente ao longo da jornada.
 - Resumo operacional do staging de planilhas com contadores de linhas analisadas, válidas, corrigíveis, bloqueantes e linhas ignoradas automaticamente.
 - Biblioteca de modelos do portal público expandida para expor os templates oficiais `.xlsx` de alunos e professores, além dos CSVs simplificados.
 - Alerta operacional de etapa parada por tempo excessivo no portal público, com destaque do responsável atual e recomendação de ação para retomada do fluxo.
