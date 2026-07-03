@@ -102,9 +102,9 @@ export default function AfiliadosEntryPage() {
     } catch (error) {
       console.error(error);
       if (error instanceof Error && error.message === "no_members_found") {
-        toast.error("Nenhum membro ativo foi encontrado para este parceiro.");
+        toast.error("Nenhum operador ativo foi encontrado para este código.");
       } else {
-        toast.error("Código, membro ou PIN inválido.");
+        toast.error("Código, operador ou PIN inválido.");
       }
     } finally {
       setIsLoading(false);
@@ -120,9 +120,9 @@ export default function AfiliadosEntryPage() {
             <Star size={22} fill="currentColor" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-white tracking-tight">Portal do Parceiro</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">CRM KLASSE</h1>
             <p className="text-slate-500 text-sm">
-              Introduza as suas credenciais para aceder ao CRM da Klasse.
+              Introduza as suas credenciais para aceder ao sistema de gestão e ativação.
             </p>
           </div>
         </div>
@@ -133,12 +133,12 @@ export default function AfiliadosEntryPage() {
         >
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-              Código de Parceiro
+              Código de Acesso
             </label>
             <input
               autoFocus
               type="text"
-              placeholder="EX: EDUARDO10"
+              placeholder="EX: CLARUS10"
               className="w-full p-4 rounded-xl border border-slate-800 bg-[#0a0b0f] text-white placeholder:text-slate-800 outline-none transition-all text-center text-lg font-black uppercase tracking-widest focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold/20"
               value={code}
               onChange={(e) => {
@@ -154,7 +154,7 @@ export default function AfiliadosEntryPage() {
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-800 bg-[#0a0b0f] p-4">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block">
-                  Parceiro
+                  Identificação
                 </span>
                 <span className="text-sm font-semibold text-white mt-1 block">
                   {affiliateName}
@@ -163,7 +163,7 @@ export default function AfiliadosEntryPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                  Membro
+                  Operador
                 </label>
                 <div className="relative">
                   <select
@@ -172,7 +172,7 @@ export default function AfiliadosEntryPage() {
                     onChange={(e) => setSelectedMemberId(e.target.value)}
                   >
                     <option value="" className="text-slate-500">
-                      Selecione quem está a entrar
+                      Selecione o operador
                     </option>
                     {members.map((member) => (
                       <option key={member.membro_id} value={member.membro_id}>
@@ -232,15 +232,14 @@ export default function AfiliadosEntryPage() {
                 className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-350 transition-colors"
                 onClick={resetMemberStep}
               >
-                Trocar código de parceiro
+                Trocar código de acesso
               </button>
             )}
           </div>
         </form>
 
         <div className="flex items-center justify-center gap-2 text-xs text-slate-600 font-semibold uppercase tracking-widest pt-2">
-          <Users size={12} />
-          <span>+50 Parceiros Ativos</span>
+          <span>Klasse EdTech · Sistema de Onboarding</span>
         </div>
       </div>
     </div>
