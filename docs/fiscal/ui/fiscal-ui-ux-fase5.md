@@ -31,8 +31,7 @@ Componentes:
 
 Página:
 
-- `apps/web/src/app/financeiro/fiscal/page.tsx`
-
+ti
 Backend de listagem para UI:
 
 - `apps/web/src/app/api/fiscal/documentos/route.ts` (`GET` adicionado)

@@ -22,7 +22,7 @@ Converter um lead qualificado do CRM comercial em um pedido oficial de onboardin
 ## 4. Pré-condições
 
 - Lead já cadastrado no CRM comercial e com dados mínimos preenchidos.
-- Confirmação formal da escola quanto ao plano comercial desejado e valores de ativação/instalação.
+- Confirmação formal da escola quanto ao plano comercial desejado, valores de ativação/instalação e **modelo pedagógico (preset de currículo)**.
 
 ## 4.1 Estado fiel ao codigo
 
@@ -41,6 +41,7 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx` e `apps/web/src
 2. **Alterar Etapa do Lead:** Mova o cartão do lead para a etapa **Ganho** quando aplicavel, ou abra o detalhe do lead.
 3. **Preencher Proposta Comercial:** No bloco `Proposta Comercial`, confirme ou ajuste:
    - Plano contratado.
+   - Modelo Curricular (Preset) da escola (ex: Ensino Primário, Técnico de Informática, etc.).
    - Número estimado de alunos.
    - Período de trial negociado (máx 30 dias).
    - Taxa de ativação acordada.

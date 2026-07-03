@@ -160,6 +160,11 @@ export type PartnerCrmLead = {
   proxima_acao?: string | null;
   proxima_acao_data?: string | null;
   created_at?: string | null;
+  curriculum_preset?: string | null;
+  niveis_ensino?: string[] | null;
+  contacto_secretaria?: { nome?: string; email?: string; telefone?: string } | null;
+  contacto_financeiro?: { nome?: string; email?: string; telefone?: string } | null;
+  contacto_pedagogico?: { nome?: string; email?: string; telefone?: string } | null;
   [key: string]: unknown;
 };
 

@@ -81,6 +81,21 @@ type SetupGuideState = {
   operational_readiness?: OperationalReadiness;
 } | null;
 
+type FinalizeSummary = {
+  school_name: string | null;
+  curriculos_publicados: number;
+  cursos_processados: number;
+  turmas_planeadas: number;
+  professores_auto_atribuidos: number;
+  cargas_auto_corrigidas: number;
+  horarios_publicados: number;
+  horarios_pendentes: number;
+  horarios_publicados_turmas: string[];
+  horarios_pendentes_turmas: string[];
+  pending_actions: Array<{ title: string; detail: string; href: string }>;
+  next_steps: string[];
+};
+
 type ReadinessBlocker = NonNullable<OperationalReadiness["blockers"]>[number];
 
 type ReadinessBlockerAction =
@@ -353,6 +368,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [curriculumOverrides, setCurriculumOverrides] = useState<Record<string, number>>({});
   const [showFinalSuccess, setShowFinalSuccess] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [finalSummary, setFinalSummary] = useState<FinalizeSummary | null>(null);
 
   const totalTurmas = useMemo(() => {
     let count = 0;
@@ -691,9 +707,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       if (escolaUuidResolved) {
         invalidateSetupStateCache(escolaUuidResolved);
       }
-      success("Concluído!");
+      setFinalSummary((json?.summary as FinalizeSummary | null) ?? null);
+      success("Setup concluído.");
       setShowFinalSuccess(true);
-      setTimeout(() => { if (onComplete) onComplete(); else window.location.href = `/escola/${escolaParam}/admin/dashboard`; }, 2000);
+      if (escolaContextId) {
+        await refreshSetupGuide(escolaContextId);
+      }
     } catch (e: any) {
       error(e?.message || "Erro final");
     } finally {
@@ -949,6 +968,94 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           )}
           {step === 5 && (
             <div className="space-y-8 animate-in fade-in duration-300">
+              {showFinalSuccess && finalSummary ? (
+                <div className="space-y-6">
+                  <div className="text-center max-w-2xl mx-auto space-y-3">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                      <Check className="h-8 w-8" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      {finalSummary.school_name || schoolDisplayName || "Escola"} saiu do onboarding com base operacional criada
+                    </h3>
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      O currículo foi publicado, as turmas base foram geradas e o sistema tentou deixar a escola pronta para começar. Abaixo está o resumo e os atalhos para ajustes finos.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Currículo</p>
+                      <p className="mt-2 text-2xl font-black text-slate-900">{finalSummary.curriculos_publicados}</p>
+                      <p className="mt-1 text-xs text-slate-600">curso(s) publicados</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Turmas</p>
+                      <p className="mt-2 text-2xl font-black text-slate-900">{finalSummary.turmas_planeadas}</p>
+                      <p className="mt-1 text-xs text-slate-600">turma(s) planeadas na geração inicial</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Horários</p>
+                      <p className="mt-2 text-2xl font-black text-emerald-700">{finalSummary.horarios_publicados}</p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        publicados · {finalSummary.horarios_pendentes} pendente(s)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Auto-ajustes aplicados</p>
+                      <div className="mt-3 space-y-2 text-sm text-slate-700">
+                        <p><strong>{finalSummary.professores_auto_atribuidos}</strong> professor(es) auto-atribuídos</p>
+                        <p><strong>{finalSummary.cargas_auto_corrigidas}</strong> carga(s) corrigidas automaticamente</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Como editar depois</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/calendario")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                          Calendário
+                        </Link>
+                        <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/turmas")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                          Turmas e currículo
+                        </Link>
+                        <Link href={buildPortalHref(escolaParam, "/horarios/quadro")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                          Quadro de horários
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Passo a passo para alterações</p>
+                    <div className="mt-3 space-y-2">
+                      {finalSummary.next_steps.map((item, index) => (
+                        <p key={`${item}-${index}`} className="text-sm text-slate-700">
+                          <strong>{index + 1}.</strong> {item}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Pendências restantes</p>
+                    <div className="mt-3 space-y-3">
+                      {finalSummary.pending_actions.map((item) => (
+                        <div key={`${item.href}-${item.title}`} className="rounded-lg border border-amber-100 bg-white px-4 py-3">
+                          <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.detail}</p>
+                          <div className="mt-3">
+                            <Link href={item.href} className="inline-flex rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-bold text-white no-underline">
+                              Abrir correção
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
               <div className="text-center max-w-xl mx-auto space-y-3">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">
                   <Wand2 className="h-6 w-6" />
@@ -1163,21 +1270,38 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                   Ao clicar em <strong>Finalizar</strong>, o sistema irá criar automaticamente o novo ano letivo, gerar os trimestres configurados, aplicar as regras de avaliação e instanciar as {totalTurmas} turmas e tabelas de propina.
                 </p>
               </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-8 py-5">
-          <button onClick={() => step > 1 && setStep(p => p - 1)} disabled={step === 1 || applyingPreset || finalizing} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-30">
+          <button onClick={() => step > 1 && setStep(p => p - 1)} disabled={step === 1 || applyingPreset || finalizing || showFinalSuccess} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-30">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </button>
-          <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 disabled:opacity-50">
-            {applyingPreset || creatingSession || finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : (step === 5 ? "Finalizar" : "Continuar")}
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          {showFinalSuccess && finalSummary ? (
+            <div className="flex items-center gap-3">
+              <Link href={buildPortalHref(escolaParam, "/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white no-underline shadow-md">
+                Ir ao dashboard
+              </Link>
+              {onComplete ? (
+                <button onClick={onComplete} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-3 text-sm font-bold text-white shadow-md">
+                  Fechar onboarding
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <button onClick={handleNext} disabled={applyingPreset || creatingSession || finalizing || !isContextReady || (step === 3 && matrix.length === 0)} className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 disabled:opacity-50">
+              {applyingPreset || creatingSession || finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : (step === 5 ? "Finalizar" : "Continuar")}
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
-      {showFinalSuccess && <ConfirmacaoContextual acaoId="matricula.confirmada.lote" contexto={{ total: matrix.length, tempo: "2s" }} onClose={() => {}} />}
+      {showFinalSuccess && !finalSummary && (
+        <ConfirmacaoContextual acaoId="matricula.confirmada.lote" contexto={{ total: matrix.length, tempo: "2s" }} onClose={() => {}} />
+      )}
     </div>
   );
 }

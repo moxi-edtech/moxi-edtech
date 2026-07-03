@@ -17,8 +17,42 @@ function ProposalPreviewContent() {
   const trial = Number(searchParams?.get("trial") || "15");
   const taxa = Number(searchParams?.get("taxa") || "0");
   const mensalidade = Number(searchParams?.get("mensalidade") || "0");
+  const preset = searchParams?.get("preset") || "";
+
+  const niveisRaw = searchParams?.get("niveis") || "";
+  const secNome = searchParams?.get("sec_nome") || "";
+  const secEmail = searchParams?.get("sec_email") || "";
+  const secTel = searchParams?.get("sec_tel") || "";
+  const finNome = searchParams?.get("fin_nome") || "";
+  const finEmail = searchParams?.get("fin_email") || "";
+  const finTel = searchParams?.get("fin_tel") || "";
+  const pedNome = searchParams?.get("ped_nome") || "";
+  const pedEmail = searchParams?.get("ped_email") || "";
+  const pedTel = searchParams?.get("ped_tel") || "";
 
   const planName = plano === "essencial" ? "Klasse Essencial" : plano === "premium" ? "Klasse Premium" : "Klasse Profissional";
+
+  const presetNameMap: Record<string, string> = {
+    pre_escolar: "Educação Pré-Escolar",
+    primario_generico: "Ensino Primário (1ª-6ª Classe)",
+    esg_ciclo1: "Iº Ciclo Secundário (7ª-9ª Classe)",
+    esg_puniv_cfb: "PUNIV - Ciências Físicas e Biol.",
+    esg_puniv_cej: "PUNIV - Ciências Econ. e Jurídicas",
+    esg_puniv_cch: "PUNIV - Ciências Sociais e Humanas",
+    tec_informatica: "Técnico de Informática",
+    tec_contabilidade: "Técnico de Contabilidade",
+    tec_informatica_gestao: "Técnico de Informática de Gestão",
+    tec_saude_enfermagem: "Técnico de Enfermagem",
+    tec_saude_analises: "Técnico de Análises Clínicas",
+  };
+
+  const niveisMap: Record<string, string> = {
+    primario: "Ensino Primário",
+    ciclo1: "Iº Ciclo Secundário",
+    puniv: "PUNIV / Geral",
+    tecnico: "Ensino Técnico",
+  };
+  const niveisList = niveisRaw ? niveisRaw.split(",").map((n) => niveisMap[n] || n) : [];
 
   const PLAN_FEATURES = {
     essencial: [
@@ -115,10 +149,19 @@ function ProposalPreviewContent() {
           <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-4">Condições Comerciais Acordadas</h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/50">
-              <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Plano Escolhido</span>
-              <p className="text-lg font-bold text-zinc-800 mt-1">{planName}</p>
-              <span className="text-[10px] font-medium text-zinc-500 block mt-1">Volume: {alunos > 0 ? `${alunos} alunos` : "Não definido"}</span>
+            <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/50 flex flex-col justify-between">
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Plano Escolhido</span>
+                <p className="text-lg font-bold text-zinc-800 mt-1">{planName}</p>
+              </div>
+              <div className="mt-3 text-[10px] font-medium text-zinc-500 space-y-0.5">
+                <p>Volume: {alunos > 0 ? `${alunos} alunos` : "Não definido"}</p>
+                {preset && (
+                  <p className="font-bold text-[#1F6B3B]">
+                    Modelo: {presetNameMap[preset] || preset}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/50">
               <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Taxa de Ativação</span>
@@ -160,6 +203,47 @@ function ProposalPreviewContent() {
             </div>
           </div>
         </div>
+
+        {/* Níveis de Ensino e Contas de Acesso */}
+        {(niveisList.length > 0 || secNome || finNome || pedNome) && (
+          <div className="py-6 border-t border-zinc-100">
+            <h3 className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-4">Estrutura Acadêmica & Credenciais Pré-configuradas</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-zinc-700">
+              {niveisList.length > 0 && (
+                <div>
+                  <p className="font-bold text-zinc-800 mb-2">Níveis Pedagógicos Contratados:</p>
+                  <ul className="list-disc list-inside space-y-1 font-semibold text-zinc-600">
+                    {niveisList.map((nivel, idx) => (
+                      <li key={idx}>{nivel}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(secNome || finNome || pedNome) && (
+                <div className="space-y-3">
+                  <p className="font-bold text-zinc-800">Contas de Acesso Administrativas Autodeclaradas:</p>
+                  <div className="space-y-2 text-[11px] leading-relaxed">
+                    {secNome && (
+                      <p>
+                        <span className="font-bold text-[#1F6B3B]">Secretaria Geral:</span> {secNome} {secEmail ? `(${secEmail})` : ""} {secTel ? `· Tel: ${secTel}` : ""}
+                      </p>
+                    )}
+                    {finNome && (
+                      <p>
+                        <span className="font-bold text-[#1F6B3B]">Diretoria Financeira:</span> {finNome} {finEmail ? `(${finEmail})` : ""} {finTel ? `· Tel: ${finTel}` : ""}
+                      </p>
+                    )}
+                    {pedNome && (
+                      <p>
+                        <span className="font-bold text-[#1F6B3B]">Coordenação Pedagógica / Ops:</span> {pedNome} {pedEmail ? `(${pedEmail})` : ""} {pedTel ? `· Tel: ${pedTel}` : ""}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* SLA and Contracts */}
         <div className="py-6 border-t border-zinc-100 space-y-4">

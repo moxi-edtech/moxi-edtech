@@ -3,10 +3,29 @@ import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { assertEscolaAccessAndPermissions } from '@/lib/api/assertEscolaAccessAndPermissions';
 import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from '@/lib/permissions';
+import { buildBaseHorarioAssignments } from '@/lib/horarios/buildBaseHorarioAssignments';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+function normalizeText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function isPracticalDiscipline(name: string) {
+  const value = normalizeText(name);
+  return (
+    value.includes('laborat') ||
+    value.includes('oficina') ||
+    value.includes('pratica') ||
+    value.includes('atelier') ||
+    value.includes('ateli')
+  );
+}
 
 const BodySchema = z.object({
   action: z.enum(['teachers', 'horarios']),
@@ -92,7 +111,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         const { data: subjects } = await supabase
           .from('turma_disciplinas')
-          .select('id, curso_matriz_id, professor_id, entra_no_horario')
+          .select('id, curso_matriz_id, professor_id, entra_no_horario, carga_horaria_semanal, curso_matriz:curso_matriz_id(disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(nome))')
           .eq('escola_id', escolaId)
           .eq('turma_id', turma.id);
 
@@ -168,32 +187,38 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const activeSlots = (slots || []).filter((s) => s.is_intervalo === false);
         if (activeSlots.length === 0) continue;
 
-        const itemsToInsert: any[] = [];
-        let subjectIndex = 0;
-
-        for (const slot of activeSlots) {
-          const subject = activeSubjects[subjectIndex];
-          if (!subject) break;
-
-          const { data: cm } = await supabase
-            .from('curso_matriz')
-            .select('disciplina_id')
-            .eq('id', subject.curso_matriz_id)
-            .maybeSingle();
-
-          if (cm?.disciplina_id) {
-            itemsToInsert.push({
-              escola_id: escolaId,
-              turma_id: turma.id,
-              disciplina_id: cm.disciplina_id,
-              professor_id: subject.professor_id ?? null,
-              slot_id: slot.id,
-              versao_id: String(versionId),
-            });
-          }
-
-          subjectIndex = (subjectIndex + 1) % activeSubjects.length;
-        }
+        const itemsToInsert = buildBaseHorarioAssignments(
+          activeSubjects
+            .map((subject: any) => ({
+              disciplinaId: subject.curso_matriz?.disciplina_id ?? null,
+              professorId: subject.professor_id ?? null,
+              cargaSemanal: Number(
+                subject.carga_horaria_semanal ??
+                subject.curso_matriz?.carga_horaria_semanal ??
+                0,
+              ),
+              requiresDouble: Number(
+                subject.carga_horaria_semanal ??
+                subject.curso_matriz?.carga_horaria_semanal ??
+                0,
+              ) >= 3,
+              isPractical: isPracticalDiscipline(String(subject.curso_matriz?.disciplina?.nome ?? '')),
+            }))
+            .filter((subject) => Boolean(subject.disciplinaId)),
+          activeSlots.map((slot) => ({
+            id: slot.id,
+            day: slot.dia_semana,
+            ordem: slot.ordem,
+            isIntervalo: Boolean(slot.is_intervalo),
+          })),
+        ).map((assignment) => ({
+          escola_id: escolaId,
+          turma_id: turma.id,
+          disciplina_id: assignment.disciplinaId,
+          professor_id: assignment.professorId,
+          slot_id: assignment.slotId,
+          versao_id: String(versionId),
+        }));
 
         if (itemsToInsert.length > 0) {
           await supabase

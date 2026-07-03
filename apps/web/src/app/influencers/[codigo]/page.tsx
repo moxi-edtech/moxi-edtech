@@ -178,6 +178,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
   const [commercialTrialDays, setCommercialTrialDays] = useState(15);
   const [commercialTaxaAtivacao, setCommercialTaxaAtivacao] = useState(50000);
   const [commercialMensalidade, setCommercialMensalidade] = useState(0);
+  const [commercialPreset, setCommercialPreset] = useState<string>("");
+  const [commercialNiveisEnsino, setCommercialNiveisEnsino] = useState<string[]>([]);
+  const [commercialSecretaria, setCommercialSecretaria] = useState<{ nome?: string; email?: string; telefone?: string }>({});
+  const [commercialFinanceiro, setCommercialFinanceiro] = useState<{ nome?: string; email?: string; telefone?: string }>({});
+  const [commercialPedagogico, setCommercialPedagogico] = useState<{ nome?: string; email?: string; telefone?: string }>({});
   const [commercialStatus, setCommercialStatus] = useState<(typeof COMMERCIAL_STATUS_OPTIONS)[number]["value"]>("rascunho");
   const [savingCommercialTerms, setSavingCommercialTerms] = useState(false);
   const [proposalDocumentFile, setProposalDocumentFile] = useState<File | null>(null);
@@ -417,6 +422,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     setCommercialTrialDays(Number.isFinite(trialDays) ? trialDays : 15);
     setCommercialTaxaAtivacao(Number.isFinite(taxaAtivacao) ? taxaAtivacao : 50000);
     setCommercialMensalidade(Number(lead.mensalidade_kz) || 0);
+    setCommercialPreset(lead.curriculum_preset || "");
+    setCommercialNiveisEnsino(Array.isArray(lead.niveis_ensino) ? lead.niveis_ensino : []);
+    setCommercialSecretaria(lead.contacto_secretaria || {});
+    setCommercialFinanceiro(lead.contacto_financeiro || {});
+    setCommercialPedagogico(lead.contacto_pedagogico || {});
     setCommercialStatus(COMMERCIAL_STATUS_OPTIONS.some((item) => item.value === lead.commercial_status)
       ? lead.commercial_status
       : "rascunho");
@@ -684,6 +694,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           taxa_ativacao: commercialTaxaAtivacao,
           mensalidade_kz: commercialMensalidade,
           commercial_status: commercialStatus,
+          curriculum_preset: commercialPreset,
+          niveis_ensino: commercialNiveisEnsino,
+          contacto_secretaria: commercialSecretaria,
+          contacto_financeiro: commercialFinanceiro,
+          contacto_pedagogico: commercialPedagogico,
         }),
       });
       const res = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
@@ -701,6 +716,11 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         taxa_ativacao: commercialTaxaAtivacao,
         mensalidade_kz: commercialMensalidade,
         commercial_status: commercialStatus,
+        curriculum_preset: commercialPreset,
+        niveis_ensino: commercialNiveisEnsino,
+        contacto_secretaria: commercialSecretaria,
+        contacto_financeiro: commercialFinanceiro,
+        contacto_pedagogico: commercialPedagogico,
       } : current);
       await loadCrmLeads(false);
       await loadLeadHistory(selectedCrmLead.id);
@@ -2924,6 +2944,16 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
         setCommercialTaxaAtivacao={setCommercialTaxaAtivacao}
         commercialMensalidade={commercialMensalidade}
         setCommercialMensalidade={setCommercialMensalidade}
+        commercialPreset={commercialPreset}
+        setCommercialPreset={setCommercialPreset}
+        commercialNiveisEnsino={commercialNiveisEnsino}
+        setCommercialNiveisEnsino={setCommercialNiveisEnsino}
+        commercialSecretaria={commercialSecretaria}
+        setCommercialSecretaria={setCommercialSecretaria}
+        commercialFinanceiro={commercialFinanceiro}
+        setCommercialFinanceiro={setCommercialFinanceiro}
+        commercialPedagogico={commercialPedagogico}
+        setCommercialPedagogico={setCommercialPedagogico}
         commercialStatus={commercialStatus}
         setCommercialStatus={setCommercialStatus}
         handleOpenCommercialProposal={handleOpenCommercialProposal}

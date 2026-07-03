@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import * as XLSX from "xlsx";
 
-import { normalizeTurmaCode } from "@/lib/turma";
+import { buildTurmaCode, normalizeTurmaCode, resolveCourseCode } from "@/lib/turma";
 import type { AlunoCSV, AlunoStagingRecord, MappedColumns } from "~types/migracao";
 
 export const MAX_UPLOAD_SIZE = 12 * 1024 * 1024; // 12 MB
@@ -131,6 +131,17 @@ export function normalizeTurmaLetra(value?: string | null): string | undefined {
   return clean.length > 0 ? clean : undefined;
 }
 
+export function normalizeCursoCodigo(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const resolved = resolveCourseCode(String(value));
+  return resolved || undefined;
+}
+
+function isCanonicalTurmaCode(value?: string | null): boolean {
+  if (!value) return false;
+  return /^[A-Z0-9]{2,8}-\d{1,2}-(M|T|N)-[A-Z0-9]{1,3}$/.test(value);
+}
+
 // ------------- CSV PARSER -------------
 
 export function csvToJsonLines(csv: string): AlunoCSV[] {
@@ -254,6 +265,10 @@ export function mapAlunoFromCsv(
     sexo: undefined,
     numero_processo: undefined, // NOVO
     profile_id: undefined,
+    curso_codigo: undefined,
+    classe_numero: undefined,
+    turno_codigo: undefined,
+    turma_letra: undefined,
     turma_codigo: undefined, // NOVO
     ano_letivo: explicitAnoLetivo, // Usa o ano letivo explícito do body
     numero_matricula: undefined
@@ -294,9 +309,34 @@ export function mapAlunoFromCsv(
   }
 
   // --- DADOS ACADÊMICOS (Normalizados) ---
+  mapped.curso_codigo = normalizeCursoCodigo(getVal(columnMap.curso_codigo));
+  mapped.classe_numero = normalizeClasseNumero(getVal(columnMap.classe_numero));
+  mapped.turno_codigo = normalizeTurnoCodigo(getVal(columnMap.turno_codigo));
+  mapped.turma_letra = normalizeTurmaLetra(getVal(columnMap.turma_letra));
+
   const rawTurma = getVal(columnMap.turma_codigo);
-  const turmaCodigo = normalizeTurmaCode(rawTurma ?? "");
-  mapped.turma_codigo = turmaCodigo || undefined; // NOVO: Turma Código
+  let turmaCodigo = normalizeTurmaCode(rawTurma ?? "");
+
+  if (
+    (!turmaCodigo || !isCanonicalTurmaCode(turmaCodigo)) &&
+    mapped.curso_codigo &&
+    mapped.classe_numero &&
+    mapped.turno_codigo &&
+    mapped.turma_letra
+  ) {
+    try {
+      turmaCodigo = buildTurmaCode({
+        courseCode: mapped.curso_codigo,
+        classNum: mapped.classe_numero,
+        shift: mapped.turno_codigo,
+        section: mapped.turma_letra,
+      });
+    } catch {
+      // Mantém o valor original se a composição falhar; a RPC dará erro acionável.
+    }
+  }
+
+  mapped.turma_codigo = turmaCodigo || undefined;
   const anoLetivoFromCsv = normalizeAnoLetivo(getVal(columnMap.ano_letivo));
   mapped.ano_letivo = anoLetivoFromCsv ?? explicitAnoLetivo;
   mapped.numero_matricula = getVal(columnMap.numero_matricula)?.trim();

@@ -7,6 +7,7 @@ import { PAPEL_GROUP_ESCOLA_ADMIN_SETUP } from '@/lib/permissions';
 import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao';
 import { buildSyncTurmasSummary, requiresNoRebuildConfirmation } from '@/lib/academico/curriculo-operacao';
+import { buildBaseHorarioAssignments } from '@/lib/horarios/buildBaseHorarioAssignments';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -107,6 +108,199 @@ type SyncExistingTurmasResult = {
   skipped_reason: string | null;
   error?: string | null;
 };
+
+function normalizeText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function isPracticalDiscipline(name: string) {
+  const value = normalizeText(name);
+  return (
+    value.includes('laborat') ||
+    value.includes('oficina') ||
+    value.includes('pratica') ||
+    value.includes('atelier') ||
+    value.includes('ateli')
+  );
+}
+
+function getTurnoIdFromTurma(turno?: string | null) {
+  const rawTurno = String(turno || '').toUpperCase();
+  if (rawTurno === 'T') return 'tarde';
+  if (rawTurno === 'N') return 'noite';
+  return 'matinal';
+}
+
+function buildDefaultSlots(escolaId: string, turnoId: string) {
+  const timeConfigs = turnoId === 'tarde'
+    ? [
+        { ordem: 1, inicio: '13:00:00', fim: '13:50:00', is_intervalo: false },
+        { ordem: 2, inicio: '13:50:00', fim: '14:40:00', is_intervalo: false },
+        { ordem: 3, inicio: '14:40:00', fim: '15:30:00', is_intervalo: false },
+        { ordem: 4, inicio: '15:30:00', fim: '15:50:00', is_intervalo: true },
+        { ordem: 5, inicio: '15:50:00', fim: '16:40:00', is_intervalo: false },
+        { ordem: 6, inicio: '16:40:00', fim: '17:30:00', is_intervalo: false },
+      ]
+    : turnoId === 'noite'
+      ? [
+          { ordem: 1, inicio: '18:00:00', fim: '18:50:00', is_intervalo: false },
+          { ordem: 2, inicio: '18:50:00', fim: '19:40:00', is_intervalo: false },
+          { ordem: 3, inicio: '19:40:00', fim: '20:30:00', is_intervalo: false },
+          { ordem: 4, inicio: '20:30:00', fim: '20:45:00', is_intervalo: true },
+          { ordem: 5, inicio: '20:45:00', fim: '21:35:00', is_intervalo: false },
+          { ordem: 6, inicio: '21:35:00', fim: '22:25:00', is_intervalo: false },
+        ]
+      : [
+          { ordem: 1, inicio: '07:30:00', fim: '08:20:00', is_intervalo: false },
+          { ordem: 2, inicio: '08:20:00', fim: '09:10:00', is_intervalo: false },
+          { ordem: 3, inicio: '09:10:00', fim: '10:00:00', is_intervalo: false },
+          { ordem: 4, inicio: '10:00:00', fim: '10:20:00', is_intervalo: true },
+          { ordem: 5, inicio: '10:20:00', fim: '11:10:00', is_intervalo: false },
+          { ordem: 6, inicio: '11:10:00', fim: '12:00:00', is_intervalo: false },
+        ];
+
+  const slots: Array<Record<string, unknown>> = [];
+  for (let dia = 1; dia <= 5; dia += 1) {
+    for (const cfg of timeConfigs) {
+      slots.push({
+        escola_id: escolaId,
+        turno_id: turnoId,
+        dia_semana: dia,
+        ordem: cfg.ordem,
+        inicio: cfg.inicio,
+        fim: cfg.fim,
+        is_intervalo: cfg.is_intervalo,
+      });
+    }
+  }
+  return slots;
+}
+
+async function silentlyPrepareSchedulesForCourse(args: {
+  supabase: any;
+  escolaId: string;
+  cursoId: string;
+  anoLetivoId: string;
+}) {
+  const { supabase, escolaId, cursoId, anoLetivoId } = args;
+  const publishedTurmas: string[] = [];
+
+  const { data: turmas } = await supabase
+    .from('turmas')
+    .select('id, nome, turno')
+    .eq('escola_id', escolaId)
+    .eq('curso_id', cursoId)
+    .eq('ano_letivo_id', anoLetivoId);
+
+  for (const turma of turmas || []) {
+    const { data: publishedVer } = await supabase
+      .from('horario_versoes')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turma.id)
+      .eq('status', 'publicada')
+      .limit(1)
+      .maybeSingle();
+
+    if (publishedVer?.id) continue;
+
+    await supabase.rpc('horario_auto_configurar_cargas', {
+      p_escola_id: escolaId,
+      p_turma_id: turma.id,
+      p_strategy: 'preset_then_default',
+      p_overwrite: false,
+    });
+
+    const { data: versionId } = await supabase.rpc('ensure_horario_versao', {
+      p_escola_id: escolaId,
+      p_turma_id: turma.id,
+      p_versao_id: undefined,
+      p_status: 'draft',
+    });
+    if (!versionId) continue;
+
+    const { data: subjects } = await supabase
+      .from('turma_disciplinas')
+      .select('id, curso_matriz_id, professor_id, entra_no_horario, carga_horaria_semanal, curso_matriz:curso_matriz_id(disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(nome))')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turma.id);
+
+    const activeSubjects = (subjects || []).filter((s: any) => s.entra_no_horario !== false);
+    if (activeSubjects.length === 0) continue;
+
+    const turnoId = getTurnoIdFromTurma(turma.turno);
+    let { data: slots } = await supabase
+      .from('horario_slots')
+      .select('id, dia_semana, ordem, turno_id, is_intervalo')
+      .eq('escola_id', escolaId)
+      .eq('turno_id', turnoId)
+      .order('dia_semana', { ascending: true })
+      .order('ordem', { ascending: true });
+
+    if (!slots || slots.length === 0) {
+      const { data: insertedSlots } = await supabase
+        .from('horario_slots')
+        .insert(buildDefaultSlots(escolaId, turnoId))
+        .select('id, dia_semana, ordem, turno_id, is_intervalo');
+      slots = insertedSlots || [];
+    }
+
+    const activeSlots = (slots || []).filter((slot: any) => slot.is_intervalo === false);
+    if (activeSlots.length === 0) continue;
+
+    const itemsToInsert = buildBaseHorarioAssignments(
+      activeSubjects
+        .map((subject: any) => ({
+          disciplinaId: subject.curso_matriz?.disciplina_id ?? null,
+          professorId: subject.professor_id ?? null,
+          cargaSemanal: Number(subject.carga_horaria_semanal ?? subject.curso_matriz?.carga_horaria_semanal ?? 0),
+          requiresDouble: Number(subject.carga_horaria_semanal ?? subject.curso_matriz?.carga_horaria_semanal ?? 0) >= 3,
+          isPractical: isPracticalDiscipline(String(subject.curso_matriz?.disciplina?.nome ?? '')),
+        }))
+        .filter((subject) => Boolean(subject.disciplinaId)),
+      activeSlots.map((slot: any) => ({
+        id: slot.id,
+        day: slot.dia_semana,
+        ordem: slot.ordem,
+        isIntervalo: Boolean(slot.is_intervalo),
+      })),
+    ).map((assignment) => ({
+      escola_id: escolaId,
+      turma_id: turma.id,
+      disciplina_id: assignment.disciplinaId,
+      professor_id: assignment.professorId,
+      slot_id: assignment.slotId,
+      versao_id: String(versionId),
+    }));
+
+    if (itemsToInsert.length === 0) continue;
+
+    await supabase
+      .from('quadro_horarios')
+      .delete()
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turma.id)
+      .eq('versao_id', String(versionId));
+
+    const { error: insertErr } = await supabase
+      .from('quadro_horarios')
+      .insert(itemsToInsert);
+
+    if (insertErr) continue;
+
+    await supabase
+      .from('horario_versoes')
+      .update({ status: 'publicada', publicado_em: new Date().toISOString() })
+      .eq('id', String(versionId));
+
+    publishedTurmas.push(String(turma.nome || turma.id));
+  }
+
+  return { publishedTurmas };
+}
 
 async function syncPublishedMatrizToExistingTurmas(args: {
   supabase: any;
@@ -693,6 +887,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const shouldGenerateTurmas = rebuildTurmas || autoGenerateTurmas;
     let autoGenerateExecuted = false;
     let autoGenerateSkippedReason: string | null = null;
+    let silentSchedulePublishedTurmas: string[] = [];
     let syncExistingTurmas: SyncExistingTurmasResult = {
       ok: true,
       executed: false,
@@ -858,6 +1053,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           } catch (refreshErr) {
             console.warn('Falha ao atualizar mv_turmas_para_matricula:', refreshErr);
           }
+
+          try {
+            const schedulePrep = await silentlyPrepareSchedulesForCourse({
+              supabase,
+              escolaId: resolvedEscolaId,
+              cursoId,
+              anoLetivoId,
+            });
+            silentSchedulePublishedTurmas = schedulePrep.publishedTurmas;
+          } catch (scheduleErr) {
+            console.warn('Falha ao preparar horários silenciosamente após gerar turmas:', scheduleErr);
+          }
         } else {
           autoGenerateSkippedReason = 'all_published_classes_already_have_turmas';
         }
@@ -892,6 +1099,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       idempotency_key: idempotencyKey,
       sync_turmas: syncTurmas,
       sync_existing_turmas: syncExistingTurmas,
+      silent_schedule: {
+        published_turmas: silentSchedulePublishedTurmas,
+      },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

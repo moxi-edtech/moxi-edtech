@@ -14,14 +14,15 @@ Este guia descreve o fluxo ponta a ponta de importação de alunos via wizard, v
 5.  **Acompanhamento**: A tela de finalização busca `/api/migracao/[importId]/erros` para listar erros linha a linha e a página de histórico consome `/api/migracao/historico` para exibir as últimas importações.
 
 ## Funil de Admissão (cadastro → candidatura → matrícula)
--   O processo de importação agora atende a dois modos principais: `onboarding` (para novos candidatos) e `migracao` (para alunos existentes com matrícula direta).
+-   O processo de importação agora atende a dois modos principais: `onboarding` (para novos candidatos) e `migracao` (para alunos exi
+stentes com matrícula direta).
 -   A conversão para matrícula (para candidatos do modo `onboarding`) continua ocorrendo via endpoint dedicado `/api/secretaria/candidaturas/[id]/confirmar`, que insere em `matriculas` e marca a candidatura como `matriculado`.
 
 ## Wizard de migração (frontend)
 -   **Contexto autenticado**: O wizard carrega `userId` e resolve `escolaId`. O upload é bloqueado sem escola válida.
 -   **Upload (passo 1)**: Envia o arquivo para `/api/migracao/upload`; guarda `importId` e extrai cabeçalhos do CSV.
--   **Mapeamento + validação (passo 2)**: Envia `importId`, `escolaId`, `columnMap` e **`anoLetivo`** para `/api/migracao/alunos/validar`. O `anoLetivo` é persistido na `staging_alunos`.
--   **Pré-visualização (passo 3)**: Exibe amostra dos dados validados.
+-   **Mapeamento + validação (passo 2)**: Envia `importId`, `escolaId`, `columnMap` e **`anoLetivo`** para `/api/migracao/alunos/validar`. O usuário pode mapear a coluna completa de `TURMA_CODIGO` ou colunas individuais separadas por partes: `CURSO_CODIGO`, `CLASSE_NUMERO`, `TURNO_CODIGO` e `TURMA_LETRA`. O `anoLetivo` é persistido na `staging_alunos`.
+-   **Pré-visualização (passo 3)**: Exibe amostra dos dados validados. Se faltar `TURMA_CODIGO`, o frontend tenta compor o código canônico automaticamente a partir das partes individuais mapped.
 -   **Estrutura Acadêmica (passo 4)**: Processo de backfill para garantir que a estrutura acadêmica base está pronta.
 -   **Importação (passo 5)**: Dispara `/api/migracao/alunos/importar` com `importId`, `escolaId`, `modo` e `data_inicio_financeiro`.
     *   **`modo: 'migracao'`**: Cria alunos e matrículas `pendentes`.
@@ -60,10 +61,15 @@ Este guia descreve o fluxo ponta a ponta de importação de alunos via wizard, v
     -   Corpo: `{ ano_letivo, mes_referencia, dia_vencimento }`.
     -   **Chama a RPC `gerar_mensalidades_lote`** que gera as cobranças para o mês/ano especificados, respeitando o "Escudo Financeiro".
 
-## Formato do Código da Turma
--   **Estrutura Obrigatória:** `CURSO-CLASSE-TURNO-LETRA` (ex.: `TI-10-M-A`).
--   **CURSO**: Sigla configurada pela escola (ex: `EP`, `TI`). Usado para inferir o `curso`.
--   **CLASSE**: Número 1–13. **TURNO**: `M` (manhã), `T` (tarde), `N` (noite). **LETRA**: Letra(s) (ex: `A`, `B`).
+## Formato e Fallbacks do Código da Turma
+-   **Estrutura Canônica:** `CURSO-CLASSE-TURNO-LETRA` (ex.: `TI-10-M-A`).
+-   **Partes Separadas:**
+    -   **CURSO**: Sigla configurada pela escola (ex: `EP`, `TI`).
+    -   **CLASSE**: Número correspondente à classe (ex: `7`, `10`, `12`).
+    -   **TURNO**: `M` (manhã/matutino), `T` (tarde/vespertino), `N` (noite/noturno).
+    -   **LETRA**: Letra identificadora da turma (ex: `A`, `B`).
+-   **Composição Automática (Frontend):** Se a planilha contiver colunas para as quatro partes separadas e o código de turma não estiver presente ou não for canônico, o assistente monta o código canônico antes do upload de staging.
+-   **Resolução de Fallback no Banco (Backend):** A RPC `importar_alunos_v4` possui inteligência de fallback: se o `turma_codigo` não for fornecido, ela busca turmas existentes usando a combinação de `classe_numero`, `turno_codigo` e `turma_letra`. Se houver apenas uma turma ativa que coincida, ela associa o aluno a ela. Caso a turma não exista, ela cria uma turma orgânica no-fly baseada nos parâmetros informados.
 
 ## Fluxo de Aprovação e Ativação
 Este é o "gate" de controle administrativo:

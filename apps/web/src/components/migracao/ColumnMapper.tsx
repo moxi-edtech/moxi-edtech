@@ -33,7 +33,11 @@ const PERSONAL_FIELDS: FieldOption[] = [
   { key: "encarregado_nome", label: "NOME_ENCARREGADO", hint: "Opcional; será TRIM" },
   { key: "encarregado_telefone", label: "TELEFONE_ENCARREGADO", hint: "Mantém dígitos e +" },
   { key: "encarregado_email", label: "EMAIL_ENCARREGADO", hint: "lowercase" },
-  { key: "turma_codigo", label: "TURMA_CODIGO", hint: "Ex.: 10A ou CTI-10-M-A" },
+  { key: "turma_codigo", label: "TURMA_CODIGO", hint: "Se já existir, usamos este valor como fonte principal" },
+  { key: "curso_codigo", label: "CURSO_CODIGO", hint: "Ex.: EP, ESG, TI, CFB" },
+  { key: "classe_numero", label: "CLASSE_NUMERO", hint: "Ex.: 7, 10, 12 ou 7ª Classe" },
+  { key: "turno_codigo", label: "TURNO_CODIGO", hint: "Ex.: M, T, N ou Manhã/Tarde/Noite" },
+  { key: "turma_letra", label: "TURMA_LETRA", hint: "Ex.: A, B, C, AA" },
 ];
 
 export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) {
@@ -91,11 +95,15 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
             e <span className="font-semibold">GENERO</span> (obrigatórios).
           </li>
           <li>
-            Para matrículas automáticas, preencha <span className="font-semibold">TURMA_CODIGO</span>{" "}
-            (ex.: <code>10A</code> ou <code>CTI-10-M-A</code>). O sistema cria/localiza a turma.
+            Para matrículas automáticas, pode enviar <span className="font-semibold">TURMA_CODIGO</span>{" "}
+            ou separar <span className="font-semibold">CURSO_CODIGO</span>, <span className="font-semibold">CLASSE_NUMERO</span>,{" "}
+            <span className="font-semibold">TURNO_CODIGO</span> e <span className="font-semibold">TURMA_LETRA</span>.
           </li>
           <li>
-            Os demais campos são opcionais, mas ajudam na qualidade dos dados (responsável, BI, NIF).
+            Se faltar <span className="font-semibold">TURMA_CODIGO</span>, o sistema tenta compor um código canônico sozinho.
+          </li>
+          <li>
+            Os demais campos são opcionais, mas ajudam na qualidade dos dados e na resolução automática.
           </li>
         </ul>
       </div>

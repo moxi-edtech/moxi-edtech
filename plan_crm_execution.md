@@ -73,6 +73,7 @@ erDiagram
         varchar tracking_token "Token curto revogável (ex: AELS-91PA-TRM8)"
         uuid afiliado_id FK "AELS"
         jsonb financeiro "Guarda plano, taxa_ativacao e total_alunos"
+        varchar curriculum_preset "Preset curricular herdado (ex: primario_generico)"
     }
     
     onboarding_steps {

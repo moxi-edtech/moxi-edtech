@@ -15,6 +15,20 @@ import {
   type PartnerLoginMember,
 } from "./partner-dashboard-model";
 
+export const CRM_PRESET_OPTIONS = [
+  { value: "pre_escolar", label: "Educação Pré-Escolar" },
+  { value: "primario_generico", label: "Ensino Primário (1ª à 6ª Classe)" },
+  { value: "esg_ciclo1", label: "Iº Ciclo do Ensino Secundário (7ª à 9ª Classe)" },
+  { value: "esg_puniv_cfb", label: "PUNIV - Ciências Físicas e Biológicas" },
+  { value: "esg_puniv_cej", label: "PUNIV - Ciências Económicas e Jurídicas" },
+  { value: "esg_puniv_cch", label: "PUNIV - Ciências Sociais e Humanas" },
+  { value: "tec_informatica", label: "Técnico de Informática" },
+  { value: "tec_contabilidade", label: "Técnico de Contabilidade" },
+  { value: "tec_informatica_gestao", label: "Técnico de Informática de Gestão" },
+  { value: "tec_saude_enfermagem", label: "Técnico de Enfermagem" },
+  { value: "tec_saude_analises", label: "Técnico de Análises Clínicas" },
+];
+
 type CrmLeadDetailsSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,6 +43,16 @@ type CrmLeadDetailsSheetProps = {
   setCommercialTaxaAtivacao: (taxa: number) => void;
   commercialMensalidade: number;
   setCommercialMensalidade: (mensalidade: number) => void;
+  commercialPreset: string;
+  setCommercialPreset: (preset: string) => void;
+  commercialNiveisEnsino: string[];
+  setCommercialNiveisEnsino: (val: string[]) => void;
+  commercialSecretaria: { nome?: string; email?: string; telefone?: string };
+  setCommercialSecretaria: (val: { nome?: string; email?: string; telefone?: string }) => void;
+  commercialFinanceiro: { nome?: string; email?: string; telefone?: string };
+  setCommercialFinanceiro: (val: { nome?: string; email?: string; telefone?: string }) => void;
+  commercialPedagogico: { nome?: string; email?: string; telefone?: string };
+  setCommercialPedagogico: (val: { nome?: string; email?: string; telefone?: string }) => void;
   commercialStatus: "rascunho" | "proposta_enviada" | "aceite_comercial" | "aguardando_contrato_klasse";
   setCommercialStatus: (status: "rascunho" | "proposta_enviada" | "aceite_comercial" | "aguardando_contrato_klasse") => void;
   handleOpenCommercialProposal: () => void;
@@ -78,6 +102,16 @@ export function CrmLeadDetailsSheet({
   setCommercialTaxaAtivacao,
   commercialMensalidade,
   setCommercialMensalidade,
+  commercialPreset,
+  setCommercialPreset,
+  commercialNiveisEnsino,
+  setCommercialNiveisEnsino,
+  commercialSecretaria,
+  setCommercialSecretaria,
+  commercialFinanceiro,
+  setCommercialFinanceiro,
+  commercialPedagogico,
+  setCommercialPedagogico,
   commercialStatus,
   setCommercialStatus,
   handleOpenCommercialProposal,
@@ -302,6 +336,141 @@ export function CrmLeadDetailsSheet({
                     </select>
                   </div>
                 </div>
+                <div>
+                  <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Modelo Curricular (Preset)</label>
+                  <select
+                    value={commercialPreset}
+                    onChange={(e) => setCommercialPreset(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-zinc-200/80 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Nenhum preset curricular (Onboarding manual)</option>
+                    {CRM_PRESET_OPTIONS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>{preset.label}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Niveis de Ensino checkboxes */}
+                <div className="space-y-2 pt-2 border-t border-zinc-200/40">
+                  <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Níveis de Ensino</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {[
+                      { value: "primario", label: "Ensino Primário" },
+                      { value: "ciclo1", label: "Iº Ciclo Secundário" },
+                      { value: "puniv", label: "PUNIV / Geral" },
+                      { value: "tecnico", label: "Ensino Técnico" },
+                    ].map((nivel) => {
+                      const isChecked = (commercialNiveisEnsino || []).includes(nivel.value);
+                      return (
+                        <label key={nivel.value} className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setCommercialNiveisEnsino([...(commercialNiveisEnsino || []), nivel.value]);
+                              } else {
+                                setCommercialNiveisEnsino((commercialNiveisEnsino || []).filter((v) => v !== nivel.value));
+                              }
+                            }}
+                            className="rounded border-zinc-300 text-[#1F6B3B] focus:ring-[#1F6B3B]"
+                          />
+                          <span className="font-medium">{nivel.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Contatos Chave da Organizacao */}
+                <div className="space-y-3 pt-3 border-t border-zinc-200/40">
+                  <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Contatos Chave (Onboarding)</label>
+                  
+                  {/* Secretaria */}
+                  <div className="space-y-1.5 p-3 rounded-lg border border-zinc-200 bg-white">
+                    <p className="text-[10px] font-bold text-[#1F6B3B] uppercase">Secretaria Geral</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nome"
+                        value={commercialSecretaria?.nome || ""}
+                        onChange={(e) => setCommercialSecretaria({ ...commercialSecretaria, nome: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none"
+                      />
+                      <input
+                        type="email"
+                        placeholder="E-mail"
+                        value={commercialSecretaria?.email || ""}
+                        onChange={(e) => setCommercialSecretaria({ ...commercialSecretaria, email: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Telefone"
+                        value={commercialSecretaria?.telefone || ""}
+                        onChange={(e) => setCommercialSecretaria({ ...commercialSecretaria, telefone: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Financeiro */}
+                  <div className="space-y-1.5 p-3 rounded-lg border border-zinc-200 bg-white">
+                    <p className="text-[10px] font-bold text-[#1F6B3B] uppercase">Direção Financeira</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nome"
+                        value={commercialFinanceiro?.nome || ""}
+                        onChange={(e) => setCommercialFinanceiro({ ...commercialFinanceiro, nome: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none"
+                      />
+                      <input
+                        type="email"
+                        placeholder="E-mail"
+                        value={commercialFinanceiro?.email || ""}
+                        onChange={(e) => setCommercialFinanceiro({ ...commercialFinanceiro, email: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Telefone"
+                        value={commercialFinanceiro?.telefone || ""}
+                        onChange={(e) => setCommercialFinanceiro({ ...commercialFinanceiro, telefone: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pedagogico */}
+                  <div className="space-y-1.5 p-3 rounded-lg border border-zinc-200 bg-white">
+                    <p className="text-[10px] font-bold text-[#1F6B3B] uppercase">Coordenação Pedagógica / Operações</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nome"
+                        value={commercialPedagogico?.nome || ""}
+                        onChange={(e) => setCommercialPedagogico({ ...commercialPedagogico, nome: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none"
+                      />
+                      <input
+                        type="email"
+                        placeholder="E-mail"
+                        value={commercialPedagogico?.email || ""}
+                        onChange={(e) => setCommercialPedagogico({ ...commercialPedagogico, email: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Telefone"
+                        value={commercialPedagogico?.telefone || ""}
+                        onChange={(e) => setCommercialPedagogico({ ...commercialPedagogico, telefone: e.target.value })}
+                        className="col-span-1 rounded border border-zinc-200 px-2 py-1 text-[11px] focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="rounded-xl border border-zinc-200/70 bg-white p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className={`${selectedCommercialStatusMeta.color} border-none text-[9px] font-semibold uppercase tracking-wider shadow-none`}>
@@ -318,6 +487,7 @@ export function CrmLeadDetailsSheet({
                     <p>Alunos: <span className="font-semibold text-zinc-900">{commercialAlunos}</span></p>
                     <p>Trial: <span className="font-semibold text-zinc-900">{commercialTrialDays} dias</span></p>
                     <p>Taxa: <span className="font-semibold text-zinc-900">Kz {commercialTaxaAtivacao.toLocaleString("pt-PT")}</span></p>
+                    <p className="col-span-2">Modelo Curricular: <span className="font-semibold text-zinc-900">{CRM_PRESET_OPTIONS.find((p) => p.value === commercialPreset)?.label || "Nenhum"}</span></p>
                     <p className="col-span-2">Mensalidade: <span className="font-semibold text-zinc-900">Kz {commercialMensalidade.toLocaleString("pt-PT")}</span></p>
                   </div>
                 </div>
@@ -341,6 +511,17 @@ export function CrmLeadDetailsSheet({
                             trial: String(commercialTrialDays),
                             taxa: String(commercialTaxaAtivacao),
                             mensalidade: String(commercialMensalidade),
+                            preset: commercialPreset,
+                            niveis: (commercialNiveisEnsino || []).join(","),
+                            sec_nome: commercialSecretaria?.nome || "",
+                            sec_email: commercialSecretaria?.email || "",
+                            sec_tel: commercialSecretaria?.telefone || "",
+                            fin_nome: commercialFinanceiro?.nome || "",
+                            fin_email: commercialFinanceiro?.email || "",
+                            fin_tel: commercialFinanceiro?.telefone || "",
+                            ped_nome: commercialPedagogico?.nome || "",
+                            ped_email: commercialPedagogico?.email || "",
+                            ped_tel: commercialPedagogico?.telefone || "",
                           });
                           window.open(`/crm/proposta/preview?${params.toString()}`, '_blank');
                         }}

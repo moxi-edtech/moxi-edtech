@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2 } from "lucide-react";
@@ -19,6 +19,32 @@ import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+
+type PublishWarning = {
+  code?: "CARGA_HORARIA_MISSING" | "CARGA_HORARIA_MISMATCH" | string;
+  message?: string;
+  details?: Array<{ disciplina_id: string; disciplina_nome?: string | null }>;
+};
+
+type CurriculoDisciplinaItem = {
+  id: string;
+  nome: string;
+  codigo: string;
+  carga_horaria_semanal: number;
+  base_weekly_hours?: number | null;
+  classificacao?: "core" | "complementar" | "optativa" | null;
+  periodos_ativos?: number[] | null;
+  entra_no_horario?: boolean | null;
+  is_avaliavel?: boolean | null;
+  conta_para_media_med?: boolean | null;
+  avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
+  avaliacao_disciplina_id?: string | null;
+  area?: string | null;
+  is_core?: boolean | null;
+  matrix_ids: string[];
+  class_ids?: string[];
+  matrix_by_class?: Record<string, string[]>;
+};
 
 function formatSlotSaveError(json: any) {
   if (json?.error === "SLOT_TEMPORAL_CONFLICT") {
@@ -82,27 +108,7 @@ function QuadroHorariosContent() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [escolaNome, setEscolaNome] = useState<string>("");
   const [curriculoModalOpen, setCurriculoModalOpen] = useState(false);
-  const [curriculoDisciplinas, setCurriculoDisciplinas] = useState<
-    Array<{
-      id: string;
-      nome: string;
-      codigo: string;
-      carga_horaria_semanal: number;
-      base_weekly_hours?: number | null;
-      classificacao?: "core" | "complementar" | "optativa" | null;
-      periodos_ativos?: number[] | null;
-      entra_no_horario?: boolean | null;
-      is_avaliavel?: boolean | null;
-      conta_para_media_med?: boolean | null;
-      avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
-      avaliacao_disciplina_id?: string | null;
-      area?: string | null;
-      is_core?: boolean | null;
-      matrix_ids: string[];
-      class_ids?: string[];
-      matrix_by_class?: Record<string, string[]>;
-    }>
-  >([]);
+  const [curriculoDisciplinas, setCurriculoDisciplinas] = useState<CurriculoDisciplinaItem[]>([]);
   const [curriculoClasses, setCurriculoClasses] = useState<Array<{ id: string; nome: string }>>([]);
   const [curriculoSelectedId, setCurriculoSelectedId] = useState<string | null>(null);
   const [professores, setProfessores] = useState<Array<{ id: string; nome: string }>>([]);
@@ -127,6 +133,7 @@ function QuadroHorariosContent() {
     setAulas,
     setGrid,
   } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup, refreshToken });
+  const hasMissingLoadInAulas = aulas.some((aula) => aula.missingLoad);
 
   useEffect(() => {
     setIsMounted(true);
@@ -261,10 +268,7 @@ function QuadroHorariosContent() {
     });
   }, [searchParams, turmas]);
 
-  useEffect(() => {
-    const targetCursoId = turmas.find((turma) => turma.id === turmaId)?.curso_id;
-    if (!curriculoModalOpen || !targetCursoId || !escolaId) return;
-    let active = true;
+  const loadCurriculoDisciplinas = useCallback(async (targetCursoId: string) => {
     const normalize = (value: string) =>
       value
         .normalize("NFD")
@@ -275,91 +279,96 @@ function QuadroHorariosContent() {
       return match ? Number(match[1]) : null;
     };
 
-    Promise.all([
+    const [disciplinasJson, padroesJson] = await Promise.all([
       fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${targetCursoId}&limit=500`, {
         cache: "force-cache",
       }).then((res) => res.json()),
       fetch(`/api/escolas/${escolaId}/curriculo/padroes?curso_id=${targetCursoId}`, {
         cache: "force-cache",
       }).then((res) => res.json()),
-    ])
-      .then(([disciplinasJson, padroesJson]) => {
-        if (!active) return;
-        const rows = Array.isArray(disciplinasJson?.data) ? disciplinasJson.data : [];
-        const presetMap = new Map<string, number>();
-        const presetItems = Array.isArray(padroesJson?.items) ? padroesJson.items : [];
-        for (const item of presetItems) {
-          const classNum = parseClassNumber(item.grade_level ?? "");
-          if (!classNum) continue;
-          const key = `${classNum}:${normalize(item.name ?? "")}`;
-          presetMap.set(key, Number(item.weekly_hours) || 0);
-        }
+    ]);
 
-        const classMap = new Map<string, string>();
-        rows.forEach((row: any) => {
-          if (row.classe_id) {
-            classMap.set(row.classe_id, row.classe_nome ?? row.classe_id);
-          }
-        });
-        const classes = Array.from(classMap.entries()).map(([id, nome]) => ({ id, nome }));
+    const rows = Array.isArray(disciplinasJson?.data) ? disciplinasJson.data : [];
+    const presetMap = new Map<string, number>();
+    const presetItems = Array.isArray(padroesJson?.items) ? padroesJson.items : [];
+    for (const item of presetItems) {
+      const classNum = parseClassNumber(item.grade_level ?? "");
+      if (!classNum) continue;
+      const key = `${classNum}:${normalize(item.name ?? "")}`;
+      presetMap.set(key, Number(item.weekly_hours) || 0);
+    }
 
-        const disciplinaGroups = new Map<string, any[]>();
-        rows.forEach((item: any) => {
-          const key = item.disciplina_id ?? item.nome ?? item.id;
-          const bucket = disciplinaGroups.get(key) ?? [];
-          bucket.push(item);
-          disciplinaGroups.set(key, bucket);
-        });
+    const classMap = new Map<string, string>();
+    rows.forEach((row: any) => {
+      if (row.classe_id) {
+        classMap.set(row.classe_id, row.classe_nome ?? row.classe_id);
+      }
+    });
+    const classes = Array.from(classMap.entries()).map(([id, nome]) => ({ id, nome }));
 
-        const disciplinaList: typeof curriculoDisciplinas = [];
-        disciplinaGroups.forEach((items) => {
-          const primary = items[0];
-          const matrixIds = items.map((item: any) => item.id).filter(Boolean);
-          const classIds = items.map((item: any) => item.classe_id).filter(Boolean);
-          const matrixByClass: Record<string, string[]> = {};
-          items.forEach((item: any) => {
-            if (!item.classe_id || !item.id) return;
-            matrixByClass[item.classe_id] = matrixByClass[item.classe_id] || [];
-            matrixByClass[item.classe_id].push(item.id);
-          });
-          const classNum = parseClassNumber(primary.classe_nome ?? "");
-          const baseKey = classNum ? `${classNum}:${normalize(primary.nome ?? "")}` : null;
-          const baseWeeklyHours = baseKey ? presetMap.get(baseKey) ?? null : null;
-          disciplinaList.push({
-            id: primary.disciplina_id ?? primary.id,
-            nome: primary.nome ?? "Disciplina",
-            codigo: primary.sigla ?? primary.codigo ?? "",
-            carga_horaria_semanal: primary.carga_horaria_semanal ?? 0,
-            base_weekly_hours: baseWeeklyHours,
-            classificacao: primary.classificacao ?? null,
-            periodos_ativos: primary.periodos_ativos ?? null,
-            entra_no_horario: primary.entra_no_horario ?? true,
-            avaliacao_mode_key: primary.avaliacao_mode ?? null,
-            avaliacao_disciplina_id: primary.avaliacao_disciplina_id ?? null,
-            area: primary.area ?? null,
-            is_core: primary.is_core ?? null,
-            matrix_ids: matrixIds,
-            class_ids: classIds,
-            matrix_by_class: matrixByClass,
-          });
-        });
+    const disciplinaGroups = new Map<string, any[]>();
+    rows.forEach((item: any) => {
+      const key = item.disciplina_id ?? item.nome ?? item.id;
+      const bucket = disciplinaGroups.get(key) ?? [];
+      bucket.push(item);
+      disciplinaGroups.set(key, bucket);
+    });
 
-        disciplinaList.sort((a, b) => a.nome.localeCompare(b.nome));
-        setCurriculoClasses(classes);
-        setCurriculoDisciplinas(disciplinaList);
-        setCurriculoSelectedId((prev) => {
-          if (prev && disciplinaList.some((disc) => disc.id === prev)) return prev;
-          return disciplinaList[0]?.id ?? null;
-        });
-      })
-      .catch(() => null)
-      .finally(() => {
-        if (!active) return;
+    const disciplinaList: CurriculoDisciplinaItem[] = [];
+    disciplinaGroups.forEach((items) => {
+      const primary = items[0];
+      const matrixIds = items.map((item: any) => item.id).filter(Boolean);
+      const classIds = items.map((item: any) => item.classe_id).filter(Boolean);
+      const matrixByClass: Record<string, string[]> = {};
+      items.forEach((item: any) => {
+        if (!item.classe_id || !item.id) return;
+        matrixByClass[item.classe_id] = matrixByClass[item.classe_id] || [];
+        matrixByClass[item.classe_id].push(item.id);
       });
+      const classNum = parseClassNumber(primary.classe_nome ?? "");
+      const baseKey = classNum ? `${classNum}:${normalize(primary.nome ?? "")}` : null;
+      const baseWeeklyHours = baseKey ? presetMap.get(baseKey) ?? null : null;
+      disciplinaList.push({
+        id: primary.disciplina_id ?? primary.id,
+        nome: primary.nome ?? "Disciplina",
+        codigo: primary.sigla ?? primary.codigo ?? "",
+        carga_horaria_semanal: primary.carga_horaria_semanal ?? 0,
+        base_weekly_hours: baseWeeklyHours,
+        classificacao: primary.classificacao ?? null,
+        periodos_ativos: primary.periodos_ativos ?? null,
+        entra_no_horario: primary.entra_no_horario ?? true,
+        is_avaliavel: primary.is_avaliavel ?? true,
+        conta_para_media_med: primary.conta_para_media_med ?? true,
+        avaliacao_mode_key: primary.avaliacao_mode ?? null,
+        avaliacao_disciplina_id: primary.avaliacao_disciplina_id ?? null,
+        area: primary.area ?? null,
+        is_core: primary.is_core ?? null,
+        matrix_ids: matrixIds,
+        class_ids: classIds,
+        matrix_by_class: matrixByClass,
+      });
+    });
+
+    disciplinaList.sort((a, b) => a.nome.localeCompare(b.nome));
+    setCurriculoClasses(classes);
+    setCurriculoDisciplinas(disciplinaList);
+    setCurriculoSelectedId((prev) => {
+      if (prev && disciplinaList.some((disc) => disc.id === prev)) return prev;
+      return disciplinaList[0]?.id ?? null;
+    });
+  }, [escolaId]);
+
+  useEffect(() => {
+    const targetCursoId = turmas.find((turma) => turma.id === turmaId)?.curso_id;
+    if ((!curriculoModalOpen && !hasMissingLoadInAulas) || !targetCursoId || !escolaId) return;
+    let active = true;
+    loadCurriculoDisciplinas(targetCursoId).catch(() => {
+      if (!active) return;
+    });
     return () => {
       active = false;
     };
-  }, [curriculoModalOpen, escolaId, turmaId, turmas]);
+  }, [curriculoModalOpen, escolaId, turmaId, turmas, hasMissingLoadInAulas, loadCurriculoDisciplinas]);
 
   const turmaOptions = useMemo(() => {
     if (turmas.length === 0) {
@@ -400,7 +409,7 @@ function QuadroHorariosContent() {
   const horariosDisponiveis = useMemo(() => (slots.length > 0 ? slots : undefined), [slots]);
   const missingLoad = useMemo(() => aulasWithAllocations.filter((aula) => aula.missingLoad), [aulasWithAllocations]);
   const missingLoadCount = missingLoad.length;
-  const canPublicar = missingLoadCount === 0;
+  const canPublicar = true;
   const isLoading = baseLoading || turmaLoading;
   const showOfflineStatus = isMounted && !online;
   const totalDias = useMemo(() => {
@@ -440,6 +449,18 @@ function QuadroHorariosContent() {
     [aulasWithAllocations]
   );
   const conflitosCount = Object.keys(conflictSlots).length;
+  const missingLoadSuggestions = useMemo(
+    () =>
+      missingLoad.map((aula) => {
+        const curriculo = curriculoDisciplinas.find((disc) => disc.id === aula.id);
+        return {
+          ...aula,
+          suggestedHours: curriculo?.base_weekly_hours ?? null,
+          currentHours: curriculo?.carga_horaria_semanal ?? 0,
+        };
+      }),
+    [curriculoDisciplinas, missingLoad]
+  );
   const professorLoad = useMemo(() => {
     const map = new Map<string, { id: string; nome: string; count: number }>();
     for (const aula of aulasWithAllocations) {
@@ -826,6 +847,21 @@ function QuadroHorariosContent() {
 
       setConflictSlots({});
       setAutoDraftDirty(false);
+      if (mode === "publish" && Array.isArray(json?.warnings) && json.warnings.length > 0) {
+        const publishWarnings = json.warnings as PublishWarning[];
+        const warningDetails = publishWarnings
+          .map((item) => {
+            const count = Array.isArray(item?.details) ? item.details.length : 0;
+            if (item?.code === "CARGA_HORARIA_MISSING") return `${count} disciplina(s) sem carga`;
+            if (item?.code === "CARGA_HORARIA_MISMATCH") return `${count} disciplina(s) com distribuição divergente`;
+            return item?.message || "Pendência no quadro";
+          })
+          .join(" | ");
+        warning(
+          "Quadro publicado com pendências",
+          warningDetails || "Revise as cargas horárias quando terminar o primeiro ajuste."
+        );
+      }
       success(
         options?.successTitle ?? (mode === "publish" ? "Quadro publicado." : "Quadro salvo."),
         options?.successMessage
@@ -851,7 +887,7 @@ function QuadroHorariosContent() {
   const handleSalvar = (nextGrid: Record<string, string | null>) => submitQuadro(nextGrid, "draft");
   const handlePublicar = (nextGrid: Record<string, string | null>) => submitQuadro(nextGrid, "publish");
 
-  const handleAutoConfigurar = async () => {
+  const handleAutoConfigurar = async (options?: { rerunAutoComplete?: boolean }) => {
     if (!escolaId || !turmaId) return;
     setAutoConfiguring(true);
     try {
@@ -863,13 +899,24 @@ function QuadroHorariosContent() {
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok) {
         success("Cargas preenchidas", `${json?.data?.updated ?? 0} disciplina(s) atualizadas.`);
+        if (selectedTurma?.curso_id) {
+          await loadCurriculoDisciplinas(selectedTurma.curso_id).catch(() => null);
+        }
         setRefreshToken((prev) => prev + 1);
+        if (options?.rerunAutoComplete) {
+          await handleAutoCompletar();
+        }
       } else {
         error(json?.error || "Falha ao configurar cargas");
       }
     } finally {
       setAutoConfiguring(false);
     }
+  };
+
+  const openCurriculoForDisciplina = (disciplinaId: string) => {
+    setCurriculoSelectedId(disciplinaId);
+    setCurriculoModalOpen(true);
   };
 
   const handleAutoCompletar = async () => {
@@ -1054,9 +1101,52 @@ function QuadroHorariosContent() {
 
       success("Disciplina atualizada.");
       setCurriculoModalOpen(false);
+      if (selectedTurma?.curso_id) {
+        await loadCurriculoDisciplinas(selectedTurma.curso_id).catch(() => null);
+      }
       setRefreshToken((prev) => prev + 1);
     } catch (err) {
       error(err instanceof Error ? err.message : "Falha ao atualizar disciplina.");
+    }
+  };
+
+  const applySuggestedLoad = async (
+    disciplinaId: string,
+    suggestedHours: number | null,
+    options?: { rerunAutoComplete?: boolean }
+  ) => {
+    if (!suggestedHours || suggestedHours <= 0) {
+      openCurriculoForDisciplina(disciplinaId);
+      return;
+    }
+    const target = curriculoDisciplinas.find((disc) => disc.id === disciplinaId);
+    if (!target) {
+      openCurriculoForDisciplina(disciplinaId);
+      return;
+    }
+
+    await handleSaveCurriculoDisciplina({
+      id: target.id,
+      nome: target.nome,
+      codigo: target.codigo,
+      carga_horaria_semanal: suggestedHours,
+      classificacao: target.classificacao ?? (target.is_core ? "core" : "complementar"),
+      entra_no_horario: target.entra_no_horario ?? true,
+      is_avaliavel: target.is_avaliavel ?? true,
+      conta_para_media_med: target.conta_para_media_med ?? true,
+      avaliacao: {
+        mode: target.avaliacao_mode_key ?? "inherit_school",
+        base_id: target.avaliacao_disciplina_id ?? null,
+      },
+      area: target.area ?? null,
+      programa_texto: null,
+      periodos_ativos: target.periodos_ativos?.length ? target.periodos_ativos : [1, 2, 3],
+      periodo_mode: target.periodos_ativos?.length ? "custom" : "ano",
+      class_ids: target.class_ids ?? [],
+      apply_scope: "all",
+    });
+    if (options?.rerunAutoComplete) {
+      await handleAutoCompletar();
     }
   };
 
@@ -1332,7 +1422,59 @@ function QuadroHorariosContent() {
         {missingLoadCount > 0 && (
           <div className="mb-4 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
             <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
-            <div className="mt-1">Defina as cargas para publicar o quadro.</div>
+            <div className="mt-1">Pode publicar agora e ajustar as cargas depois em poucos cliques.</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleAutoConfigurar({ rerunAutoComplete: true })}
+                disabled={autoConfiguring}
+                className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {autoConfiguring ? "Ajustando..." : "Preencher e redistribuir"}
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {missingLoadSuggestions.slice(0, 6).map((disc) => (
+                <div
+                  key={disc.id}
+                  className="flex flex-col gap-2 rounded-xl border border-klasse-gold-200 bg-white/80 p-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <div className="font-semibold text-slate-900">{disc.disciplina}</div>
+                    <div className="text-xs text-slate-600">
+                      {disc.suggestedHours && disc.suggestedHours > 0
+                        ? `Sugestão MED: ${disc.suggestedHours} aula(s)/semana`
+                        : "Sem MED encontrada. Ajuste manualmente."}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {disc.suggestedHours && disc.suggestedHours > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          applySuggestedLoad(disc.id, disc.suggestedHours, { rerunAutoComplete: true })
+                        }
+                        className="rounded-lg border border-klasse-gold-300 bg-klasse-gold-100 px-3 py-2 text-xs font-bold text-klasse-gold-900"
+                      >
+                        Usar MED {disc.suggestedHours}h e redistribuir
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openCurriculoForDisciplina(disc.id)}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+                    >
+                      Editar
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {missingLoadSuggestions.length > 6 && (
+                <div className="text-xs text-slate-600">
+                  +{missingLoadSuggestions.length - 6} disciplina(s) com pendência. Use o modal para revisar o restante.
+                </div>
+              )}
+            </div>
           </div>
         )}
         {autoDraftDirty && turmaId && (
@@ -1378,9 +1520,7 @@ function QuadroHorariosContent() {
             autoConfiguring={autoConfiguring}
             onPublicar={handlePublicar}
             canPublicar={canPublicar}
-            publishDisabledReason={
-              canPublicar ? undefined : "Defina todas as cargas horárias antes de publicar."
-            }
+            publishDisabledReason={undefined}
             publishing={publishing}
           />
         )}

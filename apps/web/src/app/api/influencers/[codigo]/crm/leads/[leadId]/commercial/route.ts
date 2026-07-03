@@ -68,6 +68,11 @@ export async function PATCH(
     const taxaAtivacao = Number(body.taxa_ativacao);
     const mensalidadeKz = Number(body.mensalidade_kz);
     const commercialStatus = typeof body.commercial_status === "string" ? body.commercial_status : "rascunho";
+    const curriculumPreset = typeof body.curriculum_preset === "string" ? body.curriculum_preset : null;
+    const niveisEnsino = Array.isArray(body.niveis_ensino) ? body.niveis_ensino : [];
+    const contactoSecretaria = body.contacto_secretaria || null;
+    const contactoFinanceiro = body.contacto_financeiro || null;
+    const contactoPedagogico = body.contacto_pedagogico || null;
 
     const supabase = await supabaseRouteClient();
     const { data, error } = await (supabase.rpc as any)("update_influencer_crm_lead_commercial_terms", {
@@ -80,6 +85,11 @@ export async function PATCH(
       p_taxa_ativacao: Number.isFinite(taxaAtivacao) ? Math.max(0, Math.round(taxaAtivacao)) : null,
       p_mensalidade_kz: Number.isFinite(mensalidadeKz) ? Math.max(0, Math.round(mensalidadeKz)) : null,
       p_commercial_status: commercialStatus,
+      p_curriculum_preset: curriculumPreset,
+      p_niveis_ensino: niveisEnsino,
+      p_contacto_secretaria: contactoSecretaria,
+      p_contacto_financeiro: contactoFinanceiro,
+      p_contacto_pedagogico: contactoPedagogico,
     });
 
     if (error || !data?.ok) {

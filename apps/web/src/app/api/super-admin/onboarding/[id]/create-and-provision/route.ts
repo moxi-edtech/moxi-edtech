@@ -3,6 +3,7 @@ import { supabaseRouteClient } from "@/lib/supabaseServer";
 import type { DBWithRPC } from "@/types/supabase-augment";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 import { CreateEscolaBodySchema, CreateSchoolError, finalizeSchoolAdminAndEmails } from "@/lib/escolas/create-school";
+import { applyCurriculumPreset, type CurriculumKey } from "@/lib/academico/curriculum-apply";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,63 @@ export async function POST(
       adminNome,
       adminPapel: createAndProvisionBody.admin?.papel ?? "admin",
     });
+
+    const anoLetivoId = (payload?.provision as any)?.ano_letivo_id;
+
+    // Apply curriculum preset automatically if defined in the onboarding request
+    if (anoLetivoId) {
+      try {
+        const { data: reqData } = await (auth.supabase
+          .from("onboarding_requests")
+          .select("curriculum_preset, financeiro")
+          .eq("id", id) as any)
+          .maybeSingle();
+
+        const presetKey = (reqData as any)?.curriculum_preset || (reqData as any)?.financeiro?.curriculum_preset;
+
+        if (presetKey) {
+          const { data: anoLetivoRow } = await auth.supabase
+            .from("anos_letivos")
+            .select("ano")
+            .eq("id", anoLetivoId)
+            .maybeSingle();
+
+          const ano = anoLetivoRow?.ano ? Number(anoLetivoRow.ano) : new Date().getFullYear();
+
+          const applyResult = await applyCurriculumPreset({
+            supabase: auth.supabase,
+            escolaId: escolaId,
+            presetKey: presetKey as CurriculumKey,
+            createTurmas: false,
+            createCurriculo: true,
+            anoLetivoId,
+            anoLetivo: ano,
+          });
+
+          if (applyResult?.curriculo?.id) {
+            const { error: publishError } = await auth.supabase.rpc("curriculo_publish", {
+              p_escola_id: escolaId,
+              p_curso_id: applyResult.curso.id,
+              p_ano_letivo_id: anoLetivoId,
+              p_version: applyResult.curriculo.version,
+              p_rebuild_turmas: true,
+              p_classe_id: null,
+            });
+
+            if (publishError) {
+              console.error("[onboarding.create-and-provision] Falha ao publicar curriculo auto-instalado:", publishError);
+            } else {
+              // Rebuild the dashboard counts and curriculum stats
+              try {
+                await auth.supabase.rpc("refresh_mv_escola_cursos_stats");
+              } catch {}
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[onboarding.create-and-provision] Erro ao auto-instalar preset curricular:", err);
+      }
+    }
 
     return NextResponse.json({
       ok: true,

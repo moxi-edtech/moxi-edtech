@@ -23,6 +23,12 @@ const BodySchema = z.object({
   mode: z.enum(['draft', 'publish']).optional(),
 })
 
+type PublishWarning = {
+  code: 'CARGA_HORARIA_MISSING' | 'CARGA_HORARIA_MISMATCH'
+  message: string
+  details: Array<{ disciplina_id: string; disciplina_nome?: string | null }>
+}
+
 async function resolveVersionForRead(
   supabase: any,
   escolaId: string,
@@ -163,6 +169,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const slotIds = Array.from(new Set(payload.map((item) => item.slot_id)))
     const professorIds = Array.from(new Set(payload.map((item) => item.professor_id).filter(Boolean)))
     const salaIds = Array.from(new Set(payload.map((item) => item.sala_id).filter(Boolean)))
+    const publishWarnings: PublishWarning[] = []
 
     const conflicts: Array<{ slot_id: string; professor_id?: string | null; sala_id?: string | null }>
       = []
@@ -260,15 +267,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
 
       if (missing.length > 0 || mismatch.length > 0) {
-        emitObs('error', 400, {
-          error_code: 'CARGA_HORARIA_INCOMPLETA',
-          missing_count: missing.length,
-          mismatch_count: mismatch.length,
-        })
-        return NextResponse.json(
-          { ok: false, error: 'CARGA_HORARIA_INCOMPLETA', details: { missing, mismatch } },
-          { status: 400 }
-        )
+        if (missing.length > 0) {
+          publishWarnings.push({
+            code: 'CARGA_HORARIA_MISSING',
+            message: 'Existem disciplinas sem carga horária semanal definida.',
+            details: missing,
+          })
+        }
+        if (mismatch.length > 0) {
+          publishWarnings.push({
+            code: 'CARGA_HORARIA_MISMATCH',
+            message: 'A distribuição publicada não cobre exatamente a carga horária esperada.',
+            details: mismatch,
+          })
+        }
       }
     }
 
@@ -299,8 +311,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (mode === 'publish') {
       const publishedVersionId = (upsertResult as { published_id?: string | null } | null)?.published_id ?? null
-      emitObs('success', 200, { published: true, versao_id: String(publishedVersionId || versaoId) })
-      const response = NextResponse.json({ ok: true, versao_id: String(publishedVersionId || versaoId), status: 'publicada', items: data || [] })
+      emitObs('success', 200, {
+        published: true,
+        versao_id: String(publishedVersionId || versaoId),
+        warnings_count: publishWarnings.length,
+        warning_codes: publishWarnings.map((warning) => warning.code),
+      })
+      const response = NextResponse.json({
+        ok: true,
+        versao_id: String(publishedVersionId || versaoId),
+        status: 'publicada',
+        items: data || [],
+        warnings: publishWarnings,
+      })
       response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
       return response
     }

@@ -11,7 +11,264 @@ import { hasPermission } from "@/lib/permissions"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { invalidateEscolaSlugCache } from "@/lib/tenant/resolveEscolaParam"
 import { supabaseServerRole } from "@/lib/supabaseServerRole"
+import { buildBaseHorarioAssignments } from "@/lib/horarios/buildBaseHorarioAssignments"
 import { resolveUniversalLoginUrl } from "@/middleware"
+
+type FinalizePendingAction = {
+  title: string
+  detail: string
+  href: string
+}
+
+type FinalizeSummary = {
+  school_name: string | null
+  curriculos_publicados: number
+  cursos_processados: number
+  turmas_planeadas: number
+  professores_auto_atribuidos: number
+  cargas_auto_corrigidas: number
+  horarios_publicados: number
+  horarios_pendentes: number
+  horarios_publicados_turmas: string[]
+  horarios_pendentes_turmas: string[]
+  pending_actions: FinalizePendingAction[]
+  next_steps: string[]
+}
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+}
+
+function isPracticalDiscipline(name: string) {
+  const value = normalizeText(name)
+  return (
+    value.includes("laborat") ||
+    value.includes("oficina") ||
+    value.includes("pratica") ||
+    value.includes("atelier") ||
+    value.includes("ateli")
+  )
+}
+
+function getTurnoIdFromTurma(turno?: string | null) {
+  const rawTurno = String(turno || "").toUpperCase()
+  if (rawTurno === "T") return "tarde"
+  if (rawTurno === "N") return "noite"
+  return "matinal"
+}
+
+function buildDefaultSlots(escolaId: string, turnoId: string) {
+  const timeConfigs = turnoId === 'tarde'
+    ? [
+        { ordem: 1, inicio: '13:00:00', fim: '13:50:00', is_intervalo: false },
+        { ordem: 2, inicio: '13:50:00', fim: '14:40:00', is_intervalo: false },
+        { ordem: 3, inicio: '14:40:00', fim: '15:30:00', is_intervalo: false },
+        { ordem: 4, inicio: '15:30:00', fim: '15:50:00', is_intervalo: true },
+        { ordem: 5, inicio: '15:50:00', fim: '16:40:00', is_intervalo: false },
+        { ordem: 6, inicio: '16:40:00', fim: '17:30:00', is_intervalo: false },
+      ]
+    : turnoId === 'noite'
+      ? [
+          { ordem: 1, inicio: '18:00:00', fim: '18:50:00', is_intervalo: false },
+          { ordem: 2, inicio: '18:50:00', fim: '19:40:00', is_intervalo: false },
+          { ordem: 3, inicio: '19:40:00', fim: '20:30:00', is_intervalo: false },
+          { ordem: 4, inicio: '20:30:00', fim: '20:45:00', is_intervalo: true },
+          { ordem: 5, inicio: '20:45:00', fim: '21:35:00', is_intervalo: false },
+          { ordem: 6, inicio: '21:35:00', fim: '22:25:00', is_intervalo: false },
+        ]
+      : [
+          { ordem: 1, inicio: '07:30:00', fim: '08:20:00', is_intervalo: false },
+          { ordem: 2, inicio: '08:20:00', fim: '09:10:00', is_intervalo: false },
+          { ordem: 3, inicio: '09:10:00', fim: '10:00:00', is_intervalo: false },
+          { ordem: 4, inicio: '10:00:00', fim: '10:20:00', is_intervalo: true },
+          { ordem: 5, inicio: '10:20:00', fim: '11:10:00', is_intervalo: false },
+          { ordem: 6, inicio: '11:10:00', fim: '12:00:00', is_intervalo: false },
+        ]
+
+  const slots: Array<Record<string, unknown>> = []
+  for (let dia = 1; dia <= 5; dia += 1) {
+    for (const cfg of timeConfigs) {
+      slots.push({
+        escola_id: escolaId,
+        turno_id: turnoId,
+        dia_semana: dia,
+        ordem: cfg.ordem,
+        inicio: cfg.inicio,
+        fim: cfg.fim,
+        is_intervalo: cfg.is_intervalo,
+      })
+    }
+  }
+  return slots
+}
+
+async function autoPrepareOperationalBase(supabase: any, escolaId: string) {
+  let professoresAutoAtribuidos = 0
+  let cargasAutoCorrigidas = 0
+  const horariosPublicadosTurmas: string[] = []
+  const horariosPendentesTurmas: string[] = []
+
+  const { data: teacherData } = await supabase.rpc('auto_assign_school_teachers_by_specialty', {
+    p_escola_id: escolaId,
+  })
+  professoresAutoAtribuidos = Number(teacherData?.assigned_count || 0)
+
+  const { data: turmas, error: turmasErr } = await supabase
+    .from('turmas')
+    .select('id, nome, turno')
+    .eq('escola_id', escolaId)
+
+  if (turmasErr) {
+    throw new Error(`Erro ao preparar horários: ${turmasErr.message}`)
+  }
+
+  for (const turma of turmas || []) {
+    const { data: cargas } = await supabase.rpc('horario_auto_configurar_cargas', {
+      p_escola_id: escolaId,
+      p_turma_id: turma.id,
+      p_strategy: 'preset_then_default',
+      p_overwrite: false,
+    })
+    cargasAutoCorrigidas += Array.isArray(cargas) ? cargas.length : 0
+
+    const { data: publishedVer } = await supabase
+      .from('horario_versoes')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turma.id)
+      .eq('status', 'publicada')
+      .limit(1)
+      .maybeSingle()
+
+    if (publishedVer?.id) {
+      horariosPublicadosTurmas.push(String(turma.nome || turma.id))
+      continue
+    }
+
+    const { data: versionId, error: verErr } = await supabase.rpc('ensure_horario_versao', {
+      p_escola_id: escolaId,
+      p_turma_id: turma.id,
+      p_versao_id: undefined,
+      p_status: 'draft',
+    })
+
+    if (verErr || !versionId) {
+      horariosPendentesTurmas.push(String(turma.nome || turma.id))
+      continue
+    }
+
+    const { data: subjects } = await supabase
+      .from('turma_disciplinas')
+      .select('id, curso_matriz_id, professor_id, entra_no_horario, carga_horaria_semanal, curso_matriz:curso_matriz_id(disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(nome))')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turma.id)
+
+    const activeSubjects = (subjects || []).filter((s: any) => s.entra_no_horario !== false)
+    if (activeSubjects.length === 0) {
+      horariosPendentesTurmas.push(String(turma.nome || turma.id))
+      continue
+    }
+
+    const turnoId = getTurnoIdFromTurma(turma.turno)
+    let { data: slots } = await supabase
+      .from('horario_slots')
+      .select('id, dia_semana, ordem, turno_id, is_intervalo')
+      .eq('escola_id', escolaId)
+      .eq('turno_id', turnoId)
+      .order('dia_semana', { ascending: true })
+      .order('ordem', { ascending: true })
+
+    if (!slots || slots.length === 0) {
+      const { data: insertedSlots, error: insertSlotsErr } = await supabase
+        .from('horario_slots')
+        .insert(buildDefaultSlots(escolaId, turnoId))
+        .select('id, dia_semana, ordem, turno_id, is_intervalo')
+
+      if (insertSlotsErr || !insertedSlots) {
+        horariosPendentesTurmas.push(String(turma.nome || turma.id))
+        continue
+      }
+      slots = insertedSlots
+    }
+
+    const activeSlots = (slots || []).filter((slot: any) => slot.is_intervalo === false)
+    if (activeSlots.length === 0) {
+      horariosPendentesTurmas.push(String(turma.nome || turma.id))
+      continue
+    }
+
+    const itemsToInsert: Array<Record<string, unknown>> = buildBaseHorarioAssignments(
+      activeSubjects
+        .map((subject: any) => ({
+          disciplinaId: subject.curso_matriz?.disciplina_id ?? null,
+          professorId: subject.professor_id ?? null,
+          cargaSemanal: Number(
+            subject.carga_horaria_semanal ??
+            subject.curso_matriz?.carga_horaria_semanal ??
+            0,
+          ),
+          requiresDouble: Number(
+            subject.carga_horaria_semanal ??
+            subject.curso_matriz?.carga_horaria_semanal ??
+            0,
+          ) >= 3,
+          isPractical: isPracticalDiscipline(String(subject.curso_matriz?.disciplina?.nome ?? "")),
+        }))
+        .filter((subject) => Boolean(subject.disciplinaId)),
+      activeSlots.map((slot: any) => ({
+        id: slot.id,
+        day: slot.dia_semana,
+        ordem: slot.ordem,
+        isIntervalo: Boolean(slot.is_intervalo),
+      })),
+    ).map((assignment) => ({
+      escola_id: escolaId,
+      turma_id: turma.id,
+      disciplina_id: assignment.disciplinaId,
+      professor_id: assignment.professorId,
+      slot_id: assignment.slotId,
+      versao_id: String(versionId),
+    }))
+
+    if (itemsToInsert.length === 0) {
+      horariosPendentesTurmas.push(String(turma.nome || turma.id))
+      continue
+    }
+
+    await supabase
+      .from('quadro_horarios')
+      .delete()
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turma.id)
+      .eq('versao_id', String(versionId))
+
+    const { error: insertErr } = await supabase
+      .from('quadro_horarios')
+      .insert(itemsToInsert)
+
+    if (insertErr) {
+      horariosPendentesTurmas.push(String(turma.nome || turma.id))
+      continue
+    }
+
+    await supabase
+      .from('horario_versoes')
+      .update({ status: 'publicada', publicado_em: new Date().toISOString() })
+      .eq('id', String(versionId))
+
+    horariosPublicadosTurmas.push(String(turma.nome || turma.id))
+  }
+
+  return {
+    professoresAutoAtribuidos,
+    cargasAutoCorrigidas,
+    horariosPublicadosTurmas,
+    horariosPendentesTurmas,
+  }
+}
 
 // POST /api/escolas/[id]/onboarding
 // Authorizes current user against the target escola, then performs updates/inserts
@@ -223,6 +480,8 @@ export async function POST(
         noite: Number(row.noite ?? 0),
       }))
       .filter((row) => row.nome && row.cursoKey)
+    let finalizeSummary: FinalizeSummary | null = null
+    let nextPathResolved = nextPath ?? `/escola/${escolaParam}/admin/dashboard`
 
     // 3) Bloqueia onboarding para escolas suspensas/excluídas
     const { data: esc } = await sserver.from('escolas').select('status, dados_pagamento').eq('id', escolaIdResolved).limit(1)
@@ -562,6 +821,53 @@ export async function POST(
       } catch {
         // best effort only
       }
+
+      const operationalBase = await autoPrepareOperationalBase(admin as any, escolaIdResolved)
+      nextPathResolved = nextPath ?? `/escola/${escolaParam}/admin/dashboard`
+      const pendingActions: FinalizePendingAction[] = []
+
+      if (operationalBase.horariosPendentesTurmas.length > 0) {
+        pendingActions.push({
+          title: 'Revisar horários pendentes',
+          detail: `${operationalBase.horariosPendentesTurmas.length} turma(s) ainda precisam de ajuste fino no quadro.`,
+          href: `/escola/${escolaParam}/admin/configuracoes/sistema`,
+        })
+      }
+
+      pendingActions.push({
+        title: 'Ajustar turmas e currículo',
+        detail: 'Se precisar mexer em classes, disciplinas ou cargas, faça isso no painel de turmas e currículo.',
+        href: `/escola/${escolaParam}/admin/configuracoes/turmas`,
+      })
+      pendingActions.push({
+        title: 'Editar quadro de horários',
+        detail: 'Use o quadro para trocar tempos, professores e salas sem refazer o onboarding.',
+        href: `/escola/${escolaParam}/horarios/quadro`,
+      })
+      pendingActions.push({
+        title: 'Revisar calendário e regras',
+        detail: 'Calendário letivo, avaliação e frequência podem ser refinados depois do arranque.',
+        href: `/escola/${escolaParam}/admin/configuracoes/calendario`,
+      })
+
+      finalizeSummary = {
+        school_name: schoolName || null,
+        curriculos_publicados: rowsByCourse.size,
+        cursos_processados: rowsByCourse.size,
+        turmas_planeadas: requestedTurmas,
+        professores_auto_atribuidos: operationalBase.professoresAutoAtribuidos,
+        cargas_auto_corrigidas: operationalBase.cargasAutoCorrigidas,
+        horarios_publicados: operationalBase.horariosPublicadosTurmas.length,
+        horarios_pendentes: operationalBase.horariosPendentesTurmas.length,
+        horarios_publicados_turmas: operationalBase.horariosPublicadosTurmas,
+        horarios_pendentes_turmas: operationalBase.horariosPendentesTurmas,
+        pending_actions: pendingActions,
+        next_steps: [
+          'Revise o resumo final e confirme as áreas operacionais verdes.',
+          'Use os atalhos do resumo para ajustar currículo, calendário ou horários quando necessário.',
+          'Siga para o dashboard e acompanhe os primeiros lançamentos da escola.',
+        ],
+      }
     }
 
     // 4) Atualizações via RLS (user context)
@@ -611,7 +917,8 @@ export async function POST(
 
       return NextResponse.json({
         ok: true,
-        nextPath: nextPath ?? `/escola/${escolaParam}/admin/dashboard`,
+        nextPath: nextPathResolved ?? `/escola/${escolaParam}/admin/dashboard`,
+        summary: finalizeSummary,
         invites: { sent: [], updated: [], failed: [] },
       })
     }

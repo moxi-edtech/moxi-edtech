@@ -14,6 +14,10 @@ export interface AlunoCSV {
   TELEFONE_ENCARREGADO?: string | number;
   EMAIL_ENCARREGADO?: string;
   TURMA_CODIGO?: string;
+  CURSO_CODIGO?: string;
+  CLASSE_NUMERO?: string | number;
+  TURNO_CODIGO?: string;
+  TURMA_LETRA?: string;
 
   // Legado / compatibilidade
   nome?: string;
@@ -59,7 +63,11 @@ export interface AlunoStagingRecord {
   numero_processo?: string; // NOVO: Número de Processo (opcional)
 
   // dados escolares para ajudar na matrícula em massa
-  turma_codigo?: string;      // NOVO: Código da Turma (ex: "10-A")
+  curso_codigo?: string;      // Ex.: TI, ESG, EP
+  classe_numero?: number;     // Ex.: 7, 10, 12
+  turno_codigo?: string;      // Ex.: M, T, N
+  turma_letra?: string;       // Ex.: A, B, AA
+  turma_codigo?: string;      // Código canônico derivado ou informado
   ano_letivo?: number;        // Ex.: 2025
   numero_matricula?: string;  // Opcional; pode ser gerado
 
@@ -78,7 +86,7 @@ export interface ImportResult {
   skipped?: number;
   errors: number;
   warnings_turma?: number;
-  turmas_created?: number; // Turmas criadas automaticamente (rascunho)
+    turmas_created?: number; // Turmas criadas automaticamente
   cursos_created?: number; // Cursos pendentes/gerados
 }
 
@@ -97,6 +105,10 @@ export interface MappedColumns {
 
   // Matrícula – colunas do CSV que mapeiam para os campos do staging
   turma_codigo?: string;      // NOVO: Código da Turma
+  curso_codigo?: string;
+  classe_numero?: string;
+  turno_codigo?: string;
+  turma_letra?: string;
   ano_letivo?: string;
   numero_matricula?: string;
 

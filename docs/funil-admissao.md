@@ -133,3 +133,4 @@ Caso pagamento parcial:
 - `Playwright` não está instalado em `apps/web`; os E2Es desta correção foram transacionais no banco, porque a causa raiz estava no contrato backend/RPC.
 - O branch local está à frente do GitHub; os commits precisam ser enviados para `origin/main`.
 - A rota `/api/secretaria/admissoes/approve` ainda existe para compatibilidade, mas não deve ser chamada por UI de finalização de matrícula.
+
