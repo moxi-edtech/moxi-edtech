@@ -55,7 +55,7 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/
    - Mensalidade acordada.
    - Status comercial (`rascunho`, `proposta_enviada`, `aceite_comercial` ou `aguardando_contrato_klasse`).
 4. **Anexar Documento Comercial:** Se houver proposta em PDF, imagem ou contrato preliminar, use a ação `Anexar proposta` para guardar o ficheiro no lead.
-5. **Registrar Aceite Comercial:** Quando a escola aprovar a proposta, atualize o status comercial para `aceite_comercial` ou `aguardando_contrato_klasse`, conforme o momento do contrato.
+5. **Registrar e Salvar Aceite Comercial (CRUCIAL):** Quando a escola aprovar a proposta, altere o status comercial para `aceite_comercial` ou `aguardando_contrato_klasse` no formulário e clique obrigatoriamente no botão **"Salvar Termos Comerciais"** (localizado logo abaixo). Se não clicar em salvar, a alteração de status não persistirá no banco de dados e o botão de conversão continuará bloqueado.
 6. **Acionar Conversão:** No bloco `Ativação da Escola`, clique em **Criar pedido de onboarding**.
    - O sistema executará a RPC interna `convert_influencer_crm_lead_to_onboarding`.
    - Será gerada uma solicitação oficial na tabela `onboarding_requests`.

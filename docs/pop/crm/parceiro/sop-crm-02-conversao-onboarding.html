@@ -303,7 +303,7 @@ tr:nth-child(even) {
           <em>*Caso note alguma divergência, altere e salve os dados do lead comercial antes de prosseguir com a conversão.*</em>
         </li>
         <li><strong>Anexar o Documento Comercial:</strong> Se existir proposta em PDF, imagem ou contrato preliminar, usar a ação <strong>Anexar proposta</strong> para guardar o ficheiro no lead.</li>
-        <li><strong>Registrar o Aceite Comercial:</strong> Quando a escola aprovar a proposta, marcar o status como <code>aceite_comercial</code> ou <code>aguardando_contrato_klasse</code>, conforme o estágio contratual.</li>
+        <li><strong>Registrar e Salvar o Aceite Comercial (CRUCIAL):</strong> Quando a escola aprovar a proposta, marcar o status como <code>aceite_comercial</code> ou <code>aguardando_contrato_klasse</code> no formulário e clicar obrigatoriamente no botão <strong>"Salvar Termos Comerciais"</strong> (localizado logo abaixo). Se não clicar em salvar, a alteração de status não persistirá no banco de dados e o botão de conversão continuará bloqueado.</li>
         <li><strong>Acionar Conversão de Lead:</strong> No painel <strong>Ativação da Escola</strong>, clicar no botão <strong>Iniciar ativação</strong>.
           <ul>
             <li>O sistema executa internamente a RPC <code>convert_influencer_crm_lead_to_onboarding</code>.</li>
