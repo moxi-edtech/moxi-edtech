@@ -7,7 +7,7 @@ Perfil principal: afiliado_membro (Operador do Parceiro)
 
 ## 1. Objetivo
 
-Converter um lead qualificado do CRM comercial em um pedido oficial de onboarding (`onboarding_request`), gerar o `tracking_token` e iniciar corretamente o workflow operacional de 7 etapas.
+Converter um lead qualificado do CRM comercial em um pedido oficial de onboarding (`onboarding_request`), gerar o `tracking_token` e iniciar corretamente o workflow operacional actual de 6 etapas.
 
 ## 2. Quando usar
 
@@ -50,7 +50,7 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx` e `apps/web/src
 4. **Acionar Conversão:** No bloco `Ativação da Escola`, clique em **Criar pedido de onboarding**.
    - O sistema executará a RPC interna `convert_influencer_crm_lead_to_onboarding`.
    - Será gerada uma solicitação oficial na tabela `onboarding_requests`.
-   - O sistema criará automaticamente as **7 etapas de onboarding** correspondentes na tabela `onboarding_steps`.
+   - O sistema criará automaticamente as **6 etapas de onboarding** correspondentes na tabela `onboarding_steps`.
    - Será gerado um token curto e seguro de rastreamento (ex.: `AELS-91PA-TRM8`).
    - O pedido nasce com status `pendente`.
 5. **Entregar Acesso à Escola:**
@@ -60,25 +60,24 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx` e `apps/web/src
 ## 5.1 Fluxo real após a conversão
 
 1. `diagnostico`
-2. `docs_legais`
-3. `planilhas`
-4. `validacao`
-5. `config`
-6. `treinamento`
-7. `live`
+2. `planilhas`
+3. `validacao`
+4. `config`
+5. `treinamento`
+6. `live`
 
 Regras operacionais:
 
-- Upload move etapa documental para `em_progresso`.
+- Upload de planilhas move a etapa para `em_progresso`.
 - Triagem do parceiro nao conclui etapa.
 - Aprovacao final da KLASSE conclui etapa.
-- Provisionamento so acontece com as 7 etapas em `concluido`.
+- Provisionamento so acontece com as 6 etapas em `concluido`.
 
 ## 6. Resultado esperado
 
 - Status do lead no CRM atualizado para `'ganho'`.
 - Registro de onboarding criado com status `'pendente'`.
-- Linha do tempo de 7 etapas ativa e visível tanto para a escola quanto para o parceiro.
+- Linha do tempo de 6 etapas ativa e visível tanto para a escola quanto para o parceiro.
 - Logs de auditoria gerados registrando proposta comercial, conversão e operador responsável.
 
 ## 7. Erros comuns e correção

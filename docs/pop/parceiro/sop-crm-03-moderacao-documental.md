@@ -39,18 +39,18 @@ Regra de workflow:
 - O upload da escola move a etapa para `em_progresso`.
 - A triagem do parceiro muda o status do arquivo, mas nao conclui a etapa.
 - A etapa so fica `concluido` quando a KLASSE aprovar pelo menos um upload daquela etapa.
-- `validacao` depende do fecho conjunto de `docs_legais` e `planilhas`.
+- `validacao` depende do fecho técnico da etapa `planilhas`.
 
 ## 5. Passo a passo (execução)
 
 1. **Acessar os Uploads:** No portal do parceiro, abra o Drawer de Detalhes da Escola e role até a seção **Arquivos e Staging de Importação**.
 2. **Baixar o Documento:** Clique em `BAIXAR` para inspecionar o arquivo enviado pela escola.
 3. **Executar Conferência Visual (Critérios por Categoria):**
-   - **Documento Legal (NIF, etc.):** Verifique se o NIF no papel coincide com a Razão Social da escola e se está nítido.
-   - **Regulamento Interno / Matriz:** Verifique se as páginas estão completas e se o arquivo corresponde ao regimento pedagógico da escola.
-   - **Contrato Assinado:** Valide a assinatura do Diretor Geral da escola e o carimbo oficial.
+   - **Planilhas académicas:** Verifique se o ficheiro corresponde ao template esperado e se as colunas críticas estão presentes.
+   - **Logotipo e artefactos operacionais:** Confirme se os anexos estão legíveis e coerentes com a identidade da escola.
+   - **Termo de aceite / anexos finais:** Valide se os ficheiros enviados para homologação final estão completos.
 4. **Classificar o Documento:**
-   - No dropdown **"Classificar documento"**, selecione a categoria apropriada: `legal` (docs legais), `planilha` (dados escolares), `contrato` (contrato assinado), `logotipo`, `pauta`, `termo_aceite` ou `outro`.
+   - No dropdown **"Classificar documento"**, selecione a categoria apropriada: `planilha` (dados escolares), `contrato` (contrato assinado), `logotipo`, `pauta`, `termo_aceite` ou `outro`.
 5. **Definir Status da Triagem:**
    - No dropdown de status, selecione:
      * `Em Revisão (Parceiro)` se estiver analisando.
@@ -62,9 +62,8 @@ Regra de workflow:
 
 ## 5.1 Como cada etapa anda de verdade
 
-- `docs_legais`: upload da escola -> triagem do parceiro -> aprovacao final KLASSE
 - `planilhas`: upload da escola -> triagem basica do parceiro -> homologacao tecnica KLASSE
-- `validacao`: etapa da KLASSE; so fecha quando `docs_legais` e `planilhas` estiverem concluidas
+- `validacao`: etapa da KLASSE; so fecha quando a etapa `planilhas` estiver tecnicamente concluida
 
 Importante:
 

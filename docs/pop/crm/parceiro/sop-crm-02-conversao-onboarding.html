@@ -241,7 +241,7 @@ tr:nth-child(even) {
   <div class="body">
     <div class="sec-lbl">01 · Objetivo</div>
     <div class="content-block">
-      <p>Padronizar a transição de um lead comercial qualificado no CRM para uma solicitação oficial de ativação de escola (Onboarding Request), garantindo proposta comercial registada, aceite comercial, documento preliminar anexado quando existir e geração do token exclusivo de rastreamento (<code>tracking_token</code>) para iniciar o pipeline estruturado de 7 fases de implantação.</p>
+      <p>Padronizar a transição de um lead comercial qualificado no CRM para uma solicitação oficial de ativação de escola (Onboarding Request), garantindo proposta comercial registada, aceite comercial, documento preliminar anexado quando existir e geração do token exclusivo de rastreamento (<code>tracking_token</code>) para iniciar o pipeline estruturado de 6 fases de implantação.</p>
     </div>
 
     <div class="sec-lbl">02 · Quando usar</div>
@@ -308,7 +308,7 @@ tr:nth-child(even) {
           <ul>
             <li>O sistema executa internamente a RPC <code>convert_influencer_crm_lead_to_onboarding</code>.</li>
             <li>É gerado um registro de solicitação na tabela <code>onboarding_requests</code>.</li>
-            <li>O banco cria automaticamente as 7 etapas correspondentes do onboarding na tabela <code>onboarding_steps</code>.</li>
+            <li>O banco cria automaticamente as 6 etapas correspondentes do onboarding na tabela <code>onboarding_steps</code>.</li>
             <li>É gerado um token exclusivo contendo caracteres curtos de segurança (ex: <code>AELS-91PA-TRM8</code>).</li>
           </ul>
           <img class="step-print" src="prints/sop-crm-leads-convert-section.png" alt="Painel de Ativação da Escola no Portal">
@@ -327,7 +327,7 @@ tr:nth-child(even) {
       <ul>
         <li>O status do lead comercial é atualizado para <code>ganho</code> no CRM.</li>
         <li>Criação da solicitação de Onboarding com o estado marcado como <code>pendente</code>.</li>
-        <li>A linha do tempo exibindo o progresso das 7 etapas de ativação é habilitada no portal.</li>
+        <li>A linha do tempo exibindo o progresso das 6 etapas de ativação é habilitada no portal.</li>
         <li>Logs de transações gerados no banco sob auditoria, incluindo proposta comercial, upload do documento, conversão e ID do operador.</li>
       </ul>
       <img class="step-print" src="prints/sop-crm-onboarding-link.png" alt="Informações de Rastreamento de Onboarding Geradas">

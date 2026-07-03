@@ -57,4 +57,4 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/
 1. **Período de Degustação (Trial):** O limite máximo negociável pelo parceiro com cada escola é de **30 dias**. O valor padrão do sistema é de 15 dias, mas o operador pode ajustar conforme a negociação.
 2. **Taxa de Ativação/Instalação:** 100% repassada ao parceiro. O valor de tabela é de **50.000 Kz a 100.000 Kz**, variando conforme a dimensão e complexidade de infraestrutura do colégio.
 3. **Documentos de Onboarding:** O parceiro acompanha uploads, baixa arquivos, faz triagem preliminar e cobra pendencias da escola. A decisao formal de aprovar/rejeitar documentos continua no Super Admin.
-4. **Workflow Real:** Upload move etapa para `em_progresso`; triagem do parceiro encaminha; aprovacao final da KLASSE conclui a etapa; provisionamento so ocorre quando as 7 etapas estiverem concluídas.
+4. **Workflow Real:** Upload de planilhas move a etapa para `em_progresso`; triagem do parceiro encaminha; provisionamento e go-live seguem o fluxo actual de 6 etapas (`diagnostico`, `planilhas`, `validacao`, `config`, `treinamento`, `live`).

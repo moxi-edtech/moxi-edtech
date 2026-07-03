@@ -50,6 +50,24 @@ export type CreateSchoolCoreResult = {
   adminPapel: PapelEscola;
 };
 
+export type StaffAccessEmailStatus = {
+  attempted: boolean;
+  ok: boolean;
+  mode: "credentials" | "invite" | "none";
+  error?: string | null;
+};
+
+export type StaffProvisionResult = {
+  ok: boolean;
+  email: string;
+  nome: string | null;
+  papel: PapelEscola;
+  userId: string | null;
+  createdNew: boolean;
+  emailStatus: StaffAccessEmailStatus;
+  error?: string | null;
+};
+
 export async function createSchoolCore(
   supabase: RouteSupabase,
   body: CreateEscolaBody
@@ -140,41 +158,27 @@ export async function finalizeSchoolAdminAndEmails(
     onboardingEmailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error };
   }
 
-  let credentialsEmailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false };
-  if (core.adminEmail && adminUserCreated && adminPassword) {
-    const mail = buildCredentialsEmail({
-      nome: core.adminNome ?? undefined,
-      email: core.adminEmail,
-      senha_temp: adminPassword,
-      escolaNome: core.escolaNome || body.nome,
-      loginUrl,
-    });
-    const sent = await sendMail({
-      to: core.adminEmail,
-      subject: mail.subject,
-      html: String(mail.html),
-      text: String(mail.text),
-    });
-    credentialsEmailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error };
-  }
+  const accessEmailStatus = core.adminEmail
+    ? await sendStaffAccessEmail({
+        request,
+        email: core.adminEmail,
+        nome: core.adminNome,
+        papel: core.adminPapel,
+        escolaNome: core.escolaNome || body.nome,
+        createdNew: adminUserCreated,
+        password: adminPassword,
+      })
+    : { attempted: false, ok: false, mode: "none" as const };
 
-  let inviteEmailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false };
-  if (core.adminEmail && !adminUserCreated) {
-    const invite = buildInviteEmail({
-      escolaNome: core.escolaNome || body.nome,
-      onboardingUrl: loginUrl,
-      convidadoEmail: core.adminEmail,
-      convidadoNome: core.adminNome ?? undefined,
-      papel: core.adminPapel,
-    });
-    const sent = await sendMail({
-      to: core.adminEmail,
-      subject: invite.subject,
-      html: String(invite.html),
-      text: String(invite.text),
-    });
-    inviteEmailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error };
-  }
+  const credentialsEmailStatus =
+    accessEmailStatus.mode === "credentials"
+      ? { attempted: accessEmailStatus.attempted, ok: accessEmailStatus.ok, error: accessEmailStatus.error ?? null }
+      : { attempted: false, ok: false, error: null };
+
+  const inviteEmailStatus =
+    accessEmailStatus.mode === "invite"
+      ? { attempted: accessEmailStatus.attempted, ok: accessEmailStatus.ok, error: accessEmailStatus.error ?? null }
+      : { attempted: false, ok: false, error: null };
 
   return {
     adminEmail: core.adminEmail,
@@ -193,6 +197,56 @@ export async function finalizeSchoolAdminAndEmails(
 export class CreateSchoolError extends Error {
   constructor(message: string, public readonly status: number) {
     super(message);
+  }
+}
+
+export async function provisionStaffContact(
+  request: Request,
+  supabase: RouteSupabase,
+  params: { email: string; nome?: string | null; telefone?: string | null; escolaId: string; papel: PapelEscola; escolaNome?: string | null }
+): Promise<StaffProvisionResult> {
+  const email = params.email.trim().toLowerCase();
+  const nome = params.nome?.trim() || null;
+
+  try {
+    const provision = await ensureStaffUser(request, supabase, {
+      email,
+      nome,
+      telefone: params.telefone ?? null,
+      escolaId: params.escolaId,
+      papel: params.papel,
+    });
+
+    const emailStatus = await sendStaffAccessEmail({
+      request,
+      email,
+      nome,
+      papel: params.papel,
+      escolaNome: params.escolaNome ?? null,
+      createdNew: provision.createdNew,
+      password: provision.password,
+    });
+
+    return {
+      ok: true,
+      email,
+      nome,
+      papel: params.papel,
+      userId: provision.userId,
+      createdNew: provision.createdNew,
+      emailStatus,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      email,
+      nome,
+      papel: params.papel,
+      userId: null,
+      createdNew: false,
+      emailStatus: { attempted: false, ok: false, mode: "none", error: null },
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -267,6 +321,51 @@ export async function ensureStaffUser(
   }
 
   return { userId: ensuredUserId, createdNew, password };
+}
+
+async function sendStaffAccessEmail(args: {
+  request: Request;
+  email: string;
+  nome?: string | null;
+  papel: PapelEscola;
+  escolaNome?: string | null;
+  createdNew: boolean;
+  password?: string | null;
+}): Promise<StaffAccessEmailStatus> {
+  const origin = new URL(args.request.url).origin;
+  const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, "");
+
+  if (args.createdNew && args.password) {
+    const mail = buildCredentialsEmail({
+      nome: args.nome ?? undefined,
+      email: args.email,
+      senha_temp: args.password,
+      escolaNome: args.escolaNome ?? undefined,
+      loginUrl,
+    });
+    const sent = await sendMail({
+      to: args.email,
+      subject: mail.subject,
+      html: String(mail.html),
+      text: String(mail.text),
+    });
+    return { attempted: true, ok: sent.ok, mode: "credentials", error: sent.ok ? null : sent.error };
+  }
+
+  const invite = buildInviteEmail({
+    escolaNome: args.escolaNome ?? "sua escola",
+    onboardingUrl: loginUrl,
+    convidadoEmail: args.email,
+    convidadoNome: args.nome ?? undefined,
+    papel: args.papel,
+  });
+  const sent = await sendMail({
+    to: args.email,
+    subject: invite.subject,
+    html: String(invite.html),
+    text: String(invite.text),
+  });
+  return { attempted: true, ok: sent.ok, mode: "invite", error: sent.ok ? null : sent.error };
 }
 
 function generateStrongPassword(len = 12) {

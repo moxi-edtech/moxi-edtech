@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 import { applyCurriculumPreset, type CurriculumKey } from "@/lib/academico/curriculum-apply";
-import { ensureStaffUser } from "@/lib/escolas/create-school";
+import { provisionStaffContact } from "@/lib/escolas/create-school";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +69,8 @@ export async function POST(
       already_provisioned?: boolean;
     } | null;
 
+    const staffProvisioning: Array<Awaited<ReturnType<typeof provisionStaffContact>>> = [];
+
     // Apply curriculum preset automatically if defined in the onboarding request
     if (payload?.ok && payload.ano_letivo_id) {
       try {
@@ -82,33 +84,36 @@ export async function POST(
         if (reqData) {
           const sec = (reqData as any).contacto_secretaria;
           if (sec && sec.email && sec.nome) {
-            await ensureStaffUser(req, auth.supabase, {
+            staffProvisioning.push(await provisionStaffContact(req, auth.supabase, {
               email: sec.email,
               nome: sec.nome,
               telefone: sec.telefone || null,
               escolaId: escola_id,
               papel: "secretaria",
-            }).catch((err) => console.error("[provision] Falha ao criar user secretaria:", err));
+              escolaNome: null,
+            }));
           }
           const fin = (reqData as any).contacto_financeiro;
           if (fin && fin.email && fin.nome) {
-            await ensureStaffUser(req, auth.supabase, {
+            staffProvisioning.push(await provisionStaffContact(req, auth.supabase, {
               email: fin.email,
               nome: fin.nome,
               telefone: fin.telefone || null,
               escolaId: escola_id,
               papel: "financeiro",
-            }).catch((err) => console.error("[provision] Falha ao criar user financeiro:", err));
+              escolaNome: null,
+            }));
           }
           const ped = (reqData as any).contacto_pedagogico;
           if (ped && ped.email && ped.nome) {
-            await ensureStaffUser(req, auth.supabase, {
+            staffProvisioning.push(await provisionStaffContact(req, auth.supabase, {
               email: ped.email,
               nome: ped.nome,
               telefone: ped.telefone || null,
               escolaId: escola_id,
               papel: "admin_escola",
-            }).catch((err) => console.error("[provision] Falha ao criar user pedagogico:", err));
+              escolaNome: null,
+            }));
           }
         }
 
@@ -161,6 +166,7 @@ export async function POST(
     return NextResponse.json({
       ok: true,
       data,
+      staffProvisioning,
     });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message || "Erro interno" }, { status: 500 });

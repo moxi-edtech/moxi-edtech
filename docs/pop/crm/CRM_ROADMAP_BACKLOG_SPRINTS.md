@@ -31,10 +31,9 @@ Pre-requisitos minimos actuais:
 
 ### Camada 2 - Onboarding operacional do CRM
 
-Depois da conversao, o pedido segue 7 etapas operacionais reais em `onboarding_steps`:
+Depois da conversao, o pedido segue 6 etapas operacionais reais em `onboarding_steps`:
 
 - `diagnostico`
-- `docs_legais`
 - `planilhas`
 - `validacao`
 - `config`
@@ -44,14 +43,14 @@ Depois da conversao, o pedido segue 7 etapas operacionais reais em `onboarding_s
 Os donos actuais das etapas sao:
 
 - Parceiro: `diagnostico`, `config`, `treinamento`
-- Escola: `docs_legais`, `planilhas`
+- Escola: `planilhas`
 - KLASSE: `validacao`, `live`
 
 Importante: `em_configuracao` no backoffice actual e apenas um rotulo administrativo/manual. Nao e prova de provisionamento e nao conclui o setup da escola.
 
 ### Camada 3 - Provisionamento da escola
 
-A escola so e provisionada quando o fluxo administrativo executa o provisionamento e todas as 7 etapas estao concluidas. Nesse ponto, o sistema vincula `escola_id` ao onboarding, marca `onboarding_requests.status = activo` e cria os artefactos iniciais da operacao escolar.
+A escola so e provisionada quando o fluxo administrativo executa o provisionamento e todas as 6 etapas estao concluidas. Nesse ponto, o sistema vincula `escola_id` ao onboarding, marca `onboarding_requests.status = activo` e cria os artefactos iniciais da operacao escolar.
 
 Semantica correcta:
 

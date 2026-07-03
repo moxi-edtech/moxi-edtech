@@ -39,7 +39,7 @@ Ela deve apenas entender:
 
 O fluxo real no produto hoje e:
 
-`lead ganho -> pedido de onboarding -> 7 etapas operacionais -> provisionamento -> setup escolar -> readiness operacional -> go-live`
+`lead ganho -> pedido de onboarding -> 6 etapas operacionais -> provisionamento -> setup escolar -> readiness operacional -> go-live`
 
 Marcos tecnicos reais:
 

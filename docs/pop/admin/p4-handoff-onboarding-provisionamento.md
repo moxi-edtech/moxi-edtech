@@ -21,19 +21,18 @@ Definir o procedimento operacional padrão para transição de uma escola desde 
 - **Validação e Homologação de Dados:** Equipe de Operações KLASSE (Super-Admin).
 - **Provisionamento:** Super-Admin da KLASSE.
 
-## 4. O Fluxo de Onboarding de 7 Etapas
+## 4. O Fluxo de Onboarding de 6 Etapas
 
-O ciclo de vida do onboarding da escola é composto por 7 etapas sequenciais no banco de dados (`onboarding_steps`), cada uma com seu respectivo responsável:
+O ciclo de vida do onboarding da escola é composto por 6 etapas sequenciais no banco de dados (`onboarding_steps`), cada uma com seu respectivo responsável:
 
 | Ordem | Código da Etapa | Descrição | Responsável | Ação de Conclusão |
 |---|---|---|---|---|
 | 1 | `diagnostico` | Diagnóstico Inicial | Parceiro | Concluído automaticamente quando o Lead do CRM é convertido em pedido de onboarding. |
-| 2 | `docs_legais` | Envio de Documentos Legais | Escola | Concluído quando a escola anexa e envia o NIF e documentos oficiais. |
-| 3 | `planilhas` | Upload de Planilhas | Escola | Concluído quando a escola anexa e envia as planilhas de alunos e professores. |
-| 4 | `validacao` | Validação Técnica | **KLASSE** | Concluído após triagem positiva da equipe técnica Moxi/KLASSE sobre a integridade dos dados enviados. |
-| 5 | `config` | Configuração Operacional | Parceiro | Parametrização inicial de anos letivos, turmas e matrizes curriculares. |
-| 6 | `treinamento` | Treinamento de Equipe | Parceiro | Capacitação da equipe administrativa e docente da instituição. |
-| 7 | `live` | Go-Live e Abertura | **KLASSE** | Executado no painel Super-Admin com a criação definitiva das credenciais e banco de produção. |
+| 2 | `planilhas` | Upload de Planilhas | Escola | Concluído quando a escola anexa e envia as planilhas de alunos e professores. |
+| 3 | `validacao` | Validação Técnica | **KLASSE** | Concluído após triagem positiva da equipe técnica Moxi/KLASSE sobre a integridade dos dados enviados (depende apenas do upload de planilhas). |
+| 4 | `config` | Configuração Operacional | Parceiro | Parametrização inicial de anos letivos, turmas e matrizes curriculares. |
+| 5 | `treinamento` | Treinamento de Equipe | Parceiro | Capacitação da equipe administrativa e docente da instituição. |
+| 6 | `live` | Go-Live e Abertura | **KLASSE** | Executado no painel Super-Admin com a criação definitiva das credenciais e banco de produção. |
 
 ---
 
@@ -41,7 +40,7 @@ O ciclo de vida do onboarding da escola é composto por 7 etapas sequenciais no 
 
 ### Fase A: Da Conversão ao Cadastro Preliminar
 1. O parceiro qualifica a escola no CRM e clica em **"Converter em Onboarding"** no painel de leads.
-2. A etapa `diagnostico` é gerada como `concluido` e a responsabilidade passa à **Escola** para envio de documentação (Passos 2 e 3).
+2. A etapa `diagnostico` é gerada como `concluido` e a responsabilidade passa à **Escola** para envio das planilhas operacionais (Passo 2).
 3. A escola acessa o link público de acompanhamento (`/onboarding/acompanhar/[token]`), baixa os modelos Excel oficiais (`.xlsx`) de alunos e professores, e faz o upload dos arquivos.
 
 ### Fase B: Triagem de Dados e Validação (KLASSE)

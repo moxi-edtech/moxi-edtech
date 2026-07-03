@@ -1593,15 +1593,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
               {selectedStep && (
                 <div className="pt-2 border-t border-zinc-100 space-y-2">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Guia Prático da Etapa</p>
-                  {selectedStep === "docs_legais" ? (
-                    <div className="p-2.5 rounded bg-zinc-50 border border-zinc-200/40 space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-700 flex items-center gap-1">
-                        <FileText size={12} className="text-zinc-500" />
-                        Documentação Exigida
-                      </p>
-                      <p className="text-[9px] text-zinc-400 leading-normal font-medium">Prepare e digitalize: Alvará escolar ou autorização provisória, certidão do NIF e cópia do BI do diretor geral.</p>
-                    </div>
-                  ) : selectedStep === "planilhas" ? (
+                  {selectedStep === "planilhas" ? (
                     <div className="p-2.5 rounded bg-zinc-50 border border-zinc-200/40 space-y-1">
                       <p className="text-[10px] font-bold text-zinc-700 flex items-center gap-1">
                         <FileText size={12} className="text-zinc-500" />
