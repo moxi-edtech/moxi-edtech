@@ -113,7 +113,7 @@ export async function finalizeSchoolAdminAndEmails(
 
   if (core.adminEmail && core.escolaId) {
     try {
-      const provision = await ensureAdminUser(request, supabase, {
+      const provision = await ensureStaffUser(request, supabase, {
         email: core.adminEmail,
         nome: core.adminNome,
         telefone: core.adminTelefone,
@@ -196,7 +196,7 @@ export class CreateSchoolError extends Error {
   }
 }
 
-async function ensureAdminUser(
+export async function ensureStaffUser(
   req: Request,
   supabase: RouteSupabase,
   params: { email: string; nome?: string | null; telefone?: string | null; escolaId: string; papel: PapelEscola }

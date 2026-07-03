@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 import { applyCurriculumPreset, type CurriculumKey } from "@/lib/academico/curriculum-apply";
+import { ensureStaffUser } from "@/lib/escolas/create-school";
 
 export const dynamic = "force-dynamic";
 
@@ -73,9 +74,43 @@ export async function POST(
       try {
         const { data: reqData } = await (auth.supabase
           .from("onboarding_requests")
-          .select("curriculum_preset, financeiro")
+          .select("curriculum_preset, financeiro, contacto_secretaria, contacto_financeiro, contacto_pedagogico")
           .eq("id", id) as any)
           .maybeSingle();
+
+        // Provision organizational contacts if present
+        if (reqData) {
+          const sec = (reqData as any).contacto_secretaria;
+          if (sec && sec.email && sec.nome) {
+            await ensureStaffUser(req, auth.supabase, {
+              email: sec.email,
+              nome: sec.nome,
+              telefone: sec.telefone || null,
+              escolaId: escola_id,
+              papel: "secretaria",
+            }).catch((err) => console.error("[provision] Falha ao criar user secretaria:", err));
+          }
+          const fin = (reqData as any).contacto_financeiro;
+          if (fin && fin.email && fin.nome) {
+            await ensureStaffUser(req, auth.supabase, {
+              email: fin.email,
+              nome: fin.nome,
+              telefone: fin.telefone || null,
+              escolaId: escola_id,
+              papel: "financeiro",
+            }).catch((err) => console.error("[provision] Falha ao criar user financeiro:", err));
+          }
+          const ped = (reqData as any).contacto_pedagogico;
+          if (ped && ped.email && ped.nome) {
+            await ensureStaffUser(req, auth.supabase, {
+              email: ped.email,
+              nome: ped.nome,
+              telefone: ped.telefone || null,
+              escolaId: escola_id,
+              papel: "admin_escola",
+            }).catch((err) => console.error("[provision] Falha ao criar user pedagogico:", err));
+          }
+        }
 
         const presetKey = (reqData as any)?.curriculum_preset || (reqData as any)?.financeiro?.curriculum_preset;
 
