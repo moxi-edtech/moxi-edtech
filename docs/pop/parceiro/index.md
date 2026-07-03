@@ -28,6 +28,7 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/
 ### 2. Conversão e Moderação de Onboarding
 - [`sop-crm-02-conversao-onboarding.md`](file:///Users/gundja/moxi-edtech/docs/pop/parceiro/sop-crm-02-conversao-onboarding.md) - Conversão de Lead Ganho em Pedido de Onboarding.
 - [`sop-crm-03-moderacao-documental.md`](file:///Users/gundja/moxi-edtech/docs/pop/parceiro/sop-crm-03-moderacao-documental.md) - Triagem e Acompanhamento de Documentos de Onboarding no CRM.
+- [`sop-crm-06-escola-360.md`](file:///Users/gundja/moxi-edtech/docs/pop/parceiro/sop-crm-06-escola-360.md) - Gestão Consolidada de Escolas (Painel Escolas 360).
 
 ### 3. Gestão Financeira e Equipe
 - [`sop-crm-04-gestao-comissoes.md`](file:///Users/gundja/moxi-edtech/docs/pop/parceiro/sop-crm-04-gestao-comissoes.md) - Gestão de Comissões, Acompanhamento do Ledger e Solicitação de Payout.

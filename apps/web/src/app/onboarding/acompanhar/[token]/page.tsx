@@ -111,7 +111,6 @@ type ReadinessBlockerDependency = {
 
 const STEP_META: Record<string, { short: string; ownerLabel: string; uploadableBySchool: boolean }> = {
   diagnostico: { short: "Diagnóstico", ownerLabel: "Parceiro Comercial", uploadableBySchool: false },
-  docs_legais: { short: "Docs Legais", ownerLabel: "Escola", uploadableBySchool: true },
   planilhas: { short: "Planilhas", ownerLabel: "Escola + Parceiro", uploadableBySchool: true },
   validacao: { short: "Validação", ownerLabel: "KLASSE", uploadableBySchool: false },
   config: { short: "Configuração", ownerLabel: "Parceiro Comercial", uploadableBySchool: false },

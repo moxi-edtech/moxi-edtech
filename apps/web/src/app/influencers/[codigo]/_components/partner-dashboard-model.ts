@@ -473,7 +473,6 @@ export type AfiliadoPortalResponse = {
 
 export const STEP_META: Record<string, { short: string; ownerLabel: string }> = {
   diagnostico: { short: "Diagnóstico", ownerLabel: "Parceiro Comercial" },
-  docs_legais: { short: "Docs Legais", ownerLabel: "Escola" },
   planilhas: { short: "Planilhas", ownerLabel: "Escola + Parceiro" },
   validacao: { short: "Validação", ownerLabel: "KLASSE" },
   config: { short: "Configuração", ownerLabel: "Parceiro Comercial" },
@@ -538,14 +537,15 @@ export const SUPPORT_STATUS_CONFIG: Record<PartnerSupportStatus, { label: string
 };
 
 export const DEFAULT_IMPLANTATION_CHECKLIST: OnboardingImplantationItem[] = [
-  { code: "curriculo_configurado", label: "Currículo configurado", completed: false, note: null, completed_at: null },
-  { code: "turmas_criadas", label: "Turmas criadas", completed: false, note: null, completed_at: null },
+  { code: "acesso_colaboradores", label: "Primeiro acesso da equipa administrativa", completed: false, note: null, completed_at: null },
+  { code: "curriculo_configurado", label: "Currículo acadêmico configurado", completed: false, note: null, completed_at: null },
+  { code: "turmas_criadas", label: "Turmas geradas e organizadas", completed: false, note: null, completed_at: null },
   { code: "disciplinas_configuradas", label: "Disciplinas e pautas configuradas", completed: false, note: null, completed_at: null },
-  { code: "alunos_importados", label: "Alunos importados", completed: false, note: null, completed_at: null },
-  { code: "encarregados_importados", label: "Encarregados importados", completed: false, note: null, completed_at: null },
+  { code: "alunos_importados", label: "Alunos importados e matriculados", completed: false, note: null, completed_at: null },
+  { code: "financeiro_configurado", label: "Preçário e contas financeiras configurados", completed: false, note: null, completed_at: null },
   { code: "formacao_secretaria_concluida", label: "Formação da secretaria concluída", completed: false, note: null, completed_at: null },
   { code: "formacao_docentes_concluida", label: "Formação dos docentes concluída", completed: false, note: null, completed_at: null },
-  { code: "sistema_em_operacao", label: "Sistema em operação", completed: false, note: null, completed_at: null },
+  { code: "sistema_em_operacao", label: "Sistema em operação e homologado", completed: false, note: null, completed_at: null },
 ];
 
 export const IMPLANTATION_STATUS_CONFIG = {

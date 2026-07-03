@@ -535,16 +535,28 @@ export function OnboardingSchoolDetailsSheet({
                       {implantationChecklistDraft.map((item) => (
                         <div key={item.code} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200/60 bg-white shadow-sm">
                           <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={item.completed}
-                              onChange={() => handleToggleImplantationItem(item.code)}
-                              disabled={savingImplantationChecklist || selectedSchoolForDetails.implantation_status === 'aceite_validado'}
-                              className="w-4 h-4 text-[#1F6B3B] border-slate-300 rounded focus:ring-[#1F6B3B] cursor-pointer disabled:opacity-50"
-                            />
-                            <span className={`text-xs font-bold ${item.completed ? 'text-[#1F6B3B]' : 'text-slate-700'}`}>
-                              {item.label}
-                            </span>
+                            {(() => {
+                              const isAutomatic = ["acesso_colaboradores", "curriculo_configurado", "turmas_criadas", "disciplinas_configuradas", "alunos_importados", "financeiro_configurado"].includes(item.code);
+                              return (
+                                <>
+                                  <input
+                                    type="checkbox"
+                                    checked={item.completed}
+                                    onChange={() => !isAutomatic && handleToggleImplantationItem(item.code)}
+                                    disabled={isAutomatic || savingImplantationChecklist || selectedSchoolForDetails.implantation_status === 'aceite_validado'}
+                                    className={`w-4 h-4 text-[#1F6B3B] border-slate-300 rounded focus:ring-[#1F6B3B] disabled:opacity-75 ${isAutomatic ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                  />
+                                  <span className={`text-xs font-bold ${item.completed ? 'text-[#1F6B3B]' : 'text-slate-700'}`}>
+                                    {item.label}
+                                  </span>
+                                  {isAutomatic && (
+                                    <span className="ml-auto inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider bg-[#1F6B3B]/10 text-[#1F6B3B] border border-[#1F6B3B]/10">
+                                      Sistema
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                           <input
                             type="text"
@@ -757,7 +769,7 @@ export function OnboardingSchoolDetailsSheet({
                         <div>
                           <h5 className="text-xs font-bold text-amber-955">Checklist Incompleto</h5>
                           <p className="text-[11px] text-amber-900 mt-1 leading-relaxed font-semibold">
-                            Para poder carregar o Termo de Aceite assinado, você precisa primeiro concluir todos os 8 itens do Checklist de Implantação técnica acima e clicar em "Salvar Checklist Técnica".
+                            Para poder carregar o Termo de Aceite assinado, você precisa primeiro concluir todos os {implantationChecklistDraft.length} itens do Checklist de Implantação técnica acima e clicar em "Salvar Checklist Técnica".
                           </p>
                         </div>
                       </div>

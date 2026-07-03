@@ -233,6 +233,35 @@ Mudança:
 Resultado:
 - Os diretores, secretários e administradores financeiros recebem suas credenciais e links de acesso autodeclarados no e-mail logo ao provisionar a escola, poupando setup manual de equipe.
 
+### 11. Remoção Completa do Envio de Documentos Legais
+
+Mudança:
+- A etapa `docs_legais` (Envio de documentos legais) foi completamente removida do fluxo de onboarding para evitar burocracia e acelerar a ativação da escola.
+- A função de ordenação `onboarding_step_sort_order` foi redefinida no PostgreSQL para ordenar apenas as 6 etapas críticas: `diagnostico` -> `planilhas` -> `validacao` -> `config` -> `treinamento` -> `live`.
+- A RPC `seed_onboarding_steps_v2` foi redefinida para excluir o registro de `docs_legais` de todas as requisições de onboarding ativas e atualizar a validação técnica (`validacao`) para depender apenas de planilhas (`planilhas`).
+- O dicionário `STEP_META` nos arquivos do portal de acompanhamento e portal do parceiro foi ajustado para remover `docs_legais`.
+
+Resultado:
+- A jornada de onboarding é simplificada de 7 para 6 etapas, eliminando o bloqueio por documentação burocrática inicial e permitindo o go-live focado na experiência de uso imediato do sistema.
+
+### 12. Checklist de Implantação Automatizado por Consultas de Banco (Checks Reais)
+
+Mudança:
+- A verificação técnica da checklist foi transformada em **checagens automatizadas no banco de dados**, eliminando marcações manuais falsas.
+- Criada a função `get_real_school_implantation_checklist(p_escola_id)` no PostgreSQL, que verifica em tempo real:
+  - **Acesso da Equipa:** Existência de perfis administrativos vinculados (`escola_users`).
+  - **Currículo:** Existência de currículo publicado (`curso_curriculos`).
+  - **Turmas:** Presença de registros na tabela `turmas`.
+  - **Disciplinas/Pautas:** Vinculação ativa na tabela `turma_disciplinas`.
+  - **Alunos:** Existência de matrículas ativas (`matriculas`).
+  - **Financeiro:** Presença de tabelas financeiras de propinas (`financeiro_tabelas`).
+- Os 3 itens humanos e operacionais (**Formação da Secretaria, Formação de Docentes e Sistema em Operação**) continuam com marcação manual do operador.
+- Redefinidas as RPCs `update_influencer_onboarding_implantation_checklist` e `get_afiliado_member_portal` para consolidar o estado real e o manual dinamicamente.
+- No frontend, os checkboxes dos itens automáticos são desabilitados para clique e ganham o selo **"Sistema"**, impedindo fraudes.
+
+Resultado:
+- A homologação técnica é 100% verídica e depende de ações concretas executadas no sistema, garantindo um processo de auditoria seguro e de alta qualidade.
+
 ## Arquivos alterados
 
 - `apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts`
@@ -248,8 +277,14 @@ Resultado:
 - `apps/web/src/app/api/influencers/[codigo]/crm/leads/[leadId]/commercial/route.ts`
 - `apps/web/src/app/influencers/[codigo]/_components/partner-dashboard-model.ts`
 - `apps/web/src/lib/escolas/create-school.ts`
+- `apps/web/src/app/onboarding/acompanhar/[token]/page.tsx`
+- `apps/web/src/app/influencers/[codigo]/_components/OnboardingSchoolDetailsSheet.tsx`
+- `apps/web/src/app/influencers/[codigo]/_components/Escola360TabContent.tsx`
 - `supabase/migrations/20270702150000_add_curriculum_preset_to_onboarding.sql`
 - `supabase/migrations/20270703120000_add_organization_contacts_to_onboarding.sql`
+- `supabase/migrations/20270703130000_bypass_legal_documents_blocking_onboarding.sql`
+- `supabase/migrations/20270703140000_optimize_implantation_checklist_items.sql`
+- `supabase/migrations/20270703150000_make_onboarding_checklist_live_db_checks.sql`
 
 ## Verificações executadas
 

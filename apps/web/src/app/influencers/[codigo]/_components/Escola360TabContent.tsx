@@ -132,7 +132,7 @@ function uniquePops(pops: PartnerPopGuide[]) {
 
 function phaseForStep(stepCode?: string | null): PartnerPopPhase {
   if (!stepCode) return "onboarding";
-  if (["diagnostico", "docs_legais", "planilhas"].includes(stepCode)) return "onboarding";
+  if (["diagnostico", "planilhas"].includes(stepCode)) return "onboarding";
   if (["validacao", "config"].includes(stepCode)) return "setup";
   if (["treinamento", "live"].includes(stepCode)) return "treinamento";
   return "onboarding";
