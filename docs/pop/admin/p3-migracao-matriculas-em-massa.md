@@ -1,7 +1,7 @@
 # POP-P3-02 - Migracao de Alunos e Matriculas em Massa
 
-Versao: 1.1.0
-Data: 2026-06-28
+Versao: 2.0.0
+Data: 2026-07-03
 Modulo: Secretaria/Migracao (operacao usada por Admin da Escola)
 Perfil principal: admin_escola (com acesso ao fluxo de migracao)
 Tempo medio alvo: 30-90 minutos por lote
@@ -27,8 +27,8 @@ Padronizar a importacao de alunos e a matricula automatica por lote, com control
 - Acesso ao wizard em `/escola/{id}/secretaria/migracao/alunos`.
 - Alias operacional presente no codigo: `/escola/{id}/operacoes/migracao/alunos`.
 - Ficheiro `.csv` ou `.xlsx` pronto.
-- Colunas minimas: nome e data de nascimento.
-- Para matricula automatica: coluna de codigo de turma preenchida.
+- Colunas mínimas: nome e data de nascimento.
+- Para matrícula e criação automática de turmas: coluna de código de turma preenchida OU colunas avulsas mapeadas (`curso_codigo`, `classe_numero`, `turno_codigo`, `turma_letra`) para resolução e fatiamento dinâmico.
 
 ## 4.1 Estado fiel ao codigo
 
@@ -94,13 +94,14 @@ Padronizar a importacao de alunos e a matricula automatica por lote, com control
 
 - Upload: `POST /api/migracao/upload`
 - Validacao: `POST /api/migracao/alunos/validar`
-- Importacao: `POST /api/migracao/alunos/importar`
+- Importacao/Processamento: `POST /api/migracao/alunos/importar` (utiliza a RPC inteligente `importar_alunos_v4` no banco com suporte a fallback de criação orgânica de turmas)
 - Preview de lotes matricula: `GET /api/migracao/{importId}/matricula/preview?escola_id={id}`
 - Matricula em massa por turma: `POST /api/matriculas/massa/por-turma`
 - Erros de importacao: `GET /api/migracao/{importId}/erros`
 
 ## 12. Revisao e versao
 
-- Ultima revisao: 2026-06-28
-- Proxima revisao: 2026-07-12
-- Mudancas desta versao: adicionado alias `/operacoes/migracao/alunos` e estado fiel ao codigo do wizard.
+- Versão: 2.0.0
+- Ultima revisao: 2026-07-03
+- Proxima revisao: 2026-07-17
+- Mudancas desta versao: Adicionado suporte à importação por partes avulsas da turma (`curso_codigo`, `classe_numero`, `turno_codigo`, `turma_letra`) e criação orgânica automatizada pela RPC `importar_alunos_v4`.

@@ -1,7 +1,7 @@
 # POP-P1-01 - Setup e Configuracoes do Sistema (Admin)
 
-Versao: 1.1.0
-Data: 2026-06-28
+Versao: 2.0.0
+Data: 2026-07-03
 Modulo: Admin da Escola
 Perfil principal: admin_escola
 Tempo medio alvo: 30-60 minutos
@@ -36,7 +36,7 @@ Garantir que o setup academico e as configuracoes estruturantes da escola sejam 
   - `Ano letivo activo configurado`
   - `Períodos letivos criados`
   - `Avaliação e frequência configuradas`
-  - `Currículo publicado`
+  - `Currículo publicado` (Nota: se a escola foi provisionada com um Preset Curricular herdado do CRM, esta etapa já nascerá concluída automaticamente no primeiro login)
   - `Turmas geradas no ano`
 - O assistente real tem etapas: `Sessão`, `Regras`, `Matriz`, `Financeiro`, `Gerar`.
 
@@ -133,6 +133,7 @@ Garantir que o setup academico e as configuracoes estruturantes da escola sejam 
 
 ## 15. Revisao e versao
 
-- Ultima revisao: 2026-06-28
-- Proxima revisao: 2026-07-12
-- Mudancas desta versao: alinhado ao hub real de configuracoes, checklist real e etapas reais do assistente.
+- Versão: 2.0.0
+- Ultima revisao: 2026-07-03
+- Proxima revisao: 2026-07-17
+- Mudancas desta versao: Adicionado suporte ao setup acadêmico zero cliques via Preset Curricular herdado do CRM comercial.
