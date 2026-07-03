@@ -222,6 +222,17 @@ Mudança:
 Resultado:
 - A escola já nasce com currículo instalado e ativo no primeiro login do admin.
 
+### 10. Provisionamento Automático de Contas Organizacionais Chave
+
+Mudança:
+- Colunas para níveis de ensino e 3 contatos organizacionais (Secretaria Geral, Diretoria Financeira e Coordenação Pedagógica) adicionadas ao CRM Leads e Onboarding Requests.
+- UI do Drawer do Lead adaptada com checkboxes para níveis e campos de nome/e-mail/telefone para os 3 contatos.
+- Preview da proposta em PDF renderiza esses contatos e níveis de forma formal.
+- RPCs e APIs ajustadas para salvar, propagar e chamar `ensureStaffUser` no provisionamento, criando e convidando os respectivos usuários automaticamente.
+
+Resultado:
+- Os diretores, secretários e administradores financeiros recebem suas credenciais e links de acesso autodeclarados no e-mail logo ao provisionar a escola, poupando setup manual de equipe.
+
 ## Arquivos alterados
 
 - `apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts`
@@ -234,7 +245,11 @@ Resultado:
 - `apps/web/src/app/crm/proposta/preview/page.tsx`
 - `apps/web/src/app/influencers/[codigo]/_components/CrmLeadDetailsSheet.tsx`
 - `apps/web/src/app/influencers/[codigo]/page.tsx`
+- `apps/web/src/app/api/influencers/[codigo]/crm/leads/[leadId]/commercial/route.ts`
+- `apps/web/src/app/influencers/[codigo]/_components/partner-dashboard-model.ts`
+- `apps/web/src/lib/escolas/create-school.ts`
 - `supabase/migrations/20270702150000_add_curriculum_preset_to_onboarding.sql`
+- `supabase/migrations/20270703120000_add_organization_contacts_to_onboarding.sql`
 
 ## Verificações executadas
 
