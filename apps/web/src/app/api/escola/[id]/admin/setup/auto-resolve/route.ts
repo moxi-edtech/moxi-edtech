@@ -102,21 +102,76 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const rawTurno = turma.turno?.toString().toUpperCase();
         const mappedTurnoId = rawTurno === 'M' ? 'matinal' : rawTurno === 'T' ? 'tarde' : rawTurno === 'N' ? 'noite' : 'matinal';
 
-        const { data: slots } = await supabase
+        let { data: slots } = await supabase
           .from('horario_slots')
           .select('id, dia_semana, ordem, turno_id, is_intervalo')
           .eq('escola_id', escolaId)
           .eq('turno_id', mappedTurnoId)
-          .eq('is_intervalo', false)
           .order('dia_semana', { ascending: true })
           .order('ordem', { ascending: true });
 
-        if (!slots || slots.length === 0) continue;
+        if (!slots || slots.length === 0) {
+          const defaultSlotsToInsert: any[] = [];
+          
+          const timeConfigs = mappedTurnoId === 'tarde' 
+            ? [
+                { ordem: 1, inicio: '13:00:00', fim: '13:50:00', is_intervalo: false },
+                { ordem: 2, inicio: '13:50:00', fim: '14:40:00', is_intervalo: false },
+                { ordem: 3, inicio: '14:40:00', fim: '15:30:00', is_intervalo: false },
+                { ordem: 4, inicio: '15:30:00', fim: '15:50:00', is_intervalo: true },
+                { ordem: 5, inicio: '15:50:00', fim: '16:40:00', is_intervalo: false },
+                { ordem: 6, inicio: '16:40:00', fim: '17:30:00', is_intervalo: false }
+              ]
+            : mappedTurnoId === 'noite'
+            ? [
+                { ordem: 1, inicio: '18:00:00', fim: '18:50:00', is_intervalo: false },
+                { ordem: 2, inicio: '18:50:00', fim: '19:40:00', is_intervalo: false },
+                { ordem: 3, inicio: '19:40:00', fim: '20:30:00', is_intervalo: false },
+                { ordem: 4, inicio: '20:30:00', fim: '20:45:00', is_intervalo: true },
+                { ordem: 5, inicio: '20:45:00', fim: '21:35:00', is_intervalo: false },
+                { ordem: 6, inicio: '21:35:00', fim: '22:25:00', is_intervalo: false }
+              ]
+            : [
+                { ordem: 1, inicio: '07:30:00', fim: '08:20:00', is_intervalo: false },
+                { ordem: 2, inicio: '08:20:00', fim: '09:10:00', is_intervalo: false },
+                { ordem: 3, inicio: '09:10:00', fim: '10:00:00', is_intervalo: false },
+                { ordem: 4, inicio: '10:00:00', fim: '10:20:00', is_intervalo: true },
+                { ordem: 5, inicio: '10:20:00', fim: '11:10:00', is_intervalo: false },
+                { ordem: 6, inicio: '11:10:00', fim: '12:00:00', is_intervalo: false }
+              ];
+
+          for (let dia = 1; dia <= 5; dia++) {
+            for (const cfg of timeConfigs) {
+              defaultSlotsToInsert.push({
+                escola_id: escolaId,
+                turno_id: mappedTurnoId,
+                dia_semana: dia,
+                ordem: cfg.ordem,
+                inicio: cfg.inicio,
+                fim: cfg.fim,
+                is_intervalo: cfg.is_intervalo
+              });
+            }
+          }
+
+          const { data: insertedSlots, error: insertSlotsErr } = await supabase
+            .from('horario_slots')
+            .insert(defaultSlotsToInsert)
+            .select('id, dia_semana, ordem, turno_id, is_intervalo');
+
+          if (insertSlotsErr || !insertedSlots) {
+            continue;
+          }
+          slots = insertedSlots;
+        }
+
+        const activeSlots = (slots || []).filter((s) => s.is_intervalo === false);
+        if (activeSlots.length === 0) continue;
 
         const itemsToInsert: any[] = [];
         let subjectIndex = 0;
 
-        for (const slot of slots) {
+        for (const slot of activeSlots) {
           const subject = activeSubjects[subjectIndex];
           if (!subject) break;
 
