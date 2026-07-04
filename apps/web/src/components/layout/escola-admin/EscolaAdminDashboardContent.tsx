@@ -12,6 +12,7 @@ import AcademicSection from "./AcademicSection";
 import PostWizardChecklist from "./PostWizardChecklist";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
+import OperationalFocusSection from "./OperationalFocusSection";
 import { EstadoVitalBanner } from "./EstadoVitalBanner";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { EstadoVazio } from "@/components/harmonia";
@@ -25,6 +26,7 @@ import type {
   CurriculoPendencias,
   DashboardCharts,
   InadimplenciaTopRow,
+  OperationalSnapshot,
   PagamentoRecenteRow,
   EstadoVital,
 } from "./dashboard.types";
@@ -33,6 +35,7 @@ import type {
 
 type Props = {
   escolaId:             string;
+  mode?:                "admin" | "operacoes";
   escolaNome?:          string;
   anoLetivo?:           string;
   loading?:             boolean;
@@ -41,6 +44,7 @@ type Props = {
   charts?:              DashboardCharts;
   stats:                KpiStats;
   pendingTurmasCount?:  number | null;
+  operationalSnapshot?: OperationalSnapshot;
   curriculoPendencias?: CurriculoPendencias;
   setupStatus:          SetupStatus;
   missingPricingCount?: number;
@@ -186,6 +190,7 @@ function DiasAtraso({ dias }: { dias: number }) {
 
 export default function EscolaAdminDashboardContent({
   escolaId,
+  mode = "admin",
   escolaNome,
   anoLetivo,
   loading,
@@ -194,6 +199,7 @@ export default function EscolaAdminDashboardContent({
   charts,
   stats,
   pendingTurmasCount,
+  operationalSnapshot,
   curriculoPendencias,
   setupStatus,
   missingPricingCount = 0,
@@ -209,6 +215,8 @@ export default function EscolaAdminDashboardContent({
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const financeBase = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
+  const portalBase = mode === "operacoes" ? "operacoes" : "admin";
+  const dashboardTitle = mode === "operacoes" ? "Cockpit de Operações" : "Dashboard";
   const [progress, setProgress] = useState(0);
 
   const horaAtual = new Date().getHours();
@@ -252,7 +260,7 @@ export default function EscolaAdminDashboardContent({
       titulo: `${pendingTurmasCount} turma${pendingTurmasCount > 1 ? "s" : ""} pendente${pendingTurmasCount > 1 ? "s" : ""} de validação`,
       descricao: "Revise turmas para liberar matrículas e financeiro.",
       count: pendingTurmasCount,
-      link: buildPortalHref(escolaParam, "/admin/turmas?status=pendente"),
+      link: buildPortalHref(escolaParam, `/${portalBase}/turmas?status=pendente`),
       link_label: "Ver turmas",
     });
   }
@@ -264,7 +272,7 @@ export default function EscolaAdminDashboardContent({
       titulo: "Tabelas de preço pendentes",
       descricao: "Defina preços para liberar cobranças automáticas.",
       count: missingPricingCount,
-      link: buildPortalHref(escolaParam, "/admin/configuracoes/mensalidades"),
+      link: buildPortalHref(escolaParam, `/${portalBase}/configuracoes/mensalidades`),
       link_label: "Configurar preços",
     });
   }
@@ -281,7 +289,7 @@ export default function EscolaAdminDashboardContent({
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">
-            Dashboard
+            {dashboardTitle}
           </h1>
           <div className="mt-2 flex items-center gap-2">
             <p className="text-sm font-medium text-slate-500">{saudacao}</p>
@@ -303,7 +311,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <RadarOperacional alerts={radarAlerts} role="admin" />
+        <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} />
       </motion.div>
 
       {/* ── 3. KPIs ──────────────────────────────────────────────────────────── */}
@@ -311,12 +319,21 @@ export default function EscolaAdminDashboardContent({
         <KpiSection
           escolaId={escolaId}
           stats={stats}
+          mode={mode}
           loading={loading}
           error={error}
           setupStatus={setupStatus}
+          operationalSnapshot={operationalSnapshot}
           financeiroHref={financeiroHref}
+          portalBase={portalBase}
         />
       </motion.div>
+
+      {mode === "operacoes" && operationalSnapshot && (
+        <motion.div variants={itemVariants}>
+          <OperationalFocusSection escolaId={escolaId} snapshot={operationalSnapshot} />
+        </motion.div>
+      )}
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
@@ -421,6 +438,7 @@ export default function EscolaAdminDashboardContent({
           meses={charts?.meses}
           alunosPorMes={charts?.alunosPorMes}
           pagamentos={charts?.pagamentos}
+          mode={mode}
         />
       </motion.div>
 
@@ -527,10 +545,10 @@ export default function EscolaAdminDashboardContent({
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
         <div className="lg:col-span-2 space-y-8">
           <motion.div variants={itemVariants}>
-            <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} />
+            <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <NoticesSection notices={notices} />
+            <NoticesSection notices={notices} portalBase={portalBase} />
           </motion.div>
         </div>
         <div className="space-y-8">
@@ -539,10 +557,11 @@ export default function EscolaAdminDashboardContent({
               setupStatus={setupStatus}
               stats={stats}
               missingPricingCount={missingPricingCount}
+              portalBase={portalBase}
             />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <OperationalFeedSection escolaId={escolaId} />
+            <OperationalFeedSection escolaId={escolaId} portalBase={portalBase} />
           </motion.div>
         </div>
       </div>

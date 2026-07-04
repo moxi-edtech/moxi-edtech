@@ -1,10 +1,29 @@
 // apps/web/src/components/layout/escola-admin/dashboard.types.ts
 
-import type { KpiStats }         from "./KpiSection";
-import type { SetupStatus }      from "./setupStatus";
+import type { SetupStatus } from "./setupStatus";
 import type { PagamentosResumo } from "./definitions";
 
-export type { KpiStats, SetupStatus, PagamentosResumo };
+export type { SetupStatus, PagamentosResumo };
+
+export type KpiStats = {
+  turmas: number;
+  alunos: number;
+  professores: number;
+  avaliacoes: number;
+  financeiro?: number;
+};
+
+export type OperationalSnapshot = {
+  mensalidadesPendentes: number;
+  mensalidadesInadimplentes: number;
+  turmasPendentes: number;
+  curriculoHorarioPendencias: number;
+  setupBlockers: number;
+  admissoesPendentes: number;
+  matriculasPendentes: number;
+  documentosEmProcessamento: number;
+  turmasSemHorarioPublicado: number;
+};
 
 export type Aviso  = { id: string; titulo: string; dataISO: string };
 export type Evento = { id: string; titulo: string; dataISO: string };

@@ -1,6 +1,7 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -22,6 +23,21 @@ export async function GET(request: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    }
+    const authz = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (authz.error) {
+      return authz.error;
     }
 
     const { searchParams } = new URL(request.url);

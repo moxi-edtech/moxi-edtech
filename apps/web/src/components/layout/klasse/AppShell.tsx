@@ -291,7 +291,11 @@ export default function AppShell({
 
   const topbarLabels = navRole ? TOPBAR_LABELS[navRole] : null;
   const isPrintView = safePathname.includes("/print");
-  const aiAccessRole = navRole === "operacoes" ? (userRole || inferredRole || "admin") : navRole;
+  const aiAccessRole = navRole === "operacoes"
+    ? userRole === "operacoes"
+      ? "admin_financeiro"
+      : (userRole || inferredRole || "admin")
+    : navRole;
   const shouldRenderAiWidget = Boolean(
     navEscolaId &&
     aiAccessRole &&

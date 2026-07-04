@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
@@ -16,6 +17,20 @@ export async function GET(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: true, items: [] });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (roleError) return roleError;
 
     let query = supabase
       .from('vw_eventos_escola_unificados')
@@ -55,6 +70,20 @@ export async function POST(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (roleError) return roleError;
 
     const body = await req.json();
     const { titulo, descricao, inicio_at, fim_at, publico_alvo } = body;

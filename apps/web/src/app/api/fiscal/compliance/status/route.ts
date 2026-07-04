@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getFiscalKmsReadiness } from "@/lib/fiscal/kmsReadiness";
+import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
@@ -115,6 +116,20 @@ export async function GET(req: Request) {
     }
 
     const empresaId = ctx.empresaId;
+    const access = await requireFiscalAccessByCompanyOrSchool({
+      supabase,
+      userId: user.id,
+      empresaId,
+      escolaId,
+    });
+
+    if (!access.ok) {
+      return jsonError(access.status, access.code, access.message, {
+        request_id: requestId,
+        empresa_id: empresaId,
+        escola_id: escolaId,
+      });
+    }
 
     const [
       empresaRes,

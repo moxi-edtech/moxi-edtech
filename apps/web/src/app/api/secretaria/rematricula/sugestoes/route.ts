@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { authorizeEscolaAction } from '@/lib/escola/disciplinas'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
@@ -30,6 +31,8 @@ export async function GET(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, sugestoes: [] })
+    const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["criar_matricula", "configurar_escola"])
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/sugestoes`)
     if (forwarded) return forwarded

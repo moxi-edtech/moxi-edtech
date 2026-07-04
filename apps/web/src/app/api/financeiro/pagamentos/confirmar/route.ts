@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,6 +38,13 @@ export async function POST(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+    });
+    if (roleError) return roleError;
 
     const { data: existingIdempotency } = await supabaseAny
       .from("idempotency_keys")

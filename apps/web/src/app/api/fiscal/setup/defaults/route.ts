@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
@@ -88,6 +89,23 @@ export async function GET() {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     const ctx = await resolveEmpresaContext({ supabase, userId: user.id, escolaId });
+
+    if (ctx.empresaId) {
+      const access = await requireFiscalAccessByCompanyOrSchool({
+        supabase,
+        userId: user.id,
+        empresaId: ctx.empresaId,
+        escolaId,
+      });
+
+      if (!access.ok) {
+        return jsonError(access.status, access.code, access.message, {
+          request_id: requestId,
+          empresa_id: ctx.empresaId,
+          escola_id: escolaId,
+        });
+      }
+    }
 
     const [{ data: escola }, { data: empresa }, { data: chave }] = await Promise.all([
       escolaId

@@ -1,6 +1,7 @@
 // @kf2 allow-scan
 // apps/web/src/app/api/secretaria/operacoes-academicas/virada/promotion-summary/route.ts
 import { NextResponse } from "next/server";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
@@ -40,6 +41,10 @@ export async function GET(request: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
+    if (!authz.allowed) {
+      return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
+    }
 
     // 1. Obter o ano ativo
     const { data: anoAtivo } = await supabase

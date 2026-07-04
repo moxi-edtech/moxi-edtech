@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { requireRoleInSchool } from '@/lib/authz'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
-import { roleMatchesAllowedRoles } from '@/lib/permissions'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -54,13 +54,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .maybeSingle()
 
     const role = (prof as any)?.role as string | undefined
-    let escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
+    let escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id)
     if (!escolaFromProfile) {
-      escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id)
+      escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
     }
-    const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro','secretaria_financeiro','admin_financeiro']
-    if (!roleMatchesAllowedRoles(role, allowedRoles, 'k12')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
+    const authz = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId: escolaFromProfile,
+      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'financeiro', 'admin', 'admin_escola', 'staff_admin'],
+    })
+    if (authz.error) return authz.error
 
     let alunoQuery = s
       .from('alunos')
@@ -193,10 +197,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .maybeSingle()
 
     const role = (prof as any)?.role as string | undefined
-    const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
-    const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro','secretaria_financeiro','admin_financeiro']
-    if (!roleMatchesAllowedRoles(role, allowedRoles, 'k12')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    let escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id)
+    if (!escolaFromProfile) {
+      escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
+    }
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
+    const authz = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId: escolaFromProfile,
+      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'financeiro', 'admin', 'admin_escola', 'staff_admin'],
+    })
+    if (authz.error) return authz.error
 
     // fetch aluno to get profile_id/escola_id
     let alunoQuery = s

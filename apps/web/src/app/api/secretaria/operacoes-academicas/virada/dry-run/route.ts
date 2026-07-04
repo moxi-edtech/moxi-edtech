@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { buildCutoverHealthReport } from "@/lib/operacoes-academicas/cutover-health";
@@ -19,6 +20,10 @@ export async function POST() {
   const escolaId = await resolveEscolaIdForUser(supabase, user.id);
   if (!escolaId) {
     return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+  }
+  const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
+  if (!authz.allowed) {
+    return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
   }
 
   const report = await buildCutoverHealthReport(supabase, escolaId);

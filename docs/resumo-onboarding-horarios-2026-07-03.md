@@ -262,6 +262,61 @@ Mudança:
 Resultado:
 - A homologação técnica é 100% verídica e depende de ações concretas executadas no sistema, garantindo um processo de auditoria seguro e de alta qualidade.
 
+### 13. Paridade Operacional do `admin_financeiro` com Secretaria
+
+Mudança:
+- Foi consolidado o papel composto `admin_financeiro` como operador real da escola, não apenas como papel financeiro.
+- As rotas humanas de `secretaria` passaram a usar guard explícito com `requireRoleInSchool(...)` ou autorização funcional por capability:
+  - `authorizeEscolaAction(...)`
+  - `authorizeTurmasManage(...)`
+  - `authorizeDisciplinaManage(...)`
+  - `authorizeMatriculasManage(...)`
+- O endurecimento cobriu os principais fluxos operacionais:
+  - dashboard e calendário;
+  - professores, cursos e disciplinas;
+  - balcão e pagamentos;
+  - alunos e gestão de acesso;
+  - documentos e declarações;
+  - rematrícula;
+  - fechamento académico;
+  - relatórios;
+  - pautas e mini-pautas;
+  - virada / operações académicas.
+- Mesmo endpoints legados que hoje retornam `410` ou `501` deixaram de ficar expostos sem guard.
+- Foi validado com scanner local que não restaram rotas de `apps/web/src/app/api/secretaria/**` sem guard explícito.
+
+Resultado:
+- o `admin_financeiro` consegue executar as rotinas de secretaria com backend coerente;
+- a escola deixa de depender de diferenças históricas entre “financeiro” e “secretaria” para operar;
+- a superfície de autorização de `secretaria` ficou mais previsível, auditável e segura.
+
+### 14. Portal `operacoes` alinhado ao escopo real do papel composto
+
+Mudança:
+- O portal `/operacoes` foi mantido sob `RequireSecretaria`, aproveitando a expansão de permissões já existente para `admin_financeiro`.
+- Foi auditada a navegação lateral do módulo `operacoes` e ajustado o menu para refletir melhor o trabalho diário do operador.
+- A sidebar passou a expor explicitamente:
+  - **Recebimentos**
+    - balcão & cobrança
+    - fecho de caixa
+  - **Acessos ao Portal**
+    - gestão de acessos
+    - acesso dos alunos
+  - **Avisos**
+    - fila de avisos
+    - alertas operacionais
+    - novo aviso
+- O dashboard operacional já existente foi mantido como cockpit principal com:
+  - KPIs operacionais;
+  - foco operacional por fila;
+  - activity feed dedicado;
+  - quick actions e links para matrículas, admissões, horários, recebimentos e setup.
+
+Resultado:
+- o papel composto deixa de ter apenas permissão técnica e passa a ter navegação coerente com o seu escopo;
+- o módulo `operacoes` fica mais legível como “cockpit diário” da escola;
+- ações importantes como cobrança, fecho, alertas e acessos deixam de ficar escondidas em rotas pouco descobríveis.
+
 ## Arquivos alterados
 
 - `apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts`
@@ -280,6 +335,54 @@ Resultado:
 - `apps/web/src/app/onboarding/acompanhar/[token]/page.tsx`
 - `apps/web/src/app/influencers/[codigo]/_components/OnboardingSchoolDetailsSheet.tsx`
 - `apps/web/src/app/influencers/[codigo]/_components/Escola360TabContent.tsx`
+- `apps/web/src/app/api/secretaria/dashboard/route.ts`
+- `apps/web/src/app/api/secretaria/dashboard/summary/route.ts`
+- `apps/web/src/app/api/secretaria/dashboard/recentes/route.ts`
+- `apps/web/src/app/api/secretaria/calendario/route.ts`
+- `apps/web/src/app/api/secretaria/professores/route.ts`
+- `apps/web/src/app/api/secretaria/balcao/alunos/search/route.ts`
+- `apps/web/src/app/api/secretaria/balcao/audit/route.ts`
+- `apps/web/src/app/api/secretaria/balcao/pagamentos/route.ts`
+- `apps/web/src/app/api/secretaria/balcao/snooze-aviso/route.ts`
+- `apps/web/src/app/api/secretaria/cursos/route.ts`
+- `apps/web/src/app/api/secretaria/cursos-com-classes/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/exportar/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/[id]/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/[id]/delete/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/[id]/hard-delete/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/[id]/reset-senha/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/[id]/restore/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/[id]/sugestoes-matricula/route.ts`
+- `apps/web/src/app/api/secretaria/alunos/novo/route.ts`
+- `apps/web/src/app/api/secretaria/matriculas/preview-numero/route.ts`
+- `apps/web/src/app/api/secretaria/matriculas/[matriculaId]/declaracao/route.ts`
+- `apps/web/src/app/api/secretaria/matriculas/[matriculaId]/frequencia/route.ts`
+- `apps/web/src/app/api/secretaria/matriculas/[matriculaId]/route.ts`
+- `apps/web/src/app/api/secretaria/candidaturas/[id]/confirmar/route.ts`
+- `apps/web/src/app/api/secretaria/classes/[id]/disciplinas/route.ts`
+- `apps/web/src/app/api/secretaria/rematricula/route.ts`
+- `apps/web/src/app/api/secretaria/rematricula/confirmar/route.ts`
+- `apps/web/src/app/api/secretaria/rematricula/sugestoes/route.ts`
+- `apps/web/src/app/api/secretaria/fechamento-academico/sanidade/route.ts`
+- `apps/web/src/app/api/secretaria/fechamento-academico/telemetria/route.ts`
+- `apps/web/src/app/api/secretaria/relatorios/mapa-aproveitamento/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/export/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/clone-structure/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/cutover/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/dry-run/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/fix-sessions/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/health/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/pautas-status/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/promotion-summary/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/remediate/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts`
+- `apps/web/src/app/api/secretaria/operacoes-academicas/virada/wizard/route.ts`
+- `apps/web/src/app/api/secretaria/turmas/[id]/mini-pautas/route.ts`
+- `apps/web/src/app/api/secretaria/turmas/[id]/pauta/route.ts`
+- `apps/web/src/app/api/secretaria/turmas/[id]/pauta-branca/route.ts`
+- `apps/web/src/app/api/escola/[id]/operacoes/activity-feed/route.ts`
+- `apps/web/src/lib/sidebarNav.ts`
 - `supabase/migrations/20270702150000_add_curriculum_preset_to_onboarding.sql`
 - `supabase/migrations/20270703120000_add_organization_contacts_to_onboarding.sql`
 - `supabase/migrations/20270703130000_bypass_legal_documents_blocking_onboarding.sql`
@@ -310,6 +413,8 @@ Depois desta sessão, o fluxo esperado é:
 4. Ao corrigir carga, o quadro redistribui automaticamente.
 5. O horário base tenta respeitar melhor a carga semanal e formar blocos práticos quando fizer sentido.
 6. O usuário termina vendo um resumo final com próximos passos e links de edição.
+7. Ao entrar no portal da escola, o `admin_financeiro` já consegue operar pelas rotas de secretaria sem inconsistência de autorização.
+8. O módulo `operacoes` passa a servir como cockpit diário explícito para cobrança, matrícula, alertas, acessos, documentos e operação académica.
 
 ## Limitações atuais
 
@@ -326,3 +431,5 @@ Próximos incrementos naturais:
 2. Melhorar a lógica de distribuição para reduzir divergências já no primeiro publish.
 3. Exibir no resumo final quais disciplinas/turmas ficaram fora do padrão ideal.
 4. Adicionar reexecução guiada do horário base diretamente do resumo final do onboarding.
+5. Revisar o conteúdo do dashboard `operacoes` para priorizar ainda mais filas accionáveis do papel composto.
+6. Consolidar um POP específico do módulo `operacoes` já alinhado à nova navegação e à paridade `admin_financeiro` / secretaria.

@@ -95,11 +95,12 @@ interface ChartsSectionProps {
   meses?:        string[];
   alunosPorMes?: number[];
   pagamentos?:   PagamentosResumo;
+  mode?:         "admin" | "operacoes";
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ChartsSection({ meses, alunosPorMes, pagamentos }: ChartsSectionProps) {
+export default function ChartsSection({ meses, alunosPorMes, pagamentos, mode = "admin" }: ChartsSectionProps) {
   const labels     = useMemo(() => meses        ?? [], [meses]);
   const dadosAlunos = useMemo(() => alunosPorMes ?? [], [alunosPorMes]);
   const resumo     = pagamentos ?? null;
@@ -133,8 +134,8 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
       <ChartCard
         iconBg="bg-[#1F6B3B]/10 text-[#1F6B3B]"
         icon={<TrendingUp className="h-4 w-4" />}
-        title="Matrículas por Mês"
-        subtitle="Evolução do ano letivo"
+        title={mode === "operacoes" ? "Fluxo de Matrículas" : "Matrículas por Mês"}
+        subtitle={mode === "operacoes" ? "Ritmo operacional do ano letivo" : "Evolução do ano letivo"}
       >
         <div className="h-56 min-w-0">
           {hasLineData ? (
@@ -168,8 +169,8 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos }: Chart
       <ChartCard
         iconBg="bg-[#E3B23C]/10 text-[#E3B23C]"
         icon={<Wallet className="h-4 w-4" />}
-        title="Status das Mensalidades"
-        subtitle="Distribuição atual"
+        title={mode === "operacoes" ? "Saúde da Cobrança" : "Status das Mensalidades"}
+        subtitle={mode === "operacoes" ? "Distribuição operacional da carteira" : "Distribuição atual"}
       >
         <div className="h-56 min-w-0">
           {resumo ? (

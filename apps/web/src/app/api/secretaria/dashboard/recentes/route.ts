@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { AlunoStatusSchema } from '@moxi/tenant-sdk/aluno';
@@ -56,6 +57,20 @@ export async function GET() {
         avisos_recentes: [],
       });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (roleError) return roleError;
 
     const { data: kpis, error: kpisError } = await supabase
       .from('vw_secretaria_dashboard_kpis')

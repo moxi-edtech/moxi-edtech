@@ -1,5 +1,6 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -19,6 +20,21 @@ export async function GET() {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Sem escola ativa" }, { status: 400 });
+    }
+    const authz = await requireRoleInSchool({
+      supabase: supabase as any,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (authz.error) {
+      return authz.error;
     }
 
     const { data, error } = await (supabase as any).rpc("preview_matricula_number", {

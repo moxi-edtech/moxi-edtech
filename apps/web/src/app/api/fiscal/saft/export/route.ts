@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
 import { recordAuditServer } from "@/lib/audit";
+import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import {
   postFiscalSaftExportSchema,
   type PostFiscalSaftExportInput,
@@ -24,7 +25,6 @@ type SaftHeaderConfig = {
   softwareCertificateNumber: string;
 };
 
-const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
 const SAFT_EXPORT_STATUS_CONFLICT = "FISCAL_SAFT_EXPORT_ALREADY_EXISTS";
 const AGT_PAYMENT_MECHANISMS = new Set(["NU", "TB", "CC", "MB"]);
 
@@ -198,77 +198,6 @@ async function parseRequestBody(req: Request): Promise<PostFiscalSaftExportInput
   }
 }
 
-async function requireFiscalAccess({
-  supabase,
-  userId,
-  empresaId,
-  escolaId,
-}: {
-  supabase: RouteSupabase;
-  userId: string;
-  empresaId: string;
-  escolaId: string | null;
-}) {
-  const { data: membership, error } = await supabase
-    .from("fiscal_empresa_users")
-    .select("role")
-    .eq("empresa_id", empresaId)
-    .eq("user_id", userId)
-    .in("role", [...ALLOWED_FISCAL_ROLES])
-    .maybeSingle();
-
-  if (error) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "FISCAL_AUTH_CHECK_FAILED",
-      message: error.message || "Falha ao validar acesso fiscal.",
-    };
-  }
-
-  if (!membership) {
-    return {
-      ok: false as const,
-      status: 403,
-      code: "FORBIDDEN",
-      message: "Sem acesso fiscal à empresa informada.",
-    };
-  }
-
-  if (!escolaId) {
-    return { ok: true as const };
-  }
-
-  const { data: binding, error: bindingError } = await supabase
-    .from("fiscal_escola_bindings")
-    .select("id")
-    .eq("empresa_id", empresaId)
-    .eq("escola_id", escolaId)
-    .is("effective_to", null)
-    .limit(1)
-    .maybeSingle();
-
-  if (bindingError) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "FISCAL_BINDING_CHECK_FAILED",
-      message: bindingError.message || "Falha ao validar vínculo escola→empresa fiscal.",
-    };
-  }
-
-  if (!binding) {
-    return {
-      ok: false as const,
-      status: 403,
-      code: "FISCAL_ESCOLA_BINDING_NOT_FOUND",
-      message: "A escola actual do utilizador não está vinculada à empresa fiscal informada.",
-    };
-  }
-
-  return { ok: true as const };
-}
-
 export async function GET(req: Request) {
   const requestId = crypto.randomUUID();
 
@@ -313,7 +242,7 @@ export async function GET(req: Request) {
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
-    const access = await requireFiscalAccess({
+    const access = await requireFiscalAccessByCompanyOrSchool({
       supabase,
       userId: user.id,
       empresaId,
@@ -407,7 +336,7 @@ export async function POST(req: Request) {
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
-    const access = await requireFiscalAccess({
+    const access = await requireFiscalAccessByCompanyOrSchool({
       supabase,
       userId: user.id,
       empresaId: body.empresa_id,

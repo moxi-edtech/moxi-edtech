@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -19,6 +20,10 @@ export async function GET(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+    const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
+    if (!authz.allowed) {
+      return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
+    }
 
     const url = new URL(req.url);
     const parsed = QuerySchema.safeParse({ days: url.searchParams.get("days") ?? 30 });

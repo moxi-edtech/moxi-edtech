@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireRoleInSchool } from "@/lib/authz";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
@@ -25,6 +26,21 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, userRes.user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Usuário não vinculado a nenhuma escola" }, { status: 403 });
+    }
+    const authz = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (authz.error) {
+      return authz.error;
     }
 
     const filters = parseAlunoListFilters(url);

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { recordAuditServer } from "@/lib/audit";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
@@ -30,6 +31,21 @@ export async function GET(
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
   if (!escolaId) {
     return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+  }
+  const authz = await requireRoleInSchool({
+    supabase,
+    escolaId,
+    roles: [
+      "secretaria",
+      "secretaria_financeiro",
+      "admin_financeiro",
+      "admin",
+      "admin_escola",
+      "staff_admin",
+    ],
+  });
+  if (authz.error) {
+    return authz.error;
   }
 
   const { data: matricula, error: matriculaError } = await supabase

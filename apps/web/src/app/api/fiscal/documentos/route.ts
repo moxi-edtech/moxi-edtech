@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import {
@@ -92,7 +93,6 @@ type NormalizeResult =
   | { ok: true; data: PostFiscalDocumentoInput }
   | { ok: false; status: number; code: string; message: string; details?: JsonRecord };
 
-const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
 const CONSUMIDOR_FINAL_NIF = "999999999";
 const CONSUMIDOR_FINAL_NOME = "Consumidor final";
 const DESCONHECIDO = "Desconhecido";
@@ -322,7 +322,7 @@ export async function GET() {
       });
     }
 
-    const authz = await requireFiscalAccess({
+    const authz = await requireFiscalAccessByCompanyOrSchool({
       supabase,
       userId: user.id,
       empresaId: ctx.empresaId,
@@ -430,7 +430,7 @@ export async function POST(req: Request) {
     const input = normalized.data;
     const auditEscolaId = escolaId;
 
-    const authz = await requireFiscalAccess({
+    const authz = await requireFiscalAccessByCompanyOrSchool({
       supabase,
       userId: user.id,
       empresaId: input.empresa_id,
@@ -650,77 +650,6 @@ export async function POST(req: Request) {
     const message = error instanceof Error ? error.message : "Erro interno ao preparar emissão fiscal.";
     return jsonError(500, "FISCAL_ROUTE_INTERNAL_ERROR", message, { request_id: requestId });
   }
-}
-
-async function requireFiscalAccess({
-  supabase,
-  userId,
-  empresaId,
-  escolaId,
-}: {
-  supabase: FiscalSupabaseClient;
-  userId: string;
-  empresaId: string;
-  escolaId: string | null;
-}) {
-  const { data: membership, error } = await supabase
-    .from("fiscal_empresa_users")
-    .select("role")
-    .eq("empresa_id", empresaId)
-    .eq("user_id", userId)
-    .in("role", [...ALLOWED_FISCAL_ROLES])
-    .maybeSingle();
-
-  if (error) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "FISCAL_AUTH_CHECK_FAILED",
-      message: error.message || "Falha ao validar acesso fiscal.",
-    };
-  }
-
-  if (!membership) {
-    return {
-      ok: false as const,
-      status: 403,
-      code: "FORBIDDEN",
-      message: "Sem acesso fiscal à empresa informada.",
-    };
-  }
-
-  if (!escolaId) {
-    return { ok: true as const };
-  }
-
-  const { data: binding, error: bindingError } = await supabase
-    .from("fiscal_escola_bindings")
-    .select("id")
-    .eq("empresa_id", empresaId)
-    .eq("escola_id", escolaId)
-    .is("effective_to", null)
-    .limit(1)
-    .maybeSingle();
-
-  if (bindingError) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "FISCAL_BINDING_CHECK_FAILED",
-      message: bindingError.message || "Falha ao validar vínculo escola→empresa fiscal.",
-    };
-  }
-
-  if (!binding) {
-    return {
-      ok: false as const,
-      status: 403,
-      code: "FISCAL_ESCOLA_BINDING_NOT_FOUND",
-      message: "A escola actual do utilizador não está vinculada à empresa fiscal informada.",
-    };
-  }
-
-  return { ok: true as const };
 }
 
 async function resolveSerieSemantica({

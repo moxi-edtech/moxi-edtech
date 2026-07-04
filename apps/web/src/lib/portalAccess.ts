@@ -2,10 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
-export type PortalRole = "admin" | "secretaria" | "financeiro" | "professor" | "aluno";
+export type PortalRole = "admin" | "operacoes" | "secretaria" | "financeiro" | "professor" | "aluno";
 
 const PORTAL_ALLOWED_ROLES: Record<PortalRole, string[]> = {
   admin: ["admin", "admin_escola", "staff_admin", "admin_financeiro", "super_admin", "global_admin"],
+  operacoes: [
+    "secretaria",
+    "secretaria_financeiro",
+    "admin_financeiro",
+    "admin",
+    "admin_escola",
+    "staff_admin",
+    "super_admin",
+    "global_admin",
+  ],
   secretaria: [
     "secretaria",
     "secretaria_financeiro",

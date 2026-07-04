@@ -1,30 +1,10 @@
 import { NextResponse } from "next/server";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = 'force-dynamic';
-
-async function resolveEscolaId(client: any, userId: string): Promise<string | null> {
-  try {
-    const { data: prof } = await client
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    const perfil = prof?.[0] as any;
-    if (perfil?.current_escola_id) return perfil.current_escola_id;
-    if (perfil?.escola_id) return perfil.escola_id;
-  } catch {}
-
-  try {
-    const { data: vinc } = await client.from('escola_users').select('escola_id').eq('user_id', userId).limit(1);
-    const escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
-    if (escolaId) return escolaId;
-  } catch {}
-
-  return null;
-}
 
 export async function GET() {
   try {
@@ -33,8 +13,23 @@ export async function GET() {
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const escolaId = await resolveEscolaId(s as any, user.id);
+    const escolaId = await resolveEscolaIdForUser(s as any, user.id);
     if (!escolaId) return NextResponse.json({ ok: true, items: [] });
+    const authz = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (authz.error) {
+      return authz.error;
+    }
     
     // Catálogo de classes para mapear nomes → IDs existentes
     let classesQuery = (s as any)

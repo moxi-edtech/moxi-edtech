@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { performance } from "node:perf_hooks";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
@@ -43,6 +44,20 @@ export async function GET() {
         avisos_recentes: [],
       });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (roleError) return roleError;
 
     const kpisStart = shouldLog ? performance.now() : 0;
     const startOfDay = new Date();

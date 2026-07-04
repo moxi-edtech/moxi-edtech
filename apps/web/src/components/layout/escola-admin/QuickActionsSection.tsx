@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2 } from "lucide-react";
+import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet, UploadCloud } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
 import EventosPage from "@/app/escola/[id]/(portal)/eventos/page";
@@ -24,7 +24,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type QuickAction = {
-  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas";
+  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes";
   label:    string;
   href:     string;
   icon:     React.ElementType;
@@ -38,9 +38,11 @@ type QuickAction = {
 export default function QuickActionsSection({
   escolaId,
   setupStatus,
+  portalBase = "admin",
 }: {
   escolaId:    string;
   setupStatus: SetupStatus;
+  portalBase?: "admin" | "operacoes";
 }) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -49,48 +51,89 @@ export default function QuickActionsSection({
 
   const canLaunchNota = avaliacaoFrequenciaOk && turmasOk;
 
-  const actions: QuickAction[] = [
-    {
-      key: "funcionario",
-      label: "Novo Funcionário",
-      icon:  UserPlus,
-      href:  buildPortalHref(escolaParam, "/admin/funcionarios/novo"),
-      opensModal: true,
-    },
-    {
-      key: "nota",
-      label:    "Lançar Nota",
-      icon:     FileText,
-      href:     buildPortalHref(escolaParam, "/admin/notas"),
-      opensModal: true,
-      disabled: !canLaunchNota,
-      reason:   !avaliacaoFrequenciaOk
-        ? "Configure avaliação e frequência primeiro."
-        : "Crie turmas antes de lançar notas.",
-    },
-    {
-      key: "aviso",
-      label: "Criar Aviso",
-      icon:  Megaphone,
-      href:  buildPortalHref(escolaParam, "/admin/avisos/novo"),
-      opensModal: true,
-    },
-    {
-      key: "evento",
-      label: "Agendar Evento",
-      icon:  Calendar,
-      href:  buildPortalHref(escolaParam, "/admin/calendario/novo"),
-      opensModal: true,
-    },
-    {
-      key: "migracao_pautas",
-      label: "Migrar Pautas",
-      icon: Table2,
-      href: buildPortalHref(escolaParam, "/admin/migracao/pautas"),
-      disabled: !turmasOk,
-      reason: "Crie turmas antes de usar a migração de pautas.",
-    },
-  ];
+  const actions: QuickAction[] = portalBase === "operacoes"
+    ? [
+        {
+          key: "funcionario",
+          label: "Nova Matrícula",
+          icon: UserPlus,
+          href: buildPortalHref(escolaParam, "/operacoes/matriculas/nova"),
+        },
+        {
+          key: "nota",
+          label: "Nova Admissão",
+          icon: FileText,
+          href: buildPortalHref(escolaParam, "/operacoes/admissoes/nova"),
+        },
+        {
+          key: "aviso",
+          label: "Importar Alunos",
+          icon: UploadCloud,
+          href: buildPortalHref(escolaParam, "/operacoes/importacoes"),
+        },
+        {
+          key: "evento",
+          label: "Recebimentos",
+          icon: Wallet,
+          href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
+        },
+        {
+          key: "migracao_pautas",
+          label: "Quadro de Horários",
+          icon: Table2,
+          href: buildPortalHref(escolaParam, "/horarios/quadro"),
+          disabled: !turmasOk,
+          reason: "Crie turmas antes de gerir horários.",
+        },
+        {
+          key: "recebimentos",
+          label: "Criar Aviso",
+          icon: Megaphone,
+          href: buildPortalHref(escolaParam, "/operacoes/avisos/novo"),
+        },
+      ]
+    : [
+        {
+          key: "funcionario",
+          label: "Novo Funcionário",
+          icon:  UserPlus,
+          href:  buildPortalHref(escolaParam, "/admin/funcionarios/novo"),
+          opensModal: true,
+        },
+        {
+          key: "nota",
+          label:    "Lançar Nota",
+          icon:     FileText,
+          href:     buildPortalHref(escolaParam, "/admin/notas"),
+          opensModal: true,
+          disabled: !canLaunchNota,
+          reason:   !avaliacaoFrequenciaOk
+            ? "Configure avaliação e frequência primeiro."
+            : "Crie turmas antes de lançar notas.",
+        },
+        {
+          key: "aviso",
+          label: "Criar Aviso",
+          icon:  Megaphone,
+          href:  buildPortalHref(escolaParam, "/admin/avisos/novo"),
+          opensModal: true,
+        },
+        {
+          key: "evento",
+          label: "Agendar Evento",
+          icon:  Calendar,
+          href:  buildPortalHref(escolaParam, "/admin/calendario/novo"),
+          opensModal: true,
+        },
+        {
+          key: "migracao_pautas",
+          label: "Migrar Pautas",
+          icon: Table2,
+          href: buildPortalHref(escolaParam, "/admin/migracao/pautas"),
+          disabled: !turmasOk,
+          reason: "Crie turmas antes de usar a migração de pautas.",
+        },
+      ];
 
   const renderSheetBody = () => {
     if (!selectedAction) return null;

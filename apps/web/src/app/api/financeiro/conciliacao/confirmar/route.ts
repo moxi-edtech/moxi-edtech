@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { requireRoleInSchool } from '@/lib/authz';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,13 @@ export async function POST(request: Request) {
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 403 });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+    });
+    if (roleError) return roleError;
 
     const body = await request.json();
     const parsedBody = ConfirmPayloadSchema.safeParse(body);

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { authorizeEscolaAction } from '@/lib/escola/disciplinas'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { normalizeAnoLetivo, resolveTabelaPreco } from '@/lib/financeiro/tabela-preco'
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
     // Resolve escola
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+    const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["criar_matricula", "configurar_escola"])
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/confirmar`)
     if (forwarded) return forwarded

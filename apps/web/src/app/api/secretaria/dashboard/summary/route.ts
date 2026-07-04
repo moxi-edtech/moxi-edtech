@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { performance } from "node:perf_hooks";
 import { createRouteClient } from "@/lib/supabase/route-client";
+import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { parsePlanTier } from "@/config/plans";
 import { AlunoStatusSchema } from "@moxi/tenant-sdk/aluno";
@@ -83,6 +84,20 @@ export async function GET() {
         escola: { nome: null, plano: null, status: null },
       });
     }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (roleError) return roleError;
 
     const nowIso = new Date().toISOString();
     const startOfDay = new Date();

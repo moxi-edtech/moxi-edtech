@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { recordAuditServer } from "@/lib/audit";
 import { assertPortalAccess } from "@/lib/portalAccess";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
-import { roleMatchesAllowedRoles } from "@/lib/permissions";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -39,16 +40,20 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     }
 
     const role = (prof as any)?.role as string | undefined;
-    const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null;
-    const allowedRoles = ["super_admin", "admin", "secretaria", "secretaria_financeiro", "admin_financeiro"];
-
-    if (!roleMatchesAllowedRoles(role, allowedRoles, "k12")) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    let escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id);
+    if (!escolaFromProfile) {
+      escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null;
     }
 
     if (!escolaFromProfile) {
       return NextResponse.json({ ok: false, error: "Perfil não está vinculado a uma escola" }, { status: 403 });
     }
+    const authz = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId: escolaFromProfile,
+      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+    });
+    if (authz.error) return authz.error;
 
     const { data: aluno, error: alunoErr } = await s
       .from("alunos")

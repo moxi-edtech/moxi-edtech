@@ -32,16 +32,75 @@ type Props = {
     turmas: number;
   };
   missingPricingCount: number;
+  portalBase?: "admin" | "operacoes";
 };
 
-export default function PostWizardChecklist({ setupStatus, stats, missingPricingCount }: Props) {
+export default function PostWizardChecklist({
+  setupStatus,
+  stats,
+  missingPricingCount,
+  portalBase = "admin",
+}: Props) {
   const { escolaSlug, escolaId } = useEscolaId();
   // Garante que não usamos a string "null" como ID
   const escolaParam = (escolaSlug && escolaSlug !== "null") ? escolaSlug : (escolaId !== "null" ? (escolaId || null) : null);
 
+  const portalHref = (path: string) => buildPortalHref(escolaParam, `/${portalBase}/${path}`);
+  const onboardingHref = buildPortalHref(escolaParam, "/configuracoes/onboarding");
+
   const steps = useMemo(() => {
     if (!escolaParam) return [];
-    
+
+    if (portalBase === "operacoes") {
+      return [
+        {
+          id: "academico",
+          title: "Base Académica",
+          description: "Ano letivo, períodos, currículo e turmas prontos.",
+          completed: setupStatus.setupComplete,
+          current: !setupStatus.setupComplete,
+          href: onboardingHref,
+          icon: School,
+        },
+        {
+          id: "financeiro",
+          title: "Preçário & Cobrança",
+          description: "Propinas e cobrança inicial desbloqueadas.",
+          completed: missingPricingCount === 0,
+          current: missingPricingCount > 0,
+          href: portalHref("configuracoes/mensalidades"),
+          icon: Banknote,
+        },
+        {
+          id: "professores",
+          title: "Equipa Docente",
+          description: "Professores alocados para lançar a rotina.",
+          completed: stats.professores > 0,
+          current: setupStatus.setupComplete && stats.professores === 0,
+          href: portalHref("professores"),
+          icon: ShieldCheck,
+        },
+        {
+          id: "alunos",
+          title: "Matrículas Activas",
+          description: "A escola já entrou em operação com alunos activos.",
+          completed: stats.alunos > 0,
+          current: setupStatus.setupComplete && stats.alunos === 0,
+          href: portalHref("matriculas"),
+          icon: Users,
+        },
+        {
+          id: "recebimentos",
+          title: "Recebimentos",
+          description: "Operação preparada para registrar e acompanhar cobranças.",
+          completed: stats.alunos > 0 && missingPricingCount === 0,
+          current: stats.alunos > 0 && missingPricingCount === 0,
+          href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
+          icon: FileText,
+        },
+      ];
+    }
+
     return [
       {
         id: "academico",
@@ -49,7 +108,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Ano letivo, períodos e currículo base.",
         completed: setupStatus.setupComplete,
         current: !setupStatus.setupComplete,
-        href: buildPortalHref(escolaParam, "/configuracoes/onboarding"),
+        href: onboardingHref,
         icon: School,
       },
       {
@@ -58,7 +117,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Definir valores de propinas e coordenadas.",
         completed: missingPricingCount === 0 && setupStatus.setupComplete,
         current: setupStatus.setupComplete && missingPricingCount > 0,
-        href: buildPortalHref(escolaParam, "/admin/configuracoes/mensalidades"),
+        href: portalHref("configuracoes/mensalidades"),
         icon: Banknote,
       },
       {
@@ -67,7 +126,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Convidar professores para o portal.",
         completed: stats.professores > 0,
         current: setupStatus.setupComplete && stats.professores === 0,
-        href: buildPortalHref(escolaParam, "/admin/usuarios"),
+        href: portalHref("professores"),
         icon: ShieldCheck,
       },
       {
@@ -76,7 +135,7 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Importar lista ou abrir inscrições.",
         completed: stats.alunos > 0,
         current: setupStatus.setupComplete && stats.professores > 0 && stats.alunos === 0,
-        href: buildPortalHref(escolaParam, "/admin/alunos"),
+        href: portalHref("alunos"),
         icon: Users,
       },
       {
@@ -85,11 +144,11 @@ export default function PostWizardChecklist({ setupStatus, stats, missingPricing
         description: "Regime de IVA e dados para facturação.",
         completed: false, 
         current: stats.alunos > 0,
-        href: buildPortalHref(escolaParam, "/admin/configuracoes/identidade"),
+        href: portalHref("configuracoes/identidade"),
         icon: FileText,
       }
     ];
-  }, [setupStatus, stats, missingPricingCount, escolaParam]);
+  }, [missingPricingCount, onboardingHref, portalBase, portalHref, escolaParam, setupStatus, stats]);
 
   const totalSteps = steps.length;
   const completedSteps = steps.filter(s => s.completed).length;

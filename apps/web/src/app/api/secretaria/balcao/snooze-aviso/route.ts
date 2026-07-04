@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -12,6 +13,24 @@ export async function POST(req: Request) {
     if (!auth?.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const realEscolaId = await resolveEscolaIdForUser(supabase, auth.user.id, escolaId);
+    if (!realEscolaId) {
+      return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    }
+    const authz = await requireRoleInSchool({
+      supabase,
+      escolaId: realEscolaId,
+      roles: [
+        "secretaria",
+        "secretaria_financeiro",
+        "admin_financeiro",
+        "admin",
+        "admin_escola",
+        "staff_admin",
+      ],
+    });
+    if (authz.error) {
+      return authz.error;
+    }
 
     const { data, error } = await supabase.rpc("snooze_secretaria_aviso", {
       p_escola_id: realEscolaId,

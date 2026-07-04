@@ -4,26 +4,20 @@
 import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import type { SetupStatus } from "./setupStatus";
+import type { KpiStats, OperationalSnapshot } from "./dashboard.types";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export type KpiStats = {
-  turmas:      number;
-  alunos:      number;
-  professores: number;
-  avaliacoes:  number;
-  financeiro?: number;
-};
 
 type Props = {
   escolaId:        string;
   stats:           KpiStats;
+  mode?:           "admin" | "operacoes";
   loading?:        boolean;
   error?:          string | null;
   setupStatus:     SetupStatus;
+  operationalSnapshot?: OperationalSnapshot;
   financeiroHref?: string;
+  portalBase?:     "admin" | "operacoes";
 };
 
 // ─── Mock Data for Sparklines ────────────────────────────────────────────────
@@ -53,10 +47,13 @@ function KpiSkeleton() {
 export default function KpiSection({
   escolaId,
   stats,
+  mode = "admin",
   loading = false,
   error,
   setupStatus,
+  operationalSnapshot,
   financeiroHref,
+  portalBase = "admin",
 }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -81,51 +78,104 @@ export default function KpiSection({
   const s = stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
   const { turmasOk } = setupStatus;
 
-  const adminHref = (path: string) => buildPortalHref(escolaParam, `/admin/${path}`);
+  const portalHref = (path: string) => buildPortalHref(escolaParam, `/${portalBase}/${path}`);
   const financeHref = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
-
-  const kpis = [
-    {
-      label: "Turmas",
-      value: s.turmas,
-      icon: UsersRound,
-      href: adminHref("turmas"),
-      variant: "default" as const,
-      trend: { value: 12, isPositive: true },
-      chartData: mockChartData,
-      description: "Em operação este ano",
-    },
-    {
-      label: "Alunos",
-      value: s.alunos,
-      icon: Users,
-      href: adminHref("alunos"),
-      variant: turmasOk ? ("brand" as const) : ("warning" as const),
-      trend: { value: 8, isPositive: true },
-      chartData: mockChartData.map(d => ({ value: d.value * 1.2 })),
-      description: "Matrículas confirmadas",
-    },
-    {
-      label: "Professores",
-      value: s.professores,
-      icon: UserCheck,
-      href: adminHref("professores"),
-      variant: "default" as const,
-      trend: { value: 2, isPositive: false },
-      chartData: mockChartData.map(d => ({ value: 1000 - d.value })),
-      description: "Corpo docente ativo",
-    },
-    {
-      label: "Financeiro",
-      value: `${s.financeiro ?? 0}%`,
-      icon: Wallet,
-      href: financeHref,
-      variant: s.financeiro && s.financeiro > 80 ? ("success" as const) : ("brand" as const),
-      trend: { value: 5, isPositive: true },
-      chartData: mockChartData.map(d => ({ value: d.value * 0.8 })),
-      description: "Cobrança da competência",
-    },
-  ];
+  const op = operationalSnapshot ?? {
+    mensalidadesPendentes: 0,
+    mensalidadesInadimplentes: 0,
+    turmasPendentes: 0,
+    curriculoHorarioPendencias: 0,
+    setupBlockers: 0,
+    admissoesPendentes: 0,
+    matriculasPendentes: 0,
+    documentosEmProcessamento: 0,
+    turmasSemHorarioPublicado: 0,
+  };
+  const kpis = mode === "operacoes"
+    ? [
+        {
+          label: "Alunos",
+          value: s.alunos,
+          icon: Users,
+          href: portalHref("alunos"),
+          variant: turmasOk ? ("brand" as const) : ("warning" as const),
+          trend: { value: 8, isPositive: true },
+          chartData: mockChartData.map((d) => ({ value: d.value * 1.2 })),
+          description: "Operação activa",
+        },
+        {
+          label: "Turmas",
+          value: s.turmas,
+          icon: UsersRound,
+          href: portalHref("turmas"),
+          variant: "default" as const,
+          trend: { value: Math.max(0, op.turmasPendentes), isPositive: op.turmasPendentes === 0 },
+          chartData: mockChartData,
+          description: "Turmas em circulação",
+        },
+        {
+          label: "Pendentes",
+          value: op.mensalidadesPendentes,
+          icon: Wallet,
+          href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
+          variant: op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
+          trend: { value: op.mensalidadesPendentes, isPositive: op.mensalidadesPendentes === 0 },
+          chartData: mockChartData.map((d) => ({ value: d.value * 0.6 })),
+          description: "Cobranças por tratar",
+        },
+        {
+          label: "Em Atraso",
+          value: op.mensalidadesInadimplentes,
+          icon: UserCheck,
+          href: `${financeHref}/radar`,
+          variant: op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
+          trend: { value: op.mensalidadesInadimplentes, isPositive: op.mensalidadesInadimplentes === 0 },
+          chartData: mockChartData.map((d) => ({ value: 1000 - d.value })),
+          description: "Casos críticos na cobrança",
+        },
+      ]
+    : [
+        {
+          label: "Turmas",
+          value: s.turmas,
+          icon: UsersRound,
+          href: portalHref("turmas"),
+          variant: "default" as const,
+          trend: { value: 12, isPositive: true },
+          chartData: mockChartData,
+          description: "Em operação este ano",
+        },
+        {
+          label: "Alunos",
+          value: s.alunos,
+          icon: Users,
+          href: portalHref("alunos"),
+          variant: turmasOk ? ("brand" as const) : ("warning" as const),
+          trend: { value: 8, isPositive: true },
+          chartData: mockChartData.map(d => ({ value: d.value * 1.2 })),
+          description: "Matrículas confirmadas",
+        },
+        {
+          label: "Professores",
+          value: s.professores,
+          icon: UserCheck,
+          href: portalHref("professores"),
+          variant: "default" as const,
+          trend: { value: 2, isPositive: false },
+          chartData: mockChartData.map(d => ({ value: 1000 - d.value })),
+          description: "Corpo docente ativo",
+        },
+        {
+          label: "Financeiro",
+          value: `${s.financeiro ?? 0}%`,
+          icon: Wallet,
+          href: financeHref,
+          variant: s.financeiro && s.financeiro > 80 ? ("success" as const) : ("brand" as const),
+          trend: { value: 5, isPositive: true },
+          chartData: mockChartData.map(d => ({ value: d.value * 0.8 })),
+          description: "Cobrança da competência",
+        },
+      ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

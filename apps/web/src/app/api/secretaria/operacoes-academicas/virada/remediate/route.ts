@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
@@ -164,6 +165,10 @@ export async function POST(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
+    if (!authz.allowed) {
+      return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
+    }
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) {

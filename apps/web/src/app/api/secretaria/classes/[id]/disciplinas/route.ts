@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { authorizeDisciplinaManage } from '@/lib/escola/disciplinas'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
@@ -15,6 +16,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
+    const authz = await authorizeDisciplinaManage(supabase as any, escolaId, user.id)
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
     let query = supabase
       .from('disciplinas')

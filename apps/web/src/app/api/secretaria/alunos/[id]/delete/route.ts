@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { recordAuditServer } from "@/lib/audit";
-import { roleMatchesAllowedRoles } from "@/lib/permissions";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 
 // DELETE OU POST (estamos usando POST na UI)
@@ -52,23 +53,9 @@ export async function POST(
     }
 
     const role = (prof as any)?.role as string | undefined;
-    const escolaFromProfile =
-      (prof as any)?.current_escola_id || (prof as any)?.escola_id || null;
-
-    // 3) Autorização de papel
-    const allowedRoles = [
-      "super_admin",
-      "admin",
-      "secretaria",
-      "secretaria_financeiro",
-      "admin_financeiro",
-    ];
-
-    if (!roleMatchesAllowedRoles(role, allowedRoles, "k12")) {
-      return NextResponse.json(
-        { ok: false, error: "Sem permissão" },
-        { status: 403 }
-      );
+    let escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id);
+    if (!escolaFromProfile) {
+      escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null;
     }
 
     if (!escolaFromProfile) {
@@ -77,6 +64,12 @@ export async function POST(
         { status: 403 }
       );
     }
+    const authz = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId: escolaFromProfile,
+      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+    });
+    if (authz.error) return authz.error;
 
     // 4) Carrega o aluno usando service role (evita bloqueios inesperados de RLS)
     const { data: aluno, error: alunoErr } = await s

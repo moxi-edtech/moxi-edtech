@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { requireRoleInSchool } from '@/lib/authz'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { buildPlanLimitError, checkAlunoPlanLimit } from '@/lib/plan/limits'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import type { Json } from '~types/supabase'
 
 const BodySchema = z.object({
@@ -52,29 +54,17 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
     
     // --- CORREÇÃO: Buscar escolaId do perfil do usuário logado ---
-    const { data: prof } = await s
-      .from('profiles')
-      .select('escola_id, current_escola_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    // Tenta pegar current_escola_id (se tiver troca de contexto) ou escola_id fixo
-    escolaId = prof?.current_escola_id || prof?.escola_id || null
-
-    // Fallback: Checar tabela de vínculos
-    if (!escolaId) {
-       const { data: vinc } = await s
-         .from('escola_users')
-         .select('escola_id')
-         .eq('user_id', user.id)
-         .limit(1)
-         .maybeSingle()
-       escolaId = vinc?.escola_id || null
-    }
+    escolaId = await resolveEscolaIdForUser(s as any, user.id)
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Usuário não vinculado a nenhuma escola.' }, { status: 403 })
     }
+    const authz = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId,
+      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'],
+    })
+    if (authz.error) return authz.error
 
     const limitCheck = await checkAlunoPlanLimit(s, escolaId, 1)
     if (!limitCheck.ok) {

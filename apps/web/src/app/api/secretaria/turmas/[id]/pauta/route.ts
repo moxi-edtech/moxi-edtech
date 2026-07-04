@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import * as XLSX from 'xlsx';
+import { authorizeTurmasManage } from '@/lib/escola/disciplinas';
 import { applyKf2ListInvariants } from '@/lib/kf2';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { requireFeature } from '@/lib/plan/requireFeature';
@@ -24,6 +25,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) {
       return new NextResponse('Escola não encontrada', { status: 403 });
+    }
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) {
+      return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
     }
 
     try {

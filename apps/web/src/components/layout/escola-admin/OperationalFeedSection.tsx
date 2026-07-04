@@ -6,6 +6,7 @@ import { Activity, ArrowRight, AlertTriangle, CheckCircle2, Eye, ExternalLink } 
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { familyBadgeClasses, familyLabel, toFeedSubline, type ActivityFeedItem } from "@/lib/admin/activityFeed";
 import { useAdminActivityFeed } from "./useAdminActivityFeed";
+import { useOperationalActivityFeed } from "./useOperationalActivityFeed";
 import { buildPortalHref } from "@/lib/navigation";
 import { 
   Sheet, 
@@ -31,6 +32,7 @@ import {
 
 type Props = {
   escolaId: string;
+  portalBase?: "admin" | "operacoes";
 };
 
 function formatTime(iso: string): string {
@@ -96,10 +98,13 @@ function ActivityPayloadDetails({ item }: { item: ActivityFeedItem }) {
   );
 }
 
-export default function OperationalFeedSection({ escolaId }: Props) {
+export default function OperationalFeedSection({ escolaId, portalBase = "admin" }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const { items, loading, realtimeState } = useAdminActivityFeed(escolaId, 20);
+  const adminFeed = useAdminActivityFeed(escolaId, 20);
+  const operationalFeed = useOperationalActivityFeed(escolaId, 20);
+  const { items, loading, realtimeState } =
+    portalBase === "operacoes" ? operationalFeed : adminFeed;
   const [selectedItem, setSelectedAction] = useState<ActivityFeedItem | null>(null);
   const [viewType, setViewType] = useState<"validate" | "details">("details");
 
@@ -122,10 +127,13 @@ export default function OperationalFeedSection({ escolaId }: Props) {
         </div>
 
         <Link
-          href={buildPortalHref(escolaParam, "/admin/relatorios")}
+          href={buildPortalHref(
+            escolaParam,
+            portalBase === "operacoes" ? "/operacoes/alertas" : "/admin/relatorios"
+          )}
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider text-klasse-green hover:bg-emerald-50 transition-colors"
         >
-          Histórico <ArrowRight className="h-3 w-3" />
+          {portalBase === "operacoes" ? "Abrir fila" : "Histórico"} <ArrowRight className="h-3 w-3" />
         </Link>
       </header>
 

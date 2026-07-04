@@ -9,6 +9,7 @@ import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
 
 import type {
   KpiStats,
+  OperationalSnapshot,
   SetupStatus,
   Aviso,
   CurriculoPendencias,
@@ -37,11 +38,19 @@ function getLocalDayKey(date = new Date()): string {
   }).format(date);
 }
 
-type Props = { escolaId: string; escolaNome?: string };
+type Props = {
+  escolaId: string;
+  escolaNome?: string;
+  mode?: "admin" | "operacoes";
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default async function EscolaAdminDashboardData({ escolaId, escolaNome }: Props) {
+export default async function EscolaAdminDashboardData({
+  escolaId,
+  escolaNome,
+  mode = "admin",
+}: Props) {
   const s            = await supabaseServer();
   const { data: userRes } = await s.auth.getUser();
   const user = userRes?.user ?? null;
@@ -132,9 +141,13 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       dashboardCounts,
       pendingTurmasResult,
       draftCurriculosResult,
+      admissoesCountsResult,
       setupStatusResult,
       configResult,
       anoLetivoResult,
+      matriculasPendentesResult,
+      documentosEmProcessamentoResult,
+      horariosPublicadosResult,
       missingPricingResult,
       financeiroKpiResult,
       escolaNomeResult,
@@ -159,6 +172,11 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         .eq("escola_id", validId)
         .eq("status", "draft"),
 
+      s.from("vw_admissoes_counts_por_status" as any)
+        .select("submetida_total, em_analise_total, aprovada_total, expirando_24h_total, reenviados_48h_total")
+        .eq("escola_id", validId)
+        .maybeSingle(),
+
       s.from("vw_escola_setup_status")
         .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
         .eq("escola_id", validId)
@@ -175,6 +193,21 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         .eq("escola_id", validId)
         .eq("ativo", true)
         .maybeSingle(),
+
+      s.from("matriculas")
+        .select("id", { count: "exact", head: true })
+        .eq("escola_id", validId)
+        .in("status", ["pendente", "rascunho", "indefinido"]),
+
+      s.from("pautas_lote_jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("escola_id", validId)
+        .eq("status", "PROCESSING"),
+
+      s.from("horario_versoes")
+        .select("turma_id")
+        .eq("escola_id", validId)
+        .eq("status", "publicada"),
 
       missingPricingQuery,
       financeiroKpiQuery,
@@ -320,7 +353,51 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       if (status === "pago") pagamentosResumo.pago += total;
       else if (status === "pendente") pagamentosResumo.pendente += total;
       else if (status === "inadimplente") pagamentosResumo.inadimplente += total;
+      else if (status === "ajuste") pagamentosResumo.ajuste += total;
     });
+
+    const setupBlockers = [
+      !setupStatus.anoLetivoOk,
+      !setupStatus.periodosOk,
+      !setupStatus.avaliacaoFrequenciaOk,
+      !setupStatus.curriculoOk,
+      !setupStatus.turmasOk,
+      missingPricingCount > 0,
+    ].filter(Boolean).length;
+
+    const admissoesCounts = (admissoesCountsResult.data ?? null) as
+      | {
+          submetida_total?: number | null;
+          em_analise_total?: number | null;
+          aprovada_total?: number | null;
+          expirando_24h_total?: number | null;
+          reenviados_48h_total?: number | null;
+        }
+      | null;
+    const admissoesPendentes =
+      Number(admissoesCounts?.submetida_total ?? 0) +
+      Number(admissoesCounts?.em_analise_total ?? 0) +
+      Number(admissoesCounts?.aprovada_total ?? 0);
+    const matriculasPendentes = Number(matriculasPendentesResult.count ?? 0);
+    const documentosEmProcessamento = Number(documentosEmProcessamentoResult.count ?? 0);
+    const turmasComHorarioPublicado = new Set(
+      ((horariosPublicadosResult.data ?? []) as Array<{ turma_id?: string | null }>)
+        .map((row) => row.turma_id)
+        .filter(Boolean)
+    ).size;
+    const turmasSemHorarioPublicado = Math.max(0, Number(stats.turmas ?? 0) - turmasComHorarioPublicado);
+
+    const operationalSnapshot: OperationalSnapshot = {
+      mensalidadesPendentes: pagamentosResumo.pendente,
+      mensalidadesInadimplentes: pagamentosResumo.inadimplente,
+      turmasPendentes: pendingTurmasCount,
+      curriculoHorarioPendencias: curriculoPendencias.horario + curriculoPendencias.avaliacao,
+      setupBlockers,
+      admissoesPendentes,
+      matriculasPendentes,
+      documentosEmProcessamento,
+      turmasSemHorarioPublicado,
+    };
 
     const charts: DashboardCharts = {
       meses,
@@ -335,12 +412,14 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     return (
       <EscolaAdminDashboardContent
         escolaId={escolaId}
+        mode={mode}
         escolaNome={escolaNome ?? escolaNomeResult.data?.nome ?? undefined}
         anoLetivo={anoLetivo}
         loading={false}
         error={null}
         stats={stats}
         pendingTurmasCount={pendingTurmasCount}
+        operationalSnapshot={operationalSnapshot}
         notices={avisos}
         charts={charts}
         setupStatus={setupStatus}
@@ -361,12 +440,24 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     return (
       <EscolaAdminDashboardContent
         escolaId={escolaId}
+        mode={mode}
         escolaNome={escolaNome}
         anoLetivo={deriveAnoLetivo(null)}
         loading={false}
         error={e?.message ?? "Falha ao carregar dashboard"}
         stats={emptyKpis}
         pendingTurmasCount={0}
+        operationalSnapshot={{
+          mensalidadesPendentes: 0,
+          mensalidadesInadimplentes: 0,
+          turmasPendentes: 0,
+          curriculoHorarioPendencias: 0,
+          setupBlockers: 0,
+          admissoesPendentes: 0,
+          matriculasPendentes: 0,
+          documentosEmProcessamento: 0,
+          turmasSemHorarioPublicado: 0,
+        }}
         notices={[]}
         charts={undefined}
         setupStatus={emptySetupStatus}

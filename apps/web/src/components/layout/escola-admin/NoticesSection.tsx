@@ -14,6 +14,7 @@ export type Aviso = {
 type Props = {
   escolaId?: string;
   notices?: Aviso[];
+  portalBase?: "admin" | "operacoes";
 };
 
 function formatDateShort(iso: string) {
@@ -23,10 +24,10 @@ function formatDateShort(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(d);
 }
 
-export default function NoticesSection({ escolaId, notices = [] }: Props) {
+export default function NoticesSection({ escolaId, notices = [], portalBase = "admin" }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const hrefAll = escolaParam ? buildPortalHref(escolaParam, "/admin/avisos/novo") : "#";
+  const hrefAll = escolaParam ? buildPortalHref(escolaParam, `/${portalBase}/avisos`) : "#";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

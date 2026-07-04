@@ -91,7 +91,24 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/operacoes/documentos-oficiais", label: "Documentos Oficiais (MED)" },
       ],
     },
-    { href: "/escola/[escolaId]/operacoes/acessos", label: "Acessos ao Portal", icon: "KeyRound" },
+    {
+      href: "/escola/[escolaId]/operacoes/recebimentos",
+      label: "Recebimentos",
+      icon: "Wallet",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/recebimentos", label: "Balcão & cobrança" },
+        { href: "/escola/[escolaId]/operacoes/fecho", label: "Fecho de caixa" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/operacoes/acessos",
+      label: "Acessos ao Portal",
+      icon: "KeyRound",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/acessos", label: "Gestão de acessos" },
+        { href: "/escola/[escolaId]/operacoes/acesso-alunos", label: "Acesso dos alunos" },
+      ],
+    },
     {
       href: "/escola/[escolaId]/operacoes/relatorios",
       label: "Relatórios",
@@ -101,7 +118,16 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/operacoes/relatorios/mapa-aproveitamento", label: "Mapa de Aproveitamento" },
       ],
     },
-    { href: "/escola/[escolaId]/operacoes/avisos", label: "Avisos", icon: "Megaphone" },
+    {
+      href: "/escola/[escolaId]/operacoes/avisos",
+      label: "Avisos",
+      icon: "Megaphone",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/avisos", label: "Fila de avisos" },
+        { href: "/escola/[escolaId]/operacoes/alertas", label: "Alertas operacionais" },
+        { href: "/escola/[escolaId]/operacoes/avisos/novo", label: "Novo aviso" },
+      ],
+    },
     {
       href: "/escola/[escolaId]/operacoes/integracao",
       label: "Integração de Dados",
