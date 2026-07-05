@@ -522,7 +522,7 @@ export async function GET() {
         recurring_commission_status: null,
         risk_level: null,
         latest_activity_at: latestDate(crmLead.updated_at, crmLead.created_at),
-        action_href: "/super-admin/influencers",
+        action_href: "/super-admin/parceiros",
       });
     }
 

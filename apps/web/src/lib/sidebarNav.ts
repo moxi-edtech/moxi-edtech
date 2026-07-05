@@ -31,7 +31,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/escolas", label: "Escolas", icon: "Building2" },
     { href: "/super-admin/centros-formacao", label: "Centros Formação", icon: "GraduationCap" },
     { href: "/super-admin/onboarding", label: "Onboarding", icon: "UserPlus", badge: "Novo" },
-    { href: "/super-admin/influencers", label: "Influencers", icon: "UsersRound" },
+    { href: "/super-admin/parceiros", label: "Parceiros", icon: "UsersRound" },
     { href: "/super-admin/marketing", label: "Marketing", icon: "Megaphone" },
     { href: "/super-admin/planos", label: "Planos e Preços", icon: "Settings2" },
     { href: "/super-admin/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },

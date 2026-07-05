@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   }
 
   const influencer = (Array.isArray(data) ? data[0] : null) as InfluencerAdminCreateItem | null;
-  const portalUrl = "https://app.klasse.ao/influencers";
+  const portalUrl = "https://app.klasse.ao/parceiros";
   const mail = buildAffiliateCredentialsEmail({
     nome: payload.nome,
     email: payload.email.toLowerCase(),

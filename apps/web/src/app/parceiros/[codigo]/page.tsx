@@ -898,6 +898,28 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
     }
   };
 
+  const handleDeleteTeamMember = async (memberId: string) => {
+    setSavingTeamMember(true);
+    try {
+      const response = await fetch(`/api/influencers/${codigo}/team?memberId=${memberId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !payload?.ok) {
+        toast.error(payload?.error || "Falha ao remover membro.");
+        return;
+      }
+
+      toast.success("Membro removido com sucesso.");
+      await loadTeamMembers(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Falha ao remover membro.");
+    } finally {
+      setSavingTeamMember(false);
+    }
+  };
+
   const handleCreateSupportTicket = async () => {
     if (!newSupportTitle.trim()) {
       toast.error("Informe o título do ticket.");
@@ -1219,7 +1241,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
   const handleLogout = async () => {
     await fetch("/api/influencers/session", { method: "DELETE" }).catch(() => null);
-    router.push("/influencers");
+    router.push("/parceiros");
   };
 
   if (authError) {
@@ -1233,7 +1255,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
             <h2 className="text-2xl font-bold text-slate-900">Acesso Restrito</h2>
             <p className="text-slate-500">A sua sessão expirou ou o acesso é inválido. Por favor, valide o seu código e PIN novamente.</p>
           </div>
-          <Button onClick={() => router.push('/influencers')} className="w-full bg-slate-900 py-6 rounded-2xl font-bold">
+          <Button onClick={() => router.push('/parceiros')} className="w-full bg-slate-900 py-6 rounded-2xl font-bold">
             Voltar para Login
           </Button>
         </Card>
@@ -1292,6 +1314,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               campaignUrl={campaignUrl}
               onboardingUrl={onboardingUrl}
               copyToClipboard={copyToClipboard}
+              memberRole={memberRole}
             />
           </TabsContent>
 
@@ -2532,7 +2555,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
           </TabsContent>
 
           <TabsContent value="equipe" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <EquipeTabContent
+             <EquipeTabContent
               loadingTeam={loadingTeam}
               canManageTeam={canManageTeam}
               loadTeamMembers={loadTeamMembers}
@@ -2547,6 +2570,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
               teamMembers={teamMembers}
               operatorProductivity={operatorProductivity}
               handleUpdateTeamMember={handleUpdateTeamMember}
+              handleDeleteTeamMember={handleDeleteTeamMember}
               resetPins={resetPins}
               setResetPins={setResetPins}
             />

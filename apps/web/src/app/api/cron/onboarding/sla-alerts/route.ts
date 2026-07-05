@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
 
       const subject = `⚠️ Onboarding Atrasado · ${escolaNome} · Etapa: ${stepTitle}`;
       const trackingUrl = `${baseUrl}/onboarding/acompanhar/${trackingToken}`;
-      const partnerUrl = `${baseUrl}/influencers/${request.financeiro?.influencer_codigo || ""}`;
+      const partnerUrl = `${baseUrl}/parceiros/${request.financeiro?.influencer_codigo || ""}`;
 
       const html = `
         <div style="font-family: sans-serif; line-height: 1.6; color: #0f172a; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">

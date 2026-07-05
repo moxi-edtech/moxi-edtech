@@ -59,6 +59,7 @@ function rpcErrorMessage(error: unknown, fallback: string) {
   if (message.includes("invalid_role")) return "Papel inválido.";
   if (message.includes("member_not_found")) return "Membro não encontrado.";
   if (message.includes("cannot_disable_owner")) return "O proprietário principal não pode ser desativado.";
+  if (message.includes("cannot_delete_owner")) return "O proprietário principal não pode ser removido.";
   return message || fallback;
 }
 
@@ -157,4 +158,41 @@ export async function PATCH(
   }
 
   return NextResponse.json({ ok: true, member: Array.isArray(data) ? data[0] ?? null : null });
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ codigo: string }> }
+) {
+  const { codigo } = await context.params;
+  const auth = await requireInfluencerSession(codigo);
+  if (!auth.ok) return auth.response;
+
+  const url = new URL(request.url);
+  let memberId = url.searchParams.get("memberId");
+
+  if (!memberId) {
+    const body = await request.json().catch(() => null);
+    memberId = body?.memberId;
+  }
+
+  if (!memberId || typeof memberId !== "string") {
+    return NextResponse.json({ ok: false, error: "ID do membro é obrigatório." }, { status: 400 });
+  }
+
+  const supabase = await supabaseRouteClient();
+  const { data, error } = await (supabase.rpc as any)("delete_influencer_member_by_session", {
+    p_session_id: auth.session.id,
+    p_codigo: auth.session.codigo,
+    p_member_id: memberId,
+  });
+
+  if (error) {
+    return NextResponse.json(
+      { ok: false, error: rpcErrorMessage(error, "Falha ao remover membro.") },
+      { status: error.code === "42501" ? 403 : 400 }
+    );
+  }
+
+  return NextResponse.json({ ok: true, success: data });
 }

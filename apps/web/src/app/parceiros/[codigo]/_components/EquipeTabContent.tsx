@@ -29,6 +29,7 @@ type EquipeTabContentProps = {
   teamMembers: PartnerTeamMember[];
   operatorProductivity: PartnerOperatorProductivity[];
   handleUpdateTeamMember: (id: string, updates: { role?: PartnerMemberRole; ativo?: boolean; pin?: string }) => void;
+  handleDeleteTeamMember: (id: string) => void;
   resetPins: Record<string, string>;
   setResetPins: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 };
@@ -48,6 +49,7 @@ export function EquipeTabContent({
   teamMembers,
   operatorProductivity,
   handleUpdateTeamMember,
+  handleDeleteTeamMember,
   resetPins,
   setResetPins,
 }: EquipeTabContentProps) {
@@ -272,9 +274,22 @@ export function EquipeTabContent({
                               onClick={() => handleUpdateTeamMember(member.id, { ativo: !member.ativo })}
                               disabled={savingTeamMember}
                               variant="outline"
-                              className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-700"
+                              className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-700 font-sans"
                             >
                               {member.ativo ? "Desativar" : "Ativar"}
+                            </Button>
+                          )}
+                          {member.role !== "owner" && (
+                            <Button
+                              onClick={() => {
+                                if (window.confirm(`Tem certeza que deseja remover permanentemente o membro "${member.nome}"?`)) {
+                                  handleDeleteTeamMember(member.id);
+                                }
+                              }}
+                              disabled={savingTeamMember}
+                              className="h-9 rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 text-[10px] font-bold uppercase tracking-wider border-none font-sans"
+                            >
+                              Remover
                             </Button>
                           )}
                         </div>

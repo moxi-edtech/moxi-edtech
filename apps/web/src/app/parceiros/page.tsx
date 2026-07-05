@@ -99,7 +99,7 @@ export default function AfiliadosEntryPage() {
         throw new Error("invalid_credentials");
       }
 
-      router.push(`/influencers/${normalizedCode}`);
+      router.push(`/parceiros/${normalizedCode}`);
     } catch (error) {
       console.error(error);
       if (error instanceof Error && error.message === "no_members_found") {

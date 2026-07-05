@@ -67,12 +67,12 @@ export default function MarketingSection() {
         <div>
           <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-klasse-green" />
-            Marketing & Influencers
+            Marketing & Parceiros
           </h2>
-          <p className="text-sm text-slate-500 font-medium">Pipeline de prospecção e suporte a influenciadores.</p>
+          <p className="text-sm text-slate-500 font-medium">Pipeline de prospecção e suporte a parceiros.</p>
         </div>
         <div className="flex gap-2">
-           <Link href="/super-admin/influencers" className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+           <Link href="/super-admin/parceiros" className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
               GERIR PARCEIROS
            </Link>
            <Link href="/super-admin/marketing" className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">

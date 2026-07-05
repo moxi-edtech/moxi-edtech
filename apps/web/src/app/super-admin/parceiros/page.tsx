@@ -65,7 +65,7 @@ export default function SuperAdminAfiliadosPage() {
   const loadAfiliados = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/super-admin/influencers', { cache: 'no-store' });
+      const response = await fetch('/api/super-admin/parceiros', { cache: 'no-store' });
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
@@ -85,7 +85,7 @@ export default function SuperAdminAfiliadosPage() {
     const inviteWindow = openWhatsappAfterSave ? window.open('', '_blank') : null;
 
     try {
-      const response = await fetch('/api/super-admin/influencers', {
+      const response = await fetch('/api/super-admin/parceiros', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -127,7 +127,7 @@ export default function SuperAdminAfiliadosPage() {
 
   const toggleStatus = async (id: string, current: boolean) => {
     try {
-      const response = await fetch('/api/super-admin/influencers', {
+      const response = await fetch('/api/super-admin/parceiros', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, ativo: !current }),
@@ -146,7 +146,7 @@ export default function SuperAdminAfiliadosPage() {
     setSelectedAfiliado(afiliado);
     setLoadingMembers(true);
     try {
-      const response = await fetch(`/api/super-admin/influencers/${afiliado.id}/members`, {
+      const response = await fetch(`/api/super-admin/parceiros/${afiliado.id}/members`, {
         cache: 'no-store',
       });
       const result = await response.json();
@@ -172,7 +172,7 @@ export default function SuperAdminAfiliadosPage() {
 
     setSavingMember(true);
     try {
-      const response = await fetch(`/api/super-admin/influencers/${selectedAfiliado.id}/members`, {
+      const response = await fetch(`/api/super-admin/parceiros/${selectedAfiliado.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(memberForm),
@@ -201,7 +201,7 @@ export default function SuperAdminAfiliadosPage() {
     if (!selectedAfiliado) return;
 
     try {
-      const response = await fetch(`/api/super-admin/influencers/${selectedAfiliado.id}/members`, {
+      const response = await fetch(`/api/super-admin/parceiros/${selectedAfiliado.id}/members`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: member.id, ativo: !member.ativo }),
@@ -223,7 +223,7 @@ export default function SuperAdminAfiliadosPage() {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/super-admin/influencers/${selectedAfiliado.id}/members`, {
+      const response = await fetch(`/api/super-admin/parceiros/${selectedAfiliado.id}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: member.id }),
