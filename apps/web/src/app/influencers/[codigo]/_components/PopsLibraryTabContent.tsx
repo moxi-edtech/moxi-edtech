@@ -54,7 +54,7 @@ const OPERATIONAL_STAGES = [
   {
     key: "stage_financeiro",
     title: "3. Políticas Financeiras e Cobranças",
-    description: "Configurações de propinas, mensalidades, acompanhamento de comissões e saques.",
+    description: "Configurações de propinas, mensalidades, acompanhamento de faturamento e saques.",
     phases: ["financeiro"] as PartnerPopPhase[],
   },
   {

@@ -212,7 +212,7 @@ export default function CrmSection() {
       icon: Shield,
     },
     {
-      title: "Comissões",
+      title: "Faturamento",
       value: funnel.commissions_total,
       hint: `${funnel.commissions_pending} pendentes · ${funnel.commissions_paid} pagas`,
       icon: Wallet,
@@ -231,7 +231,7 @@ export default function CrmSection() {
       hint: "Onboardings com assinatura criada",
     },
     {
-      title: "Assinatura → Comissão paga",
+      title: "Assinatura → Faturamento pago",
       value: `${funnel.subscription_to_paid_commission_rate}%`,
       hint: "Fecho operacional até parceiro receber",
     },
@@ -243,17 +243,17 @@ export default function CrmSection() {
         <div>
           <h2 className="text-xl font-bold text-slate-950">Zona 3 — CRM ponta a ponta</h2>
           <p className="text-sm text-slate-500">
-            Marketing → CRM → onboarding → assinatura → comissões, numa única superfície operacional.
+            Marketing → CRM → onboarding → assinatura → faturamento, numa única superfície operacional.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <p className="text-[11px] font-semibold text-slate-500">Comissões pendentes</p>
+            <p className="text-[11px] font-semibold text-slate-500">Faturamento pendente</p>
             <p className="font-bold text-slate-950">{formatCurrency(funnel.commissions_pending_kz)}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <p className="text-[11px] font-semibold text-slate-500">Comissões pagas</p>
+            <p className="text-[11px] font-semibold text-slate-500">Faturamento pago</p>
             <p className="font-bold text-slate-950">{formatCurrency(funnel.commissions_paid_kz)}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 col-span-2 xl:col-span-1">
@@ -410,7 +410,7 @@ export default function CrmSection() {
                     <th className="pb-2 pr-4 font-semibold">CRM</th>
                     <th className="pb-2 pr-4 font-semibold">Onboarding</th>
                     <th className="pb-2 pr-4 font-semibold">Ativas</th>
-                    <th className="pb-2 font-semibold">Comissões</th>
+                    <th className="pb-2 font-semibold">Faturamento</th>
                   </tr>
                 </thead>
                 <tbody>

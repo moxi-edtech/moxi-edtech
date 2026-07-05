@@ -198,11 +198,11 @@ function stageLabel(stage: string) {
     case "assinatura_suspensa":
       return "Assinatura · Suspensa";
     case "comissao_ativacao":
-      return "Comissão de activação";
+      return "Faturamento de activação";
     case "comissao_recorrente":
-      return "Comissão recorrente";
+      return "Faturamento recorrente";
     case "comissao_paga":
-      return "Comissão paga";
+      return "Faturamento pago";
     default:
       return stage;
   }
@@ -410,7 +410,7 @@ export async function GET() {
       },
       {
         id: "commissions",
-        label: "Comissões",
+        label: "Faturamentos",
         count: commissions.length,
         hint: `${pendingCommissions.length} pendentes · ${paidCommissions.length} pagas`,
       },
@@ -447,14 +447,14 @@ export async function GET() {
       },
       {
         id: "activation_pending",
-        label: "Comissões de activação ainda não liquidadas",
+        label: "Faturamento de activação pendente de liquidação",
         count: activationPending.length,
         severity: (activationPending.length > 5 ? "medium" : "low") as Bottleneck["severity"],
         action: "Validar aceite, aprovação e payout das activações concluídas.",
       },
       {
         id: "recurring_pending",
-        label: "Comissões recorrentes em aberto",
+        label: "Faturamento recorrente em aberto",
         count: recurringPending.length,
         severity: (recurringPending.length > 10 ? "medium" : "low") as Bottleneck["severity"],
         action: "Confirmar pagamentos SaaS e fila financeira de aprovação.",

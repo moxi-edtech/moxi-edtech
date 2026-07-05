@@ -218,7 +218,7 @@ export function Escola360TabContent({
       if (lateSteps.length > 0) riskReasons.push(`${lateSteps.length} etapa(s) atrasada(s)`);
       if (pendingUploads.length > 0) riskReasons.push(`${pendingUploads.length} documento(s) pendente(s)`);
       if (!latestCall && school.status !== "activo") riskReasons.push("sem follow-up registrado");
-      if (blockedCommissions.length > 0) riskReasons.push("comissão bloqueada");
+      if (blockedCommissions.length > 0) riskReasons.push("faturamento bloqueado");
 
       const risk: RiskLevel = overdueTickets.length > 0 || lateSteps.length > 1
         ? "alto"
@@ -416,7 +416,7 @@ export function Escola360TabContent({
             <option value="com_lead">Com lead</option>
             <option value="sem_lead">Sem lead</option>
             <option value="com_ticket">Com ticket</option>
-            <option value="com_comissao">Com comissão</option>
+            <option value="com_comissao">Com faturamento</option>
           </select>
         </div>
       </div>
@@ -600,7 +600,7 @@ export function Escola360TabContent({
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <Banknote className="h-4 w-4" />
-                      Comissões
+                      Faturamentos
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="rounded-lg bg-slate-50 p-2">

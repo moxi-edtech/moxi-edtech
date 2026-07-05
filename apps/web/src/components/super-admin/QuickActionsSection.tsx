@@ -79,10 +79,10 @@ export default function QuickActionsSection() {
       },
       {
         id: "op-comissoes-parceiros",
-        label: "Comissões Parceiros",
+        label: "Faturamento Parceiros",
         icon: Coins,
         href: "/super-admin/comissoes",
-        description: "Aprovar, bloquear e liquidar comissões do funil comercial.",
+        description: "Aprovar, bloquear e liquidar faturamento do funil comercial.",
         group: "Operação",
         risk_level: "medium",
         requires_confirm: false,

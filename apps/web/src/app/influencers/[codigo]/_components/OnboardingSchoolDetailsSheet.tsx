@@ -199,7 +199,7 @@ export function OnboardingSchoolDetailsSheet({
         return;
       }
 
-      toast.success("Termo de Aceite validado. A comissão de activação pode seguir o próximo passo.");
+      toast.success("Termo de Aceite validado. O faturamento de activação pode seguir o próximo passo.");
       setAcceptanceFile(null);
       setSignedBy("");
       setSignedAt("");
@@ -528,7 +528,7 @@ export function OnboardingSchoolDetailsSheet({
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium">
-                      Estes itens operacionais devem estar concluídos para formalizar a entrega que ativa a escola e libera as comissões.
+                      Estes itens operacionais devem estar concluídos para formalizar a entrega que ativa a escola e libera o faturamento.
                     </p>
 
                     <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
@@ -672,7 +672,7 @@ export function OnboardingSchoolDetailsSheet({
                           Termo de Aceite validado com sucesso!
                         </div>
                         <p className="text-[11px] font-medium leading-relaxed text-emerald-800">
-                          Este aceite libera a comissão de activação para o fluxo financeiro. O setup académico final da escola continua no portal da escola.
+                          Este aceite libera o faturamento de activação para o fluxo financeiro. O setup académico final da escola continua no portal da escola.
                         </p>
                         <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
                           <p>Signatário: <span className="font-bold text-slate-800">{selectedSchoolForDetails.acceptance_signed_by}</span></p>
@@ -691,7 +691,7 @@ export function OnboardingSchoolDetailsSheet({
                     ) : selectedSchoolForDetails.implantation_status === "aguardando_aceite" ? (
                       <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 space-y-4">
                         <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
-                          O checklist técnico está concluído. Para liberar a comissão de activação e o próximo passo financeiro, anexe o Termo de Aceite assinado pelo diretor e submeta.
+                          O checklist técnico está concluído. Para liberar o faturamento de activação e o próximo passo financeiro, anexe o Termo de Aceite assinado pelo diretor e submeta.
                         </p>
                         <div className="space-y-3 bg-white border border-slate-200/50 p-3.5 rounded-xl">
                           <div className="space-y-1.5">

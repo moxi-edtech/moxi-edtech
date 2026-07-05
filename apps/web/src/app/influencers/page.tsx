@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, KeyRound, Star, Users } from "lucide-react";
+import { ArrowRight, KeyRound, Users } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
 import type { Json } from "~types/supabase";
@@ -115,9 +116,15 @@ export default function AfiliadosEntryPage() {
     <div className="min-h-screen bg-[#0a0c10] flex flex-col items-center justify-center p-6 font-sans">
       <div className="max-w-md w-full space-y-6 text-center">
         <div className="space-y-2">
-          {/* Refined clean logo/star container */}
-          <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center mx-auto text-klasse-gold">
-            <Star size={22} fill="currentColor" />
+          {/* Refined clean logo container */}
+          <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center mx-auto">
+            <Image
+              src="/logo-klasse-ui.png"
+              alt="KLASSE"
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+            />
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-white tracking-tight">CRM KLASSE</h1>

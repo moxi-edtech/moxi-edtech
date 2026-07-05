@@ -422,7 +422,7 @@ export default function PartnerAppShell({
               <>
                 <span className="text-zinc-200">|</span>
                 <div className="text-right">
-                  <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Comissão Estimada</p>
+                  <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Faturamento Estimado</p>
                   <p className="text-xs font-semibold text-emerald-600 font-mono mt-0.5">
                     Kz {totalComissao.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
                   </p>

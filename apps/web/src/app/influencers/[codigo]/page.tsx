@@ -294,7 +294,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
   const handleRequestPayout = async () => {
     if (approvedCommissionsAvailableForPayout.length === 0) {
-      toast.error("Não há comissões aprovadas disponíveis para payout.");
+      toast.error("Não há faturamentos aprovados disponíveis para payout.");
       return;
     }
     if (!payoutReceiptFile) {
@@ -1246,7 +1246,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin text-klasse-gold mx-auto" />
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">A carregar o seu desempenho...</p>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">A carregar o painel da parceria...</p>
         </div>
       </div>
     );
@@ -1445,7 +1445,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                             </p>
                           </div>
                           <div className="text-xs text-slate-400 max-w-md font-medium">
-                            Comissão potencial estimada com base nos leads ativos.
+                            Faturamento potencial estimado com base nos leads ativos.
                           </div>
                         </>
                       ) : (
@@ -2319,10 +2319,10 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                     <CardHeader className="p-6">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Award className="text-klasse-gold" />
-                        Sua Comissão
+                        Resultado da Parceria
                       </CardTitle>
                       <CardDescription className="text-slate-400 text-xs">
-                        Você ganha 100% da taxa de ativação (50k-100k Kz) + 25% de todas as mensalidades recorrentes.
+                        Você recebe 100% da taxa de ativação (50k-100k Kz) + 25% de todas as mensalidades recorrentes como faturamento da parceria.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 pt-0 space-y-5">
@@ -2364,8 +2364,8 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                             <p className="mt-1 text-xl font-bold text-white">
                               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(availablePayoutKz).replace('AOA', 'Kz')}
                             </p>
-                            <p className="mt-1 text-[10px] font-semibold text-emerald-100/80">
-                              {approvedCommissionsAvailableForPayout.length} comissão(ões) aprovadas sem pedido.
+                             <p className="mt-1 text-[10px] font-semibold text-emerald-100/80">
+                              {approvedCommissionsAvailableForPayout.length} faturamento(s) aprovado(s) sem pedido.
                             </p>
                           </div>
                           <Badge className="rounded-lg border border-emerald-300/20 bg-emerald-300/10 px-2 py-1 text-[9px] font-bold uppercase text-emerald-100 shadow-none">
@@ -2398,7 +2398,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
 
                       {commissionItems.length > 0 && (
                         <div className="space-y-2 border-t border-white/10 pt-4">
-                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Últimas comissões</h4>
+                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Últimos faturamentos</h4>
                           <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
                             {commissionItems.slice(0, 5).map((item) => (
                               <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -2434,7 +2434,7 @@ export default function AfiliadoDashboardPage({ params }: { params: Promise<{ co
                                       {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(payout.total_kz).replace('AOA', 'Kz')}
                                     </p>
                                     <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                                      {payout.status} · {payout.commission_count} comissão(ões)
+                                      {payout.status} · {payout.commission_count} faturamento(s)
                                     </p>
                                   </div>
                                   <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">

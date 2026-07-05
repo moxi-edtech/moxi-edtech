@@ -296,7 +296,7 @@ export const PARTNER_CONTEXTUAL_POPS: PartnerPopGuide[] = [
   {
     id: "sop-crm-04",
     phase: "financeiro",
-    title: "Comissões e payout",
+    title: "Faturamento e payout",
     summary: "Conferir ledger, anexar fatura/recibo e acompanhar aprovação/pagamento.",
     href: "/crm/pops/parceiro/sop-crm-04-gestao-comissoes.html",
     code: "SOP-CRM-04",
@@ -674,7 +674,7 @@ export function getOnboardingLifecycleMeta(escola: OnboardingEscola): Onboarding
       shortLabel: "Setup em curso",
       label: "Provisionada · aceite validado · setup em curso",
       description:
-        "Escola provisionada no backoffice. O aceite foi validado e a comissão de activação já pode seguir o fluxo financeiro. O setup académico final ainda continua no portal da escola.",
+        "Escola provisionada no backoffice. O aceite foi validado e o faturamento de activação já pode seguir o fluxo financeiro. O setup académico final ainda continua no portal da escola.",
       color: "bg-emerald-50 text-emerald-700 border-emerald-100",
     };
   }

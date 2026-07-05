@@ -9,11 +9,11 @@ export default function SuperAdminCommissionsPage() {
     <div className="space-y-6">
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="partner_commissions_cockpit" />
       <DashboardHeader
-        title="Comissões de Parceiros"
-        description="Cockpit administrativo para aprovar, bloquear, pagar e reabrir comissões geradas pelo funil comercial."
+        title="Faturamento de Parceiros"
+        description="Cockpit administrativo para aprovar, bloquear, liquidar e reabrir faturamento gerado pelo funil comercial."
         breadcrumbs={[
           { label: "Super Admin", href: "/super-admin" },
-          { label: "Comissões" },
+          { label: "Faturamento" },
         ]}
       />
       <PartnerCommissionsClient />

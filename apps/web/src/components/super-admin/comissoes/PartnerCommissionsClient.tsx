@@ -213,7 +213,7 @@ export default function PartnerCommissionsClient() {
       ]);
       const payload = (await response.json().catch(() => null)) as Payload | null;
       if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error || "Falha ao carregar comissões.");
+        throw new Error(payload?.error || "Falha ao carregar faturamentos.");
       }
       const payoutPayload = (await payoutsResponse.json().catch(() => null)) as PayoutPayload | null;
       if (!payoutsResponse.ok || !payoutPayload?.ok) {
@@ -319,11 +319,11 @@ export default function PartnerCommissionsClient() {
 
   async function mutateCommission(item: CommissionItem, action: "approve" | "block" | "mark_paid" | "cancel" | "reopen") {
     const labels: Record<typeof action, string> = {
-      approve: "Aprovar comissão",
-      block: "Bloquear comissão",
-      mark_paid: "Marcar como paga",
-      cancel: "Cancelar comissão",
-      reopen: "Reabrir comissão",
+      approve: "Aprovar faturamento",
+      block: "Bloquear faturamento",
+      mark_paid: "Marcar como pago",
+      cancel: "Cancelar faturamento",
+      reopen: "Reabrir faturamento",
     };
 
     let note = "";
@@ -361,7 +361,7 @@ export default function PartnerCommissionsClient() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error || "Falha ao atualizar comissão.");
+        throw new Error(payload?.error || "Falha ao atualizar faturamento.");
       }
       notifySuccess(`${labels[action]} concluída para ${item.escola_nome}.`);
       await load();
@@ -430,7 +430,7 @@ export default function PartnerCommissionsClient() {
     <section className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Cockpit administrativo de comissões</h2>
+          <h2 className="text-xl font-bold text-slate-950">Cockpit de Faturamento de Parceiros</h2>
           <p className="text-sm text-slate-500">
             Opera o ledger já gerado pelo backend: aprovação, bloqueio, pagamento e reabertura.
           </p>
@@ -501,7 +501,7 @@ export default function PartnerCommissionsClient() {
           <div>
             <h3 className="text-base font-bold text-slate-950">Fila de payout com recibo</h3>
             <p className="text-sm text-slate-500">
-              Valida os pedidos enviados pelo parceiro antes de liquidar as comissões.
+              Valida os pedidos enviados pelo parceiro antes de liquidar o faturamento.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -533,7 +533,7 @@ export default function PartnerCommissionsClient() {
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-slate-500">
-                        {payout.afiliado_codigo} · {payout.commission_count} comissão(ões) · solicitado em {formatDate(payout.requested_at)}
+                        {payout.afiliado_codigo} · {payout.commission_count} faturamento(s) · solicitado em {formatDate(payout.requested_at)}
                       </p>
                       {payout.requested_by_nome ? (
                         <p className="text-xs text-slate-500">Operador: {payout.requested_by_nome}</p>
@@ -631,7 +631,7 @@ export default function PartnerCommissionsClient() {
       ) : filteredItems.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
           <AlertCircle className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm font-semibold text-slate-700">Nenhuma comissão encontrada.</p>
+          <p className="mt-3 text-sm font-semibold text-slate-700">Nenhum faturamento encontrado.</p>
           <p className="text-sm text-slate-500">Ajuste os filtros ou aguarde nova geração a partir dos pagamentos confirmados.</p>
         </div>
       ) : (

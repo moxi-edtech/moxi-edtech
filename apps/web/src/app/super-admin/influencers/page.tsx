@@ -69,12 +69,12 @@ export default function SuperAdminAfiliadosPage() {
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
-        throw new Error(result.error || 'Erro ao carregar influenciadores');
+        throw new Error(result.error || 'Erro ao carregar parceiros');
       }
 
       setAfiliados(result.items || []);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao carregar influenciadores');
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar parceiros');
     }
     setLoading(false);
   };
@@ -134,11 +134,11 @@ export default function SuperAdminAfiliadosPage() {
       });
       const result = await response.json();
       if (!response.ok || !result.ok) {
-        throw new Error(result.error || 'Erro ao atualizar influenciador');
+        throw new Error(result.error || 'Erro ao atualizar parceiro');
       }
       await loadAfiliados();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar influenciador');
+      toast.error(error instanceof Error ? error.message : 'Erro ao atualizar parceiro');
     }
   };
 
@@ -290,12 +290,12 @@ export default function SuperAdminAfiliadosPage() {
               <ChevronRight size={10} />
               <span className="text-klasse-green">Gestão de Parceiros</span>
             </nav>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Digital Influencers</h1>
-            <p className="text-sm text-slate-500 font-medium">Controle quem tem acesso aos portais de performance.</p>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Parcerias e Escritórios</h1>
+            <p className="text-sm text-slate-500 font-medium">Controle quem tem acesso aos portais de parcerias.</p>
           </div>
           <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl gap-2 font-bold px-6">
             <Plus size={18} />
-            CADASTRAR INFLUENCER
+            CADASTRAR PARCEIRO
           </Button>
         </div>
 
@@ -363,13 +363,13 @@ export default function SuperAdminAfiliadosPage() {
             <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="p-8 space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-black text-slate-900 leading-tight">Novo Influencer</h3>
+                  <h3 className="text-xl font-black text-slate-900 leading-tight">Novo Parceiro</h3>
                   <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-slate-400">Nome do Influenciador</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400">Nome do Parceiro/Escritório</label>
                     <input 
                       required
                       placeholder="Ex: Eduardo Santos"
