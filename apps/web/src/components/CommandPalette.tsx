@@ -92,7 +92,8 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "pagamentos",
         label: "Ver Pagamentos",
         icon: CreditCard,
-        onSelect: () => router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos")),
+        onSelect: () =>
+          router.push(buildPortalHref(escolaParam, portal === "operacoes" ? "/operacoes/recebimentos" : "/financeiro/pagamentos")),
       });
     }
 
@@ -118,7 +119,8 @@ export function CommandPalette({ escolaId, portal }: Props) {
         id: "config",
         label: "Configurações da Escola",
         icon: Settings,
-        onSelect: () => router.push(buildPortalHref(escolaParam, "/admin/configuracoes")),
+        onSelect: () =>
+          router.push(buildPortalHref(escolaParam, portal === "operacoes" ? "/operacoes/configuracoes" : "/admin/configuracoes")),
       });
     }
 

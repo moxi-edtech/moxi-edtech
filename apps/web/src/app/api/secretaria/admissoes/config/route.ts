@@ -18,6 +18,10 @@ import {
   normalizePendenciaSlaHoras,
   normalizeReservaExpiracaoHoras,
 } from '@/lib/admissoes/reserva'
+import {
+  K12_ADMIN_GESTAO_ROLE_GROUP,
+  K12_SECRETARIA_OPERACIONAL_ROLE_GROUP,
+} from '@/lib/roles'
 import { formatAnoLetivoDisplay } from '@/utils/formatters'
 import type { Json } from '~types/supabase'
 
@@ -38,6 +42,16 @@ const patchPayloadSchema = z.object({
 })
 
 type JsonObject = { [key: string]: Json | undefined }
+
+const ADMISSOES_READ_ROLE_GROUP = [
+  ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP,
+  'diretor',
+] as const
+
+const ADMISSOES_MANAGE_ROLE_GROUP = [
+  'diretor',
+  ...K12_ADMIN_GESTAO_ROLE_GROUP,
+] as const
 
 function isJsonObject(value: Json | null | undefined): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -66,7 +80,7 @@ export async function GET(request: Request) {
   const { error: authError } = await requireRoleInSchool({ 
     supabase, 
     escolaId, 
-    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'diretor', 'admin', 'admin_escola', 'staff_admin'] 
+    roles: [...ADMISSOES_READ_ROLE_GROUP],
   });
   if (authError) return authError;
 
@@ -148,7 +162,7 @@ export async function PATCH(request: Request) {
   const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: ['diretor', 'admin', 'admin_escola', 'staff_admin', 'admin_financeiro'],
+    roles: [...ADMISSOES_MANAGE_ROLE_GROUP],
   })
   if (authError) return authError
 

@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export async function GET(req: Request) {
   try {
@@ -21,14 +22,7 @@ export async function GET(req: Request) {
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: [
-        "secretaria",
-        "secretaria_financeiro",
-        "admin_financeiro",
-        "admin",
-        "admin_escola",
-        "staff_admin",
-      ],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (roleError) return roleError;
 
@@ -74,14 +68,7 @@ export async function POST(req: Request) {
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: [
-        "secretaria",
-        "secretaria_financeiro",
-        "admin_financeiro",
-        "admin",
-        "admin_escola",
-        "staff_admin",
-      ],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (roleError) return roleError;
 

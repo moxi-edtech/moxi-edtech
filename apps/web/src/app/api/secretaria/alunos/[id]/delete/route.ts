@@ -3,6 +3,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { recordAuditServer } from "@/lib/audit";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 
 // DELETE OU POST (estamos usando POST na UI)
@@ -67,7 +68,7 @@ export async function POST(
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authz.error) return authz.error;
 

@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { buildFinanceiroNotificacao, type FinanceiroNotificacaoKey } from "./financeiro";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { K12_FINANCEIRO_ROLE_GROUP } from "@/lib/roles";
 
 type FinanceiroRecipient = {
   user_id: string;
@@ -24,7 +25,7 @@ type DispatchParams = {
   agrupamentoTTLHoras?: number;
 };
 
-const FINANCEIRO_ROLES = ["financeiro", "secretaria_financeiro", "admin_financeiro"];
+const FINANCEIRO_ROLES = [...K12_FINANCEIRO_ROLE_GROUP];
 
 const EVENTO_TIPO_MAP: Record<FinanceiroNotificacaoKey, string> = {
   CATALOGO_PRECOS_ATIVADO: "catalogo.precos.ativado",

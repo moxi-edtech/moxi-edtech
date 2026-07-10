@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation"; // Correção: useParams é de next/navigation
+import { useParams, usePathname } from "next/navigation"; // Correção: useParams é de next/navigation
 import { 
   CalendarDays, 
   GraduationCap, 
@@ -20,7 +20,7 @@ import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice"
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchSetupState, setupProgressFromBadges, type OperationalReadiness } from "@/lib/setupStateClient";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 import { toast } from "sonner";
 
 // --- TYPES ---
@@ -53,7 +53,8 @@ export default function SistemaConfiguracoesPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
 
   // --- MENU CONFIG ---
   const modules = useMemo(() => [
@@ -158,7 +159,7 @@ export default function SistemaConfiguracoesPage() {
             next_action: setupRes.data.next_action?.href
               ? {
                   label: setupRes.data.next_action.label ?? "Continuar",
-                  href: buildPortalHref(escolaParam, setupRes.data.next_action.href),
+                  href: buildContextualPortalHref(escolaParam, setupRes.data.next_action.href, pathname),
                 }
               : undefined,
             blockers: Array.isArray(setupRes.data.blockers)
@@ -204,7 +205,7 @@ export default function SistemaConfiguracoesPage() {
   }, [escolaParam, modules.length]);
 
   if (authRequired) {
-    const nextPath = buildPortalHref(escolaParam, "/admin/configuracoes/sistema");
+    const nextPath = buildContextualPortalHref(escolaParam, "/admin/configuracoes/sistema", pathname);
     return (
       <ConfigSystemShell
         escolaId={escolaParam ?? ""}

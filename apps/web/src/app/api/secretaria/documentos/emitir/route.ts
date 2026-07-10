@@ -9,6 +9,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authError) return authError;
 

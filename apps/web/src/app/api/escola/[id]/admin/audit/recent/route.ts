@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 
 export async function GET(
   _req: NextRequest,
@@ -21,7 +22,7 @@ export async function GET(
 
     const { data: hasRole, error: roleError } = await supabase.rpc('user_has_role_in_school', {
       p_escola_id: userEscolaId,
-      p_roles: ['admin_escola', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro'],
+      p_roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP],
     });
     if (roleError) {
       return NextResponse.json({ ok: false, error: "Erro ao verificar permissões" }, { status: 500 });

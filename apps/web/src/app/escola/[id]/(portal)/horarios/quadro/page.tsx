@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2 } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
-import { useHorarioBaseData, useHorarioTurmaData } from "@/hooks/useHorarioData";
+import { useHorarioTurmaData } from "@/hooks/useHorarioData";
+import { useHorarioDataContext } from "@/components/escola/horarios/HorarioDataProvider";
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
@@ -46,6 +47,15 @@ type CurriculoDisciplinaItem = {
   matrix_by_class?: Record<string, string[]>;
 };
 
+type CurriculoStatusItem = {
+  id: string;
+  curso_id: string;
+  classe_id: string | null;
+  status: "draft" | "published" | "archived" | string;
+  version: number;
+  ano_letivo_id: string;
+};
+
 function formatSlotSaveError(json: any) {
   if (json?.error === "SLOT_TEMPORAL_CONFLICT") {
     const detail = json?.detail;
@@ -76,12 +86,18 @@ export default function QuadroHorariosPage() {
 
 function QuadroHorariosContent() {
   const params = useParams();
+  const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const escolaId = params?.id as string;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const { userRole } = useUserRoleContext();
-  const dashboardHref = userRole === "secretaria"
+  const horarioBasePath = pathname.includes("/operacoes/horarios")
+    ? `/escola/${escolaParam}/operacoes/horarios`
+    : `/escola/${escolaParam}/horarios`;
+  const dashboardHref = pathname.includes("/operacoes")
+    ? `/escola/${escolaParam}/operacoes/dashboard`
+    : userRole === "secretaria"
     ? `/escola/${escolaParam}/secretaria`
     : `/escola/${escolaParam}/admin/dashboard`;
   const { online } = useOfflineStatus();
@@ -101,8 +117,7 @@ function QuadroHorariosContent() {
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
   const [autoDraftDirty, setAutoDraftDirty] = useState(false);
   const [novaSala, setNovaSala] = useState("");
-  const [refreshToken, setRefreshToken] = useState(0);
-  const [baseRefreshToken, setBaseRefreshToken] = useState(0);
+  const [turmaRefreshToken, setTurmaRefreshToken] = useState(0);
   const [adjustingSlots, setAdjustingSlots] = useState(false);
   const [generatingContraturno, setGeneratingContraturno] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -112,6 +127,12 @@ function QuadroHorariosContent() {
   const [curriculoClasses, setCurriculoClasses] = useState<Array<{ id: string; nome: string }>>([]);
   const [curriculoSelectedId, setCurriculoSelectedId] = useState<string | null>(null);
   const [professores, setProfessores] = useState<Array<{ id: string; nome: string }>>([]);
+  const [revertingAll, setRevertingAll] = useState(false);
+  const [curriculoStatusRows, setCurriculoStatusRows] = useState<CurriculoStatusItem[]>([]);
+  const [publishingCurriculo, setPublishingCurriculo] = useState(false);
+  const curriculoDataCacheRef = useRef(
+    new Map<string, { disciplinas: CurriculoDisciplinaItem[]; classes: Array<{ id: string; nome: string }> }>()
+  );
 
   const {
     slots,
@@ -122,7 +143,9 @@ function QuadroHorariosContent() {
     error: baseError,
     setSalas,
     setTurmas,
-  } = useHorarioBaseData(escolaId, baseRefreshToken);
+    setRawSlots,
+    refreshBaseData,
+  } = useHorarioDataContext();
 
   const {
     aulas,
@@ -132,8 +155,15 @@ function QuadroHorariosContent() {
     error: turmaError,
     setAulas,
     setGrid,
-  } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup, refreshToken });
+  } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup, refreshToken: turmaRefreshToken });
+  const refreshTurmaData = () => setTurmaRefreshToken((prev) => prev + 1);
   const hasMissingLoadInAulas = aulas.some((aula) => aula.missingLoad);
+  const slotsHref = turmaId
+    ? `${horarioBasePath}/slots?turmaId=${encodeURIComponent(turmaId)}`
+    : `${horarioBasePath}/slots`;
+  const quadroHref = turmaId
+    ? `${horarioBasePath}/quadro?turmaId=${encodeURIComponent(turmaId)}`
+    : `${horarioBasePath}/quadro`;
 
   useEffect(() => {
     setIsMounted(true);
@@ -268,7 +298,18 @@ function QuadroHorariosContent() {
     });
   }, [searchParams, turmas]);
 
-  const loadCurriculoDisciplinas = useCallback(async (targetCursoId: string) => {
+  const loadCurriculoDisciplinas = useCallback(async (targetCursoId: string, options?: { force?: boolean }) => {
+    const cached = curriculoDataCacheRef.current.get(targetCursoId);
+    if (cached && !options?.force) {
+      setCurriculoClasses(cached.classes);
+      setCurriculoDisciplinas(cached.disciplinas);
+      setCurriculoSelectedId((prev) => {
+        if (prev && cached.disciplinas.some((disc) => disc.id === prev)) return prev;
+        return cached.disciplinas[0]?.id ?? null;
+      });
+      return cached.disciplinas;
+    }
+
     const normalize = (value: string) =>
       value
         .normalize("NFD")
@@ -278,13 +319,14 @@ function QuadroHorariosContent() {
       const match = value.match(/(\d{1,2})/);
       return match ? Number(match[1]) : null;
     };
+    const currentTurmaClassId = turmas.find((turma) => turma.id === turmaId)?.classe_id ?? null;
 
     const [disciplinasJson, padroesJson] = await Promise.all([
       fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${targetCursoId}&limit=500`, {
-        cache: "force-cache",
+        cache: "no-store",
       }).then((res) => res.json()),
       fetch(`/api/escolas/${escolaId}/curriculo/padroes?curso_id=${targetCursoId}`, {
-        cache: "force-cache",
+        cache: "no-store",
       }).then((res) => res.json()),
     ]);
 
@@ -314,13 +356,38 @@ function QuadroHorariosContent() {
       disciplinaGroups.set(key, bucket);
     });
 
+    const statusWeight = (status?: string | null) => {
+      if (status === "draft") return 3;
+      if (status === "published") return 2;
+      return 1;
+    };
+
     const disciplinaList: CurriculoDisciplinaItem[] = [];
     disciplinaGroups.forEach((items) => {
-      const primary = items[0];
-      const matrixIds = items.map((item: any) => item.id).filter(Boolean);
-      const classIds = items.map((item: any) => item.classe_id).filter(Boolean);
-      const matrixByClass: Record<string, string[]> = {};
+      const preferredByClass = new Map<string, any>();
       items.forEach((item: any) => {
+        const classKey = item.classe_id ?? "__no_class__";
+        const current = preferredByClass.get(classKey);
+        if (!current) {
+          preferredByClass.set(classKey, item);
+          return;
+        }
+        const currentWeight = statusWeight(current.curriculo_status);
+        const nextWeight = statusWeight(item.curriculo_status);
+        if (nextWeight > currentWeight) {
+          preferredByClass.set(classKey, item);
+        }
+      });
+
+      const preferredItems = Array.from(preferredByClass.values());
+      const primary =
+        preferredItems.find((item: any) => item.classe_id === currentTurmaClassId) ??
+        preferredItems[0] ??
+        items[0];
+      const matrixIds = preferredItems.map((item: any) => item.id).filter(Boolean);
+      const classIds = preferredItems.map((item: any) => item.classe_id).filter(Boolean);
+      const matrixByClass: Record<string, string[]> = {};
+      preferredItems.forEach((item: any) => {
         if (!item.classe_id || !item.id) return;
         matrixByClass[item.classe_id] = matrixByClass[item.classe_id] || [];
         matrixByClass[item.classe_id].push(item.id);
@@ -350,23 +417,24 @@ function QuadroHorariosContent() {
     });
 
     disciplinaList.sort((a, b) => a.nome.localeCompare(b.nome));
+    curriculoDataCacheRef.current.set(targetCursoId, { disciplinas: disciplinaList, classes });
     setCurriculoClasses(classes);
     setCurriculoDisciplinas(disciplinaList);
     setCurriculoSelectedId((prev) => {
       if (prev && disciplinaList.some((disc) => disc.id === prev)) return prev;
       return disciplinaList[0]?.id ?? null;
     });
-  }, [escolaId]);
+    return disciplinaList;
+  }, [escolaId, turmaId, turmas]);
 
   useEffect(() => {
     const targetCursoId = turmas.find((turma) => turma.id === turmaId)?.curso_id;
     if ((!curriculoModalOpen && !hasMissingLoadInAulas) || !targetCursoId || !escolaId) return;
-    let active = true;
-    loadCurriculoDisciplinas(targetCursoId).catch(() => {
-      if (!active) return;
-    });
+    const timer = window.setTimeout(() => {
+      loadCurriculoDisciplinas(targetCursoId).catch(() => null);
+    }, curriculoModalOpen ? 0 : 300);
     return () => {
-      active = false;
+      window.clearTimeout(timer);
     };
   }, [curriculoModalOpen, escolaId, turmaId, turmas, hasMissingLoadInAulas, loadCurriculoDisciplinas]);
 
@@ -392,6 +460,32 @@ function QuadroHorariosContent() {
     () => turmas.find((turma) => turma.id === turmaId) || null,
     [turmaId, turmas]
   );
+
+  const loadCurriculoStatus = useCallback(async () => {
+    if (!escolaParam) return [] as CurriculoStatusItem[];
+    const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, { cache: "no-store" });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || json?.ok === false) {
+      throw new Error(json?.error || "Falha ao carregar status do currículo.");
+    }
+    const rows = Array.isArray(json?.curriculos) ? json.curriculos : [];
+    setCurriculoStatusRows(rows);
+    return rows as CurriculoStatusItem[];
+  }, [escolaParam]);
+
+  useEffect(() => {
+    if (!selectedTurma?.curso_id || !selectedTurma?.classe_id) return;
+    loadCurriculoStatus().catch(() => null);
+  }, [loadCurriculoStatus, selectedTurma?.classe_id, selectedTurma?.curso_id]);
+
+  const selectedCurriculoStatus = useMemo(() => {
+    if (!selectedTurma?.curso_id || !selectedTurma?.classe_id) return null;
+    return curriculoStatusRows.find(
+      (row) => row.curso_id === selectedTurma.curso_id && row.classe_id === selectedTurma.classe_id
+    ) ?? null;
+  }, [curriculoStatusRows, selectedTurma?.classe_id, selectedTurma?.curso_id]);
+
+  const hasCurriculoDraft = selectedCurriculoStatus?.status === "draft";
 
   const aulasWithAllocations = useMemo(() => {
     if (!aulas.length) return [];
@@ -430,6 +524,25 @@ function QuadroHorariosContent() {
     [aulasWithAllocations]
   );
   const excessoCarga = Math.max(0, totalCarga - totalSlots);
+  const allCurriculoAtMed = useMemo(
+    () =>
+      curriculoDisciplinas.length > 0 &&
+      curriculoDisciplinas.every((disc) => {
+        if (disc.base_weekly_hours === null || disc.base_weekly_hours === undefined) return true;
+        return Number(disc.base_weekly_hours) === Number(disc.carga_horaria_semanal ?? 0);
+      }),
+    [curriculoDisciplinas]
+  );
+  useEffect(() => {
+    const targetCursoId = selectedTurma?.curso_id;
+    if (excessoCarga <= 0 || !targetCursoId || !escolaId) return;
+    const timer = window.setTimeout(() => {
+      loadCurriculoDisciplinas(targetCursoId).catch(() => null);
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [escolaId, excessoCarga, loadCurriculoDisciplinas, selectedTurma?.curso_id]);
   const turnoLabel = useMemo(() => {
     const turno = selectedTurma?.turno?.toString().toUpperCase() ?? "";
     if (turno === "M") return "manhã";
@@ -501,14 +614,30 @@ function QuadroHorariosContent() {
     return "matinal";
   };
 
-  const targetSlotsPerDay = useMemo(() => {
+  const maxSlotsPerDayForTurno = useMemo(() => {
+    const normalized = selectedTurma?.turno?.toString().toUpperCase() ?? "M";
+    if (normalized === "N") return 7;
+    return 8;
+  }, [selectedTurma?.turno]);
+
+  const requiredSlotsPerDay = useMemo(() => {
     if (totalDias <= 0) return temposAulaCount;
     return Math.max(temposAulaCount, Math.ceil(totalCarga / totalDias));
   }, [totalCarga, totalDias, temposAulaCount]);
 
+  const targetSlotsPerDay = useMemo(
+    () => Math.min(requiredSlotsPerDay, maxSlotsPerDayForTurno),
+    [maxSlotsPerDayForTurno, requiredSlotsPerDay]
+  );
+
+  const canCompressSameTurn = targetSlotsPerDay > temposAulaCount;
+  const compressionLimitReached = requiredSlotsPerDay > maxSlotsPerDayForTurno;
+  const weeklyCapacityAfterCompression = totalDias * targetSlotsPerDay;
+  const remainingOverflowAfterCompression = Math.max(0, totalCarga - weeklyCapacityAfterCompression);
+
   const handleAutoAdjustSlots = async () => {
     if (!escolaId || !selectedTurma) return;
-    if (targetSlotsPerDay <= temposAulaCount) return;
+    if (!canCompressSameTurn) return;
     try {
       setAdjustingSlots(true);
       const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`);
@@ -585,8 +714,19 @@ function QuadroHorariosContent() {
         throw new Error(formatSlotSaveError(saveJson));
       }
 
-      success(`Slots ajustados para ${targetSlotsPerDay} aulas/dia.`);
-      setBaseRefreshToken((prev) => prev + 1);
+      success(`Slots ajustados para ${targetSlotsPerDay} aulas/dia no mesmo turno.`);
+      if (Array.isArray(saveJson?.items)) {
+        setRawSlots((prev) => {
+          const merged = new Map(prev.map((slot) => [slot.id, slot]));
+          for (const slot of saveJson.items) {
+            if (!slot?.id) continue;
+            merged.set(slot.id, slot);
+          }
+          return Array.from(merged.values());
+        });
+      } else {
+        refreshBaseData();
+      }
     } catch (e: any) {
       error(e?.message || "Falha ao ajustar slots.");
     } finally {
@@ -614,7 +754,7 @@ function QuadroHorariosContent() {
         throw new Error(json?.error || "Falha ao gerar turmas no contraturno.");
       }
       success("Turma de contraturno gerada.");
-      setBaseRefreshToken((prev) => prev + 1);
+      refreshBaseData();
     } catch (e: any) {
       error(e?.message || "Falha ao gerar contraturno.");
     } finally {
@@ -645,7 +785,7 @@ function QuadroHorariosContent() {
       setGrid({});
       setAulas((prev) => prev.map((aula) => ({ ...aula, temposAlocados: 0 })));
       setAutoDraftDirty(false);
-      setRefreshToken((prev) => prev + 1);
+      refreshTurmaData();
       success("Quadro limpo com sucesso.");
     } catch (e: any) {
       error(e?.message || "Falha ao limpar o quadro.");
@@ -900,9 +1040,9 @@ function QuadroHorariosContent() {
       if (res.ok && json.ok) {
         success("Cargas preenchidas", `${json?.data?.updated ?? 0} disciplina(s) atualizadas.`);
         if (selectedTurma?.curso_id) {
-          await loadCurriculoDisciplinas(selectedTurma.curso_id).catch(() => null);
+          await loadCurriculoDisciplinas(selectedTurma.curso_id, { force: true }).catch(() => null);
         }
-        setRefreshToken((prev) => prev + 1);
+        refreshTurmaData();
         if (options?.rerunAutoComplete) {
           await handleAutoCompletar();
         }
@@ -911,6 +1051,120 @@ function QuadroHorariosContent() {
       }
     } finally {
       setAutoConfiguring(false);
+    }
+  };
+
+  const handleRevertAllToStandard = async () => {
+    if (!escolaId || !selectedTurma?.curso_id) return;
+
+    setRevertingAll(true);
+    try {
+      const sourceDisciplinas = curriculoDisciplinas.length > 0
+        ? curriculoDisciplinas
+        : await loadCurriculoDisciplinas(selectedTurma.curso_id);
+      const mismatches = sourceDisciplinas.filter(
+        (disc) => disc.base_weekly_hours !== null && disc.base_weekly_hours !== disc.carga_horaria_semanal
+      );
+
+      if (mismatches.length === 0) {
+        success("Tudo em ordem", "Todas as disciplinas já estão no padrão do MED.");
+        return;
+      }
+
+      await Promise.all(
+        mismatches.flatMap((disc) =>
+          disc.matrix_ids.map(async (matrixId) => {
+            const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                carga_horaria_semanal: disc.base_weekly_hours,
+                carga_horaria: disc.base_weekly_hours,
+              }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok || json?.ok === false) {
+              throw new Error(json?.error || `Falha ao atualizar ${disc.nome}.`);
+            }
+          })
+        )
+      );
+
+      success("Currículo atualizado", "Todas as disciplinas foram redefinidas para o padrão do MED.");
+      const loadByDisciplina = new Map<string, number>(
+        mismatches
+          .filter((disc) => typeof disc.base_weekly_hours === "number")
+          .map((disc) => [disc.id, Number(disc.base_weekly_hours)])
+      );
+      setAulas((prev) =>
+        prev.map((aula) => {
+          const nextLoad = loadByDisciplina.get(aula.id);
+          return nextLoad === undefined
+            ? aula
+            : { ...aula, temposTotal: nextLoad, missingLoad: nextLoad <= 0 };
+        })
+      );
+      if (selectedCurriculoStatus) {
+        setCurriculoStatusRows((prev) =>
+          prev.map((row) =>
+            row.id === selectedCurriculoStatus.id ? { ...row, status: "draft" } : row
+          )
+        );
+      }
+      await loadCurriculoDisciplinas(selectedTurma.curso_id, { force: true }).catch(() => null);
+      refreshTurmaData();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Falha ao redefinir disciplinas.");
+    } finally {
+      setRevertingAll(false);
+    }
+  };
+
+  const handlePublishCurriculo = async () => {
+    if (!escolaParam || !selectedCurriculoStatus) return;
+    setPublishingCurriculo(true);
+    try {
+      const buildPublishBody = (confirmNoRebuildWithExistingTurmas: boolean) => ({
+        cursoId: selectedCurriculoStatus.curso_id,
+        anoLetivoId: selectedCurriculoStatus.ano_letivo_id,
+        version: selectedCurriculoStatus.version,
+        rebuildTurmas: false,
+        confirmNoRebuildWithExistingTurmas,
+        bulk: true,
+      });
+
+      let res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPublishBody(false)),
+      });
+      let json = await res.json().catch(() => null);
+      if (json?.code === "CURRICULO_REBUILD_CONFIRM_REQUIRED") {
+        const confirmed = await confirm({
+          title: "Publicar sem reconstruir turmas",
+          message: "Existem turmas já criadas para este curso. A publicação irá sincronizar as disciplinas sem reconstruí-las. Deseja continuar?",
+          confirmLabel: "Sincronizar",
+        });
+        if (!confirmed) return;
+        res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPublishBody(true)),
+        });
+        json = await res.json().catch(() => null);
+      }
+
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao publicar currículo.");
+      }
+
+      success("Currículo publicado com sucesso!");
+      await loadCurriculoStatus().catch(() => null);
+      refreshTurmaData();
+    } catch (e: any) {
+      error(e?.message || "Erro ao publicar currículo.");
+    } finally {
+      setPublishingCurriculo(false);
     }
   };
 
@@ -992,7 +1246,7 @@ function QuadroHorariosContent() {
           }
         }
         const unmetDetails = json.unmet
-          .map((item: any) => `${item.disciplina_id}: ${reasonLabel(item.reason)}`)
+          .map((item: any) => `${item.disciplina_nome || item.disciplina_id}: ${reasonLabel(item.reason)}`)
           .slice(0, 6)
         error("Pendências no auto-completar", unmetDetails.join(" | "))
       }
@@ -1022,7 +1276,7 @@ function QuadroHorariosContent() {
         throw new Error(json?.error || "Falha ao atribuir professor.");
       }
       success("Professor atribuído.");
-      setRefreshToken((prev) => prev + 1);
+      refreshTurmaData();
     } catch (err) {
       error(err instanceof Error ? err.message : "Falha ao atribuir professor.");
     }
@@ -1051,7 +1305,7 @@ function QuadroHorariosContent() {
           turma.id === turmaId ? { ...turma, sala: sala.nome } : turma
         )
       );
-      setBaseRefreshToken((prev) => prev + 1);
+      refreshTurmaData();
     } catch (err) {
       error(err instanceof Error ? err.message : "Falha ao atribuir sala.");
     }
@@ -1100,13 +1354,78 @@ function QuadroHorariosContent() {
       );
 
       success("Disciplina atualizada.");
+      if (selectedCurriculoStatus) {
+        setCurriculoStatusRows((prev) =>
+          prev.map((row) =>
+            row.id === selectedCurriculoStatus.id ? { ...row, status: "draft" } : row
+          )
+        );
+      }
       setCurriculoModalOpen(false);
       if (selectedTurma?.curso_id) {
-        await loadCurriculoDisciplinas(selectedTurma.curso_id).catch(() => null);
+        await loadCurriculoDisciplinas(selectedTurma.curso_id, { force: true }).catch(() => null);
       }
-      setRefreshToken((prev) => prev + 1);
+      refreshTurmaData();
     } catch (err) {
       error(err instanceof Error ? err.message : "Falha ao atualizar disciplina.");
+    }
+  };
+
+  const handleQuickSaveCurriculoDisciplina = async (payload: DisciplinaForm) => {
+    if (!escolaId) return;
+    const target = curriculoDisciplinas.find((disc) => disc.id === payload.id);
+    if (!target) return;
+    let matrixIds = target.matrix_ids ?? [];
+    if (payload.apply_scope === "selected" && payload.class_ids?.length) {
+      matrixIds = payload.class_ids.flatMap(
+        (classId) => target.matrix_by_class?.[classId] ?? []
+      );
+    }
+    if (matrixIds.length === 0) return;
+    try {
+      await Promise.all(
+        matrixIds.map(async (matrixId) => {
+          const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              carga_horaria_semanal: payload.carga_horaria_semanal,
+              carga_horaria: payload.carga_horaria_semanal,
+              periodos_ativos: payload.periodos_ativos,
+              entra_no_horario: payload.entra_no_horario,
+              conta_para_media_med: payload.conta_para_media_med ?? true,
+            }),
+          });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || json?.ok === false) {
+            throw new Error(json?.error || "Falha ao salvar carga da disciplina.");
+          }
+        })
+      );
+
+      success("Carga da disciplina salva.");
+      const nextLoad = payload.carga_horaria_semanal ?? 0;
+      setAulas((prev) =>
+        prev.map((aula) =>
+          aula.id === target.id
+            ? { ...aula, temposTotal: nextLoad, missingLoad: nextLoad <= 0 }
+            : aula
+        )
+      );
+      if (selectedCurriculoStatus) {
+        setCurriculoStatusRows((prev) =>
+          prev.map((row) =>
+            row.id === selectedCurriculoStatus.id ? { ...row, status: "draft" } : row
+          )
+        );
+      }
+      setCurriculoModalOpen(false);
+      if (selectedTurma?.curso_id) {
+        await loadCurriculoDisciplinas(selectedTurma.curso_id, { force: true }).catch(() => null);
+      }
+      refreshTurmaData();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Falha ao salvar carga da disciplina.");
     }
   };
 
@@ -1184,16 +1503,15 @@ function QuadroHorariosContent() {
               ← Voltar ao Dashboard
             </Link>
             <Button variant="ghost" onClick={handleSkipWizard} className="text-slate-500 font-bold">
-              Pular Assistente
+              Fechar
             </Button>
           </div>
           <HorarioWizard 
             escolaId={escolaId} 
-            turmaId={turmaId} 
             onFinish={() => {
               handleSkipWizard(); // Também salva que terminou para não reabrir
-              setBaseRefreshToken(prev => prev + 1);
-              setRefreshToken(prev => prev + 1);
+              refreshBaseData();
+              refreshTurmaData();
             }} 
           />
         </div>
@@ -1209,13 +1527,13 @@ function QuadroHorariosContent() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
               <Link
-                href={`/escola/${escolaParam}/horarios/slots`}
+                href={slotsHref}
                 className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
               >
                 Slots
               </Link>
               <Link
-                href={`/escola/${escolaParam}/horarios/quadro`}
+                href={quadroHref}
                 className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
               >
                 Quadro
@@ -1227,7 +1545,7 @@ function QuadroHorariosContent() {
               onClick={() => setShowWizard(true)} 
               className="rounded-full gap-2 text-[10px] font-black uppercase tracking-widest border-2 border-slate-200 h-9"
             >
-              <Wand2 className="w-3.5 h-3.5" /> Setup
+              <Wand2 className="w-3.5 h-3.5" /> Configurar base
             </Button>
             <Select
               value={turmaId ?? ""}
@@ -1302,43 +1620,65 @@ function QuadroHorariosContent() {
             <p className="text-xs text-rose-700 mt-1">
               A carga semanal do curso é {totalCarga} e o turno da {turnoLabel} suporta {totalSlots}.
             </p>
-            <p className="text-xs text-rose-700 mt-1">
-              Opção 1 (mais provável): reduzir a gordura do currículo para o padrão real do MED.
-            </p>
+            {allCurriculoAtMed ? (
+              <p className="text-xs text-rose-700 mt-1">
+                O currículo já está no padrão MED. A próxima correção é comprimir o mesmo turno antes de qualquer outra saída.
+              </p>
+            ) : (
+              <p className="text-xs text-rose-700 mt-1">
+                Opção 1 (mais provável): reduzir a gordura do currículo para o padrão real do MED.
+              </p>
+            )}
             <p className="text-[11px] text-rose-600 mt-2">
               Capacidade do turno = número de aulas úteis por semana. Carga vem do currículo publicado.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedTurma?.curso_id && (
-                <button
-                  type="button"
-                  onClick={() => setCurriculoModalOpen(true)}
-                  className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
-                >
-                  Corrigir carga no currículo
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCurriculoModalOpen(true)}
+                    className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700"
+                  >
+                    Corrigir carga no currículo
+                  </button>
+                  {!allCurriculoAtMed ? (
+                    <button
+                      type="button"
+                      onClick={handleRevertAllToStandard}
+                      disabled={revertingAll}
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-all disabled:opacity-50"
+                    >
+                      {revertingAll ? "Corrigindo..." : "Corrigir cargas automaticamente (Padrão MED)"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleAutoAdjustSlots}
+                        disabled={adjustingSlots || !canCompressSameTurn}
+                        className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700 transition-all disabled:opacity-50"
+                      >
+                        {adjustingSlots ? "Ajustando..." : `Comprimir no mesmo turno (${targetSlotsPerDay}/dia)`}
+                      </button>
+                    </>
+                  )}
+                </>
               )}
-              <button
-                type="button"
-                onClick={handleAutoAdjustSlots}
-                disabled={adjustingSlots || targetSlotsPerDay <= temposAulaCount}
-                className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50"
-              >
-                {adjustingSlots
-                  ? "Ajustando slots..."
-                  : `Aumentar slots para ${targetSlotsPerDay} aulas/dia`}
-              </button>
-              <button
-                type="button"
-                onClick={handleAddContraturno}
-                disabled={generatingContraturno}
-                className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50"
-              >
-                {generatingContraturno
-                  ? "Gerando contraturno..."
-                  : "Adicionar aulas no turno da tarde"}
-              </button>
             </div>
+            {allCurriculoAtMed && (
+              <div className="mt-3 space-y-1 text-[11px] text-rose-700">
+                <p>
+                  Meta de compressão deste turno: até {maxSlotsPerDayForTurno} tempos/dia.
+                  {canCompressSameTurn ? ` O quadro pode subir de ${temposAulaCount} para ${targetSlotsPerDay} tempos/dia.` : " O turno já está nesse limite."}
+                </p>
+                {compressionLimitReached && (
+                  <p>
+                    Mesmo no limite, ainda faltarão {remainingOverflowAfterCompression} tempo(s) por semana. Nesse cenário, o problema deixa de ser UI e passa a ser capacidade real da grade.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
         {turmaId && (
@@ -1477,6 +1817,29 @@ function QuadroHorariosContent() {
             </div>
           </div>
         )}
+        {hasCurriculoDraft && turmaId && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="font-semibold flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                Alterações de currículo salvas em rascunho
+              </div>
+              <div className="mt-1 text-emerald-700">
+                Os ajustes de carga horária estão em rascunho. Publique o currículo para aplicá-los oficialmente a todas as turmas.
+              </div>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={handlePublishCurriculo}
+                disabled={publishingCurriculo}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-50 transition-all whitespace-nowrap"
+              >
+                {publishingCurriculo ? "Publicando..." : "Publicar Currículo"}
+              </button>
+            </div>
+          </div>
+        )}
         {autoDraftDirty && turmaId && (
           <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <div className="font-semibold">Distribuição gerada e ainda não salva.</div>
@@ -1594,7 +1957,7 @@ function QuadroHorariosContent() {
           })()}
           existingCodes={curriculoDisciplinas.map((d) => d.codigo)}
           existingNames={curriculoDisciplinas.map((d) => d.nome)}
-          existingDisciplines={curriculoDisciplinas.map((d) => ({ id: d.id, nome: d.nome }))}
+          existingDisciplines={curriculoDisciplinas.map((d) => ({ id: d.id, nome: d.nome, codigo: d.codigo }))}
           classOptions={curriculoClasses}
           disciplineSelector={{
             label: "Disciplina do currículo",
@@ -1619,6 +1982,7 @@ function QuadroHorariosContent() {
           })()}
           onClose={() => setCurriculoModalOpen(false)}
           onSave={handleSaveCurriculoDisciplina}
+          onQuickSave={handleQuickSaveCurriculoDisciplina}
         />
       )}
     </>

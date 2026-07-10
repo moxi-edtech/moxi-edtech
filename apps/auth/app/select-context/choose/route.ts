@@ -5,8 +5,15 @@ import { validateUserTenant } from "@/lib/getUserTenants";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
 import { logAuthEvent } from "@/lib/auth-log";
 import { setTenantContextCookie } from "@/lib/tenantContextCookie";
+import { createSessionHandoffPayload, shouldUseSessionHandoff } from "@/lib/sessionHandoff";
 
 export const dynamic = "force-dynamic";
+
+function buildSessionHandoffUrl(destination: string, payload: string) {
+  const handoffUrl = new URL("/api/auth/handoff", new URL(destination).origin);
+  handoffUrl.searchParams.set("payload", payload);
+  return handoffUrl.toString();
+}
 
 function isLocalOrigin(value: string) {
   const v = value.trim().toLowerCase();
@@ -148,6 +155,30 @@ export async function POST(req: Request) {
   const formData = await req.formData();
   const tenantId = formData.get("tenantId");
   const redirectTo = formData.get("redirect_to");
+  return handleSelection(req, supabase, user, tenantId, redirectTo);
+}
+
+export async function GET(req: Request) {
+  const supabase = await supabaseServer();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+  if (!user) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  const url = new URL(req.url);
+  const tenantId = url.searchParams.get("tenantId");
+  const redirectTo = url.searchParams.get("redirect_to");
+  return handleSelection(req, supabase, user, tenantId, redirectTo);
+}
+
+async function handleSelection(
+  req: Request,
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  user: NonNullable<Awaited<ReturnType<typeof supabaseServer>> extends infer T ? any : never>,
+  tenantId: FormDataEntryValue | string | null,
+  redirectTo: FormDataEntryValue | string | null
+) {
   const tenant = await validateUserTenant(user.id, tenantId);
   if (!tenant) {
     logAuthEvent({
@@ -209,8 +240,24 @@ export async function POST(req: Request) {
     user_id: user.id,
     tenant_id: tenant.tenantId,
     tenant_type: tenant.tenantType,
-    details: { destination, selected_tenant_id: tenant.tenantId },
+      details: { destination, selected_tenant_id: tenant.tenantId },
   });
 
-  return NextResponse.redirect(destination);
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session ?? null;
+  const finalDestination =
+    session?.access_token &&
+    session?.refresh_token &&
+    shouldUseSessionHandoff(destination, bases.k12)
+      ? buildSessionHandoffUrl(
+          destination,
+          createSessionHandoffPayload({
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+            destination,
+          })
+        )
+      : destination;
+
+  return NextResponse.redirect(finalDestination);
 }

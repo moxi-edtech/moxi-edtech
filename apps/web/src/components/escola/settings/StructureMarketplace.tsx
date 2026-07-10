@@ -1108,6 +1108,68 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     ]
   );
 
+  const handleQuickSaveDisciplina = useCallback(
+    async (payload: DisciplinaForm) => {
+      if (!apiEscolaId) {
+        error("Escola não identificada.");
+        return;
+      }
+      if (!details || !selectedCourseId) return;
+      if (disciplinaModalMode !== "edit" || disciplinaEditingMatrixIds.length === 0) return;
+
+      let matrixIds = disciplinaEditingMatrixIds;
+      if (payload.apply_scope === "selected" && payload.class_ids?.length) {
+        matrixIds = payload.class_ids.flatMap(
+          (classId) => disciplinaEditingMatrixByClass[classId] ?? []
+        );
+      }
+
+      if (matrixIds.length === 0) {
+        error("Nenhuma classe selecionada para aplicar alterações.");
+        return;
+      }
+
+      try {
+        await Promise.all(
+          matrixIds.map(async (matrixId) => {
+            const res = await fetch(`/api/escolas/${apiEscolaId}/disciplinas/${matrixId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                carga_horaria_semanal: payload.carga_horaria_semanal,
+                carga_horaria: payload.carga_horaria_semanal,
+                periodos_ativos: payload.periodos_ativos,
+                entra_no_horario: payload.entra_no_horario,
+                conta_para_media_med: payload.conta_para_media_med ?? true,
+              }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok || json?.ok === false) {
+              throw new Error(json?.error || "Falha ao salvar carga da disciplina.");
+            }
+          })
+        );
+
+        success("Carga da disciplina salva.");
+        const nextDetails = await fetchCourseDetails(selectedCourseId);
+        setDetails(nextDetails);
+      } catch (e: any) {
+        error(e?.message || "Falha ao salvar carga da disciplina.");
+      }
+    },
+    [
+      details,
+      disciplinaEditingMatrixByClass,
+      disciplinaEditingMatrixIds,
+      disciplinaModalMode,
+      error,
+      apiEscolaId,
+      fetchCourseDetails,
+      selectedCourseId,
+      success,
+    ]
+  );
+
   const pendingDisciplines = useMemo(
     () => (details?.disciplinas ?? []).filter((disc) => disc.status_completude !== "completo"),
     [details]
@@ -1345,6 +1407,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
               setDisciplinaModalOpen(false);
             }}
             onSave={handleSaveDisciplina}
+            onQuickSave={handleQuickSaveDisciplina}
             onDelete={disciplinaModalMode === "edit" ? handleDeleteDisciplina : undefined}
           />
         )}

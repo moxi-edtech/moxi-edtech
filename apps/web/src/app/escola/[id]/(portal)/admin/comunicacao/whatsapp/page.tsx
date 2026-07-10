@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useState, useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   Check,
   Copy,
@@ -26,7 +27,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useToast } from "@/components/feedback/FeedbackSystem";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -190,6 +191,7 @@ function formatTime(value: string | null | undefined) {
 
 export default function WhatsAppKlassePage({ params }: Props) {
   const { id: escolaId } = use(params);
+  const pathname = usePathname();
   const { error, success } = useToast();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -223,7 +225,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
   const [inboxSearch, setInboxSearch] = useState("");
 
   const apiBase = `/api/escola/${escolaId}/admin/comunicacao/whatsapp`;
-  const configHref = buildPortalHref(escolaId, "/admin/configuracoes/comunicacao");
+  const configHref = buildContextualPortalHref(escolaId, "/admin/configuracoes/comunicacao", pathname);
 
   // Filter outbox rows for non-inbox tabs
   const filteredOutbox = useMemo(() => {
@@ -720,12 +722,12 @@ export default function WhatsAppKlassePage({ params }: Props) {
                       {selectedThread.linked_entity_id && selectedThread.linked_entity_type === "student" ? (
                         <>
                           <Button size="sm" variant="outline" asChild>
-                            <Link href={buildPortalHref(escolaId, `/secretaria/alunos/${selectedThread.linked_entity_id}`)} target="_blank">
+                            <Link href={buildContextualPortalHref(escolaId, `/secretaria/alunos/${selectedThread.linked_entity_id}`, pathname)} target="_blank">
                               <ExternalLink className="h-3 w-3 mr-1" /> Ficha Aluno
                             </Link>
                           </Button>
                           <Button size="sm" variant="outline" asChild>
-                            <Link href={buildPortalHref(escolaId, `/secretaria/alunos/${selectedThread.linked_entity_id}/pagamento`)} target="_blank">
+                            <Link href={buildContextualPortalHref(escolaId, `/secretaria/alunos/${selectedThread.linked_entity_id}/pagamento`, pathname)} target="_blank">
                               <DollarSign className="h-3 w-3 mr-1" /> Financeiro
                             </Link>
                           </Button>

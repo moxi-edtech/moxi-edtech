@@ -51,6 +51,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       .select("aluno_id, aluno_nome, valor_em_atraso, dias_em_atraso")
       .eq("escola_id", resolvedEscolaId)
       .order("valor_em_atraso", { ascending: false })
+      .order("aluno_id", { ascending: true })
       .limit(limit);
 
     if (error) {

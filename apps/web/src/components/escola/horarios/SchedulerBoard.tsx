@@ -91,47 +91,41 @@ export function SchedulerBoard({
 }: SchedulerBoardProps) {
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [estoque, setEstoque] = useState(aulas || []);
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
   const [assigningTurmaSala, setAssigningTurmaSala] = useState(false);
+  const currentGrid = controlledGrid ?? grid;
 
   // Sincroniza grid externo
   useEffect(() => {
     if (controlledGrid) setGrid(controlledGrid);
   }, [controlledGrid]);
 
-  // Atualiza estoque local quando aulas mudam
-  useEffect(() => {
-    if (aulas) setEstoque(aulas);
-  }, [aulas]);
-
-  // Recalcula contagens do estoque
-  useEffect(() => {
-    const currentGrid = controlledGrid ?? grid;
+  const estoque = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const value of Object.values(currentGrid)) {
       if (!value) continue;
       counts[value] = (counts[value] || 0) + 1;
     }
-    setEstoque((prev) =>
-      prev.map((a) => ({
-        ...a,
-        temposAlocados: counts[a.id] ?? 0,
-      }))
-    );
-  }, [controlledGrid, grid, aulas]);
+
+    return (aulas || []).map((aula) => (
+      aula.temposAlocados === (counts[aula.id] ?? 0)
+        ? aula
+        : { ...aula, temposAlocados: counts[aula.id] ?? 0 }
+    ));
+  }, [aulas, currentGrid]);
+
+  const aulaById = useMemo(() => new Map(estoque.map((aula) => [aula.id, aula])), [estoque]);
 
   // Detecção de Conflitos em Tempo Real (Local)
   const conflictSlots = useMemo(() => {
     const merged: Record<string, boolean> = { ...(externalConflictSlots || {}) };
-    const currentGrid = controlledGrid ?? grid;
 
     for (const [slotKey, disciplinaId] of Object.entries(currentGrid)) {
       if (!disciplinaId) continue;
       const slotId = slotLookup?.[slotKey];
       if (!slotId) continue;
 
-      const aula = estoque.find((a) => a.id === disciplinaId);
+      const aula = aulaById.get(disciplinaId);
       if (!aula) continue;
 
       const results = validateAssignment(
@@ -147,7 +141,7 @@ export function SchedulerBoard({
       }
     }
     return merged;
-  }, [controlledGrid, grid, slotLookup, estoque, existingAssignments, externalConflictSlots]);
+  }, [currentGrid, slotLookup, aulaById, existingAssignments, externalConflictSlots]);
 
   const missingLoadCount = useMemo(
     () => (estoque || []).filter((a) => a.missingLoad).length,
@@ -174,20 +168,23 @@ export function SchedulerBoard({
 
     const shouldRemove = !slotId || slotId === "trash";
     setGrid((prev) => {
-      const nextGrid = { ...prev };
-      const targetPrevious = slotId ? prev[slotId] || null : null;
+      const baseGrid = controlledGrid ?? prev;
+      const nextGrid = { ...baseGrid };
+      const targetPrevious = slotId ? baseGrid[slotId] || null : null;
       if (sourceSlot) {
         nextGrid[sourceSlot] = shouldRemove ? null : targetPrevious;
       }
       if (!shouldRemove && slotId) {
         nextGrid[slotId] = baseId;
       }
-      if (onGridChange) onGridChange(nextGrid);
+      if (onGridChange) {
+        Promise.resolve().then(() => onGridChange(nextGrid));
+      }
       return nextGrid;
     });
-  }, [onGridChange]);
+  }, [controlledGrid, onGridChange]);
 
-  const getAulaById = useCallback((id: string) => estoque.find((a) => a.id === id), [estoque]);
+  const getAulaById = useCallback((id: string) => aulaById.get(id), [aulaById]);
 
   const effectiveTurmaSala = useMemo(() => {
     if (turmaSala) return turmaSala;
@@ -199,9 +196,8 @@ export function SchedulerBoard({
 
   const shouldShowTurmaSalaWarning = useMemo(() => {
     if (effectiveTurmaSala || !onAssignTurmaSala) return false;
-    const currentGrid = controlledGrid ?? grid;
     return Object.values(currentGrid).some((value) => Boolean(value));
-  }, [effectiveTurmaSala, onAssignTurmaSala, controlledGrid, grid]);
+  }, [effectiveTurmaSala, onAssignTurmaSala, currentGrid]);
 
   // --- RENDERING ---
   const overlayItem = useMemo(() => {
@@ -247,12 +243,12 @@ export function SchedulerBoard({
           <ActionButtons
             onAutoCompletar={onAutoCompletar}
             autoCompleting={autoCompleting}
-            onSalvar={() => onSalvar?.(controlledGrid ?? grid)}
+            onSalvar={() => onSalvar?.(currentGrid)}
             onPublicar={onPublicar}
             canPublicar={canPublicar}
             publishDisabledReason={publishDisabledReason}
             publishing={publishing}
-            grid={controlledGrid ?? grid}
+            grid={currentGrid}
           />
         </div>
 
@@ -265,7 +261,7 @@ export function SchedulerBoard({
                 key={tempo.id}
                 tempo={tempo}
                 diasSemana={diasSemana}
-                grid={controlledGrid ?? grid}
+                grid={currentGrid}
                 conflictSlots={conflictSlots}
                 getAulaById={getAulaById}
                 onAssignProfessor={onAssignProfessor}
@@ -835,4 +831,3 @@ const AssignTurmaSalaModal = ({
     </div>
   );
 };
-

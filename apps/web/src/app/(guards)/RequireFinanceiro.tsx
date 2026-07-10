@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -62,12 +63,7 @@ export default function RequireFinanceiro({
         return roleMatchesAllowedRoles(
           papel,
           [
-            "financeiro",
-            "admin_financeiro",
-            "secretaria_financeiro",
-            "admin",
-            "admin_escola",
-            "staff_admin",
+            ...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP,
             "super_admin",
             "formacao_financeiro",
             "formacao_admin",

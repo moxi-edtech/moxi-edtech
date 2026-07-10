@@ -1,5 +1,6 @@
 // Centralized role-permission mapping and helpers
 // Source: roles and permissions provided by product spec
+import { K12_ADMIN_ROLE_GROUP } from "@/lib/roles";
 
 export type Papel =
   | 'admin'
@@ -86,8 +87,6 @@ export type GlobalRole =
   | 'guest'
 
 export type ProductContext = 'k12' | 'formacao'
-
-const K12_ADMIN_ROLE_GROUP = ['admin', 'staff_admin', 'admin_escola'] as const
 
 const K12_COMPOSITE_ROLE_INHERITANCE: Record<string, ReadonlyArray<string>> = {
   admin: K12_ADMIN_ROLE_GROUP,

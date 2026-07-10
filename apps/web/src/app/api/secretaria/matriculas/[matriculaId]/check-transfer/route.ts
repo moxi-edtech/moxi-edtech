@@ -3,11 +3,10 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 function buildFinanceiroMensagem(
   valorOrigem: number,
@@ -71,7 +70,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ matr
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: resolvedEscolaId,
-      roles: [...ALLOWED_ROLES],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authError) return authError;
 

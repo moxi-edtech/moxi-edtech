@@ -1,27 +1,21 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState } from "react";
 import { 
   CheckCircle2, 
   ChevronRight, 
   ChevronLeft,
   School, 
   Clock, 
-  BookOpen, 
-  Users, 
   LayoutDashboard,
   Zap,
   ShieldCheck,
   Wand2
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/feedback/FeedbackSystem";
 
-// Passos
 import { StepSalas } from "./wizard/StepSalas";
 import { StepSlots } from "./wizard/StepSlots";
-import { StepCargas } from "./wizard/StepCargas";
-import { StepProfessores } from "./wizard/StepProfessores";
 
 type Step = {
   id: number;
@@ -33,39 +27,19 @@ type Step = {
 const STEPS: Step[] = [
   { id: 0, title: "Ambientes", description: "Salas e espaços de aprendizagem.", icon: School },
   { id: 1, title: "Horários", description: "Estrutura de tempos e turnos.", icon: Clock },
-  { id: 2, title: "Carga Horária", description: "Revisão de aulas por disciplina.", icon: BookOpen },
-  { id: 3, title: "Professores", description: "Atribuição docente para a turma.", icon: Users },
-  { id: 4, title: "Quadro", description: "Montagem e visualização da grade.", icon: LayoutDashboard },
+  { id: 2, title: "Quadro", description: "Montagem e ajustes operacionais da grade.", icon: LayoutDashboard },
 ];
 
 interface HorarioWizardProps {
   escolaId: string;
-  turmaId?: string | null;
   onFinish?: () => void;
   initialStep?: number;
 }
 
-export function HorarioWizard({ escolaId, turmaId, onFinish, initialStep = 0 }: HorarioWizardProps) {
+export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWizardProps) {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [loading, setLoading] = useState(false);
-  const { success, error } = useToast();
-
-  // Dados compartilhados entre os passos
-  const [wizardData, setWizardData] = useState({
-    salas: [],
-    slots: [],
-    turma: null,
-    disciplinas: [],
-  });
-
-  const canProceed = useMemo(() => {
-    // Validações básicas por passo para evitar avançar no vazio
-    if (currentStep === 0) return true; // Salas (opcional mas recomendado)
-    if (currentStep === 1) return true; // Slots
-    if (currentStep === 2) return true; // Cargas
-    if (currentStep === 3) return true; // Professores
-    return true;
-  }, [currentStep]);
+  const canProceed = true;
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -86,8 +60,8 @@ export function HorarioWizard({ escolaId, turmaId, onFinish, initialStep = 0 }: 
       {/* Header */}
       <div className="mb-10 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Assistente de Horários</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">Configure sua escola passo-a-passo para evitar conflitos.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Configurar base do horário</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">Defina apenas a estrutura-base. Cargas, professores e sala da turma ficam no próprio quadro.</p>
         </div>
         <div className="h-12 w-12 rounded-2xl bg-klasse-gold/10 border border-klasse-gold/20 flex items-center justify-center">
             <Zap className="h-6 w-6 text-klasse-gold" />
@@ -129,22 +103,16 @@ export function HorarioWizard({ escolaId, turmaId, onFinish, initialStep = 0 }: 
             <StepSlots escolaId={escolaId} onComplete={() => handleNext()} />
           )}
           {currentStep === 2 && (
-            <StepCargas escolaId={escolaId} turmaId={turmaId} onComplete={() => handleNext()} />
-          )}
-          {currentStep === 3 && (
-            <StepProfessores escolaId={escolaId} turmaId={turmaId} onComplete={() => handleNext()} />
-          )}
-          {currentStep === 4 && (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <div className="h-20 w-20 rounded-full bg-emerald-50 flex items-center justify-center mb-6">
                 <LayoutDashboard className="h-10 w-10 text-emerald-500" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">Pronto para a Montagem!</h3>
-              <p className="text-sm text-slate-500 max-w-md mx-auto mb-8">
-                Todos os pré-requisitos foram configurados. Agora você pode distribuir as aulas no quadro com total segurança contra conflitos.
+              <h3 className="mb-2 text-xl font-black text-slate-900">Base pronta</h3>
+              <p className="mb-8 max-w-md mx-auto text-sm text-slate-500">
+                Ambientes e slots estão configurados. Continue no quadro para distribuir aulas, ajustar cargas, atribuir professores, definir sala e publicar.
               </p>
               <Button tone="gold" size="lg" onClick={onFinish} className="font-black gap-2">
-                Abrir Quadro de Horários <Wand2 className="w-5 h-5" />
+                Ir para o Quadro <Wand2 className="w-5 h-5" />
               </Button>
             </div>
           )}
@@ -163,7 +131,7 @@ export function HorarioWizard({ escolaId, turmaId, onFinish, initialStep = 0 }: 
           <ChevronLeft className="mr-2 h-5 w-5" /> Voltar
         </Button>
         
-        {currentStep < 4 && (
+        {currentStep < STEPS.length - 1 && (
           <Button 
             tone="gold" 
             className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-klasse-gold/20"

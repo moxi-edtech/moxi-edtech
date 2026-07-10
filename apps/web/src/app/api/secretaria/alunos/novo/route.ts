@@ -5,6 +5,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { buildPlanLimitError, checkAlunoPlanLimit } from '@/lib/plan/limits'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 import type { Json } from '~types/supabase'
 
 const BodySchema = z.object({
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     })
     if (authz.error) return authz.error
 

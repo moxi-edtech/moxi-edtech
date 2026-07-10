@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { 
   FlaskConical, 
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type SimulationResult = {
@@ -37,7 +37,8 @@ export default function SandboxConfiguracoesPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
 
   const menuItems = [
     { label: "📅 Calendário", href: `${base}/calendario` },
@@ -121,7 +122,7 @@ export default function SandboxConfiguracoesPage() {
         body: JSON.stringify({ changes: { sandbox: true, applied_at: new Date() } }),
       });
       toast.success("Configurações aplicadas com sucesso!");
-      router.push(buildPortalHref(escolaParam, "/admin"));
+      router.push(buildContextualPortalHref(escolaParam, "/admin", pathname));
     } catch (error) {
       toast.error("Erro ao aplicar configurações.");
     } finally {

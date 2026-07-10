@@ -80,6 +80,7 @@ type AutoScheduleResult = {
   };
   unmet: Array<{
     disciplina_id: string;
+    disciplina_nome?: string;
     missing: number;
     reason: "SEM_SLOTS" | "CONFLITO_PROF" | "CONFLITO_SALA" | "REGRAS" | "SEM_PROF" | "PROF_TURNO";
   }>;
@@ -610,6 +611,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const disciplinaSemTurno = new Set<string>();
+    const professorIdsValidos = new Set(Array.from(professorProfileMap.keys()));
 
     const disciplinaNeeds: DisciplinaNeed[] = (disciplinasRows || [])
       .map((row: any) => {
@@ -620,6 +622,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         const requiresDouble = carga >= 3;
         const practical = isPracticalDiscipline(nome);
         let professorId = professorByDisciplina.get(disciplinaId) ?? null;
+        if (professorId && !professorIdsValidos.has(professorId)) {
+          professorId = null;
+        }
         if (professorId && turnoLabel) {
           const profileId = professorProfileMap.get(professorId) || null;
           const availableTurnos = profileId ? professorTurnosMap.get(profileId) || [] : [];
@@ -720,6 +725,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (disciplina.carga_semanal <= 0) {
         unmet.push({
           disciplina_id: disciplina.disciplina_id,
+          disciplina_nome: disciplina.nome,
           missing: 0,
           reason: "REGRAS",
         });
@@ -901,6 +907,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (missing > 0) {
         unmet.push({
           disciplina_id: disciplina.disciplina_id,
+          disciplina_nome: disciplina.nome,
           missing,
           reason: disciplinaSemTurno.has(disciplina.disciplina_id)
             ? "PROF_TURNO"

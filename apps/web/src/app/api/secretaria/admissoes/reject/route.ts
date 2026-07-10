@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireRoleInSchool } from '@/lib/authz'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 
 const payloadSchema = z.object({
   candidatura_id: z.string().uuid(),
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: head.escola_id,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     })
     if (authError) return authError
 

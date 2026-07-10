@@ -2,12 +2,13 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Badge } from "@/components/ui/Badge";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type IdentidadeForm = {
   nome: string;
@@ -59,7 +60,8 @@ export default function IdentidadePage({ params }: Props) {
   const { id: escolaId } = use(params);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
   const { error, success } = useToast();
 
   const [loading, setLoading] = useState(true);

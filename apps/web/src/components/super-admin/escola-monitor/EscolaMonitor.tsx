@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { createClient } from "@/lib/supabaseClient";
+import { DEFAULT_AI_ALLOWED_FEATURES } from "@/lib/ai/default-features";
 import type {
   EscolaDetalhes,
   EscolaMetricas,
@@ -368,6 +369,7 @@ export default function EscolaMonitor({
           enabled,
           daily_limit: daily,
           monthly_limit: monthly,
+          allowed_features: [...DEFAULT_AI_ALLOWED_FEATURES],
           updated_at: new Date().toISOString()
         }, { onConflict: "school_id" });
 

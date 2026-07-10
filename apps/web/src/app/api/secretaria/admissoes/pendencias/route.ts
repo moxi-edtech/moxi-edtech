@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireRoleInSchool } from '@/lib/authz'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 const pendenciaSchema = z.object({
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: head.escola_id,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'diretor', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'diretor'],
     })
     if (authError) return authError
 

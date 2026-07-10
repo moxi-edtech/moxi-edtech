@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
+import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,7 +32,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
     const roleCheck = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["admin", "admin_escola", "secretaria", "secretaria_financeiro", "staff_admin", "admin_financeiro"],
+      roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP, "secretaria_financeiro"],
     });
     if (roleCheck.error) return roleCheck.error;
 

@@ -37,3 +37,15 @@ test("resolveTenantRoute: k12 admin aponta directo para dashboard da escola", ()
   assert.equal(resolved.product, "k12");
   assert.equal(resolved.path, "/escola/tenant-k12/admin/dashboard");
 });
+
+test("resolveTenantRoute: admin_financeiro aponta para operacoes", () => {
+  const resolved = resolveTenantRoute({
+    tenantId: "tenant-k12",
+    tenantName: "K12",
+    tenantType: "k12",
+    role: "admin_financeiro",
+  });
+
+  assert.equal(resolved.product, "k12");
+  assert.equal(resolved.path, "/escola/tenant-k12/operacoes/dashboard");
+});

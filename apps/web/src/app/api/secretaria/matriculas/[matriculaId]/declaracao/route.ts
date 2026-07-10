@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { recordAuditServer } from "@/lib/audit";
 import { requireRoleInSchool } from "@/lib/authz";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
@@ -35,14 +36,7 @@ export async function GET(
   const authz = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: [
-      "secretaria",
-      "secretaria_financeiro",
-      "admin_financeiro",
-      "admin",
-      "admin_escola",
-      "staff_admin",
-    ],
+    roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
   });
   if (authz.error) {
     return authz.error;

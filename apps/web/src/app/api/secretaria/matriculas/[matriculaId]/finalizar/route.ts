@@ -5,6 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchProfessorNotificacao } from "@/lib/notificacoes/dispatchProfessorNotificacao";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const BodySchema = z.object({
     .optional(),
 });
 
-const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = K12_SECRETARIA_OPERACIONAL_ROLE_GROUP;
 const OVERRIDE_ROLES = ["admin", "admin_escola", "staff_admin", "admin_financeiro"] as const;
 
 export async function POST(

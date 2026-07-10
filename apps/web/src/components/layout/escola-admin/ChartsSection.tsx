@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -95,15 +95,23 @@ interface ChartsSectionProps {
   meses?:        string[];
   alunosPorMes?: number[];
   pagamentos?:   PagamentosResumo;
+  pagamentosValores?: {
+    pago: number;
+    pendente: number;
+    inadimplente: number;
+  };
   mode?:         "admin" | "operacoes";
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ChartsSection({ meses, alunosPorMes, pagamentos, mode = "admin" }: ChartsSectionProps) {
+const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
+
+export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamentosValores, mode = "admin" }: ChartsSectionProps) {
   const labels     = useMemo(() => meses        ?? [], [meses]);
   const dadosAlunos = useMemo(() => alunosPorMes ?? [], [alunosPorMes]);
   const resumo     = pagamentos ?? null;
+  const [billingView, setBillingView] = useState<"quantidade" | "valor">("quantidade");
 
   // ── Line chart (matrículas) ────────────────────────────────────────────────
   const lineData = useMemo(
@@ -118,12 +126,14 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, mode = 
   // ── Bar chart (mensalidades) ───────────────────────────────────────────────
   const barData = useMemo(() => {
     const r = resumo ?? { pago: 0, pendente: 0, inadimplente: 0 };
+    const v = pagamentosValores ?? { pago: 0, pendente: 0, inadimplente: 0 };
+    const useValues = billingView === "valor";
     return [
-      { status: "Pago", valor: Number(r.pago ?? 0), fill: KLASSE_GREEN },
-      { status: "Pendente", valor: Number(r.pendente ?? 0), fill: KLASSE_GOLD },
-      { status: "Inadimplente", valor: Number(r.inadimplente ?? 0), fill: "#dc2626" },
+      { status: "Pago", valor: Number(useValues ? v.pago : r.pago), fill: KLASSE_GREEN },
+      { status: "Pendente", valor: Number(useValues ? v.pendente : r.pendente), fill: KLASSE_GOLD },
+      { status: "Inadimplente", valor: Number(useValues ? v.inadimplente : r.inadimplente), fill: "#dc2626" },
     ];
-  }, [resumo]);
+  }, [billingView, pagamentosValores, resumo]);
 
   const hasLineData = labels.length > 0 && dadosAlunos.length > 0;
 
@@ -172,15 +182,56 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, mode = 
         title={mode === "operacoes" ? "Saúde da Cobrança" : "Status das Mensalidades"}
         subtitle={mode === "operacoes" ? "Distribuição operacional da carteira" : "Distribuição atual"}
       >
+        <div className="mb-4 flex items-center justify-end">
+          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => setBillingView("quantidade")}
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+                billingView === "quantidade" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              Faturas
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingView("valor")}
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+                billingView === "valor" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              Valor AOA
+            </button>
+          </div>
+        </div>
         <div className="h-56 min-w-0">
           {resumo ? (
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={barData} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke={SLATE_GRID} vertical={false} />
                 <XAxis dataKey="status" tick={axisTick} tickLine={false} axisLine={false} />
-                <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="valor" name="Mensalidades" radius={[6, 6, 0, 0]} />
+                <YAxis
+                  tick={axisTick}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                  tickFormatter={(value) =>
+                    billingView === "valor" ? `${Math.round(Number(value) / 1000)}k` : String(value)
+                  }
+                />
+                <Tooltip
+                  content={<ChartTooltip />}
+                  formatter={(value) =>
+                    billingView === "valor"
+                      ? moeda.format(Number(value ?? 0))
+                      : Number(value ?? 0).toLocaleString("pt-AO")
+                  }
+                />
+                <Bar
+                  dataKey="valor"
+                  name={billingView === "valor" ? "Valor total" : "Mensalidades"}
+                  radius={[6, 6, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           ) : <EmptyState />}

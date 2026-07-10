@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
 import { dispatchProfessorNotificacao } from "@/lib/notificacoes/dispatchProfessorNotificacao";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,8 +13,6 @@ export const revalidate = 0;
 const StatusSchema = z.object({
   status: z.enum(["ativo", "trancado", "concluido", "transferido", "desistente"]),
 });
-
-const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
 
 export async function PUT(request: Request, { params }: { params: Promise<{ matriculaId: string }> }) {
   try {
@@ -54,7 +53,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: resolvedEscolaId,
-      roles: [...ALLOWED_ROLES],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authError) return authError;
 

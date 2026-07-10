@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireRoleInSchool } from '@/lib/authz'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { recordAuditServer } from '@/lib/audit'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 import type { Json } from '~types/supabase'
 
 type JsonObject = { [key: string]: Json | undefined }
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: head.escola_id,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     })
     if (authError) return authError
 

@@ -65,6 +65,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       .eq("escola_id", resolvedEscolaId)
       .eq("day_key", dayKey)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
       .limit(limit);
 
     if (error) {

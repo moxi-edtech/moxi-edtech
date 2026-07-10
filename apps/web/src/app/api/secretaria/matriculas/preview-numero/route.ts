@@ -1,6 +1,7 @@
 // @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { requireRoleInSchool } from "@/lib/authz";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -24,14 +25,7 @@ export async function GET() {
     const authz = await requireRoleInSchool({
       supabase: supabase as any,
       escolaId,
-      roles: [
-        "secretaria",
-        "secretaria_financeiro",
-        "admin_financeiro",
-        "admin",
-        "admin_escola",
-        "staff_admin",
-      ],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authz.error) {
       return authz.error;

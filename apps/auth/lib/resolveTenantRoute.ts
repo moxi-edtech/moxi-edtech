@@ -12,8 +12,9 @@ function resolveK12Path(tenant: UserTenant): string {
     case "admin":
     case "admin_escola":
     case "staff_admin":
-    case "admin_financeiro":
       return `/escola/${escolaParam}/admin/dashboard`;
+    case "admin_financeiro":
+      return `/escola/${escolaParam}/operacoes/dashboard`;
     case "secretaria":
     case "secretaria_financeiro":
       return `/escola/${escolaParam}/secretaria`;

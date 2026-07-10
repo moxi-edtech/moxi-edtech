@@ -6,6 +6,7 @@ import { requireRoleInSchool } from '@/lib/authz';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { recordAuditServer } from '@/lib/audit';
 import { emitirComprovanteMatricula } from '@/lib/documentos/emitirComprovanteMatricula';
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from '@/lib/roles';
 import type { Json } from '~types/supabase';
 // import { enqueueOutboxEvent } from '@/lib/outbox';
 
@@ -265,7 +266,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId: candidatura.escola_id,
-    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'financeiro', 'diretor']
+    roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, 'diretor'],
   });
     if (authError) return authError;
 

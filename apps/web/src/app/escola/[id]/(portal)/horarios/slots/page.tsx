@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
@@ -10,6 +10,7 @@ import { shouldAppearInScheduler } from "@/lib/rules/scheduler-rules";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { useHorarioDataContext } from "@/components/escola/horarios/HorarioDataProvider";
 
 type Turno = {
   id: string;
@@ -57,23 +58,38 @@ function HorariosSlotsContent() {
   const escolaId = params?.id as string;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+  const pathname = usePathname() ?? "";
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error, toast: rawToast } = useToast();
-  const [slots, setSlots] = useState<HorarioSlot[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
-  const [turmas, setTurmas] = useState<TurmaResumo[]>([]);
-  const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [selectedTurmaId, setSelectedTurmaId] = useState<string | null>(null);
   const [turmaCarga, setTurmaCarga] = useState(0);
   const [disciplinasSemCarga, setDisciplinasSemCarga] = useState(0);
   const { online } = useOfflineStatus();
-  const slotsRequestRef = useRef(0);
-  const turmasRequestRef = useRef(0);
   const cargaRequestRef = useRef(0);
+  const {
+    rawSlots,
+    loading: baseLoading,
+    turmas: baseTurmas,
+    setRawSlots,
+  } = useHorarioDataContext();
+  const slots = rawSlots as HorarioSlot[];
+  const loading = baseLoading && slots.length === 0;
+  const loadingTurmas = baseLoading && baseTurmas.length === 0;
+  const turmas = useMemo<TurmaResumo[]>(
+    () =>
+      baseTurmas.map((item) => ({
+        id: item.id,
+        nome: item.nome ?? item.turma_nome ?? item.turma_codigo ?? item.turma_code ?? "Turma",
+        turno: item.turno ?? null,
+        curso_nome: item.curso?.nome ?? null,
+        classe_nome: item.classe?.nome ?? null,
+      })),
+    [baseTurmas]
+  );
 
   const turnos = useMemo<Turno[]>(
     () => [
@@ -92,75 +108,6 @@ function HorariosSlotsContent() {
     const turmaIdParam = searchParams?.get("turmaId");
     if (turmaIdParam) setSelectedTurmaId(turmaIdParam);
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!escolaId) return;
-    const controller = new AbortController();
-    const requestId = ++slotsRequestRef.current;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, {
-          signal: controller.signal,
-        });
-        const json = await res.json().catch(() => ({}));
-        if (controller.signal.aborted || requestId !== slotsRequestRef.current) return;
-        if (res.ok && json.ok) {
-          setSlots(json.items || []);
-        } else {
-          setSlots([]);
-        }
-      } catch (error) {
-        if (controller.signal.aborted || requestId !== slotsRequestRef.current) return;
-        setSlots([]);
-      } finally {
-        if (!controller.signal.aborted && requestId === slotsRequestRef.current) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load();
-    return () => controller.abort();
-  }, [escolaId]);
-
-  useEffect(() => {
-    if (!escolaId) return;
-    const controller = new AbortController();
-    const requestId = ++turmasRequestRef.current;
-
-    const loadTurmas = async () => {
-      setLoadingTurmas(true);
-      try {
-        const res = await fetch(`/api/escolas/${escolaId}/turmas?limit=50`, {
-          signal: controller.signal,
-        });
-        const json = await res.json().catch(() => ({}));
-        if (controller.signal.aborted || requestId !== turmasRequestRef.current) return;
-        const items = res.ok && json.ok && Array.isArray(json.items) ? json.items : [];
-        setTurmas(
-          items.map((item: any) => ({
-            id: item.id,
-            nome: item.nome ?? item.turma_nome ?? "Turma",
-            turno: item.turno ?? null,
-            curso_nome: item.curso_nome ?? null,
-            classe_nome: item.classe_nome ?? null,
-          }))
-        );
-      } catch (error) {
-        if (controller.signal.aborted || requestId !== turmasRequestRef.current) return;
-        setTurmas([]);
-      } finally {
-        if (!controller.signal.aborted && requestId === turmasRequestRef.current) {
-          setLoadingTurmas(false);
-        }
-      }
-    };
-
-    loadTurmas();
-    return () => controller.abort();
-  }, [escolaId]);
 
   const selectedTurma = useMemo(
     () => turmas.find((turma) => turma.id === selectedTurmaId) || null,
@@ -228,6 +175,12 @@ function HorariosSlotsContent() {
     if (!selectedTurmaId) return 0;
     return Math.max(0, turmaCarga - totalSlotsDisponiveis);
   }, [selectedTurmaId, turmaCarga, totalSlotsDisponiveis]);
+  const horarioBasePath = pathname.includes("/operacoes/horarios")
+    ? `/escola/${escolaParam}/operacoes/horarios`
+    : `/escola/${escolaParam}/horarios`;
+  const quadroHref = selectedTurmaId
+    ? `${horarioBasePath}/quadro?turmaId=${encodeURIComponent(selectedTurmaId)}`
+    : `${horarioBasePath}/quadro`;
 
   const handleSave = async () => {
     if (!escolaId) return;
@@ -255,10 +208,11 @@ function HorariosSlotsContent() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok) {
-        setSlots(json.items || []);
+        const savedSlots = json.items || [];
+        setRawSlots(savedSlots);
         success("Estrutura de horários salva.", "Agora você pode distribuir as aulas nas turmas.", {
           label: "Ir para o Quadro",
-          onClick: () => router.push(`/escola/${escolaParam}/horarios/quadro`),
+          onClick: () => router.push(quadroHref),
         });
       } else {
         const message = formatSlotSaveError(json);
@@ -301,13 +255,13 @@ function HorariosSlotsContent() {
           </div>
           <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
             <Link
-              href={`/escola/${escolaParam}/horarios/slots`}
+              href={`${horarioBasePath}/slots`}
               className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
             >
               Slots
             </Link>
             <Link
-              href={`/escola/${escolaParam}/horarios/quadro`}
+              href={quadroHref}
               className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
             >
               Quadro
@@ -337,7 +291,7 @@ function HorariosSlotsContent() {
                 )}
               </div>
               <Link
-                href={`/escola/${escolaParam}/horarios/quadro`}
+                href={quadroHref}
                 className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white"
               >
                 Abrir Quadro
@@ -353,7 +307,7 @@ function HorariosSlotsContent() {
               <span className="ml-3 text-sm">Carregando horários...</span>
             </div>
           ) : (
-            <SlotsConfig turnos={turnos} value={slots} onChange={setSlots} onSave={handleSave} />
+            <SlotsConfig turnos={turnos} value={slots} onChange={setRawSlots} onSave={handleSave} />
           )}
         </div>
 

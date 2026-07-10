@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireRoleInSchool } from '@/lib/authz'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 
 export const dynamic = "force-dynamic"
 
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
   const { error: authError } = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'],
+    roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
   })
   if (authError) return authError
 

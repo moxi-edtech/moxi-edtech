@@ -2,13 +2,14 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft, Save, RefreshCw, Calendar, Lock, AlertTriangle, CheckCircle2, Wand2, Plus, Trash2, X, ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { format, parseISO } from "date-fns";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchPeriodosLetivos } from "@/lib/periodosLetivosClient";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { Database } from "~types/supabase";
@@ -55,7 +56,8 @@ export default function CalendarioConfigPage({ params }: Props) {
   const { id: escolaIdFromParams } = use(params);
   const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaIdFromParams;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
   const { toast, dismiss, success, error } = useToast();
   const confirm = useConfirm();
   const supabase = useMemo(() => createClient(), []);

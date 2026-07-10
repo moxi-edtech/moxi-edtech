@@ -6,6 +6,7 @@ import { requireRoleInSchool } from '@/lib/authz'
 import { requireFeature } from '@/lib/plan/requireFeature'
 import { HttpError } from '@/lib/errors'
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from '@/lib/documentos/certificadoSnapshot'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     })
     if (authError) return authError
 

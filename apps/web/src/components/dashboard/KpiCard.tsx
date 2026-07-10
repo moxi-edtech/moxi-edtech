@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
 
 type KpiCardProps = {
   label: string;
   value?: string | number;
-  icon: any;
+  icon: LucideIcon;
   variant?: "default" | "brand" | "warning" | "success";
   trend?: {
     value: number;
@@ -17,6 +18,7 @@ type KpiCardProps = {
   chartData?: { value: number }[];
   description?: string;
   href?: string;
+  compact?: boolean;
 };
 
 export function KpiCard({
@@ -28,6 +30,7 @@ export function KpiCard({
   chartData,
   description,
   href,
+  compact = false,
 }: KpiCardProps) {
   const styles = {
     default: {
@@ -59,17 +62,19 @@ export function KpiCard({
   const Content = (
     <>
       <div className="flex items-start justify-between relative z-10">
-        <div className="space-y-1">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+        <div className={compact ? "space-y-0.5" : "space-y-1"}>
+          <span className={`font-bold uppercase tracking-widest text-slate-400 ${compact ? "text-[10px]" : "text-[11px]"}`}>
             {label}
           </span>
-          <div className="flex items-baseline gap-2">
-            <span className={`text-2xl font-black tracking-tight ${styles.value}`}>
+          <div className={`flex items-baseline ${compact ? "gap-1.5" : "gap-2"}`}>
+            <span className={`${compact ? "text-[26px]" : "text-2xl"} font-black tracking-tight ${styles.value}`}>
               {value ?? "—"}
             </span>
             {trend && (
               <div
-                className={`flex items-center gap-0.5 text-xs font-bold ${
+                className={`flex items-center gap-0.5 font-bold ${
+                  compact ? "text-[10px]" : "text-xs"
+                } ${
                   trend.isPositive ? "text-emerald-600" : "text-rose-600"
                 }`}
               >
@@ -83,16 +88,16 @@ export function KpiCard({
             )}
           </div>
           {description && (
-            <p className="text-[10px] text-slate-400 font-medium leading-none">
+            <p className={`text-slate-400 font-medium leading-none ${compact ? "text-[9px]" : "text-[10px]"}`}>
               {description}
             </p>
           )}
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className={`flex flex-col items-end ${compact ? "gap-1.5" : "gap-2"}`}>
           <div
-            className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-sm ${styles.icon}`}
+            className={`${compact ? "h-9 w-9 rounded-lg" : "h-10 w-10 rounded-xl"} flex items-center justify-center shadow-sm ${styles.icon}`}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className={compact ? "h-4.5 w-4.5" : "h-5 w-5"} />
           </div>
           {href && (
             <div className="text-[10px] font-bold text-[#1F6B3B] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
@@ -120,7 +125,7 @@ export function KpiCard({
     </>
   );
 
-  const containerClasses = `group relative min-h-[132px] min-w-0 overflow-hidden rounded-2xl border p-5 flex flex-col justify-between transition hover:shadow-md ${styles.box}`;
+  const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition hover:shadow-md ${compact ? "min-h-[112px] rounded-xl p-4" : "min-h-[132px] rounded-2xl p-5"} ${styles.box}`;
 
   if (href) {
     return (

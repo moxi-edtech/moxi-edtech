@@ -18,18 +18,30 @@ type Props = {
   operationalSnapshot?: OperationalSnapshot;
   financeiroHref?: string;
   portalBase?:     "admin" | "operacoes";
+  alunoSeries?:    number[];
 };
 
-// ─── Mock Data for Sparklines ────────────────────────────────────────────────
-const mockChartData = [
-  { value: 400 }, { value: 300 }, { value: 500 }, { value: 450 },
-  { value: 600 }, { value: 550 }, { value: 700 }, { value: 680 }
-];
+function toChartData(series?: number[]) {
+  if (!series || series.length < 2) return undefined;
+  return series.map((value) => ({ value: Number(value ?? 0) }));
+}
+
+function trendFromSeries(series?: number[]) {
+  if (!series || series.length < 2) return undefined;
+  const prev = Number(series[series.length - 2] ?? 0);
+  const curr = Number(series[series.length - 1] ?? 0);
+  if (prev === 0 && curr === 0) return undefined;
+  if (prev === 0) return { value: 100, isPositive: curr >= prev };
+  return {
+    value: Math.round(Math.abs(((curr - prev) / prev) * 100)),
+    isPositive: curr >= prev,
+  };
+}
 
 // ─── Skeleton card ────────────────────────────────────────────────────────────
 function KpiSkeleton() {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-32">
+    <div className="flex h-28 flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="space-y-2 flex-1">
           <div className="h-2.5 w-16 bg-slate-100 animate-pulse rounded" />
@@ -54,6 +66,7 @@ export default function KpiSection({
   operationalSnapshot,
   financeiroHref,
   portalBase = "admin",
+  alunoSeries,
 }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -80,6 +93,9 @@ export default function KpiSection({
 
   const portalHref = (path: string) => buildPortalHref(escolaParam, `/${portalBase}/${path}`);
   const financeHref = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
+  const financeRadarHref = mode === "operacoes"
+    ? buildPortalHref(escolaParam, "/operacoes/turmas-alunos")
+    : `${financeHref}/radar`;
   const op = operationalSnapshot ?? {
     mensalidadesPendentes: 0,
     mensalidadesInadimplentes: 0,
@@ -91,6 +107,8 @@ export default function KpiSection({
     documentosEmProcessamento: 0,
     turmasSemHorarioPublicado: 0,
   };
+  const alunosChartData = toChartData(alunoSeries);
+  const alunosTrend = trendFromSeries(alunoSeries) ?? { value: 0, isPositive: true };
   const kpis = mode === "operacoes"
     ? [
         {
@@ -99,9 +117,9 @@ export default function KpiSection({
           icon: Users,
           href: portalHref("alunos"),
           variant: turmasOk ? ("brand" as const) : ("warning" as const),
-          trend: { value: 8, isPositive: true },
-          chartData: mockChartData.map((d) => ({ value: d.value * 1.2 })),
-          description: "Operação activa",
+          trend: undefined,
+          chartData: undefined,
+          description: "Base activa",
         },
         {
           label: "Turmas",
@@ -109,9 +127,9 @@ export default function KpiSection({
           icon: UsersRound,
           href: portalHref("turmas"),
           variant: "default" as const,
-          trend: { value: Math.max(0, op.turmasPendentes), isPositive: op.turmasPendentes === 0 },
-          chartData: mockChartData,
-          description: "Turmas em circulação",
+          trend: undefined,
+          chartData: undefined,
+          description: "Em circulação",
         },
         {
           label: "Pendentes",
@@ -119,19 +137,19 @@ export default function KpiSection({
           icon: Wallet,
           href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
           variant: op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
-          trend: { value: op.mensalidadesPendentes, isPositive: op.mensalidadesPendentes === 0 },
-          chartData: mockChartData.map((d) => ({ value: d.value * 0.6 })),
+          trend: undefined,
+          chartData: undefined,
           description: "Cobranças por tratar",
         },
         {
           label: "Em Atraso",
           value: op.mensalidadesInadimplentes,
           icon: UserCheck,
-          href: `${financeHref}/radar`,
+          href: financeRadarHref,
           variant: op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
-          trend: { value: op.mensalidadesInadimplentes, isPositive: op.mensalidadesInadimplentes === 0 },
-          chartData: mockChartData.map((d) => ({ value: 1000 - d.value })),
-          description: "Casos críticos na cobrança",
+          trend: undefined,
+          chartData: undefined,
+          description: "Cobrança crítica",
         },
       ]
     : [
@@ -142,7 +160,6 @@ export default function KpiSection({
           href: portalHref("turmas"),
           variant: "default" as const,
           trend: { value: 12, isPositive: true },
-          chartData: mockChartData,
           description: "Em operação este ano",
         },
         {
@@ -151,8 +168,8 @@ export default function KpiSection({
           icon: Users,
           href: portalHref("alunos"),
           variant: turmasOk ? ("brand" as const) : ("warning" as const),
-          trend: { value: 8, isPositive: true },
-          chartData: mockChartData.map(d => ({ value: d.value * 1.2 })),
+          trend: alunosTrend,
+          chartData: alunosChartData,
           description: "Matrículas confirmadas",
         },
         {
@@ -162,7 +179,6 @@ export default function KpiSection({
           href: portalHref("professores"),
           variant: "default" as const,
           trend: { value: 2, isPositive: false },
-          chartData: mockChartData.map(d => ({ value: 1000 - d.value })),
           description: "Corpo docente ativo",
         },
         {
@@ -172,13 +188,17 @@ export default function KpiSection({
           href: financeHref,
           variant: s.financeiro && s.financeiro > 80 ? ("success" as const) : ("brand" as const),
           trend: { value: 5, isPositive: true },
-          chartData: mockChartData.map(d => ({ value: d.value * 0.8 })),
           description: "Cobrança da competência",
         },
       ];
 
+  const gridClasses =
+    mode === "operacoes"
+      ? "grid grid-cols-2 gap-3 xl:grid-cols-4"
+      : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4";
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={gridClasses}>
       {kpis.map((kpi) => (
         <KpiCard
           key={kpi.label}
@@ -190,6 +210,7 @@ export default function KpiSection({
           trend={kpi.trend}
           chartData={kpi.chartData}
           description={kpi.description}
+          compact={mode === "operacoes"}
         />
       ))}
     </div>

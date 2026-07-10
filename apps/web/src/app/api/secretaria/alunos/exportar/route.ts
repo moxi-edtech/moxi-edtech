@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRoleInSchool } from "@/lib/authz";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import {
   parseAlunoExportFormat,
@@ -30,14 +31,7 @@ export async function GET(req: Request) {
     const authz = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: [
-        "secretaria",
-        "secretaria_financeiro",
-        "admin_financeiro",
-        "admin",
-        "admin_escola",
-        "staff_admin",
-      ],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authz.error) {
       return authz.error;

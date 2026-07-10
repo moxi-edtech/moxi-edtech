@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 
 export async function GET(
   req: NextRequest,
@@ -23,7 +24,7 @@ export async function GET(
 
     const { data: hasRole, error: roleError } = await supabase.rpc('user_has_role_in_school', {
       p_escola_id: userEscolaId,
-      p_roles: ['admin_escola', 'secretaria', 'admin', 'staff_admin', 'admin_financeiro'],
+      p_roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP],
     });
     if (roleError) {
       return NextResponse.json({ ok: false, error: "Erro ao verificar permissões" }, { status: 500 });

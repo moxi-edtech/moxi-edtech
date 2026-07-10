@@ -1,6 +1,6 @@
 "use client";
 
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 export type SetupBadges = {
   ano_letivo_ok?: boolean;
@@ -114,21 +114,23 @@ export function setupProgressFromBadges(badges?: SetupBadges) {
 
 export function getOperationalBlockerAction(
   escolaParam: string | null | undefined,
-  blocker?: NonNullable<OperationalReadiness["blockers"]>[number]
+  blocker?: NonNullable<OperationalReadiness["blockers"]>[number],
+  pathname?: string | null
 ): OperationalBlockerAction | null {
   if (!blocker || !escolaParam) return null;
+  const portalHref = (path: string) => buildContextualPortalHref(escolaParam, path, pathname);
 
   if (blocker.fix_cta?.href) {
     return {
       kind: "link",
       label: blocker.fix_cta.label || "Abrir correção",
-      href: buildPortalHref(escolaParam, blocker.fix_cta.href),
+      href: portalHref(blocker.fix_cta.href),
     };
   }
 
   switch (blocker.code) {
     case "TEAM_TEACHERS_MISSING":
-      return { kind: "link", label: "Cadastrar professores", href: buildPortalHref(escolaParam, "/admin/professores") };
+      return { kind: "link", label: "Cadastrar professores", href: portalHref("/admin/professores") };
     case "TEAM_TEACHER_CONSISTENCY":
     case "TEACHER_ASSIGNMENT_INCONSISTENCY":
     case "PORTAL_PROFESSOR_BLOCKED":
@@ -139,21 +141,21 @@ export function getOperationalBlockerAction(
     case "FINANCE_IBAN_MISSING":
     case "FINANCE_PRICING_MISSING":
     case "FINANCE_CONFIG_MISSING":
-      return { kind: "link", label: "Abrir financeiro", href: buildPortalHref(escolaParam, "/admin/configuracoes/financeiro") };
+      return { kind: "link", label: "Abrir financeiro", href: portalHref("/admin/configuracoes/financeiro") };
     case "PORTAL_ALUNO_DISABLED":
-      return { kind: "link", label: "Revisar sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+      return { kind: "link", label: "Revisar sistema", href: portalHref("/admin/configuracoes/sistema") };
     case "STUDENTS_MISSING":
-      return { kind: "link", label: "Importar alunos", href: buildPortalHref(escolaParam, "/admin/migracao") };
+      return { kind: "link", label: "Importar alunos", href: portalHref("/admin/migracao") };
     case "ACADEMIC_COURSES_MISSING":
     case "ACADEMIC_CURRICULUM_UNPUBLISHED":
     case "ACADEMIC_TURMAS_INVALID":
-      return { kind: "link", label: "Abrir turmas e currículo", href: buildPortalHref(escolaParam, "/admin/configuracoes/turmas") };
+      return { kind: "link", label: "Abrir turmas e currículo", href: portalHref("/admin/configuracoes/turmas") };
     case "ACADEMIC_YEAR_MISSING":
     case "ACADEMIC_PERIODS_INVALID":
-      return { kind: "link", label: "Abrir calendário", href: buildPortalHref(escolaParam, "/admin/configuracoes/calendario") };
+      return { kind: "link", label: "Abrir calendário", href: portalHref("/admin/configuracoes/calendario") };
     case "ACADEMIC_EVALUATION_MISSING":
-      return { kind: "link", label: "Abrir avaliação", href: buildPortalHref(escolaParam, "/admin/configuracoes/avaliacao-frequencia") };
+      return { kind: "link", label: "Abrir avaliação", href: portalHref("/admin/configuracoes/avaliacao-frequencia") };
     default:
-      return { kind: "link", label: "Ver painel do sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+      return { kind: "link", label: "Ver painel do sistema", href: portalHref("/admin/configuracoes/sistema") };
   }
 }

@@ -1,5 +1,6 @@
 import SecretariaDashboardPage from "@/app/secretaria/(portal-secretaria)/page";
 import { getDefaultK12PortalPathForRole } from "@/lib/permissions";
+import { K12_OPERACOES_PRIMARY_ROLE } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
@@ -40,7 +41,7 @@ export default async function SecretariaLandingPage({
   const papel = (vinculo?.papel ?? null) as string | null;
 
   const normalizedPapel = String(papel ?? "").trim().toLowerCase();
-  if (normalizedPapel === "admin_financeiro") {
+  if (normalizedPapel === K12_OPERACOES_PRIMARY_ROLE) {
     const qp = new URLSearchParams(sp as Record<string, string> | undefined);
     const query = qp.toString();
     const dest = `/escola/${escolaParam}/operacoes/dashboard`;

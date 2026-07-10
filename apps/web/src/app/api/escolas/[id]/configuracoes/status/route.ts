@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
+import { K12_ADMIN_GESTAO_ROLE_GROUP } from "@/lib/roles";
 
 export async function GET(
   req: NextRequest,
@@ -30,7 +31,7 @@ export async function GET(
     const { error: roleError } = await requireRoleInSchool({
       supabase: s as any,
       escolaId: resolvedEscolaId,
-      roles: ["admin", "admin_escola", "admin_financeiro", "staff_admin"],
+      roles: [...K12_ADMIN_GESTAO_ROLE_GROUP],
     });
     if (roleError) return roleError;
 

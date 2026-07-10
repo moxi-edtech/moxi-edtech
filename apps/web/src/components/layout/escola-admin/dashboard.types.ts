@@ -23,6 +23,7 @@ export type OperationalSnapshot = {
   matriculasPendentes: number;
   documentosEmProcessamento: number;
   turmasSemHorarioPublicado: number;
+  primeiraTurmaSemHorarioPublicadoId?: string | null;
 };
 
 export type Aviso  = { id: string; titulo: string; dataISO: string };
@@ -54,7 +55,14 @@ export type CurriculoPendencias = {
 export type DashboardCharts = {
   meses:        string[];
   alunosPorMes: number[];
+  pendentesPorMes?: number[];
+  inadimplentesPorMes?: number[];
   pagamentos:   PagamentosResumo;
+  pagamentosValores?: {
+    pago: number;
+    pendente: number;
+    inadimplente: number;
+  };
 };
 
 export type EstadoVital = {

@@ -18,6 +18,7 @@ type SlotApi = {
 };
 
 type BaseDataState = {
+  rawSlots: SlotApi[];
   slots: SchedulerSlot[];
   slotLookup: Record<string, string>;
   salas: Array<{ id: string; nome: string }>;
@@ -48,6 +49,9 @@ type TurmaDataState = {
 };
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+const BASE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const getBaseCacheKey = (escolaId: string) => `horarios:base:${escolaId}`;
 
 const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Record<string, string> } => {
   const grouped = new Map<number, SlotApi[]>();
@@ -122,6 +126,7 @@ const fetchJson = async (url: string, signal: AbortSignal, cache: RequestCache =
 
 export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
   const [state, setState] = useState<BaseDataState>({
+    rawSlots: [],
     slots: [],
     slotLookup: {},
     salas: [],
@@ -135,25 +140,28 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
     if (!escolaId) return;
     const controller = new AbortController();
     const requestId = ++requestRef.current;
-    const cacheKey = `horarios:base:${escolaId}`;
+    const cacheKey = getBaseCacheKey(escolaId);
     const now = Date.now();
+    const shouldForceRefresh = Boolean(refreshToken);
 
     setState((prev) => ({ ...prev, loading: true }));
 
-    if (typeof window !== "undefined") {
+    if (!shouldForceRefresh && typeof window !== "undefined") {
       try {
         const cachedRaw = window.sessionStorage.getItem(cacheKey);
         if (cachedRaw) {
           const cached = JSON.parse(cachedRaw) as {
             storedAt: number;
+            rawSlots?: SlotApi[];
             slots: SchedulerSlot[];
             slotLookup: Record<string, string>;
             salas: Array<{ id: string; nome: string }>;
             turmas: BaseDataState["turmas"];
           };
-          if (cached?.storedAt && now - cached.storedAt < 5 * 60 * 1000) {
+          if (cached?.storedAt && now - cached.storedAt < BASE_CACHE_TTL_MS) {
             setState((prev) => ({
               ...prev,
+              rawSlots: cached.rawSlots ?? prev.rawSlots,
               slots: cached.slots ?? prev.slots,
               slotLookup: cached.slotLookup ?? prev.slotLookup,
               salas: cached.salas ?? prev.salas,
@@ -161,6 +169,7 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
               loading: false,
               error: null,
             }));
+            return () => controller.abort();
           }
         }
       } catch {}
@@ -194,6 +203,7 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
             };
           });
           const nextState = {
+            rawSlots: slotsPayload as SlotApi[],
             slots,
             slotLookup,
             salas: salasPayload,
@@ -232,7 +242,24 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
     setState((prev) => ({ ...prev, turmas: updater(prev.turmas) }));
   };
 
-  return { ...state, setSalas, setTurmas };
+  const setRawSlots = (updater: SlotApi[] | ((prev: SlotApi[]) => SlotApi[])) => {
+    setState((prev) => {
+      const rawSlots = typeof updater === "function" ? updater(prev.rawSlots) : updater;
+      const { slots, slotLookup } = mapSlots(rawSlots);
+      const nextState = { ...prev, rawSlots, slots, slotLookup };
+      if (typeof window !== "undefined" && escolaId) {
+        try {
+          window.sessionStorage.setItem(
+            getBaseCacheKey(escolaId),
+            JSON.stringify({ storedAt: Date.now(), ...nextState })
+          );
+        } catch {}
+      }
+      return nextState;
+    });
+  };
+
+  return { ...state, setSalas, setTurmas, setRawSlots };
 }
 
 export function useHorarioTurmaData({
@@ -257,7 +284,7 @@ export function useHorarioTurmaData({
   });
   const requestRef = useRef(0);
 
-  const canLoadTurmaData = Boolean(escolaId && turmaId && versaoId);
+  const canLoadTurmaData = Boolean(escolaId && turmaId && versaoId && Object.keys(slotLookup).length > 0);
 
   useEffect(() => {
     if (!canLoadTurmaData) {
@@ -311,9 +338,10 @@ export function useHorarioTurmaData({
             ? quadroRes.json.items
             : [];
 
+        const slotKeyById = new Map(Object.entries(slotLookup).map(([key, id]) => [id, key]));
         const nextGrid: Record<string, string | null> = {};
         for (const item of quadroPayload) {
-          const slotKey = Object.entries(slotLookup).find(([, id]) => id === item.slot_id)?.[0];
+          const slotKey = slotKeyById.get(item.slot_id);
           if (slotKey) nextGrid[slotKey] = item.disciplina_id;
         }
 

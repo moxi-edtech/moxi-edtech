@@ -6,6 +6,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { assertPortalAccess } from "@/lib/portalAccess";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -51,7 +52,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authz.error) return authz.error;
 

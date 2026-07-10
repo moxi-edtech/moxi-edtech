@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { normalizeAiAllowedFeatures } from "@/lib/ai/default-features";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
   }
 
   const role = String(roleRes.data?.papel ?? "").trim().toLowerCase();
+  const allowedFeatures = normalizeAiAllowedFeatures(settingsRes.data?.allowed_features);
   const enabled =
     process.env.AI_ENABLED !== "false" &&
     !settingsRes.error &&
@@ -83,7 +85,7 @@ export async function GET(request: Request) {
       data: {
         allowed,
         enabled,
-        allowedFeatures: Array.isArray(settingsRes.data?.allowed_features) ? settingsRes.data?.allowed_features : [],
+        allowedFeatures,
         role: role || (allowed ? "admin" : ""),
         schoolId: escolaId,
         userId: user.id,

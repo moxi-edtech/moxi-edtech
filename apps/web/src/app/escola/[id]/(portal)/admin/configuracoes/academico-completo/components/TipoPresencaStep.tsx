@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   Calculator, 
   Variable, 
@@ -19,7 +20,7 @@ import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Con
 import { buildConfigMenuItems } from "../../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // --- TIPAGENS ---
 type Componente = { code: string; peso: number; ativo: boolean };
@@ -57,7 +58,8 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
   const { id: escolaId } = use(params);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
   const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---

@@ -1,4 +1,5 @@
 import "server-only";
+import { normalizeAiAllowedFeatures } from "@/lib/ai/default-features";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
@@ -101,7 +102,7 @@ export async function validateAiAccess(
     return { ok: false, error: "A IA está desabilitada nas configurações desta escola." };
   }
 
-  const allowedFeatures = Array.isArray(settings.allowed_features) ? (settings.allowed_features as string[]) : [];
+  const allowedFeatures = normalizeAiAllowedFeatures(settings.allowed_features);
   if (allowedFeatures.length === 0 || !allowedFeatures.includes(feature)) {
     return { ok: false, error: "Esta funcionalidade de IA não está liberada para esta escola." };
   }

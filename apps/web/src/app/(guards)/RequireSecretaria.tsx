@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { roleMatchesAllowedRoles } from "@/lib/permissions";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -62,12 +63,7 @@ export default function RequireSecretaria({
         return roleMatchesAllowedRoles(
           papel,
           [
-            "secretaria",
-            "admin",
-            "admin_escola",
-            "staff_admin",
-            "secretaria_financeiro",
-            "admin_financeiro",
+            ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP,
             "financeiro",
             "formacao_admin",
             "formacao_secretaria",

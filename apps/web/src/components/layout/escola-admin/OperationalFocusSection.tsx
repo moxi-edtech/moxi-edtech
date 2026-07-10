@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   AlertTriangle,
-  ArrowRight,
   Banknote,
   CalendarClock,
   ClipboardCheck,
@@ -39,30 +38,28 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
   return (
     <Link
       href={card.href}
-      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+      className="group flex h-[104px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className={`rounded-2xl p-3 ${card.tone}`}>
-          <Icon className="h-5 w-5" />
-        </div>
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <span className="truncate text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">
+          {card.label}
+        </span>
         <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${
+          className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] ${
             isZero ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
           }`}
         >
-          {isZero ? "Estável" : "Pede acção"}
+          {isZero ? "Estável" : "Acção"}
         </span>
       </div>
 
-      <div className="mt-5">
-        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{card.label}</p>
-        <p className="mt-2 text-3xl font-black tracking-tight text-slate-900">{card.value}</p>
-        <p className="mt-2 text-sm text-slate-500">{card.description}</p>
-      </div>
-
-      <div className="mt-5 inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-klasse-green transition group-hover:gap-2">
-        {card.cta}
-        <ArrowRight className="h-3.5 w-3.5" />
+      <div className="mt-3 flex items-end justify-between">
+        <p className="text-[28px] font-black leading-none tracking-tight text-slate-900">
+          {card.value}
+        </p>
+        <div className={`flex items-center justify-center rounded-lg p-1.5 transition-transform group-hover:scale-105 ${card.tone}`}>
+          <Icon className="h-4.5 w-4.5" />
+        </div>
       </div>
     </Link>
   );
@@ -71,6 +68,9 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
 export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+  const horarioQuadroHref = snapshot.primeiraTurmaSemHorarioPublicadoId
+    ? buildPortalHref(escolaParam, `/operacoes/horarios/quadro?turmaId=${snapshot.primeiraTurmaSemHorarioPublicadoId}`)
+    : buildPortalHref(escolaParam, "/operacoes/horarios/quadro");
 
   const cards: FocusCard[] = [
     {
@@ -78,8 +78,8 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       label: "Cobranças Pendentes",
       value: snapshot.mensalidadesPendentes,
       description: "Mensalidades em aberto que ainda podem ser tratadas sem escalonamento.",
-      href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
-      cta: "Abrir recebimentos",
+      href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
+      cta: "Ver mensalidades",
       icon: Banknote,
       tone: "bg-emerald-50 text-emerald-700",
     },
@@ -118,7 +118,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       label: "Em Atraso",
       value: snapshot.mensalidadesInadimplentes,
       description: "Casos que já exigem contacto activo ou negociação com o encarregado.",
-      href: buildPortalHref(escolaParam, "/financeiro/radar"),
+      href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver carteira",
       icon: ShieldAlert,
       tone: "bg-rose-50 text-rose-700",
@@ -138,7 +138,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       label: "Sem Horário Publicado",
       value: snapshot.turmasSemHorarioPublicado,
       description: "Turmas activas ainda sem versão publicada do quadro oficial.",
-      href: buildPortalHref(escolaParam, "/horarios/quadro"),
+      href: horarioQuadroHref,
       cta: "Publicar quadro",
       icon: CalendarClock,
       tone: "bg-violet-50 text-violet-700",
@@ -159,7 +159,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
+          <h3 className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
             Foco da Operação
           </h3>
           <p className="mt-1 text-xs text-slate-500">
@@ -168,7 +168,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
         {cards.map((card) => (
           <FocusMetricCard key={card.key} card={card} />
         ))}

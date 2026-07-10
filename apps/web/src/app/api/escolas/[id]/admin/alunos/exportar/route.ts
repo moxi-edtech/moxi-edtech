@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import {
   parseAlunoExportFormat,
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-const EXPORT_ROLES = ["admin", "admin_escola", "staff_admin", "secretaria", "admin_financeiro"] as const;
+const EXPORT_ROLES = K12_ADMIN_SECRETARIA_ROLE_GROUP;
 
 async function resolveContext(req: Request, escolaParam: string) {
   const supabase = await supabaseServerTyped<Database>();

@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP],
     });
     if (roleError) return roleError;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 // Importa os componentes (ajusta os caminhos se necessário)
@@ -15,7 +15,7 @@ import {
   invalidateSetupStateCache,
   setupProgressFromBadges,
 } from "@/lib/setupStateClient";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // Definição de Props para Next.js 15
 type Props = {
@@ -44,6 +44,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   const resolvedParams = use(params);
   const escolaId = resolvedParams.id;
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaId && escolaId !== "null" ? escolaId : (escolaSlug ?? escolaId);
 
@@ -178,7 +179,7 @@ export default function ConfiguracoesPage({ params }: Props) {
 
   // 3. Estado de Carregamento
   if (authRequired) {
-    const nextPath = buildPortalHref(escolaParam, "/admin/configuracoes");
+    const nextPath = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
         <AuthRequiredNotice
@@ -200,7 +201,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   const primaryBlocker = pageSetupStatus?.blockers?.[0];
   const nextActionLabel = pageSetupStatus?.next_action?.label ?? "Continuar configuração";
   const nextActionHref = pageSetupStatus?.next_action?.href
-    ? buildPortalHref(escolaParam, pageSetupStatus.next_action.href)
+    ? buildContextualPortalHref(escolaParam, pageSetupStatus.next_action.href, pathname)
     : null;
   const suggestedWizardStep =
     Number.isFinite(requestedStep) && requestedStep >= 1 && requestedStep <= 5
@@ -216,7 +217,8 @@ export default function ConfiguracoesPage({ params }: Props) {
           title: primaryBlocker.title,
           detail: primaryBlocker.detail,
         }
-      : undefined
+      : undefined,
+    pathname
   );
 
   const checklistItems = [

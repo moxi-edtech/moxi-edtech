@@ -105,6 +105,7 @@ export async function PUT(
         escolaId: resolvedEscolaId,
         cursoId: String(cmRow.curso_id),
         classeId: String(cmRow.classe_id),
+        anoLetivoId: cmRow?.curriculo?.ano_letivo_id ?? null,
       });
 
       const { data: draftRow, error: draftRowError } = await (supabase as any)
@@ -114,6 +115,8 @@ export async function PUT(
         .eq('curso_curriculo_id', draftCurriculoId)
         .eq('disciplina_id', cmRow.disciplina_id)
         .eq('classe_id', cmRow.classe_id)
+        .order('id', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
       if (draftRowError) {
@@ -246,7 +249,7 @@ export async function DELETE(
   try {
     const { data: cmRow } = await (supabase as any)
       .from('curso_matriz')
-      .select('id, disciplina_id, classe_id, curso_id, curso_curriculo_id, curriculo:curso_curriculos(status)')
+      .select('id, disciplina_id, classe_id, curso_id, curso_curriculo_id, curriculo:curso_curriculos(status,ano_letivo_id)')
       .eq('escola_id', resolvedEscolaId)
       .eq('id', disciplinaId)
       .maybeSingle();
@@ -260,6 +263,7 @@ export async function DELETE(
           escolaId: resolvedEscolaId,
           cursoId: String(cmRow.curso_id),
           classeId: String(cmRow.classe_id),
+          anoLetivoId: cmRow?.curriculo?.ano_letivo_id ?? null,
         });
 
         const { data: draftRow, error: draftRowError } = await (supabase as any)
@@ -269,6 +273,8 @@ export async function DELETE(
           .eq('curso_curriculo_id', draftCurriculoId)
           .eq('disciplina_id', cmRow.disciplina_id)
           .eq('classe_id', cmRow.classe_id)
+          .order('id', { ascending: true })
+          .limit(1)
           .maybeSingle();
 
         if (draftRowError) {

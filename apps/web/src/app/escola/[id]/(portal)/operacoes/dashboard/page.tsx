@@ -1,4 +1,4 @@
-import EscolaAdminDashboard from "@/components/layout/escola-admin/EscolaAdminDashboard";
+import OperacoesDashboard from "@/components/layout/operacoes/OperacoesDashboard";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -28,10 +28,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <EscolaAdminDashboard
+    <OperacoesDashboard
       escolaId={resolvedEscolaId ?? escolaParam}
       escolaNome={escolaNome}
-      mode="operacoes"
     />
   );
 }

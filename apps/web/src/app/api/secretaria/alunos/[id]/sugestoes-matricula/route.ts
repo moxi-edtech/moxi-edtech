@@ -3,6 +3,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { getSugestoesMatricula } from "@/lib/secretaria/sugestoes";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export async function GET(
   _req: Request,
@@ -24,7 +25,7 @@ export async function GET(
     const authz = await requireRoleInSchool({
       supabase: supabase as any,
       escolaId,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (authz.error) return authz.error;
 

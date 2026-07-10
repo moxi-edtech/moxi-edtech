@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import { K12_ADMIN_GESTAO_ROLE_GROUP } from "@/lib/roles";
 
 import { removeAccents } from "@/lib/turma";
 
@@ -78,7 +79,7 @@ export async function POST(
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId: resolvedEscolaId,
-      roles: ["admin", "admin_escola", "admin_financeiro", "staff_admin"],
+      roles: [...K12_ADMIN_GESTAO_ROLE_GROUP],
     });
     if (roleError) return roleError;
 

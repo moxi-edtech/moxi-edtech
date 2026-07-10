@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import {
   AlertCircle,
   ArrowRight,
@@ -20,7 +20,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { Skeleton, useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type Curso = { id: string; nome: string };
 type Classe = { id: string; curso_id?: string; nome: string; turno?: string | null };
@@ -131,7 +131,9 @@ export default function TurmasConfiguracoesPage() {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const baseRaw = "/admin/configuracoes";
-  const base = buildPortalHref(escolaParam, baseRaw);
+  const pathname = usePathname();
+  const portalHref = (path: string) => buildContextualPortalHref(escolaParam, path, pathname);
+  const base = portalHref(baseRaw);
   const { success, error, warning, toast: rawToast, dismiss } = useToast();
   const confirm = useConfirm();
   const menuItems = buildConfigMenuItems(base);
@@ -745,6 +747,51 @@ export default function TurmasConfiguracoesPage() {
     }
   };
 
+  const handleQuickSaveDisciplina = async (payload: DisciplinaForm) => {
+    if (!escolaId || !selectedCursoId || !ctx?.classesBase) return;
+    if (disciplinaModalMode !== "edit" || disciplinaEditingMatrixIds.length === 0) return;
+
+    let matrixIds = disciplinaEditingMatrixIds;
+    if (payload.apply_scope === "selected" && payload.class_ids?.length) {
+      matrixIds = payload.class_ids.flatMap(
+        (classId) => disciplinaEditingMatrixByClass[classId] ?? []
+      );
+    }
+
+    if (!matrixIds.length) {
+      error("Nenhuma classe selecionada para aplicar alterações.");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        matrixIds.map(async (matrixId) => {
+          const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              carga_horaria_semanal: payload.carga_horaria_semanal,
+              carga_horaria: payload.carga_horaria_semanal,
+              periodos_ativos: payload.periodos_ativos,
+              entra_no_horario: payload.entra_no_horario,
+              conta_para_media_med: payload.conta_para_media_med ?? true,
+            }),
+          });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || json?.ok === false) {
+            throw new Error(json?.error || "Falha ao salvar carga da disciplina.");
+          }
+        })
+      );
+
+      const disciplinas = await fetchCourseDisciplinas(selectedCursoId);
+      setCtx((prev) => (prev ? { ...prev, disciplinas } : prev));
+      success("Carga da disciplina salva.");
+    } catch (e: any) {
+      error(e?.message || "Falha ao salvar carga da disciplina.");
+    }
+  };
+
   const handleDeleteDisciplina = async (disciplinaId: string) => {
     if (!escolaId || !selectedCursoId || !ctx?.disciplinas) return;
     const disciplina = ctx.disciplinas.find((d) => d.id === disciplinaId);
@@ -809,14 +856,14 @@ export default function TurmasConfiguracoesPage() {
         showInternalMenu={false}
         embedded
         backHref={base}
-        prevHref={buildPortalHref(escolaParam, `${baseRaw}/avaliacao`)}
-        nextHref={buildPortalHref(escolaParam, `${baseRaw}/financeiro`)}
-        testHref={buildPortalHref(escolaParam, `${baseRaw}/sandbox`)}
+        prevHref={portalHref(`${baseRaw}/avaliacao`)}
+        nextHref={portalHref(`${baseRaw}/financeiro`)}
+        testHref={portalHref(`${baseRaw}/sandbox`)}
         onSave={handleConfirmSetup}
         saveDisabled={modalActionLoading}
       >
         <AuthRequiredNotice
-          nextPath={buildPortalHref(escolaParam, "/admin/configuracoes/turmas")}
+          nextPath={portalHref("/admin/configuracoes/turmas")}
           compact
           description="Faça login novamente para continuar a gestão de turmas e currículo."
         />
@@ -833,9 +880,9 @@ export default function TurmasConfiguracoesPage() {
       showInternalMenu={false}
       embedded
       backHref={base}
-      prevHref={buildPortalHref(escolaParam, `${baseRaw}/avaliacao`)}
-      nextHref={buildPortalHref(escolaParam, `${baseRaw}/financeiro`)}
-      testHref={buildPortalHref(escolaParam, `${baseRaw}/sandbox`)}
+      prevHref={portalHref(`${baseRaw}/avaliacao`)}
+      nextHref={portalHref(`${baseRaw}/financeiro`)}
+      testHref={portalHref(`${baseRaw}/sandbox`)}
       impact={impact}
       onSave={handleConfirmSetup}
       saveDisabled={modalActionLoading}
@@ -1046,7 +1093,7 @@ export default function TurmasConfiguracoesPage() {
         )}
 
         <Link
-          href={buildPortalHref(escolaParam, "/admin/turmas")}
+          href={portalHref("/admin/turmas")}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
         >
           <span>Gerenciar turmas manualmente</span>
@@ -1390,6 +1437,7 @@ export default function TurmasConfiguracoesPage() {
         classOptions={ctx?.classesBase ?? []}
         onClose={() => setDisciplinaModalOpen(false)}
         onSave={handleSaveDisciplina}
+        onQuickSave={handleQuickSaveDisciplina}
         onDelete={disciplinaModalMode === "edit" ? handleDeleteDisciplina : undefined}
       />
     </ConfigSystemShell>

@@ -461,7 +461,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
 
   const { data: existingTurmaDisciplinasRows, error: existingTdErr } = await supabase
     .from('turma_disciplinas')
-    .select('id, turma_id, curso_matriz_id, disciplina_id')
+    .select('id, turma_id, curso_matriz_id, curso_matriz:curso_matriz_id(disciplina_id)')
     .eq('escola_id', resolvedEscolaId)
     .in('turma_id', turmaIds);
   if (existingTdErr) throw new Error(existingTdErr.message || 'Falha ao carregar turma_disciplinas para detectar obsoletas.');
@@ -472,7 +472,7 @@ async function syncPublishedMatrizToExistingTurmas(args: {
       id: String(row.id),
       turma_id: String(row.turma_id),
       curso_matriz_id: row?.curso_matriz_id ? String(row.curso_matriz_id) : null,
-      disciplina_id: row?.disciplina_id ? String(row.disciplina_id) : null,
+      disciplina_id: row?.curso_matriz?.disciplina_id ? String(row.curso_matriz.disciplina_id) : null,
     })) as ObsoleteTurmaDisciplinaRow[];
 
   const obsoleteSample = obsoleteCandidates.slice(0, 20).map((row) => ({

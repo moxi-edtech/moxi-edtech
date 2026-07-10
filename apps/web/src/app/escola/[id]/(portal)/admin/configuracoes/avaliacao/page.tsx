@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { 
   Calculator, 
   Variable, 
@@ -18,7 +18,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type Componente = { code: string; peso: number; ativo: boolean };
 type AvaliacaoConfigData = { componentes: Componente[] };
@@ -45,7 +45,8 @@ export default function AvaliacaoUnificadaClient() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
   const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---

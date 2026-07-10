@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { buildSecretariaNotificacao, type SecretariaNotificacaoKey } from "./secretaria";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { K12_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 
 type SecretariaRecipient = {
   user_id: string;
@@ -26,7 +27,7 @@ type DispatchParams = {
   agrupamentoTTLHoras?: number;
 };
 
-const SECRETARIA_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro"];
+const SECRETARIA_ROLES = [...K12_SECRETARIA_ROLE_GROUP];
 
 const EVENTO_TIPO_MAP: Record<SecretariaNotificacaoKey, string> = {
   TURMA_APROVADA: "turma.aprovada",

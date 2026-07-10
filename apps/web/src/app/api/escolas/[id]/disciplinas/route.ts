@@ -6,6 +6,9 @@ import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { ensureEditableCurriculoForClass } from "@/lib/curriculo/ensureEditableCurriculoForClass";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const resolveStatusCompletude = (payload: {
   carga_horaria_semanal?: number | null;
   classificacao?: string | null;

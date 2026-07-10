@@ -7,9 +7,7 @@ import { logAuthEvent } from "@/lib/auth-log";
 import { resolveTenantRoute } from "@/lib/resolveTenantRoute";
 import { createSessionHandoffPayload, shouldUseSessionHandoff } from "@/lib/sessionHandoff";
 import {
-  clearTenantContextCookie,
   getTenantContextCookieForUser,
-  setTenantContextCookie,
 } from "@/lib/tenantContextCookie";
 
 type GlobalRole = "super_admin" | "global_admin" | null;
@@ -218,6 +216,15 @@ function buildSessionHandoffUrl(destination: string, payload: string) {
   return handoffUrl.toString();
 }
 
+function buildChooseContextUrl(tenantId: string, redirectTo: string | null) {
+  const url = new URL("/select-context/choose", "http://localhost");
+  url.searchParams.set("tenantId", tenantId);
+  if (redirectTo) {
+    url.searchParams.set("redirect_to", redirectTo);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
 async function resolveGlobalRole(
   supabase: Awaited<ReturnType<typeof supabaseServer>>,
   userId: string,
@@ -399,7 +406,6 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
   }
 
   if (cachedContext && !cachedTenant) {
-    await clearTenantContextCookie();
     logRedirectCookieState("auth_redirect_stale_cookie_cleared", {
       host,
       cookie_total: cookieSummary.total,
@@ -471,14 +477,6 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
           ? preferred
           : `${preferredProductBase.replace(/\/$/, "")}${preferredDestinationConfig.path}`);
 
-      await setTenantContextCookie({
-        uid: user.id,
-        tenant_id: preferredTenant.tenantId,
-        tenant_slug: preferredTenant.tenantSlug,
-        tenant_type: preferredTenant.tenantType,
-        role: preferredTenant.role,
-      });
-
       logAuthEvent({
         action: "redirect",
         route: "/redirect",
@@ -487,27 +485,7 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
         tenant_type: preferredTenant.tenantType,
         details: { destination, source: "preferred_profile_context" },
       });
-      if (
-        session?.access_token &&
-        session?.refresh_token &&
-        shouldUseSessionHandoff(destination, bases.k12)
-      ) {
-        const handoffUrl = buildSessionHandoffUrl(
-          destination,
-          createSessionHandoffPayload({
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token,
-            destination,
-          })
-        );
-        logRedirectCookieState("auth_handoff_server_redirect", {
-          host,
-          destination: new URL(destination).pathname,
-          handoff_origin: new URL(handoffUrl).origin,
-        });
-        redirect(handoffUrl);
-      }
-      redirect(destination);
+      redirect(buildChooseContextUrl(preferredTenant.tenantId, destination));
     }
 
     const selectUrl = `/select-context${params.redirect ? `?redirect=${encodeURIComponent(params.redirect)}` : ""}`;
@@ -553,34 +531,5 @@ export default async function RedirectPage({ searchParams }: { searchParams: Sea
     details: { destination, source: "single_tenant_resolved" },
   });
 
-  await setTenantContextCookie({
-    uid: user.id,
-    tenant_id: selected.tenantId,
-    tenant_slug: selected.tenantSlug,
-    tenant_type: selected.tenantType,
-    role: selected.role,
-  });
-
-  if (
-    session?.access_token &&
-    session?.refresh_token &&
-    shouldUseSessionHandoff(destination, bases.k12)
-  ) {
-    const handoffUrl = buildSessionHandoffUrl(
-      destination,
-      createSessionHandoffPayload({
-        accessToken: session.access_token,
-        refreshToken: session.refresh_token,
-        destination,
-      })
-    );
-    logRedirectCookieState("auth_handoff_server_redirect", {
-      host,
-      destination: new URL(destination).pathname,
-      handoff_origin: new URL(handoffUrl).origin,
-    });
-    redirect(handoffUrl);
-  }
-
-  redirect(destination);
+  redirect(buildChooseContextUrl(selected.tenantId, destination));
 }

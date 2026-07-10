@@ -6,6 +6,7 @@ import { supabaseServer }    from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
+import type { Database } from "~types/supabase";
 
 import type {
   KpiStats,
@@ -16,7 +17,49 @@ import type {
   DashboardCharts,
   InadimplenciaTopRow,
   PagamentoRecenteRow,
+  EstadoVital,
 } from "./dashboard.types";
+
+type AvisoRow = {
+  id: string;
+  titulo: string | null;
+  created_at: string | null;
+};
+
+type DatabaseWithAvisos = Database & {
+  public: Database["public"] & {
+    Tables: Database["public"]["Tables"] & {
+      avisos: {
+        Row: AvisoRow & { escola_id: string | null };
+      };
+    };
+  };
+};
+
+type AdmissoesCountsRow = Database["public"]["Views"]["vw_admissoes_counts_por_status"]["Row"];
+type FinanceiroDashboardRow = Database["public"]["Views"]["vw_financeiro_dashboard"]["Row"];
+type MatriculasPorMesRow = Database["public"]["Views"]["vw_admin_matriculas_por_mes"]["Row"];
+type MensalidadesStatusRow = Database["public"]["Views"]["vw_mensalidades_operacional_status_ano_ativo"]["Row"];
+type FinanceiroPropinasMensalRow = Database["public"]["Views"]["vw_financeiro_propinas_mensal_escola"]["Row"];
+type DisciplinaIdRow = { disciplina_id: string | null };
+type TurmaHorarioRow = { id: string; ano_letivo: number | null; nome: string | null; turma_codigo: string | null };
+type EstadoVitalResponse = { ok: boolean; estado: unknown };
+
+function isEstadoVital(value: unknown): value is EstadoVital {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.escola_id === "string" &&
+    "session_id" in record &&
+    "ano_ativo" in record &&
+    "periodo_id" in record &&
+    "periodo_tipo" in record &&
+    "periodo_numero" in record &&
+    "hoje_bloqueado_pedagogico" in record &&
+    "evento_hoje_nome" in record &&
+    "fase_operacional" in record
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +104,7 @@ export default async function EscolaAdminDashboardData({
   const metaEscolaId = (user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
   const resolvedEscolaId = user
     ? await resolveEscolaIdForUser(
-        s as any,
+        s,
         user.id,
         escolaId,
         metaEscolaId ? String(metaEscolaId) : null
@@ -148,14 +191,18 @@ export default async function EscolaAdminDashboardData({
       matriculasPendentesResult,
       documentosEmProcessamentoResult,
       horariosPublicadosResult,
+      turmasHorarioResult,
       missingPricingResult,
       financeiroKpiResult,
+      financeiroDashboardResult,
       escolaNomeResult,
       matriculasMesResult,
+      financeiroMensalSeriesResult,
       mensalidadesStatusResult,
       inadimplenciaTopRes,
       pagamentosRecentesRes,
       estadoVitalRes,
+      avisosRes,
     ] = await Promise.all([
       s.from("vw_admin_dashboard_counts")
         .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
@@ -172,7 +219,7 @@ export default async function EscolaAdminDashboardData({
         .eq("escola_id", validId)
         .eq("status", "draft"),
 
-      s.from("vw_admissoes_counts_por_status" as any)
+      s.from("vw_admissoes_counts_por_status")
         .select("submetida_total, em_analise_total, aprovada_total, expirando_24h_total, reenviados_48h_total")
         .eq("escola_id", validId)
         .maybeSingle(),
@@ -209,17 +256,34 @@ export default async function EscolaAdminDashboardData({
         .eq("escola_id", validId)
         .eq("status", "publicada"),
 
+      s.from("turmas")
+        .select("id, ano_letivo, nome, turma_codigo")
+        .eq("escola_id", validId)
+        .order("ano_letivo", { ascending: false })
+        .order("turma_codigo", { ascending: true })
+        .order("nome", { ascending: true }),
+
       missingPricingQuery,
       financeiroKpiQuery,
 
+      s.from("vw_financeiro_dashboard")
+        .select("total_pendente, total_pago, total_inadimplente")
+        .eq("escola_id", validId)
+        .maybeSingle(),
+
       s.from("escolas").select("nome, slug").eq("id", validId).maybeSingle(),
 
-      s.from("vw_admin_matriculas_por_mes" as any)
+      s.from("vw_admin_matriculas_por_mes")
         .select("mes, total")
         .eq("escola_id", validId)
         .order("mes", { ascending: true }),
 
-      s.from("vw_mensalidades_operacional_status_ano_ativo" as any)
+      s.from("vw_financeiro_propinas_mensal_escola")
+        .select("competencia_mes, qtd_mensalidades, qtd_em_atraso")
+        .eq("escola_id", validId)
+        .order("competencia_mes", { ascending: true }),
+
+      s.from("vw_mensalidades_operacional_status_ano_ativo")
         .select("status_operacional, total")
         .eq("escola_id", validId),
 
@@ -231,19 +295,27 @@ export default async function EscolaAdminDashboardData({
       fetchJson<{ ok: boolean; data: PagamentoRecenteRow[] }>(
         `/api/escolas/${escolaId}/admin/financeiro/pagamentos-recentes?limit=10&day_key=${todayKey}`,
         { ok: false, data: [] },
-        { cache: "force-cache", revalidate: 20 }
+        { cache: "no-store" }
       ),
 
-      fetchJson<{ ok: boolean; estado: any }>(
+      fetchJson<EstadoVitalResponse>(
         `/api/escola/${escolaId}/admin/estado-hoje`,
         { ok: false, estado: null }
       ),
+
+      (s as import("@supabase/supabase-js").SupabaseClient<DatabaseWithAvisos>)
+        .from("avisos")
+        .select("id, titulo, created_at")
+        .eq("escola_id", validId)
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
 
     // ─── Setup status ──────────────────────────────────────────────────────
     const setupData  = setupStatusResult.data;
     const config     = configResult.data;
-    const avaliacaoOk           = hasComponentes(config?.avaliacao_config as any);
+    const avaliacaoConfig = config?.avaliacao_config as { componentes?: { code: string }[] } | null | undefined;
+    const avaliacaoOk           = hasComponentes(avaliacaoConfig ?? undefined);
     const frequenciaOk          = Boolean(config?.frequencia_modelo)
       && typeof config?.frequencia_min_percent === "number";
     const avaliacaoFrequenciaOk = avaliacaoOk && frequenciaOk;
@@ -277,6 +349,10 @@ export default async function EscolaAdminDashboardData({
     const previsto          = Number(kpiAtual?.previsto_total          ?? 0);
     const realizado         = Number(kpiAtual?.realizado_total         ?? 0);
     const pago_competencia  = Number(kpiAtual?.pago_competencia_total  ?? 0);
+    const financeiroDashboard = financeiroDashboardResult.data as FinanceiroDashboardRow | null;
+    const totalPendenteValor = Number(financeiroDashboard?.total_pendente ?? 0);
+    const totalPagoValor = Number(financeiroDashboard?.total_pago ?? 0);
+    const totalInadimplenteValor = Number(financeiroDashboard?.total_inadimplente ?? 0);
 
     // Top KPI uses "Cobrança da competência" (capped at 100% for the card usually)
     const financeiroPercent =
@@ -296,7 +372,7 @@ export default async function EscolaAdminDashboardData({
 
     // ─── Currículo pendencies ─────────────────────────────────────────────
     const draftIds = (draftCurriculosResult.data ?? [])
-      .map((r: any) => r.id)
+      .map((r) => r.id)
       .filter(Boolean);
 
     let curriculoPendencias: CurriculoPendencias = { horario: 0, avaliacao: 0 };
@@ -316,8 +392,8 @@ export default async function EscolaAdminDashboardData({
       ]);
 
       curriculoPendencias = {
-        horario:   new Set((horarioRes.data  ?? []).map((r: any) => r.disciplina_id).filter(Boolean)).size,
-        avaliacao: new Set((avaliacaoRes.data ?? []).map((r: any) => r.disciplina_id).filter(Boolean)).size,
+        horario:   new Set(((horarioRes.data  ?? []) as DisciplinaIdRow[]).map((r) => r.disciplina_id).filter(Boolean)).size,
+        avaliacao: new Set(((avaliacaoRes.data ?? []) as DisciplinaIdRow[]).map((r) => r.disciplina_id).filter(Boolean)).size,
       };
     }
 
@@ -328,7 +404,7 @@ export default async function EscolaAdminDashboardData({
     const pendingTurmasCount = pendingTurmasResult.data?.pendentes_total ?? 0;
     const missingPricingCount = Number(missingPricingResult.data?.[0]?.missing_count ?? 0);
     const meses = ["Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev", "Mar", "Abr", "Mai"];
-    const matriculasMesRows = (matriculasMesResult.data ?? []) as Array<{ mes?: string | null; total?: number | null }>;
+    const matriculasMesRows = (matriculasMesResult.data ?? []) as MatriculasPorMesRow[];
     const nowRef = new Date();
     const monthKeys: string[] = [];
     for (let i = 11; i >= 0; i--) {
@@ -345,7 +421,20 @@ export default async function EscolaAdminDashboardData({
       if (idx >= 0) alunosPorMes[idx] = Number(row.total ?? 0);
     });
 
-    const statusRows = (mensalidadesStatusResult.data ?? []) as Array<{ status_operacional?: string | null; total?: number | null }>;
+    const financeiroMensalRows = (financeiroMensalSeriesResult.data ?? []) as FinanceiroPropinasMensalRow[];
+    const pendentesPorMes = new Array(12).fill(0);
+    const inadimplentesPorMes = new Array(12).fill(0);
+    financeiroMensalRows.forEach((row) => {
+      const competenciaMes = row.competencia_mes ? String(row.competencia_mes).slice(0, 7) : "";
+      const idx = monthKeys.indexOf(competenciaMes);
+      if (idx < 0) return;
+      const qtdMensalidades = Number(row.qtd_mensalidades ?? 0);
+      const qtdEmAtraso = Number(row.qtd_em_atraso ?? 0);
+      pendentesPorMes[idx] = Math.max(0, qtdMensalidades - qtdEmAtraso);
+      inadimplentesPorMes[idx] = qtdEmAtraso;
+    });
+
+    const statusRows = (mensalidadesStatusResult.data ?? []) as MensalidadesStatusRow[];
     const pagamentosResumo = { pago: 0, pendente: 0, inadimplente: 0, ajuste: 0 };
     statusRows.forEach((row) => {
       const status = String(row.status_operacional ?? "").toLowerCase();
@@ -365,26 +454,26 @@ export default async function EscolaAdminDashboardData({
       missingPricingCount > 0,
     ].filter(Boolean).length;
 
-    const admissoesCounts = (admissoesCountsResult.data ?? null) as
-      | {
-          submetida_total?: number | null;
-          em_analise_total?: number | null;
-          aprovada_total?: number | null;
-          expirando_24h_total?: number | null;
-          reenviados_48h_total?: number | null;
-        }
-      | null;
+    const admissoesCounts = (admissoesCountsResult.data ?? null) as AdmissoesCountsRow | null;
     const admissoesPendentes =
       Number(admissoesCounts?.submetida_total ?? 0) +
       Number(admissoesCounts?.em_analise_total ?? 0) +
       Number(admissoesCounts?.aprovada_total ?? 0);
     const matriculasPendentes = Number(matriculasPendentesResult.count ?? 0);
     const documentosEmProcessamento = Number(documentosEmProcessamentoResult.count ?? 0);
-    const turmasComHorarioPublicado = new Set(
+    const turmasComHorarioPublicadoSet = new Set(
       ((horariosPublicadosResult.data ?? []) as Array<{ turma_id?: string | null }>)
         .map((row) => row.turma_id)
         .filter(Boolean)
-    ).size;
+    );
+    const turmasComHorarioPublicado = turmasComHorarioPublicadoSet.size;
+    const turmaRows = (turmasHorarioResult.data ?? []) as TurmaHorarioRow[];
+    const anoAtivoNumero = Number(anoLetivoResult.data?.ano ?? 0);
+    const turmasDoAnoAtivo = turmaRows.filter((row) =>
+      anoAtivoNumero > 0 ? Number(row.ano_letivo ?? 0) === anoAtivoNumero : true
+    );
+    const primeiraTurmaSemHorarioPublicadoId =
+      turmasDoAnoAtivo.find((row) => !turmasComHorarioPublicadoSet.has(row.id))?.id ?? null;
     const turmasSemHorarioPublicado = Math.max(0, Number(stats.turmas ?? 0) - turmasComHorarioPublicado);
 
     const operationalSnapshot: OperationalSnapshot = {
@@ -397,17 +486,30 @@ export default async function EscolaAdminDashboardData({
       matriculasPendentes,
       documentosEmProcessamento,
       turmasSemHorarioPublicado,
+      primeiraTurmaSemHorarioPublicadoId,
     };
 
     const charts: DashboardCharts = {
       meses,
       alunosPorMes,
+      pendentesPorMes,
+      inadimplentesPorMes,
       pagamentos: pagamentosResumo,
+      pagamentosValores: {
+        pago: totalPagoValor,
+        pendente: totalPendenteValor,
+        inadimplente: totalInadimplenteValor,
+      },
     };
-    const inadimplenciaTop = (inadimplenciaTopRes as any)?.data  as InadimplenciaTopRow[] ?? [];
-    const pagamentosRecentes = (pagamentosRecentesRes as any)?.data as PagamentoRecenteRow[] ?? [];
-    const estadoVital      = (estadoVitalRes as any)?.estado ?? null;
-    const avisos: Aviso[]  = [];
+    const inadimplenciaTop = inadimplenciaTopRes.data ?? [];
+    const pagamentosRecentes = pagamentosRecentesRes.data ?? [];
+    const estadoVital = isEstadoVital(estadoVitalRes.estado) ? estadoVitalRes.estado : null;
+    const avisos = (avisosRes.data ?? []) as AvisoRow[];
+    const notices: Aviso[] = avisos.map((aviso) => ({
+      id: aviso.id,
+      titulo: aviso.titulo?.trim() || "Comunicado",
+      dataISO: aviso.created_at || new Date().toISOString(),
+    }));
 
     return (
       <EscolaAdminDashboardContent
@@ -420,7 +522,7 @@ export default async function EscolaAdminDashboardData({
         stats={stats}
         pendingTurmasCount={pendingTurmasCount}
         operationalSnapshot={operationalSnapshot}
-        notices={avisos}
+        notices={notices}
         charts={charts}
         setupStatus={setupStatus}
         missingPricingCount={missingPricingCount}
@@ -436,7 +538,8 @@ export default async function EscolaAdminDashboardData({
         estadoVital={estadoVital}
       />
     );
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Falha ao carregar dashboard";
     return (
       <EscolaAdminDashboardContent
         escolaId={escolaId}
@@ -444,7 +547,7 @@ export default async function EscolaAdminDashboardData({
         escolaNome={escolaNome}
         anoLetivo={deriveAnoLetivo(null)}
         loading={false}
-        error={e?.message ?? "Falha ao carregar dashboard"}
+        error={message}
         stats={emptyKpis}
         pendingTurmasCount={0}
         operationalSnapshot={{
@@ -457,6 +560,7 @@ export default async function EscolaAdminDashboardData({
           matriculasPendentes: 0,
           documentosEmProcessamento: 0,
           turmasSemHorarioPublicado: 0,
+          primeiraTurmaSemHorarioPublicadoId: null,
         }}
         notices={[]}
         charts={undefined}

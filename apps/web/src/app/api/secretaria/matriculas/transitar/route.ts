@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ const BodySchema = z.object({
   aluno_ids: z.array(z.string().uuid()).min(1),
 });
 
-const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = K12_SECRETARIA_OPERACIONAL_ROLE_GROUP;
 
 export async function POST(request: Request) {
   try {

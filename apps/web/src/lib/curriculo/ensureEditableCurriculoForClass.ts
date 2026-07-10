@@ -3,6 +3,7 @@ type EnsureEditableCurriculoArgs = {
   escolaId: string;
   cursoId: string;
   classeId: string;
+  anoLetivoId?: string | null;
 };
 
 type EnsureEditableCurriculoResult = {
@@ -27,11 +28,31 @@ export async function ensureEditableCurriculoForClass(
   if (classError) {
     throw new Error(classError.message || "Falha ao carregar classe.");
   }
-  if (!classRow?.ano_letivo_id) {
-    throw new Error("Classe sem ano letivo associado.");
-  }
 
-  const anoLetivoId = String(classRow.ano_letivo_id);
+  let anoLetivoId = args.anoLetivoId
+    ? String(args.anoLetivoId)
+    : classRow?.ano_letivo_id
+      ? String(classRow.ano_letivo_id)
+      : null;
+  if (!anoLetivoId) {
+    const { data: activeYearRow, error: activeYearError } = await supabase
+      .from("anos_letivos")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .eq("ativo", true)
+      .order("ano", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeYearError) {
+      throw new Error(activeYearError.message || "Falha ao carregar ano letivo ativo.");
+    }
+    if (!activeYearRow?.id) {
+      throw new Error("Classe sem ano letivo associado e escola sem ano letivo ativo.");
+    }
+    anoLetivoId = String(activeYearRow.id);
+  }
 
   const { data: draftCurriculo, error: draftError } = await supabase
     .from("curso_curriculos")
@@ -86,11 +107,38 @@ export async function ensureEditableCurriculoForClass(
     .select("id")
     .single();
 
-  if (createError || !createdDraft?.id) {
-    throw new Error(createError?.message || "Falha ao criar rascunho curricular.");
-  }
+  let draftCurriculoId: string;
+  let createdDraftStatus = true;
 
-  const draftCurriculoId = String(createdDraft.id);
+  if (createError) {
+    if (createError.code === "23505") {
+      // Concurrency race condition: another request created the draft just before this one.
+      // Re-query the draft.
+      const { data: retryDraft, error: retryError } = await supabase
+        .from("curso_curriculos")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("curso_id", cursoId)
+        .eq("classe_id", classeId)
+        .eq("ano_letivo_id", anoLetivoId)
+        .eq("status", "draft")
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (retryError || !retryDraft?.id) {
+        throw new Error(retryError?.message || "Falha ao recuperar rascunho curricular concorrente.");
+      }
+      draftCurriculoId = String(retryDraft.id);
+      createdDraftStatus = false;
+    } else {
+      throw new Error(createError.message || "Falha ao criar rascunho curricular.");
+    }
+  } else if (!createdDraft?.id) {
+    throw new Error("Falha ao criar rascunho curricular (ID não retornado).");
+  } else {
+    draftCurriculoId = String(createdDraft.id);
+  }
 
   if (latestCurriculo?.id && latestCurriculo.status === "published") {
     const { data: publishedRows, error: publishedError } = await supabase
@@ -126,6 +174,6 @@ export async function ensureEditableCurriculoForClass(
   return {
     draftCurriculoId,
     anoLetivoId,
-    createdDraft: true,
+    createdDraft: createdDraftStatus,
   };
 }

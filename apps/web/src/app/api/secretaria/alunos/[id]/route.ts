@@ -6,6 +6,7 @@ import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -62,7 +63,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'financeiro', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro'],
     })
     if (authz.error) return authz.error
 
@@ -205,7 +206,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'financeiro', 'admin', 'admin_escola', 'staff_admin'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro'],
     })
     if (authz.error) return authz.error
 

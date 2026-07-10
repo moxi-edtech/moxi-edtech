@@ -68,8 +68,8 @@ export default function AppShell({
 
     // canonical routes
     if (safePathname.includes("/escola/")) {
-        if (safePathname.includes("/admin")) return "admin";
         if (safePathname.includes("/operacoes")) return "admin";
+        if (safePathname.includes("/admin")) return "admin";
         if (safePathname.includes("/secretaria")) return "secretaria";
         if (safePathname.includes("/financeiro")) return "financeiro";
         if (safePathname.includes("/horarios")) return "secretaria";

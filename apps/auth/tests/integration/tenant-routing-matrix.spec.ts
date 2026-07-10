@@ -65,3 +65,14 @@ test("Integração auth: k12 admin evita handoff para redirect canônico", () =>
 
   assert.deepEqual(k12, { product: "k12", path: "/escola/k12-1/admin/dashboard" });
 });
+
+test("Integração auth: k12 admin_financeiro entra por operacoes", () => {
+  const k12 = resolveTenantRoute({
+    tenantId: "k12-1",
+    tenantName: "K12",
+    tenantType: "k12",
+    role: "admin_financeiro",
+  });
+
+  assert.deepEqual(k12, { product: "k12", path: "/escola/k12-1/operacoes/dashboard" });
+});

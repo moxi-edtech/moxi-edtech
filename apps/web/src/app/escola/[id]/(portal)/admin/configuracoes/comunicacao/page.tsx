@@ -2,13 +2,14 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft, QrCode, RefreshCw, Save, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type ProviderStatus = "disabled" | "pending_qr" | "connected" | "disconnected" | "error";
 
@@ -34,7 +35,8 @@ export default function ComunicacaoConfigPage({ params }: Props) {
   const { id: escolaId } = use(params);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
   const { error, success } = useToast();
 
   const [loading, setLoading] = useState(true);

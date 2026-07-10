@@ -193,6 +193,22 @@ export async function GET(req: Request) {
       }
     }
 
+    if (items.length > 0) {
+      const ids = items.map((t: any) => t.id).filter(Boolean);
+      const { data: freshSalas } = await supabase
+        .from('turmas')
+        .select('id, sala')
+        .in('id', ids);
+
+      if (freshSalas) {
+        const salaMap = new Map(freshSalas.map((t: any) => [t.id, t.sala]));
+        items = items.map((t: any) => ({
+          ...t,
+          sala: salaMap.get(t.id) ?? t.sala,
+        }));
+      }
+    }
+
     // 5. Filtrar se aluno já está matriculado (Lógica de Negócio)
     if (alunoId && items.length > 0) {
       const { data: matriculasExistentes } = await supabase

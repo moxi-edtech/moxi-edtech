@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { 
   CalendarDays, 
   GraduationCap, 
@@ -19,7 +19,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchSetupState, setupProgressFromBadges, type OperationalReadiness } from "@/lib/setupStateClient";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -59,6 +59,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+  const pathname = usePathname();
   const base = "/admin/configuracoes";
 
     // --- MENU CONFIG ---
@@ -67,45 +68,45 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
       key: "calendario",
       label: "Calendário Acadêmico",
       desc: "Defina os trimestres, feriados e datas de bloqueio.",
-      href: buildPortalHref(escolaParam, `${base}/calendario`),
+      href: buildContextualPortalHref(escolaParam, `${base}/calendario`, pathname),
       icon: CalendarDays,
     },
     {
       key: "avaliacao",
       label: "Avaliação & Notas",
       desc: "Pesos, fórmulas de cálculo e regras de aprovação.",
-      href: buildPortalHref(escolaParam, `${base}/avaliacao`),
+      href: buildContextualPortalHref(escolaParam, `${base}/avaliacao`, pathname),
       icon: GraduationCap,
     },
     {
       key: "turmas",
       label: "Turmas & Currículo",
       desc: "Gere as turmas a partir da grade curricular.",
-      href: buildPortalHref(escolaParam, `${base}/turmas`),
+      href: buildContextualPortalHref(escolaParam, `${base}/turmas`, pathname),
       icon: Users,
     },
     {
       key: "financeiro",
       label: "Financeiro",
       desc: "Tabela de preços, multas e datas de vencimento.",
-      href: buildPortalHref(escolaParam, `${base}/financeiro`),
+      href: buildContextualPortalHref(escolaParam, `${base}/financeiro`, pathname),
       icon: Wallet,
     },
     {
       key: "fluxos",
       label: "Fluxos de Aprovação",
       desc: "Quem aprova as notas antes do boletim sair?",
-      href: buildPortalHref(escolaParam, `${base}/fluxos`),
+      href: buildContextualPortalHref(escolaParam, `${base}/fluxos`, pathname),
       icon: Workflow,
     },
     {
       key: "avancado",
       label: "Avançado",
       desc: "Logs de auditoria e configurações perigosas.",
-      href: buildPortalHref(escolaParam, `${base}/avancado`),
+      href: buildContextualPortalHref(escolaParam, `${base}/avancado`, pathname),
       icon: Settings2,
     },
-  ], [base, escolaParam]);
+  ], [base, escolaParam, pathname]);
 
   // --- STATE ---
   const [setupState, setSetupState] = useState<SetupState | null>(null);
@@ -219,7 +220,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
     >
       {authRequired ? (
         <AuthRequiredNotice
-          nextPath={buildPortalHref(escolaParam, "/admin/configuracoes/sistema")}
+          nextPath={buildContextualPortalHref(escolaParam, "/admin/configuracoes/sistema", pathname)}
           compact
           description="Faça login novamente para visualizar o status do sistema."
         />

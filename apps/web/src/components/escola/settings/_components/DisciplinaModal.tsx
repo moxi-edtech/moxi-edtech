@@ -46,6 +46,7 @@ export type DisciplinaForm = {
 type DisciplineOption = {
   id: string;
   nome: string;
+  codigo?: string;
 };
 
 type ClassOption = {
@@ -76,6 +77,7 @@ type Props = {
   };
   onClose: () => void;
   onSave: (payload: DisciplinaForm) => Promise<void> | void;
+  onQuickSave?: (payload: DisciplinaForm) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
 };
 
@@ -160,10 +162,12 @@ export function DisciplinaModal({
   standardInfo,
   onClose,
   onSave,
+  onQuickSave,
   onDelete,
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [autoFillFeedback, setAutoFillFeedback] = useState<string | null>(null);
   const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
     ...emptyDisciplina,
@@ -181,6 +185,7 @@ export function DisciplinaModal({
     if (!open) return;
     setSaving(false);
     setDeleting(false);
+    setAutoFillFeedback(null);
     setForm(
       applyDefaults({
         ...emptyDisciplina,
@@ -207,16 +212,23 @@ export function DisciplinaModal({
     if (nomeNorm.length < 3) nextErrors.nome = "Nome muito curto.";
     if (!isValidCode(codeNorm)) nextErrors.codigo = "Código inválido (2–12, A-Z/0-9/-/_).";
 
-    const codesUpper = existingCodes.map((code) => normalizeCode(code));
-    const namesLower = existingNames.map((name) => normalizeName(name).toLowerCase());
+    const siblingDisciplines = existingDisciplines.filter((disc) => disc.id !== initial?.id);
+    const codesUpper = siblingDisciplines.length > 0
+      ? siblingDisciplines.map((disc) => normalizeCode(disc.codigo ?? ""))
+      : existingCodes.map((code) => normalizeCode(code));
+    const namesLower = siblingDisciplines.length > 0
+      ? siblingDisciplines.map((disc) => normalizeName(disc.nome).toLowerCase())
+      : existingNames.map((name) => normalizeName(name).toLowerCase());
     const currentCode = initial?.codigo ? normalizeCode(initial.codigo) : null;
     const currentName = initial?.nome ? normalizeName(initial.nome).toLowerCase() : null;
+    const isSameCodeAsInitial = mode === "edit" && currentCode !== null && codeNorm === currentCode;
+    const isSameNameAsInitial =
+      mode === "edit" && currentName !== null && nomeNorm.toLowerCase() === currentName;
 
     const codeCollides =
-      codesUpper.includes(codeNorm) && (mode === "create" || codeNorm !== currentCode);
+      !isSameCodeAsInitial && codesUpper.includes(codeNorm);
     const nameCollides =
-      namesLower.includes(nomeNorm.toLowerCase()) &&
-      (mode === "create" || nomeNorm.toLowerCase() !== currentName);
+      !isSameNameAsInitial && namesLower.includes(nomeNorm.toLowerCase());
 
     if (codeCollides) nextErrors.codigo = "Este código já existe no curso.";
     if (nameCollides) nextErrors.nome = "Esta disciplina já existe no curso.";
@@ -242,9 +254,21 @@ export function DisciplinaModal({
     }
 
     return nextErrors;
-  }, [applyScope, classIds, classOptions.length, existingCodes, existingNames, form, initial?.codigo, initial?.nome, mode]);
+  }, [applyScope, classIds, classOptions.length, existingCodes, existingDisciplines, existingNames, form, initial?.codigo, initial?.id, initial?.nome, mode]);
 
   const canSave = Object.keys(errors).length === 0;
+  const blockingMessages = useMemo(() => Array.from(new Set(Object.values(errors))), [errors]);
+  const quickSaveErrors = useMemo(() => {
+    const nextErrors: string[] = [];
+    if (!Number.isFinite(form.carga_horaria_semanal) || form.carga_horaria_semanal <= 0) {
+      nextErrors.push("Carga semanal deve ser > 0.");
+    }
+    if (form.periodo_mode === "custom" && form.periodos_ativos.length === 0) {
+      nextErrors.push("Selecione ao menos um período.");
+    }
+    return nextErrors;
+  }, [form.carga_horaria_semanal, form.periodo_mode, form.periodos_ativos]);
+  const canQuickSave = mode === "edit" && Boolean(onQuickSave) && quickSaveErrors.length === 0;
   const totalHorasAno =
     form.carga_horaria_semanal * Math.max(form.periodos_ativos.length, 1) * 12;
   const schedulerRulesInput = useMemo<SchedulerDisciplineRulesInput>(
@@ -313,6 +337,31 @@ export function DisciplinaModal({
     }
   };
 
+  const handleQuickSave = async () => {
+    if (!canQuickSave || !onQuickSave) return;
+    const scopedClassIds = applyScope === "all" ? allClassIds : classIds;
+    const payload: DisciplinaForm = {
+      ...form,
+      nome: normalizeName(initial?.nome ?? form.nome),
+      codigo: normalizeCode(initial?.codigo ?? form.codigo),
+      area: initial?.area ?? form.area ?? null,
+      programa_texto: initial?.programa_texto ?? form.programa_texto ?? null,
+      class_ids: classOptions.length > 0 ? scopedClassIds : undefined,
+      apply_scope: classOptions.length > 0 ? applyScope : undefined,
+      classificacao: initial?.classificacao ?? form.classificacao,
+      avaliacao: initial?.avaliacao ?? form.avaliacao,
+      modelo_excecao_id: initial?.modelo_excecao_id ?? form.modelo_excecao_id ?? null,
+    };
+
+    setSaving(true);
+    try {
+      await onQuickSave(payload);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!onDelete || !initial?.id) return;
     setDeleting(true);
@@ -327,7 +376,38 @@ export function DisciplinaModal({
   if (!open) return null;
 
   const handleAutoFill = () => {
-    setForm((prev) => applyDefaults({ ...prev }));
+    setForm((prev) => {
+      const nextCarga =
+        standardInfo?.baseHours && standardInfo.baseHours > 0
+          ? standardInfo.baseHours
+          : inferCargaFromName(prev.nome || "");
+      const next = applyDefaults({
+        ...prev,
+        carga_horaria_semanal: nextCarga,
+        periodo_mode: "ano",
+        periodos_ativos: [1, 2, 3],
+        entra_no_horario: true,
+        is_avaliavel: true,
+        conta_para_media_med: true,
+        avaliacao: { mode: "inherit_school", base_id: null },
+      });
+      const changed =
+        next.carga_horaria_semanal !== prev.carga_horaria_semanal ||
+        next.periodo_mode !== prev.periodo_mode ||
+        next.periodos_ativos.join(",") !== prev.periodos_ativos.join(",") ||
+        next.entra_no_horario !== prev.entra_no_horario ||
+        next.is_avaliavel !== prev.is_avaliavel ||
+        next.conta_para_media_med !== prev.conta_para_media_med ||
+        next.avaliacao.mode !== prev.avaliacao.mode ||
+        (next.avaliacao.base_id ?? null) !== (prev.avaliacao.base_id ?? null);
+
+      setAutoFillFeedback(
+        changed
+          ? `Padrão aplicado${standardInfo?.baseHours ? ` (${standardInfo.baseHours}h/semana)` : ""}.`
+          : "Nenhum ajuste sugerido para esta disciplina."
+      );
+      return next;
+    });
   };
 
   return (
@@ -432,6 +512,9 @@ export function DisciplinaModal({
             <div>
               <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
               <p className="text-xs text-slate-500">Aplica padrões de carga, períodos e avaliação.</p>
+              {autoFillFeedback && (
+                <p className="mt-2 text-xs font-medium text-klasse-green">{autoFillFeedback}</p>
+              )}
             </div>
             <button
               type="button"
@@ -862,9 +945,21 @@ export function DisciplinaModal({
           </div>
 
           {!canSave && (
-            <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-klasse-gold-700" />
-              Corrija os campos destacados para salvar.
+            <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-klasse-gold-700" />
+                <span className="font-semibold">Salvar bloqueado.</span>
+              </div>
+              <ul className="mt-2 list-disc pl-5 space-y-1">
+                {blockingMessages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+              {canQuickSave && (
+                <p className="mt-2 font-medium text-slate-700">
+                  Para ajuste operacional, use <span className="font-bold">Salvar carga</span>.
+                </p>
+              )}
             </div>
           )}
 
@@ -887,6 +982,17 @@ export function DisciplinaModal({
             >
               Cancelar
             </button>
+            {mode === "edit" && onQuickSave && (
+              <button
+                type="button"
+                onClick={handleQuickSave}
+                disabled={!canQuickSave || saving}
+                className="px-6 py-3 rounded-xl font-bold text-white bg-klasse-green hover:brightness-110 shadow-lg transition-all flex items-center gap-2 disabled:opacity-70"
+              >
+                <Check className="w-5 h-5" />
+                {saving ? "Salvando..." : "Salvar carga"}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSave}

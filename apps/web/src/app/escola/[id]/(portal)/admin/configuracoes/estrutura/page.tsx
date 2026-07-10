@@ -1,8 +1,11 @@
+"use client";
+
 import { use } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft, Settings } from "lucide-react";
 import StructureMarketplace from "@/components/escola/settings/StructureMarketplace";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -10,13 +13,14 @@ type Props = {
 
 export default function EstruturaPage({ params }: Props) {
   const { id: escolaId } = use(params);
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans text-slate-900">
       <div className="max-w-5xl mx-auto space-y-8">
         <div>
           <Link
-            href={buildPortalHref(escolaId, "/admin/configuracoes")}
+            href={buildContextualPortalHref(escolaId, "/admin/configuracoes", pathname)}
             className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" /> Voltar as definicoes

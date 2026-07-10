@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
@@ -17,6 +17,7 @@ import {
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
 import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 export type { AiWidgetContext };
 
@@ -153,6 +154,7 @@ export default function AiChatWidget({
   context,
 }: AiChatWidgetProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const routeSchoolParam = schoolParam || schoolId;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -620,7 +622,7 @@ export default function AiChatWidget({
       return;
     }
     if (action === "open_whatsapp") {
-      router.push(`/escola/${routeSchoolParam}/admin/comunicacao/whatsapp`);
+      router.push(buildContextualPortalHref(routeSchoolParam, "/admin/comunicacao/whatsapp", pathname));
       setIsOpen(false);
       return;
     }

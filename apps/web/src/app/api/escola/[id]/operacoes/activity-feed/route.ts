@@ -3,6 +3,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import type { ActivityFeedItem } from "@/lib/admin/activityFeed";
+import { K12_OPERACOES_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,14 +55,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const roleCheck = await requireRoleInSchool({
       supabase: supabase as any,
       escolaId: resolvedEscolaId,
-      roles: [
-        "admin_escola",
-        "admin",
-        "staff_admin",
-        "secretaria",
-        "secretaria_financeiro",
-        "admin_financeiro",
-      ],
+      roles: [...K12_OPERACOES_ROLE_GROUP],
     });
 
     if (roleCheck.error) return roleCheck.error;

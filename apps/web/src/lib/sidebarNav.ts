@@ -78,7 +78,7 @@ export const sidebarConfig: SidebarConfig = {
       label: "Horários & Calendário",
       icon: "CalendarDays",
       children: [
-        { href: "/escola/[escolaId]/horarios/quadro", label: "Quadro de Horários" },
+        { href: "/escola/[escolaId]/operacoes/horarios/quadro", label: "Quadro de Horários" },
         { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário Escolar" },
       ],
     },
@@ -126,6 +126,15 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/operacoes/avisos", label: "Fila de avisos" },
         { href: "/escola/[escolaId]/operacoes/alertas", label: "Alertas operacionais" },
         { href: "/escola/[escolaId]/operacoes/avisos/novo", label: "Novo aviso" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/operacoes/comunicacao/whatsapp",
+      label: "WhatsApp KLASSE",
+      icon: "MessageSquare",
+      children: [
+        { href: "/escola/[escolaId]/operacoes/comunicacao/whatsapp", label: "Central WhatsApp" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/comunicacao", label: "Configurar sessão" },
       ],
     },
     {

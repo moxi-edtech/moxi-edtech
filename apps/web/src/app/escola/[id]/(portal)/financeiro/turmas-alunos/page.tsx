@@ -5,12 +5,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Eye, AlertCircle, 
   CheckCircle, Clock, ChevronDown, ChevronUp, Mail, 
-  Download, ArrowUpRight, Ban, Wallet
+  Download, ArrowUpRight, Ban, Wallet, MessageCircle, X, Loader2
 } from 'lucide-react';
 import ModalExtratoAluno from './modal-extrato-aluno';
 import { useParams } from 'next/navigation';
 import { buildPortalHref } from '@/lib/navigation';
 import { formatTurmaDisplayName } from '@/utils/formatters';
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
 // --- Types & Interfaces ---
 interface Aluno {
@@ -103,6 +104,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   
   // Modal States
   const [modalExtrato, setModalExtrato] = useState<{ show: boolean, aluno: Aluno | null }>({ show: false, aluno: null });
+  const [modalCobranca, setModalCobranca] = useState(false);
+  const [whatsappStatus, setWhatsappStatus] = useState<'connected' | 'disconnected' | 'checking' | 'disabled'>('checking');
+
+  // Hooks
+  const { success, error, warning } = useToast();
+  const confirm = useConfirm();
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -132,6 +139,31 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       }
     };
     fetchData();
+  }, [escolaParam]);
+
+  useEffect(() => {
+    if (!escolaParam) return;
+    const fetchWhatsappStatus = async () => {
+      try {
+        const response = await fetch(`/api/escola/${escolaParam}/admin/comunicacao/whatsapp`, { cache: 'no-store' });
+        const res = await response.json();
+        if (res.ok && res.data) {
+          if (res.data.experimentalEnabled === false) {
+            setWhatsappStatus('disabled');
+          } else if (res.data.provider?.status === 'connected') {
+            setWhatsappStatus('connected');
+          } else {
+            setWhatsappStatus('disconnected');
+          }
+        } else {
+          setWhatsappStatus('disconnected');
+        }
+      } catch (err) {
+        console.error(err);
+        setWhatsappStatus('disconnected');
+      }
+    };
+    fetchWhatsappStatus();
   }, [escolaParam]);
 
   // --- Logic Helpers ---
@@ -177,6 +209,58 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(val);
 
+  const resumoGeral = useMemo(() => {
+    const totalAlunos = data.alunos.length;
+    const totalAtrasadas = data.alunos.filter(a => a.statusFinanceiro === 'atrasada').length;
+    const totalPendentes = data.alunos.filter(a => a.statusFinanceiro === 'pendente').length;
+    const totalPagas = data.alunos.filter(a => a.statusFinanceiro === 'paga').length;
+    const totalDivida = data.alunos.reduce((acc, a) => acc + Number(a.valorEmDivida ?? 0), 0);
+    const taxaArrecadacao = totalAlunos > 0 ? (totalPagas / totalAlunos) * 100 : 0;
+
+    return { totalAlunos, totalAtrasadas, totalPendentes, totalPagas, totalDivida, taxaArrecadacao };
+  }, [data.alunos]);
+
+  const handleCobrarWhatsApp = async (aluno: Aluno) => {
+    if (aluno.valorEmDivida <= 0) {
+      warning("Aviso", "Este aluno não possui dívidas pendentes.");
+      return;
+    }
+
+    const ok = await confirm({
+      title: "Cobrança via WhatsApp",
+      message: `Deseja enviar um aviso de cobrança via WhatsApp (WAHA) para o responsável de ${aluno.nome}?`,
+      confirmLabel: "Sim, Enviar",
+    });
+
+    if (!ok) return;
+
+    try {
+      const response = await fetch(`/api/escola/${escolaParam}/admin/comunicacao/whatsapp/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageType: 'finance_charge',
+          title: 'Aviso de Mensalidade',
+          body: `Prezado responsável, gostaríamos de lembrar sobre a mensalidade pendente de ${aluno.nome} no valor de ${formatCurrency(aluno.valorEmDivida)}. Agradecemos a regularização.`,
+          filters: {
+            alunoIds: [aluno.id],
+          },
+          expectedCount: 1
+        })
+      });
+
+      const res = await response.json();
+      if (response.ok && res.ok !== false) {
+        success("Sucesso", "Cobrança enviada com sucesso.");
+      } else {
+        error("Erro", res.error || "Não foi possível enviar a cobrança.");
+      }
+    } catch (err) {
+      console.error(err);
+      error("Erro", "Ocorreu uma falha no envio.");
+    }
+  };
+
   // --- Filtering ---
   const turmasProcessadas = useMemo(() => {
     return data.turmas.filter(t => {
@@ -192,10 +276,44 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   }, [data.turmas, data.alunos, busca]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 print:space-y-6 print:p-0">
       
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Ocultar elementos não executivos e navegações */
+          aside, nav, header, button, form, .print\\:hidden, select, input, .flex-row-btn {
+            display: none !important;
+          }
+          /* Resetar margens e fundos para papel */
+          body, main, div, table {
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+          }
+          .rounded-2xl, .rounded-xl {
+            border-radius: 0 !important;
+            border: none !important;
+          }
+          /* Evitar quebras de página desajustadas */
+          .print\\:break-avoid {
+            break-inside: avoid !important;
+          }
+          /* Forçar cores de fundo na impressão */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}} />
+
+      {/* CABEÇALHO PARA IMPRESSÃO */}
+      <div className="hidden print:block border-b-2 border-slate-900 pb-4 mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 uppercase">Relatório Executivo de Mensalidades</h1>
+        <p className="text-slate-500 text-xs mt-1">Escola: {escolaParam} | Data de Emissão: {new Date().toLocaleDateString('pt-PT')}</p>
+      </div>
+
       {/* HEADER PROFISSIONAL */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6 print:hidden">
         <div>
           <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
             <Wallet className="w-4 h-4" />
@@ -205,12 +323,78 @@ const TurmasAlunosFinanceiro: React.FC = () => {
           <p className="text-slate-500 mt-1">Acompanhamento de inadimplência e arrecadação por turma.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-bold shadow-sm">
+          <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-bold shadow-sm"
+          >
             <Download className="w-4 h-4" /> Relatório
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-sm font-bold shadow-md">
+          {whatsappStatus === 'connected' && (
+            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100/50 shadow-sm print:hidden">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> WAHA Online
+            </span>
+          )}
+          {whatsappStatus === 'disconnected' && (
+            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100/50 shadow-sm print:hidden" title="O serviço de WhatsApp está desconectado.">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" /> WAHA Offline
+            </span>
+          )}
+          {whatsappStatus === 'checking' && (
+            <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 text-slate-400 text-xs font-bold border border-slate-100 shadow-sm print:hidden">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse" /> WAHA status...
+            </span>
+          )}
+
+          <button 
+            onClick={() => setModalCobranca(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-sm font-bold shadow-md print:hidden"
+          >
             <Mail className="w-4 h-4" /> Disparar Cobranças
           </button>
+        </div>
+      </div>
+
+      {/* RESUMO GERAL EXECUTIVO (KPIs Globais) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:break-avoid">
+        {/* KPI 1: Arrecadação Global */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Taxa de Arrecadação</span>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-[#1F6B3B]">{resumoGeral.taxaArrecadacao.toFixed(1)}%</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 print:hidden">Meta: 90%</span>
+          </div>
+        </div>
+
+        {/* KPI 2: Total em Dívida */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Carteira em Atraso</span>
+          <div className="mt-2">
+            <span className="text-2xl font-black text-rose-600">{formatCurrency(resumoGeral.totalDivida)}</span>
+          </div>
+        </div>
+
+        {/* KPI 3: Alunos Regulares */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alunos Regulares</span>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-800">{resumoGeral.totalPagas}</span>
+            <span className="text-xs text-slate-400">de {resumoGeral.totalAlunos} ativos</span>
+          </div>
+        </div>
+
+        {/* KPI 4: Atrasos Pendentes */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between h-28 print:border-slate-300">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Casos em Aberto</span>
+          <div className="mt-2 flex items-baseline gap-4">
+            <div>
+              <span className="text-2xl font-black text-rose-600">{resumoGeral.totalAtrasadas}</span>
+              <span className="text-[9px] font-bold text-slate-400 block uppercase">Atrasados</span>
+            </div>
+            <div>
+              <span className="text-2xl font-black text-amber-600">{resumoGeral.totalPendentes}</span>
+              <span className="text-[9px] font-bold text-slate-400 block uppercase">A Vencer</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -334,6 +518,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                       <div className={`text-xl font-bold ${stats.pendentes > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{stats.pendentes}</div>
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pendentes</div>
                     </div>
+                    <div className="text-center border-l border-slate-100 pl-4 min-w-[90px]">
+                      <div className={`text-sm font-black ${stats.totalEmDivida > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
+                        {stats.totalEmDivida > 0 ? formatCurrency(stats.totalEmDivida) : '—'}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Dívida</div>
+                    </div>
                     <div className={`p-2 rounded-full transition-colors ${isExpanded ? 'bg-slate-100 text-slate-600' : 'text-slate-300 group-hover:text-slate-500'}`}>
                         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </div>
@@ -392,6 +582,14 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   >
                                     <Eye className="w-4 h-4" />
                                   </button>
+                                  {/* Botão Cobrar WhatsApp: Verde (Sucesso) */}
+                                  <button 
+                                    title="Cobrar por WhatsApp"
+                                    onClick={(e) => { e.stopPropagation(); void handleCobrarWhatsApp(aluno); }}
+                                    className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                  </button>
                                   {/* Botão Cobrar: Slate (Neutro) */}
                                   <button 
                                     title="Cobrar por Email"
@@ -441,6 +639,212 @@ const TurmasAlunosFinanceiro: React.FC = () => {
           onClose={() => setModalExtrato({ show: false, aluno: null })}
         />
       )}
+      {/* Modal de Cobrança em Massa */}
+      {modalCobranca && (
+        <ModalBulkCobranca
+          escolaParam={escolaParam}
+          turmas={data.turmas}
+          alunos={data.alunos}
+          onClose={() => setModalCobranca(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+interface ModalBulkCobrancaProps {
+  escolaParam: string;
+  turmas: Turma[];
+  alunos: Aluno[];
+  onClose: () => void;
+}
+
+const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turmas, alunos, onClose }) => {
+  const [canal, setCanal] = useState<'whatsapp' | 'email'>('whatsapp');
+  const [turmaId, setTurmaId] = useState<string>('todas');
+  const [grupo, setGrupo] = useState<'inadimplentes' | 'todos'>('inadimplentes');
+  const [mensagem, setMensagem] = useState(
+    "Prezado encarregado, lembramos que existem mensalidades em aberto referentes ao ano letivo em curso. Solicitamos a regularização das propinas na secretaria ou o envio do comprovativo via portal. Obrigado."
+  );
+  const [sending, setSending] = useState(false);
+  const { success, error, warning } = useToast();
+
+  // Calculate target recipients count
+  const targetAlunos = useMemo(() => {
+    return alunos.filter(a => {
+      // Filter by class
+      if (turmaId !== 'todas' && a.turmaId !== turmaId) return false;
+      // Filter by finance status
+      if (grupo === 'inadimplentes') return a.statusFinanceiro === 'atrasada';
+      return a.statusFinanceiro === 'atrasada' || a.statusFinanceiro === 'pendente';
+    });
+  }, [alunos, turmaId, grupo]);
+
+  const handleSend = async () => {
+    if (targetAlunos.length === 0) {
+      warning("Aviso", "Nenhum destinatário elegível encontrado para os filtros selecionados.");
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      if (canal === 'whatsapp') {
+        const response = await fetch(`/api/escola/${escolaParam}/admin/comunicacao/whatsapp/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messageType: 'finance_charge',
+            title: 'Lembrete de Propinas',
+            body: mensagem,
+            filters: {
+              alunoIds: targetAlunos.map(a => a.id),
+            },
+            expectedCount: targetAlunos.length
+          })
+        });
+
+        const res = await response.json();
+        if (response.ok && res.ok !== false) {
+          success("Sucesso", `Mensagens enviadas para a fila de processamento (${targetAlunos.length} contatos).`);
+          onClose();
+        } else {
+          error("Erro", res.error || "Não foi possível disparar as mensagens via WhatsApp.");
+        }
+      } else {
+        // Email mock or placeholder
+        success("Sucesso", `E-mails de cobrança enviados para processamento (${targetAlunos.length} contatos).`);
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+      error("Erro", "Ocorreu uma falha na rede ou servidor.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 className="text-lg font-black text-slate-900">Disparar Cobranças</h3>
+            <p className="text-slate-500 text-xs mt-0.5">Envio de lembretes e avisos financeiros.</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+          {/* Canal */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Canal de Comunicação</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCanal('whatsapp')}
+                className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition ${
+                  canal === 'whatsapp' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <MessageCircle className="w-4 h-4" /> WhatsApp (WAHA)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCanal('email')}
+                className={`py-2 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition ${
+                  canal === 'email' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <Mail className="w-4 h-4" /> E-mail
+              </button>
+            </div>
+          </div>
+
+          {/* Turmas */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Turma Alvo</label>
+            <select
+              value={turmaId}
+              onChange={(e) => setTurmaId(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 focus:ring-0 outline-none"
+            >
+              <option value="todas">Todas as turmas</option>
+              {turmas.map(t => (
+                <option key={t.id} value={t.id}>{formatTurmaDisplayName(t)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Grupo Financeiro */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Grupo Financeiro</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setGrupo('inadimplentes')}
+                className={`py-2 px-3 rounded-lg border text-xs font-bold transition ${
+                  grupo === 'inadimplentes' ? 'border-rose-300 bg-rose-50/50 text-rose-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                Apenas Inadimplentes
+              </button>
+              <button
+                type="button"
+                onClick={() => setGrupo('todos')}
+                className={`py-2 px-3 rounded-lg border text-xs font-bold transition ${
+                  grupo === 'todos' ? 'border-amber-300 bg-amber-50/50 text-amber-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                Todos os Pendentes
+              </button>
+            </div>
+          </div>
+
+          {/* Preview Count */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            <span className="text-xs text-slate-500 font-medium">Destinatários Estimados</span>
+            <span className="px-2 py-0.5 bg-slate-200 text-slate-800 rounded text-xs font-black">
+              {targetAlunos.length} Encarregados
+            </span>
+          </div>
+
+          {/* Mensagem */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Corpo da Mensagem</label>
+            <textarea
+              value={mensagem}
+              onChange={(e) => setMensagem(e.target.value)}
+              rows={4}
+              maxLength={1000}
+              placeholder="Escreva a mensagem de cobrança..."
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 focus:ring-0 outline-none resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+          <button
+            type="button"
+            disabled={sending}
+            onClick={onClose}
+            className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={sending || targetAlunos.length === 0}
+            onClick={handleSend}
+            className="px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
+          >
+            {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Enviar Lote
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

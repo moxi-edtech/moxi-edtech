@@ -81,7 +81,7 @@ export default function QuickActionsSection({
           key: "migracao_pautas",
           label: "Quadro de Horários",
           icon: Table2,
-          href: buildPortalHref(escolaParam, "/horarios/quadro"),
+          href: buildPortalHref(escolaParam, "/operacoes/horarios/quadro"),
           disabled: !turmasOk,
           reason: "Crie turmas antes de gerir horários.",
         },

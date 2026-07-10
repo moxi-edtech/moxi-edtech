@@ -15,7 +15,7 @@ export const WHATSAPP_ALLOWED_ROLES = [
   "secretaria_financeiro",
 ] as const;
 
-export const WHATSAPP_SESSION_MANAGER_ROLES = ["admin", "admin_escola", "direcao", "diretoria"] as const;
+export const WHATSAPP_SESSION_MANAGER_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "admin_financeiro"] as const;
 export const WHATSAPP_FINANCE_ROLES = [
   "admin",
   "admin_escola",

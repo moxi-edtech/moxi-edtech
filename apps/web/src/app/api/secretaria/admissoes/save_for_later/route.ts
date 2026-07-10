@@ -9,6 +9,7 @@ import { FichaInscricaoPDF } from '@/components/secretaria/FichaInscricaoPDF';
 import type { ReactElement } from 'react'
 import { createElement } from 'react'
 import { getReservaExpiracaoHorasFromConfig } from '@/lib/admissoes/reserva'
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 
 export const runtime = 'nodejs';
 
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
   const { error: authError } = await requireRoleInSchool({ 
     supabase, 
     escolaId: cand.escola_id, 
-    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin'] 
+    roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP] 
   });
   if (authError) return authError;
 

@@ -3,8 +3,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
+import { useRouter } from "next/navigation";
 import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
 import OperationalFeedSection from "./OperationalFeedSection";
@@ -210,13 +211,37 @@ export default function EscolaAdminDashboardContent({
   estadoVital,
 }: Props) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const router = useRouter();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dynamicPacingTarget, setDynamicPacingTarget] = useState(70);
+
+  useEffect(() => {
+    setMounted(true);
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const currentDay = today.getDate();
+    const calculatedTarget = Math.min(100, Math.max(10, Math.round((currentDay / daysInMonth) * 100)));
+    setDynamicPacingTarget(calculatedTarget);
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    router.refresh();
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
 
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const financeBase = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
   const portalBase = mode === "operacoes" ? "operacoes" : "admin";
-  const dashboardTitle = mode === "operacoes" ? "Cockpit de Operações" : "Dashboard";
+  const dashboardTitle = mode === "operacoes" ? "Painel Operacional" : "Dashboard";
+  const isOperacoes = mode === "operacoes";
+  const cashFlowHref = isOperacoes
+    ? buildPortalHref(escolaParam, "/operacoes/recebimentos")
+    : `${financeBase}/pagamentos`;
+  const radarFinanceiroHref = isOperacoes
+    ? buildPortalHref(escolaParam, "/operacoes/turmas-alunos")
+    : `${financeBase}/radar`;
   const [progress, setProgress] = useState(0);
 
   const horaAtual = new Date().getHours();
@@ -288,14 +313,26 @@ export default function EscolaAdminDashboardContent({
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none">
+          <h1 className={`${isOperacoes ? "text-[28px]" : "text-3xl"} font-black leading-none tracking-tight text-slate-900`}>
             {dashboardTitle}
           </h1>
           <div className="mt-2 flex items-center gap-2">
-            <p className="text-sm font-medium text-slate-500">{saudacao}</p>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981] animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#10b981]">Live</span>
+            <p className={`${isOperacoes ? "text-[13px]" : "text-sm"} font-medium text-slate-500`}>{saudacao}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#10b981]">Live</span>
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`flex items-center justify-center p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all ${
+                  isRefreshing ? "animate-spin text-[#1F6B3B]" : ""
+                }`}
+                title="Atualizar dados"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
             </div>
             {escolaNome && <p className="text-sm font-medium text-slate-400">· {escolaNome}</p>}
           </div>
@@ -314,6 +351,18 @@ export default function EscolaAdminDashboardContent({
         <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} />
       </motion.div>
 
+      {isOperacoes && operationalSnapshot && (
+        <motion.div variants={itemVariants}>
+          <OperationalFocusSection escolaId={escolaId} snapshot={operationalSnapshot} />
+        </motion.div>
+      )}
+
+      {isOperacoes && (
+        <motion.div variants={itemVariants}>
+          <OperationalFeedSection escolaId={escolaId} portalBase={portalBase} />
+        </motion.div>
+      )}
+
       {/* ── 3. KPIs ──────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
         <KpiSection
@@ -326,24 +375,19 @@ export default function EscolaAdminDashboardContent({
           operationalSnapshot={operationalSnapshot}
           financeiroHref={financeiroHref}
           portalBase={portalBase}
+          alunoSeries={charts?.alunosPorMes}
         />
       </motion.div>
 
-      {mode === "operacoes" && operationalSnapshot && (
-        <motion.div variants={itemVariants}>
-          <OperationalFocusSection escolaId={escolaId} snapshot={operationalSnapshot} />
-        </motion.div>
-      )}
-
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <motion.section variants={itemVariants} className={`relative overflow-hidden border border-slate-200 bg-white shadow-sm ${isOperacoes ? "rounded-xl p-5" : "rounded-2xl p-6"}`}>
           <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-8 relative z-10">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recebido no Mês (Caixa)</p>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-                  <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  <div className={`${isOperacoes ? "text-xl" : "text-2xl"} font-black tracking-tight text-slate-900`}>
                     {mounted ? moeda.format(realizadoReceita) : "—"}
                   </div>
                   <span className="text-sm font-medium text-slate-400">
@@ -381,7 +425,7 @@ export default function EscolaAdminDashboardContent({
 
             <div className="text-right flex flex-col items-end flex-shrink-0">
               <div className="relative">
-                <p className={`text-4xl font-black leading-none tracking-tighter ${isAcimaDaMeta ? "text-emerald-600" : "text-[#1F6B3B]"}`}>
+                <p className={`${isOperacoes ? "text-3xl" : "text-4xl"} font-black leading-none tracking-tighter ${isAcimaDaMeta ? "text-emerald-600" : "text-[#1F6B3B]"}`}>
                   {displayPercentualReceita}%
                 </p>
                 {isAcimaDaMeta && (
@@ -393,7 +437,7 @@ export default function EscolaAdminDashboardContent({
           </div>
 
           <div className="relative mt-2">
-            <div className="h-4 overflow-hidden rounded-full bg-slate-50 border border-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-50 border border-slate-100">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
@@ -401,30 +445,30 @@ export default function EscolaAdminDashboardContent({
                 className={`h-full rounded-full ${
                   hasMovimentoReceita
                     ? isAcimaDaMeta 
-                      ? "bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                      : "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_20px_rgba(74,222,128,0.3)]"
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                      : "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80]"
                     : "bg-gradient-to-r from-slate-300 to-slate-400"
                 }`}
               />
             </div>
             
-            {/* Pacing marker (Target 70% for example) */}
-            {hasMetaReceita && (
+            {/* Pacing marker (Target based on days of the month elapsed) */}
+            {hasMetaReceita && mounted && (
               <div 
                 className="absolute top-0 bottom-0 w-0.5 bg-slate-200 z-10 flex flex-col items-center"
-                style={{ left: '70%' }}
+                style={{ left: `${dynamicPacingTarget}%` }}
               >
-                <div className="w-2 h-2 rounded-full bg-slate-300 -mt-0.5 shadow-sm" />
-                <div className="absolute top-5 bg-white border border-slate-100 px-1.5 py-0.5 rounded shadow-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-400 -mt-0.5" />
+                <div className="absolute top-3 bg-white border border-slate-100 px-1 py-0.5 rounded shadow-sm">
                   <span className="text-[8px] font-black text-slate-400 whitespace-nowrap">
-                    META 70%
+                    HOJE {dynamicPacingTarget}%
                   </span>
                 </div>
               </div>
             )}
           </div>
           
-          <div className="mt-8 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <div className="mt-5 flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
             <p>0% Iniciado</p>
             <p className="text-slate-900">Actual: {displayPercentualReceita}%</p>
             <p>100% Meta Final</p>
@@ -438,6 +482,7 @@ export default function EscolaAdminDashboardContent({
           meses={charts?.meses}
           alunosPorMes={charts?.alunosPorMes}
           pagamentos={charts?.pagamentos}
+          pagamentosValores={charts?.pagamentosValores}
           mode={mode}
         />
       </motion.div>
@@ -449,7 +494,7 @@ export default function EscolaAdminDashboardContent({
           icon={<Wallet className="h-4 w-4" />}
           title="Fluxo de Caixa"
           subtitle="Entradas confirmadas hoje"
-          linkHref={`${financeBase}/pagamentos`}
+          linkHref={cashFlowHref}
           linkLabel="Ver histórico"
         >
           <AnimatePresence mode="popLayout">
@@ -464,7 +509,7 @@ export default function EscolaAdminDashboardContent({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                    className="flex items-center justify-between gap-3 py-4 group/row transition-colors hover:bg-slate-50/50"
+                  className="flex items-center justify-between gap-3 py-2.5 group/row transition-colors hover:bg-slate-50/50"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-900 truncate group-hover/row:text-klasse-green transition-colors">
@@ -495,7 +540,7 @@ export default function EscolaAdminDashboardContent({
           icon={<AlertCircle className="h-4 w-4" />}
           title="Radar Financeiro"
           subtitle="Alertas de inadimplência"
-          linkHref={`${financeBase}/radar`}
+          linkHref={radarFinanceiroHref}
           linkLabel="Ver todos"
         >
           <AnimatePresence mode="popLayout">
@@ -513,10 +558,10 @@ export default function EscolaAdminDashboardContent({
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-center justify-between gap-3 py-4 group/row transition-colors hover:bg-slate-50/50"
+                    className="flex items-center justify-between gap-3 py-2.5 group/row transition-colors hover:bg-slate-50/50"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-black flex-shrink-0 border border-slate-200">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-[11px] font-black flex-shrink-0">
                         {iniciais}
                       </div>
                       <div className="min-w-0">
@@ -530,9 +575,9 @@ export default function EscolaAdminDashboardContent({
                       <p className="text-sm font-black text-rose-600">
                         {mounted ? moeda.format(Number(row.valor_em_atraso ?? 0)) : "—"}
                       </p>
-                    </div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Dívida Total</p>
                     </div>
+                  </div>
                   </motion.div>
                 );
               })
@@ -542,29 +587,52 @@ export default function EscolaAdminDashboardContent({
       </section>
 
       {/* ── 7. BOTTOM GRID ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
-        <div className="lg:col-span-2 space-y-8">
-          <motion.div variants={itemVariants}>
-            <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <NoticesSection notices={notices} portalBase={portalBase} />
-          </motion.div>
+      {isOperacoes ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+          <div className="space-y-6 lg:col-span-2">
+            <motion.div variants={itemVariants}>
+              <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <NoticesSection notices={notices} portalBase={portalBase} />
+            </motion.div>
+          </div>
+          <div className="space-y-6">
+            <motion.div variants={itemVariants}>
+              <PostWizardChecklist
+                setupStatus={setupStatus}
+                stats={stats}
+                missingPricingCount={missingPricingCount}
+                portalBase={portalBase}
+              />
+            </motion.div>
+          </div>
         </div>
-        <div className="space-y-8">
-          <motion.div variants={itemVariants}>
-            <PostWizardChecklist
-              setupStatus={setupStatus}
-              stats={stats}
-              missingPricingCount={missingPricingCount}
-              portalBase={portalBase}
-            />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <OperationalFeedSection escolaId={escolaId} portalBase={portalBase} />
-          </motion.div>
+      ) : (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
+          <div className="space-y-8 lg:col-span-2">
+            <motion.div variants={itemVariants}>
+              <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <NoticesSection notices={notices} portalBase={portalBase} />
+            </motion.div>
+          </div>
+          <div className="space-y-8">
+            <motion.div variants={itemVariants}>
+              <PostWizardChecklist
+                setupStatus={setupStatus}
+                stats={stats}
+                missingPricingCount={missingPricingCount}
+                portalBase={portalBase}
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <OperationalFeedSection escolaId={escolaId} portalBase={portalBase} />
+            </motion.div>
+          </div>
         </div>
-      </div>
+      )}
 
     </motion.div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { 
   Wallet, 
   CalendarClock, 
@@ -14,7 +14,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type FinanceiroConfig = {
@@ -40,7 +40,8 @@ export default function FinanceiroConfiguracoesPage() {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const baseRaw = "/admin/configuracoes";
-  const base = buildPortalHref(escolaParam, baseRaw);
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, baseRaw, pathname);
   const { toast, dismiss, success, error } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
@@ -140,9 +141,9 @@ export default function FinanceiroConfiguracoesPage() {
       showInternalMenu={false}
       embedded
       backHref={base}
-      prevHref={buildPortalHref(escolaParam, `${baseRaw}/turmas`)}
-      nextHref={buildPortalHref(escolaParam, `${baseRaw}/fluxos`)}
-      testHref={buildPortalHref(escolaParam, `${baseRaw}/sandbox`)}
+      prevHref={buildContextualPortalHref(escolaParam, `${baseRaw}/turmas`, pathname)}
+      nextHref={buildContextualPortalHref(escolaParam, `${baseRaw}/fluxos`, pathname)}
+      testHref={buildContextualPortalHref(escolaParam, `${baseRaw}/sandbox`, pathname)}
       onSave={handleSave}
       saveDisabled={saving}
     >

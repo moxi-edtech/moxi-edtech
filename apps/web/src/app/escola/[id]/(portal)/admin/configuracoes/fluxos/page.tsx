@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { 
   FileText, // Ícone de validação (papel)
   User,     // Ícone de professor
@@ -18,7 +18,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import { SistemaStatusModal } from "../_components/SistemaStatusModal";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type WorkflowStep = {
@@ -61,7 +61,8 @@ export default function FluxosConfiguracaoPage() {
   const escolaId = params?.id;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const base = buildPortalHref(escolaParam, "/admin/configuracoes");
+  const pathname = usePathname();
+  const base = buildContextualPortalHref(escolaParam, "/admin/configuracoes", pathname);
   const { success, error: toastError } = useToast();
   
   const menuItems = buildConfigMenuItems(base);

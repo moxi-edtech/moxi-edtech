@@ -30,7 +30,7 @@ test("expandAllowedRolesForProduct expande herança composta de financeiro e sec
   );
 });
 
-test("roleMatchesAllowedRoles aplica herança composta do k12 sem elevar admin_financeiro a secretaria", () => {
+test("roleMatchesAllowedRoles aplica herança composta do k12 incluindo admin_financeiro em secretaria", () => {
   assert.equal(roleMatchesAllowedRoles("admin", ["admin_escola"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("staff_admin", ["admin_escola"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("admin_escola", ["admin"], "k12"), true);
@@ -38,7 +38,7 @@ test("roleMatchesAllowedRoles aplica herança composta do k12 sem elevar admin_f
   assert.equal(roleMatchesAllowedRoles("secretaria_financeiro", ["financeiro"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("secretaria_financeiro", ["secretaria"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("admin_financeiro", ["financeiro"], "k12"), true);
-  assert.equal(roleMatchesAllowedRoles("admin_financeiro", ["secretaria"], "k12"), false);
+  assert.equal(roleMatchesAllowedRoles("admin_financeiro", ["secretaria"], "k12"), true);
   assert.equal(roleMatchesAllowedRoles("admin_financeiro", ["admin_financeiro"], "k12"), true);
 });
 
@@ -70,7 +70,7 @@ test("redirects K12 usam semantica central para papeis compostos e financeiro", 
   );
   assert.equal(
     getDefaultK12PortalPathForRole("admin_financeiro", "curtume"),
-    "/escola/curtume/admin/dashboard"
+    "/escola/curtume/operacoes/dashboard"
   );
   assert.equal(
     getDefaultK12PortalPathForRole("financeiro", "curtume"),

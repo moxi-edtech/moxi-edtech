@@ -1,5 +1,6 @@
 import EscolaAdminDashboard from "@/components/layout/escola-admin/EscolaAdminDashboard";
 import { getDefaultK12PortalPathForRole } from "@/lib/permissions";
+import { K12_OPERACOES_PRIMARY_ROLE } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
@@ -31,7 +32,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         .eq("user_id", user.id)
         .maybeSingle();
       const papel = String(vinculo?.papel ?? "").trim().toLowerCase();
-      if (papel === "admin_financeiro") {
+      if (papel === K12_OPERACOES_PRIMARY_ROLE) {
         redirect(getDefaultK12PortalPathForRole(papel, escolaParam));
       }
 

@@ -1,5 +1,5 @@
 # KLASSE — Relatório de Validação de Contratos
-> Gerado em: 2026-06-28T19:25:28.123Z  
+> Gerado em: 2026-07-09T12:13:26.563Z  
 > Contratos: agents/specs/performance.md v1.1 · agents/ops/PILOT_CHECKLIST.md v1.2 · agents/specs/FEATURES_PRIORITY.json v1.2
 
 ## Sumário
@@ -52,11 +52,11 @@
 **Status:** `FAIL`  
 **Contrato:** agents/specs/performance.md → Pilar A
 
-🔴 `apps/web/src/app/api/super-admin/marketing/summary/route.ts`
+🔴 `apps/web/src/app/api/super-admin/parceiros/[id]/members/route.ts`
 > count: 'exact' detectado — proibido em produção (usar MV de contagem)
 > **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
 
-🔴 `apps/web/src/app/api/super-admin/influencers/[id]/members/route.ts`
+🔴 `apps/web/src/app/api/super-admin/marketing/summary/route.ts`
 > count: 'exact' detectado — proibido em produção (usar MV de contagem)
 > **Fix:** Substituir por SELECT COUNT(*) na MV correspondente ou remover contagem
 
@@ -265,15 +265,15 @@ if (!planCheck.allowed) return NextResponse.json({ ok: false, error: 'Plano não
 > Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
 > **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
 
+ℹ️ `apps/web/src/app/super-admin/parceiros/page.tsx`
+> Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
+> **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
+
 ℹ️ `apps/web/src/app/super-admin/onboarding/page.tsx`
 > Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
 > **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
 
 ℹ️ `apps/web/src/app/super-admin/marketing/page.tsx`
-> Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
-> **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
-
-ℹ️ `apps/web/src/app/super-admin/influencers/page.tsx`
 > Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
 > **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
 
@@ -289,7 +289,11 @@ if (!planCheck.allowed) return NextResponse.json({ ok: false, error: 'Plano não
 > Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
 > **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
 
-ℹ️ `apps/web/src/app/influencers/[codigo]/page.tsx`
+ℹ️ `apps/web/src/app/parceiros/[codigo]/page.tsx`
+> Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
+> **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
+
+ℹ️ `apps/web/src/app/escola/[id]/(portal)/financeiro/turmas-alunos/page.tsx`
 > Possível spinner global detectado — deve ser substituído por skeleton idêntico ao conteúdo
 > **Fix:** Usar <Skeleton /> idêntico à tabela/lista. Loader2 apenas inline em botões.
 

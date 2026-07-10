@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { buildAdminNotificacao, type AdminNotificacaoKey } from "./admin";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { K12_ADMIN_ROLE_GROUP, K12_OPERACOES_PRIMARY_ROLE } from "@/lib/roles";
 
 type AdminRecipient = {
   user_id: string;
@@ -24,7 +25,7 @@ type DispatchParams = {
   agrupamentoTTLHoras?: number;
 };
 
-const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin", "admin_financeiro"];
+const ADMIN_ROLES = [...K12_ADMIN_ROLE_GROUP, K12_OPERACOES_PRIMARY_ROLE];
 
 const EVENTO_TIPO_MAP: Record<AdminNotificacaoKey, string> = {
   MANUTENCAO_PROGRAMADA: "sistema.manutencao",

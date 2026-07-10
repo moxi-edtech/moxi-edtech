@@ -4,6 +4,9 @@ import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // GET /api/secretaria/turmas/:id/disciplinas
 // Returns assigned disciplinas for a turma with professor info and simple linkage checks
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -55,13 +58,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       disciplinaIds.length
         ? supabase
           .from('curso_matriz')
-          .select('id, disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome), curriculo:curso_curriculos(id, status)')
+          .select('id, disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome), curriculo:curso_curriculos(id, status, version)')
           .in('id', disciplinaIds)
           .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
       supabase
         .from('turmas')
-        .select('id, ano_letivo_id, ano_letivo')
+        .select('id, ano_letivo_id, ano_letivo, curso_id, classe_id')
         .eq('escola_id', escolaId)
         .eq('id', turmaId)
         .maybeSingle(),
@@ -78,53 +81,125 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       anoLetivoId = anoRow?.id ?? null
     }
 
-    const { data: periodosRows } = anoLetivoId
+    const disciplinaCatalogIdsFromDiscRes = Array.from(
+      new Set(((discRes as any).data || []).map((d: any) => d.disciplina_id).filter(Boolean))
+    ) as string[]
+
+    const [curriculosRes, periodosRes, tdpRes] = await Promise.all([
+      turmaRes.data?.curso_id && turmaRes.data?.classe_id && anoLetivoId
+        ? supabase
+            .from('curso_curriculos')
+            .select('id, status, version')
+            .eq('escola_id', escolaId)
+            .eq('curso_id', turmaRes.data.curso_id)
+            .eq('classe_id', turmaRes.data.classe_id)
+            .eq('ano_letivo_id', anoLetivoId)
+        : Promise.resolve({ data: [] as any[] }),
+      anoLetivoId
+        ? supabase
+            .from('periodos_letivos')
+            .select('id, numero, dt_inicio, dt_fim')
+            .eq('escola_id', escolaId)
+            .eq('ano_letivo_id', anoLetivoId)
+            .order('numero', { ascending: true })
+        : Promise.resolve({ data: [] as any[] }),
+      disciplinaCatalogIdsFromDiscRes.length
+        ? supabase
+            .from('turma_disciplinas_professores')
+            .select('turma_id, disciplina_id, professor_id, horarios, planejamento')
+            .eq('escola_id', escolaId)
+            .eq('turma_id', turmaId)
+            .in('disciplina_id', disciplinaCatalogIdsFromDiscRes)
+        : Promise.resolve({
+            data: [] as Array<{
+              turma_id: string | null
+              disciplina_id: string | null
+              professor_id: string | null
+              horarios: any
+              planejamento: any
+            }>,
+          }),
+    ])
+
+    const curriculos = curriculosRes.data || []
+    const draftCurriculo = curriculos.find((c: any) => c.status === 'draft')
+    const activeCurriculo = draftCurriculo || curriculos
+      .filter((c: any) => c.status === 'published')
+      .sort((a: any, b: any) => b.version - a.version)[0]
+
+    const { data: activeMatrixRows } = activeCurriculo?.id
       ? await supabase
-          .from('periodos_letivos')
-          .select('id, numero, dt_inicio, dt_fim')
+          .from('curso_matriz')
+          .select('id, disciplina_id, carga_horaria_semanal, entra_no_horario, classificacao, periodos_ativos')
           .eq('escola_id', escolaId)
-          .eq('ano_letivo_id', anoLetivoId)
-          .order('numero', { ascending: true })
-      : { data: [] as any[] };
+          .eq('curso_curriculo_id', activeCurriculo.id)
+      : { data: [] as any[] }
+
+    const draftMatrixMap = new Map<string, any>()
+    for (const row of activeMatrixRows || []) {
+      if (draftCurriculo && row.disciplina_id) {
+        draftMatrixMap.set(row.disciplina_id, row)
+      }
+    }
+    const periodosRows = periodosRes.data ?? []
 
     const discMap = new Map<
       string,
       { id: string | null; nome: string | null; curriculo_status?: string | null; carga_horaria_semanal?: number | null }
     >()
+    const discRowByMatrizId = new Map<string, any>()
     for (const d of (discRes as any).data || []) {
+      discRowByMatrizId.set((d as any).id, d)
       const nome = (d as any)?.disciplina?.nome as string | undefined
       const curriculoStatus = (d as any)?.curriculo?.status ?? null
       const disciplinaId = (d as any)?.disciplina_id ?? null
-      const cargaHorariaSemanal = (d as any)?.carga_horaria_semanal ?? null
+      
+      const draftRow = disciplinaId ? draftMatrixMap.get(disciplinaId) : null
+      const cargaHorariaSemanal = draftRow
+        ? draftRow.carga_horaria_semanal
+        : ((d as any)?.carga_horaria_semanal ?? null)
+
       if (nome || disciplinaId) {
         discMap.set((d as any).id, {
           id: disciplinaId,
           nome: nome ?? null,
-          curriculo_status: curriculoStatus,
+          curriculo_status: draftRow ? 'draft' : curriculoStatus,
           carga_horaria_semanal: cargaHorariaSemanal,
         })
       }
     }
 
-    const disciplinaCatalogIds = Array.from(
-      new Set(Array.from(discMap.values()).map((d) => d.id).filter(Boolean))
-    ) as string[]
-    const { data: tdpRows } = disciplinaCatalogIds.length
-      ? await supabase
-          .from('turma_disciplinas_professores')
-          .select('turma_id, disciplina_id, professor_id, horarios, planejamento')
-          .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
-          .in('disciplina_id', disciplinaCatalogIds)
-      : {
-          data: [] as Array<{
-            turma_id: string | null
-            disciplina_id: string | null
-            professor_id: string | null
-            horarios: any
-            planejamento: any
-          }>,
+    const uniqueRows = new Map<string, any>()
+    for (const row of rows || []) {
+      const discInfo = discMap.get(row.curso_matriz_id)
+      const catalogId = discInfo?.id ?? row.curso_matriz_id
+      if (!catalogId) continue
+
+      const existing = uniqueRows.get(catalogId)
+      if (!existing) {
+        uniqueRows.set(catalogId, row)
+      } else {
+        const existingDisc = discRowByMatrizId.get(existing.curso_matriz_id)
+        const currentDisc = discRowByMatrizId.get(row.curso_matriz_id)
+
+        const existingCurriculo = existingDisc?.curriculo
+        const currentCurriculo = currentDisc?.curriculo
+
+        const existingVersion = existingCurriculo?.version ?? 0
+        const currentVersion = currentCurriculo?.version ?? 0
+
+        const existingIsDraft = existingCurriculo?.status === 'draft'
+        const currentIsDraft = currentCurriculo?.status === 'draft'
+
+        if (currentIsDraft || (!existingIsDraft && currentVersion > existingVersion)) {
+          uniqueRows.set(catalogId, row)
         }
+      }
+    }
+
+    const filteredRows = Array.from(uniqueRows.values())
+
+    const tdpRows = tdpRes.data ?? []
 
     const professorIds = Array.from(
       new Set([
@@ -213,11 +288,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const hasPresencasTurma = Boolean((presencasTurmaBatch.data || []).length > 0)
 
-    const horarioTargets = (rows || [])
+    const horarioTargets = (filteredRows)
       .map((row: any) => {
         const discInfo = discMap.get(row.curso_matriz_id)
         const assignment = discInfo?.id ? assignmentByDisciplina.get(`${turmaId}:${discInfo.id}`) : null
-        const professorId = assignment?.professor_id ?? row.professor_id ?? null
+        const candidateProfessorId = assignment?.professor_id ?? row.professor_id ?? null
+        const professorId =
+          candidateProfessorId && profRowById.has(candidateProfessorId)
+            ? candidateProfessorId
+            : null
         const disciplinaId = discInfo?.id ?? row.curso_matriz_id ?? null
         if (!professorId || !disciplinaId) return null
         return { professorId, disciplinaId }
@@ -245,11 +324,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const items = [] as any[]
-    for (const row of rows || []) {
+    for (const row of filteredRows) {
       const discInfo = discMap.get(row.curso_matriz_id)
       const disciplinaNome = discInfo?.nome ?? null
       const assignment = discInfo?.id ? assignmentByDisciplina.get(`${turmaId}:${discInfo.id}`) : null
-      const professorId = assignment?.professor_id ?? row.professor_id ?? null
+      const candidateProfessorId = assignment?.professor_id ?? row.professor_id ?? null
+      const professorId =
+        candidateProfessorId && profRowById.has(candidateProfessorId)
+          ? candidateProfessorId
+          : null
       const profRow = professorId ? profRowById.get(professorId) : null
       const profile = Array.isArray(profRow?.profiles) ? profRow?.profiles?.[0] : profRow?.profiles
       const disciplinaIdForHorario = discInfo?.id ?? row.curso_matriz_id ?? null
@@ -271,7 +354,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         disciplina: { id: discInfo?.id ?? row.curso_matriz_id, nome: disciplinaNome },
         curriculo_status: discInfo?.curriculo_status ?? null,
         meta: {
-          carga_horaria_semanal: row.carga_horaria_semanal ?? discInfo?.carga_horaria_semanal ?? null,
+          carga_horaria_semanal: discInfo?.carga_horaria_semanal ?? row.carga_horaria_semanal ?? null,
           classificacao: row.classificacao ?? null,
           periodos_ativos: row.periodos_ativos ?? null,
           entra_no_horario: row.entra_no_horario ?? null,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Check, 
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 
@@ -148,21 +149,23 @@ function mapSetupActionKeyToWizardStep(actionKey?: string | null) {
 
 function getReadinessBlockerAction(
   escolaParam: string | null,
-  blocker?: ReadinessBlocker
+  blocker?: ReadinessBlocker,
+  pathname?: string | null
 ): ReadinessBlockerAction | null {
   if (!blocker || !escolaParam) return null;
+  const portalHref = (path: string) => buildContextualPortalHref(escolaParam, path, pathname);
 
   if (blocker.fix_cta?.href) {
     return {
       kind: "link",
       label: blocker.fix_cta.label || "Abrir correção",
-      href: buildPortalHref(escolaParam, blocker.fix_cta.href),
+      href: portalHref(blocker.fix_cta.href),
     };
   }
 
   switch (blocker.code) {
     case "TEAM_TEACHERS_MISSING":
-      return { kind: "link", label: "Cadastrar professores", href: buildPortalHref(escolaParam, "/admin/professores") };
+      return { kind: "link", label: "Cadastrar professores", href: portalHref("/admin/professores") };
     case "TEAM_TEACHER_CONSISTENCY":
     case "TEACHER_ASSIGNMENT_INCONSISTENCY":
     case "PORTAL_PROFESSOR_BLOCKED":
@@ -173,22 +176,22 @@ function getReadinessBlockerAction(
     case "FINANCE_IBAN_MISSING":
     case "FINANCE_PRICING_MISSING":
     case "FINANCE_CONFIG_MISSING":
-      return { kind: "link", label: "Abrir financeiro", href: buildPortalHref(escolaParam, "/admin/configuracoes/financeiro") };
+      return { kind: "link", label: "Abrir financeiro", href: portalHref("/admin/configuracoes/financeiro") };
     case "PORTAL_ALUNO_DISABLED":
-      return { kind: "link", label: "Revisar sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+      return { kind: "link", label: "Revisar sistema", href: portalHref("/admin/configuracoes/sistema") };
     case "STUDENTS_MISSING":
-      return { kind: "link", label: "Importar alunos", href: buildPortalHref(escolaParam, "/admin/migracao") };
+      return { kind: "link", label: "Importar alunos", href: portalHref("/admin/migracao") };
     case "ACADEMIC_COURSES_MISSING":
     case "ACADEMIC_CURRICULUM_UNPUBLISHED":
     case "ACADEMIC_TURMAS_INVALID":
-      return { kind: "link", label: "Abrir turmas e currículo", href: buildPortalHref(escolaParam, "/admin/configuracoes/turmas") };
+      return { kind: "link", label: "Abrir turmas e currículo", href: portalHref("/admin/configuracoes/turmas") };
     case "ACADEMIC_YEAR_MISSING":
     case "ACADEMIC_PERIODS_INVALID":
-      return { kind: "link", label: "Abrir calendário", href: buildPortalHref(escolaParam, "/admin/configuracoes/calendario") };
+      return { kind: "link", label: "Abrir calendário", href: portalHref("/admin/configuracoes/calendario") };
     case "ACADEMIC_EVALUATION_MISSING":
-      return { kind: "link", label: "Abrir avaliação", href: buildPortalHref(escolaParam, "/admin/configuracoes/avaliacao-frequencia") };
+      return { kind: "link", label: "Abrir avaliação", href: portalHref("/admin/configuracoes/avaliacao-frequencia") };
     default:
-      return { kind: "link", label: "Ver painel do sistema", href: buildPortalHref(escolaParam, "/admin/configuracoes/sistema") };
+      return { kind: "link", label: "Ver painel do sistema", href: portalHref("/admin/configuracoes/sistema") };
   }
 }
 
@@ -242,6 +245,7 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 
 // --- MAIN COMPONENT ---
 export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName, initialStep = 1 }: Props) {
+  const pathname = usePathname();
   const { toast, dismiss, success, error, warning } = useToast();
   const confirm = useConfirm();
   const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
@@ -249,6 +253,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const explicitEscolaParam = escolaId && escolaId !== "null" ? escolaId : null;
   const escolaUuidResolved = escolaUuid && escolaUuid !== "null" ? escolaUuid : null;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaUuidResolved;
+  const portalHref = (path: string) => buildContextualPortalHref(escolaParam, path, pathname);
   const escolaContextId = escolaParam;
   const isContextReady = Boolean(escolaContextId && escolaContextId !== "null");
 
@@ -814,7 +819,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const topReadinessBlockers = readinessBlockers.slice(0, 3);
   const readinessBlockersWithActions = topReadinessBlockers.map((blocker) => ({
     blocker,
-    action: getReadinessBlockerAction(escolaParam, blocker),
+    action: getReadinessBlockerAction(escolaParam, blocker, pathname),
   }));
   const wizardStatusMeta: WizardStatusMeta = step === 1
     ? {
@@ -1013,13 +1018,13 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Como editar depois</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/calendario")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/admin/configuracoes/calendario")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
                           Calendário
                         </Link>
-                        <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/turmas")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/admin/configuracoes/turmas")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
                           Turmas e currículo
                         </Link>
-                        <Link href={buildPortalHref(escolaParam, "/horarios/quadro")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
+                        <Link href={portalHref("/horarios/quadro")} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white no-underline">
                           Quadro de horários
                         </Link>
                       </div>
@@ -1282,7 +1287,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           </button>
           {showFinalSuccess && finalSummary ? (
             <div className="flex items-center gap-3">
-              <Link href={buildPortalHref(escolaParam, "/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white no-underline shadow-md">
+              <Link href={portalHref("/admin/dashboard")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white no-underline shadow-md">
                 Ir ao dashboard
               </Link>
               {onComplete ? (

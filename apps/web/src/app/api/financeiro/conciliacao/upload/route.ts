@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { requireRoleInSchool } from '@/lib/authz';
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from '@/lib/roles';
 import * as XLSX from 'xlsx';
 import crypto from 'crypto'; // Node.js crypto module
 import type { Database } from '~types/supabase';
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP],
     });
     if (roleError) return roleError;
 

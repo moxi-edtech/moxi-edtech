@@ -4,11 +4,12 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ALLOWED_ROLES = ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"] as const;
+const ALLOWED_ROLES = K12_SECRETARIA_OPERACIONAL_ROLE_GROUP;
 
 const CreateSchema = z.object({
   aluno_id: z.string().uuid().nullable().optional(),
