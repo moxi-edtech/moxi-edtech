@@ -4,6 +4,7 @@ import { hasAssistantPermission } from "./permission-registry";
 import { searchKnowledge } from "./knowledge-search";
 import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./screen-context";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
 
 export type AssistantResponse = {
   ok: boolean;
@@ -159,6 +160,96 @@ export async function processKlasseBrainQuery(params: {
       mode: "fallback",
       answer: "Desculpe, o seu perfil não tem permissão para usar o assistente KLASSE.",
     };
+  }
+
+  // 1.5. Query Matcher: Check if the user is asking about students in debt/unpaid monthly fees in a specific class
+  const isDebtQuery = cleanQuery.includes("em dívida") || cleanQuery.includes("em divida") || cleanQuery.includes("devedores") || cleanQuery.includes("atraso") || cleanQuery.includes("inadimpl");
+  const hasTurmaKeyword = cleanQuery.includes("turma") || cleanQuery.includes("classe");
+
+  if (isDebtQuery && (hasTurmaKeyword || (context?.page === "turmas" && context?.entityId))) {
+    const supabase = await supabaseServerTyped();
+    const { data: turmas } = await supabase
+      .from("turmas")
+      .select("id, nome, turma_codigo")
+      .eq("escola_id", schoolId);
+
+    // Try to find matching class name or code in the query
+    let matchingTurma = (turmas ?? []).find((t) => {
+      const name = (t.nome ?? "").toLowerCase().trim();
+      const code = (t.turma_codigo ?? "").toLowerCase().trim();
+      return name && (cleanQuery.includes(name) || (code && cleanQuery.includes(code)));
+    });
+
+    // If not found by query string, but we are inside a turma detail page, fallback to context
+    if (!matchingTurma && context?.entityType === "class" && context?.entityId) {
+      matchingTurma = (turmas ?? []).find((t) => t.id === context.entityId);
+    }
+
+    if (matchingTurma) {
+      // Query radar entries
+      const { data: radarRows } = await supabase
+        .from("vw_radar_inadimplencia")
+        .select("aluno_id, nome_aluno, nome_turma, valor_em_atraso")
+        .eq("escola_id", schoolId);
+
+      const classRows = (radarRows ?? []).filter((r) => {
+        const rowTurmaName = (r.nome_turma ?? "").toLowerCase().trim();
+        const targetTurmaName = (matchingTurma!.nome ?? "").toLowerCase().trim();
+        return rowTurmaName === targetTurmaName;
+      });
+
+      // Group by unique student
+      const uniqueStudents = new Map<string, { nome: string; totalDebt: number }>();
+      for (const row of classRows) {
+        if (!row.aluno_id || !row.nome_aluno) continue;
+        const alunoId: string = row.aluno_id;
+        const nomeAluno: string = row.nome_aluno;
+        const val = Number(row.valor_em_atraso ?? 0);
+        if (!uniqueStudents.has(alunoId)) {
+          uniqueStudents.set(alunoId, { nome: nomeAluno, totalDebt: val });
+        } else {
+          uniqueStudents.get(alunoId)!.totalDebt += val;
+        }
+      }
+
+      const count = uniqueStudents.size;
+      const total = Array.from(uniqueStudents.values()).reduce((sum, s) => sum + s.totalDebt, 0);
+
+      let answer = `Na turma **${matchingTurma.nome}**, há atualmente **${count}** ${count === 1 ? "aluno" : "alunos"} com mensalidades em atraso.`;
+      
+      if (count > 0) {
+        answer += `\n\nO valor acumulado das dívidas nesta turma é de **${new Intl.NumberFormat("pt-AO", {
+          style: "currency",
+          currency: "AOA",
+        }).format(total)}**.`;
+        
+        answer += `\n\n**Alunos devedores:**\n`;
+        Array.from(uniqueStudents.values()).slice(0, 5).forEach((student, idx) => {
+          answer += `${idx + 1}. ${student.nome} (Débito: *${new Intl.NumberFormat("pt-AO", {
+            style: "currency",
+            currency: "AOA",
+          }).format(student.totalDebt)}*)\n`;
+        });
+        
+        if (count > 5) {
+          answer += `\n*E mais ${count - 5} outros alunos...*`;
+        }
+      } else {
+        answer += ` Parabéns! A saúde financeira desta turma está totalmente em dia. 🎉`;
+      }
+
+      return {
+        ok: true,
+        mode: "action",
+        answer,
+        links: count > 0 ? [
+          {
+            label: "Baixar PDF de Inadimplentes da Turma",
+            href: `/api/secretaria/alunos/exportar?escolaId=${schoolId}&turma_id=${matchingTurma.id}&situacao_financeira=em_atraso&tipo=pdf`,
+          },
+        ] : undefined,
+      };
+    }
   }
 
   // 2. Fast Path: Check if user wants to see what they can do on this screen

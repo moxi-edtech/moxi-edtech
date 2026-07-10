@@ -912,8 +912,12 @@ export default function AiChatWidget({
                                   key={`${message.id}-link-${idx}`}
                                   type="button"
                                   onClick={() => {
-                                    router.push(link.href);
-                                    setIsOpen(false);
+                                    if (link.href.startsWith("/api/")) {
+                                      window.open(link.href, "_blank");
+                                    } else {
+                                      router.push(link.href);
+                                      setIsOpen(false);
+                                    }
                                   }}
                                   className="flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-200"
                                 >
