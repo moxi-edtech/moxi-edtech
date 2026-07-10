@@ -124,6 +124,9 @@ async function callGeminiForRAG(prompt: string) {
 
   if (!response.ok) {
     const errText = await response.text();
+    if (response.status === 429) {
+      throw new Error("COTA_EXCEDIDA");
+    }
     throw new Error(`Erro na API do Gemini: ${response.status} - ${errText}`);
   }
 
@@ -344,8 +347,22 @@ export async function processKlasseBrainQuery(params: {
     "Resposta do KLASSE Brain:",
   ].join("\n");
 
-  // Call Gemini and handle logging
-  const geminiResult = await callGeminiForRAG(prompt);
+  // Call Gemini and handle logging with graceful fallback on quota limits
+  let geminiResult;
+  try {
+    geminiResult = await callGeminiForRAG(prompt);
+  } catch (err) {
+    if (err instanceof Error && err.message === "COTA_EXCEDIDA") {
+      const suggestions = getActionsForRole(role, context?.module).slice(0, 2);
+      return {
+        ok: true,
+        mode: "fallback",
+        answer: "O limite de requisições do assistente foi temporariamente excedido (Cota do Gemini esgotada). Por favor, tente novamente dentro de um minuto. Enquanto isso, posso sugerir atalhos rápidos para as ações desta tela:",
+        suggestions: suggestions.length > 0 ? suggestions : undefined,
+      };
+    }
+    throw err;
+  }
   const answer = geminiResult.text;
 
   if (usageLogId) {
