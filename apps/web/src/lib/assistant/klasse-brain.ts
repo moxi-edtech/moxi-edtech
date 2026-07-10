@@ -357,7 +357,7 @@ export async function processKlasseBrainQuery(params: {
       return {
         ok: true,
         mode: "fallback",
-        answer: "O limite de requisições do assistente foi temporariamente excedido (Cota do Gemini esgotada). Por favor, tente novamente dentro de um minuto. Enquanto isso, posso sugerir atalhos rápidos para as ações desta tela:",
+        answer: "O limite de requisições do assistente foi temporariamente excedido. Por favor, tente novamente dentro de um minuto. Enquanto isso, posso sugerir atalhos rápidos para as ações desta tela:",
         suggestions: suggestions.length > 0 ? suggestions : undefined,
       };
     }
