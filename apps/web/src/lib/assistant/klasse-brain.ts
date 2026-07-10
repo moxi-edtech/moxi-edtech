@@ -186,17 +186,14 @@ export async function processKlasseBrainQuery(params: {
     }
 
     if (matchingTurma) {
-      // Query radar entries
+      // Query radar entries for this school and class directly
       const { data: radarRows } = await supabase
         .from("vw_radar_inadimplencia")
         .select("aluno_id, nome_aluno, nome_turma, valor_em_atraso")
-        .eq("escola_id", schoolId);
+        .eq("escola_id", schoolId)
+        .ilike("nome_turma", matchingTurma.nome);
 
-      const classRows = (radarRows ?? []).filter((r) => {
-        const rowTurmaName = (r.nome_turma ?? "").toLowerCase().trim();
-        const targetTurmaName = (matchingTurma!.nome ?? "").toLowerCase().trim();
-        return rowTurmaName === targetTurmaName;
-      });
+      const classRows = radarRows ?? [];
 
       // Group by unique student
       const uniqueStudents = new Map<string, { nome: string; totalDebt: number }>();
