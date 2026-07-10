@@ -139,7 +139,7 @@ const HEALTH_CONFIG: Record<HealthSignal, { label: string; dot: string; ring: st
 // All operationally useful filters in one bar. Admin sees all; secretary sees subset.
 
 function FilterBar({
-  filters, onChange, adminMode, cursos, search, onSearch,
+  filters, onChange, adminMode, cursos, search, onSearch, viewMode, onViewModeChange,
 }: {
   filters:   ActiveFilters;
   onChange:  (next: Partial<ActiveFilters>) => void;
@@ -147,6 +147,8 @@ function FilterBar({
   cursos:    Array<{ id: string; nome: string }>
   search:    string;
   onSearch:  (value: string) => void;
+  viewMode:  "table" | "cards";
+  onViewModeChange: (mode: "table" | "cards") => void;
 }) {
   const activeCount = Object.entries(filters).filter(
     ([k, v]) => v !== "todos" && v !== DEFAULT_FILTERS[k as keyof ActiveFilters]
@@ -246,6 +248,26 @@ function FilterBar({
           <X size={14} /> Limpar ({activeCount})
         </button>
       )}
+
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-white ml-auto">
+        <button
+          type="button"
+          onClick={() => onViewModeChange("cards")}
+          className={`p-1.5 rounded-lg transition-colors ${viewMode === "cards" ? "bg-[#1F6B3B] text-white" : "text-slate-400 hover:text-slate-700"}`}
+          title="Exibição em Cartões"
+        >
+          <LayoutGrid size={15} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onViewModeChange("table")}
+          className={`p-1.5 rounded-lg transition-colors ${viewMode === "table" ? "bg-[#1F6B3B] text-white" : "text-slate-400 hover:text-slate-700"}`}
+          title="Exibição em Tabela"
+        >
+          <List size={15} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -265,83 +287,41 @@ function HealthBadge({ signal }: { signal: HealthSignal }) {
 // ─── Health detail breakdown (shown in health column) ────────────────────────
 
 function HealthDetail({ 
-  turma, financeiro, pedagogico, secretariaBase 
+  turma, financeiro, pedagogico 
 }: { 
   turma: TurmaItem; 
   financeiro?: FinanceiroTurmaStat | null;
   pedagogico?: PedagogicoTurmaStat | null;
-  secretariaBase: string;
+  secretariaBase?: string;
 }) {
-  const pct           = Math.min(Math.round(((turma.ocupacao_atual || 0) / (turma.capacidade_maxima || 30)) * 100), 100);
   const inadimplencia = Number(financeiro?.inadimplenciaPct ?? 0);
   const temProfessor  = Boolean(turma.professor_nome);
   const curriculoOk   = turma.status_curriculo !== "pendente";
   const signal        = computeHealth(turma, financeiro, pedagogico);
 
   return (
-    <div className="space-y-1.5">
+    <div className="flex items-center gap-2">
       <HealthBadge signal={signal} />
-      <div className="flex flex-col gap-1 mt-1">
-        {/* Ocupação */}
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-          <span className={`w-1 h-1 rounded-full flex-shrink-0 ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-klasse-gold-500" : "bg-[#1F6B3B]"}`} />
-          Ocupação {pct}%
-        </div>
-        
-        {/* Pedagogical Stats (Fase 2) */}
-        {pedagogico && (
-          <>
-            <div className={`flex items-center gap-1.5 text-[10px] ${pedagogico.media_presenca < 75 ? "text-rose-600 font-semibold" : "text-slate-500"}`}
-                 title={`${pedagogico.alunos_abaixo_presenca} alunos abaixo do mínimo`}>
-              <span className={`w-1 h-1 rounded-full flex-shrink-0 ${pedagogico.media_presenca < 75 ? "bg-rose-500" : "bg-[#1F6B3B]"}`} />
-              Assiduidade {Math.round(pedagogico.media_presenca)}%
-            </div>
-            <div className={`flex items-center gap-1.5 text-[10px] ${pedagogico.media_notas < 50 ? "text-rose-600 font-semibold" : "text-slate-500"}`}
-                 title={`${pedagogico.alunos_abaixo_notas} disciplinas críticas`}>
-              <span className={`w-1 h-1 rounded-full flex-shrink-0 ${pedagogico.media_notas < 50 ? "bg-rose-500" : "bg-[#1F6B3B]"}`} />
-              Média {Math.round(pedagogico.media_notas)}%
-            </div>
-            {pedagogico.is_desescoberta && (
-              <div className="flex items-center gap-1.5 text-[10px] text-rose-600 font-bold animate-pulse" title="Horário prevê aula mas não há professor atribuído">
-                <AlertTriangle size={10} /> Turma Desescoberta
-              </div>
-            )}
-          </>
+      <div className="flex items-center gap-1.5">
+        {!temProfessor && (
+          <span title="Sem professor atribuído">
+            <UserX size={12} className="text-[#E3B23C]" />
+          </span>
         )}
-
-        {/* Professor */}
-        <div className={`flex items-center gap-1.5 text-[10px] ${temProfessor ? "text-slate-500" : "text-klasse-gold-600 font-semibold"}`}>
-          {temProfessor
-            ? <UserCheck size={10} className="text-[#1F6B3B]" />
-            : <UserX size={10} className="text-klasse-gold-500" />}
-          {temProfessor ? turma.professor_nome : "Sem professor"}
-        </div>
-        
-        {/* Currículo */}
-        <div className={`flex items-center gap-1.5 text-[10px] ${curriculoOk ? "text-slate-500" : "text-klasse-gold-600 font-semibold"}`}>
-          {curriculoOk
-            ? <BookOpen size={10} className="text-[#1F6B3B]" />
-            : <BookX size={10} className="text-klasse-gold-500" />}
-          {curriculoOk ? "Currículo OK" : "Currículo pendente"}
-        </div>
-        
-        {/* Inadimplência (only if notable) */}
-        {financeiro && inadimplencia > 0 && (
-          <div className={`flex items-center gap-1.5 text-[10px] ${inadimplencia >= 20 ? "text-rose-600 font-semibold" : "text-slate-500"}`}>
-            <span className={`w-1 h-1 rounded-full flex-shrink-0 ${inadimplencia >= 40 ? "bg-rose-500" : "bg-klasse-gold-400"}`} />
-            Inadimplência {inadimplencia.toFixed(0)}%
-          </div>
+        {!curriculoOk && (
+          <span title="Currículo pendente">
+            <BookX size={12} className="text-[#E3B23C]" />
+          </span>
         )}
-
-        {/* Candidatos em Espera (Fase 4) */}
-        {pedagogico && pedagogico.candidatos_espera > 0 && (
-          <Link 
-            href={`${secretariaBase}/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
-            className="flex items-center gap-1.5 text-[10px] text-klasse-gold-600 font-bold hover:underline"
-          >
-            <UsersRound size={10} />
-            {pedagogico.candidatos_espera} candidato(s) em espera
-          </Link>
+        {inadimplencia >= 20 && (
+          <span title={`Inadimplência alta: ${inadimplencia.toFixed(0)}%`}>
+            <AlertTriangle size={12} className="text-rose-500" />
+          </span>
+        )}
+        {pedagogico?.is_desescoberta && (
+          <span title="Turma desescoberta">
+            <AlertTriangle size={12} className="text-rose-500 animate-pulse" />
+          </span>
         )}
       </div>
     </div>
@@ -1183,6 +1163,8 @@ export default function TurmasListClient({
           cursos={cursos}
           search={busca}
           onSearch={setBusca}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
 
         {isInitialLoading ? (
@@ -1275,11 +1257,61 @@ export default function TurmasListClient({
                       if (row.type === "expanded") {
                         const qv = expandedData[row.turma.id];
                         const loading = expandedLoading === row.turma.id;
+                        const fin = financeiroStats[row.turma.id];
+                        const ped = pedagogicoStats[row.turma.id];
+                        const max = row.turma.capacidade_maxima || 30;
+                        const atual = row.turma.ocupacao_atual || 0;
+                        const pct = Math.min(Math.round((atual / max) * 100), 100);
+                        const inadimplencia = Number(fin?.inadimplenciaPct ?? 0);
 
                         return (
                           <tr key={row.key} className="bg-slate-50/50" style={vs}>
                             <td colSpan={7} className="px-5 py-4">
-                              <div className="ml-11 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="ml-11 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {/* Status Operacional */}
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                                    <CheckCircle2 size={12} className="text-[#1F6B3B]" /> Status Operacional
+                                  </h4>
+                                  <div className="space-y-2 text-xs">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-500">Professor:</span>
+                                      <span className="font-semibold text-slate-800 truncate max-w-[120px]" title={row.turma.professor_nome || "Sem professor"}>
+                                        {row.turma.professor_nome || "Não atribuído"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-500">Currículo:</span>
+                                      <span className={`font-semibold ${row.turma.status_curriculo === "pendente" ? "text-klasse-gold-600" : "text-[#1F6B3B]"}`}>
+                                        {row.turma.status_curriculo === "pendente" ? "Pendente" : "OK"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-500">Inadimplência:</span>
+                                      <span className={`font-semibold ${inadimplencia >= 20 ? "text-rose-600" : "text-slate-700"}`}>
+                                        {inadimplencia}%
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-500">Lotação:</span>
+                                      <span className="font-semibold text-slate-800">
+                                        {atual} / {max} ({pct}%)
+                                      </span>
+                                    </div>
+                                    {ped && ped.candidatos_espera > 0 && (
+                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5">
+                                        <span className="text-slate-500">Em Espera:</span>
+                                        <Link 
+                                          href={`${secretariaBase}/admissoes?turmaId=${row.turma.id}&search=${encodeURIComponent(row.turma.nome || "")}`}
+                                          className="font-bold text-klasse-gold-600 hover:underline"
+                                        >
+                                          {ped.candidatos_espera} candidatos
+                                        </Link>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
                                 {/* Alunos em Risco */}
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
@@ -1291,10 +1323,10 @@ export default function TurmasListClient({
                                       <div className="h-4 bg-slate-100 rounded w-3/4" />
                                     </div>
                                   ) : qv?.risks?.length > 0 ? (
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 max-h-[100px] overflow-y-auto">
                                       {qv.risks.map((r: any, idx: number) => (
                                         <div key={idx} className="flex items-center justify-between text-xs">
-                                          <span className="font-medium text-slate-700">{r.nome}</span>
+                                          <span className="font-medium text-slate-700 truncate max-w-[120px]">{r.nome}</span>
                                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                             r.status === "critical" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"
                                           }`}>
@@ -1330,28 +1362,28 @@ export default function TurmasListClient({
                                     </div>
                                   ) : substituting === row.turma.id ? (
                                     <div className="space-y-3 animate-in fade-in duration-200">
-                                      <p className="text-xs font-semibold text-slate-600">Selecionar Substituto para {qv?.currentSubject?.nome}:</p>
+                                      <p className="text-xs font-semibold text-slate-600">Substituto para {qv?.currentSubject?.nome}:</p>
                                       <select 
                                         value={selectedProf}
                                         onChange={(e) => setSelectedProf(e.target.value)}
-                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-klasse-gold"
+                                        className="w-full p-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-klasse-gold"
                                       >
                                         <option value="">Selecione um professor...</option>
                                         {professors.map(p => (
                                           <option key={p.teacher_id} value={p.teacher_id}>{p.nome}</option>
                                         ))}
                                       </select>
-                                      <div className="flex justify-end gap-2">
+                                      <div className="flex justify-end gap-1.5">
                                         <button 
                                           onClick={() => setSubstituting(null)}
-                                          className="px-3 py-1.5 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                                          className="px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                                         >
                                           Cancelar
                                         </button>
                                         <button 
                                           onClick={() => handleAssignSubstitute(row.turma.id, qv.currentSubject.slot_id)}
                                           disabled={!selectedProf}
-                                          className="px-3 py-1.5 text-[10px] font-bold bg-klasse-gold-500 text-white hover:bg-klasse-gold-600 rounded-lg shadow-sm transition-all disabled:opacity-50"
+                                          className="px-2.5 py-1 text-[10px] font-bold bg-[#1F6B3B] text-white hover:brightness-95 rounded-lg shadow-sm transition-all disabled:opacity-50"
                                         >
                                           Confirmar
                                         </button>
@@ -1359,8 +1391,8 @@ export default function TurmasListClient({
                                     </div>
                                   ) : qv?.currentSubject ? (
                                     <div>
-                                      <p className="text-sm font-bold text-slate-900">{qv.currentSubject.nome}</p>
-                                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+                                      <p className="text-sm font-bold text-slate-900 truncate">{qv.currentSubject.nome}</p>
+                                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
                                         <UserCheck size={12} /> {qv.currentSubject.professor}
                                       </p>
                                       <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5">
@@ -1368,14 +1400,14 @@ export default function TurmasListClient({
                                       </p>
                                     </div>
                                   ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem aulas agendadas para este horário.</p>
+                                    <p className="text-xs text-slate-400 py-2">Sem aulas agendadas.</p>
                                   )}
                                 </div>
 
                                 {/* Log de Ocupação Histórica (Fase 4) */}
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                                    <UsersRound size={12} className="text-blue-500" /> Evolução da Lotação
+                                    <UsersRound size={12} className="text-blue-500" /> Lotação Histórica
                                   </h4>
                                   {loading ? (
                                     <div className="space-y-2 animate-pulse">
@@ -1384,14 +1416,14 @@ export default function TurmasListClient({
                                     </div>
                                   ) : qv?.history?.length > 0 ? (
                                     <div className="space-y-2">
-                                      {qv.history.slice(-4).map((h: any, idx: number) => (
+                                      {qv.history.slice(-3).map((h: any, idx: number) => (
                                         <div key={idx} className="flex items-center justify-between text-[10px]">
                                           <span className="text-slate-500 font-medium">{h.mes_referencia}</span>
                                           <div className="flex items-center gap-2 flex-1 mx-3">
                                             <div className="h-1 bg-slate-100 rounded-full flex-1 overflow-hidden">
                                               <div 
                                                 className="h-full bg-blue-400 rounded-full"
-                                                style={{ width: `${Math.min((h.total_alunos / (row.turma.capacidade_maxima || 30)) * 100, 100)}%` }}
+                                                style={{ width: `${Math.min((h.total_alunos / max) * 100, 100)}%` }}
                                               />
                                             </div>
                                           </div>
