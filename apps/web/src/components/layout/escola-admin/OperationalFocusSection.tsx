@@ -38,7 +38,7 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
   return (
     <Link
       href={card.href}
-      className="group flex h-[104px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+      className="group flex h-[104px] flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 shadow-none hover:shadow-none"
     >
       <div className="flex items-center justify-between gap-2 min-w-0">
         <span className="truncate text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">
@@ -81,7 +81,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver mensalidades",
       icon: Banknote,
-      tone: "bg-emerald-50 text-emerald-700",
+      tone: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
     },
     {
       key: "admissoes",
@@ -91,7 +91,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/admissoes"),
       cta: "Abrir admissões",
       icon: UserRoundSearch,
-      tone: "bg-sky-50 text-sky-700",
+      tone: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
     },
     {
       key: "matriculas",
@@ -101,7 +101,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/matriculas"),
       cta: "Tratar matrículas",
       icon: ClipboardCheck,
-      tone: "bg-indigo-50 text-indigo-700",
+      tone: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
     },
     {
       key: "documentos",
@@ -111,7 +111,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/documentos-oficiais"),
       cta: "Ver documentos",
       icon: FileClock,
-      tone: "bg-amber-50 text-amber-700",
+      tone: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
     },
     {
       key: "inadimplencia",
@@ -121,7 +121,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver carteira",
       icon: ShieldAlert,
-      tone: "bg-rose-50 text-rose-700",
+      tone: "bg-[#E3B23C]/10 text-[#E3B23C]",
     },
     {
       key: "turmas",
@@ -131,7 +131,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas"),
       cta: "Revisar turmas",
       icon: Layers3,
-      tone: "bg-cyan-50 text-cyan-700",
+      tone: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
     },
     {
       key: "horarios",
@@ -141,7 +141,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: horarioQuadroHref,
       cta: "Publicar quadro",
       icon: CalendarClock,
-      tone: "bg-violet-50 text-violet-700",
+      tone: "bg-[#E3B23C]/10 text-[#E3B23C]",
     },
     {
       key: "setup",
@@ -151,7 +151,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/configuracoes"),
       cta: "Finalizar setup",
       icon: AlertTriangle,
-      tone: "bg-orange-50 text-orange-700",
+      tone: "bg-[#E3B23C]/10 text-[#E3B23C]",
     },
   ];
 

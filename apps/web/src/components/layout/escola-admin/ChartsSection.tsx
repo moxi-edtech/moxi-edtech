@@ -59,17 +59,19 @@ function ChartCard({
   title,
   subtitle,
   children,
+  isOperacoes = false,
 }: {
   icon:     React.ReactNode;
   iconBg:   string;
   title:    string;
   subtitle: string;
   children: React.ReactNode;
+  isOperacoes?: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className={`min-w-0 border border-slate-200 bg-white overflow-hidden ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
       <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-        <div className={`rounded-xl p-2 ${iconBg}`}>{icon}</div>
+        <div className={`p-2 ${isOperacoes ? "rounded-lg" : "rounded-xl"} ${iconBg}`}>{icon}</div>
         <div>
           <h3 className="text-sm font-bold text-slate-900">{title}</h3>
           <p className="text-xs text-slate-400">{subtitle}</p>
@@ -137,6 +139,8 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
 
   const hasLineData = labels.length > 0 && dadosAlunos.length > 0;
 
+  const isOperacoes = mode === "operacoes";
+
   return (
     <div className="grid min-w-0 grid-cols-1 lg:grid-cols-2 gap-5">
 
@@ -144,8 +148,9 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
       <ChartCard
         iconBg="bg-[#1F6B3B]/10 text-[#1F6B3B]"
         icon={<TrendingUp className="h-4 w-4" />}
-        title={mode === "operacoes" ? "Fluxo de Matrículas" : "Matrículas por Mês"}
-        subtitle={mode === "operacoes" ? "Ritmo operacional do ano letivo" : "Evolução do ano letivo"}
+        title={isOperacoes ? "Fluxo de Matrículas" : "Matrículas por Mês"}
+        subtitle={isOperacoes ? "Ritmo operacional do ano letivo" : "Evolução do ano letivo"}
+        isOperacoes={isOperacoes}
       >
         <div className="h-56 min-w-0">
           {hasLineData ? (
@@ -179,15 +184,16 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
       <ChartCard
         iconBg="bg-[#E3B23C]/10 text-[#E3B23C]"
         icon={<Wallet className="h-4 w-4" />}
-        title={mode === "operacoes" ? "Saúde da Cobrança" : "Status das Mensalidades"}
-        subtitle={mode === "operacoes" ? "Distribuição operacional da carteira" : "Distribuição atual"}
+        title={isOperacoes ? "Saúde da Cobrança" : "Status das Mensalidades"}
+        subtitle={isOperacoes ? "Distribuição operacional da carteira" : "Distribuição atual"}
+        isOperacoes={isOperacoes}
       >
         <div className="mb-4 flex items-center justify-end">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+          <div className={`inline-flex border border-slate-200 bg-slate-50 p-1 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
             <button
               type="button"
               onClick={() => setBillingView("quantidade")}
-              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+              className={`px-3 py-1.5 text-[11px] font-bold transition ${isOperacoes ? "rounded-md" : "rounded-lg"} ${
                 billingView === "quantidade" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
               }`}
             >
@@ -196,7 +202,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
             <button
               type="button"
               onClick={() => setBillingView("valor")}
-              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+              className={`px-3 py-1.5 text-[11px] font-bold transition ${isOperacoes ? "rounded-md" : "rounded-lg"} ${
                 billingView === "valor" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
               }`}
             >

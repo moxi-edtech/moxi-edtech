@@ -14,17 +14,17 @@ type EstadoVital = {
   fase_operacional: 'REGULAR' | 'EXAMES';
 };
 
-export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
+export function EstadoVitalBanner({ estado, isOperacoes = false }: { estado: EstadoVital | null; isOperacoes?: boolean }) {
   if (!estado) return null;
 
   const isExames = estado.fase_operacional === 'EXAMES';
   const isBloqueado = estado.hoje_bloqueado_pedagogico;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+    <div className={`border border-slate-200 bg-white p-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-xl shadow-sm"}`}>
       {/* Lado Esquerdo: Título e Status Resumido */}
       <div className="flex items-center gap-3">
-        <div className="bg-slate-50 rounded-xl p-2 text-slate-500 border border-slate-100">
+        <div className={`bg-slate-50 p-2 text-slate-500 border border-slate-100 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
           <Activity className="h-4 w-4" />
         </div>
         <div>

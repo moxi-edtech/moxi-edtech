@@ -10,6 +10,8 @@ type AcaoRapidaCardProps = {
   onClick?: () => void;
   disabled?: boolean;
   disabledReason?: string;
+  compact?: boolean;
+  variant?: "green" | "yellow";
 };
 
 export default function AcaoRapidaCard({
@@ -20,10 +22,16 @@ export default function AcaoRapidaCard({
   onClick,
   disabled = false,
   disabledReason,
+  compact = false,
+  variant = "green",
 }: AcaoRapidaCardProps) {
+  const colorClasses = variant === "yellow"
+    ? "text-[#E3B23C] bg-[#E3B23C]/10"
+    : "text-[#1F6B3B] bg-[#1F6B3B]/10";
+
   const inner = (
-    <div className="relative group flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-4 hover:shadow-sm transition">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F6B3B]/10 text-[#1F6B3B]">
+    <div className={`relative group flex flex-col items-start gap-2 border border-slate-200 bg-white p-4 transition ${compact ? "rounded-lg hover:shadow-none shadow-none" : "rounded-xl hover:shadow-sm"}`}>
+      <div className={`flex items-center justify-center ${compact ? "h-9 w-9 rounded-lg" : "h-10 w-10 rounded-xl"} ${colorClasses}`}>
         {disabled ? <Lock className="h-4 w-4 text-slate-400" /> : icon}
       </div>
       <div>

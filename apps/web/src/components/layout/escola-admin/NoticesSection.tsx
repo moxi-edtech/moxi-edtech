@@ -29,12 +29,14 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
   const escolaParam = escolaSlug || escolaId;
   const hrefAll = escolaParam ? buildPortalHref(escolaParam, `/${portalBase}/avisos`) : "#";
 
+  const isOperacoes = portalBase === "operacoes";
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className={`border border-slate-200 bg-white p-6 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
       {/* Header */}
       <header className="mb-5 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+          <div className={`bg-indigo-50 p-2 text-indigo-600 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
             <Megaphone className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -53,11 +55,11 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
 
       {/* Body */}
       {notices.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 text-slate-600">
-          <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200">
+        <div className={`flex items-center gap-3 border border-slate-100 bg-slate-50 p-4 text-slate-600 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
+          <div className={`bg-white p-2 ring-1 ring-slate-200 ${isOperacoes ? "rounded-md" : "rounded-lg"}`}>
             <BellOff className="h-5 w-5 text-slate-400" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-700">Sem avisos</p>
             <p className="text-xs text-slate-500 truncate">
               Quando houver comunicados, eles vão aparecer aqui.
@@ -72,9 +74,9 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
             return (
               <li
                 key={n.id}
-                className="group flex items-center gap-3 rounded-xl px-1 py-3"
+                className={`group flex items-center gap-3 px-1 py-3 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOperacoes ? "bg-[#E3B23C]/10 text-[#E3B23C]" : "bg-slate-100 text-slate-700"}`}>
                   <Megaphone className="h-4.5 w-4.5" />
                 </div>
 

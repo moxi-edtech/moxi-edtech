@@ -31,6 +31,7 @@ type QuickAction = {
   disabled?: boolean;
   reason?:  string;
   opensModal?: boolean;
+  variant?: "green" | "yellow";
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -58,24 +59,28 @@ export default function QuickActionsSection({
           label: "Nova Matrícula",
           icon: UserPlus,
           href: buildPortalHref(escolaParam, "/operacoes/matriculas/nova"),
+          variant: "green",
         },
         {
           key: "nota",
           label: "Nova Admissão",
           icon: FileText,
           href: buildPortalHref(escolaParam, "/operacoes/admissoes/nova"),
+          variant: "green",
         },
         {
           key: "aviso",
           label: "Importar Alunos",
           icon: UploadCloud,
           href: buildPortalHref(escolaParam, "/operacoes/importacoes"),
+          variant: "green",
         },
         {
           key: "evento",
           label: "Recebimentos",
           icon: Wallet,
           href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
+          variant: "green",
         },
         {
           key: "migracao_pautas",
@@ -84,12 +89,14 @@ export default function QuickActionsSection({
           href: buildPortalHref(escolaParam, "/operacoes/horarios/quadro"),
           disabled: !turmasOk,
           reason: "Crie turmas antes de gerir horários.",
+          variant: "yellow",
         },
         {
           key: "recebimentos",
           label: "Criar Aviso",
           icon: Megaphone,
           href: buildPortalHref(escolaParam, "/operacoes/avisos/novo"),
+          variant: "yellow",
         },
       ]
     : [
@@ -99,6 +106,7 @@ export default function QuickActionsSection({
           icon:  UserPlus,
           href:  buildPortalHref(escolaParam, "/admin/funcionarios/novo"),
           opensModal: true,
+          variant: "green",
         },
         {
           key: "nota",
@@ -110,6 +118,7 @@ export default function QuickActionsSection({
           reason:   !avaliacaoFrequenciaOk
             ? "Configure avaliação e frequência primeiro."
             : "Crie turmas antes de lançar notas.",
+          variant: "green",
         },
         {
           key: "aviso",
@@ -117,6 +126,7 @@ export default function QuickActionsSection({
           icon:  Megaphone,
           href:  buildPortalHref(escolaParam, "/admin/avisos/novo"),
           opensModal: true,
+          variant: "yellow",
         },
         {
           key: "evento",
@@ -124,6 +134,7 @@ export default function QuickActionsSection({
           icon:  Calendar,
           href:  buildPortalHref(escolaParam, "/admin/calendario/novo"),
           opensModal: true,
+          variant: "yellow",
         },
         {
           key: "migracao_pautas",
@@ -132,6 +143,7 @@ export default function QuickActionsSection({
           href: buildPortalHref(escolaParam, "/admin/migracao/pautas"),
           disabled: !turmasOk,
           reason: "Crie turmas antes de usar a migração de pautas.",
+          variant: "yellow",
         },
       ];
 
@@ -164,10 +176,12 @@ export default function QuickActionsSection({
     }
   };
 
+  const isOperacoes = portalBase === "operacoes";
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className={`border border-slate-200 bg-white p-5 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
       <header className="mb-5 flex items-center gap-2.5">
-        <div className="rounded-xl bg-slate-100 p-2 text-slate-500">
+        <div className={`bg-slate-100 p-2 text-slate-500 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
           <PlusCircle className="h-4 w-4" />
         </div>
         <h3 className="text-sm font-bold text-slate-900">Ações Rápidas</h3>
@@ -183,6 +197,8 @@ export default function QuickActionsSection({
             href={!action.opensModal ? action.href : undefined}
             disabled={action.disabled}
             disabledReason={action.reason}
+            compact={isOperacoes}
+            variant={action.variant}
           />
         ))}
       </div>

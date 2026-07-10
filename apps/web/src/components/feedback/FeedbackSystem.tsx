@@ -469,7 +469,7 @@ export type OperationalAlert = {
   desde?: string
 }
 
-function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (alert: OperationalAlert) => void }) {
+function AlertCard({ alert, onAction, isOperacoes = false }: { alert: OperationalAlert; onAction?: (alert: OperationalAlert) => void; isOperacoes?: boolean }) {
   const router = useRouter()
   const cfg = {
     critical: {
@@ -496,7 +496,7 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
   }[alert.severity]
 
   return (
-    <div className={`flex items-start gap-3 rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3 group/alert transition-all hover:shadow-md`}>
+    <div className={`flex items-start gap-3 border ${cfg.border} ${cfg.bg} px-4 py-3 group/alert transition-all ${isOperacoes ? "rounded-lg hover:shadow-none" : "rounded-xl hover:shadow-md"}`}>
       {cfg.icon}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -518,9 +518,9 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
             }
             if (alert.link) router.push(alert.link)
           }}
-          className="flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
-            hover:text-klasse-green border border-slate-200 rounded-lg px-3 py-2 bg-white
-            hover:border-klasse-green/30 transition-all shadow-sm active:scale-95"
+          className={`flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
+            hover:text-klasse-green border border-slate-200 px-3 py-2 bg-white
+            hover:border-klasse-green/30 transition-all active:scale-95 ${isOperacoes ? "rounded-md shadow-none" : "rounded-lg shadow-sm"}`}
         >
           {alert.link_label ?? "Resolver"} <ArrowRight size={12} />
         </button>
@@ -534,11 +534,13 @@ export function RadarOperacional({
   loading = false,
   role = "secretaria",
   onAction,
+  isOperacoes = false,
 }: {
   alerts: OperationalAlert[]
   loading?: boolean
   role?: "secretaria" | "admin"
   onAction?: (alert: OperationalAlert) => void
+  isOperacoes?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const critical = alerts.filter((a) => a.severity === "critical")
@@ -547,7 +549,7 @@ export function RadarOperacional({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className={`border border-slate-200 bg-white p-6 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
         <div className="flex items-center gap-3 text-sm font-bold text-slate-400 uppercase tracking-widest">
           <Loader2 size={16} className="animate-spin text-klasse-green" /> Mapeando Cockpit…
         </div>
@@ -558,10 +560,9 @@ export function RadarOperacional({
   if (alerts.length === 0) {
     return (
       <div
-        className="flex items-center gap-4 rounded-2xl border border-emerald-100
-        bg-white px-6 py-4 shadow-sm"
+        className={`flex items-center gap-4 border border-emerald-100 bg-white px-6 py-4 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}
       >
-        <div className="bg-emerald-50 rounded-xl p-2.5 text-emerald-600">
+        <div className={`bg-emerald-50 text-emerald-600 p-2.5 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
           <CheckCircle2 size={20} />
         </div>
         <div>
@@ -573,14 +574,14 @@ export function RadarOperacional({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:border-slate-300">
+    <div className={`border border-slate-200 bg-white overflow-hidden transition-all ${isOperacoes ? "rounded-lg shadow-none hover:border-slate-300" : "rounded-2xl shadow-sm hover:border-slate-300"}`}>
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="bg-amber-50 rounded-xl p-2.5">
+            <div className={`bg-amber-50 p-2.5 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
               <Zap size={20} className="text-amber-500" />
             </div>
             {critical.length > 0 && (
@@ -619,11 +620,11 @@ export function RadarOperacional({
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          className="px-6 pb-6 space-y-3 border-t border-slate-100 bg-slate-50/30"
+          className={`px-6 pb-6 space-y-3 border-t border-slate-100 ${isOperacoes ? "bg-slate-50/10" : "bg-slate-50/30"}`}
         >
           <div className="pt-4 space-y-3">
             {[...critical, ...warnings, ...infos].map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onAction={onAction} />
+              <AlertCard key={alert.id} alert={alert} onAction={onAction} isOperacoes={isOperacoes} />
             ))}
           </div>
         </motion.div>

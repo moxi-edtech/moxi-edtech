@@ -95,7 +95,7 @@ export function KpiCard({
         </div>
         <div className={`flex flex-col items-end ${compact ? "gap-1.5" : "gap-2"}`}>
           <div
-            className={`${compact ? "h-9 w-9 rounded-lg" : "h-10 w-10 rounded-xl"} flex items-center justify-center shadow-sm ${styles.icon}`}
+            className={`${compact ? "h-9 w-9 rounded-lg shadow-none" : "h-10 w-10 rounded-xl shadow-sm"} flex items-center justify-center ${styles.icon}`}
           >
             <Icon className={compact ? "h-4.5 w-4.5" : "h-5 w-5"} />
           </div>
@@ -125,7 +125,11 @@ export function KpiCard({
     </>
   );
 
-  const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition hover:shadow-md ${compact ? "min-h-[112px] rounded-xl p-4" : "min-h-[132px] rounded-2xl p-5"} ${styles.box}`;
+  const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition ${
+    compact
+      ? "min-h-[112px] rounded-lg p-4 shadow-none hover:shadow-none"
+      : "min-h-[132px] rounded-2xl p-5 hover:shadow-md shadow-sm"
+  } ${styles.box}`;
 
   if (href) {
     return (

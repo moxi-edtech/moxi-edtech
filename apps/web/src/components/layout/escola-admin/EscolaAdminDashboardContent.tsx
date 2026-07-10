@@ -134,20 +134,21 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
 
 // ─── Finance card wrapper ─────────────────────────────────────────────────────
 
-function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, children }: {
+function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, children, isOperacoes = false }: {
   icon:       React.ReactNode;
-  iconBg:     string;
+  iconBg:   string;
   title:      string;
   subtitle:   string;
   linkHref:   string;
   linkLabel:  string;
   children:   React.ReactNode;
+  isOperacoes?: boolean;
 }) {
   return (
-    <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col h-full">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/30">
+    <motion.div variants={itemVariants} className={`border border-slate-200 bg-white overflow-hidden flex flex-col h-full ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
+      <div className={`flex items-center justify-between px-5 py-4 border-b border-slate-100 ${isOperacoes ? "bg-slate-50/10" : "bg-slate-50/30"}`}>
         <div className="flex items-center gap-3">
-          <div className={`rounded-xl p-2 ${iconBg}`}>{icon}</div>
+          <div className={`p-2 ${isOperacoes ? "rounded-lg" : "rounded-xl"} ${iconBg}`}>{icon}</div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight">{title}</h3>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{subtitle}</p>
@@ -342,13 +343,13 @@ export default function EscolaAdminDashboardContent({
       {/* ── 1.1 ESTADO VITAL (Organismo Vivo) ────────────────────────────────── */}
       {estadoVital && (
         <motion.div variants={itemVariants}>
-          <EstadoVitalBanner estado={estadoVital} />
+          <EstadoVitalBanner estado={estadoVital} isOperacoes={isOperacoes} />
         </motion.div>
       )}
 
       {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} />
+        <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} isOperacoes={isOperacoes} />
       </motion.div>
 
       {isOperacoes && operationalSnapshot && (
@@ -381,7 +382,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className={`relative overflow-hidden border border-slate-200 bg-white shadow-sm ${isOperacoes ? "rounded-xl p-5" : "rounded-2xl p-6"}`}>
+        <motion.section variants={itemVariants} className={`relative overflow-hidden border border-slate-200 bg-white ${isOperacoes ? "rounded-lg p-5 shadow-none" : "rounded-2xl p-6 shadow-sm"}`}>
           <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-8 relative z-10">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
@@ -396,7 +397,7 @@ export default function EscolaAdminDashboardContent({
                       : "sem previsão definida"}
                   </span>
                   {isAcimaDaMeta && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 animate-in fade-in slide-in-from-left-2">
+                    <div className={`flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-100 animate-in fade-in slide-in-from-left-2 ${isOperacoes ? "rounded-md" : "rounded-full"}`}>
                        <TrendingUp className="w-3 h-3 text-emerald-600" />
                        <span className="text-[10px] font-black text-emerald-600">+{valorAcimaMeta}% ACIMA DA META</span>
                     </div>
@@ -429,7 +430,7 @@ export default function EscolaAdminDashboardContent({
                   {displayPercentualReceita}%
                 </p>
                 {isAcimaDaMeta && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ${isOperacoes ? "" : "shadow-[0_0_8px_rgba(16,185,129,0.5)]"}`} />
                 )}
               </div>
               <p className="text-[10px] font-black text-emerald-600 uppercase mt-2 tracking-widest">Realizado Total</p>
@@ -445,9 +446,13 @@ export default function EscolaAdminDashboardContent({
                 className={`h-full rounded-full ${
                   hasMovimentoReceita
                     ? isAcimaDaMeta 
-                      ? "bg-gradient-to-r from-emerald-600 to-emerald-400"
-                      : "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80]"
-                    : "bg-gradient-to-r from-slate-300 to-slate-400"
+                      ? isOperacoes
+                        ? "bg-emerald-600"
+                        : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                      : isOperacoes
+                        ? "bg-[#1F6B3B]"
+                        : "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80]"
+                    : "bg-slate-300"
                 }`}
               />
             </div>
@@ -496,6 +501,7 @@ export default function EscolaAdminDashboardContent({
           subtitle="Entradas confirmadas hoje"
           linkHref={cashFlowHref}
           linkLabel="Ver histórico"
+          isOperacoes={isOperacoes}
         >
           <AnimatePresence mode="popLayout">
             {pagamentosRecentes.length === 0 ? (
@@ -542,6 +548,7 @@ export default function EscolaAdminDashboardContent({
           subtitle="Alertas de inadimplência"
           linkHref={radarFinanceiroHref}
           linkLabel="Ver todos"
+          isOperacoes={isOperacoes}
         >
           <AnimatePresence mode="popLayout">
             {inadimplenciaTop.length === 0 ? (

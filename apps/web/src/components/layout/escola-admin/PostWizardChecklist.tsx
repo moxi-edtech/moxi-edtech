@@ -157,6 +157,8 @@ export default function PostWizardChecklist({
   // Não renderiza se o contexto não estiver pronto ou se tudo estiver concluído
   if (!escolaParam || totalSteps === 0 || completedSteps === totalSteps) return null;
 
+  const isOperacoes = portalBase === "operacoes";
+
   return (
     <section className="space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -186,22 +188,24 @@ export default function PostWizardChecklist({
             key={step.id} 
             href={step.href}
             className={`
-              group relative flex items-center gap-4 p-4 rounded-2xl border transition-all
+              group relative flex items-center gap-4 p-4 border transition-all
+              ${isOperacoes ? "rounded-lg" : "rounded-2xl"}
               ${step.completed 
                 ? 'bg-slate-50/50 border-slate-100 opacity-75' 
                 : step.current
-                ? 'bg-white border-brand-200 shadow-sm ring-1 ring-brand-100 hover:shadow-md'
+                ? `bg-white border-brand-200 ring-1 ring-brand-100 ${isOperacoes ? "shadow-none hover:shadow-none" : "shadow-sm hover:shadow-md"}`
                 : 'bg-white border-slate-200 opacity-60 hover:opacity-100'
               }
             `}
           >
             <div className={`
-              w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors
+              w-10 h-10 flex items-center justify-center shrink-0 transition-colors
+              ${isOperacoes ? "rounded-lg" : "rounded-xl"}
               ${step.completed 
-                ? 'bg-klasse-green-100 text-klasse-green-600' 
+                ? 'bg-[#1F6B3B]/10 text-[#1F6B3B]' 
                 : step.current
-                ? 'bg-brand-50 text-brand-900 group-hover:bg-[#1F6B3B] group-hover:text-white'
-                : 'bg-slate-100 text-slate-400'
+                ? 'bg-[#E3B23C]/15 text-[#E3B23C] group-hover:bg-[#1F6B3B] group-hover:text-white'
+                : 'bg-slate-50 text-slate-400 border border-slate-100/50'
               }
             `}>
               {step.completed ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}

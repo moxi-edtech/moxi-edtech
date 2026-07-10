@@ -25,12 +25,12 @@ export default async function RecebimentosPage({ params }: { params: Promise<{ i
   return (
     <div className="space-y-6">
       <DashboardHeader
-        title="Janela de Recebimentos"
-        description="Validação de comprovantes enviados pelos alunos via fluxo auditável."
+        title="Caixa & Receita Unificada"
+        description="Cockpit geral de conciliação e validação de mensalidades, taxas e emolumentos da escola."
         breadcrumbs={[
           { label: "Início", href: `/escola/${escolaId}` },
           { label: "Secretaria", href: `/escola/${escolaId}/secretaria` },
-          { label: "Recebimentos" },
+          { label: "Receita Unificada" },
         ]}
       />
 
