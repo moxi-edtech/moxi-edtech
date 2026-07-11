@@ -49,7 +49,10 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/operacoes/admissoes", label: "Todas as admissões" },
         { href: "/escola/[escolaId]/operacoes/admissoes/nova", label: "Nova admissão" },
+        { href: "/escola/[escolaId]/operacoes/matriculas", label: "Matrículas" },
+        { href: "/escola/[escolaId]/operacoes/matriculas/nova", label: "Nova matrícula" },
         { href: "/escola/[escolaId]/operacoes/rematricula", label: "Rematrículas" },
+        { href: "/escola/[escolaId]/operacoes/rematricula/janelas", label: "Janelas de rematrícula" },
       ],
     },
     { href: "/escola/[escolaId]/operacoes/professores", label: "Professores", icon: "User" },
@@ -59,6 +62,8 @@ export const sidebarConfig: SidebarConfig = {
       icon: "GraduationCap",
       children: [
         { href: "/escola/[escolaId]/operacoes/turmas", label: "Lista de turmas" },
+        { href: "/escola/[escolaId]/operacoes/turmas?status=pendente", label: "Pendentes" },
+        { href: "/escola/[escolaId]/operacoes/turmas/ocupacao", label: "Ocupação" },
         { href: "/escola/[escolaId]/operacoes/classes", label: "Classes" },
       ],
     },
@@ -78,8 +83,9 @@ export const sidebarConfig: SidebarConfig = {
       label: "Horários & Calendário",
       icon: "CalendarDays",
       children: [
-        { href: "/escola/[escolaId]/operacoes/horarios/quadro", label: "Quadro de Horários" },
-        { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário Escolar" },
+        { href: "/escola/[escolaId]/operacoes/horarios/quadro", label: "Quadro de horários" },
+        { href: "/escola/[escolaId]/operacoes/horarios/slots", label: "Tempos e turnos" },
+        { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário escolar" },
       ],
     },
     {
@@ -97,6 +103,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Wallet",
       children: [
         { href: "/escola/[escolaId]/operacoes/recebimentos", label: "Balcão & cobrança" },
+        { href: "/escola/[escolaId]/operacoes/turmas-alunos", label: "Carteira por turma/aluno" },
         { href: "/escola/[escolaId]/operacoes/fecho", label: "Fecho de caixa" },
       ],
     },
@@ -116,6 +123,8 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/operacoes/relatorios", label: "Auditoria" },
         { href: "/escola/[escolaId]/operacoes/relatorios/mapa-aproveitamento", label: "Mapa de Aproveitamento" },
+        { href: "/escola/[escolaId]/operacoes/relatorios/mensal-escolar", label: "Mensal Escolar" },
+        { href: "/escola/[escolaId]/operacoes/relatorios/propinas", label: "Propinas" },
       ],
     },
     {
@@ -138,11 +147,14 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     {
-      href: "/escola/[escolaId]/operacoes/integracao",
+      href: "/escola/[escolaId]/operacoes/importacoes",
       label: "Integração de Dados",
       icon: "History",
       children: [
-        { href: "/escola/[escolaId]/operacoes/importacoes", label: "Importações" },
+        { href: "/escola/[escolaId]/operacoes/importacoes", label: "Histórico de importações" },
+        { href: "/escola/[escolaId]/operacoes/migracao/alunos", label: "Migrar alunos" },
+        { href: "/escola/[escolaId]/operacoes/migracao/historico", label: "Histórico transitado" },
+        { href: "/escola/[escolaId]/operacoes/migracao/pautas", label: "Migrar pautas" },
         { href: "/escola/[escolaId]/operacoes/exportacoes", label: "Exportações" },
       ],
     },
@@ -152,10 +164,18 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Settings2",
       children: [
         { href: "/escola/[escolaId]/operacoes/configuracoes", label: "Visão geral" },
-        { href: "/escola/[escolaId]/operacoes/configuracoes/calendario", label: "Calendário Escolar" },
-        { href: "/escola/[escolaId]/operacoes/configuracoes/avaliacao", label: "Sistema de Avaliação" },
-        { href: "/escola/[escolaId]/operacoes/configuracoes/financeiro", label: "Políticas Financeiras" },
-        { href: "/escola/[escolaId]/operacoes/configuracoes/mensalidades", label: "Mensalidades & Emolumentos" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/estrutura", label: "Oferta formativa" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/identidade", label: "Identidade" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/calendario", label: "Calendário escolar" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/avaliacao", label: "Sistema de avaliação" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/turmas", label: "Turmas" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/financeiro", label: "Políticas financeiras" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/mensalidades", label: "Mensalidades & emolumentos" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/comunicacao", label: "Comunicação" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/fluxos", label: "Fluxos" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/excecoes", label: "Exceções" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/sistema", label: "Sistema" },
+        { href: "/escola/[escolaId]/operacoes/configuracoes/avancado", label: "Avançado" },
       ],
     },
   ],

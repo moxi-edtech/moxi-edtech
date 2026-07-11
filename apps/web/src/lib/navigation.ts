@@ -30,6 +30,7 @@ export function toContextualPortalPath(path: string, pathname: string | null | u
     ["/admin/dashboard", "/operacoes/dashboard"],
     ["/admin/configuracoes", "/operacoes/configuracoes"],
     ["/admin/professores", "/operacoes/professores"],
+    ["/secretaria/professores", "/operacoes/professores"],
     ["/admin/turmas", "/operacoes/turmas"],
     ["/admin/alunos", "/operacoes/alunos"],
     ["/admin/avisos", "/operacoes/avisos"],

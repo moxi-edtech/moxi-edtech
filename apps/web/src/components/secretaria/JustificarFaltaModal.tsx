@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, CalendarCheck } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildPortalHref, buildContextualPortalHref } from "@/lib/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { createClient } from "@/lib/supabase/client";
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
@@ -142,7 +142,7 @@ export function JustificarFaltaModal() {
       <button
         type="button"
         onClick={() => {
-          router.push(buildPortalHref(escolaParam, "/secretaria/calendario"));
+          router.push(buildContextualPortalHref(escolaParam, "/secretaria/calendario", pathname));
         }}
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
       >

@@ -2,11 +2,11 @@
 import "server-only";
 
 import { cookies, headers } from "next/headers";
-import { supabaseServer }    from "@/lib/supabaseServer";
+import { supabaseServerTyped }    from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
-import type { Database } from "~types/supabase";
+import type { DBWithRPC } from "@/types/supabase-augment";
 
 import type {
   KpiStats,
@@ -26,21 +26,24 @@ type AvisoRow = {
   created_at: string | null;
 };
 
-type DatabaseWithAvisos = Database & {
-  public: Database["public"] & {
-    Tables: Database["public"]["Tables"] & {
+type LocalDatabase = Omit<DBWithRPC, "public"> & {
+  public: Omit<DBWithRPC["public"], "Tables"> & {
+    Tables: DBWithRPC["public"]["Tables"] & {
       avisos: {
         Row: AvisoRow & { escola_id: string | null };
+        Insert: any;
+        Update: any;
+        Relationships: [];
       };
     };
   };
 };
 
-type AdmissoesCountsRow = Database["public"]["Views"]["vw_admissoes_counts_por_status"]["Row"];
-type FinanceiroDashboardRow = Database["public"]["Views"]["vw_financeiro_dashboard"]["Row"];
-type MatriculasPorMesRow = Database["public"]["Views"]["vw_admin_matriculas_por_mes"]["Row"];
-type MensalidadesStatusRow = Database["public"]["Views"]["vw_mensalidades_operacional_status_ano_ativo"]["Row"];
-type FinanceiroPropinasMensalRow = Database["public"]["Views"]["vw_financeiro_propinas_mensal_escola"]["Row"];
+type AdmissoesCountsRow = DBWithRPC["public"]["Views"]["vw_admissoes_counts_por_status"]["Row"];
+type FinanceiroDashboardRow = DBWithRPC["public"]["Views"]["vw_financeiro_dashboard"]["Row"];
+type MatriculasPorMesRow = DBWithRPC["public"]["Views"]["vw_admin_matriculas_por_mes"]["Row"];
+type MensalidadesStatusRow = DBWithRPC["public"]["Views"]["vw_mensalidades_operacional_status_ano_ativo"]["Row"];
+type FinanceiroPropinasMensalRow = DBWithRPC["public"]["Views"]["vw_financeiro_propinas_mensal_escola"]["Row"];
 type DisciplinaIdRow = { disciplina_id: string | null };
 type TurmaHorarioRow = { id: string; ano_letivo: number | null; nome: string | null; turma_codigo: string | null };
 type EstadoVitalResponse = { ok: boolean; estado: unknown };
@@ -94,7 +97,7 @@ export default async function EscolaAdminDashboardData({
   escolaNome,
   mode = "admin",
 }: Props) {
-  const s            = await supabaseServer();
+  const s            = await supabaseServerTyped<LocalDatabase>();
   const { data: userRes } = await s.auth.getUser();
   const user = userRes?.user ?? null;
   const cookieHeader = (await cookies()).toString();
@@ -203,6 +206,9 @@ export default async function EscolaAdminDashboardData({
       pagamentosRecentesRes,
       estadoVitalRes,
       avisosRes,
+      whatsappProviderRes,
+      whatsappFailedCountRes,
+      metricasAcessoRes,
     ] = await Promise.all([
       s.from("vw_admin_dashboard_counts")
         .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
@@ -303,12 +309,24 @@ export default async function EscolaAdminDashboardData({
         { ok: false, estado: null }
       ),
 
-      (s as import("@supabase/supabase-js").SupabaseClient<DatabaseWithAvisos>)
-        .from("avisos")
+      s.from("avisos")
         .select("id, titulo, created_at")
         .eq("escola_id", validId)
         .order("created_at", { ascending: false })
         .limit(5),
+
+      s.from("school_notification_providers")
+        .select("status, session_name")
+        .eq("school_id", validId)
+        .eq("provider_type", "whatsapp_waha")
+        .maybeSingle(),
+
+      s.from("communication_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", validId)
+        .eq("status", "failed"),
+
+      s.rpc("get_metricas_acesso_alunos", { p_escola_id: validId }),
     ]);
 
     // ─── Setup status ──────────────────────────────────────────────────────
@@ -510,6 +528,24 @@ export default async function EscolaAdminDashboardData({
       titulo: aviso.titulo?.trim() || "Comunicado",
       dataISO: aviso.created_at || new Date().toISOString(),
     }));
+
+    const whatsappProvider = whatsappProviderRes?.data
+      ? {
+          status: whatsappProviderRes.data.status,
+          sessionNameMasked: whatsappProviderRes.data.session_name ? `${whatsappProviderRes.data.session_name.slice(0, 3)}***` : null,
+        }
+      : null;
+    const whatsappFailedCount = Number(whatsappFailedCountRes?.count ?? 0);
+    const rawMetricas = metricasAcessoRes?.data;
+    const metricasAcessoData = Array.isArray(rawMetricas) ? rawMetricas[0] : rawMetricas;
+    const metricasAcesso = metricasAcessoData
+      ? {
+          total_alunos: Number(metricasAcessoData.total_alunos ?? 0),
+          acesso_liberado: Number(metricasAcessoData.acesso_liberado ?? 0),
+          sem_acesso: Number(metricasAcessoData.sem_acesso ?? 0),
+          enviados_whatsapp: Number(metricasAcessoData.enviados_whatsapp ?? 0),
+        }
+      : null;
 
     return (
       <EscolaAdminDashboardContent

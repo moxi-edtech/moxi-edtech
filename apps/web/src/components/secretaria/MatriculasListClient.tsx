@@ -153,14 +153,18 @@ export default function MatriculasListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const slugFromPath = useMemo(() => {
+  const resolvedSlug = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
-  const resolvedSlug = slugFromPath;
-  const secretariaBase = resolvedSlug ? `/escola/${resolvedSlug}/secretaria` : "/secretaria";
+  const portalBase = pathname?.includes("/operacoes")
+    ? "/operacoes"
+    : "/secretaria";
+  const secretariaBase = resolvedSlug
+    ? `/escola/${resolvedSlug}${portalBase}`
+    : portalBase;
   const novaMatriculaHref = resolvedSlug
-    ? `/escola/${resolvedSlug}/secretaria/admissoes/nova`
+    ? `/escola/${resolvedSlug}${portalBase}/admissoes/nova`
     : "#";
 
   // Filtros URL

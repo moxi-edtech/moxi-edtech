@@ -14,7 +14,7 @@ import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildPortalHref, buildContextualPortalHref } from "@/lib/navigation";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -491,7 +491,13 @@ export default function TurmaDetailClient({
   const { escolaSlug } = useEscolaId();
   const escolaId = data?.turma.escola_id;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaId;
-  const isSecretariaContext = pathname?.includes("/secretaria/") ?? false;
+  const isOperacoesContext = pathname?.includes("/operacoes") ?? false;
+  const isSecretariaContext = pathname?.includes("/secretaria") ?? false;
+  const contextPrefix = isOperacoesContext
+    ? "/operacoes"
+    : isSecretariaContext
+    ? "/secretaria"
+    : "/admin";
 
   const loadProfessoresDisponiveis = useCallback(async () => {
     if (!escolaId) return [] as ProfessorOption[];
@@ -1450,9 +1456,7 @@ export default function TurmaDetailClient({
                         const aluno = alunos[vr.index];
                         const profileHref = buildPortalHref(
                           escolaParam,
-                          isSecretariaContext
-                            ? `/secretaria/alunos/${aluno.aluno_id}`
-                            : `/admin/alunos/${aluno.aluno_id}`
+                          `${contextPrefix}/alunos/${aluno.aluno_id}`
                         );
 
                         return (
@@ -1545,7 +1549,7 @@ export default function TurmaDetailClient({
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                     <Link
-                      href={`/escola/${escolaParam}/horarios/quadro?turmaId=${turma.id}`}
+                      href={buildContextualPortalHref(escolaParam, `/horarios/quadro?turmaId=${turma.id}`, pathname)}
                       className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
                     >
                       Ver no quadro
@@ -1594,8 +1598,8 @@ export default function TurmaDetailClient({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {disciplinasFiltradas.map((d) => (
-                  <div key={d.id}
+                {disciplinasFiltradas.map((d, index) => (
+                  <div key={`${d.turma_disciplina_id || d.id}-${index}`}
                     className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-[#1F6B3B]/30 hover:shadow-md transition-all group cursor-pointer">
                     <div className="p-2.5 rounded-xl bg-slate-100 text-slate-400 group-hover:bg-[#1F6B3B]/10 group-hover:text-[#1F6B3B] w-fit transition-colors mb-4">
                       <BookOpen size={16} />
@@ -1629,7 +1633,7 @@ export default function TurmaDetailClient({
                     </div>
                     <div className="flex flex-col gap-2">
                       <Link
-                        href={`/escola/${escolaParam}/horarios/quadro?turmaId=${turma.id}`}
+                        href={buildContextualPortalHref(escolaParam, `/horarios/quadro?turmaId=${turma.id}`, pathname)}
                         className="w-full py-2 text-center text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         Ver no quadro
@@ -2171,7 +2175,7 @@ export default function TurmaDetailClient({
 
                   <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                     <Link
-                      href={`/escola/${escolaParam}/horarios/quadro?turmaId=${turma.id}`}
+                      href={buildContextualPortalHref(escolaParam, `/horarios/quadro?turmaId=${turma.id}`, pathname)}
                       onClick={() => setActionModal(null)}
                       className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                     >

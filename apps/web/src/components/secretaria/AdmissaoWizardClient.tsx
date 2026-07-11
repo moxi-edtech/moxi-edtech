@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { toContextualPortalPath } from "@/lib/navigation";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -2164,10 +2165,18 @@ export default function AdmissaoWizardClient({
     return match?.[1] ?? null;
   }, [pathname]);
   const resolvedSlug = escolaSlug ?? slugFromPath;
-  const secretariaBase = resolvedSlug ? `/escola/${resolvedSlug}/secretaria` : "/secretaria";
+  const portalBase = pathname?.includes("/operacoes")
+    ? "/operacoes"
+    : "/secretaria";
+  const secretariaBase = resolvedSlug
+    ? `/escola/${resolvedSlug}${portalBase}`
+    : portalBase;
   const withSlug = useCallback(
-    (suffix: string) => (resolvedSlug ? `/escola/${resolvedSlug}${suffix}` : suffix),
-    [resolvedSlug]
+    (suffix: string) => {
+      const contextualSuffix = toContextualPortalPath(suffix, pathname);
+      return resolvedSlug ? `/escola/${resolvedSlug}${contextualSuffix}` : contextualSuffix;
+    },
+    [resolvedSlug, pathname]
   );
 
   const lastCandidaturaIdRef = useRef<string | null | undefined>(undefined);

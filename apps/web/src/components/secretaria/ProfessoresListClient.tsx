@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 import { 
   Search, 
   Filter, 
@@ -34,6 +35,7 @@ type Professor = {
 };
 
 export default function ProfessoresListClient() {
+  const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const [q, setQ] = useState("");
@@ -397,14 +399,14 @@ export default function ProfessoresListClient() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center gap-1">
                           <Link
-                            href={buildPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}`)}
+                            href={buildContextualPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}`, pathname)}
                             className="text-slate-600 hover:text-white hover:bg-slate-600 p-2 rounded-lg transition-all"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
                           <Link
-                            href={buildPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}/editar`)}
+                            href={buildContextualPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}/editar`, pathname)}
                             className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
                             title="Editar professor"
                           >

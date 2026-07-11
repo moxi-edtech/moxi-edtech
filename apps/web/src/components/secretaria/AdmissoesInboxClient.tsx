@@ -35,6 +35,7 @@ import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { toContextualPortalPath } from '@/lib/navigation'
 import { AdmissaoConversionSheet } from './AdmissaoConversionSheet'
 import { createClient } from '@/lib/supabase/client'
 import { formatTurnoDisplay } from '@/utils/formatters'
@@ -300,8 +301,12 @@ export default function AdmissoesInboxClient({
   }, [pathname])
   const escolaParam = escolaSlug || slugFromPath || escolaId
   const withSlug = useCallback(
-    (suffix: string) => ((escolaSlug || slugFromPath) ? `/escola/${escolaSlug || slugFromPath}${suffix}` : suffix),
-    [escolaSlug, slugFromPath]
+    (suffix: string) => {
+      const contextualSuffix = toContextualPortalPath(suffix, pathname)
+      const slug = escolaSlug || slugFromPath
+      return slug ? `/escola/${slug}${contextualSuffix}` : contextualSuffix
+    },
+    [escolaSlug, slugFromPath, pathname]
   )
 
   const [selectedId, setSelectedId] = useState<string | null>(searchParams?.get('id') || null)

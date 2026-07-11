@@ -55,3 +55,26 @@
   - script: `pnpm -C apps/web run test:unit:fuzz`
   - resultado atual: 9 testes passados
 - Verificação de compilação: `pnpm -C apps/web exec tsc --noEmit --pretty false` (OK).
+
+## Preservação de Contexto de Operações (2026-07-11)
+- **Hardenização de Contexto Operacional para `admin_financeiro`**:
+  - Correção de caminhos base estáticos `/secretaria` para dinâmicos baseados no pathname contendo `/operacoes` em:
+    - `AlunosListClient.tsx`
+    - `AlunosSecretariaPage.tsx`
+    - `MatriculasListClient.tsx`
+    - `AdmissoesRadarClient.tsx`
+    - `AdmissoesInboxClient.tsx`
+    - `AdmissaoWizardClient.tsx`
+    - `ImportacoesListClient.tsx`
+    - `JustificarFaltaModal.tsx`
+    - `TurmaDetailClient.tsx`
+    - `ProfessoresListClient.tsx`
+    - `PagamentoModal.tsx`
+    - `ModalPagamentoRapido.tsx`
+  - Enriquecimento do sidebar de Operações (`sidebarNav.ts`) incluindo menus completos de Secretaria, Admin e Financeiro.
+  - Correção do item "Integração de Dados" apontando para a rota existente `/escola/[escolaId]/operacoes/importacoes`.
+  - Aliases de rota criados sob `/operacoes/professores/[professorId]/` (detalhe e editar) para redirecionar para a página principal de gestão de professores, evitando erros 404.
+  - Adição de regra de reescrita em `navigation.ts` para mapear `/secretaria/professores` para `/operacoes/professores`.
+  - Limpeza de imports não utilizados de `buildPortalHref`.
+  - Verificação de compilação: `pnpm --filter web typecheck` (OK).
+

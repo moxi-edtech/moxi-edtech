@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 import { useConfirm, useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 // Fonte de verdade: nunca usar cores avulsas fora deste mapa.
@@ -556,6 +556,7 @@ function EstadoConcluido({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   return (
@@ -579,9 +580,9 @@ function EstadoConcluido({
         }}
         onEscolher={(passo: Passo) => {
           if (passo.id === "emitir_recibo" && escolaParam) {
-            router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos"));
+            router.push(buildContextualPortalHref(escolaParam, "/financeiro/pagamentos", pathname));
           } else if (passo.id === "ver_atrasos" && escolaParam) {
-            router.push(buildPortalHref(escolaParam, "/financeiro/radar"));
+            router.push(buildContextualPortalHref(escolaParam, "/financeiro/radar", pathname));
           } else if (passo.id === "novo_pagamento") {
             onClose();
           }

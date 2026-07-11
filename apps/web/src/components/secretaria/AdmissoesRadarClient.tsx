@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Archive, Plus } from 'lucide-react'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
+import { toContextualPortalPath } from '@/lib/navigation'
 
 type AdmissaoStatus =
   | 'rascunho'
@@ -100,8 +101,11 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
     return match?.[1] ?? null
   }, [pathname])
   const withSlug = useCallback(
-    (suffix: string) => (slugFromPath ? `/escola/${slugFromPath}${suffix}` : suffix),
-    [slugFromPath]
+    (suffix: string) => {
+      const contextualSuffix = toContextualPortalPath(suffix, pathname)
+      return slugFromPath ? `/escola/${slugFromPath}${contextualSuffix}` : contextualSuffix
+    },
+    [pathname, slugFromPath]
   )
 
   const [data, setData] = useState<RadarData | null>(null)

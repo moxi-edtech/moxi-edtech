@@ -12,6 +12,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_user_escola_id uuid := public.current_tenant_escola_id();
+  v_periodo_numero smallint;
   v_colunas jsonb;
   v_linhas jsonb;
 BEGIN
@@ -23,27 +24,38 @@ BEGIN
     RAISE EXCEPTION 'AUTH: Permissão insuficiente para gerar mapas estatísticos.';
   END IF;
 
+  IF p_periodo_letivo_id IS NOT NULL THEN
+    SELECT pl.numero
+    INTO v_periodo_numero
+    FROM public.periodos_letivos pl
+    WHERE pl.id = p_periodo_letivo_id
+      AND pl.escola_id = p_escola_id;
+
+    IF v_periodo_numero IS NULL THEN
+      RAISE EXCEPTION 'VALIDATION: Período letivo não encontrado para a escola.';
+    END IF;
+  END IF;
+
   CREATE TEMP TABLE tmp_base_notas ON COMMIT DROP AS
   WITH base_raw AS (
     SELECT
       m.id AS matricula_id,
       al.numero_processo,
       al.nome_completo AS nome_aluno,
-      d.id AS disciplina_id,
-      ('d_' || d.id::text) AS disciplina_key,
-      d.sigla AS disciplina_sigla,
-      d.nome AS disciplina_nome,
+      vbm.disciplina_id,
+      ('d_' || vbm.disciplina_id::text) AS disciplina_key,
+      vbm.disciplina_sigla,
+      vbm.disciplina_nome,
       vbm.trimestre,
       vbm.nota_final
     FROM public.matriculas m
     JOIN public.alunos al ON al.id = m.aluno_id
     JOIN public.vw_boletim_por_matricula vbm ON vbm.matricula_id = m.id
-    JOIN public.disciplinas d ON d.id = vbm.disciplina_id
     WHERE m.escola_id = p_escola_id
       AND m.turma_id = p_turma_id
       AND m.status = 'ativo'
       AND vbm.conta_para_media_med IS TRUE
-      AND (p_periodo_letivo_id IS NULL OR vbm.periodo_letivo_id = p_periodo_letivo_id)
+      AND (v_periodo_numero IS NULL OR vbm.trimestre = v_periodo_numero)
   ),
   base_ranked AS (
     SELECT

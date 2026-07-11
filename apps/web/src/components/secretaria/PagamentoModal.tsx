@@ -4,9 +4,9 @@ import { useMemo, useState, useEffect } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
@@ -59,6 +59,7 @@ export function PagamentoModal({
   const { success, error } = useToast();
   const { escolaId, escolaSlug } = useEscolaId();
   const router = useRouter();
+  const pathname = usePathname();
   const escolaParam = escolaSlug || escolaId;
 
   const needsRef = useMemo(() => method === "tpa", [method]);
@@ -204,9 +205,9 @@ export function PagamentoModal({
                   }}
                   onEscolher={(passo: Passo) => {
                     if (passo.id === "emitir_recibo" && escolaParam) {
-                      router.push(buildPortalHref(escolaParam, "/financeiro/pagamentos"));
+                      router.push(buildContextualPortalHref(escolaParam, "/financeiro/pagamentos", pathname));
                     } else if (passo.id === "ver_atrasos" && escolaParam) {
-                      router.push(buildPortalHref(escolaParam, "/financeiro/radar"));
+                      router.push(buildContextualPortalHref(escolaParam, "/financeiro/radar", pathname));
                     } else if (passo.id === "novo_pagamento") {
                       handleClose();
                     }

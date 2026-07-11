@@ -1097,7 +1097,12 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
-  const secretariaBase = slugFromPath ? `/escola/${slugFromPath}/secretaria` : "/secretaria";
+  const portalBase = pathname?.includes("/operacoes")
+    ? "/operacoes"
+    : "/secretaria";
+  const secretariaBase = slugFromPath
+    ? `/escola/${slugFromPath}${portalBase}`
+    : portalBase;
 
   const [tab, setTab] = useState<TabStatus>("ativos");
   const [q, setQ] = useState("");
@@ -1423,7 +1428,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       <div className="w-full max-w-6xl mx-auto px-6 py-8 space-y-6">
         <Breadcrumb
           items={[
-            { label: "Secretaria", href: secretariaBase },
+            { label: pathname?.includes("/operacoes") ? "Operações" : "Secretaria", href: secretariaBase },
             { label: "Alunos" },
           ]}
         />

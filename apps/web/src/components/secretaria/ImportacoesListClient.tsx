@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowRight, Clock, FileText, RefreshCw, Upload } from "lucide-react";
 import RowActions from "@/app/secretaria/(portal-secretaria)/importacoes/RowActions";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 type ImportItem = {
   id: string;
@@ -25,6 +26,7 @@ type ImportResponse = {
 };
 
 export default function ImportacoesListClient() {
+  const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const [items, setItems] = useState<ImportItem[]>([]);
@@ -72,7 +74,7 @@ export default function ImportacoesListClient() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href={buildPortalHref(escolaParam, "/secretaria/migracao/alunos")}
+            href={buildContextualPortalHref(escolaParam, "/secretaria/migracao/alunos", pathname)}
             className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
           >
             <Upload size={18} />
@@ -158,7 +160,7 @@ export default function ImportacoesListClient() {
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
                     <Link
-                      href={buildPortalHref(escolaParam, `/secretaria/importacoes/${it.id}`)}
+                      href={buildContextualPortalHref(escolaParam, `/secretaria/importacoes/${it.id}`, pathname)}
                       className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-teal-700 border border-teal-200 hover:bg-teal-50"
                     >
                       Visualizar

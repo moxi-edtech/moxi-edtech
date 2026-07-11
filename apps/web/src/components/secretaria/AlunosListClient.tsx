@@ -167,7 +167,12 @@ export default function AlunosListClient() {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
-  const secretariaBase = slugFromPath ? `/escola/${slugFromPath}/secretaria` : "/secretaria";
+  const portalBase = pathname?.includes("/operacoes")
+    ? "/operacoes"
+    : "/secretaria";
+  const secretariaBase = slugFromPath
+    ? `/escola/${slugFromPath}${portalBase}`
+    : portalBase;
 
   // Filters
   const [q, setQ] = useState("");
