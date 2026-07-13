@@ -265,8 +265,8 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
       }
     }
 
-    // 2.1) Sugestão automática de Classe de Exame (6ª, 9ª e 12ª)
-    if (info.classeNum === "6" || info.classeNum === "9" || info.classeNum === "12") {
+    // 2.1) Sugestão automática de Classe de Exame (6ª e 9ª)
+    if (info.classeNum === "6" || info.classeNum === "9") {
        if (!nextIsClasseExame) {
          nextIsClasseExame = true;
          corrections++;
