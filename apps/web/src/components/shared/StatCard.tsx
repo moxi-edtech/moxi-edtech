@@ -16,16 +16,16 @@ type StatCardProps = {
 
 const toneStyles: Record<Tone, { iconBg: string; iconText: string; valueText: string; border: string }> = {
   default: {
-    iconBg: "bg-[#1F6B3B]/10",
-    iconText: "text-[#1F6B3B]",
-    valueText: "text-[#1F6B3B]",
-    border: "border-[#1F6B3B]/15",
+    iconBg: "bg-klasse-green/10",
+    iconText: "text-klasse-green",
+    valueText: "text-klasse-green",
+    border: "border-klasse-green/15",
   },
   warning: {
-    iconBg: "bg-[#E3B23C]/15",
-    iconText: "text-[#9a7010]",
-    valueText: "text-[#9a7010]",
-    border: "border-[#E3B23C]/30",
+    iconBg: "bg-klasse-gold/15",
+    iconText: "text-klasse-gold-700",
+    valueText: "text-klasse-gold-700",
+    border: "border-klasse-gold/30",
   },
   critical: {
     iconBg: "bg-rose-50",
@@ -75,14 +75,14 @@ export default function StatCard({
 
   return (
     <div
-      className={`rounded-2xl border bg-white p-4 shadow-sm transition ${
+      className={`rounded-xl border bg-white p-4 shadow-sm transition ${
         disabled ? "opacity-60" : "hover:shadow-md"
       } ${toneStyle.border}`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
-            className={`flex h-8 w-8 items-center justify-center rounded-xl ${toneStyle.iconBg} ${toneStyle.iconText}`}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneStyle.iconBg} ${toneStyle.iconText}`}
           >
             {icon}
           </span>
@@ -91,7 +91,7 @@ export default function StatCard({
           </span>
         </div>
         {href && !disabled && (
-          <Link href={href} className="text-[10px] font-semibold text-[#1F6B3B] hover:underline">
+          <Link href={href} className="text-[10px] font-semibold text-klasse-green hover:underline">
             Ver todos
           </Link>
         )}

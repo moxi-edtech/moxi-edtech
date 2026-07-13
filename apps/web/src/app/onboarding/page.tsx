@@ -3,23 +3,13 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { 
-  School, 
-  GraduationCap, 
-  CreditCard, 
   Users, 
   XCircle, 
   RefreshCw,
-  ChevronRight,
   Clock,
-  Mail,
-  Phone,
-  Calendar,
-  Save,
   Building2,
-  TrendingUp,
   Layout,
   Info,
   Sunrise,
@@ -58,6 +48,12 @@ interface FormData {
   total_alunos: string;
   faixa_propina: string;
   plano_interesse: PlanoInteresse | "";
+  commercial: {
+    trial_days: string;
+    taxa_ativacao: string;
+    mensalidade_kz: string;
+    curriculum_preset: string;
+  };
   // Passo 4 — Utilizadores
   utilizadores: {
     principal: { nome: string; tel: string; nivel_exp: string };
@@ -138,6 +134,36 @@ const PLANOS_INTERESSE: Array<{
   },
 ];
 
+const CURRICULUM_PRESETS = [
+  { value: "", label: "Definir manualmente no onboarding" },
+  { value: "pre_escolar", label: "Educação Pré-Escolar" },
+  { value: "primario_generico", label: "Ensino Primário (1ª à 6ª Classe)" },
+  { value: "esg_ciclo1", label: "Iº Ciclo do Ensino Secundário (7ª à 9ª Classe)" },
+  { value: "esg_puniv_cfb", label: "PUNIV - Ciências Físicas e Biológicas" },
+  { value: "esg_puniv_cej", label: "PUNIV - Ciências Económicas e Jurídicas" },
+  { value: "esg_puniv_cch", label: "PUNIV - Ciências Sociais e Humanas" },
+  { value: "tec_informatica", label: "Técnico de Informática" },
+  { value: "tec_contabilidade", label: "Técnico de Contabilidade" },
+  { value: "tec_informatica_gestao", label: "Técnico de Informática de Gestão" },
+  { value: "tec_saude_enfermagem", label: "Técnico de Enfermagem" },
+  { value: "tec_saude_analises", label: "Técnico de Análises Clínicas" },
+];
+
+const MESES = [
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
 const FORM_INICIAL: FormData = {
   escola_nome: "", escola_nif: "", escola_abrev: "", escola_codigo: "",
   escola_morada: "", escola_municipio: "", escola_provincia: "Luanda",
@@ -149,6 +175,12 @@ const FORM_INICIAL: FormData = {
   total_alunos: "",
   faixa_propina: "",
   plano_interesse: "",
+  commercial: {
+    trial_days: "15",
+    taxa_ativacao: "50000",
+    mensalidade_kz: "",
+    curriculum_preset: "",
+  },
   utilizadores: {
     principal: { nome: "", tel: "", nivel_exp: "" },
   },
@@ -254,9 +286,7 @@ export default function OnboardingPage() {
 }
 
 function OnboardingContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const parceiroRef = (searchParams?.get("ref") || "").trim().toUpperCase();
 
   const [passo, setPasso]       = useState(1);
@@ -271,6 +301,9 @@ function OnboardingContent() {
 
   const updateFin = (field: keyof FormData["financeiro"], value: unknown) =>
     setForm(f => ({ ...f, financeiro: { ...f.financeiro, [field]: value } }));
+
+  const updateCommercial = (field: keyof FormData["commercial"], value: unknown) =>
+    setForm(f => ({ ...f, commercial: { ...f.commercial, [field]: String(value ?? "") } }));
 
   const updateUtil = (field: keyof FormData["utilizadores"]["principal"], value: string) =>
     setForm(f => ({
@@ -309,41 +342,20 @@ function OnboardingContent() {
   async function submeter() {
     setSubmitting(true);
     setErro(null);
-    const planoSeleccionado = PLANOS_INTERESSE.find((plano) => plano.value === form.plano_interesse);
-
-    const { error } = await supabase.from("onboarding_requests").insert({
-      escola_nome:      form.escola_nome,
-      escola_nif:       form.escola_nif,
-      escola_abrev:     form.escola_abrev,
-      escola_codigo:    form.escola_codigo,
-      escola_morada:    form.escola_morada,
-      escola_municipio: form.escola_municipio,
-      escola_provincia: form.escola_provincia,
-      escola_tel:       form.escola_tel,
-      escola_email:     form.escola_email,
-      director_nome:    form.director_nome,
-      director_tel:     form.director_tel,
-      ano_letivo:       form.ano_letivo,
-      classes:          form.classes as any,
-      turnos:           form.turnos as any,
-      faixa_propina:    form.faixa_propina,
-      financeiro: {
-        ...form.financeiro,
-        total_alunos: form.total_alunos,
-        plano_interesse: form.plano_interesse || null,
-        plano_interesse_label: planoSeleccionado?.label ?? null,
-        origem_campanha: parceiroRef ? "influencer_escola_moderna" : "onboarding_direto",
-        influencer_codigo: parceiroRef || null,
-      } as any,
-      utilizadores: form.utilizadores as any,
-      status: "pendente",
-    } as any);
+    const response = await fetch("/api/onboarding", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        parceiro_ref: parceiroRef || null,
+      }),
+    });
+    const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
 
     setSubmitting(false);
 
-    if (error) {
-      setErro("Ocorreu um erro ao enviar. Tente novamente ou contacte o suporte.");
-      console.error(error);
+    if (!response.ok || !result?.ok) {
+      setErro(result?.error || "Ocorreu um erro ao enviar. Tente novamente ou contacte o suporte.");
       return;
     }
 
@@ -637,7 +649,7 @@ function OnboardingContent() {
               })}
             </div>
 
-            <SectionSep>Dados de Faturação (Lead Scoring)</SectionSep>
+            <SectionSep>Dados comerciais e de faturação</SectionSep>
 
             <div className="space-y-6">
               <div>
@@ -696,6 +708,60 @@ function OnboardingContent() {
                   })}
                 </div>
                 <Hint>Esta referência fica no pedido para a equipa comercial validar a proposta certa.</Hint>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label required>Trial negociado</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={form.commercial.trial_days}
+                    onChange={e => updateCommercial("trial_days", Math.min(30, Math.max(0, Number(e.target.value || 0))))}
+                    placeholder="15"
+                  />
+                  <Hint>Máximo 30 dias.</Hint>
+                </div>
+                <div>
+                  <Label required>Taxa de ativação</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={form.commercial.taxa_ativacao}
+                    onChange={e => updateCommercial("taxa_ativacao", Math.max(0, Number(e.target.value || 0)))}
+                    placeholder="50000"
+                  />
+                  <Hint>Valor em Kz.</Hint>
+                </div>
+                <div>
+                  <Label optional>Mensalidade estimada</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={form.commercial.mensalidade_kz}
+                    onChange={e => updateCommercial("mensalidade_kz", Math.max(0, Number(e.target.value || 0)))}
+                    placeholder="Ex: 75000"
+                  />
+                  <Hint>Valor SaaS previsto.</Hint>
+                </div>
+              </div>
+
+              <div>
+                <Label optional>Modelo curricular inicial</Label>
+                <Select
+                  value={form.commercial.curriculum_preset}
+                  onChange={e => updateCommercial("curriculum_preset", e.target.value)}
+                >
+                  {CURRICULUM_PRESETS.map((preset) => (
+                    <option key={preset.value || "manual"} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </Select>
+                <Hint>Quando selecionado, este preset fica disponível para acelerar o setup da escola depois do provisionamento.</Hint>
               </div>
             </div>
           </div>
@@ -794,10 +860,9 @@ function OnboardingContent() {
                     value={form.financeiro.mes_inicio}
                     onChange={e => updateFin("mes_inicio", e.target.value)}
                   >
-                    <option value="1">Janeiro</option>
-                    <option value="2">Fevereiro</option>
-                    <option value="3">Março</option>
-                    <option value="9">Setembro</option>
+                    {MESES.map((mes) => (
+                      <option key={mes.value} value={mes.value}>{mes.label}</option>
+                    ))}
                   </Select>
                 </div>
                 <div>
@@ -806,9 +871,9 @@ function OnboardingContent() {
                     value={form.financeiro.mes_fim}
                     onChange={e => updateFin("mes_fim", e.target.value)}
                   >
-                    <option value="10">Outubro</option>
-                    <option value="11">Novembro</option>
-                    <option value="12">Dezembro</option>
+                    {MESES.map((mes) => (
+                      <option key={mes.value} value={mes.value}>{mes.label}</option>
+                    ))}
                   </Select>
                 </div>
               </div>
@@ -862,6 +927,10 @@ function OnboardingContent() {
                   <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Estimativa Alunos</p><p className="font-bold text-slate-700">{form.total_alunos} Alunos</p></div>
                   <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Faixa de Propina</p><p className="font-bold text-[#1F6B3B]">{FAIXAS_PROPINA.find(f => f.value === form.faixa_propina)?.label}</p></div>
                   <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Plano de Interesse</p><p className="font-bold text-[#1F6B3B]">{PLANOS_INTERESSE.find(p => p.value === form.plano_interesse)?.label}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Trial</p><p className="font-bold text-slate-700">{form.commercial.trial_days || 0} dias</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Taxa de Ativação</p><p className="font-bold text-slate-700">Kz {Number(form.commercial.taxa_ativacao || 0).toLocaleString("pt-PT")}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Mensalidade SaaS</p><p className="font-bold text-slate-700">{form.commercial.mensalidade_kz ? `Kz ${Number(form.commercial.mensalidade_kz).toLocaleString("pt-PT")}` : "A validar"}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Preset Curricular</p><p className="font-bold text-slate-700">{CURRICULUM_PRESETS.find(p => p.value === form.commercial.curriculum_preset)?.label || "Manual"}</p></div>
                   <div className="col-span-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Classes Activas</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -927,7 +996,7 @@ function OnboardingContent() {
             <button
               type="button"
               onClick={submeter}
-              disabled={submitting || !form.faixa_propina || !form.total_alunos || !form.plano_interesse}
+              disabled={submitting || !form.faixa_propina || !form.total_alunos || !form.plano_interesse || Number(form.commercial.taxa_ativacao || 0) <= 0}
               className="flex items-center gap-2 px-8 py-2.5 bg-klasse-green text-white
                 rounded-xl text-xs font-bold hover:brightness-110 transition-all
                 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-klasse-green/10 uppercase tracking-widest"
@@ -946,18 +1015,4 @@ function OnboardingContent() {
       </footer>
     </div>
   );
-}
-
-// ─── Componentes de UI Auxiliares ───────────────────────────────────────────
-function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`bg-white border border-slate-200 rounded-lg ${className}`}>{children}</div>;
-}
-
-function CardContent({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={className}>{children}</div>;
-}
-
-function Badge({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors";
-  return <div className={`${base} ${className}`}>{children}</div>;
 }

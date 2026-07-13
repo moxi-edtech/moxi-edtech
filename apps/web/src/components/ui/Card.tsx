@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { klasseSurface } from "@moxi/design-tokens"
 import { cn } from "~/lib/utils"
 
 const Card = React.forwardRef<
@@ -9,7 +10,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
+      klasseSurface.card,
+      "text-card-foreground",
       className
     )}
     {...props}

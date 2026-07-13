@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.ao.klasse.app",
+        "paths": [
+          "/aluno/*",
+          "/professor/*"
+        ]
+      }
+    ]
+  }
+}

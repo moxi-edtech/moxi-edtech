@@ -34,7 +34,29 @@ ensureSupabaseEnv();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typedRoutes: false,
-  transpilePackages: ["@moxi/auth-middleware", "@moxi/tenant-sdk"],
+  transpilePackages: ["@moxi/auth-middleware", "@moxi/design-tokens", "@moxi/tenant-sdk"],
+  async headers() {
+    return [
+      {
+        source: '/.well-known/apple-app-site-association',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
+      {
+        source: '/.well-known/assetlinks.json',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
+    ];
+  },
   
   // Suas configurações existentes
   outputFileTracingRoot: path.join(__dirname, "../.."),

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
-import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox'
+import { markOutboxEventFailed } from '@/lib/outbox'
 import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
 import type { Database } from '~types/supabase'
 
@@ -16,13 +16,17 @@ const Body = z.object({
 export async function POST(req: Request) {
   let supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>> | null = null
   const outboxEventId: string | null = null
+  let escolaId: string | null = null
+  let idempotencyKey: string | null = null
+  let mutationCommitted = false
+
   try {
     supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const idempotencyKey = req.headers.get('idempotency-key')
+    idempotencyKey = req.headers.get('idempotency-key')
     if (!idempotencyKey) {
       return NextResponse.json({ ok: false, error: 'Idempotency-Key header is required' }, { status: 400 })
     }
@@ -31,8 +35,47 @@ export async function POST(req: Request) {
     if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     const body = parsed.data
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
+    escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+
+    const { data: existingIdempotency } = await supabase
+      .from('idempotency_keys')
+      .select('result')
+      .eq('escola_id', escolaId)
+      .eq('scope', 'professor_presencas')
+      .eq('key', idempotencyKey)
+      .maybeSingle()
+
+    if (existingIdempotency) {
+      if (existingIdempotency.result) {
+        return NextResponse.json(existingIdempotency.result, { status: 200 })
+      }
+      return NextResponse.json({ ok: false, error: 'Uma requisição idêntica está em andamento.' }, { status: 409 })
+    }
+
+    const { error: lockError } = await supabase
+      .from('idempotency_keys')
+      .insert({
+        escola_id: escolaId,
+        scope: 'professor_presencas',
+        key: idempotencyKey,
+        result: null
+      })
+
+    if (lockError) {
+      const { data: retryCheck } = await supabase
+        .from('idempotency_keys')
+        .select('result')
+        .eq('escola_id', escolaId)
+        .eq('scope', 'professor_presencas')
+        .eq('key', idempotencyKey)
+        .maybeSingle()
+
+      if (retryCheck?.result) {
+        return NextResponse.json(retryCheck.result, { status: 200 })
+      }
+      return NextResponse.json({ ok: false, error: 'Uma requisição idêntica está em andamento.' }, { status: 409 })
+    }
 
     const { data: professor } = await supabase
       .from('professores')
@@ -146,8 +189,27 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('Error calling upsert_frequencias_batch RPC:', error);
+      await supabase
+        .from('idempotency_keys')
+        .delete()
+        .eq('escola_id', escolaId)
+        .eq('scope', 'professor_presencas')
+        .eq('key', idempotencyKey)
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
+    mutationCommitted = true
+
+    const responsePayload = { ok: true, data };
+
+    await supabase.from('idempotency_keys').upsert(
+      {
+        escola_id: escolaId,
+        scope: 'professor_presencas',
+        key: idempotencyKey,
+        result: responsePayload,
+      },
+      { onConflict: 'escola_id,scope,key' }
+    )
 
     const faltas = body.presencas.filter((p) => p.status === 'falta')
     if (faltas.length > 0) {
@@ -210,9 +272,21 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json(responsePayload);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
+    if (supabase && escolaId && idempotencyKey && !mutationCommitted) {
+      try {
+        await supabase
+          .from('idempotency_keys')
+          .delete()
+          .eq('escola_id', escolaId)
+          .eq('scope', 'professor_presencas')
+          .eq('key', idempotencyKey)
+      } catch (err) {
+        console.error('Error clearing idempotency key on catch:', err)
+      }
+    }
     if (supabase) {
       await markOutboxEventFailed(supabase, outboxEventId, message).catch(() => null)
     }

@@ -36,13 +36,6 @@ import {
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 
-const K = {
-  green: "#1F6B3B",
-  rose: "#e11d48",
-  amber: "#E3B23C",
-  slate9: "#94a3b8",
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // TOAST SYSTEM
 // ═════════════════════════════════════════════════════════════════════════════
@@ -247,11 +240,11 @@ const TOAST_CONFIG: Record<
 > = {
   success: {
     bg: "bg-white/90",
-    border: "border-[#1F6B3B]/20",
+    border: "border-klasse-green/20",
     icon: <CheckCircle2 size={18} />,
     textColor: "text-slate-900",
-    iconColor: "text-[#1F6B3B]",
-    barColor: "bg-[#1F6B3B]",
+    iconColor: "text-klasse-green",
+    barColor: "bg-klasse-green",
   },
   error: {
     bg: "bg-white/90",
@@ -263,11 +256,11 @@ const TOAST_CONFIG: Record<
   },
   warning: {
     bg: "bg-white/90",
-    border: "border-[#E3B23C]/20",
+    border: "border-klasse-gold/20",
     icon: <AlertTriangle size={18} />,
     textColor: "text-slate-900",
-    iconColor: "text-[#E3B23C]",
-    barColor: "bg-[#E3B23C]",
+    iconColor: "text-klasse-gold",
+    barColor: "bg-klasse-gold",
   },
   info: {
     bg: "bg-white/90",
@@ -390,7 +383,7 @@ export function SyncIndicator({
     },
     synced: {
       icon: <CheckCircle2 size={11} />,
-      color: "text-[#1F6B3B]",
+      color: "text-klasse-green",
       text: "Guardado",
     },
     error: {
@@ -400,7 +393,7 @@ export function SyncIndicator({
     },
     offline: {
       icon: <WifiOff size={11} />,
-      color: "text-[#E3B23C]",
+      color: "text-klasse-gold",
       text: "Offline",
     },
   }[status]
@@ -446,7 +439,7 @@ export function OfflineBanner() {
 
   return (
     <div
-      className="fixed top-0 inset-x-0 z-[300] bg-[#E3B23C] text-white text-xs font-semibold
+      className="fixed top-0 inset-x-0 z-[300] bg-klasse-gold text-white text-xs font-semibold
       flex items-center justify-center gap-2 py-2 px-4 animate-in slide-in-from-top duration-200"
     >
       <WifiOff size={13} />
@@ -469,7 +462,7 @@ export type OperationalAlert = {
   desde?: string
 }
 
-function AlertCard({ alert, onAction, isOperacoes = false }: { alert: OperationalAlert; onAction?: (alert: OperationalAlert) => void; isOperacoes?: boolean }) {
+function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (alert: OperationalAlert) => void }) {
   const router = useRouter()
   const cfg = {
     critical: {
@@ -480,11 +473,11 @@ function AlertCard({ alert, onAction, isOperacoes = false }: { alert: Operationa
       count: "text-rose-600",
     },
     warning: {
-      border: "border-[#E3B23C]/25",
-      bg: "bg-[#E3B23C]/10",
-      icon: <AlertTriangle size={16} className="text-[#E3B23C] flex-shrink-0 mt-0.5" />,
-      badge: "bg-[#E3B23C]/20 text-[#E3B23C]",
-      count: "text-[#E3B23C]",
+      border: "border-klasse-gold/25",
+      bg: "bg-klasse-gold/10",
+      icon: <AlertTriangle size={16} className="text-klasse-gold flex-shrink-0 mt-0.5" />,
+      badge: "bg-klasse-gold/20 text-klasse-gold",
+      count: "text-klasse-gold",
     },
     info: {
       border: "border-slate-200",
@@ -496,7 +489,7 @@ function AlertCard({ alert, onAction, isOperacoes = false }: { alert: Operationa
   }[alert.severity]
 
   return (
-    <div className={`flex items-start gap-3 border ${cfg.border} ${cfg.bg} px-4 py-3 group/alert transition-all ${isOperacoes ? "rounded-lg hover:shadow-none" : "rounded-xl hover:shadow-md"}`}>
+    <div className={`flex items-start gap-3 rounded-xl border ${cfg.border} ${cfg.bg} px-4 py-3 shadow-sm transition-all hover:shadow-md group/alert`}>
       {cfg.icon}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -519,8 +512,8 @@ function AlertCard({ alert, onAction, isOperacoes = false }: { alert: Operationa
             if (alert.link) router.push(alert.link)
           }}
           className={`flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
-            hover:text-klasse-green border border-slate-200 px-3 py-2 bg-white
-            hover:border-klasse-green/30 transition-all active:scale-95 ${isOperacoes ? "rounded-md shadow-none" : "rounded-lg shadow-sm"}`}
+            hover:text-klasse-green rounded-lg border border-slate-200 px-3 py-2 bg-white shadow-sm
+            hover:border-klasse-green/30 transition-all active:scale-95 hover:shadow-md`}
         >
           {alert.link_label ?? "Resolver"} <ArrowRight size={12} />
         </button>
@@ -534,13 +527,11 @@ export function RadarOperacional({
   loading = false,
   role = "secretaria",
   onAction,
-  isOperacoes = false,
 }: {
   alerts: OperationalAlert[]
   loading?: boolean
   role?: "secretaria" | "admin"
   onAction?: (alert: OperationalAlert) => void
-  isOperacoes?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const critical = alerts.filter((a) => a.severity === "critical")
@@ -549,7 +540,7 @@ export function RadarOperacional({
 
   if (loading) {
     return (
-      <div className={`border border-slate-200 bg-white p-6 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3 text-sm font-bold text-slate-400 uppercase tracking-widest">
           <Loader2 size={16} className="animate-spin text-klasse-green" /> Mapeando Cockpit…
         </div>
@@ -560,9 +551,9 @@ export function RadarOperacional({
   if (alerts.length === 0) {
     return (
       <div
-        className={`flex items-center gap-4 border border-emerald-100 bg-white px-6 py-4 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}
+        className="flex items-center gap-4 rounded-xl border border-emerald-100 bg-white px-6 py-4 shadow-sm"
       >
-        <div className={`bg-emerald-50 text-emerald-600 p-2.5 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
+        <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-600">
           <CheckCircle2 size={20} />
         </div>
         <div>
@@ -574,14 +565,14 @@ export function RadarOperacional({
   }
 
   return (
-    <div className={`border border-slate-200 bg-white overflow-hidden transition-all ${isOperacoes ? "rounded-lg shadow-none hover:border-slate-300" : "rounded-2xl shadow-sm hover:border-slate-300"}`}>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className={`bg-amber-50 p-2.5 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
+            <div className="rounded-lg bg-amber-50 p-2.5">
               <Zap size={20} className="text-amber-500" />
             </div>
             {critical.length > 0 && (
@@ -620,11 +611,11 @@ export function RadarOperacional({
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          className={`px-6 pb-6 space-y-3 border-t border-slate-100 ${isOperacoes ? "bg-slate-50/10" : "bg-slate-50/30"}`}
+          className="space-y-3 border-t border-slate-100 bg-slate-50/30 px-6 pb-6"
         >
           <div className="pt-4 space-y-3">
             {[...critical, ...warnings, ...infos].map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onAction={onAction} isOperacoes={isOperacoes} />
+              <AlertCard key={alert.id} alert={alert} onAction={onAction} />
             ))}
           </div>
         </motion.div>
@@ -664,8 +655,8 @@ function FaltasIndicador({ faltas, max }: { faltas: number; max: number }) {
   const risco: FaltaRisco = restantes <= 0 ? "critico" : restantes <= 3 ? "atencao" : "ok"
 
   const cfg = {
-    ok: { color: "text-[#1F6B3B]", bg: "bg-[#1F6B3B]/10", bar: "bg-[#1F6B3B]" },
-    atencao: { color: "text-[#E3B23C]", bg: "bg-[#E3B23C]/10", bar: "bg-[#E3B23C]" },
+    ok: { color: "text-klasse-green", bg: "bg-klasse-green/10", bar: "bg-klasse-green" },
+    atencao: { color: "text-klasse-gold", bg: "bg-klasse-gold/10", bar: "bg-klasse-gold" },
     critico: { color: "text-rose-600", bg: "bg-rose-50", bar: "bg-rose-500" },
   }[risco]
 
@@ -712,9 +703,9 @@ function DisciplinaRow({
     nota === null || nota === undefined
       ? "text-slate-400"
       : nota >= 10
-        ? "text-[#1F6B3B] font-black"
+        ? "text-klasse-green font-black"
         : nota >= 8
-          ? "text-[#E3B23C] font-bold"
+          ? "text-klasse-gold font-bold"
           : "text-rose-600 font-bold"
 
   return (
@@ -732,7 +723,7 @@ function DisciplinaRow({
           <span className="text-sm text-slate-300 font-medium">—</span>
         )}
         {d.status === "pendente" && (
-          <p className="text-[9px] text-[#E3B23C] font-bold uppercase mt-0.5">Pendente</p>
+          <p className="mt-0.5 text-[9px] font-bold uppercase text-klasse-gold">Pendente</p>
         )}
         {d.status === "bloqueada" && (
           <p className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Bloqueada</p>
@@ -784,8 +775,8 @@ export function BoletimAluno({
   }).length
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-      <div className="bg-[#1F6B3B] px-5 py-4">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="bg-klasse-green px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-white/60 font-medium uppercase tracking-wide">Boletim</p>
@@ -813,7 +804,7 @@ export function BoletimAluno({
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all
-                ${tab === t.id ? "bg-white text-[#1F6B3B]" : "text-white/70 hover:text-white"}`}
+                ${tab === t.id ? "bg-white text-klasse-green" : "text-white/70 hover:text-white"}`}
             >
               {t.label}
             </button>
@@ -863,7 +854,7 @@ export function StatCardsSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+        <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <Skeleton className="h-10 w-10 rounded-xl" />
           <Skeleton className="h-7 w-16" />
           <Skeleton className="h-3 w-20" />
@@ -887,8 +878,8 @@ export function OperationProgress({
   const pct = total > 0 ? Math.round((current / total) * 100) : 0
 
   const cfg = {
-    running: { bar: "bg-[#E3B23C]", icon: <Loader2 size={14} className="animate-spin text-[#E3B23C]" /> },
-    done: { bar: "bg-[#1F6B3B]", icon: <CheckCircle2 size={14} className="text-[#1F6B3B]" /> },
+    running: { bar: "bg-klasse-gold", icon: <Loader2 size={14} className="animate-spin text-klasse-gold" /> },
+    done: { bar: "bg-klasse-green", icon: <CheckCircle2 size={14} className="text-klasse-green" /> },
     error: { bar: "bg-rose-500", icon: <AlertCircle size={14} className="text-rose-600" /> },
   }[status]
 
@@ -928,7 +919,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       {icon && (
-        <div className="mb-4 p-4 rounded-2xl bg-slate-100 text-slate-400">
+        <div className="mb-4 rounded-lg bg-slate-100 p-4 text-slate-400">
           {icon}
         </div>
       )}
@@ -939,7 +930,7 @@ export function EmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 rounded-xl bg-[#E3B23C] px-5 py-2 text-sm font-bold text-white
+          className="mt-4 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white
             hover:brightness-95 transition-all active:scale-95"
         >
           {action.label}
@@ -960,7 +951,7 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-      <div className="mb-4 p-4 rounded-2xl bg-rose-50 text-rose-400">
+      <div className="mb-4 rounded-lg bg-rose-50 p-4 text-rose-400">
         <AlertCircle size={24} />
       </div>
       <p className="text-sm font-bold text-slate-700">{title}</p>

@@ -1,6 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireRoleInSchool } from "@/lib/authz";
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { revalidatePath } from "next/cache";
 import type { Database, Json } from "~types/supabase";
 
@@ -36,6 +39,54 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+async function requireFinanceiroAccess(supabase: Awaited<ReturnType<typeof createClient>>, escolaId?: string | null) {
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user;
+
+  if (!user) {
+    throw new Error("Não autenticado.");
+  }
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(
+    supabase as any,
+    user.id,
+    escolaId ? String(escolaId) : null
+  );
+
+  if (!resolvedEscolaId) {
+    throw new Error("Sem permissão para esta escola.");
+  }
+
+  const roleCheck = await requireRoleInSchool({
+    supabase: supabase as any,
+    escolaId: resolvedEscolaId,
+    roles: [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP],
+  });
+
+  if (roleCheck.error) {
+    throw new Error("Sem permissão financeira.");
+  }
+
+  return resolvedEscolaId;
+}
+
+async function resolvePagamentoEscolaId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pagamentoId: string
+) {
+  const { data, error } = await supabase
+    .from("pagamentos")
+    .select("escola_id")
+    .eq("id", pagamentoId)
+    .maybeSingle();
+
+  if (error || !data?.escola_id) {
+    throw new Error("Pagamento não encontrado.");
+  }
+
+  return String(data.escola_id);
+}
+
 /**
  * Server Action para registrar um pagamento via secretaria.
  * Utiliza a RPC financeiro_registrar_pagamento_secretaria para garantir atomicidade.
@@ -44,8 +95,10 @@ export async function registrarPagamentoAction(payload: RegistrarPagamentoPayloa
   const supabase = await createClient();
 
   try {
+    const resolvedEscolaId = await requireFinanceiroAccess(supabase, payload.escola_id);
+
     const { data, error } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
-      p_escola_id: payload.escola_id,
+      p_escola_id: resolvedEscolaId,
       p_aluno_id: payload.aluno_id,
       p_mensalidade_id: payload.mensalidade_id,
       p_valor: payload.valor,
@@ -62,8 +115,8 @@ export async function registrarPagamentoAction(payload: RegistrarPagamentoPayloa
     }
 
     // Revalidar caminhos relacionados ao financeiro para atualizar a UI
-    revalidatePath(`/escola/${payload.escola_id}/(portal)/financeiro/pagamentos`);
-    revalidatePath(`/escola/${payload.escola_id}/(portal)/financeiro/turmas-alunos`);
+    revalidatePath(`/escola/${resolvedEscolaId}/(portal)/financeiro/pagamentos`);
+    revalidatePath(`/escola/${resolvedEscolaId}/(portal)/financeiro/turmas-alunos`);
     
     // Se a mensalidade for de um aluno específico, podemos revalidar a ficha dele também
     // revalidatePath(`/escola/${payload.escola_id}/(portal)/secretaria/alunos/${payload.aluno_id}`);
@@ -84,18 +137,25 @@ export async function registrarPagamentoAction(payload: RegistrarPagamentoPayloa
 export async function getPagamentosPendentes(escolaId: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("vw_pagamentos_pendentes")
-    .select("*")
-    .eq("escola_id", escolaId)
-    .order("created_at", { ascending: false });
+  try {
+    const resolvedEscolaId = await requireFinanceiroAccess(supabase, escolaId);
 
-  if (error) {
-    console.error("Erro ao buscar pagamentos pendentes:", error);
+    const { data, error } = await supabase
+      .from("vw_pagamentos_pendentes")
+      .select("*")
+      .eq("escola_id", resolvedEscolaId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao buscar pagamentos pendentes:", error);
+      return [];
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Sem permissão para listar pagamentos pendentes:", error);
     return [];
   }
-
-  return data;
 }
 
 /**
@@ -111,8 +171,10 @@ export async function gerarMensalidadesLoteAction(
   const supabase = await createClient();
 
   try {
+    const resolvedEscolaId = await requireFinanceiroAccess(supabase, escolaId);
+
     const { data, error } = await supabase.rpc("gerar_mensalidades_lote", {
-      p_escola_id: escolaId,
+      p_escola_id: resolvedEscolaId,
       p_ano_letivo: anoLetivo,
       p_mes_referencia: mesReferencia,
       p_dia_vencimento_default: diaVencimentoDefault,
@@ -128,8 +190,8 @@ export async function gerarMensalidadesLoteAction(
       throw new Error(result.erro || "Falha na geração de mensalidades.");
     }
 
-    revalidatePath(`/escola/${escolaId}/(portal)/financeiro/dashboard`);
-    revalidatePath(`/escola/${escolaId}/(portal)/financeiro/turmas-alunos`);
+    revalidatePath(`/escola/${resolvedEscolaId}/(portal)/financeiro/dashboard`);
+    revalidatePath(`/escola/${resolvedEscolaId}/(portal)/financeiro/turmas-alunos`);
 
     return { success: true, geradas: result.geradas ?? 0 };
   } catch (error: unknown) {
@@ -143,11 +205,12 @@ export async function gerarMensalidadesLoteAction(
  */
 export async function getResumoFinanceiroAluno(escolaId: string, alunoId: string) {
   const supabase = await createClient();
+  const resolvedEscolaId = await requireFinanceiroAccess(supabase, escolaId);
 
   const { data, error } = await supabase
     .from("mensalidades")
     .select("valor_previsto, valor_pago_total, status")
-    .eq("escola_id", escolaId)
+    .eq("escola_id", resolvedEscolaId)
     .eq("aluno_id", alunoId)
     .neq("status", "cancelado");
 
@@ -185,6 +248,9 @@ export async function validarPagamentoAction(
   const supabase = await createClient();
 
   try {
+    const pagamentoEscolaId = await resolvePagamentoEscolaId(supabase, pagamentoId);
+    await requireFinanceiroAccess(supabase, pagamentoEscolaId);
+
     const { data, error } = await supabase.rpc("validar_pagamento", {
       p_pagamento_id: pagamentoId,
       p_aprovado: aprovado,

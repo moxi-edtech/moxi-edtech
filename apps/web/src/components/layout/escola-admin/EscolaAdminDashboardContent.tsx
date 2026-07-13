@@ -109,7 +109,7 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
     <motion.div variants={itemVariants}>
       <Link
         href={href}
-        className={`group flex items-center justify-between gap-4 p-4 rounded-2xl border shadow-sm transition-all hover:shadow-md ${colors.wrap}`}
+        className={`group flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm transition-all hover:shadow-md ${colors.wrap}`}
       >
         <div className="flex items-start gap-3">
           <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
@@ -145,16 +145,16 @@ function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, child
   isOperacoes?: boolean;
 }) {
   return (
-    <motion.div variants={itemVariants} className={`border border-slate-200 bg-white overflow-hidden flex flex-col h-full ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
+    <motion.div variants={itemVariants} className={`flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md`}>
       <div className={`flex items-center justify-between px-5 py-4 border-b border-slate-100 ${isOperacoes ? "bg-slate-50/10" : "bg-slate-50/30"}`}>
         <div className="flex items-center gap-3">
-          <div className={`p-2 ${isOperacoes ? "rounded-lg" : "rounded-xl"} ${iconBg}`}>{icon}</div>
+          <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight">{title}</h3>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{subtitle}</p>
           </div>
         </div>
-        <Link href={linkHref} className="text-[11px] font-bold uppercase tracking-wider text-[#1F6B3B] hover:underline">
+        <Link href={linkHref} className="text-[11px] font-bold uppercase tracking-wider text-klasse-green hover:underline">
           {linkLabel}
         </Link>
       </div>
@@ -169,7 +169,7 @@ function StatusPill({ status }: { status: string | null }) {
   const s = (status ?? "").toLowerCase();
   if (s === "pago" || s === "confirmado" || s === "settled" || s === "liquidado") {
     const label = s === "settled" || s === "liquidado" ? "Liquidado" : "Pago";
-    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">{label}</span>;
+    return <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green/10 px-2 py-0.5 text-[10px] font-bold text-klasse-green">{label}</span>;
   }
   if (s === "pendente") {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-klasse-gold-50 text-klasse-gold-700">Pendente</span>;
@@ -328,7 +328,7 @@ export default function EscolaAdminDashboardContent({
                 onClick={handleRefresh}
                 disabled={isRefreshing}
                 className={`flex items-center justify-center p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all ${
-                  isRefreshing ? "animate-spin text-[#1F6B3B]" : ""
+                  isRefreshing ? "animate-spin text-klasse-green" : ""
                 }`}
                 title="Atualizar dados"
               >
@@ -349,7 +349,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} isOperacoes={isOperacoes} />
+        <RadarOperacional alerts={radarAlerts} role={mode === "operacoes" ? "secretaria" : "admin"} />
       </motion.div>
 
       {isOperacoes && operationalSnapshot && (
@@ -382,7 +382,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className={`relative overflow-hidden border border-slate-200 bg-white ${isOperacoes ? "rounded-lg p-5 shadow-none" : "rounded-2xl p-6 shadow-sm"}`}>
+        <motion.section variants={itemVariants} className={`relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md ${isOperacoes ? "p-5" : "p-6"}`}>
           <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-8 relative z-10">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
@@ -426,7 +426,7 @@ export default function EscolaAdminDashboardContent({
 
             <div className="text-right flex flex-col items-end flex-shrink-0">
               <div className="relative">
-                <p className={`${isOperacoes ? "text-3xl" : "text-4xl"} font-black leading-none tracking-tighter ${isAcimaDaMeta ? "text-emerald-600" : "text-[#1F6B3B]"}`}>
+                <p className={`${isOperacoes ? "text-3xl" : "text-4xl"} font-black leading-none tracking-tighter ${isAcimaDaMeta ? "text-emerald-600" : "text-klasse-green"}`}>
                   {displayPercentualReceita}%
                 </p>
                 {isAcimaDaMeta && (
@@ -450,8 +450,8 @@ export default function EscolaAdminDashboardContent({
                         ? "bg-emerald-600"
                         : "bg-gradient-to-r from-emerald-600 to-emerald-400"
                       : isOperacoes
-                        ? "bg-[#1F6B3B]"
-                        : "bg-gradient-to-r from-[#1F6B3B] to-[#4ade80]"
+                        ? "bg-klasse-green"
+                        : "bg-gradient-to-r from-klasse-green to-emerald-400"
                     : "bg-slate-300"
                 }`}
               />

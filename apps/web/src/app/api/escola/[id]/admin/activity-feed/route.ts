@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
-import type { ActivityFeedItem } from "@/lib/admin/activityFeed";
+import { parseActivityFeedFamilies, type ActivityFeedItem } from "@/lib/admin/activityFeed";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  return response;
+}
 
 function parseLimit(raw: string | null): number {
   const parsed = Number.parseInt(raw ?? "", 10);
@@ -42,14 +48,14 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const user = authData?.user;
 
     if (!user) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+      return jsonNoStore({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
     const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     // `requestedEscolaId` may be a slug (e.g. "escola-klasse") while `escolaId` is normalized UUID.
     // Permission is already enforced by resolveEscolaIdForUser, so only null should be denied.
     if (!resolvedEscolaId) {
-      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+      return jsonNoStore({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
     const roleCheck = await requireRoleInSchool({
@@ -62,13 +68,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     const { searchParams } = request.nextUrl;
     const limit = parseLimit(searchParams.get("limit"));
-    const familiesRaw = searchParams.get("families");
-    const families = familiesRaw
-      ? familiesRaw
-          .split(",")
-          .map((part) => part.trim())
-          .filter(Boolean)
-      : [];
+    const familiesResult = parseActivityFeedFamilies(searchParams.get("families"), []);
+    if (familiesResult.error) {
+      return jsonNoStore({ ok: false, error: familiesResult.error }, { status: 400 });
+    }
+    const families = familiesResult.families;
     const cursor = decodeCursor(searchParams.get("cursor"));
 
     let query = (supabase as any)
@@ -93,7 +97,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      console.error("[admin/activity-feed] query failed", error);
+      return jsonNoStore({ ok: false, error: "Falha ao carregar feed" }, { status: 500 });
     }
 
     const rows = (data ?? []) as ActivityFeedItem[];
@@ -101,14 +106,14 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const items = hasNextPage ? rows.slice(0, limit) : rows;
     const nextCursor = hasNextPage ? encodeCursor(items[items.length - 1]) : null;
 
-    return NextResponse.json({
+    return jsonNoStore({
       ok: true,
       items,
       nextCursor,
       serverNow: new Date().toISOString(),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[admin/activity-feed] unexpected failure", error);
+    return jsonNoStore({ ok: false, error: "Erro inesperado" }, { status: 500 });
   }
 }

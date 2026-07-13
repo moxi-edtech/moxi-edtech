@@ -1,1 +1,1 @@
-export { default } from "@/app/(portal-aluno)/aluno/layout";
+export { default, metadata } from "@/app/(portal-aluno)/aluno/layout";

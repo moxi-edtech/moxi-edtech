@@ -4,7 +4,8 @@ const OFFLINE_URL = "/offline.html";
 
 const STATIC_ASSETS = [
   OFFLINE_URL,
-  "/manifest.json",
+  "/manifest-aluno.json",
+  "/manifest-professor.json",
   "/favicon.ico",
   "/icons/icon-192.png",
   "/icons/icon-512.png"
@@ -49,25 +50,38 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2. DATA STRATEGY: Stale-While-Revalidate (only for API student/public routes)
-  // We exclude certain routes that might be sensitive or change too fast for SWR if necessary
-  if (url.pathname.startsWith("/api/aluno/") || url.pathname.startsWith("/api/public/")) {
+  // 2. DATA STRATEGY: Stale-While-Revalidate (only for API student/public routes, plus safe professor routes)
+  const PROFESSOR_CACHED_ENDPOINTS = [
+    "/api/professor/atribuicoes",
+    "/api/professor/pauta",
+    "/api/professor/turmas", // matches turmas/[id]/alunos
+    "/api/professor/periodos"
+  ];
+
+  const isStudentOrPublicData = url.pathname.startsWith("/api/aluno/") || url.pathname.startsWith("/api/public/");
+  const isCachedProfessorData = PROFESSOR_CACHED_ENDPOINTS.some(path => url.pathname.startsWith(path));
+
+  if ((isStudentOrPublicData || isCachedProfessorData) && !url.pathname.includes("/perfil/senha")) {
     event.respondWith(
       caches.open(DATA_CACHE).then((cache) => {
         return cache.match(request).then((cachedResponse) => {
-          const fetchedResponse = fetch(request)
-            .then((networkResponse) => {
-              // Only cache successful JSON-like responses
-              if (networkResponse.status === 200 && networkResponse.type === 'basic') {
-                cache.put(request, networkResponse.clone());
-              }
-              return networkResponse;
-            })
-            .catch(() => {
-              // Fail silently, network failure handled by cachedResponse fallback
-            });
+          const networkFetch = fetch(request).then((networkResponse) => {
+            if (networkResponse.status === 200 && networkResponse.type === 'basic') {
+              cache.put(request, networkResponse.clone());
+            }
+            return networkResponse;
+          });
 
-          return cachedResponse || fetchedResponse;
+          if (cachedResponse) {
+            // Return cached response immediately, update cache in background silently
+            networkFetch.catch(() => {
+              // Fail silently on background fetch failure
+            });
+            return cachedResponse;
+          }
+
+          // Return network fetch directly if not in cache so it can throw network/offline errors
+          return networkFetch;
         });
       })
     );
@@ -102,8 +116,17 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(() => {
-        // Fallback to offline page for any top-level navigation failure
-        return caches.match(OFFLINE_URL);
+        return caches.match(OFFLINE_URL).then((offlineResponse) => {
+          if (offlineResponse) return offlineResponse;
+          // Robust HTML fallback response in case offline.html is missing
+          return new Response(
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Offline - Klasse</title><style>body{font-family:system-ui,sans-serif;text-align:center;padding:50px;background:#f8fafc;color:#1e293b}h1{color:#0f172a}p{color:#64748b}</style></head><body><h1>Dispositivo Offline</h1><p>Não foi possível carregar a página devido à falta de conexão de internet.</p></body></html>",
+            {
+              status: 503,
+              headers: { "Content-Type": "text/html; charset=utf-8" }
+            }
+          );
+        });
       })
     );
   }
@@ -148,4 +171,15 @@ self.addEventListener("notificationclick", (event) => {
       }
     })
   );
+});
+
+// 6. CLEAR CACHE ON LOGOUT
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "CLEAR_DATA_CACHE") {
+    event.waitUntil(
+      caches.delete(DATA_CACHE).then(() => {
+        console.log("[Service Worker] Cache de dados limpa com sucesso.");
+      })
+    );
+  }
 });

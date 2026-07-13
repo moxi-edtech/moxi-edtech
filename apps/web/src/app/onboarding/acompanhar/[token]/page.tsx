@@ -1264,7 +1264,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
             </div>
             <h2 className="text-xl md:text-2xl font-bold tracking-tight">Acompanhe o onboarding da escola até ela ficar pronta para operar.</h2>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              O onboarding segue 7 fases oficiais. Aqui a escola acompanha a jornada completa, entende o próximo passo e envia apenas os itens sob sua responsabilidade.
+              O onboarding segue 6 fases operacionais. Aqui a escola acompanha a jornada completa, entende o próximo passo e envia apenas os itens sob sua responsabilidade.
             </p>
           </div>
           

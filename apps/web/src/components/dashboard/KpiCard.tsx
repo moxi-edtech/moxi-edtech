@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { klasseColors } from "@moxi/design-tokens";
 
 type KpiCardProps = {
   label: string;
@@ -43,7 +44,7 @@ export function KpiCard({
       box: "bg-white border-slate-200",
       icon: "bg-klasse-green/10 text-klasse-green ring-1 ring-klasse-green/20",
       value: "text-klasse-green",
-      chart: "#1F6B3B", // klasse-green
+      chart: klasseColors.green.DEFAULT,
     },
     warning: {
       box: "bg-klasse-gold/5 border-klasse-gold/30",
@@ -95,12 +96,12 @@ export function KpiCard({
         </div>
         <div className={`flex flex-col items-end ${compact ? "gap-1.5" : "gap-2"}`}>
           <div
-            className={`${compact ? "h-9 w-9 rounded-lg shadow-none" : "h-10 w-10 rounded-xl shadow-sm"} flex items-center justify-center ${styles.icon}`}
+            className={`${compact ? "h-9 w-9 rounded-lg shadow-sm" : "h-10 w-10 rounded-lg shadow-sm"} flex items-center justify-center ${styles.icon}`}
           >
             <Icon className={compact ? "h-4.5 w-4.5" : "h-5 w-5"} />
           </div>
           {href && (
-            <div className="text-[10px] font-bold text-[#1F6B3B] uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-tighter text-klasse-green opacity-0 transition-opacity group-hover:opacity-100">
               Ver Detalhes <ArrowRight className="h-2.5 w-2.5" />
             </div>
           )}
@@ -127,8 +128,8 @@ export function KpiCard({
 
   const containerClasses = `group relative min-w-0 overflow-hidden border flex flex-col justify-between transition ${
     compact
-      ? "min-h-[112px] rounded-lg p-4 shadow-none hover:shadow-none"
-      : "min-h-[132px] rounded-2xl p-5 hover:shadow-md shadow-sm"
+      ? "min-h-[112px] rounded-xl p-4 shadow-sm hover:shadow-md"
+      : "min-h-[132px] rounded-xl p-5 hover:shadow-md shadow-sm"
   } ${styles.box}`;
 
   if (href) {

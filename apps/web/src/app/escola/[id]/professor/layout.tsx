@@ -4,6 +4,11 @@ import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundEr
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  manifest: "/manifest-professor.json",
+};
 
 const PROFESSOR_ALLOWED_ROLES = new Set([
   "professor",

@@ -19,6 +19,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@moxi/auth-middleware": "workspace:*",
+    "@moxi/design-tokens": "workspace:*",
     "@moxi/tenant-sdk": "workspace:*",
     "@react-pdf/renderer": "^4.3.2",
     "@supabase/ssr": "^0.7.0",

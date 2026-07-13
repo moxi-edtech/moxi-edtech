@@ -7,12 +7,12 @@ Perfil principal: afiliado_admin (Emanuel Caetano / Administrador)
 
 ## 1. Objetivo
 
-Acompanhar o extrato de comissões geradas (ativas e recorrentes), validar valores pendentes/aprovados/pagos e preparar a conciliação financeira mensal fora do portal quando necessario.
+Acompanhar o extrato de comissões geradas (ativas e recorrentes), validar valores pendentes/aprovados/pagos e solicitar payout pelo portal com fatura/recibo obrigatório.
 
 ## 2. Quando usar
 
 - Ao final de cada mês, para fechamento e conciliação financeira do escritório.
-- Até o dia 5 de cada mês, para validação de faturamento e preparação manual do pedido de repasse.
+- Até o dia 5 de cada mês, para validação de faturamento e solicitação do pedido de repasse.
 
 ## 3. Responsáveis
 
@@ -27,13 +27,13 @@ Acompanhar o extrato de comissões geradas (ativas e recorrentes), validar valor
 
 ## 4.1 Estado fiel ao codigo
 
-Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx` e `apps/web/src/app/api/influencers/[codigo]/commissions/route.ts`.
+Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/app/api/influencers/[codigo]/commissions/route.ts`, `apps/web/src/app/api/influencers/[codigo]/commissions/payouts/route.ts` e `apps/web/src/app/api/super-admin/commissions/payouts/route.ts`.
 
 - A area real chama `Sua Comissão` e mostra `Total em Ledger` ou `Total Estimado`.
-- O portal mostra totais `Pendente`, `Aprovado`, `Pago`, lista `Últimas comissões` e `Simulador de Ganhos`.
-- A API do parceiro para comissoes e somente leitura: `GET /api/influencers/{codigo}/commissions`.
-- Nao existe rota ou botao de `Solicitar Resgate / Payout` no namespace `api/influencers` no codigo atual.
-- Solicitar payout pelo portal do parceiro e `NAO OPERACIONAL NO CODIGO ACTUAL`.
+- O portal mostra totais `Pendente`, `Aprovado`, `Pago`, lista `Últimas comissões`, `Simulador de Ganhos`, saldo disponível para payout e histórico recente de pedidos.
+- A API do parceiro para comissoes usa `GET /api/influencers/{codigo}/commissions`.
+- A solicitação de payout usa `POST /api/influencers/{codigo}/commissions/payouts`, exige fatura/recibo e cria pedido para aprovação do Super Admin.
+- O Super Admin aprova, rejeita, cancela ou marca payout como pago em `/api/super-admin/commissions/payouts`.
 
 ## 5. Passo a passo (execução)
 
@@ -46,23 +46,18 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx` e `apps/web/src
    - Se uma escola estiver inadimplente, a respectiva comissão recorrente permanecerá retida até a quitação do débito pelo cliente.
 4. **Fechamento do Mês (Período de Apuração):**
    - No último dia útil do mês, verifique o montante consolidado em **Disponível para Resgate**. Este valor soma todas as comissões que passaram para o status `'approved'` durante o mês vigente.
-5. **Preparar pedido manual de repasse:**
+5. **Solicitar payout no portal:**
    - Recolha o valor `Aprovado` exibido no portal.
-   - Emita a fatura/recibo oficial fora do portal.
-   - Envie a solicitação ao financeiro da KLASSE pelo canal operacional combinado.
+   - Emita a fatura/recibo oficial do escritório.
+   - Use a ação de payout no portal, anexe a fatura/recibo e submeta o pedido.
 6. **Acompanhamento do Repasse:**
 - A equipe financeira da KLASSE analisará a solicitação e o comprovante cadastrado.
 - O pagamento será realizado por transferência bancária até o **dia 10 do mês subsequente**. Após a transferência, o status da comissão no portal passará para `'paid'` (paga).
 
-NAO OPERACIONAL NO CODIGO ACTUAL:
-- Solicitar payout dentro do portal do parceiro.
-- Fazer upload de fatura/recibo dentro do portal do parceiro.
-- Gerar protocolo de payout pelo portal do parceiro.
-
 ## 6. Resultado esperado
 
 - Valores de comissao conferidos no portal.
-- Pedido manual de repasse preparado com base no valor aprovado.
+- Pedido de repasse submetido no portal com fatura/recibo anexado.
 - Status `paid` acompanhado quando o financeiro liquidar a comissao.
 
 ## 7. Erros comuns e correção
@@ -70,12 +65,12 @@ NAO OPERACIONAL NO CODIGO ACTUAL:
 | Erro observado | Causa provável | Correção imediata | Escalar quando |
 |---|---|---|---|
 | Comissão recorrente de escola ativa não aparece no extrato | A escola não efetuou o pagamento da mensalidade SaaS ou o pagamento está pendente de conciliação bancária na KLASSE. | Solicitar à secretaria da escola o comprovante de pagamento da assinatura KLASSE e contatar o suporte financeiro. | Caso o pagamento da escola tenha sido compensado há mais de 48h e não conste no painel. |
-| Nao aparece botao de payout | Funcao nao existe no portal do parceiro. | Solicitar repasse por canal financeiro combinado e anexar evidencias fora do portal. | Se a funcionalidade precisar ser implementada. |
+| Payout nao aceita submissao | Nao ha valor aprovado disponivel, a fatura/recibo nao foi anexada ou ja existe payout ativo para as mesmas comissoes. | Confirmar saldo disponivel, anexar documento valido e verificar historico recente de pedidos. | Se houver saldo aprovado sem payout ativo e a submissao continuar falhando. |
 
 ## 8. Evidências obrigatórias
 
 - Print dos totais `Pendente`, `Aprovado` e `Pago`.
-- Fatura/recibo emitido fora do portal.
+- Fatura/recibo anexado ao pedido de payout.
 - Comprovante de transferência bancária emitido pelo banco parceiro da KLASSE (anexado pelo Super Admin ao liquidar a solicitação).
 
 ## 9. KPI operacional do procedimento
@@ -86,4 +81,4 @@ NAO OPERACIONAL NO CODIGO ACTUAL:
 ## 10. Riscos e controles
 
 - **Risco:** Tratar valor pendente como disponivel.
-  - *Controle:* Usar apenas o valor `Aprovado` como base para solicitação manual de repasse.
+  - *Controle:* Usar apenas o valor `Aprovado` e disponivel para payout como base da solicitação no portal.

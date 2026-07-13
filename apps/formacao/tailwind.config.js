@@ -1,3 +1,5 @@
+const { klasseTailwindTheme } = require("../../packages/design-tokens/tailwind.cjs");
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -8,6 +10,7 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: klasseTailwindTheme.colors,
       fontFamily: {
         sans: ["IBM Plex Sans", "Segoe UI", "sans-serif"],
       },

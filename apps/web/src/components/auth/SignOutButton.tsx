@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabaseClient'
 import { clsx } from 'clsx'
 import { useState } from 'react'
+import { clearOfflineData } from '@/lib/offline/store'
 
 type Props = {
   label?: string
@@ -42,6 +43,22 @@ export default function SignOutButton({
   async function handleLogout() {
     try {
       setLoading(true)
+
+      // Clear Service Worker Data Cache
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_DATA_CACHE' })
+      }
+
+      // Clear IndexedDB Offline Data with a 1s timeout to prevent database locks from blocking logout
+      try {
+        await Promise.race([
+          clearOfflineData(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout clearing IndexedDB")), 1000))
+        ])
+      } catch (err) {
+        console.error('Non-blocking clearOfflineData finished or failed:', err)
+      }
+
       await supabase.auth.signOut()
       router.replace(redirectTo)
     } finally {

@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AlunoLayoutClient from "@/app/(portal-aluno)/aluno/AlunoLayoutClient";
 import { isRefreshTokenNotFoundError } from "@/lib/auth/isRefreshTokenNotFoundError";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  manifest: "/manifest-aluno.json",
+};
 
 const resolveAlunoIds = async (supabase: Awaited<ReturnType<typeof supabaseServer>>, escolaId: string, userId: string, email?: string | null) => {
   const alunoIds = new Set<string>();

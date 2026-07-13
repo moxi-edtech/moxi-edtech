@@ -79,7 +79,7 @@ erDiagram
     onboarding_steps {
         uuid id PK
         uuid onboarding_id FK
-        varchar step_code "diagnostico | docs_legais | planilhas | validacao | config | treinamento | live"
+        varchar step_code "diagnostico | planilhas | validacao | config | treinamento | live"
         varchar title
         varchar status "pendente | em_progresso | concluido"
         varchar owner_type "escola | parceiro | klasse"
@@ -150,17 +150,16 @@ Para evitar sobrecarregar o **Super Admin** com tarefas administrativas manuais 
 
 ## 🤝 4. Fluxo de Ativação e SLAs Tripartites
 
-O workflow de ativação escolar é composto por 7 fases síncronas, cada uma com prazo (SLA) e responsável explícito:
+O workflow operacional actual após a conversão comercial é composto por 6 fases síncronas, cada uma com prazo (SLA) e responsável explícito. A recolha de documentos legais deixou de ser uma fase autónoma e passou a ser tratada dentro da triagem documental e da etapa `planilhas`.
 
 | Fase | Etapa / Código do Passo | Descrição | Responsável (`owner_type`) | SLA (Prazos) |
 | :--- | :--- | :--- | :--- | :--- |
 | **1** | `diagnostico` | Preenchimento do formulário inicial de diagnóstico escolar | **Parceiro** (Emanuel Caetano) | 3 dias |
-| **2** | `docs_legais` | Envio de documentos legais (NIF, Regulamento, Contrato assinado) | **Escola** (Cliente) | 3 dias |
-| **3** | `planilhas` | Upload da planilha preenchida de alunos/professores | **Escola** / **Parceiro** | 5 dias |
-| **4** | `validacao` | Validação técnica de dados e script de importação técnica | **Classe** (Super Admin) | 2 dias |
-| **5** | `config` | Configuração de turmas, salas, turnos e propinas no portal | **Parceiro** (Emanuel Caetano) | 2 dias |
-| **6** | `treinamento` | Treinamento presencial/remoto da secretaria e direção | **Parceiro** (Emanuel Caetano) | 3 dias |
-| **7** | `live` | Abertura oficial das matrículas online e sistema live | **Classe** (Super Admin) | 1 dia |
+| **2** | `planilhas` | Upload de planilhas e documentos operacionais necessários à configuração | **Escola** / **Parceiro** | 5 dias |
+| **3** | `validacao` | Validação técnica de dados e script de importação técnica | **Classe** (Super Admin) | 2 dias |
+| **4** | `config` | Configuração de turmas, salas, turnos e propinas no portal | **Parceiro** (Emanuel Caetano) | 2 dias |
+| **5** | `treinamento` | Treinamento presencial/remoto da secretaria e direção | **Parceiro** (Emanuel Caetano) | 3 dias |
+| **6** | `live` | Abertura oficial das matrículas online e sistema live | **Classe** (Super Admin) | 1 dia |
 
 ---
 
@@ -169,7 +168,7 @@ O workflow de ativação escolar é composto por 7 fases síncronas, cada uma co
 ### ➡️ Fase 1: Banco de Dados e Migrações (Supabase) — **BASE V1 ENTREGUE / EXPANSÃO PENDENTE**
 1.  `tracking_token`, `onboarding_steps`, `onboarding_uploads` e bucket `onboarding` já existem.
 2.  `afiliado_membros` e a autoria por membro em `onboarding_uploads` já foram implementados; a evolução corrente é expandir a governança operacional e a homologação final do fluxo do parceiro.
-3.  O workflow de 7 etapas já foi aplicado e o modelo agora também registra `started_at` para medir o tempo real de cada fase.
+3.  O workflow operacional de 6 etapas já foi aplicado e o modelo agora também registra `started_at` para medir o tempo real de cada fase.
 4.  A ligação explícita `crm_leads <-> onboarding_requests` já foi aplicada no live DB.
 5.  A tabela `partner_commissions` e as funções de geração/consulta de comissão já foram aplicadas no live DB.
 
@@ -183,7 +182,7 @@ O workflow de ativação escolar é composto por 7 fases síncronas, cada uma co
 7.  **Comissões do Parceiro:** a leitura de comissões e a geração por confirmação de pagamento já existem.
 
 ### ➡️ Fase 3: Interfaces do Usuário (Front-End) — **V1 OPERACIONAL / AJUSTES PENDENTES**
-1.  **Página da Escola:** `/onboarding/acompanhar/[token]` já cobre 7 etapas, uploads e download de materiais de apoio.
+1.  **Página da Escola:** `/onboarding/acompanhar/[token]` já cobre as 6 etapas operacionais, uploads e download de materiais de apoio.
 2.  **Portal do Parceiro:** `/influencers/[codigo]` já opera com login por membro, CRM pré-vendas, conversão para onboarding, dashboard de SLA e materiais.
 3.  **Dashboard Super Admin:** a moderação de uploads, autoria detalhada, relatórios operacionais e provisionamento já estão activos.
 4.  **Pendência actual:** o follow-up manual já pode ser registado no portal do parceiro por escola e por etapa.

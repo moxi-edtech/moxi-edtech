@@ -241,7 +241,7 @@ tr:nth-child(even) {
   <div class="body">
     <div class="sec-lbl">01 · Objetivo</div>
     <div class="content-block">
-      <p>Padronizar a transição de um lead comercial qualificado no CRM (estágio de negociação ganha) para uma solicitação oficial de ativação de escola (Onboarding Request), gerando o token exclusivo de rastreamento (<code>tracking_token</code>) e iniciando o pipeline estruturado de 7 fases de implantação.</p>
+      <p>Padronizar a transição de um lead comercial qualificado no CRM para uma solicitação oficial de ativação de escola (Onboarding Request), garantindo proposta comercial registada, aceite comercial, documento preliminar anexado quando existir e geração do token exclusivo de rastreamento (<code>tracking_token</code>) para iniciar o pipeline estruturado de 6 fases de implantação.</p>
     </div>
 
     <div class="sec-lbl">02 · Quando usar</div>
@@ -263,18 +263,25 @@ tr:nth-child(even) {
     <div class="sec-lbl">04 · Pré-condições</div>
     <div class="content-block">
       <ul>
-        <li>Lead cadastrado no CRM e contendo os contatos oficiais e a quantidade aproximada de alunos preenchidos.</li>
-        <li>Confirmação clara com os diretores a respeito do plano de destino (Essencial / Profissional) e os valores de instalação/teste.</li>
+        <li>Lead cadastrado no CRM com contatos oficiais e quantidade aproximada de alunos preenchidos.</li>
+        <li>Lead movido para a etapa <code>ganho</code>.</li>
+        <li>Proposta comercial preenchida com plano, alunos, trial, taxa de ativação e mensalidade.</li>
+        <li>Status comercial marcado como <code>aceite_comercial</code> ou <code>aguardando_contrato_klasse</code>.</li>
+        <li>Confirmação clara com os diretores a respeito do plano de destino, valores e autorização para iniciar a ativação.</li>
       </ul>
     </div>
 
     <div class="sec-lbl">04.1 · Estado Fiel ao Código</div>
     <div class="content-block">
       <ul>
-        <li>Validado contra as rotas de código <code>apps/web/src/app/influencers/[codigo]/page.tsx</code> e o endpoint de API <code>apps/web/src/app/api/influencers/[codigo]/crm/leads/[leadId]/convert/route.ts</code>.</li>
+        <li>Validado contra as rotas de código <code>apps/web/src/app/influencers/[codigo]/page.tsx</code>, <code>apps/web/src/app/api/influencers/[codigo]/crm/leads/[leadId]/convert/route.ts</code>, <code>apps/web/src/app/api/influencers/[codigo]/crm/leads/[leadId]/commercial/route.ts</code> e <code>apps/web/src/app/api/influencers/[codigo]/crm/leads/[leadId]/proposal/route.ts</code>.</li>
+        <li>O detalhe do lead possui o bloco <strong>Proposta Comercial</strong>, onde o operador edita termos, mensalidade e status comercial.</li>
+        <li>O operador pode anexar proposta ou contrato preliminar no próprio drawer do lead e voltar a abrir o documento anexado.</li>
         <li>O botão utilitário de conversão de leads está disponível na aba de detalhes de cada lead, dentro do painel visual identificado como <strong>Ativação da Escola</strong>.</li>
         <li>O gatilho visual para a operação é o botão <strong>Iniciar ativação</strong> (que exibe o status <code>A criar ativação...</code> durante o envio da transação).</li>
         <li>A transação chama de forma assíncrona o endpoint <code>POST /api/influencers/{codigo}/crm/leads/{leadId}/convert</code>, que invoca a RPC do Postgres <code>convert_influencer_crm_lead_to_onboarding</code>.</li>
+        <li>O salvamento da proposta usa <code>PATCH /api/influencers/{codigo}/crm/leads/{leadId}/commercial</code>.</li>
+        <li>O upload do documento comercial usa <code>POST /api/influencers/{codigo}/crm/leads/{leadId}/proposal</code>.</li>
         <li>Ao finalizar com sucesso, a interface atualiza o estado para <code>Lead convertido para onboarding</code>, renderiza o token e gera o botão link <strong>Abrir portal de ativação</strong>.</li>
       </ul>
     </div>
@@ -284,19 +291,24 @@ tr:nth-child(even) {
       <ol>
         <li><strong>Localizar o Lead Comercial:</strong> No painel do parceiro comercial, acessar a listagem e clicar sobre o nome da escola desejada.</li>
         <li><strong>Alterar o Estágio do Lead:</strong> Mover o lead para a coluna <strong>Ganho</strong> no pipeline ou prosseguir direto para os detalhes.</li>
-        <li><strong>Verificar as Condições Comerciais Acordadas:</strong> Certificar-se de que os dados financeiros descritos no resumo de conversão estão idênticos ao negociado:
+        <li><strong>Preencher a Proposta Comercial:</strong> No bloco <strong>Proposta Comercial</strong>, confirmar ou ajustar:
           <ul>
             <li>Plano de destino selecionado.</li>
+            <li>Quantidade estimada de alunos.</li>
             <li>Dias de teste cortesia (trial) configurados (máximo de 30 dias).</li>
-            <li>Valor da taxa de instalação/ativação configurada (ex: 50.000 Kz).</li>
+            <li>Valor da taxa de instalação/ativação.</li>
+            <li>Mensalidade negociada.</li>
+            <li>Status comercial em <code>rascunho</code>, <code>proposta_enviada</code>, <code>aceite_comercial</code> ou <code>aguardando_contrato_klasse</code>.</li>
           </ul>
-          <em>*Caso note alguma divergência, altere os dados do lead comercial antes de prosseguir com a conversão.*</em>
+          <em>*Caso note alguma divergência, altere e salve os dados do lead comercial antes de prosseguir com a conversão.*</em>
         </li>
+        <li><strong>Anexar o Documento Comercial:</strong> Se existir proposta em PDF, imagem ou contrato preliminar, usar a ação <strong>Anexar proposta</strong> para guardar o ficheiro no lead.</li>
+        <li><strong>Registrar e Salvar o Aceite Comercial (CRUCIAL):</strong> Quando a escola aprovar a proposta, marcar o status como <code>aceite_comercial</code> ou <code>aguardando_contrato_klasse</code> no formulário e clicar obrigatoriamente no botão <strong>"Salvar Termos Comerciais"</strong> (localizado logo abaixo). Se não clicar em salvar, a alteração de status não persistirá no banco de dados e o botão de conversão continuará bloqueado.</li>
         <li><strong>Acionar Conversão de Lead:</strong> No painel <strong>Ativação da Escola</strong>, clicar no botão <strong>Iniciar ativação</strong>.
           <ul>
             <li>O sistema executa internamente a RPC <code>convert_influencer_crm_lead_to_onboarding</code>.</li>
             <li>É gerado um registro de solicitação na tabela <code>onboarding_requests</code>.</li>
-            <li>O banco cria automaticamente as 7 etapas correspondentes do onboarding na tabela <code>onboarding_steps</code>.</li>
+            <li>O banco cria automaticamente as 6 etapas correspondentes do onboarding na tabela <code>onboarding_steps</code>.</li>
             <li>É gerado um token exclusivo contendo caracteres curtos de segurança (ex: <code>AELS-91PA-TRM8</code>).</li>
           </ul>
           <img class="step-print" src="prints/sop-crm-leads-convert-section.png" alt="Painel de Ativação da Escola no Portal">
@@ -315,7 +327,7 @@ tr:nth-child(even) {
       <ul>
         <li>O status do lead comercial é atualizado para <code>ganho</code> no CRM.</li>
         <li>Criação da solicitação de Onboarding com o estado marcado como <code>pendente</code>.</li>
-        <li>A linha do tempo exibindo o progresso das 7 etapas de ativação é habilitada no portal.</li>
+        <li>A linha do tempo exibindo o progresso das 6 etapas de ativação é habilitada no portal.</li>
         <li>Logs de transações gerados no banco sob auditoria, com o ID do operador.</li>
       </ul>
       <img class="step-print" src="prints/sop-crm-onboarding-link.png" alt="Informações de Rastreamento de Onboarding Geradas">

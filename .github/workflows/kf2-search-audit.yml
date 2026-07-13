@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -26,6 +28,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: KLASSE UI Standards
+        run: pnpm check:ui-standards
+
+      - name: Security Regression Tests
+        run: pnpm test:security
 
       - name: KF2 Search Audit
         run: pnpm agent:kf2

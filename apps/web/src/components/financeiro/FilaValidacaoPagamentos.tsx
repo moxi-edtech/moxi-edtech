@@ -110,7 +110,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     <div className="space-y-6">
       {/* Cards de Resumo de Receita Unificada */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-none flex flex-col justify-between min-h-[100px]">
+        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total em Validação (Caixa)</p>
             <p className="mt-1.5 text-2xl font-black text-slate-900 leading-none">
@@ -120,20 +120,20 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
           <p className="text-[10px] text-slate-500 font-semibold mt-2">Fluxo geral de entrada pendente</p>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-none flex flex-col justify-between min-h-[100px]">
+        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mensalidades & Matrículas</p>
-            <p className="mt-1.5 text-2xl font-black text-[#1F6B3B] leading-none">
+            <p className="mt-1.5 text-2xl font-black leading-none text-klasse-green">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.mensalidades)}
             </p>
           </div>
           <p className="text-[10px] text-slate-500 font-semibold mt-2">{stats.mensalidadesCount} lançamentos aguardando</p>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-none flex flex-col justify-between min-h-[100px]">
+        <div className="flex min-h-[100px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Serviços & Emolumentos</p>
-            <p className="mt-1.5 text-2xl font-black text-[#E3B23C] leading-none">
+            <p className="mt-1.5 text-2xl font-black leading-none text-klasse-gold">
               {new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 }).format(stats.servicos)}
             </p>
           </div>
@@ -143,16 +143,16 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
 
       {/* Conteúdo Dinâmico: Tabela ou Empty State */}
       {pagamentos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-20">
           <CheckCircle className="w-12 h-12 text-slate-300 mb-4" />
           <h3 className="text-lg font-semibold text-slate-900">Tudo em dia!</h3>
           <p className="text-sm text-slate-500 max-w-xs text-center">Nenhum lançamento de mensalidade ou serviço aguarda validação no momento.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-none">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#E3B23C]" />
+              <Clock className="h-4 w-4 text-klasse-gold" />
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Aguardando Validação</h2>
             </div>
             <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">

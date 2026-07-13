@@ -17,7 +17,7 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/
 - O portal do parceiro nao possui aprovacao/rejeicao final de uploads nem provisionamento de escola.
 - A aprovacao/rejeicao final de uploads existe no Super Admin.
 - O parceiro consegue triar uploads (`em_revisao_parceiro`, `pendencia_cliente`, `pronto_para_klasse`), mas isso nao conclui etapa.
-- Payout nao possui rota de solicitacao no namespace `api/influencers`.
+- O parceiro pode solicitar payout com fatura/recibo em `/api/influencers/[codigo]/commissions/payouts`; o Super Admin aprova, rejeita, cancela ou marca como pago.
 - Quando um botao, rota ou endpoint nao existir no codigo, o POP deve marcar como `NAO OPERACIONAL NO CODIGO ACTUAL` ou mover a responsabilidade para Super Admin.
 
 ## Documentos deste pacote
@@ -45,7 +45,7 @@ Validado contra `apps/web/src/app/influencers/[codigo]/page.tsx`, `apps/web/src/
 | Triar documentos de onboarding | E | E |
 | Aprovar/rejeitar documentos de onboarding | NA | NA |
 | Visualizar comissões e financeiro | E | V |
-| Solicitar payout / emitir recibo | NA | NA |
+| Solicitar payout / emitir recibo | E | NA |
 | Cadastrar novos membros / resetar PINs | E | NA |
 
 *Legenda: `E` = Executa diretamente; `V` = Visualiza/Acompanha; `NA` = Não Aplicável.*

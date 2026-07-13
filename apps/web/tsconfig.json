@@ -39,6 +39,12 @@
       ],
       "@moxi/auth-middleware/*": [
         "../../packages/auth-middleware/src/*"
+      ],
+      "@moxi/design-tokens": [
+        "../../packages/design-tokens/src/index.ts"
+      ],
+      "@moxi/design-tokens/*": [
+        "../../packages/design-tokens/src/*"
       ]
     },
     "allowJs": true,

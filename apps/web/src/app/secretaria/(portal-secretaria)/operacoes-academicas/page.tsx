@@ -200,7 +200,7 @@ export default async function OperacoesAcademicasPage({
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="operacoes_academicas" />
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+      <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-2">
           <DashboardHeader
             title="Operações Académicas"
@@ -280,7 +280,7 @@ export default async function OperacoesAcademicasPage({
         </form>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
             <p className="text-xs text-slate-400 uppercase font-semibold">SSOT virada</p>
             <div className="mt-2 flex items-center gap-2">
               <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${cutoverStatusClass}`}>
@@ -291,25 +291,25 @@ export default async function OperacoesAcademicasPage({
               </span>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
             <p className="text-xs text-slate-400 uppercase font-semibold">Fechamentos em aberto</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">
               {filteredFechamento.filter((j) => !["DONE", "FAILED"].includes(String(j.estado || "").toUpperCase())).length}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
             <p className="text-xs text-slate-400 uppercase font-semibold">Lotes em aberto</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">
               {filteredLotes.filter((j) => !["SUCCESS", "FAILED"].includes(String(j.status || "").toUpperCase())).length}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
             <p className="text-xs text-slate-400 uppercase font-semibold">Falhas recentes</p>
             <p className="text-2xl font-bold text-slate-900 mt-2">{fechamentoFalhas + loteFalhas}</p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-800">Saúde da Virada de Ano (SSOT)</h2>
             <form action="/api/secretaria/operacoes-academicas/virada/dry-run" method="post">
@@ -319,43 +319,43 @@ export default async function OperacoesAcademicasPage({
             </form>
           </div>
           <div className="grid gap-3 md:grid-cols-5">
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Turmas sem sessão</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.turmas_session_id_null}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Matrículas sem sessão</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.matriculas_session_id_null}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Histórico anual</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.historico_anos_total}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Snapshot locks</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.snapshot_locks_total}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Mensalidades fora janela</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.mensalidades_competencia_fora_janela}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Mensalidades sem matrícula</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.mensalidades_sem_matricula_id}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Currículos pendentes</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.curriculos_classes_pendentes}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Pautas anuais pendentes</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.pautas_anuais_pendentes}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Matrículas sem final</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.matriculas_status_final_pendente}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 p-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
               <p className="text-[10px] uppercase text-slate-400 font-semibold">Snapshots pendentes</p>
               <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.snapshot_locks_pendentes}</p>
             </div>
@@ -389,7 +389,7 @@ export default async function OperacoesAcademicasPage({
 
         <div className="grid gap-6 lg:grid-cols-2">
           {selectedTipo !== "documentos" && (
-            <div className="rounded-xl border border-slate-200 p-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" /> Fechamento Académico
@@ -409,7 +409,7 @@ export default async function OperacoesAcademicasPage({
                       ? "bg-klasse-green/10 text-klasse-green"
                       : "bg-slate-100 text-slate-600";
                   return (
-                    <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs">
+                    <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-xs">
                       <div>
                         <p className="font-semibold text-slate-700">{job.fechamento_tipo || "fechamento"}</p>
                         <p className="text-slate-400">{job.run_id.slice(0, 8)} · {formatDate(job.created_at)}</p>
@@ -436,7 +436,7 @@ export default async function OperacoesAcademicasPage({
           )}
 
           {selectedTipo !== "fechamento" && (
-            <div className="rounded-xl border border-slate-200 p-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <FileText className="h-4 w-4" /> Documentos Oficiais (Lote)
@@ -455,7 +455,7 @@ export default async function OperacoesAcademicasPage({
                       ? "bg-klasse-green/10 text-klasse-green"
                       : "bg-slate-100 text-slate-600";
                   return (
-                    <div key={job.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs">
+                    <div key={job.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-xs">
                       <div>
                         <p className="font-semibold text-slate-700">{job.documento_tipo || job.tipo || "lote"}</p>
                         <p className="text-slate-400">{job.id.slice(0, 8)} · {formatDate(job.created_at)}</p>
@@ -493,7 +493,7 @@ export default async function OperacoesAcademicasPage({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Receitas de reprocessamento</h2>
             <p className="text-xs text-slate-500">
@@ -501,7 +501,7 @@ export default async function OperacoesAcademicasPage({
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-100 p-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
               <p className="text-xs font-semibold text-slate-700">Dados faltantes (notas/frequências)</p>
               <p className="text-xs text-slate-500 mt-1">
                 Corrigir pendências e reexecutar o fechamento a partir do monitor.
@@ -510,7 +510,7 @@ export default async function OperacoesAcademicasPage({
                 Abrir notas
               </Link>
             </div>
-            <div className="rounded-lg border border-slate-100 p-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
               <p className="text-xs font-semibold text-slate-700">Snapshot legal bloqueado</p>
               <p className="text-xs text-slate-500 mt-1">
                 Solicitar reabertura auditada e repetir fechamento com justificativa.
@@ -519,7 +519,7 @@ export default async function OperacoesAcademicasPage({
                 Abrir fechamento
               </Link>
             </div>
-            <div className="rounded-lg border border-slate-100 p-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
               <p className="text-xs font-semibold text-slate-700">Permissões insuficientes</p>
               <p className="text-xs text-slate-500 mt-1">
                 Revalidar roles do operador antes de reprocessar.
@@ -528,7 +528,7 @@ export default async function OperacoesAcademicasPage({
                 Ver acessos
               </Link>
             </div>
-            <div className="rounded-lg border border-slate-100 p-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
               <p className="text-xs font-semibold text-slate-700">Falha de storage (ZIP/manifest)</p>
               <p className="text-xs text-slate-500 mt-1">
                 Reprocessar o lote com falha e verificar o download.

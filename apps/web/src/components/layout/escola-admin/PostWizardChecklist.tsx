@@ -157,8 +157,6 @@ export default function PostWizardChecklist({
   // Não renderiza se o contexto não estiver pronto ou se tudo estiver concluído
   if (!escolaParam || totalSteps === 0 || completedSteps === totalSteps) return null;
 
-  const isOperacoes = portalBase === "operacoes";
-
   return (
     <section className="space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -176,7 +174,7 @@ export default function PostWizardChecklist({
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progressPct}%` }}
-              className="h-full bg-[#1F6B3B]"
+              className="h-full bg-klasse-green"
             />
           </div>
         </div>
@@ -188,23 +186,21 @@ export default function PostWizardChecklist({
             key={step.id} 
             href={step.href}
             className={`
-              group relative flex items-center gap-4 p-4 border transition-all
-              ${isOperacoes ? "rounded-lg" : "rounded-2xl"}
+              group relative flex items-center gap-4 rounded-xl border p-4 shadow-sm transition-all hover:shadow-md
               ${step.completed 
                 ? 'bg-slate-50/50 border-slate-100 opacity-75' 
                 : step.current
-                ? `bg-white border-brand-200 ring-1 ring-brand-100 ${isOperacoes ? "shadow-none hover:shadow-none" : "shadow-sm hover:shadow-md"}`
+                ? 'bg-white border-brand-200 ring-1 ring-brand-100'
                 : 'bg-white border-slate-200 opacity-60 hover:opacity-100'
               }
             `}
           >
             <div className={`
-              w-10 h-10 flex items-center justify-center shrink-0 transition-colors
-              ${isOperacoes ? "rounded-lg" : "rounded-xl"}
+              w-10 h-10 flex items-center justify-center shrink-0 rounded-lg transition-colors
               ${step.completed 
-                ? 'bg-[#1F6B3B]/10 text-[#1F6B3B]' 
+                ? 'bg-klasse-green/10 text-klasse-green'
                 : step.current
-                ? 'bg-[#E3B23C]/15 text-[#E3B23C] group-hover:bg-[#1F6B3B] group-hover:text-white'
+                ? 'bg-klasse-gold/15 text-klasse-gold group-hover:bg-klasse-green group-hover:text-white'
                 : 'bg-slate-50 text-slate-400 border border-slate-100/50'
               }
             `}>
@@ -221,7 +217,7 @@ export default function PostWizardChecklist({
             </div>
 
             {step.current && (
-              <div className="w-7 h-7 rounded-full bg-[#1F6B3B] text-white flex items-center justify-center shadow-sm group-hover:translate-x-0.5 transition-transform">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-klasse-green text-white shadow-sm transition-transform group-hover:translate-x-0.5">
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
             )}

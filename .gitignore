@@ -115,3 +115,4 @@ supabase_*.tar.gz
 .env.validator
 REPORT_SCAN_LIVE.json
 validator-package.json
+*.tsbuildinfo

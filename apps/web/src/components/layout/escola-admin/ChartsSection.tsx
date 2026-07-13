@@ -14,12 +14,13 @@ import {
   YAxis,
 } from "recharts";
 import { BarChart3, TrendingUp, Wallet } from "lucide-react";
+import { klasseColors } from "@moxi/design-tokens";
 import type { PagamentosResumo } from "./definitions";
 
 // ─── Klasse design tokens ─────────────────────────────────────────────────────
 
-const KLASSE_GREEN  = "#1F6B3B";
-const KLASSE_GOLD   = "#E3B23C";
+const KLASSE_GREEN  = klasseColors.green.DEFAULT;
+const KLASSE_GOLD   = klasseColors.gold.DEFAULT;
 const SLATE_GRID    = "rgba(148, 163, 184, 0.08)";
 const SLATE_TICK    = "#94a3b8";
 
@@ -69,9 +70,9 @@ function ChartCard({
   isOperacoes?: boolean;
 }) {
   return (
-    <div className={`min-w-0 border border-slate-200 bg-white overflow-hidden ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
+    <div className={`min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md`}>
       <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
-        <div className={`p-2 ${isOperacoes ? "rounded-lg" : "rounded-xl"} ${iconBg}`}>{icon}</div>
+        <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
         <div>
           <h3 className="text-sm font-bold text-slate-900">{title}</h3>
           <p className="text-xs text-slate-400">{subtitle}</p>
@@ -146,7 +147,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
 
       {/* Matrículas por mês */}
       <ChartCard
-        iconBg="bg-[#1F6B3B]/10 text-[#1F6B3B]"
+        iconBg="bg-klasse-green/10 text-klasse-green"
         icon={<TrendingUp className="h-4 w-4" />}
         title={isOperacoes ? "Fluxo de Matrículas" : "Matrículas por Mês"}
         subtitle={isOperacoes ? "Ritmo operacional do ano letivo" : "Evolução do ano letivo"}
@@ -182,18 +183,18 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
 
       {/* Status das mensalidades */}
       <ChartCard
-        iconBg="bg-[#E3B23C]/10 text-[#E3B23C]"
+        iconBg="bg-klasse-gold/10 text-klasse-gold"
         icon={<Wallet className="h-4 w-4" />}
         title={isOperacoes ? "Saúde da Cobrança" : "Status das Mensalidades"}
         subtitle={isOperacoes ? "Distribuição operacional da carteira" : "Distribuição atual"}
         isOperacoes={isOperacoes}
       >
         <div className="mb-4 flex items-center justify-end">
-          <div className={`inline-flex border border-slate-200 bg-slate-50 p-1 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
+          <div className={`inline-flex border border-slate-200 bg-slate-50 p-1 rounded-lg`}>
             <button
               type="button"
               onClick={() => setBillingView("quantidade")}
-              className={`px-3 py-1.5 text-[11px] font-bold transition ${isOperacoes ? "rounded-md" : "rounded-lg"} ${
+              className={`rounded-md px-3 py-1.5 text-[11px] font-bold transition ${
                 billingView === "quantidade" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
               }`}
             >
@@ -202,7 +203,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
             <button
               type="button"
               onClick={() => setBillingView("valor")}
-              className={`px-3 py-1.5 text-[11px] font-bold transition ${isOperacoes ? "rounded-md" : "rounded-lg"} ${
+              className={`rounded-md px-3 py-1.5 text-[11px] font-bold transition ${
                 billingView === "valor" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
               }`}
             >

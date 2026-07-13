@@ -1,5 +1,7 @@
+import type { Json } from "~types/supabase";
+
 const DB_NAME = "klasse-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const SNAPSHOT_STORE = "snapshots";
 const QUEUE_STORE = "queue";
 
@@ -9,6 +11,8 @@ export type SnapshotRecord<T> = {
   updatedAt: string;
 };
 
+export type QueueItemStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'conflict';
+
 export type OfflineQueueItem = {
   id: string;
   url: string;
@@ -17,6 +21,17 @@ export type OfflineQueueItem = {
   body: string | null;
   type: string;
   createdAt: string;
+
+  // V2 Fields
+  mutationId: string | null;
+  baseVersion: number | null;
+  payloadHash: string | null;
+  status: QueueItemStatus;
+  retryCount: number;
+  lastAttemptAt: string | null;
+  nextRetryAt: string | null;
+  lastError: string | null;
+  conflictData: Json | null;
 };
 
 function isBrowser() {
@@ -55,6 +70,17 @@ async function withStore<T>(
     const transaction = db.transaction(storeName, mode);
     const store = transaction.objectStore(storeName);
     const request = handler(store);
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+    transaction.onabort = () => {
+      db.close();
+    };
+    transaction.onerror = () => {
+      db.close();
+    };
+
     request.onerror = () => reject(request.error ?? new Error("IndexedDB error"));
     request.onsuccess = () => resolve(request.result);
   });
@@ -95,7 +121,19 @@ export async function listActions(): Promise<OfflineQueueItem[]> {
     const items = await withStore<OfflineQueueItem[]>(QUEUE_STORE, "readonly", (store) => {
       return store.getAll();
     });
-    return items ?? [];
+    const rawItems = items ?? [];
+    return rawItems.map((item) => ({
+      ...item,
+      mutationId: item.mutationId ?? null,
+      baseVersion: item.baseVersion ?? null,
+      payloadHash: item.payloadHash ?? null,
+      status: item.status ?? "pending",
+      retryCount: item.retryCount ?? 0,
+      lastAttemptAt: item.lastAttemptAt ?? null,
+      nextRetryAt: item.nextRetryAt ?? null,
+      lastError: item.lastError ?? null,
+      conflictData: item.conflictData ?? null,
+    }));
   } catch {
     return [];
   }
@@ -104,4 +142,19 @@ export async function listActions(): Promise<OfflineQueueItem[]> {
 export async function removeAction(id: string) {
   if (!isBrowser()) return;
   await withStore(QUEUE_STORE, "readwrite", (store) => store.delete(id));
+}
+
+export async function clearOfflineData(): Promise<void> {
+  if (!isBrowser()) return;
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => {
+      console.log("[IndexedDB] Offline database deleted successfully.");
+      resolve();
+    };
+    request.onerror = () => {
+      console.error("[IndexedDB] Error deleting offline database:", request.error);
+      reject(request.error ?? new Error("Failed to delete offline database"));
+    };
+  });
 }

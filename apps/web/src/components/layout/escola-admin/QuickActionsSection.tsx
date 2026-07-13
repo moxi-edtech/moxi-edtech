@@ -179,9 +179,9 @@ export default function QuickActionsSection({
   const isOperacoes = portalBase === "operacoes";
 
   return (
-    <section className={`border border-slate-200 bg-white p-5 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"}`}>
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
       <header className="mb-5 flex items-center gap-2.5">
-        <div className={`bg-slate-100 p-2 text-slate-500 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
+        <div className="rounded-lg bg-slate-100 p-2 text-slate-500">
           <PlusCircle className="h-4 w-4" />
         </div>
         <h3 className="text-sm font-bold text-slate-900">Ações Rápidas</h3>
@@ -229,7 +229,7 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
   
   return (
     <div className="space-y-6">
-      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <h4 className="text-sm font-bold text-slate-900 mb-1">Tipo de Colaborador</h4>
         <div className="inline-flex rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
           <button
@@ -278,12 +278,12 @@ function CadastroColaboradoresBody({ allowProfessor }: { allowProfessor: boolean
               </button>
             </div>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-1">
+          <div className="rounded-xl border border-slate-100 bg-white p-1">
             {funcionarioTab === "listar" ? <FuncionariosPage embedded /> : <NovoFuncionarioPage embedded />}
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100">
+        <div className="rounded-xl border border-slate-100 bg-white">
           <ProfessoresPage />
         </div>
       )}

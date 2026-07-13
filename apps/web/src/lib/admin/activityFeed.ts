@@ -1,5 +1,15 @@
 export type ActivityFamily = "financeiro" | "academico" | "documentos" | "secretaria" | "operacional";
 
+export const ACTIVITY_FEED_ALLOWED_FAMILIES = [
+  "secretaria",
+  "documentos",
+  "financeiro",
+  "academico",
+  "operacional",
+] as const satisfies readonly ActivityFamily[];
+
+const allowedActivityFamilies = new Set<string>(ACTIVITY_FEED_ALLOWED_FAMILIES);
+
 export type ActivityFeedItem = {
   id: string;
   escola_id: string;
@@ -14,6 +24,31 @@ export type ActivityFeedItem = {
   aluno_nome: string | null;
   payload: Record<string, unknown>;
 };
+
+export function parseActivityFeedFamilies(
+  raw: string | null,
+  fallback: readonly ActivityFamily[]
+): { families: ActivityFamily[]; error: string | null } {
+  if (!raw) {
+    return { families: [...fallback], error: null };
+  }
+
+  const requested = raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (requested.length === 0) {
+    return { families: [], error: null };
+  }
+
+  const invalid = requested.filter((family) => !allowedActivityFamilies.has(family));
+  if (invalid.length > 0) {
+    return { families: [], error: "Família de eventos inválida" };
+  }
+
+  return { families: requested as ActivityFamily[], error: null };
+}
 
 export function familyLabel(family: string): string {
   switch (family) {
