@@ -3,7 +3,6 @@ import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 // --- AUTH HELPER (Mantido igual) ---
 type AuthResult =
@@ -92,8 +91,7 @@ export async function DELETE(
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
   const supabase = authz.supabase!;
   const resolvedEscolaId = authz.resolvedEscolaId;
-  const adminClient = getSupabaseServerClient();
-  const deleteClient = (adminClient ?? supabase) as any;
+  const deleteClient = supabase as any;
 
   try {
     const { count: turmasCount, error: countErr } = await (supabase as any)

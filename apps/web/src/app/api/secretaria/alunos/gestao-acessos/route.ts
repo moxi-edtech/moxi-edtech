@@ -102,7 +102,7 @@ export async function GET(req: Request) {
 
     if (configFin?.bloquear_inadimplentes) {
       const { data: inadimplentes } = await s
-        .from("internal.mv_radar_inadimplencia" as any)
+        .from("vw_radar_inadimplencia" as any)
         .select("aluno_id, dias_em_atraso")
         .eq("escola_id", escolaId)
         .gt("dias_em_atraso", 30) as any;

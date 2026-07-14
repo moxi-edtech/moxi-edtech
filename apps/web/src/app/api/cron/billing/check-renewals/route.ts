@@ -1,6 +1,6 @@
 // @kf2 allow-scan
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabaseServer';
+import { supabaseServerRole } from '@/lib/supabaseServerRole';
 import { sendMail, buildBillingRenewalEmail } from '@/lib/mailer';
 import { differenceInDays, parseISO } from 'date-fns';
 import { PLAN_NAMES, type PlanTier } from '@/config/plans';
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const s = await supabaseServer();
+    const s = supabaseServerRole();
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -104,6 +104,7 @@ export async function GET(req: NextRequest) {
 
         if (diasRestantes === 7) {
           await dispatchAdminNotificacao({
+            supabase: s,
             escolaId: ass.escola_id,
             key: 'SUBSCRICAO_EXPIRA_7',
             params: { dias: diasRestantes, actionUrl: `${baseUrl}/escola/${escolaParam}/admin/configuracoes/assinatura` },
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
         const escolaParam = escolaSlug ? String(escolaSlug) : ass.escola_id;
         const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://klasse.ao").replace(/\/$/, "");
         await dispatchAdminNotificacao({
+          supabase: s,
           escolaId: ass.escola_id,
           key: 'SUBSCRICAO_EXPIRADA',
           params: { actionUrl: `${baseUrl}/escola/${escolaParam}/admin/configuracoes/assinatura` },

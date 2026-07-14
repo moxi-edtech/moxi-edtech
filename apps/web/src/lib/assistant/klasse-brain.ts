@@ -3,14 +3,16 @@ import { getActionsForRole, ASSISTANT_ACTIONS, AssistantAction } from "./action-
 import { hasAssistantPermission } from "./permission-registry";
 import { searchKnowledge } from "./knowledge-search";
 import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./screen-context";
+import { createAssistantActionV2, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
+import { answerFinanceDebtByClass } from "./data-copilot/finance-debt-by-class";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
 
 export type AssistantResponse = {
   ok: boolean;
-  mode: "fast_path" | "rag" | "action" | "fallback";
+  mode: "fast_path" | "rag" | "data_query" | "action" | "fallback";
   answer: string;
   suggestions?: AssistantAction[];
+  actions?: AssistantActionV2[];
   links?: Array<{ label: string; href: string }>;
   requiresApproval?: boolean;
 };
@@ -145,6 +147,48 @@ async function callGeminiForRAG(prompt: string) {
   };
 }
 
+function routeAction(params: {
+  id: string;
+  label: string;
+  href: string;
+  permission?: string;
+  description?: string;
+}): AssistantActionV2 {
+  return createAssistantActionV2({
+    id: params.id,
+    kind: params.href.startsWith("/api/") ? "export" : "open_screen",
+    label: params.label,
+    description: params.description,
+    href: params.href,
+    riskLevel: params.href.startsWith("/api/") ? "medium" : "low",
+    requiresApproval: false,
+    permission: params.permission ?? "assistant.help",
+  });
+}
+
+function assistantSuggestionToAction(action: AssistantAction, schoolId: string, role: string): AssistantActionV2 | null {
+  if (action.href) {
+    return routeAction({
+      id: `route:${action.key}`,
+      label: action.title,
+      href: action.href(schoolId),
+      permission: "assistant.help",
+      description: action.description,
+    });
+  }
+
+  return instantiateAssistantActionV2(`assistant:${action.key}`, role, {}, {
+    label: action.title,
+    description: action.description,
+  });
+}
+
+function actionsFromSuggestions(suggestions: AssistantAction[] | undefined, schoolId: string, role: string) {
+  return (suggestions ?? [])
+    .map((suggestion) => assistantSuggestionToAction(suggestion, schoolId, role))
+    .filter((action): action is AssistantActionV2 => Boolean(action));
+}
+
 export async function processKlasseBrainQuery(params: {
   schoolId: string;
   role: string;
@@ -165,91 +209,9 @@ export async function processKlasseBrainQuery(params: {
     };
   }
 
-  // 1.5. Query Matcher: Check if the user is asking about students in debt/unpaid monthly fees in a specific class
-  const isDebtQuery = cleanQuery.includes("em dívida") || cleanQuery.includes("em divida") || cleanQuery.includes("devedores") || cleanQuery.includes("atraso") || cleanQuery.includes("inadimpl");
-  const hasTurmaKeyword = cleanQuery.includes("turma") || cleanQuery.includes("classe");
-
-  if (isDebtQuery && (hasTurmaKeyword || (context?.page === "turmas" && context?.entityId))) {
-    const supabase = await supabaseServerTyped();
-    const { data: turmas } = await supabase
-      .from("turmas")
-      .select("id, nome, turma_codigo")
-      .eq("escola_id", schoolId);
-
-    // Try to find matching class name or code in the query
-    let matchingTurma = (turmas ?? []).find((t) => {
-      const name = (t.nome ?? "").toLowerCase().trim();
-      const code = (t.turma_codigo ?? "").toLowerCase().trim();
-      return name && (cleanQuery.includes(name) || (code && cleanQuery.includes(code)));
-    });
-
-    // If not found by query string, but we are inside a turma detail page, fallback to context
-    if (!matchingTurma && context?.entityType === "class" && context?.entityId) {
-      matchingTurma = (turmas ?? []).find((t) => t.id === context.entityId);
-    }
-
-    if (matchingTurma) {
-      // Query radar entries for this school and class directly
-      const { data: radarRows } = await supabase
-        .from("vw_radar_inadimplencia")
-        .select("aluno_id, nome_aluno, nome_turma, valor_em_atraso")
-        .eq("escola_id", schoolId)
-        .ilike("nome_turma", matchingTurma.nome);
-
-      const classRows = radarRows ?? [];
-
-      // Group by unique student
-      const uniqueStudents = new Map<string, { nome: string; totalDebt: number }>();
-      for (const row of classRows) {
-        if (!row.aluno_id || !row.nome_aluno) continue;
-        const alunoId: string = row.aluno_id;
-        const nomeAluno: string = row.nome_aluno;
-        const val = Number(row.valor_em_atraso ?? 0);
-        if (!uniqueStudents.has(alunoId)) {
-          uniqueStudents.set(alunoId, { nome: nomeAluno, totalDebt: val });
-        } else {
-          uniqueStudents.get(alunoId)!.totalDebt += val;
-        }
-      }
-
-      const count = uniqueStudents.size;
-      const total = Array.from(uniqueStudents.values()).reduce((sum, s) => sum + s.totalDebt, 0);
-
-      let answer = `Na turma **${matchingTurma.nome}**, há atualmente **${count}** ${count === 1 ? "aluno" : "alunos"} com mensalidades em atraso.`;
-      
-      if (count > 0) {
-        answer += `\n\nO valor acumulado das dívidas nesta turma é de **${new Intl.NumberFormat("pt-AO", {
-          style: "currency",
-          currency: "AOA",
-        }).format(total)}**.`;
-        
-        answer += `\n\n**Alunos devedores:**\n`;
-        Array.from(uniqueStudents.values()).slice(0, 5).forEach((student, idx) => {
-          answer += `${idx + 1}. ${student.nome} (Débito: *${new Intl.NumberFormat("pt-AO", {
-            style: "currency",
-            currency: "AOA",
-          }).format(student.totalDebt)}*)\n`;
-        });
-        
-        if (count > 5) {
-          answer += `\n*E mais ${count - 5} outros alunos...*`;
-        }
-      } else {
-        answer += ` Parabéns! A saúde financeira desta turma está totalmente em dia. 🎉`;
-      }
-
-      return {
-        ok: true,
-        mode: "action",
-        answer,
-        links: count > 0 ? [
-          {
-            label: "Baixar PDF de Inadimplentes da Turma",
-            href: `/api/secretaria/alunos/exportar?escolaId=${schoolId}&turma_id=${matchingTurma.id}&situacao_financeira=em_atraso&tipo=pdf`,
-          },
-        ] : undefined,
-      };
-    }
+  const debtByClassAnswer = await answerFinanceDebtByClass({ schoolId, role, query, context });
+  if (debtByClassAnswer) {
+    return debtByClassAnswer;
   }
 
   // 2. Fast Path: Check if user wants to see what they can do on this screen
@@ -272,12 +234,20 @@ export async function processKlasseBrainQuery(params: {
       label: r.title,
       href: r.href(schoolId),
     }));
+    const linkActions = matchedRoutes.map((r) => routeAction({
+      id: `route:${r.key}`,
+      label: r.title,
+      href: r.href(schoolId),
+      description: r.description,
+    }));
+    const suggestionActions = actionsFromSuggestions(allowedActions.slice(0, 4), schoolId, role);
 
     return {
       ok: true,
       mode: "fast_path",
       answer: answerText,
       suggestions: allowedActions,
+      actions: [...suggestionActions, ...linkActions].slice(0, 6),
       links: links.length > 0 ? links : undefined,
     };
   }
@@ -292,6 +262,14 @@ export async function processKlasseBrainQuery(params: {
           ok: true,
           mode: "fast_path",
           answer: pattern.answer,
+          actions: [
+            routeAction({
+              id: `route:${route.key}`,
+              label: route.title,
+              href: route.href(schoolId),
+              description: route.description,
+            }),
+          ],
           links: [
             {
               label: route.title,
@@ -309,11 +287,13 @@ export async function processKlasseBrainQuery(params: {
   const relevantChunks = searchKnowledge(query, { module: context?.module, limit: 3 });
 
   if (relevantChunks.length === 0) {
+    const suggestions = getActionsForRole(role, "any").filter((a) => a.actionType === "help");
     return {
       ok: true,
       mode: "fallback",
       answer: "Não encontrei essa informação documentada no KLASSE ainda. Posso ajudar sugerindo tópicos de ajuda relacionados ou você pode aceder à Central de Ajuda.",
-      suggestions: getActionsForRole(role, "any").filter((a) => a.actionType === "help"),
+      suggestions,
+      actions: actionsFromSuggestions(suggestions, schoolId, role),
     };
   }
 
@@ -359,6 +339,7 @@ export async function processKlasseBrainQuery(params: {
         mode: "fallback",
         answer: "O limite de requisições do assistente foi temporariamente excedido. Por favor, tente novamente dentro de um minuto. Enquanto isso, posso sugerir atalhos rápidos para as ações desta tela:",
         suggestions: suggestions.length > 0 ? suggestions : undefined,
+        actions: actionsFromSuggestions(suggestions, schoolId, role),
       };
     }
     throw err;
@@ -379,10 +360,13 @@ export async function processKlasseBrainQuery(params: {
 
   // Identify if answer was fallback
   if (answer.toLowerCase().includes("nao encontrei essa informacao") || answer.trim() === "") {
+    const suggestions = getActionsForRole(role, context?.module).filter((a) => a.actionType === "help").slice(0, 2);
     return {
       ok: true,
       mode: "fallback",
       answer: "Não encontrei essa informação documentada no KLASSE ainda. Tente procurar por outros termos.",
+      suggestions: suggestions.length > 0 ? suggestions : undefined,
+      actions: actionsFromSuggestions(suggestions, schoolId, role),
     };
   }
 
@@ -401,6 +385,12 @@ export async function processKlasseBrainQuery(params: {
   }
 
   const suggestions = getActionsForRole(role, context?.module).slice(0, 2);
+  const routeActions = links.slice(0, 3).map((link, index) => routeAction({
+    id: `rag:link:${index}`,
+    label: link.label,
+    href: link.href,
+  }));
+  const suggestionActions = actionsFromSuggestions(suggestions, schoolId, role);
 
   return {
     ok: true,
@@ -408,5 +398,6 @@ export async function processKlasseBrainQuery(params: {
     answer,
     links: links.length > 0 ? links.slice(0, 3) : undefined,
     suggestions: suggestions.length > 0 ? suggestions : undefined,
+    actions: [...routeActions, ...suggestionActions].slice(0, 4),
   };
 }

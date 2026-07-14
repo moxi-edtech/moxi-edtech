@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { describeScreenContext, type AiWidgetContext } from "@/lib/assistant/screen-context";
 import { getActionsForRole, ASSISTANT_ACTIONS } from "@/lib/assistant/action-registry";
+import type { AssistantActionV2 } from "@/lib/assistant/actions-v2";
 import { findHelpTopics, type HelpTopic } from "@/lib/klasse-help/help-topics";
 import { buildContextualPortalHref } from "@/lib/navigation";
 
@@ -30,6 +31,7 @@ type Message = {
   actionId?: string | null;
   quickReplies?: Array<{ label: string; action: string }>;
   links?: Array<{ label: string; href: string }>;
+  actions?: AssistantActionV2[];
 };
 
 type AssistantSuggestionPayload = {
@@ -40,6 +42,7 @@ type AssistantSuggestionPayload = {
 type AssistantResponsePayload = {
   answer?: string;
   links?: Array<{ label: string; href: string }>;
+  actions?: AssistantActionV2[];
   suggestions?: AssistantSuggestionPayload[];
   mode?: string;
 };
@@ -609,6 +612,50 @@ export default function AiChatWidget({
     }
   }
 
+  function runAssistantAction(action: AssistantActionV2) {
+    if (action.requiresApproval && action.riskLevel === "high") {
+      pushMessages([
+        ai(`Ação de alto risco: ${action.label}. Vou abrir o fluxo seguro de rascunho/revisão; nada será enviado ou aplicado automaticamente.`),
+      ]);
+    }
+
+    if (action.kind === "open_screen" || action.kind === "export") {
+      if (!action.href) return;
+      if (action.href.startsWith("/api/")) {
+        window.open(action.href, "_blank", "noopener,noreferrer");
+        return;
+      }
+      router.push(action.href);
+      setIsOpen(false);
+      return;
+    }
+
+    if (action.kind === "copy_text") {
+      const text = typeof action.payload?.text === "string" ? action.payload.text : action.description ?? action.label;
+      void navigator.clipboard.writeText(text);
+      pushMessages([ai("Texto copiado.")]);
+      return;
+    }
+
+    const quickAction = typeof action.payload?.quickAction === "string" ? action.payload.quickAction : "";
+    if (quickAction === "quick:open_actions") {
+      handleQuickAction("open_actions");
+      return;
+    }
+    if (quickAction === "quick:open_help") {
+      openHelp();
+      return;
+    }
+    if (quickAction === "quick:screen_capabilities") {
+      showContextCapabilities();
+      return;
+    }
+    if (quickAction.startsWith("flow:")) {
+      const flowId = quickAction.replace("flow:", "") as FlowId;
+      startFlow(flowId);
+    }
+  }
+
   function handleQuickAction(action: string) {
     if (action === "cancel_flow") {
       setFlow(null);
@@ -702,6 +749,7 @@ export default function AiChatWidget({
         pushMessages([
           ai(cached.answer, {
             links: cached.links,
+            actions: cached.actions,
             quickReplies: cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
           }),
         ]);
@@ -730,6 +778,7 @@ export default function AiChatWidget({
       pushMessages([
         ai(json.answer, {
           links: json.links,
+          actions: json.actions,
           quickReplies: json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` })),
         }),
       ]);
@@ -914,7 +963,7 @@ export default function AiChatWidget({
                           <p className="whitespace-pre-wrap">{message.text}</p>
 
                           {/* Rendering internal routes returned by the assistant */}
-                          {isAi && message.links && message.links.length > 0 ? (
+                          {isAi && (!message.actions || message.actions.length === 0) && message.links && message.links.length > 0 ? (
                             <div className="mt-2.5 space-y-1.5">
                               {message.links.map((link, idx) => (
                                 <button
@@ -931,6 +980,34 @@ export default function AiChatWidget({
                                   className="w-full flex items-center justify-between gap-1.5 rounded-lg border border-emerald-200/50 bg-[#1F6B3B]/5 hover:bg-[#1F6B3B]/10 px-3 py-2 text-[11px] font-bold text-[#1F6B3B] transition-all"
                                 >
                                   <span className="truncate">{link.label}</span>
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {isAi && message.actions && message.actions.length > 0 ? (
+                            <div className="mt-2.5 space-y-1.5">
+                              {message.actions.map((action) => (
+                                <button
+                                  key={`${message.id}-action-${action.id}`}
+                                  type="button"
+                                  onClick={() => runAssistantAction(action)}
+                                  className={`w-full flex items-center justify-between gap-1.5 rounded-lg border px-3 py-2 text-left text-[11px] font-bold transition-all ${
+                                    action.riskLevel === "high"
+                                      ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                      : action.riskLevel === "medium"
+                                        ? "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
+                                        : "border-emerald-200/70 bg-[#1F6B3B]/5 text-[#1F6B3B] hover:bg-[#1F6B3B]/10"
+                                  }`}
+                                  title={action.description}
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate">{action.label}</span>
+                                    {action.requiresApproval ? (
+                                      <span className="block text-[9px] font-semibold opacity-75">Requer revisão</span>
+                                    ) : null}
+                                  </span>
                                   <ExternalLink className="h-3 w-3 shrink-0" />
                                 </button>
                               ))}

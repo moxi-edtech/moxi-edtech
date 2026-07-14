@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
+import { supabaseServerRole } from "@/lib/supabaseServerRole";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -8,10 +8,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Não autorizado" }, { status: 401 });
   }
 
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ ok: false, error: "Supabase client indisponível" }, { status: 500 });
-  }
+  const supabase = supabaseServerRole();
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -47,6 +44,7 @@ export async function GET(req: NextRequest) {
 
   for (const item of atrasos.values()) {
     await dispatchAlunoNotificacao({
+      supabase,
       escolaId: item.escolaId,
       key: "PROPINA_ATRASO",
       alunoIds: [item.alunoId],
@@ -58,6 +56,7 @@ export async function GET(req: NextRequest) {
 
   for (const item of vencimentos.values()) {
     await dispatchAlunoNotificacao({
+      supabase,
       escolaId: item.escolaId,
       key: "PROPINA_VENCE_3D",
       alunoIds: [item.alunoId],

@@ -1,7 +1,7 @@
 {
-  "buildTimestamp": "2026-06-28T18:37:56.218Z",
-  "documentCount": 24,
-  "chunkCount": 84,
+  "buildTimestamp": "2026-07-14T01:43:30.207Z",
+  "documentCount": 25,
+  "chunkCount": 107,
   "documents": [
     {
       "id": "doc-routes-registry",
@@ -126,7 +126,7 @@
       "sourceType": "doc",
       "sourcePath": "apps/web/src/lib/assistant/docs/manual-central-acoes-ai.md",
       "module": "classe_ai",
-      "content": "# Manual Curto da Central de Ações IA\n\nA Central de Ações IA é o local centralizado onde são guardados os rascunhos de comunicados, planos de cobrança e resumos executivos sugeridos pela IA.\n\n## 1. Funcionamento Geral\n- Acessível em **Administração > Central de Ações IA** (rota: `/escola/[schoolId]/admin/ai/actions`).\n- Sempre que o assistente do KLASSE gera um texto estruturado, um plano financeiro ou comunicado, ele oferece a opção \"Salvar na Central\".\n- Ao salvar, uma entrada com o estado \"draft\" é criada na tabela `ai_actions`.\n\n## 2. Auditoria e Risco\n- Cada ação gerada por IA possui um nível de risco associado (`low`, `medium`, `high`).\n- Ações financeiras ou com impacto em dados externos possuem risco `high` e exigem confirmação visual do usuário administrativo.\n- O histórico de geração de rascunhos registra o ID do usuário que solicitou a criação para fins de auditoria no sistema.\n- A IA nunca executa comandos destrutivos no banco de dados nem publica mensagens públicas sem aprovação na Central de Ações.\n",
+      "content": "# Manual Curto da Central de Ações IA\n\nA Central de Ações IA é o local centralizado onde são guardados os rascunhos de comunicados, planos de cobrança e resumos executivos sugeridos pela IA.\n\n## 1. Funcionamento Geral\n- Acessível em **Administração > Central de Ações IA** (rota: `/escola/[schoolId]/admin/ai/actions`).\n- Sempre que o assistente do KLASSE gera um texto estruturado, um plano financeiro ou comunicado, ele oferece a opção \"Salvar na Central\".\n- Ao salvar, uma entrada com o estado \"draft\" é criada na tabela `ai_actions`.\n\n## 2. Auditoria e Risco\n- Cada ação gerada por IA possui um nível de risco associado (`low`, `medium`, `high`).\n- Ações financeiras ou com impacto em dados externos possuem risco `high` e exigem confirmação visual do usuário administrativo.\n- O histórico de geração de rascunhos registra o ID do usuário que solicitou a criação para fins de auditoria no sistema.\n- A IA nunca executa comandos destrutivos no banco de dados nem publica mensagens públicas sem aprovação na Central de Ações.\n\n## 3. Integração com Actions v2\n\nNo padrão KLASSE IA Actions v2, o assistente pode responder com texto e botões de ação.\n\nA Central de Ações IA continua sendo obrigatória para qualquer ação de risco alto:\n\n- plano de cobrança;\n- rascunho WhatsApp;\n- comunicado público;\n- recomendação operacional que possa gerar impacto financeiro, acadêmico ou reputacional.\n\nFluxo recomendado:\n\n1. O assistente identifica a intenção.\n2. O backend consulta uma ferramenta autorizada ou prepara um rascunho.\n3. A resposta mostra uma action como `Salvar na Central de Ações IA`.\n4. O usuário revisa a action salva.\n5. Um usuário autorizado aprova, rejeita ou cancela.\n\nActions de baixo risco, como abrir telas ou copiar texto, não precisam ser salvas na Central. Actions de médio risco, como exportar lista ou preparar modal operacional, exigem intenção explícita do usuário, mas não aprovação formal se não houver envio externo nem escrita crítica.\n",
       "status": "active"
     },
     {
@@ -157,12 +157,21 @@
       "status": "active"
     },
     {
+      "id": "doc-file-plano-actions-v2",
+      "title": "Manual: plano actions v2",
+      "sourceType": "doc",
+      "sourcePath": "apps/web/src/lib/assistant/docs/plano-actions-v2.md",
+      "module": "any",
+      "content": "# Plano — KLASSE IA Actions v2\n\n## Objetivo\n\nEvoluir o KLASSE IA de assistente de ajuda contextual para copiloto operacional controlado.\n\nO assistente deve continuar explicando o sistema, mas quando detectar uma intenção operacional deve devolver uma resposta com ações seguras para a interface renderizar.\n\nExemplo:\n\n- Pergunta: `Quem está em atraso na turma 10ª A?`\n- Resposta: `Há 12 alunos em atraso, totalizando 480.000 AOA.`\n- Ações:\n  - `Abrir Radar Financeiro`\n  - `Exportar lista`\n  - `Gerar rascunho WhatsApp`\n  - `Salvar plano na Central de Ações IA`\n\n## Princípios\n\n1. O modelo não acessa banco de dados diretamente.\n2. O modelo não gera SQL.\n3. O backend resolve `schoolId`, papel, permissões, intenção e entidades.\n4. Toda action vem de registry fechado.\n5. Ações críticas viram rascunho ou exigem aprovação humana.\n6. A resposta deve conter dados reais apenas quando vierem de ferramenta autorizada.\n7. Ambiguidade pede esclarecimento, não execução.\n\n## Estado Atual\n\nO KLASSE IA já possui:\n\n- `AiChatWidget`\n- endpoint `POST /api/admin/ai/assistant`\n- Fast Path local\n- RAG em `knowledge-base-data.json`\n- `AiWidgetContext`\n- `ai_school_settings`\n- `ai_usage_logs`\n- Central de Ações IA\n- permissões por perfil\n- ações com risco e aprovação\n\nO que ainda falta:\n\n- payload estruturado `actions[]` em todas as respostas operacionais\n- registry executável de ferramentas fechadas\n- contexto vivo de tela com dados resumidos\n- memória operacional por escola/usuário\n- respostas com esclarecimento quando entidade for ambígua\n\n## Contrato de Resposta\n\nO endpoint do assistente deve evoluir para retornar:\n\n```ts\ntype AssistantActionV2 = {\n  id: string;\n  kind:\n    | \"open_screen\"\n    | \"open_drawer\"\n    | \"prepare_draft\"\n    | \"export\"\n    | \"copy_text\"\n    | \"save_ai_action\"\n    | \"request_clarification\";\n  label: string;\n  description?: string;\n  href?: string;\n  payload?: Record<string, unknown>;\n  riskLevel: \"low\" | \"medium\" | \"high\";\n  requiresApproval: boolean;\n  permission: string;\n};\n\ntype AssistantResponseV2 = {\n  ok: boolean;\n  mode: \"fast_path\" | \"rag\" | \"data_query\" | \"action\" | \"fallback\";\n  answer: string;\n  actions?: AssistantActionV2[];\n  links?: Array<{ label: string; href: string }>;\n  suggestions?: Array<{ key: string; title: string }>;\n  clarification?: {\n    question: string;\n    options: Array<{ label: string; value: string }>;\n  };\n};\n```\n\n## Registry de Actions\n\nCada action deve ser registrada com:\n\n- `id`\n- `kind`\n- `module`\n- `roles`\n- `permission`\n- `riskLevel`\n- `requiresApproval`\n- `executor`\n- `auditEvent`\n\nActions iniciais recomendadas:\n\n| Action | Risco | Execução |\n|---|---:|---|\n| `open_student_profile` | low | abre ficha rápida/drawer |\n| `open_finance_radar` | low | navega/abre tela |\n| `open_quick_payment` | medium | abre modal de pagamento |\n| `export_debtors_list` | medium | chama endpoint de exportação autorizado |\n| `prepare_whatsapp_draft` | high | cria rascunho, não envia |\n| `save_billing_plan` | high | salva em `ai_actions` |\n| `open_class_detail` | low | abre turma |\n| `open_documents_hub` | low | abre documentos oficiais |\n\n## Matriz de Risco\n\n### Low\n\nPode executar sem aprovação adicional:\n\n- abrir tela\n- abrir drawer\n- copiar texto\n- explicar regra\n- mostrar caminho oficial\n\n### Medium\n\nExige intenção explícita do usuário:\n\n- exportar lista\n- preparar pagamento\n- abrir modal com dados operacionais\n- gerar documento de pré-visualização\n\n### High\n\nExige aprovação humana ou Central de Ações IA:\n\n- enviar WhatsApp\n- gerar cobrança em lote\n- criar plano financeiro\n- publicar comunicado\n- qualquer ação com efeito externo\n\n## Contexto Vivo de Tela\n\nO `AiWidgetContext` deve evoluir para incluir resumos seguros:\n\n```ts\ntype AiScreenDataSummary = {\n  entityId?: string;\n  entityLabel?: string;\n  counters?: Record<string, number>;\n  statuses?: string[];\n  selectedIds?: string[];\n  staleAt?: string;\n};\n```\n\nExemplos:\n\n- Tela de turma: alunos ativos, alunos em atraso, pendências de notas, documentos pendentes.\n- Tela financeira: inadimplentes, valor em atraso, cobranças recentes.\n- Tela secretaria: atendimentos em aberto, documentos pendentes, matrículas por status.\n\nO resumo deve ser montado pelo frontend/backend do KLASSE, não inferido pelo modelo.\n\n## Fluxo Operacional\n\n1. Usuário pergunta no widget.\n2. `assistant/route.ts` resolve escola, usuário e papel.\n3. Classificador decide:\n   - ajuda/navegação\n   - consulta operacional\n   - geração de rascunho\n   - ação contextual\n4. Entity resolver identifica aluno, turma, período ou cobrança.\n5. Tool authorizer valida permissão.\n6. Tool executor consulta fonte canônica.\n7. Answer composer monta resposta e `actions[]`.\n8. Frontend renderiza botões.\n9. Action de risco alto vira rascunho em `ai_actions` ou pede aprovação.\n\n## Roadmap\n\n### Fase 1 — Contrato e UI\n\n- Adicionar `actions[]` ao payload do assistente.\n- Renderizar botões no `AiChatWidget`.\n- Mapear `open_screen`, `open_drawer`, `copy_text`.\n- Garantir auditoria de cliques em actions.\n\n### Fase 2 — Data Copilot\n\n- Integrar com `docs/SPRINT_EXECUTIVO_KLASSE_DATA_COPILOT_V1.md`.\n- Criar ferramentas fechadas para:\n  - inadimplência por turma\n  - resumo financeiro\n  - pendências de secretaria\n  - saúde acadêmica da turma\n\n### Fase 3 — Rascunhos Operacionais\n\n- `prepare_whatsapp_draft`\n- `save_billing_plan`\n- `save_notice_draft`\n- revisão/aprovação pela Central de Ações IA\n\n### Fase 4 — Memória Operacional\n\n- Preferências por escola.\n- Tom de comunicação padrão.\n- Regras recorrentes de cobrança.\n- Histórico de actions usadas pelo perfil.\n\n## Não Fazer\n\n- Não permitir SQL livre.\n- Não executar ações destrutivas.\n- Não enviar WhatsApp diretamente pelo chat.\n- Não lançar pagamento real por texto.\n- Não alterar notas por prompt.\n- Não inventar telas, permissões, valores ou status.\n\n## Critério de Pronto\n\nO KLASSE IA Actions v2 estará pronto quando:\n\n- toda action exibida tiver registry, permissão, risco e auditoria\n- actions high-risk exigirem aprovação\n- respostas de dados vierem apenas de ferramentas autorizadas\n- o frontend renderizar botões de action com estado claro\n- o fallback for seguro quando houver ambiguidade ou falta de dados\n",
+      "status": "active"
+    },
+    {
       "id": "doc-file-readme-klasse-ai",
       "title": "Manual: readme klasse ai",
       "sourceType": "doc",
       "sourcePath": "apps/web/src/lib/assistant/docs/readme-klasse-ai.md",
       "module": "classe_ai",
-      "content": "# README do KLASSE AI\n\nBem-vindo ao KLASSE AI — o assistente de produtividade e suporte integrado do sistema KLASSE.\n\n## 1. Diretrizes de Operação e Segurança\n- O KLASSE AI opera como um assistente contextual. Ele analisa a tela atual para sugerir ações relevantes.\n- O assistente **nunca** possui autonomia para alterar dados críticos do sistema diretamente. Não é possível, por meio de comandos de texto, alterar notas de alunos, lançar pagamentos reais, reverter transações fiscais ou excluir matrículas.\n- Todas as tarefas administrativas críticas geram rascunhos que exigem revisão e aprovação humana explícita.\n\n## 2. Proteção de Dados e PII\n- O KLASSE AI foi desenhado seguindo princípios estritos de privacidade.\n- Dados de identificação pessoal (PII) sensíveis de alunos, como números de telefone e e-mails pessoais, não são enviados para provedores externos de IA.\n- O assistente usa dados agregados e placeholders (`[Nome]`, `[Valor]`) para formular rascunhos de cobrança e avisos.\n\n## 3. Créditos e Limites\n- Cada escola possui limites diários e mensais de uso de IA gerenciados via `ai_school_settings`.\n- Cada chamada de IA consome um slot do plano, que é registrado na tabela `ai_usage_logs` via RPC `claim_ai_usage_slot`.\n- O caminho rápido (Fast Path) de respostas baseadas em registries locais não consome créditos de IA da escola.\n",
+      "content": "# README do KLASSE AI\n\nBem-vindo ao KLASSE AI — o assistente de produtividade e suporte integrado do sistema KLASSE.\n\n## 1. Diretrizes de Operação e Segurança\n- O KLASSE AI opera como um assistente contextual. Ele analisa a tela atual para sugerir ações relevantes.\n- O assistente **nunca** possui autonomia para alterar dados críticos do sistema diretamente. Não é possível, por meio de comandos de texto, alterar notas de alunos, lançar pagamentos reais, reverter transações fiscais ou excluir matrículas.\n- Todas as tarefas administrativas críticas geram rascunhos que exigem revisão e aprovação humana explícita.\n\n## 2. Proteção de Dados e PII\n- O KLASSE AI foi desenhado seguindo princípios estritos de privacidade.\n- Dados de identificação pessoal (PII) sensíveis de alunos, como números de telefone e e-mails pessoais, não são enviados para provedores externos de IA.\n- O assistente usa dados agregados e placeholders (`[Nome]`, `[Valor]`) para formular rascunhos de cobrança e avisos.\n\n## 3. Créditos e Limites\n- Cada escola possui limites diários e mensais de uso de IA gerenciados via `ai_school_settings`.\n- Cada chamada de IA consome um slot do plano, que é registrado na tabela `ai_usage_logs` via RPC `claim_ai_usage_slot`.\n- O caminho rápido (Fast Path) de respostas baseadas em registries locais não consome créditos de IA da escola.\n\n## 4. Maturidade Atual\n\nO KLASSE AI está pronto para atuar como assistente administrativo guiado, mas ainda não deve ser tratado como agente operacional autônomo.\n\nCapacidades atuais:\n- Responder perguntas frequentes por Fast Path local.\n- Orientar navegação por rotas oficiais e permissões.\n- Usar base de conhecimento documentada para respostas RAG controladas.\n- Ler contexto básico da tela atual.\n- Gerar rascunhos de comunicados, cobranças e resumos.\n- Registrar uso, cotas e falhas em `ai_usage_logs`.\n- Salvar rascunhos auditáveis na Central de Ações IA.\n\nLimites atuais:\n- O contexto de tela ainda é resumido; nem sempre inclui dados vivos suficientes para decisão operacional.\n- O assistente responde mais do que age.\n- A busca de conhecimento ainda é baseada em score textual simples, não em índice semântico dedicado.\n- A memória operacional por escola e usuário ainda não está formalizada.\n- A IA não deve executar pagamentos, notas, exclusões, envios públicos ou alterações críticas.\n\n## 5. Direção Produto — KLASSE IA Actions v2\n\nA próxima evolução é o padrão **Actions v2**: toda resposta operacional pode retornar texto explicativo e ações seguras renderizadas pela interface.\n\nFormato conceitual:\n\n```json\n{\n  \"answer\": \"Encontrei 12 alunos em atraso nesta turma.\",\n  \"actions\": [\n    { \"kind\": \"open_screen\", \"label\": \"Abrir Radar\", \"href\": \"/escola/[id]/financeiro/radar\" },\n    { \"kind\": \"prepare_draft\", \"label\": \"Gerar mensagem de cobrança\", \"riskLevel\": \"high\", \"requiresApproval\": true },\n    { \"kind\": \"export\", \"label\": \"Exportar lista\", \"riskLevel\": \"medium\", \"requiresApproval\": false }\n  ]\n}\n```\n\nRegras do Actions v2:\n- O modelo nunca recebe acesso direto ao banco.\n- O backend resolve escola, perfil, intenção, entidades e permissões.\n- Cada ação deve existir num registry fechado, com risco, permissão e modo de execução definidos.\n- Ações de escrita, envio externo ou impacto financeiro exigem confirmação ou Central de Ações IA.\n- A interface mostra botões claros; a IA não “clica” nem executa silenciosamente.\n\nDocumento de implementação: `plano-actions-v2.md`.\n",
       "status": "active"
     },
     {
@@ -533,6 +542,18 @@
       }
     },
     {
+      "id": "doc-file-manual-central-acoes-ai-chunk-3",
+      "documentId": "doc-file-manual-central-acoes-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 3,
+      "content": "## 3. Integração com Actions v2\n\nNo padrão KLASSE IA Actions v2, o assistente pode responder com texto e botões de ação.\n\nA Central de Ações IA continua sendo obrigatória para qualquer ação de risco alto:\n\n- plano de cobrança;\n- rascunho WhatsApp;\n- comunicado público;\n- recomendação operacional que possa gerar impacto financeiro, acadêmico ou reputacional.\n\nFluxo recomendado:\n\n1. O assistente identifica a intenção.\n2. O backend consulta uma ferramenta autorizada ou prepara um rascunho.\n3. A resposta mostra uma action como `Salvar na Central de Ações IA`.\n4. O usuário revisa a action salva.\n5. Um usuário autorizado aprova, rejeita ou cancela.\n\nActions de baixo risco, como abrir telas ou copiar texto, não precisam ser salvas na Central. Actions de médio risco, como exportar lista ou preparar modal operacional, exigem intenção explícita do usuário, mas não aprovação formal se não houver envio externo nem escrita crítica.",
+      "metadata": {
+        "title": "manual-central-acoes-ai.md",
+        "section": "3. Integração com Actions v2"
+      }
+    },
+    {
       "id": "doc-file-manual-financeiro-chunk-0",
       "documentId": "doc-file-manual-financeiro",
       "schoolId": null,
@@ -677,6 +698,234 @@
       }
     },
     {
+      "id": "doc-file-plano-actions-v2-chunk-0",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 0,
+      "content": "# Plano — KLASSE IA Actions v2",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Plano — KLASSE IA Actions v2"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-1",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 1,
+      "content": "## Objetivo\n\nEvoluir o KLASSE IA de assistente de ajuda contextual para copiloto operacional controlado.\n\nO assistente deve continuar explicando o sistema, mas quando detectar uma intenção operacional deve devolver uma resposta com ações seguras para a interface renderizar.\n\nExemplo:\n\n- Pergunta: `Quem está em atraso na turma 10ª A?`\n- Resposta: `Há 12 alunos em atraso, totalizando 480.000 AOA.`\n- Ações:\n  - `Abrir Radar Financeiro`\n  - `Exportar lista`\n  - `Gerar rascunho WhatsApp`\n  - `Salvar plano na Central de Ações IA`",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Objetivo"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-2",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 2,
+      "content": "## Princípios\n\n1. O modelo não acessa banco de dados diretamente.\n2. O modelo não gera SQL.\n3. O backend resolve `schoolId`, papel, permissões, intenção e entidades.\n4. Toda action vem de registry fechado.\n5. Ações críticas viram rascunho ou exigem aprovação humana.\n6. A resposta deve conter dados reais apenas quando vierem de ferramenta autorizada.\n7. Ambiguidade pede esclarecimento, não execução.",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Princípios"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-3",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 3,
+      "content": "## Estado Atual\n\nO KLASSE IA já possui:\n\n- `AiChatWidget`\n- endpoint `POST /api/admin/ai/assistant`\n- Fast Path local\n- RAG em `knowledge-base-data.json`\n- `AiWidgetContext`\n- `ai_school_settings`\n- `ai_usage_logs`\n- Central de Ações IA\n- permissões por perfil\n- ações com risco e aprovação\n\nO que ainda falta:\n\n- payload estruturado `actions[]` em todas as respostas operacionais\n- registry executável de ferramentas fechadas\n- contexto vivo de tela com dados resumidos\n- memória operacional por escola/usuário\n- respostas com esclarecimento quando entidade for ambígua",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Estado Atual"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-4",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 4,
+      "content": "## Contrato de Resposta\n\nO endpoint do assistente deve evoluir para retornar:\n\n```ts\ntype AssistantActionV2 = {\n  id: string;\n  kind:\n    | \"open_screen\"\n    | \"open_drawer\"\n    | \"prepare_draft\"\n    | \"export\"\n    | \"copy_text\"\n    | \"save_ai_action\"\n    | \"request_clarification\";\n  label: string;\n  description?: string;\n  href?: string;\n  payload?: Record<string, unknown>;\n  riskLevel: \"low\" | \"medium\" | \"high\";\n  requiresApproval: boolean;\n  permission: string;\n};\n\ntype AssistantResponseV2 = {\n  ok: boolean;\n  mode: \"fast_path\" | \"rag\" | \"data_query\" | \"action\" | \"fallback\";\n  answer: string;\n  actions?: AssistantActionV2[];\n  links?: Array<{ label: string; href: string }>;\n  suggestions?: Array<{ key: string; title: string }>;\n  clarification?: {\n    question: string;\n    options: Array<{ label: string; value: string }>;\n  };\n};\n```",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Contrato de Resposta"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-5",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 5,
+      "content": "## Registry de Actions\n\nCada action deve ser registrada com:\n\n- `id`\n- `kind`\n- `module`\n- `roles`\n- `permission`\n- `riskLevel`\n- `requiresApproval`\n- `executor`\n- `auditEvent`\n\nActions iniciais recomendadas:\n\n| Action | Risco | Execução |\n|---|---:|---|\n| `open_student_profile` | low | abre ficha rápida/drawer |\n| `open_finance_radar` | low | navega/abre tela |\n| `open_quick_payment` | medium | abre modal de pagamento |\n| `export_debtors_list` | medium | chama endpoint de exportação autorizado |\n| `prepare_whatsapp_draft` | high | cria rascunho, não envia |\n| `save_billing_plan` | high | salva em `ai_actions` |\n| `open_class_detail` | low | abre turma |\n| `open_documents_hub` | low | abre documentos oficiais |",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Registry de Actions"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-6",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 6,
+      "content": "## Matriz de Risco",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Matriz de Risco"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-7",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 7,
+      "content": "### Low\n\nPode executar sem aprovação adicional:\n\n- abrir tela\n- abrir drawer\n- copiar texto\n- explicar regra\n- mostrar caminho oficial",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Low"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-8",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 8,
+      "content": "### Medium\n\nExige intenção explícita do usuário:\n\n- exportar lista\n- preparar pagamento\n- abrir modal com dados operacionais\n- gerar documento de pré-visualização",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Medium"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-9",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 9,
+      "content": "### High\n\nExige aprovação humana ou Central de Ações IA:\n\n- enviar WhatsApp\n- gerar cobrança em lote\n- criar plano financeiro\n- publicar comunicado\n- qualquer ação com efeito externo",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "High"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-10",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 10,
+      "content": "## Contexto Vivo de Tela\n\nO `AiWidgetContext` deve evoluir para incluir resumos seguros:\n\n```ts\ntype AiScreenDataSummary = {\n  entityId?: string;\n  entityLabel?: string;\n  counters?: Record<string, number>;\n  statuses?: string[];\n  selectedIds?: string[];\n  staleAt?: string;\n};\n```\n\nExemplos:\n\n- Tela de turma: alunos ativos, alunos em atraso, pendências de notas, documentos pendentes.\n- Tela financeira: inadimplentes, valor em atraso, cobranças recentes.\n- Tela secretaria: atendimentos em aberto, documentos pendentes, matrículas por status.\n\nO resumo deve ser montado pelo frontend/backend do KLASSE, não inferido pelo modelo.",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Contexto Vivo de Tela"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-11",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 11,
+      "content": "## Fluxo Operacional\n\n1. Usuário pergunta no widget.\n2. `assistant/route.ts` resolve escola, usuário e papel.\n3. Classificador decide:\n   - ajuda/navegação\n   - consulta operacional\n   - geração de rascunho\n   - ação contextual\n4. Entity resolver identifica aluno, turma, período ou cobrança.\n5. Tool authorizer valida permissão.\n6. Tool executor consulta fonte canônica.\n7. Answer composer monta resposta e `actions[]`.\n8. Frontend renderiza botões.\n9. Action de risco alto vira rascunho em `ai_actions` ou pede aprovação.",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Fluxo Operacional"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-12",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 12,
+      "content": "## Roadmap",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Roadmap"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-13",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 13,
+      "content": "### Fase 1 — Contrato e UI\n\n- Adicionar `actions[]` ao payload do assistente.\n- Renderizar botões no `AiChatWidget`.\n- Mapear `open_screen`, `open_drawer`, `copy_text`.\n- Garantir auditoria de cliques em actions.",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Fase 1 — Contrato e UI"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-14",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 14,
+      "content": "### Fase 2 — Data Copilot\n\n- Integrar com `docs/SPRINT_EXECUTIVO_KLASSE_DATA_COPILOT_V1.md`.\n- Criar ferramentas fechadas para:\n  - inadimplência por turma\n  - resumo financeiro\n  - pendências de secretaria\n  - saúde acadêmica da turma",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Fase 2 — Data Copilot"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-15",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 15,
+      "content": "### Fase 3 — Rascunhos Operacionais\n\n- `prepare_whatsapp_draft`\n- `save_billing_plan`\n- `save_notice_draft`\n- revisão/aprovação pela Central de Ações IA",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Fase 3 — Rascunhos Operacionais"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-16",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 16,
+      "content": "### Fase 4 — Memória Operacional\n\n- Preferências por escola.\n- Tom de comunicação padrão.\n- Regras recorrentes de cobrança.\n- Histórico de actions usadas pelo perfil.",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Fase 4 — Memória Operacional"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-17",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 17,
+      "content": "## Não Fazer\n\n- Não permitir SQL livre.\n- Não executar ações destrutivas.\n- Não enviar WhatsApp diretamente pelo chat.\n- Não lançar pagamento real por texto.\n- Não alterar notas por prompt.\n- Não inventar telas, permissões, valores ou status.",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Não Fazer"
+      }
+    },
+    {
+      "id": "doc-file-plano-actions-v2-chunk-18",
+      "documentId": "doc-file-plano-actions-v2",
+      "schoolId": null,
+      "module": "any",
+      "chunkIndex": 18,
+      "content": "## Critério de Pronto\n\nO KLASSE IA Actions v2 estará pronto quando:\n\n- toda action exibida tiver registry, permissão, risco e auditoria\n- actions high-risk exigirem aprovação\n- respostas de dados vierem apenas de ferramentas autorizadas\n- o frontend renderizar botões de action com estado claro\n- o fallback for seguro quando houver ambiguidade ou falta de dados",
+      "metadata": {
+        "title": "plano-actions-v2.md",
+        "section": "Critério de Pronto"
+      }
+    },
+    {
       "id": "doc-file-readme-klasse-ai-chunk-0",
       "documentId": "doc-file-readme-klasse-ai",
       "schoolId": null,
@@ -722,6 +971,42 @@
       "metadata": {
         "title": "readme-klasse-ai.md",
         "section": "3. Créditos e Limites"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-4",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 4,
+      "content": "## 4. Maturidade Atual\n\nO KLASSE AI está pronto para atuar como assistente administrativo guiado, mas ainda não deve ser tratado como agente operacional autônomo.\n\nCapacidades atuais:\n- Responder perguntas frequentes por Fast Path local.\n- Orientar navegação por rotas oficiais e permissões.\n- Usar base de conhecimento documentada para respostas RAG controladas.\n- Ler contexto básico da tela atual.\n- Gerar rascunhos de comunicados, cobranças e resumos.\n- Registrar uso, cotas e falhas em `ai_usage_logs`.\n- Salvar rascunhos auditáveis na Central de Ações IA.\n\nLimites atuais:\n- O contexto de tela ainda é resumido; nem sempre inclui dados vivos suficientes para decisão operacional.\n- O assistente responde mais do que age.\n- A busca de conhecimento ainda é baseada em score textual simples, não em índice semântico dedicado.\n- A memória operacional por escola e usuário ainda não está formalizada.\n- A IA não deve executar pagamentos, notas, exclusões, envios públicos ou alterações críticas.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "4. Maturidade Atual"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-5",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 5,
+      "content": "## 5. Direção Produto — KLASSE IA Actions v2\n\nA próxima evolução é o padrão **Actions v2**: toda resposta operacional pode retornar texto explicativo e ações seguras renderizadas pela interface.\n\nFormato conceitual:\n\n```json\n{\n  \"answer\": \"Encontrei 12 alunos em atraso nesta turma.\",\n  \"actions\": [\n    { \"kind\": \"open_screen\", \"label\": \"Abrir Radar\", \"href\": \"/escola/[id]/financeiro/radar\" },\n    { \"kind\": \"prepare_draft\", \"label\": \"Gerar mensagem de cobrança\", \"riskLevel\": \"high\", \"requiresApproval\": true },\n    { \"kind\": \"export\", \"label\": \"Exportar lista\", \"riskLevel\": \"medium\", \"requiresApproval\": false }\n  ]\n}\n```\n\nRegras do Actions v2:\n- O modelo nunca recebe acesso direto ao banco.\n- O backend resolve escola, perfil, intenção, entidades e permissões.\n- Cada ação deve existir num registry fechado, com risco, permissão e modo de execução definidos.\n- Ações de escrita, envio externo ou impacto financeiro exigem confirmação ou Central de Ações IA.\n- A interface mostra botões claros; a IA não “clica” nem executa silenciosamente.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "5. Direção Produto — KLASSE IA Actions v2"
+      }
+    },
+    {
+      "id": "doc-file-readme-klasse-ai-chunk-6",
+      "documentId": "doc-file-readme-klasse-ai",
+      "schoolId": null,
+      "module": "classe_ai",
+      "chunkIndex": 6,
+      "content": "Documento de implementação: `plano-actions-v2.md`.",
+      "metadata": {
+        "title": "readme-klasse-ai.md",
+        "section": "5. Direção Produto — KLASSE IA Actions v2"
       }
     },
     {
