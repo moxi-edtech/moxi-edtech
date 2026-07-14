@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from "react";
-import { ArrowRight, Check, Coins, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowRightLeft, Check, Coins, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -122,6 +122,17 @@ export default function QuickActionsSection() {
         risk_level: "high",
         requires_confirm: false,
         audit_tag: "super_admin.ops.admin_access_repair",
+      },
+      {
+        id: "op-reclassificar-aluno",
+        label: "Reclassificar Aluno",
+        icon: ArrowRightLeft,
+        href: "/super-admin/operacoes-alunos",
+        description: "Mover aluno entre turmas e alinhar mensalidades com auditoria.",
+        group: "Operação",
+        risk_level: "high",
+        requires_confirm: false,
+        audit_tag: "super_admin.ops.student_reclassification",
       },
       {
         id: "gov-criar-escola",
@@ -262,7 +273,7 @@ export default function QuickActionsSection() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {items.map((action, idx) => (
+              {items.map((action) => (
                 <motion.button
                   key={action.id}
                   whileHover={{ y: -4 }}

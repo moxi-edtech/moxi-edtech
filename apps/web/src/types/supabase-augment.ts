@@ -840,6 +840,16 @@ export type DBWithRPC = Omit<Database, "public"> & {
         };
         Returns: Json;
       };
+      super_admin_reclassificar_aluno_turma: {
+        Args: {
+          p_matricula_id: string;
+          p_turma_destino_id: string;
+          p_reprecificar_abertas?: boolean;
+          p_reprecificar_pagas?: boolean;
+          p_motivo?: string | null;
+        };
+        Returns: Json;
+      };
       admissao_reupload_documento_pendente: {
         Args: {
           p_escola_id: string;

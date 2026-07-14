@@ -2,22 +2,29 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, User } from "lucide-react";
-import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { BookOpenCheck, BriefcaseBusiness, Loader2, Search, User, WalletCards } from "lucide-react";
+import { useGlobalSearch, type MinimalSearchResult, type SearchAction } from "@/hooks/useGlobalSearch";
 
 type Props = {
   escolaId?: string | null;
   placeholder?: string;
   disabledText?: string;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
+  onAction?: (action: SearchAction, result: MinimalSearchResult) => void;
 };
 
-export function GlobalSearch({ escolaId, placeholder, disabledText, portal }: Props) {
+export function GlobalSearch({ escolaId, placeholder, disabledText, portal, onAction }: Props) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const { query, setQuery, results, loading, hasMore, loadMore } = useGlobalSearch(escolaId, { portal });
 
   const isDisabled = !escolaId;
+  const actionIcon = {
+    profile: User,
+    payment: WalletCards,
+    desk: BriefcaseBusiness,
+    grade: BookOpenCheck,
+  };
 
   return (
     <div className="relative w-full max-w-lg">
@@ -50,23 +57,56 @@ export function GlobalSearch({ escolaId, placeholder, disabledText, portal }: Pr
           <div className="p-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             Alunos encontrados
           </div>
-          {results.map((aluno) => (
-            <button
-              key={aluno.id}
-              onClick={() => router.push(aluno.href)}
-              className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors text-left group"
+          {results.map((item) => (
+            <div
+              key={`${item.type}-${item.id}`}
+              className="border-t border-slate-100 p-3 transition-colors first:border-t-0 hover:bg-slate-50"
             >
-              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                <User className="h-5 w-5 text-slate-400 group-hover:text-teal-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-slate-900 truncate">{aluno.label}</div>
-                <div className="text-[12px] text-slate-500">{aluno.highlight || aluno.type}</div>
-              </div>
-              <div className="text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-600">
-                {aluno.type}
-              </div>
-            </button>
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => router.push(item.href)}
+                className="group flex w-full items-center gap-3 text-left"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                  <User className="h-5 w-5 text-slate-400 group-hover:text-teal-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-slate-900">{item.label}</div>
+                  <div className="text-[12px] text-slate-500">{item.highlight || item.type}</div>
+                </div>
+                <div className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
+                  {item.type}
+                </div>
+              </button>
+
+              {item.actions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 pl-[52px]">
+                  {item.actions.map((action) => {
+                    const Icon = actionIcon[action.kind];
+                    return (
+                      <button
+                        key={action.kind}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          setIsOpen(false);
+                          if (onAction) {
+                            onAction(action, item);
+                            return;
+                          }
+                          router.push(action.href);
+                        }}
+                        className="inline-flex h-7 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-bold text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                      >
+                        <Icon className="h-3 w-3" />
+                        {action.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           ))}
           {hasMore && (
             <button

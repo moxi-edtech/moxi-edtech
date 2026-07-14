@@ -6,6 +6,7 @@ import {
   Search,
   Loader2,
   ArrowRight,
+  BriefcaseBusiness,
   User,
   Users,
   CreditCard,
@@ -15,12 +16,11 @@ import {
   LayoutDashboard,
   Zap,
   Bookmark,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
 } from "lucide-react";
 import { Command } from "cmdk";
-import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { DialogTitle } from "@/components/ui/dialog";
+import { prefetchGlobalSearchAction } from "@/components/GlobalSearchActionSheet";
+import { useGlobalSearch, type MinimalSearchResult, type SearchAction } from "@/hooks/useGlobalSearch";
 import { cn } from "@/lib/utils";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
@@ -28,15 +28,16 @@ import { buildPortalHref } from "@/lib/navigation";
 type Props = {
   escolaId?: string | null;
   portal?: "secretaria" | "financeiro" | "admin" | "operacoes" | "professor" | "aluno" | "gestor" | "superadmin";
+  onAction?: (action: SearchAction, result: MinimalSearchResult) => void;
 };
 
-export function CommandPalette({ escolaId, portal }: Props) {
+export function CommandPalette({ escolaId, portal, onAction }: Props) {
   const router = useRouter();
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
 
   const [open, setOpen] = React.useState(false);
-  const { query, setQuery, results, loading, detectedIntent } = useGlobalSearch(escolaId, {
+  const { query, setQuery, results, loading, detectedIntent, recentResults, rememberResult } = useGlobalSearch(escolaId, {
     portal,
   });
 
@@ -66,6 +67,52 @@ export function CommandPalette({ escolaId, portal }: Props) {
     if (s.includes("cancelado") || s.includes("inativo")) return "bg-rose-50 text-rose-700 border-rose-100";
     return "bg-slate-50 text-slate-600 border-slate-100";
   };
+
+  const actionIcon = {
+    profile: User,
+    payment: CreditCard,
+    desk: BriefcaseBusiness,
+    grade: GraduationCap,
+  };
+
+  const getPrimaryAction = React.useCallback((item: MinimalSearchResult) => {
+    const preferredKind =
+      item.intent === "financeiro"
+        ? "payment"
+        : item.intent === "academico"
+          ? "grade"
+          : item.intent === "perfil"
+            ? "profile"
+            : item.actions.length > 0
+              ? "profile"
+              : null;
+
+    return preferredKind ? item.actions.find((action) => action.kind === preferredKind) ?? null : null;
+  }, []);
+
+  const selectResult = React.useCallback((item: MinimalSearchResult) => {
+    rememberResult(item);
+    const actionHandler = onAction;
+    const primaryAction = actionHandler ? getPrimaryAction(item) : null;
+
+    if (primaryAction && actionHandler) {
+      runCommand(() => actionHandler(primaryAction, item));
+      return;
+    }
+
+    runCommand(() => router.push(item.href));
+  }, [getPrimaryAction, onAction, rememberResult, router, runCommand]);
+
+  const selectAction = React.useCallback((action: SearchAction, item: MinimalSearchResult) => {
+    rememberResult(item);
+    runCommand(() => {
+      if (onAction) {
+        onAction(action, item);
+        return;
+      }
+      router.push(action.href);
+    });
+  }, [onAction, rememberResult, router, runCommand]);
 
   const staticActions = React.useMemo(() => {
     const actions = [
@@ -152,6 +199,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
           className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
           shouldFilter={false} // results are already filtered/ranked by useGlobalSearch
         >
+          <DialogTitle className="sr-only">Buscar ou digitar ação</DialogTitle>
           <div className="flex items-center border-b border-slate-100 px-4 py-3">
             <Search className="mr-3 h-5 w-5 text-slate-400" />
             <Command.Input
@@ -188,6 +236,30 @@ export function CommandPalette({ escolaId, portal }: Props) {
             </Command.Empty>
 
             {query.length === 0 && (
+              <>
+              {recentResults.length > 0 && (
+                <Command.Group heading="Recentes" className="px-2 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  {recentResults.map((item) => (
+                    <Command.Item
+                      key={`recent-${item.type}-${item.id}`}
+                      onSelect={() => selectResult(item)}
+                      className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 group-aria-selected:bg-klasse-green/10 transition-colors">
+                          {item.type === "aluno" ? <User className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-bold text-slate-900 group-aria-selected:text-klasse-green">{item.label}</div>
+                          <div className="text-[10px] uppercase tracking-wider text-slate-400">{item.type}</div>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-slate-300 opacity-0 group-aria-selected:opacity-100 -translate-x-2 group-aria-selected:translate-x-0 transition-all" />
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              )}
+
               <Command.Group heading="Ações Frequentes" className="px-2 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 {staticActions.map((action) => (
                   <Command.Item
@@ -202,6 +274,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
                   </Command.Item>
                 ))}
               </Command.Group>
+              </>
             )}
 
             {results.length > 0 && (
@@ -209,7 +282,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
                 {results.map((item) => (
                   <Command.Item
                     key={item.id}
-                    onSelect={() => runCommand(() => router.push(item.href))}
+                    onSelect={() => selectResult(item)}
                     className="flex items-center justify-between rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 aria-selected:bg-slate-50 aria-selected:text-klasse-green transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -245,7 +318,41 @@ export function CommandPalette({ escolaId, portal }: Props) {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      {onAction && item.actions.length > 0 && (
+                        <div className="hidden items-center gap-1 sm:flex">
+                          {item.actions.map((action) => {
+                            const Icon = actionIcon[action.kind];
+                            const isPrimary = getPrimaryAction(item)?.kind === action.kind;
+                            return (
+                              <button
+                                key={action.kind}
+                                type="button"
+                                onPointerEnter={() => prefetchGlobalSearchAction(action, item)}
+                                onFocus={() => prefetchGlobalSearchAction(action, item)}
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                }}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  selectAction(action, item);
+                                }}
+                                className={cn(
+                                  "inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-[10px] font-bold transition",
+                                  isPrimary
+                                    ? "border-klasse-green/30 bg-klasse-green/10 text-klasse-green hover:bg-klasse-green/15"
+                                    : "border-slate-200 bg-white text-slate-600 hover:border-klasse-green/30 hover:bg-klasse-green/5 hover:text-klasse-green",
+                                )}
+                              >
+                                <Icon className="h-3 w-3" />
+                                {action.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                       {item.intent && (
                         <span className="text-[10px] font-bold text-klasse-green bg-klasse-green/10 px-2 py-1 rounded-lg">
                           {item.intent === 'financeiro' ? 'Lançar' : 'Ver'}
@@ -269,7 +376,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
               </span>
             </div>
             <div className="text-[10px] font-bold text-slate-300 tracking-widest uppercase">
-              Moxi Command Center
+              KLASSE Command Center
             </div>
           </div>
         </Command>
