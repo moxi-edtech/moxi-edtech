@@ -1,6 +1,6 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-- Verificado em: `2026-06-23T15:28:31.694Z`
+- Verificado em: `2026-07-15T08:52:29.605Z`
 
 ## 1. SUMÁRIO EXECUTIVO
 
@@ -30,6 +30,7 @@
   - `apps/formacao/components/mentorias/MentoriasPageClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/formacao/lib/integrations/fiscal.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/formacao/lib/integrations/payment.ts` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/GlobalSearchActionSheet.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/hooks/useMatriculaLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/lib/escolaInfoClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
@@ -38,7 +39,6 @@
   - `apps/web/src/lib/schoolSessionsClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/lib/setupStateClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/formacao/app/(portal)/agenda/AgendaClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/app/(portal)/honorarios/HonorariosClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
@@ -48,6 +48,7 @@
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_radar_inadimplencia/i
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
   - `supabase/migrations/20261127000002_fix_refresh_mv_radar_inadimplencia.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20270714112000_harden_radar_inadimplencia_grants.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
   - `supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
   - `supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
   - `supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i

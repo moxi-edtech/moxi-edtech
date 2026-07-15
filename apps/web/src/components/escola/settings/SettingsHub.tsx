@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Landmark,
   MessageSquare,
+  CreditCard,
 } from "lucide-react";
 
 // ─── Progress ────────────────────────────────────────────────────────────────
@@ -163,6 +164,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     { id: "horarios", label: "Horários", icon: CalendarCheck, href: portalHref("/horarios/quadro") },
     { id: "financeiro", label: "Financeiro · Políticas", icon: Wallet, href: portalHref("/admin/configuracoes/financeiro") },
     { id: "mensalidades", label: "Mensalidades & Emolumentos", icon: Landmark, href: portalHref("/admin/configuracoes/mensalidades") },
+    { id: "assinatura", label: "Assinatura Klasse", icon: CreditCard, href: portalHref("/admin/configuracoes/assinatura") },
     { id: "comunicacao", label: "Comunicação", icon: MessageSquare, href: portalHref("/admin/configuracoes/comunicacao") },
     { id: "fluxos", label: "Fluxos", icon: Layers, href: portalHref("/admin/configuracoes/fluxos") },
     { id: "excecoes", label: "Exceções", icon: AlertTriangle, href: portalHref("/admin/configuracoes/excecoes") },

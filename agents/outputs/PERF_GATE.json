@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-23T15:28:40.195Z",
+  "timestamp": "2026-07-15T08:52:40.942Z",
   "status": "FAIL",
   "blocking_findings": [
     {
@@ -73,6 +73,10 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/components/GlobalSearchActionSheet.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/hooks/useMatriculaLogic.ts",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
@@ -103,10 +107,6 @@
         {
           "file": "apps/formacao/app/(portal)/agenda/AgendaClient.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/formacao/app/(portal)/honorarios/HonorariosClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],
       "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
@@ -127,6 +127,10 @@
         },
         {
           "file": "supabase/migrations/20261127000002_fix_refresh_mv_radar_inadimplencia.sql",
+          "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20270714112000_harden_radar_inadimplencia_grants.sql",
           "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
         },
         {
