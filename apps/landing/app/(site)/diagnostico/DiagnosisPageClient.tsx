@@ -449,7 +449,7 @@ export function DiagnosisPageClient() {
                     <p className="text-slate-400 text-lg font-medium leading-relaxed">
                         O KLASSE ajuda a automatizar cobranças, organizar matrículas e dar visibilidade real à direção. Agende uma conversa com nossos especialistas.
                     </p>
-                    <a href="https://wa.me/244933349106?text=Fiz%20o%20diagnóstico%20e%20quero%20conhecer%20o%20KLASSE" className="btn-p w-full justify-center bg-[#25D366] hover:bg-[#128C7E] py-7 text-2xl shadow-xl shadow-emerald-500/20 uppercase font-black">
+                    <a href="https://wa.me/244944811150?text=Fiz%20o%20diagnóstico%20e%20quero%20conhecer%20o%20KLASSE" className="btn-p w-full justify-center bg-[#25D366] hover:bg-[#128C7E] py-7 text-2xl shadow-xl shadow-emerald-500/20 uppercase font-black">
                         <MessageCircle size={32} />
                         Falar no WhatsApp
                     </a>

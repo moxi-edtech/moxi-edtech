@@ -22,7 +22,7 @@ export function LandingPage() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klasse.ao'
   const scheduleUrl =
-    process.env.NEXT_PUBLIC_SCHEDULE_URL ?? 'https://wa.me/244933349106?text=Quero%20saber%20mais%20sobre%20o%20KLASSE'
+    process.env.NEXT_PUBLIC_SCHEDULE_URL ?? 'https://wa.me/244944811150?text=Quero%20saber%20mais%20sobre%20o%20KLASSE'
 
   const primaryCta = { label: hero.primaryCta, href: '#onboarding' }
   const diagnosticCta = { label: hero.diagnosticCta, href: '/diagnostico' }
