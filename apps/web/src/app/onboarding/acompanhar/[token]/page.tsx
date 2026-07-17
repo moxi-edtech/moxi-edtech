@@ -1571,7 +1571,7 @@ export default function OnboardingAcompanharPage({ params }: { params: Promise<{
                 <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Canais Rápidos de Suporte</p>
                 <div className="grid grid-cols-2 gap-2">
                   <a
-                    href="https://wa.me/244923000000?text=Olá,%20preciso%20de%20ajuda%20com%20o%20onboarding%20da%20minha%20escola."
+                    href="https://wa.me/244944811150?text=Olá,%20preciso%20de%20ajuda%20com%20o%20onboarding%20da%20minha%20escola."
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-1.5 p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-100 transition-all text-[11px] font-bold text-emerald-700 no-underline"

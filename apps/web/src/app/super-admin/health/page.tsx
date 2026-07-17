@@ -133,7 +133,7 @@ export default function AdminHealthDashboard() {
           <div className="flex flex-wrap justify-between items-center gap-4">
             <div className="text-sm text-gray-600">
               <p>KLASSE Admin • Sistema de monitoramento para Angola</p>
-              <p className="mt-1">Para suporte emergencial: +244 900 000 000 (WhatsApp)</p>
+              <p className="mt-1">Para suporte emergencial: +244 944 811 150 (WhatsApp)</p>
             </div>
             
             <div className="flex gap-2">

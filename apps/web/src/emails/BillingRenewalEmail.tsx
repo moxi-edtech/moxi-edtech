@@ -141,7 +141,7 @@ export const BillingRenewalEmail = ({
             <Text className="text-[#666666] text-[12px] leading-[24px] text-center mt-4">
               © 2026 Moxi Soluções. Todos os direitos reservados.
               <br />
-              Suporte em Luanda: <strong>+244 9XX XXX XXX</strong>
+              Suporte em Luanda: <strong>+244 944 811 150</strong>
             </Text>
           </Container>
         </Body>
