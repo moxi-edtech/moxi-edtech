@@ -1,20 +1,20 @@
 # Aprovação necessária — Agent 3
-run_id:    36C03490-E8B7-4B04-B347-F57A760FFEF3
-timestamp: 2026-07-18T12:39:57Z
+run_id:    2F9768A5-707D-4546-AD40-2F09CD6EC1E7
+timestamp: 2026-07-18T12:46:58Z
 
 ## Acção proposta
-Criar o segundo lote de correções do DB lint em cinco RPCs ativas, alinhando-as ao schema real sem alterar assinaturas, retornos ou autorização.
+Reparar o índice UNIQUE particionado de frequências e corrigir o UPSERT ativo sem alterar a assinatura ou o retorno da RPC.
 
 ## Diff
 ```diff
-Ver agents/outputs/APPLY_DIFF_36C03490-E8B7-4B04-B347-F57A760FFEF3.md
+Ver agents/outputs/APPLY_DIFF_2F9768A5-707D-4546-AD40-2F09CD6EC1E7.md
 ```
 
 ## Risco
-Baixo a médio: as mudanças alinham referências ao schema vigente, mas afetam reimpressão, frequência, pricing e provisionamento; todas serão validadas individualmente pelo lint.
+Médio: cria sete índices UNIQUE em partições atualmente vazias e anexa-os ao índice pai; um erro de attachment aborta toda a transação.
 
 ## Como aprovar
-Commit com mensagem: `APPROVE: 36C03490-E8B7-4B04-B347-F57A760FFEF3`
+Commit com mensagem: `APPROVE: 2F9768A5-707D-4546-AD40-2F09CD6EC1E7`
 
 ## Como rejeitar
-Commit com mensagem: `REJECT: 36C03490-E8B7-4B04-B347-F57A760FFEF3 [motivo]`
+Commit com mensagem: `REJECT: 2F9768A5-707D-4546-AD40-2F09CD6EC1E7 [motivo]`
