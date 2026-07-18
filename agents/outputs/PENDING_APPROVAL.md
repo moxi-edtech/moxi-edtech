@@ -1,20 +1,20 @@
 # Aprovação necessária — Agent 3
-run_id:    79DF0695-8666-461E-B4E1-1887CF8D9D48
-timestamp: 2026-07-18T12:56:54Z
+run_id:    FE3BD60B-0263-43D2-BFCE-989D5C5F9445
+timestamp: 2026-07-18T13:00:39Z
 
 ## Acção proposta
-Corrigir integralmente a RPC de confirmação de conciliação, preservando o vínculo do lançamento em JSON após remoção da coluna legada.
+Corrigir cinco funções do portal parceiro que gravam texto numa coluna UUID do audit log, preservando os UUIDs de ator já disponíveis.
 
 ## Diff
 ```diff
-Ver agents/outputs/APPLY_DIFF_79DF0695-8666-461E-B4E1-1887CF8D9D48.md
+Ver agents/outputs/APPLY_DIFF_FE3BD60B-0263-43D2-BFCE-989D5C5F9445.md
 ```
 
 ## Risco
-Médio: altera enums financeiros e move o vínculo do lançamento para metadados JSON já existentes; tudo ocorre numa transação.
+Baixo: corrige apenas o tipo do ator no audit log, sem alterar assinaturas, retornos ou regras de negócio.
 
 ## Como aprovar
-Commit com mensagem: `APPROVE: 79DF0695-8666-461E-B4E1-1887CF8D9D48`
+Commit com mensagem: `APPROVE: FE3BD60B-0263-43D2-BFCE-989D5C5F9445`
 
 ## Como rejeitar
-Commit com mensagem: `REJECT: 79DF0695-8666-461E-B4E1-1887CF8D9D48 [motivo]`
+Commit com mensagem: `REJECT: FE3BD60B-0263-43D2-BFCE-989D5C5F9445 [motivo]`
