@@ -1,20 +1,20 @@
 # Aprovação necessária — Agent 3
-run_id:    F9D0D3C9-F2EB-4805-A3CF-861ABB5EDBCC
-timestamp: 2026-07-18T12:37:08Z
+run_id:    36C03490-E8B7-4B04-B347-F57A760FFEF3
+timestamp: 2026-07-18T12:39:57Z
 
 ## Acção proposta
-Criar o primeiro lote de correções do DB lint em quatro RPCs ativas, sem alterar assinaturas, retornos, grants ou contratos externos.
+Criar o segundo lote de correções do DB lint em cinco RPCs ativas, alinhando-as ao schema real sem alterar assinaturas, retornos ou autorização.
 
 ## Diff
 ```diff
-Ver agents/outputs/APPLY_DIFF_F9D0D3C9-F2EB-4805-A3CF-861ABB5EDBCC.md
+Ver agents/outputs/APPLY_DIFF_36C03490-E8B7-4B04-B347-F57A760FFEF3.md
 ```
 
 ## Risco
-Baixo: as mudanças apenas corrigem tipos SQLSTATE/JSONB e qualificam referências ambíguas; ainda assim, um erro na recriação das funções pode afetar IA, health dashboard, reimpressão ou venda avulsa.
+Baixo a médio: as mudanças alinham referências ao schema vigente, mas afetam reimpressão, frequência, pricing e provisionamento; todas serão validadas individualmente pelo lint.
 
 ## Como aprovar
-Commit com mensagem: `APPROVE: F9D0D3C9-F2EB-4805-A3CF-861ABB5EDBCC`
+Commit com mensagem: `APPROVE: 36C03490-E8B7-4B04-B347-F57A760FFEF3`
 
 ## Como rejeitar
-Commit com mensagem: `REJECT: F9D0D3C9-F2EB-4805-A3CF-861ABB5EDBCC [motivo]`
+Commit com mensagem: `REJECT: 36C03490-E8B7-4B04-B347-F57A760FFEF3 [motivo]`
