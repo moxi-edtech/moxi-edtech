@@ -1,20 +1,20 @@
 # Aprovação necessária — Agent 3
-run_id:    2F9768A5-707D-4546-AD40-2F09CD6EC1E7
-timestamp: 2026-07-18T12:46:58Z
+run_id:    6077067D-7A20-44B0-90BA-8AC34C7BC619
+timestamp: 2026-07-18T12:48:57Z
 
 ## Acção proposta
-Reparar o índice UNIQUE particionado de frequências e corrigir o UPSERT ativo sem alterar a assinatura ou o retorno da RPC.
+Reparar o índice UNIQUE particionado através de constraints filhas e corrigir o UPSERT ativo sem alterar a assinatura ou retorno da RPC.
 
 ## Diff
 ```diff
-Ver agents/outputs/APPLY_DIFF_2F9768A5-707D-4546-AD40-2F09CD6EC1E7.md
+Ver agents/outputs/APPLY_DIFF_6077067D-7A20-44B0-90BA-8AC34C7BC619.md
 ```
 
 ## Risco
-Médio: cria sete índices UNIQUE em partições atualmente vazias e anexa-os ao índice pai; um erro de attachment aborta toda a transação.
+Médio: cria sete constraints UNIQUE em partições vazias e anexa os seus índices ao pai; qualquer erro aborta a transação completa.
 
 ## Como aprovar
-Commit com mensagem: `APPROVE: 2F9768A5-707D-4546-AD40-2F09CD6EC1E7`
+Commit com mensagem: `APPROVE: 6077067D-7A20-44B0-90BA-8AC34C7BC619`
 
 ## Como rejeitar
-Commit com mensagem: `REJECT: 2F9768A5-707D-4546-AD40-2F09CD6EC1E7 [motivo]`
+Commit com mensagem: `REJECT: 6077067D-7A20-44B0-90BA-8AC34C7BC619 [motivo]`
