@@ -4,6 +4,86 @@ import type { Database, Json } from "~types/supabase"
 export type DBWithRPC = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Functions" | "Tables"> & {
     Tables: Database["public"]["Tables"] & {
+      ai_insights: {
+        Row: {
+          id: string;
+          school_id: string;
+          generated_by: string | null;
+          tool_id: string;
+          fingerprint: string;
+          title: string;
+          severity: "info" | "low" | "medium" | "high" | "critical";
+          module: "financeiro" | "secretaria" | "academico" | "direcao";
+          explanation: string;
+          evidence: Json;
+          recommendation: string;
+          suggested_action: Json | null;
+          status: "new" | "seen" | "in_progress" | "resolved" | "ignored";
+          first_detected_at: string;
+          last_detected_at: string;
+          seen_at: string | null;
+          started_at: string | null;
+          resolved_at: string | null;
+          ignored_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          school_id: string;
+          generated_by?: string | null;
+          tool_id: string;
+          fingerprint: string;
+          title: string;
+          severity: "info" | "low" | "medium" | "high" | "critical";
+          module: "financeiro" | "secretaria" | "academico" | "direcao";
+          explanation: string;
+          evidence?: Json;
+          recommendation: string;
+          suggested_action?: Json | null;
+          status?: "new" | "seen" | "in_progress" | "resolved" | "ignored";
+          first_detected_at?: string;
+          last_detected_at?: string;
+          seen_at?: string | null;
+          started_at?: string | null;
+          resolved_at?: string | null;
+          ignored_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          school_id?: string;
+          generated_by?: string | null;
+          tool_id?: string;
+          fingerprint?: string;
+          title?: string;
+          severity?: "info" | "low" | "medium" | "high" | "critical";
+          module?: "financeiro" | "secretaria" | "academico" | "direcao";
+          explanation?: string;
+          evidence?: Json;
+          recommendation?: string;
+          suggested_action?: Json | null;
+          status?: "new" | "seen" | "in_progress" | "resolved" | "ignored";
+          first_detected_at?: string;
+          last_detected_at?: string;
+          seen_at?: string | null;
+          started_at?: string | null;
+          resolved_at?: string | null;
+          ignored_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "escolas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ai_actions: {
         Row: {
           id: string;

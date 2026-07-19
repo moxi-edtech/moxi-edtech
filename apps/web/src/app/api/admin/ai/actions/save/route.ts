@@ -16,6 +16,7 @@ export const revalidate = 0;
 
 const saveSchema = z.object({
   schoolId: z.string().uuid(),
+  aiInsightId: z.string().uuid().optional().nullable(),
   title: z.string().trim().min(3).max(180),
   content: z.string().trim().min(3).max(4000),
   actionType: z.enum(["communication_draft", "finance_message", "school_summary", "help_navigation", "operational_recommendation"]),
@@ -65,17 +66,35 @@ export async function POST(request: Request) {
   }
 
   try {
+    const sourceInsightResult = parsed.data.aiInsightId
+      ? await supabase
+          .from("ai_insights")
+          .select("id,tool_id,module")
+          .eq("id", parsed.data.aiInsightId)
+          .eq("school_id", schoolId)
+          .maybeSingle()
+      : null;
+    if (sourceInsightResult?.error) throw sourceInsightResult.error;
+    if (parsed.data.aiInsightId && !sourceInsightResult?.data) {
+      return NextResponse.json({ ok: false, error: "Insight IA não encontrado nesta escola." }, { status: 404 });
+    }
+    const sourceInsight = sourceInsightResult?.data ?? null;
+
     const action = await createAiAction(supabase, {
       schoolId,
       createdBy: access.userId,
       actionType: parsed.data.actionType,
       sourceModule: parsed.data.sourceModule,
+      sourceEntityType: sourceInsight ? "ai_insights" : undefined,
+      sourceEntityId: sourceInsight?.id,
       title: parsed.data.title,
       summary: parsed.data.title,
       content: parsed.data.content,
       metadata: {
         ...parsed.data.context,
         channel: parsed.data.createWhatsappDraft ? "waha" : undefined,
+        ai_insight_id: sourceInsight?.id,
+        ai_insight_tool_id: sourceInsight?.tool_id,
         assistant_v3: true,
       },
       riskLevel: parsed.data.riskLevel,
@@ -108,7 +127,13 @@ export async function POST(request: Request) {
           recipient_phone_hash: hashPhone(phone),
           title: parsed.data.title,
           body: parsed.data.content,
-          metadata: { phone, ai_action_id: action.id, assistant_v3: true },
+          metadata: {
+            phone,
+            ai_action_id: action.id,
+            ai_insight_id: sourceInsight?.id,
+            ai_insight_tool_id: sourceInsight?.tool_id,
+            assistant_v3: true,
+          },
           status: "review_required",
           risk_level: parsed.data.riskLevel === "low" ? "medium" : parsed.data.riskLevel,
           requires_approval: true,

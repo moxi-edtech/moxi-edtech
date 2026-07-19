@@ -231,12 +231,6 @@ export async function DELETE(
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    try {
-      await (supabase as any).rpc('refresh_mv_escola_cursos_stats');
-    } catch (refreshErr) {
-      console.warn('Falha ao atualizar mv_escola_cursos_stats:', refreshErr);
-    }
-
     return NextResponse.json({ ok: true, hard: hardDelete });
 
   } catch (e: any) {

@@ -18,7 +18,17 @@ export const BASE_ROLES = [
 
 const ALL_ROLES = [...BASE_ROLES];
 const SECRETARIA_AND_UP = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"];
-const FINANCE_ROLES = ["admin", "admin_escola", "direcao", "diretoria", "financeiro", "admin_financeiro", "secretaria_financeiro"];
+const FINANCE_ROLES = [
+  "admin",
+  "admin_escola",
+  "staff_admin",
+  "direcao",
+  "diretoria",
+  "secretaria",
+  "financeiro",
+  "admin_financeiro",
+  "secretaria_financeiro",
+];
 const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria"];
 
 export const ASSISTANT_PERMISSIONS: AssistantPermission[] = [
@@ -43,13 +53,23 @@ export const ASSISTANT_PERMISSIONS: AssistantPermission[] = [
     description: "Permite usar IA para resumir indicadores da tela atual ou ficha de aluno.",
   },
   {
+    key: "assistant.academico",
+    roles: SECRETARIA_AND_UP,
+    description: "Permite consultar diagnósticos acadêmicos de notas e frequência.",
+  },
+  {
+    key: "assistant.secretaria",
+    roles: SECRETARIA_AND_UP,
+    description: "Permite consultar diagnósticos operacionais da Secretaria e admissões.",
+  },
+  {
     key: "assistant.finance",
     roles: FINANCE_ROLES,
     description: "Permite usar o assistente para ações financeiras (gerar rascunhos de cobrança, analisar radar).",
   },
   {
     key: "assistant.whatsapp_draft",
-    roles: FINANCE_ROLES, // Apenas perfis financeiros podem sugerir mensagens financeiras para WhatsApp
+    roles: FINANCE_ROLES, // Perfis administrativos autorizados podem preparar rascunhos; o envio continua sujeito a aprovação.
     description: "Permite gerar rascunhos de mensagens para o WhatsApp a partir do radar financeiro.",
   },
   {

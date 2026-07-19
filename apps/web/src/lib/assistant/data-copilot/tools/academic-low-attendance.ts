@@ -1,0 +1,64 @@
+import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../actions-v2";
+import type { AiWidgetContext } from "../../screen-context";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { createDataCopilotResponse } from "../answer-composer";
+import type { DataCopilotTool } from "../types";
+
+type AttendanceRiskRow = {
+  turma_id: string | null;
+  percentual_presenca: number | string | null;
+};
+
+const MINIMUM_ATTENDANCE = 75;
+
+export function isLowAttendanceQuery(query: string, context?: AiWidgetContext) {
+  const hasAcademicScope = /frequ[eê]ncia|presen[cç]a|falta/.test(query) || context?.module === "academico";
+  const asksForDiagnosis = /baix|risco|aluno|turma|pendent|aten[cç][aã]o|resumo/.test(query);
+  return Boolean(hasAcademicScope && asksForDiagnosis);
+}
+
+export const academicLowAttendanceTool: DataCopilotTool = {
+  id: "academic-low-attendance",
+  module: "academico",
+  requiredPermission: "assistant.academico",
+  match: isLowAttendanceQuery,
+  async run({ schoolId, role }) {
+    const supabase = await supabaseServerTyped();
+    const { data, count, error } = await supabase
+      .from("vw_frequencia_resumo_aluno")
+      .select("turma_id, percentual_presenca", { count: "exact" })
+      .eq("escola_id", schoolId)
+      .lt("percentual_presenca", MINIMUM_ATTENDANCE)
+      .order("percentual_presenca", { ascending: true })
+      .limit(50);
+
+    if (error) throw error;
+
+    const rows = (data ?? []) as AttendanceRiskRow[];
+    const affectedStudents = count ?? rows.length;
+    const affectedClasses = new Set(rows.map((row) => row.turma_id).filter(Boolean)).size;
+    const lowestRate = rows.length > 0 ? Number(rows[0].percentual_presenca ?? 0) : null;
+    const action = instantiateAssistantActionV2("academico:open_attendance", role, { schoolId });
+    const actions: AssistantActionV2[] = action ? [action] : [];
+
+    return createDataCopilotResponse({
+      insight: {
+        diagnosis: affectedStudents === 0
+          ? "Não há alunos abaixo do limite de 75% de frequência."
+          : `Foram identificados **${affectedStudents} alunos abaixo de 75% de frequência**.`,
+        impact: affectedStudents === 0
+          ? "Não há risco de frequência identificado nos registros atuais."
+          : "Estes alunos podem entrar em risco acadêmico e exigem acompanhamento da equipe pedagógica.",
+        recommendation: affectedStudents === 0
+          ? "Manter o acompanhamento regular de presenças."
+          : "Rever os casos com menor frequência, confirmar justificativas e preparar acompanhamento com as turmas afetadas.",
+        evidence: [
+          { label: "Alunos abaixo de 75%", value: String(affectedStudents) },
+          { label: "Turmas na amostra", value: String(affectedClasses) },
+          { label: "Menor frequência", value: lowestRate === null ? "Sem risco" : `${lowestRate.toFixed(1)}%` },
+        ],
+        actions,
+      },
+    });
+  },
+};

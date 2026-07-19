@@ -23,6 +23,14 @@ import { buildContextualPortalHref } from "@/lib/navigation";
 
 export type { AiWidgetContext };
 
+type InsightPayload = {
+  diagnosis: string;
+  impact: string;
+  recommendation: string;
+  evidence: Array<{ label: string; value: string }>;
+  actions: AssistantActionV2[];
+};
+
 type Message = {
   id: string;
   sender: "user" | "ai";
@@ -32,6 +40,8 @@ type Message = {
   quickReplies?: Array<{ label: string; action: string }>;
   links?: Array<{ label: string; href: string }>;
   actions?: AssistantActionV2[];
+  mode?: string;
+  insight?: InsightPayload;
 };
 
 type AssistantSuggestionPayload = {
@@ -45,6 +55,8 @@ type AssistantResponsePayload = {
   actions?: AssistantActionV2[];
   suggestions?: AssistantSuggestionPayload[];
   mode?: string;
+  operatingMode?: "help" | "data" | "action";
+  insight?: InsightPayload;
 };
 
 type RewriteResponsePayload = {
@@ -750,6 +762,8 @@ export default function AiChatWidget({
           ai(cached.answer, {
             links: cached.links,
             actions: cached.actions,
+            mode: cached.operatingMode ?? cached.mode,
+            insight: cached.insight,
             quickReplies: cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
           }),
         ]);
@@ -779,6 +793,8 @@ export default function AiChatWidget({
         ai(json.answer, {
           links: json.links,
           actions: json.actions,
+          mode: json.operatingMode ?? json.mode,
+          insight: json.insight,
           quickReplies: json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` })),
         }),
       ]);
@@ -959,8 +975,42 @@ export default function AiChatWidget({
                     const isAi = message.sender === "ai";
                     return (
                       <div key={message.id} className={`flex ${isAi ? "justify-start" : "justify-end"}`}>
-                        <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${isAi ? "border border-slate-100 bg-white text-slate-800 rounded-tl-none" : "bg-[#1F6B3B] text-white rounded-tr-none"}`}>
-                          <p className="whitespace-pre-wrap">{message.text}</p>
+                        <div className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${isAi ? message.insight ? "border border-emerald-200 bg-gradient-to-br from-white to-emerald-50/60 text-slate-800 rounded-tl-none" : "border border-slate-100 bg-white text-slate-800 rounded-tl-none" : "bg-[#1F6B3B] text-white rounded-tr-none"}`}>
+                          {isAi && message.insight ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between gap-2 border-b border-emerald-100 pb-2">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">
+                                  <Sparkles className="h-3 w-3" /> Análise de dados reais
+                                </span>
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800">Copiloto</span>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Diagnóstico</p>
+                                <p className="mt-1 whitespace-pre-wrap font-semibold text-slate-900">{message.insight.diagnosis}</p>
+                              </div>
+                              <div className="rounded-lg border border-amber-100 bg-amber-50/80 p-2.5">
+                                <p className="text-[9px] font-black uppercase tracking-wide text-amber-700">Impacto</p>
+                                <p className="mt-1 whitespace-pre-wrap text-amber-950">{message.insight.impact}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black uppercase tracking-wide text-emerald-700">Próximo passo recomendado</p>
+                                <p className="mt-1 whitespace-pre-wrap font-semibold text-slate-900">{message.insight.recommendation}</p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {message.insight.evidence.slice(0, 4).map((item) => (
+                                  <div key={`${message.id}-${item.label}`} className="rounded-lg border border-slate-100 bg-white p-2">
+                                    <p className="text-[8px] font-bold uppercase text-slate-400">{item.label}</p>
+                                    <p className="mt-0.5 font-black text-slate-900">{item.value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {isAi && message.mode ? <p className="mb-1 text-[8px] font-black uppercase tracking-wide text-slate-400">{message.mode === "action" ? "Preparando ação" : "Ajuda KLASSE"}</p> : null}
+                              <p className="whitespace-pre-wrap">{message.text}</p>
+                            </>
+                          )}
 
                           {/* Rendering internal routes returned by the assistant */}
                           {isAi && (!message.actions || message.actions.length === 0) && message.links && message.links.length > 0 ? (

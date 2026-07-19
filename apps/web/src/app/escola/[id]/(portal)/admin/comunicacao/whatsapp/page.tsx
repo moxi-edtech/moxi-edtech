@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useState, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Check,
   Copy,
@@ -68,6 +68,16 @@ type Recipient = {
   name: string;
   studentName?: string;
   phoneMasked: string;
+};
+
+type InsightOrigin = {
+  id: string;
+  tool_id: string;
+  title: string;
+  module: string;
+  explanation: string;
+  recommendation: string;
+  evidence: Array<{ label: string; value: string }>;
 };
 
 type LogItem = {
@@ -192,6 +202,7 @@ function formatTime(value: string | null | undefined) {
 export default function WhatsAppKlassePage({ params }: Props) {
   const { id: escolaId } = use(params);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { error, success } = useToast();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -204,6 +215,8 @@ export default function WhatsAppKlassePage({ params }: Props) {
   const [search, setSearch] = useState("");
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [selectedRecipients, setSelectedRecipients] = useState<Recipient[]>([]);
+  const [insightOrigin, setInsightOrigin] = useState<InsightOrigin | null>(null);
+  const [selectionReason, setSelectionReason] = useState("");
   const [form, setForm] = useState({
     messageType: "manual_message",
     templateKey: "",
@@ -226,6 +239,40 @@ export default function WhatsAppKlassePage({ params }: Props) {
 
   const apiBase = `/api/escola/${escolaId}/admin/comunicacao/whatsapp`;
   const configHref = buildContextualPortalHref(escolaId, "/admin/configuracoes/comunicacao", pathname);
+  const aiInsightId = searchParams?.get("aiInsightId") ?? null;
+  const requestedSelectionReason = searchParams?.get("selectionReason") ?? "";
+
+  useEffect(() => {
+    if (!aiInsightId) return;
+    let cancelled = false;
+
+    async function loadInsightOrigin() {
+      const query = new URLSearchParams({ schoolId: escolaId, id: aiInsightId as string, limit: "1" });
+      const response = await fetch(`/api/admin/ai/insights?${query.toString()}`, { cache: "no-store" });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok || !json.insights?.[0]) {
+        if (!cancelled) error(json?.error || "Não foi possível carregar a origem do insight.");
+        return;
+      }
+      if (cancelled) return;
+
+      const insight = json.insights[0] as InsightOrigin;
+      setInsightOrigin(insight);
+      setSelectionReason(requestedSelectionReason || `${insight.title}: ${insight.recommendation}`);
+      setForm((current) => ({
+        ...current,
+        messageType: "ai_generated_draft",
+        title: current.title || insight.title,
+        body: current.body || insight.recommendation,
+      }));
+      setActiveTab("fila");
+    }
+
+    loadInsightOrigin();
+    return () => {
+      cancelled = true;
+    };
+  }, [aiInsightId, escolaId, requestedSelectionReason]);
 
   // Filter outbox rows for non-inbox tabs
   const filteredOutbox = useMemo(() => {
@@ -358,6 +405,8 @@ export default function WhatsAppKlassePage({ params }: Props) {
 
   async function createMessage(recipient: Recipient | null) {
     const payload = {
+      aiInsightId: insightOrigin?.id ?? null,
+      selectionReason: insightOrigin ? selectionReason : null,
       messageType: form.messageType,
       recipientType: recipient?.type || "manual",
       recipientRefId: recipient?.id || null,
@@ -418,6 +467,8 @@ export default function WhatsAppKlassePage({ params }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          aiInsightId: insightOrigin?.id ?? null,
+          selectionReason: insightOrigin ? selectionReason : null,
           messageType,
           title: form.title || (messageType === "finance_charge" ? "Cobrança financeira" : "Comunicado escolar"),
           body: form.body || selectedTemplate?.body || "",
@@ -958,6 +1009,42 @@ export default function WhatsAppKlassePage({ params }: Props) {
                   value={form.body}
                   onChange={(e) => setForm({ ...form, body: e.target.value })}
                 />
+
+                {insightOrigin ? (
+                  <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Origem KLASSE IA</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{insightOrigin.title}</p>
+                      <p className="mt-1 text-xs text-slate-600">{insightOrigin.module} · {insightOrigin.tool_id}</p>
+                    </div>
+                    <div className="rounded-md bg-white/80 p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-slate-500">Sinal detectado</p>
+                      <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">{insightOrigin.explanation}</p>
+                    </div>
+                    <label className="block">
+                      <span className="text-[10px] font-bold uppercase text-slate-500">Motivo da seleção</span>
+                      <textarea
+                        className="mt-1 min-h-20 w-full rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs outline-none focus:border-emerald-500"
+                        value={selectionReason}
+                        onChange={(event) => setSelectionReason(event.target.value)}
+                        maxLength={500}
+                      />
+                    </label>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-500">Destinatários para revisão ({recipientType === "manual" ? (form.recipientName ? 1 : 0) : selectedRecipients.length})</p>
+                      <div className="mt-1 max-h-28 space-y-1 overflow-auto rounded-md bg-white/80 p-2">
+                        {recipientType === "manual" && form.recipientName ? (
+                          <p className="text-xs font-semibold text-slate-700">{form.recipientName} · {form.recipientPhone || "sem telefone"}</p>
+                        ) : null}
+                        {recipientType !== "manual" ? selectedRecipients.map((recipient) => (
+                          <p key={recipient.id} className="text-xs font-semibold text-slate-700">{recipient.name} · {recipient.studentName || recipient.phoneMasked}</p>
+                        )) : null}
+                        {(recipientType === "manual" ? !form.recipientName : selectedRecipients.length === 0) ? <p className="text-xs text-amber-700">Selecione os destinatários antes de criar o rascunho.</p> : null}
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-semibold text-emerald-800">Nenhuma mensagem será enviada nesta etapa. A criação mantém revisão e aprovação conforme o risco.</p>
+                  </div>
+                ) : null}
 
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button onClick={submitMessage} disabled={saving || Boolean(disabledMessage || disconnectedMessage)}>

@@ -1,20 +1,27 @@
 # Aprovação necessária — Agent 3
-run_id:    3BF04896-A308-4059-AA04-62DF08A0D2FA
-timestamp: 2026-07-18T13:03:08Z
+run_id:    867FFE3C-59C2-43CE-9F5C-9651264D8680
+timestamp: 2026-07-18T00:00:00-03:00
 
 ## Acção proposta
-Adicionar o schema confiável `extensions` ao search path de quatro funções de pesquisa que usam `pg_trgm` e `unaccent`.
+
+Revogar de `authenticated` a execução de `admin_recalc_all_aggregates()` após a migração do fluxo para worker Inngest interno.
 
 ## Diff
+
 ```diff
-Ver agents/outputs/APPLY_DIFF_3BF04896-A308-4059-AA04-62DF08A0D2FA.md
++REVOKE EXECUTE ON FUNCTION public.admin_recalc_all_aggregates()
++FROM PUBLIC, anon, authenticated;
++GRANT EXECUTE ON FUNCTION public.admin_recalc_all_aggregates() TO service_role;
 ```
 
 ## Risco
-Baixo: apenas permite resolver funções de extensões já instaladas, sem alterar assinaturas, queries ou ranking.
+
+Uma versão antiga da aplicação ainda chamando diretamente a RPC falharia; o código atual validado usa exclusivamente o evento e o worker.
 
 ## Como aprovar
-Commit com mensagem: `APPROVE: 3BF04896-A308-4059-AA04-62DF08A0D2FA`
+
+Commit com mensagem: `APPROVE: 867FFE3C-59C2-43CE-9F5C-9651264D8680`
 
 ## Como rejeitar
-Commit com mensagem: `REJECT: 3BF04896-A308-4059-AA04-62DF08A0D2FA [motivo]`
+
+Commit com mensagem: `REJECT: 867FFE3C-59C2-43CE-9F5C-9651264D8680 [motivo]`

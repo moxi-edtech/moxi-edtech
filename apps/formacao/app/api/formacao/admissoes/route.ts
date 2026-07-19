@@ -120,43 +120,31 @@ export async function POST(request: Request) {
 
   const precheck = Array.isArray(precheckData) ? precheckData[0] : precheckData;
   const existingUserId = normalizeString((precheck as { existing_user_id?: string | null } | null)?.existing_user_id);
-  const existingEmail = normalizeEmail((precheck as { existing_email?: string | null } | null)?.existing_email);
 
   let formingUserId = "";
   let createdNewUser = false;
 
   if (existingUserId) {
-    if (!password) {
+    if (!password || !email) {
       return NextResponse.json(
         {
           ok: false,
           code: "PASSWORD_REQUIRED",
-          error: "Já encontramos um cadastro com este BI. Confirme sua senha para concluir a inscrição.",
-          email_hint: maskEmail(existingEmail || email),
+          error: "Já encontramos um cadastro com este BI. Informe o email e a senha para concluir a inscrição.",
+          email_hint: email ? maskEmail(email) : undefined,
         },
         { status: 409 }
       );
     }
 
-    const loginEmail = existingEmail || email;
-    if (!loginEmail) {
-      return NextResponse.json(
-        { ok: false, error: "Não foi possível resolver email para confirmação de senha." },
-        { status: 409 }
-      );
-    }
-
     const { data: signInData, error: signInError } = await s.auth.signInWithPassword({
-      email: loginEmail,
+      email,
       password,
     });
     if (signInError || !signInData.user?.id) {
       return NextResponse.json({ ok: false, error: "Credenciais inválidas" }, { status: 401 });
     }
-    if (String(signInData.user.id) !== existingUserId) {
-      return NextResponse.json({ ok: false, error: "Credenciais inválidas" }, { status: 401 });
-    }
-    formingUserId = existingUserId;
+    formingUserId = String(signInData.user.id);
   } else {
     if (!email) {
       return NextResponse.json({ ok: false, error: "email é obrigatório para novo cadastro" }, { status: 400 });
@@ -206,7 +194,7 @@ export async function POST(request: Request) {
     p_cohort_ref: cohortRef,
     p_formando_user_id: formingUserId,
     p_nome: nome,
-    p_email: email || existingEmail || null,
+    p_email: email || null,
     p_bi_numero: biNumero,
     p_telefone: telefone || null,
   });
@@ -218,7 +206,7 @@ export async function POST(request: Request) {
           ok: false,
           code: "PASSWORD_REQUIRED",
           error: "Já encontramos um cadastro com este BI. Confirme sua senha para concluir a inscrição.",
-          email_hint: maskEmail(existingEmail || email),
+          email_hint: email ? maskEmail(email) : undefined,
         },
         { status: 409 }
       );

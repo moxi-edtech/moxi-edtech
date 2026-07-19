@@ -143,15 +143,15 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-900 transition-colors group">
+    <div className="group rounded-[1.1rem] border border-emerald-950/10 bg-white p-3.5 shadow-[0_10px_28px_rgba(45,34,12,0.06)] transition-colors hover:border-emerald-900/20 sm:rounded-[1.35rem] sm:p-5">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${fileUrl ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}`}>
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 sm:rounded-2xl ${fileUrl ? 'bg-emerald-50 text-emerald-700' : 'bg-[#fff8ec] text-amber-700'}`}>
             {fileUrl ? <CheckCircle2 size={24} /> : <FileText size={24} />}
           </div>
-          <div>
-            <h4 className="text-sm font-black text-slate-900">{label}</h4>
-            <p className="text-xs text-slate-500">{description}</p>
+          <div className="min-w-0">
+            <h4 className="text-sm font-black text-slate-950">{label}</h4>
+            <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{description}</p>
           </div>
         </div>
 
@@ -159,7 +159,7 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
           type="button"
           onClick={() => fileUrl ? void handleRemove() : fileInputRef.current?.click()}
           disabled={uploading || removing}
-          className={`flex h-10 w-10 items-center justify-center rounded-lg transition ${fileUrl ? 'bg-slate-100 text-slate-400 hover:text-red-500' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${fileUrl ? 'bg-slate-100 text-slate-400 hover:text-red-500' : 'bg-slate-950 text-white hover:bg-slate-800'}`}
         >
           {uploading || removing ? <Loader2 size={18} className="animate-spin" /> : (fileUrl ? <X size={18} /> : <Upload size={18} />)}
         </button>
@@ -181,7 +181,7 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
       )}
 
       {fileUrl && (
-        <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-green-600 uppercase">
+        <div className="mt-3 flex items-center gap-2 text-[10px] font-black uppercase text-emerald-700">
           <CheckCircle2 size={12} />
           Arquivo enviado com sucesso
         </div>

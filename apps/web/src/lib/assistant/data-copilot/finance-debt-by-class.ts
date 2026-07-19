@@ -2,14 +2,8 @@ import { instantiateAssistantActionV2, type AssistantActionV2 } from "../actions
 import { hasAssistantPermission } from "../permission-registry";
 import type { AiWidgetContext } from "../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-
-type DataCopilotResponse = {
-  ok: true;
-  mode: "data_query";
-  answer: string;
-  actions?: AssistantActionV2[];
-  links?: Array<{ label: string; href: string }>;
-};
+import { createDataCopilotResponse } from "./answer-composer";
+import type { DataCopilotResponse, DataCopilotTool } from "./types";
 
 type TurmaRow = {
   id: string;
@@ -29,7 +23,7 @@ const AOA_FORMATTER = new Intl.NumberFormat("pt-AO", {
   currency: "AOA",
 });
 
-function isDebtByClassQuery(cleanQuery: string, context?: AiWidgetContext) {
+export function isDebtByClassQuery(cleanQuery: string, context?: AiWidgetContext) {
   const isDebtQuery =
     cleanQuery.includes("em dívida") ||
     cleanQuery.includes("em divida") ||
@@ -38,7 +32,7 @@ function isDebtByClassQuery(cleanQuery: string, context?: AiWidgetContext) {
     cleanQuery.includes("inadimpl");
   const hasClassScope = cleanQuery.includes("turma") || cleanQuery.includes("classe");
 
-  return isDebtQuery && (hasClassScope || (context?.page === "turmas" && context?.entityId));
+  return isDebtQuery && (hasClassScope || Boolean(context?.page === "turmas" && context.entityId));
 }
 
 function findMatchingTurma(turmas: TurmaRow[], cleanQuery: string, context?: AiWidgetContext) {
@@ -55,34 +49,6 @@ function findMatchingTurma(turmas: TurmaRow[], cleanQuery: string, context?: AiW
   }
 
   return undefined;
-}
-
-function formatDebtAnswer(params: {
-  turmaNome: string;
-  students: Array<{ nome: string; totalDebt: number }>;
-}) {
-  const { turmaNome, students } = params;
-  const count = students.length;
-  const total = students.reduce((sum, student) => sum + student.totalDebt, 0);
-
-  let answer = `Na turma **${turmaNome}**, há atualmente **${count}** ${count === 1 ? "aluno" : "alunos"} com mensalidades em atraso.`;
-
-  if (count === 0) {
-    return `${answer} A saúde financeira desta turma está em dia.`;
-  }
-
-  answer += `\n\nO valor acumulado das dívidas nesta turma é de **${AOA_FORMATTER.format(total)}**.`;
-  answer += "\n\n**Alunos devedores:**\n";
-
-  students.slice(0, 5).forEach((student, index) => {
-    answer += `${index + 1}. ${student.nome} (Débito: *${AOA_FORMATTER.format(student.totalDebt)}*)\n`;
-  });
-
-  if (count > 5) {
-    answer += `\n*E mais ${count - 5} outros alunos...*`;
-  }
-
-  return answer;
 }
 
 export async function answerFinanceDebtByClass(params: {
@@ -134,10 +100,10 @@ export async function answerFinanceDebtByClass(params: {
   }
 
   const students = Array.from(uniqueStudents.values());
-  const answer = formatDebtAnswer({ turmaNome: matchingTurma.nome, students });
+  const total = students.reduce((sum, student) => sum + student.totalDebt, 0);
   const exportHref = `/api/secretaria/alunos/exportar?escolaId=${encodeURIComponent(schoolId)}&turma_id=${encodeURIComponent(matchingTurma.id)}&situacao_financeira=em_atraso&tipo=pdf`;
 
-  const actions = students.length > 0
+  const actions: AssistantActionV2[] = students.length > 0
     ? [
         instantiateAssistantActionV2("finance:open_radar", role, { schoolId }),
         instantiateAssistantActionV2("finance:export_debtors_class", role, {
@@ -147,13 +113,26 @@ export async function answerFinanceDebtByClass(params: {
         instantiateAssistantActionV2("finance:prepare_whatsapp_draft", role),
         instantiateAssistantActionV2("finance:save_billing_plan", role),
       ].filter((action): action is AssistantActionV2 => Boolean(action))
-    : undefined;
+    : [];
 
-  return {
-    ok: true,
-    mode: "data_query",
-    answer,
-    actions,
+  return createDataCopilotResponse({
+    insight: {
+      diagnosis: students.length === 0
+        ? `A turma **${matchingTurma.nome}** não tem alunos com mensalidades em atraso.`
+        : `A turma **${matchingTurma.nome}** tem **${students.length}** ${students.length === 1 ? "aluno" : "alunos"} em atraso, somando **${AOA_FORMATTER.format(total)}**.`,
+      impact: students.length === 0
+        ? "Não há risco financeiro vencido identificado nesta turma neste momento."
+        : "A dívida vencida desta turma exige acompanhamento para reduzir o risco de acumulação e perda de receita.",
+      recommendation: students.length === 0
+        ? "Manter a monitorização no Radar Financeiro."
+        : "Rever a lista de devedores e preparar uma cobrança segmentada para aprovação humana.",
+      evidence: [
+        { label: "Turma", value: matchingTurma.nome },
+        { label: "Alunos em atraso", value: String(students.length) },
+        { label: "Valor em atraso", value: AOA_FORMATTER.format(total) },
+      ],
+      actions,
+    },
     links: students.length > 0
       ? [
           {
@@ -162,5 +141,13 @@ export async function answerFinanceDebtByClass(params: {
           },
         ]
       : undefined,
-  };
+  });
 }
+
+export const financeDebtByClassTool: DataCopilotTool = {
+  id: "finance-debt-by-class",
+  module: "financeiro",
+  requiredPermission: "assistant.finance",
+  match: isDebtByClassQuery,
+  run: answerFinanceDebtByClass,
+};

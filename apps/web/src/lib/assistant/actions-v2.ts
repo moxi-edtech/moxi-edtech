@@ -80,6 +80,51 @@ function stringParam(params: ActionParams, key: string) {
 
 export const ASSISTANT_ACTIONS_V2: AssistantActionV2Definition[] = [
   {
+    id: "academico:open_grades",
+    kind: "open_screen",
+    module: "academico",
+    label: "Rever lançamento de notas",
+    description: "Abre a área de notas e pautas para acompanhamento.",
+    roles: SECRETARIA_ROLES,
+    riskLevel: "low",
+    requiresApproval: false,
+    permission: "assistant.academico",
+    href: (params) => {
+      const schoolId = stringParam(params, "schoolId");
+      return schoolId ? `/escola/${schoolId}/admin/notas` : undefined;
+    },
+  },
+  {
+    id: "academico:open_attendance",
+    kind: "open_screen",
+    module: "academico",
+    label: "Rever frequência",
+    description: "Abre o acompanhamento de presenças e faltas.",
+    roles: SECRETARIA_ROLES,
+    riskLevel: "low",
+    requiresApproval: false,
+    permission: "assistant.academico",
+    href: (params) => {
+      const schoolId = stringParam(params, "schoolId");
+      return schoolId ? `/escola/${schoolId}/secretaria/calendario` : undefined;
+    },
+  },
+  {
+    id: "secretaria:open_admissions",
+    kind: "open_screen",
+    module: "secretaria",
+    label: "Rever admissões pendentes",
+    description: "Abre a central de admissões para priorizar candidaturas.",
+    roles: SECRETARIA_ROLES,
+    riskLevel: "low",
+    requiresApproval: false,
+    permission: "assistant.secretaria",
+    href: (params) => {
+      const schoolId = stringParam(params, "schoolId");
+      return schoolId ? `/escola/${schoolId}/secretaria/admissoes` : undefined;
+    },
+  },
+  {
     id: "finance:open_radar",
     kind: "open_screen",
     module: "financeiro",

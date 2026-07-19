@@ -21,6 +21,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const schema = z.object({
+  aiInsightId: z.string().uuid().optional().nullable(),
+  selectionReason: z.string().trim().min(3).max(500).optional().nullable(),
   messageType: z.enum(["school_notice", "finance_charge"]),
   title: z.string().trim().min(1).max(160),
   body: z.string().trim().max(2000).optional().nullable(),
@@ -196,6 +198,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!allowed) return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão para mensagens financeiras." }, { status: 403 }));
     }
 
+    const sourceInsightResult = parsed.data.aiInsightId
+      ? await supabase
+          .from("ai_insights")
+          .select("id,tool_id,module")
+          .eq("id", parsed.data.aiInsightId)
+          .eq("school_id", auth.auth.escolaId)
+          .maybeSingle()
+      : null;
+    if (sourceInsightResult?.error) throw sourceInsightResult.error;
+    if (parsed.data.aiInsightId && !sourceInsightResult?.data) {
+      return withNoStore(NextResponse.json({ ok: false, error: "Insight IA não encontrado nesta escola." }, { status: 404 }));
+    }
+    const sourceInsight = sourceInsightResult?.data ?? null;
+    if (sourceInsight && !parsed.data.selectionReason) {
+      return withNoStore(NextResponse.json({ ok: false, error: "Motivo da seleção obrigatório para campanha gerada por insight." }, { status: 400 }));
+    }
+
     const provider = await loadProvider(supabase, auth.auth.escolaId);
     if (!provider || provider.status !== "connected") {
       return withNoStore(NextResponse.json({ ok: false, error: "WhatsApp da escola está desconectado." }, { status: 409 }));
@@ -250,7 +269,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!baseBody.trim()) return withNoStore(NextResponse.json({ ok: false, error: "Mensagem obrigatória." }, { status: 400 }));
 
     const riskLevel = normalizeRiskLevel(template?.risk_level, parsed.data.messageType === "finance_charge" ? "high" : "medium");
-    const requiresApproval = inferApproval(riskLevel, parsed.data.messageType, Boolean(template?.requires_approval));
+    const requiresApproval = Boolean(sourceInsight) || inferApproval(
+      riskLevel,
+      parsed.data.messageType,
+      Boolean(template?.requires_approval),
+    );
     const now = new Date().toISOString();
     let skippedInvalidPhone = 0;
 
@@ -286,7 +309,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         title: parsed.data.title,
         body,
         template_key: template?.key || parsed.data.templateKey || null,
-        metadata: { phone, bulk: true, filters, variables },
+        metadata: {
+          phone,
+          bulk: true,
+          filters,
+          variables,
+          ai_insight_id: sourceInsight?.id,
+          ai_insight_tool_id: sourceInsight?.tool_id,
+          selection_reason: parsed.data.selectionReason,
+        },
         status: requiresApproval ? "review_required" : "queued",
         risk_level: riskLevel,
         requires_approval: requiresApproval,
@@ -315,6 +346,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         created: data?.length || 0,
         skipped_invalid_phone: skippedInvalidPhone,
         requires_approval: requiresApproval,
+        ai_insight_id: sourceInsight?.id,
+        selection_reason: parsed.data.selectionReason,
       },
     });
 

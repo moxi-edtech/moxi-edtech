@@ -357,28 +357,29 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center animate-klasse-fade-up px-4">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-green-100 text-green-600">
+      <div className="mx-auto flex max-w-3xl flex-col items-center justify-center px-4 py-12 text-center animate-klasse-fade-up">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-emerald-50 text-emerald-700 shadow-[0_24px_60px_rgba(15,76,49,0.14)]">
           <CheckCircle2 size={48} />
         </div>
-        <h1 className="text-3xl font-black text-slate-900">Inscrição Enviada!</h1>
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Candidatura recebida</p>
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">Inscrição Enviada!</h1>
         {submissionStatus === "lista_espera" ? (
-          <p className="mt-4 max-w-md text-lg text-slate-600 leading-relaxed">
+          <p className="mt-4 max-w-xl text-lg font-medium leading-relaxed text-slate-600">
             Obrigado, <span className="font-bold">{formData.nome_completo}</span>. A classe selecionada está lotada no momento, mas sua candidatura entrou para a <b>Lista de Espera</b>.
           </p>
         ) : (
-          <p className="mt-4 max-w-md text-lg text-slate-600 leading-relaxed">
+          <p className="mt-4 max-w-xl text-lg font-medium leading-relaxed text-slate-600">
             Obrigado, <span className="font-bold">{formData.nome_completo}</span>. {isPreCandidatura ? "Sua pré-candidatura foi registrada com sucesso." : "Sua intenção de matrícula foi registrada com sucesso."}
           </p>
         )}
 
-        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm max-w-sm w-full mx-auto">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Protocolo de Referência</p>
-          <p className="mt-1 text-4xl font-black tracking-tight text-slate-900 font-mono">{protocolo}</p>
-          <div className="mt-6 pt-6 border-t border-slate-100">
+        <div className="mx-auto mt-8 w-full max-w-sm rounded-[2rem] border border-emerald-950/10 bg-white p-8 shadow-[0_28px_80px_rgba(45,34,12,0.12)]">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Protocolo de Referência</p>
+          <p className="mt-2 font-mono text-4xl font-black tracking-tight text-slate-950">{protocolo}</p>
+          <div className="mt-6 border-t border-slate-100 pt-6">
             <Link
               href={`/admissoes/${config.escola.slug}/consultar`}
-              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-4 text-sm font-black text-white hover:bg-slate-800 transition"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-4 text-sm font-black text-white transition hover:bg-slate-800"
             >
               <ShieldCheck size={18} />
               Área da Candidatura
@@ -389,12 +390,12 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
         </div>
 
-        <div className="mt-10 space-y-4 max-w-md mx-auto">
-          <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-left flex gap-3">
-            <Clock className="text-blue-500 shrink-0" size={20} />
+        <div className="mx-auto mt-10 max-w-md space-y-4">
+          <div className="flex gap-3 rounded-2xl border border-emerald-950/10 bg-[#fff8ec] p-4 text-left">
+            <Clock className="shrink-0 text-emerald-700" size={20} />
             <div>
-              <p className="text-sm font-bold text-blue-900">O que acontece agora?</p>
-              <p className="text-xs text-blue-700 mt-1">
+              <p className="text-sm font-black text-slate-950">O que acontece agora?</p>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
                 {isPreCandidatura
                   ? "A secretaria analisará seu interesse e entrará em contato quando o próximo período de admissões estiver preparado."
                   : <>A secretaria analisará seus dados. Se aprovado, você receberá uma <b>Reserva de Vaga</b> e poderá enviar o comprovativo de pagamento diretamente por aqui.</>}
@@ -414,7 +415,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       <PublicHero config={config} />
 
       <CourseCatalog
@@ -422,15 +423,17 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         onSelectCourse={selectCourseFromLanding}
       />
 
-      <div id="admissao-formulario" className="overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/60 border border-slate-100 max-w-4xl mx-auto">
+      <div id="admissao-formulario" className="mx-3 max-w-4xl overflow-hidden rounded-[1.5rem] border border-emerald-950/10 bg-white shadow-[0_24px_60px_rgba(45,34,12,0.1)] sm:mx-4 sm:rounded-[2rem] lg:mx-auto">
         {/* Header */}
-        <div className="bg-slate-900 px-8 py-10 text-white relative">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="relative overflow-hidden bg-[#092617] px-5 py-6 text-white sm:px-8 sm:py-10">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-30 blur-3xl" style={{ backgroundColor: primaryColor }} />
+          <div className="pointer-events-none absolute -bottom-28 left-12 h-64 w-64 rounded-full bg-amber-300/20 blur-3xl" />
+          <div className="relative z-10 flex flex-col justify-between gap-4 sm:gap-6 md:flex-row md:items-center">
             <div className="flex items-center gap-4">
               {config.escola.logo_url ? (
-                <img src={config.escola.logo_url} alt={config.escola.nome} className="h-16 w-16 rounded-2xl bg-white p-2 object-contain" />
+                <img src={config.escola.logo_url} alt={config.escola.nome} className="h-12 w-12 rounded-xl bg-white p-1.5 object-contain shadow-lg sm:h-16 sm:w-16 sm:rounded-2xl sm:p-2" />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 sm:h-16 sm:w-16 sm:rounded-2xl">
                   <School size={32} />
                 </div>
               )}
@@ -442,20 +445,20 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
             <Link
               href={`/admissoes/${config.escola.slug}/consultar`}
-              className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-xs font-bold hover:bg-white/20 transition shrink-0"
+              className="flex shrink-0 items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-xs font-black transition hover:bg-white/20"
             >
               <Search size={14} />
               Consultar Inscrição
             </Link>
           </div>
-          <p className="mt-4 text-white/70 max-w-lg relative z-10">
+          <p className="relative z-10 mt-4 max-w-lg text-sm font-medium leading-relaxed text-white/72">
             {isPreCandidatura
               ? <>Passo {step} de {TOTAL_STEPS} para demonstrar interesse no próximo período de admissões.</>
               : <>Passo {step} de {TOTAL_STEPS} para garantir sua vaga no ano letivo <span className="text-white font-bold">{config.ano_letivo?.ano || "vigente"}</span>.</>}
           </p>
 
           {/* Progress Bar */}
-          <div className="absolute bottom-0 left-0 h-1.5 bg-white/10 w-full">
+          <div className="absolute bottom-0 left-0 h-1.5 w-full bg-white/10">
              <div
                className="h-full transition-all duration-500 ease-in-out"
                style={{ width: `${(step / TOTAL_STEPS) * 100}%`, backgroundColor: primaryColor }}
@@ -476,7 +479,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-8">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-8">
           {/* Honeypot Anti-spam */}
           <div style={{ position: 'absolute', left: '-9999px', top: '0' }} aria-hidden="true">
             <input
@@ -490,23 +493,23 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
           </div>
 
           {error && (
-            <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100">
+            <div className="mb-6 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-700">
               {error}
             </div>
           )}
 
           {/* NOVO PASSO 1: VAGA + ALUNO */}
           {step === 1 && (
-            <div className="space-y-10 animate-klasse-fade-in">
-              <div className="space-y-6">
+            <div className="space-y-7 animate-klasse-fade-in sm:space-y-10">
+              <div className="space-y-4 sm:space-y-6">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
                     <GraduationCap size={20} />
                   </div>
-                  <h3 className="text-lg font-black text-slate-900">O que pretende estudar?</h3>
+                  <h3 className="text-lg font-black text-slate-950">O que pretende estudar?</h3>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
                   <label>
                     <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
                       Nível de ensino <span className="text-red-500">*</span>
@@ -516,7 +519,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                       name="curso_id"
                       value={formData.curso_id}
                       onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition"
+                      className="w-full rounded-2xl border border-emerald-950/10 bg-[#fbfaf4] px-4 py-3 font-semibold text-slate-900 outline-none transition focus:border-emerald-800 focus:bg-white"
                     >
                       <option value="">Selecionar...</option>
                       {config.cursos.map((c) => (
@@ -535,7 +538,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                       value={formData.turma_preferencial_id}
                       onChange={handleInputChange}
                       disabled={!formData.curso_id}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-900 transition disabled:opacity-50"
+                      className="w-full rounded-2xl border border-emerald-950/10 bg-[#fbfaf4] px-4 py-3 font-semibold text-slate-900 outline-none transition focus:border-emerald-800 focus:bg-white disabled:opacity-50"
                     >
                       <option value="">{isPreCandidatura ? "Informar depois com a secretaria" : "Selecionar..."}</option>
                       {groupedTurmas.map((t) => (
@@ -546,20 +549,20 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 </div>
               </div>
               {isPreCandidatura && (
-                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-blue-800">
+                <div className="rounded-2xl border border-emerald-950/10 bg-[#fff8ec] p-4 text-sm font-medium leading-relaxed text-slate-700">
                   Esta pré-candidatura não reserva vaga, não gera cobrança e não efetiva matrícula. A escola usará estes dados para contactar o responsável quando o próximo ano letivo estiver preparado.
                 </div>
               )}
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
                     <User size={20} />
                   </div>
-                  <h3 className="text-lg font-black text-slate-900">Identificação do Aluno</h3>
+                  <h3 className="text-lg font-black text-slate-950">Identificação do Aluno</h3>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
                   <label className="col-span-full">
                     <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
                       Nome Completo <span className="text-red-500">*</span>
@@ -835,7 +838,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                 <h3 className="text-lg font-black text-slate-900">Resumo da Inscrição</h3>
               </div>
 
-              <div className="grid gap-4 rounded-2xl bg-slate-50 p-6">
+              <div className="grid gap-4 rounded-2xl bg-slate-50 p-4 sm:p-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Aluno</p>
@@ -921,7 +924,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         </form>
 
         {/* Footer & Support */}
-        <div className="bg-slate-50 p-8 border-t border-slate-100">
+        <div className="border-t border-slate-100 bg-slate-50 p-4 sm:p-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {whatsappNumber ? (
               <div className="text-center md:text-left">

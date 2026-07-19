@@ -4,7 +4,7 @@ import { hasAssistantPermission } from "./permission-registry";
 import { searchKnowledge } from "./knowledge-search";
 import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./screen-context";
 import { createAssistantActionV2, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
-import { answerFinanceDebtByClass } from "./data-copilot/finance-debt-by-class";
+import { runDataCopilotTool } from "./data-copilot/tool-registry";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
 
 export type AssistantResponse = {
@@ -209,9 +209,9 @@ export async function processKlasseBrainQuery(params: {
     };
   }
 
-  const debtByClassAnswer = await answerFinanceDebtByClass({ schoolId, role, query, context });
-  if (debtByClassAnswer) {
-    return debtByClassAnswer;
+  const dataCopilotAnswer = await runDataCopilotTool({ schoolId, role, query, context });
+  if (dataCopilotAnswer) {
+    return dataCopilotAnswer;
   }
 
   // 2. Fast Path: Check if user wants to see what they can do on this screen

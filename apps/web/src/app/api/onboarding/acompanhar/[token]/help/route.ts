@@ -58,29 +58,26 @@ export async function POST(
     }
 
     const supabase = await supabaseRouteClient();
-    const { data: request, error: reqError } = await supabase
-      .from("onboarding_requests")
-      .select("id")
-      .eq("tracking_token", token.toUpperCase().trim())
-      .maybeSingle();
-
-    if (reqError || !request) {
-      return NextResponse.json({ ok: false, error: "Pedido não encontrado" }, { status: 404 });
-    }
-
-    const { data: doubt, error: insertError } = await (supabase as any)
-      .from("onboarding_doubts")
-      .insert({
-        onboarding_id: request.id,
-        sender_type: "escola",
-        sender_name: sender_name.trim(),
-        message: message.trim(),
-        step_code: step_code || null,
-      })
-      .select("*")
-      .single();
+    const { data: doubt, error: insertError } = await (supabase as any).rpc(
+      "create_onboarding_doubt_by_token",
+      {
+        p_token: token,
+        p_sender_name: sender_name,
+        p_message: message,
+        p_step_code: step_code || null,
+      }
+    );
 
     if (insertError) {
+      if (insertError.message?.includes("onboarding_not_found")) {
+        return NextResponse.json({ ok: false, error: "Pedido não encontrado" }, { status: 404 });
+      }
+      if (insertError.message?.includes("rate_limit_exceeded")) {
+        return NextResponse.json(
+          { ok: false, error: "Muitas mensagens. Tente novamente mais tarde." },
+          { status: 429 }
+        );
+      }
       return NextResponse.json({ ok: false, error: insertError.message }, { status: 500 });
     }
 

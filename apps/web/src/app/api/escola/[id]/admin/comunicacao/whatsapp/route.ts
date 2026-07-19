@@ -22,6 +22,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const createSchema = z.object({
+  aiInsightId: z.string().uuid().optional().nullable(),
+  selectionReason: z.string().trim().min(3).max(500).optional().nullable(),
   messageType: z.enum([
     "auth_provision_student",
     "school_notice",
@@ -215,6 +217,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!allowed) return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão para mensagens financeiras." }, { status: 403 }));
     }
 
+    const sourceInsightResult = parsed.data.aiInsightId
+      ? await supabase
+          .from("ai_insights")
+          .select("id,tool_id,module")
+          .eq("id", parsed.data.aiInsightId)
+          .eq("school_id", auth.auth.escolaId)
+          .maybeSingle()
+      : null;
+    if (sourceInsightResult?.error) throw sourceInsightResult.error;
+    if (parsed.data.aiInsightId && !sourceInsightResult?.data) {
+      return withNoStore(NextResponse.json({ ok: false, error: "Insight IA não encontrado nesta escola." }, { status: 404 }));
+    }
+    const sourceInsight = sourceInsightResult?.data ?? null;
+    if (sourceInsight && !parsed.data.selectionReason) {
+      return withNoStore(NextResponse.json({ ok: false, error: "Motivo da seleção obrigatório para mensagem gerada por insight." }, { status: 400 }));
+    }
+
     const provider = await loadProvider(supabase as any, auth.auth.escolaId);
     if (!provider || provider.status !== "connected") {
       return withNoStore(NextResponse.json({ ok: false, error: "WhatsApp da escola está desconectado." }, { status: 409 }));
@@ -265,7 +284,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         title: parsed.data.title || template?.title || "Mensagem WhatsApp",
         body,
         template_key: template?.key || parsed.data.templateKey || null,
-        metadata: { phone, variables: parsed.data.variables },
+        metadata: {
+          phone,
+          variables: parsed.data.variables,
+          ai_insight_id: sourceInsight?.id,
+          ai_insight_tool_id: sourceInsight?.tool_id,
+          selection_reason: parsed.data.selectionReason,
+        },
         status: nextStatus,
         risk_level: riskLevel,
         requires_approval: requiresApproval,
