@@ -868,7 +868,13 @@ export function ModalPagamentoRapido({
 
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
   const confirm = useConfirm();
-  const { success, error: toastError } = useToast();
+  const { toast } = useToast();
+  const toastSuccess = useCallback((title: string, message?: string) => {
+    toast({ variant: "success", title, message });
+  }, [toast]);
+  const toastError = useCallback((title: string, message?: string) => {
+    toast({ variant: "error", title, message, duration: 6000 });
+  }, [toast]);
   const availableMensalidades = useMemo(() => {
     if (mensalidades?.length) return sortMensalidades(mensalidades);
     return mensalidade ? [mensalidade] : [];
@@ -988,7 +994,7 @@ export function ModalPagamentoRapido({
       }
 
       setReversedPagamentoIds((prev) => new Set([...prev, pagamento.pagamento_id]));
-      success("Pagamento revertido", "A mensalidade foi recalculada e a reversão ficou auditada.");
+      toastSuccess("Pagamento revertido", "A mensalidade foi recalculada e a reversão ficou auditada.");
       await loadPagamentosPagosAluno();
       onSuccess?.();
     } catch (err) {
@@ -996,7 +1002,7 @@ export function ModalPagamentoRapido({
     } finally {
       setRevertingPagamentoId(null);
     }
-  }, [confirm, loadPagamentosPagosAluno, onSuccess, success, toastError]);
+  }, [confirm, loadPagamentosPagosAluno, onSuccess, toastError, toastSuccess]);
 
   const toggleMensalidade = useCallback((id: string) => {
     setSelectedIds((prev) => {
