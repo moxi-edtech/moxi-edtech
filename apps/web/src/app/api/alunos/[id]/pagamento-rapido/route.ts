@@ -51,20 +51,34 @@ export async function GET(
       return NextResponse.json({ ok: false, error: 'Aluno não encontrado' }, { status: 404 });
     }
 
-    // 4. Buscar a primeira mensalidade pendente
+    // 4. Buscar a primeira mensalidade aberta.
+    // O pagamento rápido precisa respeitar a mesma regra FIFO do RPC financeiro:
+    // se uma mensalidade antiga está parcialmente paga, ela continua bloqueante
+    // e deve ser sugerida antes de mensalidades futuras.
     const { data: mensalidades, error: mensalidadeError } = await supabase
       .from('mensalidades')
-      .select('id, mes_referencia, ano_referencia, valor, data_vencimento, status')
+      .select('id, mes_referencia, ano_referencia, valor, valor_pago_total, data_vencimento, status')
       .eq('aluno_id', alunoId)
       .eq('escola_id', escolaId)
-      .eq('status', 'pendente')
+      .in('status', ['pendente', 'pago_parcial', 'em_atraso', 'atraso'])
+      .order('ano_referencia', { ascending: true, nullsFirst: false })
+      .order('mes_referencia', { ascending: true, nullsFirst: false })
       .order('data_vencimento', { ascending: true })
-      .limit(1);
+      .limit(10);
 
     if (mensalidadeError) {
       console.error('❌ Erro ao buscar mensalidades:', mensalidadeError);
       return NextResponse.json({ ok: false, error: 'Erro ao buscar mensalidades' }, { status: 500 });
     }
+
+    const primeiraMensalidade = (mensalidades ?? []).find((mensalidade) => {
+      const valorMensalidade = Number(mensalidade?.valor ?? 0);
+      const valorPago = Number(mensalidade?.valor_pago_total ?? 0);
+      return Math.max(0, valorMensalidade - valorPago) > 0;
+    }) ?? null;
+    const valorMensalidade = Number(primeiraMensalidade?.valor ?? 0);
+    const valorPago = Number(primeiraMensalidade?.valor_pago_total ?? 0);
+    const saldoMensalidade = Math.max(0, valorMensalidade - valorPago);
 
     // 5. Formatar resposta
     const resposta = {
@@ -76,13 +90,13 @@ export async function GET(
         telefone: aluno.telefone_responsavel,
         turma: aluno.matriculas?.[0]?.turma?.nome || 'Turma não definida'
       },
-      mensalidade: mensalidades && mensalidades.length > 0 ? {
-        id: mensalidades[0].id,
-        mes: mensalidades[0].mes_referencia,
-        ano: mensalidades[0].ano_referencia,
-        valor: mensalidades[0].valor,
-        vencimento: mensalidades[0].data_vencimento,
-        status: mensalidades[0].status
+      mensalidade: primeiraMensalidade ? {
+        id: primeiraMensalidade.id,
+        mes: primeiraMensalidade.mes_referencia,
+        ano: primeiraMensalidade.ano_referencia,
+        valor: saldoMensalidade,
+        vencimento: primeiraMensalidade.data_vencimento,
+        status: primeiraMensalidade.status
       } : null
     };
 
