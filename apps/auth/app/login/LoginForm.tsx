@@ -43,11 +43,11 @@ export default function LoginForm({ redirectTo }: Props) {
         </span>
       </div>
 
-      <div className="mb-7">
-        <div className="text-[34px] font-bold leading-none tracking-[-0.04em] text-[#073b2c]">
+      <div className="mb-8 text-left">
+        <div className="text-[27px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-[#073b2c]">
           Acesse o KLASSE
         </div>
-        <div className="mt-3 text-[15px] font-medium leading-relaxed text-[#17211d]/60">
+        <div className="mt-2.5 max-w-[340px] text-sm font-normal leading-6 text-[#17211d]/55">
           Continue a gestão da escola com segurança, clareza e controle.
         </div>
       </div>
