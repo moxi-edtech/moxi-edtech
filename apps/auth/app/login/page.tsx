@@ -13,12 +13,14 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
   return (
     <div className="grid min-h-screen w-full grid-cols-1 md:grid-cols-2">
       <BrandPanel />
-      <main className="grid place-items-center bg-slate-50 p-6">
+      <main className="relative grid place-items-center overflow-hidden bg-[linear-gradient(180deg,#fffdf7_0%,#fff8ec_100%)] p-6 sm:p-10">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f9a51a]/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-[#073b2c]/8 blur-3xl" />
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="relative w-full max-w-[440px] rounded-[30px] border border-[#073b2c]/10 bg-white/70 p-7 shadow-[0_28px_90px_rgba(7,59,44,0.11)] backdrop-blur-xl sm:p-9"
         >
           <LoginForm redirectTo={redirectTo} />
         </motion.section>
