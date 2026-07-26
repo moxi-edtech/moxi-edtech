@@ -32,7 +32,7 @@ export async function runDataCopilotTool(
     if (!tool.match(normalizedQuery, params.context)) continue;
 
     const response = await tool.run(params);
-    if (response) return response;
+    if (response) return { ...response, toolId: tool.id };
   }
 
   return null;

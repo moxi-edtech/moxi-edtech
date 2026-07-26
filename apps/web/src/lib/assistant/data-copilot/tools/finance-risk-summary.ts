@@ -19,7 +19,7 @@ export function isFinanceRiskSummaryQuery(query: string, context?: AiWidgetConte
   return matchesIntentQuery({
     query,
     scopeTerms: ["finance", "inadimpl", "divida", "devedor", "cobranca"],
-    diagnosisTerms: ["risco", "resumo", "total", "atencao", "situacao", "quant"],
+    diagnosisTerms: ["risco", "resumo", "total", "atencao", "situacao", "quant", "aluno"],
     contextMatches: context?.module === "financeiro",
     options: { maxDistance: 2 },
   });

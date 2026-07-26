@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     toolId: schoolDailyBriefingTool.id,
     fingerprint: `${schoolDailyBriefingTool.id}:${dateKey}`,
     title: "O que merece atenção hoje",
-    severity: "high",
+    severity: response.insight.severity ?? "medium",
     module: "direcao",
     explanation: response.insight.diagnosis,
     evidence: response.insight.evidence as Json,

@@ -10,7 +10,10 @@ export type InsightEvidence = {
   value: string;
 };
 
+export type InsightSeverity = "info" | "low" | "medium" | "high" | "critical";
+
 export type InsightAnswer = {
+  severity?: InsightSeverity;
   diagnosis: string;
   impact: string;
   recommendation: string;
@@ -21,6 +24,7 @@ export type InsightAnswer = {
 export type DataCopilotResponse = {
   ok: true;
   mode: "data_query";
+  toolId?: string;
   operatingMode: "data";
   answer: string;
   insight: InsightAnswer;

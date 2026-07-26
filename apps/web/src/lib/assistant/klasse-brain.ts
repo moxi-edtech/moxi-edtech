@@ -6,6 +6,7 @@ import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./
 import { createAssistantActionV2, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
 import { runDataCopilotTool } from "./data-copilot/tool-registry";
 import { normalizeAssistantText } from "./data-copilot/query-matcher";
+import type { InsightAnswer } from "./data-copilot/types";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
 
 export type AssistantResponse = {
@@ -18,6 +19,9 @@ export type AssistantResponse = {
     | "provider_unavailable";
   suggestions?: AssistantAction[];
   actions?: AssistantActionV2[];
+  insight?: InsightAnswer;
+  toolId?: string;
+  aiInsightId?: string;
   links?: Array<{ label: string; href: string }>;
   requiresApproval?: boolean;
 };

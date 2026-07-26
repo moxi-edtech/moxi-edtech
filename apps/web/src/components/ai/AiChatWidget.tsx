@@ -37,6 +37,7 @@ type Message = {
   text: string;
   copyable?: boolean;
   actionId?: string | null;
+  aiInsightId?: string;
   quickReplies?: Array<{ label: string; action: string }>;
   links?: Array<{ label: string; href: string }>;
   actions?: AssistantActionV2[];
@@ -57,6 +58,7 @@ type AssistantResponsePayload = {
   mode?: string;
   operatingMode?: "help" | "data" | "action";
   insight?: InsightPayload;
+  aiInsightId?: string;
 };
 
 type RewriteResponsePayload = {
@@ -109,6 +111,33 @@ function cleanGeneratedText(text: string) {
     .replace(/^Rascunho criado para revisão:\n\n/i, "")
     .replace(/^Resumo gerado:\n\n/i, "")
     .trim();
+}
+
+function normalizeConversationText(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ªº°]/g, "")
+    .trim();
+}
+
+function resolveConversationalQuery(text: string, messages: Message[]) {
+  const normalized = normalizeConversationText(text);
+  const isClassFollowUp =
+    /\b(?:classe|turma)\b/.test(normalized) ||
+    /\b[a-z]{2,}[\s-]*\d{1,2}\b/.test(normalized);
+  if (!isClassFollowUp) return text;
+
+  const recentDebtIntent = messages
+    .filter((message) => message.sender === "user")
+    .slice(-6)
+    .reverse()
+    .find((message) =>
+      /\b(?:divid|devedor|inadimpl|atras)\w*/.test(normalizeConversationText(message.text)),
+    );
+
+  return recentDebtIntent ? `${recentDebtIntent.text} ${text}` : text;
 }
 
 function AssistantMark({ size = "md" }: { size?: "sm" | "md" }) {
@@ -513,29 +542,62 @@ export default function AiChatWidget({
   async function runFinancePlan() {
     setThinking(true);
     try {
-      const res = await fetch("/api/admin/ai/finance-message", {
+      const sourceMessage = [...messages]
+        .reverse()
+        .find((message) => message.sender === "ai" && message.insight);
+      const sourceInsight = sourceMessage?.insight;
+      const evidence = new Map(
+        (sourceInsight?.evidence ?? []).map((item) => [item.label, item.value]),
+      );
+      const classLabel = evidence.get("Turma") ?? "turma seleccionada";
+      const studentsLabel = evidence.get("Alunos em atraso") ?? "casos a confirmar";
+      const amountLabel = evidence.get("Valor em atraso") ?? "valor a confirmar";
+      const content = [
+        "PLANO DE COBRANÇA — RASCUNHO",
+        "",
+        `Escopo: ${classLabel}.`,
+        `Casos em atraso: ${studentsLabel}.`,
+        `Valor vencido identificado: ${amountLabel}.`,
+        "",
+        "1. Financeiro — validar no Radar Financeiro os títulos, pagamentos recentes e contactos autorizados.",
+        "2. Financeiro — segmentar os casos por antiguidade e valor, priorizando atrasos mais antigos e montantes maiores.",
+        "3. Secretaria — confirmar situações excepcionais, acordos existentes e dados de contacto antes de qualquer abordagem.",
+        "4. Financeiro — preparar mensagens individualizadas com valores e datas confirmados, sempre como rascunho.",
+        "5. Administração — rever e aprovar cada comunicação ou proposta de acordo antes do envio.",
+        "6. Financeiro — acompanhar respostas e actualizar o estado após 7 dias; escalar apenas casos não resolvidos.",
+        "",
+        "Indicadores de acompanhamento: valor recuperado, casos regularizados, acordos aprovados e casos sem resposta.",
+        "Gate humano: este plano não envia mensagens, não altera dívidas e não aprova acordos automaticamente.",
+      ].join("\n");
+
+      const res = await fetch("/api/admin/ai/actions/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           schoolId: effectiveSchoolId,
           title: "Plano de cobrança da semana",
-          scenario: "Preparar um plano de cobrança semanal com prioridades e mensagem base. Usar placeholders.",
-          recipientLabel: "[Encarregado]",
-          amountLabel: "[Valor em aberto]",
-          dueDateLabel: "[Data de vencimento]",
-          context: { page: context?.page ?? "financeiro", module: "financeiro" },
+          content,
+          actionType: "operational_recommendation",
+          sourceModule: "financeiro",
+          riskLevel: "high",
+          aiInsightId: sourceMessage?.aiInsightId,
+          context: {
+            page: context?.page ?? "financeiro",
+            assistant_v3: true,
+            recommendation_kind: "billing_plan",
+          },
         }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao criar plano financeiro.");
       pushMessages([
-        ai(`Rascunho financeiro criado para revisão:\n\n${json.content}`, {
+        ai(`Plano de cobrança criado para revisão:\n\n${content}`, {
           copyable: true,
           actionId: json.action?.id ?? null,
           quickReplies: [
             { label: "Abrir Central IA", action: "open_actions" },
-            { label: "Abrir WhatsApp", action: "open_whatsapp" },
-            { label: "Copiar", action: `copy:${encodeURIComponent(json.content)}` },
+            { label: "Gerar mensagem separadamente", action: "suggestion:create_whatsapp_draft" },
+            { label: "Copiar", action: `copy:${encodeURIComponent(content)}` },
           ],
         }),
       ]);
@@ -550,6 +612,7 @@ export default function AiChatWidget({
   async function saveAction(
     content: string,
     actionType: "communication_draft" | "finance_message" | "school_summary" | "operational_recommendation",
+    aiInsightId?: string,
   ) {
     setThinking(true);
     try {
@@ -571,6 +634,7 @@ export default function AiChatWidget({
               ? "comunicacao"
               : context?.module || "classe_ai",
           riskLevel: ["finance_message", "operational_recommendation"].includes(actionType) ? "high" : "medium",
+          aiInsightId,
           context: { page: context?.page ?? null, assistant_v3: true },
         }),
       });
@@ -646,7 +710,7 @@ export default function AiChatWidget({
     }
   }
 
-  function runAssistantAction(action: AssistantActionV2) {
+  function runAssistantAction(action: AssistantActionV2, aiInsightId?: string) {
     if (action.requiresApproval && action.riskLevel === "high") {
       pushMessages([
         ai(`Ação de alto risco: ${action.label}. Vou abrir o fluxo seguro de rascunho/revisão; nada será enviado ou aplicado automaticamente.`),
@@ -688,7 +752,7 @@ export default function AiChatWidget({
       const content = typeof action.payload?.content === "string"
         ? action.payload.content
         : "Plano pedagógico sem conteúdo disponível.";
-      void saveAction(content, "operational_recommendation");
+      void saveAction(content, "operational_recommendation", aiInsightId);
       return;
     }
     if (quickAction.startsWith("flow:")) {
@@ -781,9 +845,10 @@ export default function AiChatWidget({
 
   async function handleGeneralQuery(text: string) {
     setThinking(true);
+    const contextualQuery = resolveConversationalQuery(text, messages);
 
     // Client-side local Cache logic for high performance & instant responses
-    const cacheKey = `${effectiveSchoolId}:${userRole}:${text.toLowerCase().trim()}:${context?.module || "any"}`;
+    const cacheKey = `${effectiveSchoolId}:${userRole}:${contextualQuery.toLowerCase().trim()}:${context?.module || "any"}`;
     if (queryCache.has(cacheKey)) {
       const cached = queryCache.get(cacheKey);
       if (cached && cached.answer) {
@@ -793,6 +858,7 @@ export default function AiChatWidget({
             actions: cached.actions,
             mode: cached.operatingMode ?? cached.mode,
             insight: cached.insight,
+            aiInsightId: cached.aiInsightId,
             quickReplies: cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
           }),
         ]);
@@ -807,7 +873,7 @@ export default function AiChatWidget({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           schoolId: effectiveSchoolId,
-          message: text,
+          message: contextualQuery,
           context,
         }),
       });
@@ -824,6 +890,7 @@ export default function AiChatWidget({
           actions: json.actions,
           mode: json.operatingMode ?? json.mode,
           insight: json.insight,
+          aiInsightId: json.aiInsightId,
           quickReplies: json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` })),
         }),
       ]);
@@ -1071,7 +1138,7 @@ export default function AiChatWidget({
                                 <button
                                   key={`${message.id}-action-${action.id}`}
                                   type="button"
-                                  onClick={() => runAssistantAction(action)}
+                                  onClick={() => runAssistantAction(action, message.aiInsightId)}
                                   className={`w-full flex items-center justify-between gap-1.5 rounded-lg border px-3 py-2 text-left text-[11px] font-bold transition-all ${
                                     action.riskLevel === "high"
                                       ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"

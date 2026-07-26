@@ -25,6 +25,7 @@ const AOA_FORMATTER = new Intl.NumberFormat("pt-AO", {
 });
 
 const NUMBER_WORDS: Readonly<Record<string, string>> = {
+  klasse: "classe",
   primeira: "1",
   primeiro: "1",
   segunda: "2",
@@ -95,6 +96,13 @@ function extractSection(value: string, classNumber?: string) {
   return normalized.match(new RegExp(`\\b${classNumber}\\s+(?:classe\\s+)?([a-z])\\b`))?.[1];
 }
 
+function extractProgramPrefix(value: string, classNumber?: string) {
+  if (!classNumber) return undefined;
+
+  const normalized = normalizeText(value);
+  return normalized.match(new RegExp(`\\b([a-z]{2,})[- ]*${classNumber}\\b`))?.[1];
+}
+
 function findMatchingTurmas(turmas: TurmaRow[], cleanQuery: string, context?: AiWidgetContext) {
   const normalizedQuery = normalizeText(cleanQuery);
   const exactMatches = turmas.filter((turma) => {
@@ -117,9 +125,16 @@ function findMatchingTurmas(turmas: TurmaRow[], cleanQuery: string, context?: Ai
   if (!queryClassNumber) return [];
 
   const querySection = extractSection(normalizedQuery, queryClassNumber);
+  const queryProgramPrefix = extractProgramPrefix(normalizedQuery, queryClassNumber);
   return turmas.filter((turma) => {
     const searchableName = `${turma.nome ?? ""} ${turma.turma_codigo ?? ""}`;
     if (extractClassNumber(searchableName) !== queryClassNumber) return false;
+    if (
+      queryProgramPrefix &&
+      extractProgramPrefix(searchableName, queryClassNumber) !== queryProgramPrefix
+    ) {
+      return false;
+    }
     if (!querySection) return true;
 
     return extractSection(searchableName, queryClassNumber) === querySection;
