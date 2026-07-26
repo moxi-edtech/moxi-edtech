@@ -19948,6 +19948,28 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_risco_pedagogico_aluno: {
+        Row: {
+          absence_records_30d: number | null
+          aluno_id: string | null
+          attendance_rate_30d: number | null
+          attendance_records_30d: number | null
+          calculated_at: string | null
+          consecutive_absences: number | null
+          current_grade_rate: number | null
+          data_coverage: string | null
+          escola_id: string | null
+          grade_drop_points: number | null
+          matricula_id: string | null
+          previous_grade_rate: number | null
+          risk_level: string | null
+          risk_reasons: string[] | null
+          risk_score: number | null
+          terms_with_grades: number | null
+          turma_id: string | null
+        }
+        Relationships: []
+      }
       vw_relatorio_financeiro_escolar_capitacao_mensal: {
         Row: {
           ano_letivo: number | null

@@ -163,6 +163,95 @@ export const KLASSE_HELP_TOPICS: HelpTopic[] = [
       "Selecione o tipo de documento, filtre pelo aluno e faça o download."
     ],
     href: (schoolId: string) => `/escola/${schoolId}/secretaria/documentos`
+  },
+  {
+    key: "sobre_moxi_solucoes",
+    title: "Quem construiu o KLASSE?",
+    aliases: [
+      "quem construiu",
+      "quem desenvolveu",
+      "quem criou",
+      "empresa",
+      "moxi",
+      "moxi soluções",
+      "moxi solucao",
+      "moxi soluçoes",
+      "moxi edtech",
+      "desenvolvedora",
+      "criador",
+      "quem fez"
+    ],
+    category: "Administração",
+    roles: [
+      "admin",
+      "admin_escola",
+      "staff_admin",
+      "secretaria",
+      "financeiro",
+      "admin_financeiro",
+      "secretaria_financeiro",
+      "direcao",
+      "diretoria",
+      "professor",
+      "aluno",
+      "encarregado"
+    ],
+    answer: "O KLASSE foi desenvolvido pela **Moxi Soluções**, empresa especializada em tecnologia e inovação para gestão educacional e ecossistemas de ensino.",
+    steps: [
+      "Acesse a documentação ou entre em contato com o suporte oficial da Moxi Soluções para mais informações."
+    ]
+  },
+  {
+    key: "sobre_klasse_sistema",
+    title: "O que é o KLASSE?",
+    aliases: ["o que é klasse", "sobre o klasse", "sistema", "plataforma", "para que serve"],
+    category: "Administração",
+    roles: [
+      "admin",
+      "admin_escola",
+      "staff_admin",
+      "secretaria",
+      "financeiro",
+      "admin_financeiro",
+      "secretaria_financeiro",
+      "direcao",
+      "diretoria",
+      "professor",
+      "aluno",
+      "encarregado"
+    ],
+    answer: "O KLASSE é uma plataforma integrada de gestão escolar e educacional desenvolvida pela **Moxi Soluções**, cobrindo Administração, Secretaria, Financeiro, Acadêmico, Comunicação via WhatsApp e Inteligência Operacional com o KLASSE IA.",
+    steps: [
+      "Navegue pelo menu lateral para aceder aos diferentes módulos do sistema."
+    ]
+  },
+  {
+    key: "sobre_klasse_ia",
+    title: "O que é e como funciona o KLASSE IA?",
+    aliases: [
+      "o que é klasse ia",
+      "quem é a ia",
+      "como funciona a ia",
+      "inteligencia artificial",
+      "copiloto",
+      "privacidade da ia"
+    ],
+    category: "KLASSE AI",
+    roles: [
+      "admin",
+      "admin_escola",
+      "staff_admin",
+      "secretaria",
+      "financeiro",
+      "admin_financeiro",
+      "secretaria_financeiro",
+      "direcao",
+      "diretoria"
+    ],
+    answer: "O KLASSE IA é o copiloto operacional da sua escola, desenvolvido pela **Moxi Soluções**. Ele cruza dados operacionais em tempo real para diagnosticar inadimplência, pendências de notas, admissões e frequência, sugerindo ações operacionais seguras. A IA opera sob estrita aprovação humana: não altera dados nem envia mensagens sem a revisão prévia da equipa.",
+    steps: [
+      "Digite perguntas sobre dados reais no chat ou aceda ao Cockpit do KLASSE IA em Admin > IA."
+    ]
   }
 ];
 

@@ -1,3 +1,10 @@
+import {
+  AI_ACTIONS_FINANCE_ROLES as FINANCE_ROLES,
+  AI_ACTIONS_SECRETARIA_ROLES as SECRETARIA_ROLES,
+  AI_ADMIN_ROLES as ADMIN_ROLES,
+  AI_WIDGET_ROLES as ALL_ROLES,
+} from "@/lib/roles/ai-roles";
+
 export type AssistantAction = {
   key: string;
   title: string;
@@ -9,22 +16,6 @@ export type AssistantAction = {
   requiresApproval: boolean;
   href?: (schoolId: string, params?: Record<string, string>) => string;
 };
-
-const ALL_ROLES = [
-  "admin",
-  "admin_escola",
-  "staff_admin",
-  "direcao",
-  "diretoria",
-  "secretaria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
-
-const SECRETARIA_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"];
-const FINANCE_ROLES = ["admin", "admin_escola", "direcao", "diretoria", "financeiro", "admin_financeiro", "secretaria_financeiro"];
-const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria"];
 
 export const ASSISTANT_ACTIONS: AssistantAction[] = [
   {

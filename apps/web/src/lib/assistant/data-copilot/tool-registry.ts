@@ -2,6 +2,7 @@ import { hasAssistantPermission } from "../permission-registry";
 import { financeDebtByClassTool } from "./finance-debt-by-class";
 import { academicGradeGapsTool } from "./tools/academic-grade-gaps";
 import { academicLowAttendanceTool } from "./tools/academic-low-attendance";
+import { academicPedagogicalRiskTool } from "./tools/academic-pedagogical-risk";
 import { admissionsPendingTool } from "./tools/admissions-pending";
 import { financeRiskSummaryTool } from "./tools/finance-risk-summary";
 import { schoolDailyBriefingTool } from "./tools/school-daily-briefing";
@@ -12,6 +13,7 @@ const DATA_COPILOT_TOOLS: readonly DataCopilotTool[] = [
   financeDebtByClassTool,
   financeRiskSummaryTool,
   admissionsPendingTool,
+  academicPedagogicalRiskTool,
   academicGradeGapsTool,
   academicLowAttendanceTool,
 ];

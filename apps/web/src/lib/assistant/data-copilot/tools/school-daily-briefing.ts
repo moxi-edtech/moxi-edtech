@@ -1,14 +1,17 @@
 import { hasAssistantPermission } from "../../permission-registry";
 import { createDataCopilotResponse } from "../answer-composer";
+import { matchesIntentTerms, normalizeAssistantText } from "../query-matcher";
 import type { DataCopilotResponse, DataCopilotTool, ToolRunParams } from "../types";
 import { academicGradeGapsTool } from "./academic-grade-gaps";
 import { academicLowAttendanceTool } from "./academic-low-attendance";
+import { academicPedagogicalRiskTool } from "./academic-pedagogical-risk";
 import { admissionsPendingTool } from "./admissions-pending";
 import { financeRiskSummaryTool } from "./finance-risk-summary";
 
 const BRIEFING_SOURCES = [
   { label: "Financeiro", tool: financeRiskSummaryTool },
   { label: "Admissões", tool: admissionsPendingTool },
+  { label: "Risco pedagógico", tool: academicPedagogicalRiskTool },
   { label: "Notas", tool: academicGradeGapsTool },
   { label: "Frequência", tool: academicLowAttendanceTool },
 ] as const;
@@ -16,7 +19,23 @@ const BRIEFING_SOURCES = [
 type BriefingSource = (typeof BRIEFING_SOURCES)[number];
 
 export function isDailyBriefingQuery(query: string) {
-  return /o que.*(aten[cç][aã]o|prioridade)|resumo (do dia|di[aá]rio)|briefing|riscos? (de hoje|da escola)|foco.*semana/.test(query);
+  const normalizedQuery = normalizeAssistantText(query);
+  const asksForBriefing = matchesIntentTerms(
+    normalizedQuery,
+    ["briefing", "prioridade", "resumo", "atencao", "risco", "foco"],
+    { maxDistance: 2 },
+  );
+  const hasTimeOrSchoolScope = matchesIntentTerms(
+    normalizedQuery,
+    ["hoje", "dia", "diario", "semana", "escola"],
+    { maxDistance: 1 },
+  );
+
+  return asksForBriefing && (
+    hasTimeOrSchoolScope ||
+    normalizedQuery.startsWith("o que ") ||
+    normalizedQuery === "briefing"
+  );
 }
 
 async function runSource(source: BriefingSource, params: ToolRunParams) {

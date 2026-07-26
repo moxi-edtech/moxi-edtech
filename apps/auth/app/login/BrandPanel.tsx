@@ -25,7 +25,7 @@ export default function BrandPanel() {
           initial={{ opacity: 0, x: -18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, delay: 0.15, ease: easeOut }}
-          className="inline-flex w-fit items-center gap-[13px] rounded-full border border-white/30 bg-gradient-to-br from-white/70 to-white/30 py-2 pl-2 pr-[18px] font-[Inter,ui-sans-serif,system-ui,sans-serif] shadow-[inset_0_1px_0_rgba(255,255,255,0.56),0_24px_70px_rgba(0,0,0,0.18)] backdrop-blur-[18px]"
+          className="inline-flex w-fit items-center gap-[13px] rounded-full border border-white/30 bg-gradient-to-br from-white/70 to-white/30 py-2 pl-2 pr-[18px] shadow-[inset_0_1px_0_rgba(255,255,255,0.56),0_24px_70px_rgba(0,0,0,0.18)] backdrop-blur-[18px]"
         >
           <img
             src="/klasse-mark-isolated.png"

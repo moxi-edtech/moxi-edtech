@@ -5,12 +5,17 @@ import { searchKnowledge } from "./knowledge-search";
 import { AiWidgetContext, describeScreenContext, sanitizeContextForAi } from "./screen-context";
 import { createAssistantActionV2, instantiateAssistantActionV2, type AssistantActionV2 } from "./actions-v2";
 import { runDataCopilotTool } from "./data-copilot/tool-registry";
+import { normalizeAssistantText } from "./data-copilot/query-matcher";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
 
 export type AssistantResponse = {
   ok: boolean;
   mode: "fast_path" | "rag" | "data_query" | "action" | "fallback";
   answer: string;
+  fallbackReason?:
+    | "permission_denied"
+    | "knowledge_not_found"
+    | "provider_unavailable";
   suggestions?: AssistantAction[];
   actions?: AssistantActionV2[];
   links?: Array<{ label: string; href: string }>;
@@ -56,8 +61,41 @@ export const FAST_PATH_PATTERNS = [
   },
 ];
 
+const COURTESY_QUERIES = new Set([
+  "bom dia",
+  "boa tarde",
+  "boa noite",
+  "ola",
+  "oi",
+  "tudo bem",
+  "como vai",
+  "bom dia tudo bem",
+  "boa tarde tudo bem",
+  "boa noite tudo bem",
+]);
+
+export function isCourtesyQuery(query: string) {
+  return COURTESY_QUERIES.has(normalizeAssistantText(query));
+}
+
+function courtesyAnswer(query: string) {
+  const normalizedQuery = normalizeAssistantText(query);
+  const greeting = normalizedQuery.startsWith("bom dia")
+    ? "Bom dia"
+    : normalizedQuery.startsWith("boa tarde")
+      ? "Boa tarde"
+      : normalizedQuery.startsWith("boa noite")
+        ? "Boa noite"
+        : "Olá";
+
+  return `${greeting}! Sou o KLASSE IA, o copiloto da sua escola. Como posso ajudar hoje? Posso mostrar o briefing do dia, verificar a inadimplência de uma turma ou explicar caminhos no sistema.`;
+}
+
 export function isFastPathQuery(query: string, context?: AiWidgetContext): boolean {
   const cleanQuery = query.trim().toLowerCase();
+  if (isCourtesyQuery(query)) {
+    return true;
+  }
   if (cleanQuery.includes("o que posso fazer nesta tela") || cleanQuery.includes("acoes desta tela")) {
     return true;
   }
@@ -206,6 +244,15 @@ export async function processKlasseBrainQuery(params: {
       ok: false,
       mode: "fallback",
       answer: "Desculpe, o seu perfil não tem permissão para usar o assistente KLASSE.",
+      fallbackReason: "permission_denied",
+    };
+  }
+
+  if (isCourtesyQuery(query)) {
+    return {
+      ok: true,
+      mode: "fast_path",
+      answer: courtesyAnswer(query),
     };
   }
 
@@ -287,13 +334,11 @@ export async function processKlasseBrainQuery(params: {
   const relevantChunks = searchKnowledge(query, { module: context?.module, limit: 3 });
 
   if (relevantChunks.length === 0) {
-    const suggestions = getActionsForRole(role, "any").filter((a) => a.actionType === "help");
     return {
       ok: true,
       mode: "fallback",
-      answer: "Não encontrei essa informação documentada no KLASSE ainda. Posso ajudar sugerindo tópicos de ajuda relacionados ou você pode aceder à Central de Ajuda.",
-      suggestions,
-      actions: actionsFromSuggestions(suggestions, schoolId, role),
+      answer: "Não encontrei uma resposta segura para essa pergunta. Tente indicar a área, turma ou operação com mais detalhe.",
+      fallbackReason: "knowledge_not_found",
     };
   }
 
@@ -333,13 +378,11 @@ export async function processKlasseBrainQuery(params: {
     geminiResult = await callGeminiForRAG(prompt);
   } catch (err) {
     if (err instanceof Error && err.message === "COTA_EXCEDIDA") {
-      const suggestions = getActionsForRole(role, context?.module).slice(0, 2);
       return {
         ok: true,
         mode: "fallback",
-        answer: "O limite de requisições do assistente foi temporariamente excedido. Por favor, tente novamente dentro de um minuto. Enquanto isso, posso sugerir atalhos rápidos para as ações desta tela:",
-        suggestions: suggestions.length > 0 ? suggestions : undefined,
-        actions: actionsFromSuggestions(suggestions, schoolId, role),
+        answer: "O assistente está temporariamente indisponível. Por favor, tente novamente dentro de um minuto.",
+        fallbackReason: "provider_unavailable",
       };
     }
     throw err;
@@ -359,14 +402,16 @@ export async function processKlasseBrainQuery(params: {
   }
 
   // Identify if answer was fallback
-  if (answer.toLowerCase().includes("nao encontrei essa informacao") || answer.trim() === "") {
-    const suggestions = getActionsForRole(role, context?.module).filter((a) => a.actionType === "help").slice(0, 2);
+  const normalizedAnswer = answer
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (normalizedAnswer.includes("nao encontrei essa informacao") || answer.trim() === "") {
     return {
       ok: true,
       mode: "fallback",
-      answer: "Não encontrei essa informação documentada no KLASSE ainda. Tente procurar por outros termos.",
-      suggestions: suggestions.length > 0 ? suggestions : undefined,
-      actions: actionsFromSuggestions(suggestions, schoolId, role),
+      answer: "Não encontrei uma resposta segura para essa pergunta. Tente indicar a área, turma ou operação com mais detalhe.",
+      fallbackReason: "knowledge_not_found",
     };
   }
 

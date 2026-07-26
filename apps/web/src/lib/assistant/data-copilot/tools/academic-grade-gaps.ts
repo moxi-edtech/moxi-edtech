@@ -2,6 +2,7 @@ import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../acti
 import type { AiWidgetContext } from "../../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createDataCopilotResponse } from "../answer-composer";
+import { matchesIntentQuery } from "../query-matcher";
 import type { DataCopilotTool } from "../types";
 
 type GradeGapRow = {
@@ -10,9 +11,13 @@ type GradeGapRow = {
 };
 
 export function isGradeGapsQuery(query: string, context?: AiWidgetContext) {
-  const hasAcademicScope = /nota|pauta|lan[cç]amento|avalia[cç][aã]o/.test(query) || context?.page === "notas";
-  const asksForDiagnosis = /incomplet|pendent|falta|risco|turma|disciplina|aten[cç][aã]o|resumo/.test(query);
-  return Boolean(hasAcademicScope && asksForDiagnosis);
+  return matchesIntentQuery({
+    query,
+    scopeTerms: ["nota", "pauta", "lancamento", "avaliacao"],
+    diagnosisTerms: ["incomplet", "pendent", "falta", "risco", "turma", "disciplina", "atencao", "resumo"],
+    contextMatches: context?.page === "notas",
+    options: { maxDistance: 2 },
+  });
 }
 
 export const academicGradeGapsTool: DataCopilotTool = {

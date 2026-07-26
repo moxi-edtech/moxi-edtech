@@ -1,35 +1,22 @@
+import {
+  AI_ACTIONS_FINANCE_ROLES,
+  AI_ACTIONS_SECRETARIA_ROLES,
+  AI_ADMIN_ROLES,
+  AI_WIDGET_ROLES,
+} from "@/lib/roles/ai-roles";
+
 export type AssistantPermission = {
   key: string;
   roles: string[];
   description: string;
 };
 
-export const BASE_ROLES = [
-  "admin",
-  "admin_escola",
-  "staff_admin",
-  "direcao",
-  "diretoria",
-  "secretaria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
+export const BASE_ROLES = [...AI_WIDGET_ROLES];
 
-const ALL_ROLES = [...BASE_ROLES];
-const SECRETARIA_AND_UP = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"];
-const FINANCE_ROLES = [
-  "admin",
-  "admin_escola",
-  "staff_admin",
-  "direcao",
-  "diretoria",
-  "secretaria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
-const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria"];
+const ALL_ROLES = [...AI_WIDGET_ROLES];
+const SECRETARIA_AND_UP = [...AI_ACTIONS_SECRETARIA_ROLES];
+const FINANCE_ROLES = [...AI_ACTIONS_FINANCE_ROLES];
+const ADMIN_ROLES = [...AI_ADMIN_ROLES];
 
 export const ASSISTANT_PERMISSIONS: AssistantPermission[] = [
   {

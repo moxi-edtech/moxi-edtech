@@ -1,3 +1,9 @@
+import {
+  AI_ACTIONS_FINANCE_ROLES as FINANCE_ROLES,
+  AI_ACTIONS_SECRETARIA_ROLES as SECRETARIA_ROLES,
+  AI_WIDGET_ROLES as ALL_ADMIN_ROLES,
+} from "@/lib/roles/ai-roles";
+
 export type AiWidgetContext = {
   module:
     | "dashboard"
@@ -35,30 +41,6 @@ export type AssistantSuggestion = {
     | "open_central";
   href?: (schoolId: string, context?: AiWidgetContext) => string;
 };
-
-const ALL_ADMIN_ROLES = [
-  "admin",
-  "admin_escola",
-  "staff_admin",
-  "direcao",
-  "diretoria",
-  "secretaria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
-
-const FINANCE_ROLES = [
-  "admin",
-  "admin_escola",
-  "direcao",
-  "diretoria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
-
-const SECRETARIA_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"];
 
 export const ASSISTANT_SUGGESTIONS: AssistantSuggestion[] = [
   {

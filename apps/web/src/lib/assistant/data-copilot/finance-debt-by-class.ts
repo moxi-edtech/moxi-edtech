@@ -3,6 +3,7 @@ import { hasAssistantPermission } from "../permission-registry";
 import type { AiWidgetContext } from "../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createDataCopilotResponse } from "./answer-composer";
+import { matchesIntentQuery } from "./query-matcher";
 import type { DataCopilotResponse, DataCopilotTool } from "./types";
 
 type TurmaRow = {
@@ -23,32 +24,122 @@ const AOA_FORMATTER = new Intl.NumberFormat("pt-AO", {
   currency: "AOA",
 });
 
-export function isDebtByClassQuery(cleanQuery: string, context?: AiWidgetContext) {
-  const isDebtQuery =
-    cleanQuery.includes("em dívida") ||
-    cleanQuery.includes("em divida") ||
-    cleanQuery.includes("devedores") ||
-    cleanQuery.includes("atraso") ||
-    cleanQuery.includes("inadimpl");
-  const hasClassScope = cleanQuery.includes("turma") || cleanQuery.includes("classe");
+const NUMBER_WORDS: Readonly<Record<string, string>> = {
+  primeira: "1",
+  primeiro: "1",
+  segunda: "2",
+  segundo: "2",
+  terceira: "3",
+  terceiro: "3",
+  quarta: "4",
+  quarto: "4",
+  quinta: "5",
+  quinto: "5",
+  sexta: "6",
+  sexto: "6",
+  setima: "7",
+  setimo: "7",
+  oitava: "8",
+  oitavo: "8",
+  nona: "9",
+  nono: "9",
+  decima: "10",
+  decimo: "10",
+  undecima: "11",
+  undecimo: "11",
+  "decima-primeira": "11",
+  "decimo-primeiro": "11",
+  duodecima: "12",
+  duodecimo: "12",
+  "decima-segunda": "12",
+  "decimo-segundo": "12",
+  "decima-terceira": "13",
+  "decimo-terceiro": "13",
+};
 
-  return isDebtQuery && (hasClassScope || Boolean(context?.page === "turmas" && context.entityId));
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[ªº°]/g, "")
+    .replace(/[^a-z0-9-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((token) => NUMBER_WORDS[token] ?? token)
+    .join(" ");
 }
 
-function findMatchingTurma(turmas: TurmaRow[], cleanQuery: string, context?: AiWidgetContext) {
-  const byQuery = turmas.find((turma) => {
-    const name = (turma.nome ?? "").toLowerCase().trim();
-    const code = (turma.turma_codigo ?? "").toLowerCase().trim();
-    return name && (cleanQuery.includes(name) || (code && cleanQuery.includes(code)));
+export function isDebtByClassQuery(cleanQuery: string, context?: AiWidgetContext) {
+  return matchesIntentQuery({
+    query: cleanQuery,
+    scopeTerms: ["divida", "devedor", "atraso", "inadimpl"],
+    diagnosisTerms: ["turma", "classe"],
+    contextMatches: context?.page === "turmas" && Boolean(context.entityId),
+    options: { maxDistance: 2 },
+  });
+}
+
+function extractClassNumber(value: string) {
+  const normalized = normalizeText(value);
+  const classMatch = normalized.match(/\b(\d{1,2})\s*(?:a\s+)?classe\b/);
+  if (classMatch?.[1]) return classMatch[1];
+
+  return normalized.match(/\b(\d{1,2})\b/)?.[1];
+}
+
+function extractSection(value: string, classNumber?: string) {
+  if (!classNumber) return undefined;
+
+  const normalized = normalizeText(value);
+  return normalized.match(new RegExp(`\\b${classNumber}\\s+(?:classe\\s+)?([a-z])\\b`))?.[1];
+}
+
+function findMatchingTurmas(turmas: TurmaRow[], cleanQuery: string, context?: AiWidgetContext) {
+  const normalizedQuery = normalizeText(cleanQuery);
+  const exactMatches = turmas.filter((turma) => {
+    const name = normalizeText(turma.nome ?? "");
+    const code = normalizeText(turma.turma_codigo ?? "");
+    return Boolean(
+      (name && normalizedQuery.includes(name)) ||
+      (code && normalizedQuery.includes(code)),
+    );
   });
 
-  if (byQuery) return byQuery;
+  if (exactMatches.length > 0) return exactMatches;
 
   if (context?.entityType === "class" && context.entityId) {
-    return turmas.find((turma) => turma.id === context.entityId);
+    const contextualTurma = turmas.find((turma) => turma.id === context.entityId);
+    if (contextualTurma) return [contextualTurma];
   }
 
-  return undefined;
+  const queryClassNumber = extractClassNumber(normalizedQuery);
+  if (!queryClassNumber) return [];
+
+  const querySection = extractSection(normalizedQuery, queryClassNumber);
+  return turmas.filter((turma) => {
+    const searchableName = `${turma.nome ?? ""} ${turma.turma_codigo ?? ""}`;
+    if (extractClassNumber(searchableName) !== queryClassNumber) return false;
+    if (!querySection) return true;
+
+    return extractSection(searchableName, queryClassNumber) === querySection;
+  });
+}
+
+function createTurmaResolutionResponse(params: {
+  diagnosis: string;
+  recommendation: string;
+  evidence?: Array<{ label: string; value: string }>;
+}) {
+  return createDataCopilotResponse({
+    insight: {
+      diagnosis: params.diagnosis,
+      impact: "A intenção financeira foi reconhecida, mas a turma precisa de ser identificada antes da consulta.",
+      recommendation: params.recommendation,
+      evidence: params.evidence ?? [],
+      actions: [],
+    },
+  });
 }
 
 export async function answerFinanceDebtByClass(params: {
@@ -69,21 +160,71 @@ export async function answerFinanceDebtByClass(params: {
   }
 
   const supabase = await supabaseServerTyped();
-  const { data: turmas } = await supabase
+  const { data: turmas, error: turmasError } = await supabase
     .from("turmas")
     .select("id, nome, turma_codigo")
     .eq("escola_id", schoolId);
 
-  const matchingTurma = findMatchingTurma((turmas ?? []) as TurmaRow[], cleanQuery, context);
-  if (!matchingTurma?.id || !matchingTurma.nome) {
-    return null;
+  if (turmasError) {
+    return createTurmaResolutionResponse({
+      diagnosis: "Não foi possível consultar as turmas neste momento.",
+      recommendation: "Tente novamente dentro de instantes ou abra o Radar Financeiro.",
+    });
   }
 
-  const { data: radarRows } = await supabase
+  const availableTurmas = (turmas ?? []) as TurmaRow[];
+  const matchingTurmas = findMatchingTurmas(availableTurmas, cleanQuery, context);
+
+  if (matchingTurmas.length === 0) {
+    const availableNames = availableTurmas
+      .map((turma) => turma.nome)
+      .filter((name): name is string => Boolean(name))
+      .slice(0, 6);
+
+    return createTurmaResolutionResponse({
+      diagnosis: "Não encontrei uma turma correspondente à classe indicada.",
+      recommendation: availableNames.length > 0
+        ? `Indique uma destas turmas: ${availableNames.join(", ")}.`
+        : "Confirme se a turma está cadastrada e tente novamente.",
+      evidence: availableNames.length > 0
+        ? [{ label: "Turmas disponíveis", value: availableNames.join(", ") }]
+        : [],
+    });
+  }
+
+  if (matchingTurmas.length > 1) {
+    const matchingNames = matchingTurmas
+      .map((turma) => turma.nome)
+      .filter((name): name is string => Boolean(name));
+
+    return createTurmaResolutionResponse({
+      diagnosis: `Encontrei **${matchingNames.length} turmas** para essa classe.`,
+      recommendation: `Indique a turma exacta: ${matchingNames.join(", ")}.`,
+      evidence: [{ label: "Turmas encontradas", value: matchingNames.join(", ") }],
+    });
+  }
+
+  const [matchingTurma] = matchingTurmas;
+  if (!matchingTurma?.id || !matchingTurma.nome) {
+    return createTurmaResolutionResponse({
+      diagnosis: "A turma encontrada não possui identificação completa.",
+      recommendation: "Corrija o cadastro da turma antes de consultar a inadimplência.",
+    });
+  }
+
+  const { data: radarRows, error: radarError } = await supabase
     .from("vw_radar_inadimplencia")
     .select("aluno_id, nome_aluno, nome_turma, valor_em_atraso")
     .eq("escola_id", schoolId)
     .ilike("nome_turma", matchingTurma.nome);
+
+  if (radarError) {
+    return createTurmaResolutionResponse({
+      diagnosis: `Não foi possível consultar a inadimplência da turma **${matchingTurma.nome}** neste momento.`,
+      recommendation: "Tente novamente dentro de instantes ou abra o Radar Financeiro.",
+      evidence: [{ label: "Turma", value: matchingTurma.nome }],
+    });
+  }
 
   const uniqueStudents = new Map<string, { nome: string; totalDebt: number }>();
 

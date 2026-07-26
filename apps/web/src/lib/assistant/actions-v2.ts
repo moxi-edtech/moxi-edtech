@@ -1,3 +1,10 @@
+import {
+  AI_ACTIONS_FINANCE_ROLES as FINANCE_ROLES,
+  AI_ACTIONS_SECRETARIA_ROLES as SECRETARIA_ROLES,
+  AI_ADMIN_ROLES as ADMIN_ROLES,
+  AI_WIDGET_ROLES as ALL_ROLES,
+} from "@/lib/roles/ai-roles";
+
 export type AssistantActionV2Kind =
   | "open_screen"
   | "open_drawer"
@@ -48,31 +55,6 @@ export type AssistantActionV2Definition = {
   payload?: (params: ActionParams) => Record<string, unknown> | undefined;
 };
 
-const ALL_ROLES = [
-  "admin",
-  "admin_escola",
-  "staff_admin",
-  "direcao",
-  "diretoria",
-  "secretaria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
-
-const FINANCE_ROLES = [
-  "admin",
-  "admin_escola",
-  "direcao",
-  "diretoria",
-  "financeiro",
-  "admin_financeiro",
-  "secretaria_financeiro",
-];
-
-const SECRETARIA_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria", "secretaria"];
-const ADMIN_ROLES = ["admin", "admin_escola", "staff_admin", "direcao", "diretoria"];
-
 function stringParam(params: ActionParams, key: string) {
   const value = params[key];
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -108,6 +90,18 @@ export const ASSISTANT_ACTIONS_V2: AssistantActionV2Definition[] = [
       const schoolId = stringParam(params, "schoolId");
       return schoolId ? `/escola/${schoolId}/secretaria/calendario` : undefined;
     },
+  },
+  {
+    id: "academico:prepare_intervention_plan",
+    kind: "save_ai_action",
+    module: "academico",
+    label: "Preparar plano de intervenção",
+    description: "Cria um rascunho auditável para revisão humana; não contacta ninguém.",
+    roles: SECRETARIA_ROLES,
+    riskLevel: "high",
+    requiresApproval: true,
+    permission: "assistant.academico",
+    payload: () => ({ quickAction: "flow:pedagogical_intervention_plan" }),
   },
   {
     id: "secretaria:open_admissions",

@@ -2,6 +2,7 @@ import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../acti
 import type { AiWidgetContext } from "../../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createDataCopilotResponse } from "../answer-composer";
+import { matchesIntentQuery } from "../query-matcher";
 import type { DataCopilotTool } from "../types";
 
 type RiskRow = {
@@ -15,9 +16,13 @@ const AOA_FORMATTER = new Intl.NumberFormat("pt-AO", {
 });
 
 export function isFinanceRiskSummaryQuery(query: string, context?: AiWidgetContext) {
-  const hasFinanceScope = /finance|inadimpl|d[ií]vida|devedor|cobran[cç]a/.test(query) || context?.module === "financeiro";
-  const asksForDiagnosis = /risco|resumo|total|aten[cç][aã]o|situa[cç][aã]o/.test(query);
-  return Boolean(hasFinanceScope && asksForDiagnosis);
+  return matchesIntentQuery({
+    query,
+    scopeTerms: ["finance", "inadimpl", "divida", "devedor", "cobranca"],
+    diagnosisTerms: ["risco", "resumo", "total", "atencao", "situacao", "quant"],
+    contextMatches: context?.module === "financeiro",
+    options: { maxDistance: 2 },
+  });
 }
 
 export const financeRiskSummaryTool: DataCopilotTool = {

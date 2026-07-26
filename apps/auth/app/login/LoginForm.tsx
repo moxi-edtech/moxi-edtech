@@ -33,7 +33,7 @@ export default function LoginForm({ redirectTo }: Props) {
           height={42}
           className="h-[42px] w-[42px] object-contain"
         />
-        <span className="font-[Inter,ui-sans-serif,system-ui,sans-serif]">
+        <span>
           <strong className="block text-sm font-[950] leading-none tracking-[0.16em] text-[#073b2c]">
             KLASSE
           </strong>

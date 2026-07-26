@@ -547,7 +547,10 @@ export default function AiChatWidget({
     }
   }
 
-  async function saveAction(content: string, actionType: "communication_draft" | "finance_message" | "school_summary") {
+  async function saveAction(
+    content: string,
+    actionType: "communication_draft" | "finance_message" | "school_summary" | "operational_recommendation",
+  ) {
     setThinking(true);
     try {
       const res = await fetch("/api/admin/ai/actions/save", {
@@ -555,11 +558,19 @@ export default function AiChatWidget({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           schoolId: effectiveSchoolId,
-          title: actionType === "finance_message" ? "Rascunho financeiro assistido" : "Rascunho assistido",
+          title: actionType === "finance_message"
+            ? "Rascunho financeiro assistido"
+            : actionType === "operational_recommendation"
+              ? "Plano de intervenção pedagógica"
+              : "Rascunho assistido",
           content,
           actionType,
-          sourceModule: context?.module === "whatsapp" ? "comunicacao" : context?.module || "classe_ai",
-          riskLevel: actionType === "finance_message" ? "high" : "medium",
+          sourceModule: actionType === "operational_recommendation"
+            ? "academico"
+            : context?.module === "whatsapp"
+              ? "comunicacao"
+              : context?.module || "classe_ai",
+          riskLevel: ["finance_message", "operational_recommendation"].includes(actionType) ? "high" : "medium",
           context: { page: context?.page ?? null, assistant_v3: true },
         }),
       });
@@ -578,10 +589,21 @@ export default function AiChatWidget({
     setSelectedTopic(null);
     const topics = findHelpTopics("", userRole);
     setHelpTopics(topics);
+
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.sender === "ai" && lastMsg.text.includes("ações seguras")) {
+      return;
+    }
+
     pushMessages([user("O que posso fazer nesta tela?"), ai(`Nesta tela (${contextName}), posso sugerir ações seguras e abrir caminhos oficiais.`)]);
   }
 
   function showContextCapabilities() {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.sender === "ai" && lastMsg.text.includes("Nesta tela você pode:")) {
+      return;
+    }
+
     const titles = actions.slice(0, 5).map((item, index) => `${index + 1}. ${item.title}`).join("\n");
     pushMessages([
       user("O que posso fazer nesta tela?"),
@@ -660,6 +682,13 @@ export default function AiChatWidget({
     }
     if (quickAction === "quick:screen_capabilities") {
       showContextCapabilities();
+      return;
+    }
+    if (quickAction === "flow:pedagogical_intervention_plan") {
+      const content = typeof action.payload?.content === "string"
+        ? action.payload.content
+        : "Plano pedagógico sem conteúdo disponível.";
+      void saveAction(content, "operational_recommendation");
       return;
     }
     if (quickAction.startsWith("flow:")) {

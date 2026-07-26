@@ -2,6 +2,7 @@ import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../acti
 import type { AiWidgetContext } from "../../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createDataCopilotResponse } from "../answer-composer";
+import { matchesIntentQuery } from "../query-matcher";
 import type { DataCopilotTool } from "../types";
 
 type AttendanceRiskRow = {
@@ -12,9 +13,13 @@ type AttendanceRiskRow = {
 const MINIMUM_ATTENDANCE = 75;
 
 export function isLowAttendanceQuery(query: string, context?: AiWidgetContext) {
-  const hasAcademicScope = /frequ[eê]ncia|presen[cç]a|falta/.test(query) || context?.module === "academico";
-  const asksForDiagnosis = /baix|risco|aluno|turma|pendent|aten[cç][aã]o|resumo/.test(query);
-  return Boolean(hasAcademicScope && asksForDiagnosis);
+  return matchesIntentQuery({
+    query,
+    scopeTerms: ["frequencia", "presenca", "falta"],
+    diagnosisTerms: ["baix", "risco", "aluno", "turma", "pendent", "atencao", "resumo"],
+    contextMatches: context?.module === "academico",
+    options: { maxDistance: 2 },
+  });
 }
 
 export const academicLowAttendanceTool: DataCopilotTool = {

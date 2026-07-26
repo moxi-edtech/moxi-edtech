@@ -2,6 +2,7 @@ import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../acti
 import type { AiWidgetContext } from "../../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createDataCopilotResponse } from "../answer-composer";
+import { matchesIntentQuery } from "../query-matcher";
 import type { DataCopilotTool } from "../types";
 
 type AdmissionsCountsRow = {
@@ -14,9 +15,13 @@ type AdmissionsCountsRow = {
 };
 
 export function isAdmissionsPendingQuery(query: string, context?: AiWidgetContext) {
-  const hasAdmissionsScope = /admiss|candidat/.test(query) || context?.page === "admissoes";
-  const asksForDiagnosis = /pendent|aguard|analis|quant|estado|resumo|atenção|atencao/.test(query);
-  return Boolean(hasAdmissionsScope && asksForDiagnosis);
+  return matchesIntentQuery({
+    query,
+    scopeTerms: ["admiss", "candidat"],
+    diagnosisTerms: ["pendent", "aguard", "analis", "quant", "estado", "resumo", "atencao"],
+    contextMatches: context?.page === "admissoes",
+    options: { maxDistance: 2 },
+  });
 }
 
 export const admissionsPendingTool: DataCopilotTool = {
