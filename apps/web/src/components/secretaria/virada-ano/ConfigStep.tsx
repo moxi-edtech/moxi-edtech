@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { PreparationInputs } from "./PreparationInputs";
 
 type Session = {
   id: string;
@@ -41,6 +42,12 @@ type CloneResponse = {
   };
 };
 
+type PricingPreviewResponse = {
+  ok?: boolean;
+  error?: string;
+  summary?: { tabelas: number; overrides: number };
+};
+
 export function ConfigStep({
   onComplete,
   saveProgress,
@@ -55,6 +62,8 @@ export function ConfigStep({
   const [loading, setLoading] = useState(true);
   const [cloning, setCloning] = useState(false);
   const [result, setResult] = useState<CloneSummary | null>(null);
+  const [pricingPreview, setPricingPreview] = useState<PricingPreviewResponse | null>(null);
+  const [previewingPricing, setPreviewingPricing] = useState(false);
 
   const { success, error } = useToast();
 
@@ -74,7 +83,7 @@ export function ConfigStep({
   }, []);
 
   const handleClone = async () => {
-    if (!selectedTarget) return;
+    if (!selectedTarget || !pricingPreview?.ok) return;
     setCloning(true);
     try {
       const res = await fetch("/api/secretaria/operacoes-academicas/virada/clone-structure", {
@@ -96,6 +105,27 @@ export function ConfigStep({
       }
     } finally {
       setCloning(false);
+    }
+  };
+
+  const handlePricingPreview = async () => {
+    if (!currentSession || !selectedTarget) return;
+    const target = targets.find((session) => session.id === selectedTarget);
+    if (!target) return;
+    setPreviewingPricing(true);
+    try {
+      const response = await fetch("/api/secretaria/operacoes-academicas/virada/precos/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ano_origem: currentSession.ano,
+          ano_destino: target.ano,
+          ajuste: { percentual: reajuste, arredondar_para: 100, overrides: {} },
+        }),
+      });
+      setPricingPreview(await response.json());
+    } finally {
+      setPreviewingPricing(false);
     }
   };
 
@@ -134,6 +164,7 @@ export function ConfigStep({
 
   return (
     <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2">
+      <PreparationInputs anoLetivo={currentSession?.ano ?? 2025} />
       <div className="grid gap-6 md:grid-cols-2">
         {/* Lado Esquerdo: Configuração */}
         <section className="space-y-4">
@@ -166,11 +197,24 @@ export function ConfigStep({
                 type="number"
                 value={reajuste}
                 onChange={(e) => setReajuste(Number(e.target.value))}
+                onInput={() => setPricingPreview(null)}
                 className="w-full h-12 rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
                 placeholder="Ex: 10"
               />
             </div>
             <p className="text-[10px] text-slate-400 mt-1">O valor será aplicado sobre a tabela de preços do ano atual.</p>
+            <div className="mt-3 flex items-center gap-3">
+              <Button tone="gray" size="sm" onClick={handlePricingPreview} disabled={!selectedTarget || previewingPricing}>
+                {previewingPricing && <Loader2 className="h-4 w-4 animate-spin" />}
+                Pré-visualizar reajuste
+              </Button>
+              {pricingPreview?.summary && (
+                <span className="text-xs font-semibold text-emerald-700">
+                  {pricingPreview.summary.tabelas} tabelas validadas
+                </span>
+              )}
+              {pricingPreview?.error && <span className="text-xs font-semibold text-rose-600">{pricingPreview.error}</span>}
+            </div>
           </div>
         </section>
 
@@ -210,7 +254,7 @@ export function ConfigStep({
             className="h-12 px-10 gap-2 font-bold shadow-md hover:shadow-lg transition-all" 
             onClick={handleClone}
             loading={cloning}
-            disabled={!selectedTarget}
+            disabled={!selectedTarget || !pricingPreview?.ok}
           >
             <Wand2 className="h-4 w-4" /> Transportar Estrutura
           </Button>

@@ -6,9 +6,31 @@
 
 **Data de referência:** 3 de agosto de 2026
 
-**Versão do plano:** 1.0
+**Versão do plano:** 1.1
 
 **Estado:** Preparação — novo ano ainda não ativado
+
+## Decisões confirmadas em 3 de agosto de 2026
+
+| Decisão | Definição aprovada | Consequência operacional |
+|---|---|---|
+| Fonte dos resultados | Planilha fornecida pela escola | A planilha deve ser validada e reconciliada antes da importação |
+| Alunos da 9.ª classe | Não transitam dentro da Curtume | Encerrar como concluintes e preservar integralmente o histórico escolar |
+| Preçário 2026/2027 | Será reajustado | Nenhum preço de 2025 pode ser publicado automaticamente |
+| Perfis participantes | `Admin_Financeiro`, `Admin`, `Diretor`, `Super Admin` | Aplicar separação entre aprovação financeira, académica e ativação |
+| Canais de rematrícula | Portal do aluno/encarregado e secretaria | Ambos alimentam a mesma fila e criam uma única matrícula por aluno/ano |
+| Canais de novos alunos | Portal público de candidaturas e secretaria | Ambos usam o mesmo processo de candidatura, análise e conversão |
+
+### Matriz de aprovação
+
+| Operação | Aprovação mínima |
+|---|---|
+| Importar resultados e decidir transição | `Admin`, `Diretor` ou `Super Admin` |
+| Aprovar o preçário | `Admin_Financeiro` e um de: `Admin`, `Diretor`, `Super Admin` |
+| Executar rematrícula em lote | `Admin`, `Diretor` ou `Super Admin`, após gate financeiro |
+| Ativar 2026/2027 | `Diretor`, `Admin` ou `Super Admin`; `Admin_Financeiro` não ativa sozinho |
+
+> A lista define os perfis participantes informados pela escola, mas preserva segregação de funções: aprovação financeira não substitui decisão académica.
 
 ## 1. Objetivo
 
@@ -102,6 +124,10 @@ Preparar e executar a transição controlada do ano letivo 2025/2026 para 2026/2
 
 **Bloqueador atual:** 559 de 564 alunos não possuem notas no KLASSE.
 
+- [ ] Receber a planilha de resultados da Curtume no workspace seguro.
+- [ ] Validar cabeçalhos, identificadores de aluno, turmas, disciplinas, períodos e escala de notas.
+- [ ] Rejeitar linhas sem correspondência única de aluno/matrícula.
+- [ ] Produzir pré-visualização com válidos, avisos, rejeitados e duplicados.
 - [ ] Identificar onde estão os resultados oficiais: papel, Excel ou outro sistema.
 - [ ] Definir formato único de importação ou lançamento manual.
 - [ ] Validar pautas por turma e disciplina.
@@ -131,11 +157,13 @@ Projeção bruta antes dos resultados finais:
 | 6.ª classe | 7.ª classe | 54 |
 | 7.ª classe | 8.ª classe | 125 |
 | 8.ª classe | 9.ª classe | 84 |
-| 9.ª classe | Conclusão/continuidade externa | 60 |
+| 9.ª classe | Conclusão; histórico preservado na Curtume | 60 |
 
 - [ ] Recalcular projeções após resultados finais.
 - [ ] Definir número de turmas por classe, turno, sala e capacidade.
-- [ ] Definir tratamento dos 60 alunos da 9.ª classe.
+- [ ] Classificar os 60 alunos da 9.ª classe como concluintes após validação dos resultados finais.
+- [ ] Não criar matrícula 2026/2027 para esses concluintes.
+- [ ] Garantir emissão posterior de histórico, declaração e pauta sem depender de matrícula ativa.
 - [ ] Criar turmas inicialmente sem matrículas.
 - [ ] Validar códigos de turma e impedir duplicação.
 - [ ] Não copiar professores automaticamente sem confirmação de disponibilidade.
@@ -156,6 +184,12 @@ Projeção bruta antes dos resultados finais:
 - [ ] Publicar lista final aprovada.
 - [ ] Converter candidatura em matrícula apenas entre 16 e 20 de agosto.
 - [ ] Garantir idempotência: uma candidatura não pode gerar duas matrículas.
+- [ ] Manter o portal público de candidaturas aberto durante a janela oficial.
+- [ ] Permitir à secretaria registar candidatura assistida para famílias atendidas presencialmente.
+- [ ] Gerar `protocolo_publico` nos dois canais.
+- [ ] Usar os mesmos estados, documentos obrigatórios e critérios de decisão nos dois canais.
+- [ ] Pesquisar por documento, nome e contacto antes de criar candidatura assistida.
+- [ ] Fazer a conversão para matrícula apenas pela operação oficial de admissão.
 
 **Gate F4:** todas as candidaturas têm decisão e as matrículas respeitam capacidade e ano letivo.
 
@@ -172,6 +206,7 @@ Referência 2025/2026:
 - 10 combinações de preço por classe/curso.
 
 - [ ] Gerar proposta 2026 a partir da estrutura de 2025, sem publicar.
+- [ ] Recolher percentuais ou valores reajustados por classe/curso.
 - [ ] Aprovar matrícula, mensalidade, vencimento, multa e descontos.
 - [ ] Definir data de início financeiro por matrícula.
 - [ ] Separar cobrança de 2026 da dívida de 2025.
@@ -194,8 +229,37 @@ Referência 2025/2026:
 - [ ] Transportar desconto somente quando aprovado.
 - [ ] Não transportar dívida como mensalidade do novo ano.
 - [ ] Produzir relatório de sucessos, rejeições e alunos sem destino.
+- [ ] Abrir a janela de rematrícula no portal somente para alunos elegíveis.
+- [ ] Mostrar ao aluno/encarregado a classe proposta, documentos, dívida informativa e termos.
+- [ ] Permitir confirmação autónoma pelo portal do aluno/encarregado.
+- [ ] Permitir confirmação assistida pela secretaria quando a família comparecer presencialmente.
+- [ ] Registar `canal = PORTAL_ALUNO` ou `canal = SECRETARIA` no evento de auditoria.
+- [ ] Se a secretaria confirmar primeiro, o portal deve mostrar a rematrícula como concluída.
+- [ ] Se o portal confirmar primeiro, a secretaria deve visualizar a mesma matrícula, sem criar outra.
+- [ ] Usar `origem_transicao_matricula_id` como vínculo idempotente entre matrícula antiga e nova.
 
 **Gate F6:** total de novas matrículas reconciliado com transitados, retidos, concluídos e exceções.
+
+### Regras comuns dos fluxos multicanal
+
+```text
+Portal do aluno ─┐
+                 ├─> elegibilidade ─> confirmação única ─> matrícula 2026
+Secretaria ──────┘
+
+Portal público ─┐
+                ├─> candidatura única ─> análise ─> aprovação ─> matrícula 2026
+Secretaria ─────┘
+```
+
+Regras obrigatórias:
+
+1. O canal muda a origem do pedido, não as regras de negócio.
+2. Toda tentativa repetida deve devolver o resultado já existente.
+3. Documento normalizado, aluno, ano e vínculo de transição devem impedir duplicados.
+4. A secretaria pode assistir e corrigir pendências, mas não contornar capacidade, período ou aprovação.
+5. O portal nunca ativa o ano, cria preços ou decide promoção académica.
+6. Toda mudança de estado deve entrar no histórico da candidatura ou da rematrícula.
 
 ### Fase 7 — Preparação pedagógica e operacional
 
@@ -320,9 +384,46 @@ Depois da ativação:
 
 A reunião inicial precisa aprovar quatro pontos:
 
-1. Fonte e formato dos resultados finais dos 559 alunos sem notas.
-2. Destino dos 60 alunos da 9.ª classe.
-3. Preçário 2026/2027 e política para alunos com dívida.
-4. Responsáveis que autorizam promoção, matrícula e ativação do novo ano.
+1. Receber e validar a planilha de resultados finais dos 559 alunos sem notas.
+2. Definir percentuais ou valores do preçário reajustado por classe/curso.
+3. Definir a política de rematrícula para os 341 alunos com dívida.
+4. Identificar nominalmente os utilizadores que exercerão cada perfil aprovador.
 
 Sem essas decisões, o KLASSE pode preparar o novo ano, mas não deve promover alunos nem ativar 2026/2027.
+
+## 12. Preparação técnica implementada
+
+O código está preparado para receber os dados finais sem bloquear a evolução do projeto:
+
+- planilha `.xlsx`, `.xls` ou `.csv`;
+- lançamento manual de linhas;
+- integração por API usando o mesmo contrato;
+- normalização de cabeçalhos em português;
+- validação de notas entre 0 e 20;
+- decisão final `TRANSITADO`, `RETIDO`, `CONCLUIDO` ou `PENDENTE`;
+- preview sem mutação;
+- detecção de duplicados e alunos sem correspondência;
+- staging com checksum e idempotency key;
+- preview de reajuste percentual;
+- arredondamento configurável;
+- valores manuais por tabela como override de última instância.
+
+### Sequência de receção das notas
+
+```text
+Planilha / Manual / API
+        ↓
+Normalização de cabeçalhos e valores
+        ↓
+Preview e correspondência com aluno/matrícula
+        ↓
+Correção de rejeitados e duplicados
+        ↓
+Lote de staging VALIDADO
+        ↓
+Aprovação académica
+        ↓
+Aplicação oficial futura e reconciliação
+```
+
+O staging não escreve diretamente em `notas` ou `matriculas`. A aplicação oficial será uma fase separada, transacional e aprovada depois que a planilha real permitir mapear disciplinas, avaliações e períodos sem ambiguidade.
