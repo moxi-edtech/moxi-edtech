@@ -27,14 +27,66 @@ export async function POST() {
   }
 
   const report = await buildCutoverHealthReport(supabase, escolaId);
+  const activeYear = report.active_year?.ano ?? null;
+  const readinessClient = supabase as any;
+  const [targetsResult, templatesResult, pendingImportsResult] = await Promise.all([
+    activeYear == null
+      ? Promise.resolve({ data: [], error: null })
+      : readinessClient
+        .from("anos_letivos")
+        .select("id,ano,ativo,data_inicio,data_fim")
+        .eq("escola_id", escolaId)
+        .gt("ano", activeYear)
+        .order("ano", { ascending: true })
+        .order("id", { ascending: true }),
+    activeYear == null
+      ? Promise.resolve({ data: [], error: null })
+      : readinessClient
+        .from("calendario_templates")
+        .select("id,nome,ano_base,subsistema,versao_documento")
+        .eq("is_oficial", true)
+        .eq("estado", "PUBLICADO")
+        .gt("ano_base", activeYear)
+        .order("ano_base", { ascending: true })
+        .order("id", { ascending: true }),
+    readinessClient
+      .from("virada_importacoes")
+      .select("id", { count: "exact", head: true })
+      .eq("escola_id", escolaId)
+      .eq("status", "APROVADO"),
+  ]);
+
+  const readinessErrors = [targetsResult.error, templatesResult.error, pendingImportsResult.error]
+    .filter(Boolean)
+    .map((error) => error?.message || "Falha na verificação operacional");
+  const blockers = [...report.blockers];
+  if (activeYear == null) blockers.push("Nenhum ano letivo ativo foi encontrado.");
+  if ((targetsResult.data ?? []).length === 0) {
+    blockers.push("Crie e confirme o ano letivo de destino antes de executar a virada.");
+  }
+  if (readinessErrors.length > 0) {
+    blockers.push("Não foi possível concluir todas as verificações do dry-run.");
+  }
+  const warnings = [...report.warnings];
+  const pendingImports = pendingImportsResult.count ?? 0;
+  if (pendingImports > 0) {
+    warnings.push(`${pendingImports} lote(s) de notas aprovado(s) aguardam aplicação.`);
+  }
+  const canExecute = report.can_cutover && blockers.length === 0;
 
   return NextResponse.json({
     ok: true,
     dry_run: true,
-    can_execute: report.can_cutover,
-    status: report.status,
-    blockers: report.blockers,
-    warnings: report.warnings,
+    can_execute: canExecute,
+    status: canExecute ? report.status : "BLOCKED",
+    blockers,
+    warnings,
+    readiness: {
+      target_sessions: targetsResult.data ?? [],
+      official_templates: templatesResult.data ?? [],
+      approved_note_batches_pending_apply: pendingImports,
+      errors: readinessErrors,
+    },
     report,
   });
 }

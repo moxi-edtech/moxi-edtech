@@ -20,6 +20,7 @@ const resultadoValue = z.preprocess(
 
 export const NotaImportRowSchema = z.object({
   matricula_id: optionalText.pipe(z.string().uuid().optional()),
+  avaliacao_id: optionalText.pipe(z.string().uuid().optional()),
   numero_processo: optionalText,
   aluno_nome: optionalText,
   turma: optionalText,
@@ -43,11 +44,11 @@ export const NotaImportRowSchema = z.object({
       path: ["nota"],
     });
   }
-  if (row.nota != null && (!row.disciplina || !row.periodo)) {
+  if (row.nota != null && !row.avaliacao_id) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Notas exigem disciplina e periodo.",
-      path: ["disciplina"],
+      message: "Notas exigem avaliacao_id para impedir associação ambígua.",
+      path: ["avaliacao_id"],
     });
   }
 });
@@ -64,6 +65,7 @@ export type NotaImportPreview = {
 const HEADER_ALIASES: Record<string, keyof NotaImportRow> = {
   matricula: "matricula_id",
   matricula_id: "matricula_id",
+  avaliacao_id: "avaliacao_id",
   numero_de_processo: "numero_processo",
   numero_processo: "numero_processo",
   processo: "numero_processo",
@@ -108,7 +110,13 @@ function normaliseKey(value?: string) {
 export function buildNotaImportKey(row: NotaImportRow) {
   const aluno = row.matricula_id || normaliseKey(row.numero_processo);
   const resultado = row.resultado_final ? "resultado-final" : "nota";
-  return [aluno, resultado, normaliseKey(row.disciplina), normaliseKey(row.periodo), normaliseKey(row.avaliacao)].join("|");
+  return [
+    aluno,
+    resultado,
+    row.avaliacao_id ?? normaliseKey(row.disciplina),
+    normaliseKey(row.periodo),
+    normaliseKey(row.avaliacao),
+  ].join("|");
 }
 
 export function previewNotaImport(rows: unknown[]): NotaImportPreview {

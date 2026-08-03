@@ -5,7 +5,11 @@ import { buildPricingProposal } from "../../src/lib/virada/pricing-adjustment";
 
 test("preview de notas aceita vírgula decimal e resultado final", () => {
   const preview = previewNotaImport([
-    { numero_processo: "CUR-001", disciplina: "Matemática", periodo: "III", nota: "14,5" },
+    {
+      numero_processo: "CUR-001",
+      avaliacao_id: "efea359e-f183-47bc-a626-413986a78382",
+      nota: "14,5",
+    },
     { numero_processo: "CUR-002", resultado_final: "concluido" },
   ]);
 
@@ -13,6 +17,16 @@ test("preview de notas aceita vírgula decimal e resultado final", () => {
   assert.equal(preview.validas[0]?.nota, 14.5);
   assert.equal(preview.validas[1]?.resultado_final, "CONCLUIDO");
   assert.equal(preview.rejeitadas.length, 0);
+});
+
+test("preview de notas rejeita nota sem avaliacao_id", () => {
+  const preview = previewNotaImport([
+    { numero_processo: "CUR-001", disciplina: "Matemática", periodo: "III", nota: "14,5" },
+  ]);
+
+  assert.equal(preview.validas.length, 0);
+  assert.equal(preview.rejeitadas.length, 1);
+  assert.match(preview.rejeitadas[0]?.erros.join(" ") ?? "", /avaliacao_id/);
 });
 
 test("normaliza cabeçalhos comuns de planilha", () => {

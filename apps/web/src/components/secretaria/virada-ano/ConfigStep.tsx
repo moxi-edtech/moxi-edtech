@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { 
   Copy, 
   Loader2, 
@@ -20,6 +20,16 @@ type Session = {
   has_data: boolean;
 };
 
+type OfficialTemplate = {
+  id: string;
+  nome: string;
+  ano_base: number;
+  data_inicio: string;
+  data_fim: string;
+  subsistema: string | null;
+  versao_documento: string | null;
+};
+
 type CloneSummary = {
   turmas?: number;
   precos?: number;
@@ -31,6 +41,13 @@ type SessionsTargetResponse = {
   ok?: boolean;
   current_session?: Session | null;
   target_sessions?: Session[];
+  official_templates?: OfficialTemplate[];
+};
+
+type CreateTargetResponse = {
+  ok?: boolean;
+  error?: string;
+  target_session?: Session;
 };
 
 type CloneResponse = {
@@ -56,30 +73,63 @@ export function ConfigStep({
 }) {
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [targets, setTargets] = useState<Session[]>([]);
+  const [templates, setTemplates] = useState<OfficialTemplate[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string>("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [reajuste, setReajuste] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [cloning, setCloning] = useState(false);
   const [result, setResult] = useState<CloneSummary | null>(null);
   const [pricingPreview, setPricingPreview] = useState<PricingPreviewResponse | null>(null);
   const [previewingPricing, setPreviewingPricing] = useState(false);
+  const [creatingTarget, setCreatingTarget] = useState(false);
 
   const { success, error } = useToast();
 
-  useEffect(() => {
-    fetch("/api/secretaria/operacoes-academicas/virada/sessions-target")
+  const loadSessions = useCallback(async () => {
+    return fetch("/api/secretaria/operacoes-academicas/virada/sessions-target", { cache: "no-store" })
       .then(r => r.json())
       .then((json: SessionsTargetResponse) => {
         if (json.ok) {
           setCurrentSession(json.current_session ?? null);
           setTargets(json.target_sessions ?? []);
+          setTemplates(json.official_templates ?? []);
           if ((json.target_sessions ?? []).length > 0) {
             setSelectedTarget(json.target_sessions?.[0]?.id ?? "");
+          }
+          if ((json.official_templates ?? []).length > 0) {
+            setSelectedTemplate(json.official_templates?.[0]?.id ?? "");
           }
         }
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  const handleCreateTarget = async () => {
+    if (!selectedTemplate) return;
+    setCreatingTarget(true);
+    try {
+      const response = await fetch("/api/secretaria/operacoes-academicas/virada/sessions-target", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template_id: selectedTemplate }),
+      });
+      const json = (await response.json()) as CreateTargetResponse;
+      if (!response.ok || !json.ok || !json.target_session) {
+        error(json.error || "Não foi possível preparar o ano seguinte.");
+        return;
+      }
+      await loadSessions();
+      setSelectedTarget(json.target_session.id);
+      success("Ano seguinte criado como inativo com o calendário oficial.");
+    } finally {
+      setCreatingTarget(false);
+    }
+  };
 
   const handleClone = async () => {
     if (!selectedTarget || !pricingPreview?.ok) return;
@@ -199,9 +249,40 @@ export function ConfigStep({
               {targets.length === 0 && <option disabled>Nenhum ano futuro cadastrado</option>}
             </select>
             {targets.length === 0 && (
-                <p className="text-[10px] text-rose-500 mt-1 font-bold">
-                    * É necessário cadastrar o ano letivo seguinte nas Configurações primeiro.
+              <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs font-semibold text-amber-900">
+                  Escolha o calendário oficial correspondente ao subsistema da escola. O ano será criado inativo.
                 </p>
+                {templates.length > 0 ? (
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <select
+                      value={selectedTemplate}
+                      onChange={(event) => setSelectedTemplate(event.target.value)}
+                      className="h-11 flex-1 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
+                      aria-label="Calendário oficial do subsistema"
+                    >
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      tone="gold"
+                      size="sm"
+                      onClick={handleCreateTarget}
+                      loading={creatingTarget}
+                      disabled={!selectedTemplate}
+                    >
+                      Criar próximo ano
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs font-semibold text-rose-700">
+                    Nenhum template oficial posterior foi publicado. Solicite a publicação ao Super Admin.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

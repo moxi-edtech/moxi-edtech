@@ -22,8 +22,7 @@ type PreviewResponse = {
 
 const emptyManual = {
   numero_processo: "",
-  disciplina: "",
-  periodo: "",
+  avaliacao_id: "",
   nota: "",
   resultado_final: "",
 };
@@ -34,6 +33,8 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [staging, setStaging] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
   const [stagedId, setStagedId] = useState<string | null>(null);
   const [origem, setOrigem] = useState<"PLANILHA" | "MANUAL">("MANUAL");
   const idempotencyKey = useRef(crypto.randomUUID());
@@ -96,6 +97,35 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
     }
   };
 
+  const approveAndApply = async () => {
+    if (!stagedId) return;
+    setApplying(true);
+    setPreview((current) => current ? { ...current, error: undefined } : current);
+    try {
+      const approveResponse = await fetch(
+        `/api/secretaria/operacoes-academicas/virada/notas/${stagedId}/approve`,
+        { method: "POST" },
+      );
+      const approved = await approveResponse.json();
+      if (!approved.ok) throw new Error(approved.error || "Falha ao aprovar o lote.");
+
+      const applyResponse = await fetch(
+        `/api/secretaria/operacoes-academicas/virada/notas/${stagedId}/apply`,
+        { method: "POST" },
+      );
+      const appliedResult = await applyResponse.json();
+      if (!appliedResult.ok) throw new Error(appliedResult.error || "Falha ao aplicar o lote.");
+      setApplied(true);
+    } catch (error) {
+      setPreview((current) => ({
+        ...current,
+        error: error instanceof Error ? error.message : "Falha ao aplicar o lote.",
+      }));
+    } finally {
+      setApplying(false);
+    }
+  };
+
   return (
     <section className="w-full space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -116,8 +146,8 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
         </label>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-5">
-        {(["numero_processo", "disciplina", "periodo", "nota"] as const).map((field) => (
+      <div className="grid gap-2 md:grid-cols-4">
+        {(["numero_processo", "avaliacao_id", "nota"] as const).map((field) => (
           <input
             key={field}
             value={manual[field]}
@@ -169,9 +199,18 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
           </Button>
         </div>
       )}
-      {stagedId && (
+      {stagedId && !applied && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+          <p className="text-xs font-semibold text-emerald-700">Lote validado: {stagedId}</p>
+          <Button tone="gold" size="sm" onClick={approveAndApply} disabled={applying}>
+            {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            Aprovar e aplicar
+          </Button>
+        </div>
+      )}
+      {applied && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700">
-          Lote guardado para aprovação: {stagedId}
+          Resultados aplicados com sucesso.
         </p>
       )}
       {preview?.error && <p className="text-xs font-semibold text-rose-600">{preview.error}</p>}

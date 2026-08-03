@@ -16,6 +16,12 @@ const Body = z.object({
   rows: z.array(z.unknown()).min(1).max(5_000),
 });
 
+function chunks<T>(values: T[], size = 200) {
+  return Array.from({ length: Math.ceil(values.length / size) }, (_, index) =>
+    values.slice(index * size, (index + 1) * size),
+  );
+}
+
 export async function POST(request: Request) {
   const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
   if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 200) {
@@ -57,13 +63,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, reused: true, importacao: existing });
   }
 
+  const matriculaIds = [...new Set(preview.validas.map((row) => row.matricula_id).filter(Boolean))] as string[];
+  const processos = [...new Set(preview.validas.map((row) => row.numero_processo).filter(Boolean))] as string[];
+  const [matriculasByIdResults, alunosResults] = await Promise.all([
+    Promise.all(chunks(matriculaIds).map((ids) =>
+      supabase
+        .from("matriculas")
+        .select("id,aluno_id,turma_id")
+        .eq("escola_id", escolaId)
+        .eq("ano_letivo", parsed.data.ano_letivo)
+        .in("id", ids),
+    )),
+    Promise.all(chunks(processos).map((values) =>
+      supabase
+        .from("alunos")
+        .select("id,numero_processo")
+        .eq("escola_id", escolaId)
+        .in("numero_processo", values),
+    )),
+  ]);
+
+  if (matriculasByIdResults.some((result) => result.error) || alunosResults.some((result) => result.error)) {
+    return NextResponse.json({ ok: false, error: "Falha ao validar alunos e matrículas." }, { status: 500 });
+  }
+
+  const matriculasById = new Map(
+    matriculasByIdResults
+      .flatMap((result) => result.data ?? [])
+      .map((row) => [row.id, row] as const),
+  );
+  const alunosByProcesso = new Map(
+    alunosResults
+      .flatMap((result) => result.data ?? [])
+      .filter((row) => row.numero_processo)
+      .map((row) => [row.numero_processo as string, row.id] as const),
+  );
+  const alunoIds = [...new Set(alunosByProcesso.values())];
+  const matriculasByAlunoResults = await Promise.all(chunks(alunoIds).map((ids) =>
+    supabase
+      .from("matriculas")
+      .select("id,aluno_id,turma_id")
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo", parsed.data.ano_letivo)
+      .in("aluno_id", ids),
+  ));
+  if (matriculasByAlunoResults.some((result) => result.error)) {
+    return NextResponse.json({ ok: false, error: "Falha ao validar matrículas dos alunos." }, { status: 500 });
+  }
+
+  const matriculasByAluno = new Map<string, Array<{ id: string; aluno_id: string; turma_id: string }>>();
+  for (const matricula of matriculasByAlunoResults.flatMap((result) => result.data ?? [])) {
+    const current = matriculasByAluno.get(matricula.aluno_id) ?? [];
+    current.push(matricula);
+    matriculasByAluno.set(matricula.aluno_id, current);
+  }
+  const resolvedByLine = new Map(preview.validas.map((row) => {
+    const direct = row.matricula_id ? matriculasById.get(row.matricula_id) : undefined;
+    const alunoId = row.numero_processo ? alunosByProcesso.get(row.numero_processo) : undefined;
+    const candidates = direct ? [direct] : alunoId ? (matriculasByAluno.get(alunoId) ?? []) : [];
+    return [row.linha, candidates.length === 1 ? candidates[0] : null] as const;
+  }));
+  const semCorrespondencia = [...resolvedByLine.values()].filter((row) => !row).length;
+
   const resumo = {
     total: preview.total,
     validas: preview.validas.length,
     rejeitadas: preview.rejeitadas.length,
     duplicadas: preview.duplicadas.length,
+    sem_correspondencia: semCorrespondencia,
   };
-  const status = preview.rejeitadas.length === 0 && preview.duplicadas.length === 0 ? "VALIDADO" : "RASCUNHO";
+  const status = preview.rejeitadas.length === 0
+    && preview.duplicadas.length === 0
+    && semCorrespondencia === 0
+    ? "VALIDADO"
+    : "RASCUNHO";
 
   const { data: batch, error: batchError } = await supabase
     .from("virada_importacoes")
@@ -92,15 +165,19 @@ export async function POST(request: Request) {
     const rejected = rejectedByLine.get(linha);
     const duplicate = duplicateByLine.get(linha);
     const valid = validByLine.get(linha);
+    const resolved = resolvedByLine.get(linha);
+    const correspondenceError = valid && !resolved ? ["Matrícula única não encontrada para a escola e ano letivo."] : [];
     return {
       importacao_id: batch.id,
       escola_id: escolaId,
       linha,
-      status: rejected ? "REJEITADA" : duplicate ? "DUPLICADA" : "VALIDA",
+      status: rejected ? "REJEITADA" : duplicate ? "DUPLICADA" : !resolved ? "SEM_CORRESPONDENCIA" : "VALIDA",
       chave: valid?.chave ?? duplicate?.chave ?? null,
+      aluno_id: resolved?.aluno_id ?? null,
+      matricula_id: resolved?.id ?? null,
       raw_data: raw,
-      normalized_data: valid ?? null,
-      erros: rejected?.erros ?? [],
+      normalized_data: valid ? { ...valid, aluno_id: resolved?.aluno_id, matricula_id: resolved?.id } : null,
+      erros: rejected?.erros ?? correspondenceError,
     };
   });
 

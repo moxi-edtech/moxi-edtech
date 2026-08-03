@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   const matriculas = matriculasResults.flatMap((result) => result.data || []) as Array<{
     id: string;
     aluno_id: string;
-    turma_id: string;
+    turma_id: string | null;
     ano_letivo: number | null;
   }>;
   const alunos = alunosResults.flatMap((result) => result.data || []) as Array<{
@@ -70,15 +70,35 @@ export async function POST(request: Request) {
   const alunosByProcesso = new Map(
     alunos.filter((row) => row.numero_processo).map((row) => [row.numero_processo as string, row] as const),
   );
+  const alunoIds = [...new Set(alunos.map((row) => row.id))];
+  const matriculasByAlunoResults = await Promise.all(chunks(alunoIds).map((ids) =>
+    supabase
+      .from("matriculas")
+      .select("id, aluno_id, turma_id, ano_letivo")
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo", parsed.data.ano_letivo)
+      .in("aluno_id", ids),
+  ));
+  if (matriculasByAlunoResults.some((result) => result.error)) {
+    return NextResponse.json({ ok: false, error: "Falha ao validar matrículas dos alunos" }, { status: 500 });
+  }
+  const matriculasByAluno = new Map<string, typeof matriculas>();
+  for (const matricula of matriculasByAlunoResults.flatMap((result) => result.data || [])) {
+    const current = matriculasByAluno.get(matricula.aluno_id) ?? [];
+    current.push(matricula);
+    matriculasByAluno.set(matricula.aluno_id, current);
+  }
   const correspondencias = preview.validas.map((row) => {
-    const matricula = row.matricula_id ? matriculasById.get(row.matricula_id) : undefined;
+    const direct = row.matricula_id ? matriculasById.get(row.matricula_id) : undefined;
     const aluno = row.numero_processo ? alunosByProcesso.get(row.numero_processo) : undefined;
+    const candidates = direct ? [direct] : aluno ? (matriculasByAluno.get(aluno.id) ?? []) : [];
+    const matricula = candidates.length === 1 ? candidates[0] : undefined;
     return {
       linha: row.linha,
       chave: row.chave,
-      encontrado: Boolean(matricula || aluno),
-      matricula_id: matricula?.id ?? row.matricula_id ?? null,
-      aluno_id: matricula?.aluno_id ?? aluno?.id ?? null,
+      encontrado: Boolean(matricula),
+      matricula_id: matricula?.id ?? null,
+      aluno_id: matricula?.aluno_id ?? null,
     };
   });
 
