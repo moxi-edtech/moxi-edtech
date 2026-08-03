@@ -68,8 +68,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     // 3. Separar Trimestres e Eventos
+    const periodoTipo = items.some((i: any) => i.tipo === 'PERIODO_LETIVO')
+      ? 'PERIODO_LETIVO'
+      : 'PROVA_TRIMESTRAL';
+
     const periodosData = items
-      .filter((i: any) => i.tipo === 'PROVA_TRIMESTRAL')
+      .filter((i: any) => i.tipo === periodoTipo)
       .map((i: any) => ({
         ano_letivo_id: anoLetivoId,
         tipo: 'TRIMESTRE',
@@ -80,7 +84,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }));
 
     const eventosData = items
-      .filter((i: any) => i.tipo !== 'PROVA_TRIMESTRAL')
+      .filter((i: any) => i.tipo !== periodoTipo)
       .map((i: any) => ({
         escola_id: userEscolaId,
         ano_letivo_id: anoLetivoId,

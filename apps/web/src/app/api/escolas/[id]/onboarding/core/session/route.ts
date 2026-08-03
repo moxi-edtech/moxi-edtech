@@ -131,8 +131,12 @@ export async function POST(
       
       const items = templateItems || [];
 
+      const periodoTipo = items.some(i => i.tipo === 'PERIODO_LETIVO')
+        ? 'PERIODO_LETIVO'
+        : 'PROVA_TRIMESTRAL';
+
       periodosPayload = items
-        .filter(i => i.tipo === 'PROVA_TRIMESTRAL')
+        .filter(i => i.tipo === periodoTipo)
         .map(i => ({
           ano_letivo_id: anoLetivoId,
           escola_id: userEscolaId,
@@ -145,7 +149,7 @@ export async function POST(
         }));
 
       const eventosPayload: Database['public']['Tables']['calendario_eventos']['Insert'][] = items
-        .filter(i => i.tipo !== 'PROVA_TRIMESTRAL')
+        .filter(i => i.tipo !== periodoTipo)
         .map(i => ({
           escola_id: userEscolaId,
           ano_letivo_id: anoLetivoId,

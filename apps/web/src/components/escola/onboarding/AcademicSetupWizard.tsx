@@ -333,9 +333,13 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     setSelectedTemplateId(t.id);
 
     async function fillPeriods() {
-      const { data: items } = await supabase.from('calendario_template_items').select('*').eq('template_id', t.id).eq('tipo', 'PROVA_TRIMESTRAL').order('numero', { ascending: true });
-      if (items && items.length > 0) {
-        setPeriodosConfig(items.map(i => ({
+      const { data: items } = await supabase.from('calendario_template_items').select('*').eq('template_id', t.id).order('numero', { ascending: true });
+      const explicitPeriods = (items || []).filter(i => i.tipo === 'PERIODO_LETIVO');
+      const periodItems = explicitPeriods.length > 0
+        ? explicitPeriods
+        : (items || []).filter(i => i.tipo === 'PROVA_TRIMESTRAL');
+      if (periodItems.length > 0) {
+        setPeriodosConfig(periodItems.map(i => ({
           numero: Number(i.numero || 1),
           data_inicio: i.data_inicio,
           data_fim: i.data_fim,

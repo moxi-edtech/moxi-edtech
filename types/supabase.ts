@@ -1803,9 +1803,17 @@ export type Database = {
           data_fim: string
           data_inicio: string
           descricao: string | null
+          estado: string
+          fonte_documento_url: string | null
+          fonte_nome: string | null
+          fonte_referencia: string | null
           id: string
           is_oficial: boolean | null
           nome: string
+          publicado_em: string | null
+          subsistema: string | null
+          updated_at: string
+          versao_documento: string | null
         }
         Insert: {
           ano_base: number
@@ -1813,9 +1821,17 @@ export type Database = {
           data_fim: string
           data_inicio: string
           descricao?: string | null
+          estado?: string
+          fonte_documento_url?: string | null
+          fonte_nome?: string | null
+          fonte_referencia?: string | null
           id?: string
           is_oficial?: boolean | null
           nome: string
+          publicado_em?: string | null
+          subsistema?: string | null
+          updated_at?: string
+          versao_documento?: string | null
         }
         Update: {
           ano_base?: number
@@ -1823,9 +1839,17 @@ export type Database = {
           data_fim?: string
           data_inicio?: string
           descricao?: string | null
+          estado?: string
+          fonte_documento_url?: string | null
+          fonte_nome?: string | null
+          fonte_referencia?: string | null
           id?: string
           is_oficial?: boolean | null
           nome?: string
+          publicado_em?: string | null
+          subsistema?: string | null
+          updated_at?: string
+          versao_documento?: string | null
         }
         Relationships: []
       }
@@ -23540,6 +23564,17 @@ export type Database = {
         | "PROVA_TRIMESTRAL"
         | "EXAME_NACIONAL"
         | "EVENTO_ESCOLA"
+        | "PERIODO_LETIVO"
+        | "EXAME_ORAL"
+        | "EXAME_ESCRITO"
+        | "EXAME_EXTRAORDINARIO"
+        | "FERIAS_ALUNOS"
+        | "MATRICULA"
+        | "RECONFIRMACAO_MATRICULA"
+        | "CONSELHO_CLASSE"
+        | "PUBLICACAO_PAUTA"
+        | "ENCERRAMENTO_ANO_LETIVO"
+        | "PREPARACAO_ANO_LETIVO"
       user_role:
         | "super_admin"
         | "global_admin"
@@ -23834,6 +23869,17 @@ export const Constants = {
         "PROVA_TRIMESTRAL",
         "EXAME_NACIONAL",
         "EVENTO_ESCOLA",
+        "PERIODO_LETIVO",
+        "EXAME_ORAL",
+        "EXAME_ESCRITO",
+        "EXAME_EXTRAORDINARIO",
+        "FERIAS_ALUNOS",
+        "MATRICULA",
+        "RECONFIRMACAO_MATRICULA",
+        "CONSELHO_CLASSE",
+        "PUBLICACAO_PAUTA",
+        "ENCERRAMENTO_ANO_LETIVO",
+        "PREPARACAO_ANO_LETIVO",
       ],
       user_role: [
         "super_admin",
