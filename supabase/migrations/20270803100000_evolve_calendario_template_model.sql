@@ -1,0 +1,84 @@
+-- Evolve the academic-calendar model before importing MED 2026/2027.
+-- Additive only: no template seed, event backfill, or academic-year activation.
+
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'PERIODO_LETIVO';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'EXAME_ORAL';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'EXAME_ESCRITO';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'EXAME_EXTRAORDINARIO';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'FERIAS_ALUNOS';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'MATRICULA';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'RECONFIRMACAO_MATRICULA';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'CONSELHO_CLASSE';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'PUBLICACAO_PAUTA';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'ENCERRAMENTO_ANO_LETIVO';
+ALTER TYPE public.tipo_evento_calendario ADD VALUE IF NOT EXISTS 'PREPARACAO_ANO_LETIVO';
+
+ALTER TABLE public.calendario_templates
+  ADD COLUMN IF NOT EXISTS subsistema text,
+  ADD COLUMN IF NOT EXISTS estado text NOT NULL DEFAULT 'PUBLICADO',
+  ADD COLUMN IF NOT EXISTS fonte_nome text,
+  ADD COLUMN IF NOT EXISTS fonte_referencia text,
+  ADD COLUMN IF NOT EXISTS fonte_documento_url text,
+  ADD COLUMN IF NOT EXISTS versao_documento text,
+  ADD COLUMN IF NOT EXISTS publicado_em date,
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+DO $migration$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.calendario_templates'::regclass
+      AND conname = 'calendario_templates_subsistema_check'
+  ) THEN
+    ALTER TABLE public.calendario_templates
+      ADD CONSTRAINT calendario_templates_subsistema_check
+      CHECK (
+        subsistema IS NULL OR subsistema IN (
+          'PRE_ESCOLAR',
+          'REGULAR_ADULTOS',
+          'TECNICO_PROFISSIONAL',
+          'SECUNDARIO_PEDAGOGICO'
+        )
+      );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.calendario_templates'::regclass
+      AND conname = 'calendario_templates_estado_check'
+  ) THEN
+    ALTER TABLE public.calendario_templates
+      ADD CONSTRAINT calendario_templates_estado_check
+      CHECK (estado IN ('RASCUNHO', 'PUBLICADO', 'SUBSTITUIDO', 'ARQUIVADO'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.calendario_templates'::regclass
+      AND conname = 'calendario_templates_check_dates'
+  ) THEN
+    ALTER TABLE public.calendario_templates
+      ADD CONSTRAINT calendario_templates_check_dates
+      CHECK (data_fim >= data_inicio);
+  END IF;
+END
+$migration$;
+
+CREATE INDEX IF NOT EXISTS idx_calendario_templates_catalogo
+  ON public.calendario_templates (ano_base DESC, subsistema, estado);
+
+COMMENT ON COLUMN public.calendario_templates.subsistema IS
+  'Subsistema MED ao qual o template se aplica; NULL identifica templates legados.';
+COMMENT ON COLUMN public.calendario_templates.estado IS
+  'Ciclo editorial do template: RASCUNHO, PUBLICADO, SUBSTITUIDO ou ARQUIVADO.';
+COMMENT ON COLUMN public.calendario_templates.fonte_referencia IS
+  'Referência oficial reproduzível, por exemplo número de decreto ou despacho.';
+COMMENT ON COLUMN public.calendario_templates.versao_documento IS
+  'Versão declarada da fonte oficial; não é a versão do schema.';
+
+DROP TRIGGER IF EXISTS trg_set_updated_at_calendario_templates
+  ON public.calendario_templates;
+CREATE TRIGGER trg_set_updated_at_calendario_templates
+BEFORE UPDATE ON public.calendario_templates
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_updated_at();
