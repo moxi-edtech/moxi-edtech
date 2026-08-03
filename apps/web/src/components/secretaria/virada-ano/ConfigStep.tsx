@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { 
-  ChevronRight, 
   Copy, 
   Loader2, 
   AlertCircle,
@@ -96,10 +95,10 @@ export function ConfigStep({
       });
       const json = (await res.json()) as CloneResponse;
       if (json.ok) {
-        success("Estrutura acadêmica e financeira clonada com sucesso!");
+        success("Próximo ano preparado com sucesso!");
         setResult(json.result?.summary ?? {});
-        // Persiste o destino no payload global do Wizard
-        await saveProgress(2, { target_session_id: selectedTarget });
+        await saveProgress(0, { target_session_id: selectedTarget });
+        onComplete();
       } else {
         error(json.error || "Falha na clonagem.");
       }
@@ -108,26 +107,43 @@ export function ConfigStep({
     }
   };
 
-  const handlePricingPreview = async () => {
+  useEffect(() => {
     if (!currentSession || !selectedTarget) return;
+
     const target = targets.find((session) => session.id === selectedTarget);
     if (!target) return;
+
+    const controller = new AbortController();
+    setPricingPreview(null);
     setPreviewingPricing(true);
-    try {
-      const response = await fetch("/api/secretaria/operacoes-academicas/virada/precos/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ano_origem: currentSession.ano,
-          ano_destino: target.ano,
-          ajuste: { percentual: reajuste, arredondar_para: 100, overrides: {} },
-        }),
-      });
-      setPricingPreview(await response.json());
-    } finally {
-      setPreviewingPricing(false);
-    }
-  };
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await fetch("/api/secretaria/operacoes-academicas/virada/precos/preview", {
+            method: "POST",
+            signal: controller.signal,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ano_origem: currentSession.ano,
+              ano_destino: target.ano,
+              ajuste: { percentual: reajuste, arredondar_para: 100, overrides: {} },
+            }),
+          });
+          if (!controller.signal.aborted) setPricingPreview(await response.json());
+        } catch (previewError) {
+          if (previewError instanceof DOMException && previewError.name === "AbortError") return;
+          setPricingPreview({ ok: false, error: "Não foi possível validar os preços." });
+        } finally {
+          if (!controller.signal.aborted) setPreviewingPricing(false);
+        }
+      })();
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [currentSession, selectedTarget, reajuste, targets]);
 
   if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
 
@@ -136,8 +152,8 @@ export function ConfigStep({
       <div className="space-y-6 animate-in zoom-in-95">
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-emerald-900">Transporte Concluído!</h3>
-            <p className="text-sm text-emerald-700 mt-1">A estrutura do próximo ano foi preparada com precisão.</p>
+            <h3 className="text-lg font-bold text-emerald-900">Próximo ano preparado</h3>
+            <p className="text-sm text-emerald-700 mt-1">A estrutura académica e financeira está pronta para revisão.</p>
             
             <div className="mt-8 grid grid-cols-2 gap-3 max-w-sm mx-auto">
                 <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
@@ -197,20 +213,20 @@ export function ConfigStep({
                 type="number"
                 value={reajuste}
                 onChange={(e) => setReajuste(Number(e.target.value))}
-                onInput={() => setPricingPreview(null)}
                 className="w-full h-12 rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-klasse-gold/10 transition-all"
                 placeholder="Ex: 10"
               />
             </div>
             <p className="text-[10px] text-slate-400 mt-1">O valor será aplicado sobre a tabela de preços do ano atual.</p>
-            <div className="mt-3 flex items-center gap-3">
-              <Button tone="gray" size="sm" onClick={handlePricingPreview} disabled={!selectedTarget || previewingPricing}>
-                {previewingPricing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Pré-visualizar reajuste
-              </Button>
+            <div className="mt-3 flex items-center gap-3" aria-live="polite">
+              {previewingPricing && (
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> A validar preços…
+                </span>
+              )}
               {pricingPreview?.summary && (
                 <span className="text-xs font-semibold text-emerald-700">
-                  {pricingPreview.summary.tabelas} tabelas validadas
+                  {pricingPreview.summary.tabelas} tabelas validadas automaticamente
                 </span>
               )}
               {pricingPreview?.error && <span className="text-xs font-semibold text-rose-600">{pricingPreview.error}</span>}
@@ -256,7 +272,7 @@ export function ConfigStep({
             loading={cloning}
             disabled={!selectedTarget || !pricingPreview?.ok}
           >
-            <Wand2 className="h-4 w-4" /> Transportar Estrutura
+            <Wand2 className="h-4 w-4" /> Preparar próximo ano
           </Button>
       </div>
     </div>

@@ -59,24 +59,13 @@ export function toContextualPortalPath(path: string, pathname: string | null | u
     ["/secretaria/alertas", "/operacoes/alertas"],
     ["/secretaria/migracao", "/operacoes/migracao"],
     ["/horarios", "/operacoes/horarios"],
-    ["/financeiro/turmas-alunos", "/operacoes/turmas-alunos"],
-    ["/financeiro/pagamentos", "/operacoes/recebimentos"],
-    ["/financeiro/radar", "/operacoes/recebimentos"],
-    ["/financeiro/cobrancas", "/operacoes/recebimentos"],
-    ["/financeiro/fecho", "/operacoes/fecho"],
-    ["/financeiro/relatorios/mapa-aproveitamento", "/operacoes/relatorios/mapa-aproveitamento"],
-    ["/financeiro/relatorios/mensal-escolar", "/operacoes/relatorios/mensal-escolar"],
-    ["/financeiro/relatorios/propinas", "/operacoes/relatorios/propinas"],
+    ["/financeiro", "/operacoes/financeiro"],
   ];
 
   for (const [from, to] of directPrefixes) {
     if (rawPath === from || rawPath.startsWith(`${from}/`)) {
       return `${rawPath.replace(from, to)}${suffix}`;
     }
-  }
-
-  if (rawPath === "/financeiro" || rawPath === "/financeiro/dashboard") {
-    return `/operacoes/recebimentos${suffix}`;
   }
 
   if (rawPath === "/secretaria") {

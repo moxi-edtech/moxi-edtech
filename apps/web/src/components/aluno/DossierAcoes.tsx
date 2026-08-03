@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Archive, DollarSign, FileCheck, FileText, KeyRound, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 export type DossierRole = "admin" | "secretaria";
 
@@ -17,6 +18,9 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
   const [resetResult, setResetResult] = useState<{ login: string; senha: string } | null>(null);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+  const pathname = usePathname();
+  const portalHref = (path: string) =>
+    buildContextualPortalHref(escolaParam, path, pathname);
 
   async function run(url: string, body?: unknown) {
     setLoading(true);
@@ -45,7 +49,7 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
         setResetResult({ login: json.login, senha: json.senha });
         success("Senha redefinida", "Uma nova senha temporária foi gerada com sucesso.");
       }
-    } catch (err: any) {
+    } catch {
       error("Erro na redefinição", "Não conseguimos gerar uma nova senha no momento. Por favor, tente novamente.");
     } finally {
       setLoading(false);
@@ -57,7 +61,7 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-        <Link href={`/escola/${escolaParam}/admin/alunos/${aluno.id}/editar`} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
+        <Link href={portalHref(`/admin/alunos/${aluno.id}/editar`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
         {!isArquivado ? (
           <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#E3B23C]/40 hover:text-[#E3B23C]"><Archive size={14} className="inline mr-1" />Arquivar</button>
         ) : (
@@ -88,7 +92,7 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 flex-wrap">
       <Link
-        href={`/secretaria/alunos/${aluno.id}/pagamento`}
+        href={portalHref(`/secretaria/alunos/${aluno.id}/pagamento`)}
         className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
           aluno.financeiro.situacao === "inadimplente"
             ? "bg-[#E3B23C] hover:brightness-95"
@@ -98,20 +102,20 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
         <DollarSign size={14} className="inline mr-1" />Registar pagamento
       </Link>
       <Link
-        href={`/secretaria/alunos/${aluno.id}/editar`}
+        href={portalHref(`/secretaria/alunos/${aluno.id}/editar`)}
         className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         <Pencil size={14} className="inline mr-1" />Editar
       </Link>
       <Link
-        href={`/secretaria/alunos/${aluno.id}/documentos`}
+        href={portalHref(`/secretaria/alunos/${aluno.id}/documentos`)}
         className="px-2 py-2 text-sm font-medium text-slate-500 hover:text-slate-700"
       >
         <FileText size={14} className="inline mr-1" />Documentos
       </Link>
       {!aluno.matricula_atual?.is_atual && (
         <Link
-          href={`/secretaria/admissoes/nova?alunoId=${aluno.id}`}
+          href={portalHref(`/secretaria/admissoes/nova?alunoId=${aluno.id}`)}
           className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <FileCheck size={14} className="inline mr-1" />Matricular

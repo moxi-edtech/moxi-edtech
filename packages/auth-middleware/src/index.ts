@@ -248,18 +248,20 @@ export function normalizeSupabaseAuthCookies<T extends AuthCookieLike>(cookies: 
     const tokenInfo = extractRefreshTokenCandidate(reconstructedValue);
     const refreshTokenPresent = Boolean(tokenInfo);
 
-    console.info(
-      JSON.stringify({
-        event: "supabase_cookie_adapter_instrumentation",
-        storage_key: baseName,
-        has_base_cookie: hasBaseCookie,
-        base_cookie_size: baseCookieSize,
-        chunk_indexes: chunkIndexes,
-        selected_source: selectedSource,
-        refresh_token_present: refreshTokenPresent,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    if (process.env.SUPABASE_COOKIE_ADAPTER_INSTRUMENTATION === "1") {
+      console.info(
+        JSON.stringify({
+          event: "supabase_cookie_adapter_instrumentation",
+          storage_key: baseName,
+          has_base_cookie: hasBaseCookie,
+          base_cookie_size: baseCookieSize,
+          chunk_indexes: chunkIndexes,
+          selected_source: selectedSource,
+          refresh_token_present: refreshTokenPresent,
+          timestamp: new Date().toISOString(),
+        })
+      );
+    }
 
     if (selectedSource === "chunks") {
       normalized.push({

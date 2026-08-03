@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BookOpen, CalendarCheck, Users, ChevronRight } from "lucide-react";
 import { DossierAcoes, type DossierRole } from "@/components/aluno/DossierAcoes";
 import { formatDate } from "@/lib/formatters";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import {
+  buildContextualPortalHref,
+  isOperacoesContext,
+} from "@/lib/navigation";
+
+const currencyFormatter = new Intl.NumberFormat("pt-AO", {
+  style: "currency",
+  currency: "AOA",
+  maximumFractionDigits: 0,
+});
 
 export function DossierHeader({
   aluno,
@@ -18,12 +28,18 @@ export function DossierHeader({
   role: DossierRole;
   escolaId: string;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
   const { perfil, matricula_atual } = aluno;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
+  const pathname = usePathname();
+  const isOperacoes = isOperacoesContext(pathname);
+  const breadcrumbPath =
+    role === "admin" ? "/admin/alunos" : "/secretaria/alunos";
+  const breadcrumbLabel = isOperacoes
+    ? "Operações"
+    : role === "admin"
+      ? "Admin"
+      : "Secretaria";
 
   const status = (perfil.status ?? "pendente").toLowerCase();
   const statusLabel = status.replace(/_/g, " ");
@@ -72,21 +88,16 @@ export function DossierHeader({
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 rounded-xl bg-slate-50/70 px-3 py-2 text-xs text-slate-400">
-          {role === "admin" ? (
-            <Link
-              href={buildPortalHref(escolaParam, "/admin/alunos")}
-              className="hover:text-slate-600 transition-colors"
-            >
-              Admin
-            </Link>
-          ) : (
-            <Link
-              href={buildPortalHref(escolaParam, "/secretaria/alunos")}
-              className="hover:text-slate-600 transition-colors"
-            >
-              Secretaria
-            </Link>
-          )}
+          <Link
+            href={buildContextualPortalHref(
+              escolaParam,
+              breadcrumbPath,
+              pathname
+            )}
+            className="hover:text-slate-600 transition-colors"
+          >
+            {breadcrumbLabel}
+          </Link>
           <ChevronRight size={12} className="text-slate-400 flex-shrink-0" />
           <span className="text-slate-400">Alunos</span>
           <ChevronRight size={12} className="text-slate-400 flex-shrink-0" />
@@ -163,11 +174,7 @@ export function DossierHeader({
           </p>
           {valorEmDivida > 0 ? (
             <span className="text-sm font-bold text-rose-700 flex-shrink-0">
-              {mounted ? new Intl.NumberFormat("pt-AO", {
-                style: "currency",
-                currency: "AOA",
-                maximumFractionDigits: 0,
-              }).format(valorEmDivida) : "—"}{" "}
+              {currencyFormatter.format(valorEmDivida)}{" "}
               em dívida
             </span>
           ) : null}

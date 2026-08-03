@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { 
   CheckCircle2, 
   FileText, 
   Loader2, 
   RefreshCcw, 
-  AlertTriangle,
   Play,
-  Download,
   Info
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -35,21 +33,26 @@ export function FreezeStep({ onComplete }: { onComplete: () => void }) {
   const [activeJob, setActiveJob] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const completionNotified = useRef(false);
   
   const { success, error } = useToast();
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/secretaria/operacoes-academicas/virada/pautas-status", { cache: 'no-store' });
       const json = await res.json();
       if (json.ok) {
         setStats(json.stats);
         setActiveJob(json.active_job);
+        if (json.stats?.pendentes_count === 0 && !completionNotified.current) {
+          completionNotified.current = true;
+          onComplete();
+        }
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [onComplete]);
 
   useEffect(() => {
     fetchStatus();
@@ -60,7 +63,7 @@ export function FreezeStep({ onComplete }: { onComplete: () => void }) {
       }
     }, 5000);
     return () => clearInterval(timer);
-  }, [activeJob?.status]);
+  }, [activeJob?.status, fetchStatus]);
 
   const handleStartJob = async () => {
     setStarting(true);

@@ -6,6 +6,19 @@ import { applyKf2ListInvariants } from "@/lib/kf2";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type LookupError = { message: string } | null;
+type AlunoLookupRow = { id: string; nome: string | null };
+type MensalidadeLookupRow = {
+  id: string;
+  mes_referencia: number | null;
+  ano_referencia: number | null;
+};
+
+type LookupResult<T> = {
+  data: T[];
+  error: LookupError;
+};
+
 export async function GET(req: Request) {
   try {
     const s = await supabaseServer();
@@ -61,10 +74,72 @@ export async function GET(req: Request) {
 
     const { data, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-    const items = (data ?? []).map((row: any) => ({
-      ...row,
-      referencia: row.reference ?? row.referencia ?? null,
-    }));
+
+    const pagamentoRows = data ?? [];
+    const alunoIds = Array.from(
+      new Set(pagamentoRows.map((row) => row.aluno_id).filter((id): id is string => Boolean(id)))
+    );
+    const mensalidadeIds = Array.from(
+      new Set(pagamentoRows.map((row) => row.mensalidade_id).filter((id): id is string => Boolean(id)))
+    );
+
+    const loadAlunos = async (): Promise<LookupResult<AlunoLookupRow>> => {
+      if (alunoIds.length === 0) return { data: [], error: null };
+      const result = await s
+        .from("alunos")
+        .select("id,nome")
+        .eq("escola_id", escolaId)
+        .in("id", alunoIds)
+        .order("id", { ascending: true })
+        .limit(50);
+      return { data: result.data ?? [], error: result.error };
+    };
+
+    const loadMensalidades = async (): Promise<LookupResult<MensalidadeLookupRow>> => {
+      if (mensalidadeIds.length === 0) return { data: [], error: null };
+      const result = await s
+        .from("mensalidades")
+        .select("id,mes_referencia,ano_referencia")
+        .eq("escola_id", escolaId)
+        .in("id", mensalidadeIds)
+        .order("id", { ascending: true })
+        .limit(50);
+      return { data: result.data ?? [], error: result.error };
+    };
+
+    const [alunosResult, mensalidadesResult] = await Promise.all([
+      loadAlunos(),
+      loadMensalidades(),
+    ]);
+
+    if (alunosResult.error || mensalidadesResult.error) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: alunosResult.error?.message || mensalidadesResult.error?.message || "Falha ao contextualizar pagamentos",
+        },
+        { status: 400 }
+      );
+    }
+
+    const alunosById = new Map(
+      (alunosResult.data ?? []).map((aluno) => [aluno.id, aluno.nome || "Aluno sem nome"])
+    );
+    const mensalidadesById = new Map(
+      (mensalidadesResult.data ?? []).map((mensalidade) => [mensalidade.id, mensalidade])
+    );
+    const items = pagamentoRows.map((row) => {
+      const mensalidade = row.mensalidade_id
+        ? mensalidadesById.get(row.mensalidade_id)
+        : null;
+      return {
+        ...row,
+        aluno_nome: row.aluno_id ? alunosById.get(row.aluno_id) ?? null : null,
+        mes_referencia: mensalidade?.mes_referencia ?? null,
+        ano_referencia: mensalidade?.ano_referencia ?? null,
+        referencia: row.reference ?? row.referencia ?? null,
+      };
+    });
     return NextResponse.json({ ok: true, items });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

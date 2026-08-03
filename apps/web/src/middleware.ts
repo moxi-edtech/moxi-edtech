@@ -428,16 +428,10 @@ function resolveRequestedLoginReturnTo(request: NextRequest) {
   }
 }
 
-function isDocumentNavigation(request: NextRequest) {
-  if (request.nextUrl.searchParams.has('_rsc')) return false;
-  if (request.headers.get('x-nextjs-data')) return false;
-  const accept = request.headers.get('accept') ?? '';
-  return accept.includes('text/html');
-}
-
 function pathRequiresK12Model(pathname: string): boolean {
   return (
     pathname.startsWith('/admin') ||
+    pathname.startsWith('/operacoes') ||
     pathname.startsWith('/professor') ||
     pathname.startsWith('/aluno') ||
     pathname.startsWith('/secretaria') ||

@@ -2,6 +2,7 @@ import { supabaseServer } from '~/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { resolveEscolaIdForUser } from '~/lib/tenant/resolveEscolaIdForUser';
 import { getDefaultK12PortalPathForRole } from '@/lib/permissions';
+import { getAcademicYearRolloverState } from '@/lib/operacoes-academicas/academic-year-rollover-gate';
 
 export default async function EscolaIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -47,6 +48,15 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
   const normalizedPapel = String(escolaUsuario.papel ?? '').trim().toLowerCase();
   if (normalizedPapel === 'aluno') {
     return redirect(`/escola/${escolaParam}/aluno/dashboard`);
+  }
+
+  const rollover = await getAcademicYearRolloverState(
+    supabase,
+    userEscolaId,
+    normalizedPapel
+  );
+  if (rollover.shouldOpenWizard) {
+    return redirect(`/escola/${escolaParam}/admin/operacoes-academicas/wizard`);
   }
 
   return redirect(getDefaultK12PortalPathForRole(normalizedPapel, escolaParam));

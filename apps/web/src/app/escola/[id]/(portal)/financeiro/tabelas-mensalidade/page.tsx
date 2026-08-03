@@ -1,11 +1,14 @@
-"use client";
+import MensalidadesPrecosWorkspace from "./MensalidadesPrecosWorkspace";
 
-import TabelasMensalidadeClient from '@/components/financeiro/TabelasMensalidadeClient'
-
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
   return (
-    <div className="p-6">
-      <TabelasMensalidadeClient />
-    </div>
-  )
+    <MensalidadesPrecosWorkspace
+      initialView={view === "precos" ? "precos" : "mensalidades"}
+    />
+  );
 }

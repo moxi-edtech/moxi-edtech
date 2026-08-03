@@ -61,6 +61,37 @@ interface MatchSugerido {
   razao: string;
 }
 
+type TransacaoBancariaApi = Omit<TransacaoBancaria, "data"> & {
+  data: string | Date;
+};
+
+type TransacoesApiResult = {
+  ok?: boolean;
+  transactions?: TransacaoBancariaApi[];
+  error?: string;
+};
+
+const inFlightTransactionRequests = new Map<
+  string,
+  Promise<{ responseOk: boolean; result: TransacoesApiResult }>
+>();
+
+function fetchTransactionsCoalesced(url: string) {
+  const existing = inFlightTransactionRequests.get(url);
+  if (existing) return existing;
+
+  const request = fetch(url, { cache: "no-store" })
+    .then(async (response) => ({
+      responseOk: response.ok,
+      result: (await response.json()) as TransacoesApiResult,
+    }))
+    .finally(() => {
+      inFlightTransactionRequests.delete(url);
+    });
+  inFlightTransactionRequests.set(url, request);
+  return request;
+}
+
 // -----------------------------
 // Helpers (KLASSE vibe)
 // -----------------------------
@@ -248,7 +279,7 @@ function SelectPill(props: {
 const ConciliacaoBancaria: React.FC = () => {
   const params = useParams();
   const escolaId = params?.id as string;
-  const { success, error, warning, toast: rawToast } = useToast();
+  const { success, error, toast: rawToast } = useToast();
   const [transacoes, setTransacoes] = useState<TransacaoBancaria[]>([]);
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [bancoSelecionado, setBancoSelecionado] = useState<string>("BAI");
@@ -277,28 +308,37 @@ const ConciliacaoBancaria: React.FC = () => {
       qs.set("status", filtroStatus);
       qs.set("escolaId", escolaId);
 
-      const response = await fetch(`/api/financeiro/conciliacao/transacoes?${qs.toString()}`, { cache: "no-store" });
-      const result = await response.json();
+      const { responseOk, result } = await fetchTransactionsCoalesced(
+        `/api/financeiro/conciliacao/transacoes?${qs.toString()}`
+      );
 
-      if (response.ok && result.ok && Array.isArray(result.transactions)) {
-        const parsed = result.transactions.map((t: any) => ({
+      if (responseOk && result.ok && Array.isArray(result.transactions)) {
+        const parsed = result.transactions.map((t) => ({
           ...t,
           data: new Date(t.data),
           alunoMatch: t.alunoMatch ? t.alunoMatch : undefined,
         }));
         setTransacoes(parsed);
       } else {
-        error(result.error || "Erro ao carregar transações.");
+        rawToast({
+          variant: "error",
+          title: result.error || "Erro ao carregar transações.",
+          duration: 6000,
+        });
         setTransacoes([]);
       }
     } catch (e) {
       console.error(e);
-      error("Erro de conexão ao carregar transações.");
+      rawToast({
+        variant: "error",
+        title: "Erro de conexão ao carregar transações.",
+        duration: 6000,
+      });
       setTransacoes([]);
     } finally {
       setLoadingTransactions(false);
     }
-  }, [escolaId, filtroStatus, error]);
+  }, [escolaId, filtroStatus, rawToast]);
 
   useEffect(() => {
     fetchTransactions();

@@ -35,6 +35,94 @@ ensureSupabaseEnv();
 const nextConfig = {
   typedRoutes: false,
   transpilePackages: ["@moxi/auth-middleware", "@moxi/design-tokens", "@moxi/tenant-sdk"],
+  async rewrites() {
+    return [
+      {
+        source: "/escola/:id/operacoes/financeiro",
+        destination: "/escola/:id/financeiro",
+      },
+      {
+        source: "/escola/:id/operacoes/financeiro/dashboard",
+        destination: "/escola/:id/financeiro",
+      },
+      {
+        source: "/escola/:id/operacoes/financeiro/dashboards",
+        destination: "/escola/:id/financeiro",
+      },
+      {
+        source: "/escola/:id/operacoes/financeiro/:path*",
+        destination: "/escola/:id/financeiro/:path*",
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: "/escola/:id/admin",
+        destination: "/escola/:id/operacoes/dashboard",
+        permanent: false,
+      },
+      {
+        source: "/escola/:id/admin/dashboard",
+        destination: "/escola/:id/operacoes/dashboard",
+        permanent: false,
+      },
+      {
+        source: "/escola/:id/admin/operacoes-academicas/:path*",
+        destination: "/escola/:id/operacoes/academico/:path*",
+        permanent: false,
+      },
+      ...[
+        "alunos",
+        "professores",
+        "turmas",
+        "avisos",
+        "comunicacao",
+        "relatorios",
+        "documentos-oficiais",
+        "configuracoes",
+      ].map((segment) => ({
+        source: `/escola/:id/admin/${segment}/:path*`,
+        destination: `/escola/:id/operacoes/${segment}/:path*`,
+        permanent: false,
+      })),
+      {
+        source: "/escola/:id/secretaria",
+        destination: "/escola/:id/operacoes/dashboard",
+        permanent: false,
+      },
+      {
+        source: "/escola/:id/secretaria/operacoes-academicas/:path*",
+        destination: "/escola/:id/operacoes/academico/:path*",
+        permanent: false,
+      },
+      {
+        source: "/escola/:id/secretaria/acesso/:path*",
+        destination: "/escola/:id/operacoes/acessos/:path*",
+        permanent: false,
+      },
+      ...[
+        "admissoes",
+        "alunos",
+        "matriculas",
+        "rematricula",
+        "turmas",
+        "classes",
+        "calendario",
+        "documentos-oficiais",
+        "documentos",
+        "importacoes",
+        "exportacoes",
+        "relatorios",
+        "fecho",
+        "recebimentos",
+      ].map((segment) => ({
+        source: `/escola/:id/secretaria/${segment}/:path*`,
+        destination: `/escola/:id/operacoes/${segment}/:path*`,
+        permanent: false,
+      })),
+    ];
+  },
   async headers() {
     return [
       {

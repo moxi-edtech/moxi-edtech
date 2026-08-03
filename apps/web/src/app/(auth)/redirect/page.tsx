@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { shouldRouteToEscolaAdmin } from "@/lib/escola/onboardingGate";
 import { getDefaultK12PortalPathForRole, normalizePapel } from "@/lib/permissions";
+import { getAcademicYearRolloverState } from "@/lib/operacoes-academicas/academic-year-rollover-gate";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -154,6 +155,18 @@ export default async function RedirectPage() {
     }
 
     redirect(`${formacaoBaseUrl}/meus-cursos`);
+  }
+
+  if (resolvedEscolaId && escolaParam) {
+    const rollover = await getAcademicYearRolloverState(
+      supabase,
+      resolvedEscolaId,
+      role
+    );
+
+    if (rollover.shouldOpenWizard) {
+      redirect(`/escola/${escolaParam}/admin/operacoes-academicas/wizard`);
+    }
   }
 
   if (resolvedEscolaId && isK12AdminRole) {

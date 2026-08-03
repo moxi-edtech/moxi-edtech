@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { 
   CheckCircle2, 
   ChevronRight, 
   AlertCircle, 
-  RotateCcw, 
   ShieldCheck, 
   Zap, 
-  FileText,
   Info,
-  Loader2,
   RefreshCcw,
   Users,
   Wand2
@@ -71,19 +68,25 @@ type FixSessionsResponse = {
 };
 
 const STEPS: Step[] = [
-  { id: 0, title: "Check-up", description: "Validação de integridade dos dados atuais." },
-  { id: 1, title: "Congelamento", description: "Geração de pautas e snapshots históricos." },
-  { id: 2, title: "Configuração", description: "Definição de datas do ano letivo seguinte." },
-  { id: 3, title: "Simulação", description: "Prévia de rematrícula e bloqueios." },
-  { id: 4, title: "Virada Atômica", description: "Execução final e encerramento do ciclo." },
+  { id: 0, title: "Preparar", description: "O KLASSE valida e prepara automaticamente o próximo ano." },
+  { id: 1, title: "Exceções", description: "Reveja apenas alunos ou dados que exigem uma decisão." },
+  { id: 2, title: "Confirmar", description: "Confirme o resumo e ative o novo ano letivo." },
 ];
+
+const WORKFLOW_VERSION = 2;
+
+function restoreStep(step: number, payload: WizardPayload): number {
+  if (Number(payload.workflow_version) >= WORKFLOW_VERSION) {
+    return Math.min(Math.max(step, 0), STEPS.length - 1);
+  }
+  if (step <= 2) return 0;
+  return step === 3 ? 1 : 2;
+}
 
 export function ViradaWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setLoadingSaving] = useState(false);
-  const [wizardId, setWizardId] = useState<string | null>(null);
-  
   // Cross-step Data (Payload)
   const [payload, setPayload] = useState<WizardPayload>({});
   
@@ -94,7 +97,7 @@ export function ViradaWizard() {
 
   const { success, error: toastError } = useToast();
 
-  const fetchHealth = async () => {
+  const fetchHealth = useCallback(async () => {
     setLoadingHealth(true);
     try {
       const res = await fetch("/api/secretaria/operacoes-academicas/virada/health", { cache: 'no-store' });
@@ -103,7 +106,7 @@ export function ViradaWizard() {
     } finally {
       setLoadingHealth(false);
     }
-  };
+  }, []);
 
   // 1. Carregar Estado Persistente e Saúde
   useEffect(() => {
@@ -111,20 +114,20 @@ export function ViradaWizard() {
       const res = await fetch("/api/secretaria/operacoes-academicas/virada/wizard");
       const json = (await res.json()) as WizardResponse;
       if (json.ok && json.wizard) {
-        setWizardId(json.wizard.id);
-        setCurrentStep(json.wizard.current_step);
-        setPayload(json.wizard.payload || {});
+        const restoredPayload = json.wizard.payload || {};
+        setCurrentStep(restoreStep(json.wizard.current_step, restoredPayload));
+        setPayload(restoredPayload);
       }
       await fetchHealth();
       setLoading(false);
     };
     init();
-  }, []);
+  }, [fetchHealth]);
 
   // 2. Salvar Progresso
   const saveProgress = async (step: number, extraPayload: Partial<WizardPayload> = {}) => {
     setLoadingSaving(true);
-    const newPayload = { ...payload, ...extraPayload };
+    const newPayload = { ...payload, ...extraPayload, workflow_version: WORKFLOW_VERSION };
     try {
       const res = await fetch("/api/secretaria/operacoes-academicas/virada/wizard", {
         method: "POST",
@@ -134,7 +137,6 @@ export function ViradaWizard() {
       if (json.ok) {
         if (!json.wizard) return;
         setCurrentStep(step);
-        setWizardId(json.wizard.id);
         setPayload(json.wizard.payload ?? {});
         if (step === 0) await fetchHealth();
       }
@@ -160,7 +162,7 @@ export function ViradaWizard() {
     }
   };
 
-  const step0Issues = useMemo(() => {
+  const step0Issues = (() => {
     if (!health) return [] as StepIssue[];
     const list: StepIssue[] = [];
 
@@ -233,11 +235,18 @@ export function ViradaWizard() {
     });
 
     return list;
-  }, [health, fixingSessions, loadingHealth]);
+  })();
 
   if (loading) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
 
-  const canProceed = currentStep === 0 ? (health?.status !== "BLOCKED" && step0Issues.filter(i => i.severity === 'critical').length === 0) : true;
+  const hasTechnicalPreparationBlocker = health?.blockers.some((blocker) =>
+    blocker.includes("Falha técnica") ||
+    blocker.includes("Nenhum ano letivo ativo") ||
+    blocker.includes("sem session_id")
+  );
+  const canProceed = currentStep === 0
+    ? Boolean(payload.target_session_id) && !hasTechnicalPreparationBlocker
+    : true;
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -283,10 +292,8 @@ export function ViradaWizard() {
           <div className="text-center mb-10">
             <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-xl shadow-slate-200/50 ring-1 ring-slate-100/50">
                 {currentStep === 0 && <Zap className="h-7 w-7 text-klasse-gold fill-current" />}
-                {currentStep === 1 && <FileText className="h-7 w-7 text-blue-500" />}
-                {currentStep === 2 && <RotateCcw className="h-7 w-7 text-purple-500" />}
-                {currentStep === 3 && <Users className="h-7 w-7 text-orange-500" />}
-                {currentStep === 4 && <ShieldCheck className="h-7 w-7 text-emerald-600" />}
+                {currentStep === 1 && <Users className="h-7 w-7 text-orange-500" />}
+                {currentStep === 2 && <ShieldCheck className="h-7 w-7 text-emerald-600" />}
             </div>
             <h2 className="mb-2 text-2xl font-black text-slate-900 tracking-tight">{STEPS[currentStep].title}</h2>
             <p className="text-sm font-medium text-slate-500">{STEPS[currentStep].description}</p>
@@ -358,10 +365,28 @@ export function ViradaWizard() {
             </div>
           )}
 
-          {currentStep === 1 && <FreezeStep onComplete={() => {}} />}
-          {currentStep === 2 && <ConfigStep onComplete={() => {}} saveProgress={saveProgress} />}
-          {currentStep === 3 && <PromotionStep onComplete={() => {}} />}
-          {currentStep === 4 && (
+          {currentStep === 0 && (
+            <div className="mt-10 space-y-10 border-t border-slate-200 pt-10">
+              <section className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">1. Fechar o ano atual</h3>
+                  <p className="mt-1 text-xs text-slate-500">As pautas são geradas em lote e o histórico fica protegido.</p>
+                </div>
+                <FreezeStep onComplete={fetchHealth} />
+              </section>
+
+              <section className="space-y-4 border-t border-slate-200 pt-10">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">2. Preparar o próximo ano</h3>
+                  <p className="mt-1 text-xs text-slate-500">O KLASSE seleciona o destino, valida preços e reutiliza a estrutura da escola.</p>
+                </div>
+                <ConfigStep onComplete={fetchHealth} saveProgress={saveProgress} />
+              </section>
+            </div>
+          )}
+
+          {currentStep === 1 && <PromotionStep onComplete={() => {}} />}
+          {currentStep === 2 && (
             <ExecuteStep 
                 onComplete={() => {}} 
                 fromSession={health?.active_year?.id || ''} 
@@ -393,7 +418,11 @@ export function ViradaWizard() {
               disabled={currentStep === STEPS.length - 1 || !canProceed}
               onClick={() => saveProgress(currentStep + 1)}
             >
-              {canProceed ? "Próximo passo" : "Resolver bloqueadores"} <ChevronRight className="ml-2 h-5 w-5" />
+              {canProceed
+                ? currentStep === 0
+                  ? "Rever exceções"
+                  : "Continuar para confirmação"
+                : "Concluir preparação"} <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
         </div>
       </div>

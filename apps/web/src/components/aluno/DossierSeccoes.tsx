@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CheckCircle2, FileText, TrendingDown, Wallet, Printer } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
@@ -12,6 +13,10 @@ import { QuickEditField } from "@/components/aluno/QuickEditField";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { PushSettings } from "@/components/aluno/PushSettings";
 import { ReverterPagamentoButton } from "@/components/financeiro/ReverterPagamentoButton";
+import {
+  buildContextualPortalHref,
+  getEscolaParamFromPath,
+} from "@/lib/navigation";
 
 export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   const p = aluno.perfil;
@@ -294,6 +299,8 @@ export function DossierHistoricoTransitadoSection({
 }
 
 export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
+  const pathname = usePathname();
+  const escolaParam = getEscolaParamFromPath(pathname);
   const actions = [
     { title: "Declaração", subtitle: "Frequência", tipo: "declaracao_frequencia" },
     { title: "Declaração", subtitle: "Notas", tipo: "declaracao_notas" },
@@ -308,7 +315,11 @@ export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
           {actions.map((item) => (
             <Link
               key={item.tipo}
-              href={`/secretaria/documentos?alunoId=${alunoId}&tipo=${item.tipo}`}
+              href={buildContextualPortalHref(
+                escolaParam,
+                `/secretaria/documentos?alunoId=${alunoId}&tipo=${item.tipo}`,
+                pathname
+              )}
               className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-[#1F6B3B]/30 hover:shadow-sm"
             >
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500">
