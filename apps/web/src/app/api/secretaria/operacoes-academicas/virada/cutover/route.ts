@@ -14,6 +14,7 @@ const Body = z.object({
   from_session_id: z.string().uuid(),
   to_session_id: z.string().uuid(),
   conflict_strategy: z.enum(["skip", "merge", "cancel"]).optional(),
+  cutover_mode: z.enum(["standard", "retroactive_pending"]).default("standard"),
 });
 
 type LooseRpcResult = {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
 
     const health = await buildCutoverHealthReport(supabase, escolaId);
-    if (health.status === "BLOCKED") {
+    if (health.status === "BLOCKED" && parsed.data.cutover_mode !== "retroactive_pending") {
       return NextResponse.json(
         {
           ok: false,
@@ -57,7 +58,10 @@ export async function POST(request: Request) {
       args?: Record<string, unknown>
     ) => Promise<LooseRpcResult>;
 
-    const { data, error } = await rpcLoose("cutover_ano_letivo_v3", {
+    const rpcName = parsed.data.cutover_mode === "retroactive_pending"
+      ? "cutover_ano_letivo_retroativo"
+      : "cutover_ano_letivo_v3";
+    const { data, error } = await rpcLoose(rpcName, {
       p_escola_id: escolaId,
       p_from_session_id: parsed.data.from_session_id,
       p_to_session_id: parsed.data.to_session_id,

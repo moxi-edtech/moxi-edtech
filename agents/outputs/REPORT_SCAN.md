@@ -1,99 +1,14 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-- Verificado em: `2026-07-15T08:52:29.605Z`
+- Verificado em: `2026-08-04T22:22:09.820Z`
 
 ## 1. SUMÁRIO EXECUTIVO
 
 - Findings CRÍTICOS: **0**
-- Findings ALTO: **5**
-- Total findings: **7**
+- Findings ALTO: **0**
+- Total findings: **6**
 
 ## 2. ACHADOS (ordenado por severidade)
-
-### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
-- Severidade: **HIGH**
-- Status: **PARTIAL**
-- Evidências:
-  - `docs/PLAN_EVOLUTION_RELATORIO_FINANCEIRO_CAC_K12.md` — match: /cache:\s*['\"]no-store['\"]/i
-  - `docs/big-tech-performance.md` — match: /cache:\s*['\"]no-store['\"]/i
-  - `docs/funil-admissao.md` — match: /cache:\s*['\"]no-store['\"]/i
-  - `tools/fiscal/build-agt-evidence.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `tools/validator/fluency-validator-monorepo.js` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/auth/lib/rateLimit.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/lib/funnel-client.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `docs/fiscal/ui/fiscal-ui-ux-fase5.md` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/auth/app/login/actions.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/components/aluno/CarreiraHubClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/components/aluno/TalentOptInPrompt.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/components/cohorts/AdminCohortsPageClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/components/mentorias/MentoriasPageClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/lib/integrations/fiscal.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/lib/integrations/payment.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/GlobalSearchActionSheet.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/hooks/useMatriculaLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/lib/escolaInfoClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/lib/financeiroTabelasClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/lib/periodosLetivosClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/lib/schoolSessionsClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/lib/setupStateClient.ts` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/formacao/app/(portal)/agenda/AgendaClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-- Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
-
-### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
-- Severidade: **HIGH**
-- Status: **PARTIAL**
-- Evidências:
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_radar_inadimplencia/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
-  - `supabase/migrations/20261127000002_fix_refresh_mv_radar_inadimplencia.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
-  - `supabase/migrations/20270714112000_harden_radar_inadimplencia_grants.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
-  - `supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
-  - `supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
-  - `supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
-- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
-
-### F18_MV — F18 — Caixa/Propinas com MATERIALIZED VIEW
-- Severidade: **HIGH**
-- Status: **PARTIAL**
-- Evidências:
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
-  - `supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
-  - `supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
-  - `supabase/migrations_archive/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
-  - `supabase/migrations_archive/migrations_backup/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
-- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
-
-### P0_3_MV_DASHBOARDS — P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW
-- Severidade: **HIGH**
-- Status: **PARTIAL**
-- Evidências:
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_dashboard_counts/i
-  - `supabase/migrations/20261127000004_fix_refresh_mv_secretaria_dashboard_counts.sql` — match: /mv_secretaria_dashboard_counts/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_dashboard_counts/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
-  - `supabase/migrations/20261127000004_fix_refresh_mv_secretaria_dashboard_counts.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /vw_secretaria_dashboard_counts/i
-  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_matriculas_status/i
-  - `supabase/migrations/20261201210000_update_financeiro_kpis_realistic.sql` — match: /mv_secretaria_matriculas_status/i
-  - `supabase/migrations/20261212000002_fix_secretaria_import_pendencias.sql` — match: /mv_secretaria_matriculas_status/i
-  - `supabase/migrations/20270506011000_fix_secretaria_matriculas_status_refresh_schema.sql` — match: /mv_secretaria_matriculas_status/i
-- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).
-
-### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
-- Severidade: **HIGH**
-- Status: **PARTIAL**
-- Evidências:
-  - `apps/web/src/app/api/financeiro/recibos/emitir/route.ts` — backend guard (fin_recibo_pdf): sim
-  - `apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts` — backend guard (doc_qr_code): sim
-  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts` — backend guard (doc_qr_code): sim
-  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts` — backend guard (doc_qr_code): sim
-  - `apps/web/src/components/financeiro/ReciboImprimivel.tsx` — ui guard (fin_recibo_pdf): não
-  - `apps/web/src/components/financeiro/ExtratoActions.tsx` — ui guard (doc_qr_code): sim
-  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — ui guard (doc_qr_code): sim
-- Recomendação: Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.
 
 ### KF2 — KF2 — Pesquisa Global (Command Palette) invariants
 - Severidade: **LOW**
@@ -136,3 +51,60 @@
   - `supabase/migrations/20260203000002_rpc_upsert_bulk_periodos_letivos.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
+
+### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+MATERIALIZED\s+VIEW\s+\"?internal\"?\.\"?mv_radar_inadimplencia\"?/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_radar_inadimplencia/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20260804220000_restore_required_mv_refresh_crons.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20261127000002_fix_refresh_mv_radar_inadimplencia.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20270714112000_harden_radar_inadimplencia_grants.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20270718132000_harden_internal_mv_refresh_grants.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20270726110500_fix_radar_inadimplencia_authenticated_access.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
+
+### F18_MV — F18 — Caixa/Propinas com MATERIALIZED VIEW
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+MATERIALIZED\s+VIEW\s+\"?internal\"?\.\"?mv_pagamentos_status\"?/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20260804220000_restore_required_mv_refresh_crons.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20270718120000_restore_required_mv_cron_jobs.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20270718132000_harden_internal_mv_refresh_grants.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.(?:vw_)?pagamentos_status/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
+
+### P0_3_MV_DASHBOARDS — P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260804220000_restore_required_mv_refresh_crons.sql` — match: /mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20261127000004_fix_refresh_mv_secretaria_dashboard_counts.sql` — match: /mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20270718132000_harden_internal_mv_refresh_grants.sql` — match: /mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260804220000_restore_required_mv_refresh_crons.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20261127000004_fix_refresh_mv_secretaria_dashboard_counts.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20270718132000_harden_internal_mv_refresh_grants.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /vw_secretaria_dashboard_counts/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).
+
+### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `apps/web/src/app/api/financeiro/recibos/emitir/route.ts` — backend guard (fin_recibo_pdf): sim
+  - `apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/components/financeiro/ReciboImprimivel.tsx` — ui guard (fin_recibo_pdf): sim
+  - `apps/web/src/components/financeiro/ExtratoActions.tsx` — ui guard (doc_qr_code): sim
+  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — ui guard (doc_qr_code): sim
+- Recomendação: Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.

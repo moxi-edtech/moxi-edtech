@@ -28,7 +28,7 @@ type JobStatus = {
   failed_count: number;
 };
 
-export function FreezeStep({ onComplete }: { onComplete: () => void }) {
+export function FreezeStep({ onComplete, retroactivePending = false }: { onComplete: () => void; retroactivePending?: boolean }) {
   const [stats, setStats] = useState<PautaStatus | null>(null);
   const [activeJob, setActiveJob] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,7 +163,7 @@ export function FreezeStep({ onComplete }: { onComplete: () => void }) {
           <div className="space-y-1">
               <p className="text-sm font-bold text-blue-900">Sobre o Congelamento Acadêmico</p>
               <p className="text-xs text-blue-700 leading-relaxed">
-                  A geração das pautas anuais oficiais é o requisito final para "liquidar" o ano académico. 
+                  A geração das pautas anuais oficiais é o requisito final para "liquidar" o ano académico. {retroactivePending && " Neste modo, a virada pode continuar e as pendências serão preenchidas retroativamente."}
                   Uma vez gerada a pauta de uma turma, o sistema aplicará um <strong>Hard Lock</strong>, 
                   impedindo qualquer alteração de notas ou faltas sem autorização especial do Diretor.
               </p>

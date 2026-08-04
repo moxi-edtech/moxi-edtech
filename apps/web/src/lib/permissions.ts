@@ -445,6 +445,7 @@ export function getDefaultK12PortalPathForRole(
       return '/super-admin'
     case 'admin':
     case 'admin_escola':
+    case 'admin_secretaria':
     case 'staff_admin':
       return escolaSegment ? `${escolaSegment}/admin/dashboard` : '/admin'
     case 'admin_financeiro':
@@ -467,6 +468,7 @@ const K12_ROLE_SET = new Set<string>([
   'admin',
   'staff_admin',
   'admin_escola',
+  'admin_secretaria',
   'secretaria',
   'secretaria_financeiro',
   'admin_financeiro',

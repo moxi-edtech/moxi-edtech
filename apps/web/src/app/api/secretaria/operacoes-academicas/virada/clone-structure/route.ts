@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       args?: Record<string, unknown>
     ) => Promise<LooseRpcResult>;
 
-    const { data, error } = await rpcLoose("clone_academic_structure_v1", {
+    const { data, error } = await rpcLoose("clone_academic_structure_v2", {
       p_escola_id: escolaId,
       p_from_session_id: parsed.data.from_session_id,
       p_to_session_id: parsed.data.to_session_id,
@@ -54,7 +54,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, result: data });
+    const db = supabase as any;
+    const [{ count: turmas }, { count: precos }, { count: periodos }, { data: targetCurricula }] = await Promise.all([
+      db.from("turmas").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).eq("session_id", parsed.data.to_session_id),
+      db.from("financeiro_tabelas").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).eq("session_id", parsed.data.to_session_id),
+      db.from("periodos_letivos").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).eq("ano_letivo_id", parsed.data.to_session_id),
+      db.from("curso_curriculos").select("id").eq("escola_id", escolaId).eq("ano_letivo_id", parsed.data.to_session_id).eq("status", "published"),
+    ]);
+    const curriculumIds = (targetCurricula ?? []).map((curriculum: { id: string }) => curriculum.id);
+    const { count: disciplinas } = curriculumIds.length > 0
+      ? await db.from("curso_matriz").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).in("curso_curriculo_id", curriculumIds)
+      : { count: 0 };
+
+    return NextResponse.json({
+      ok: true,
+      result: {
+        ...(data as Record<string, unknown>),
+        totals: { turmas: turmas ?? 0, precos: precos ?? 0, periodos: periodos ?? 0, disciplinas: disciplinas ?? 0 },
+      },
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

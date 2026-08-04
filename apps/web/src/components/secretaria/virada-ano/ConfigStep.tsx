@@ -30,11 +30,28 @@ type OfficialTemplate = {
   versao_documento: string | null;
 };
 
+type EducationOffering = {
+  id: string;
+  course_id: string | null;
+  education_subsystem: string;
+  education_level: string;
+  cycle: string | null;
+  grades: string[] | null;
+  calendar_profile_id: string | null;
+  status: string;
+};
+
 type CloneSummary = {
   turmas?: number;
   precos?: number;
   periodos?: number;
   disciplinas?: number;
+  totals?: {
+    turmas: number;
+    precos: number;
+    periodos: number;
+    disciplinas: number;
+  };
 };
 
 type SessionsTargetResponse = {
@@ -42,6 +59,7 @@ type SessionsTargetResponse = {
   current_session?: Session | null;
   target_sessions?: Session[];
   official_templates?: OfficialTemplate[];
+  education_offerings?: EducationOffering[];
 };
 
 type CreateTargetResponse = {
@@ -74,6 +92,8 @@ export function ConfigStep({
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [targets, setTargets] = useState<Session[]>([]);
   const [templates, setTemplates] = useState<OfficialTemplate[]>([]);
+  const [offerings, setOfferings] = useState<EducationOffering[]>([]);
+  const [offeringTemplates, setOfferingTemplates] = useState<Record<string, string>>({});
   const [selectedTarget, setSelectedTarget] = useState<string>("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [reajuste, setReajuste] = useState<number>(0);
@@ -94,11 +114,18 @@ export function ConfigStep({
           setCurrentSession(json.current_session ?? null);
           setTargets(json.target_sessions ?? []);
           setTemplates(json.official_templates ?? []);
+          const loadedOfferings = json.education_offerings ?? [];
+          setOfferings(loadedOfferings);
+          setOfferingTemplates(Object.fromEntries(
+            loadedOfferings.map((offering) => [offering.id, offering.calendar_profile_id ?? ""])
+          ));
           if ((json.target_sessions ?? []).length > 0) {
             setSelectedTarget(json.target_sessions?.[0]?.id ?? "");
           }
-          if ((json.official_templates ?? []).length > 0) {
+          if ((json.official_templates ?? []).length === 1) {
             setSelectedTemplate(json.official_templates?.[0]?.id ?? "");
+          } else {
+            setSelectedTemplate("");
           }
         }
         setLoading(false);
@@ -110,13 +137,19 @@ export function ConfigStep({
   }, [loadSessions]);
 
   const handleCreateTarget = async () => {
-    if (!selectedTemplate) return;
+    const mappings = offerings.length > 0
+      ? offerings
+        .map((offering) => ({ offering_id: offering.id, template_id: offeringTemplates[offering.id] }))
+        .filter((mapping): mapping is { offering_id: string; template_id: string } => Boolean(mapping.template_id))
+      : undefined;
+    if (offerings.length > 0 && mappings?.length !== offerings.length) return;
+    if (offerings.length === 0 && !selectedTemplate) return;
     setCreatingTarget(true);
     try {
       const response = await fetch("/api/secretaria/operacoes-academicas/virada/sessions-target", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template_id: selectedTemplate }),
+        body: JSON.stringify(offerings.length > 0 ? { offerings: mappings } : { template_id: selectedTemplate }),
       });
       const json = (await response.json()) as CreateTargetResponse;
       if (!response.ok || !json.ok || !json.target_session) {
@@ -125,7 +158,7 @@ export function ConfigStep({
       }
       await loadSessions();
       setSelectedTarget(json.target_session.id);
-      success("Ano seguinte criado como inativo com o calendário oficial.");
+      success("Ano letivo de destino criado como inativo; a estrutura será preparada no próximo passo.");
     } finally {
       setCreatingTarget(false);
     }
@@ -198,29 +231,38 @@ export function ConfigStep({
   if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
 
   if (result) {
+    const createdAnything = Boolean(result.turmas || result.precos || result.periodos || result.disciplinas);
     return (
       <div className="space-y-6 animate-in zoom-in-95">
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-emerald-900">Próximo ano preparado</h3>
-            <p className="text-sm text-emerald-700 mt-1">A estrutura académica e financeira está pronta para revisão.</p>
+            <p className="text-sm text-emerald-700 mt-1">
+              {createdAnything
+                ? "A estrutura académica e financeira recebeu novos registos."
+                : "A estrutura já estava preparada; esta repetição não criou registos duplicados."}
+            </p>
             
             <div className="mt-8 grid grid-cols-2 gap-3 max-w-sm mx-auto">
                 <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Turmas</p>
-                    <p className="text-xl font-black text-slate-800">{result.turmas}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Turmas no destino</p>
+                    <p className="text-xl font-black text-slate-800">{result.totals?.turmas ?? result.turmas}</p>
+                    <p className="text-[10px] text-slate-400">+{result.turmas ?? 0} nesta execução</p>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Preços</p>
-                    <p className="text-xl font-black text-slate-800">{result.precos}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Preços no destino</p>
+                    <p className="text-xl font-black text-slate-800">{result.totals?.precos ?? result.precos}</p>
+                    <p className="text-[10px] text-slate-400">+{result.precos ?? 0} nesta execução</p>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Períodos</p>
-                    <p className="text-xl font-black text-slate-800">{result.periodos}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Períodos no destino</p>
+                    <p className="text-xl font-black text-slate-800">{result.totals?.periodos ?? result.periodos}</p>
+                    <p className="text-[10px] text-slate-400">+{result.periodos ?? 0} nesta execução</p>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Disciplinas</p>
-                    <p className="text-xl font-black text-slate-800">{result.disciplinas}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Disciplinas no destino</p>
+                    <p className="text-xl font-black text-slate-800">{result.totals?.disciplinas ?? result.disciplinas}</p>
+                    <p className="text-[10px] text-slate-400">+{result.disciplinas ?? 0} nesta execução</p>
                 </div>
             </div>
         </div>
@@ -251,28 +293,51 @@ export function ConfigStep({
             {targets.length === 0 && (
               <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-semibold text-amber-900">
-                  Escolha o calendário oficial correspondente ao subsistema da escola. O ano será criado inativo.
+                  Escolha explicitamente o perfil regulatório aplicável à oferta educativa. Em escolas mistas, não assuma um único calendário para toda a instituição.
                 </p>
                 {templates.length > 0 ? (
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <select
-                      value={selectedTemplate}
-                      onChange={(event) => setSelectedTemplate(event.target.value)}
-                      className="h-11 flex-1 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
-                      aria-label="Calendário oficial do subsistema"
-                    >
-                      {templates.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.nome}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-3">
+                    {offerings.length > 0 ? offerings.map((offering) => (
+                      <div key={offering.id} className="grid gap-2 sm:grid-cols-[1fr_1.4fr] sm:items-center">
+                        <span className="text-xs font-semibold text-slate-700">
+                          {offering.education_subsystem + " · " + offering.education_level + (offering.cycle ? " · " + offering.cycle : "")}
+                        </span>
+                        <select
+                          value={offeringTemplates[offering.id] ?? ""}
+                          onChange={(event) => setOfferingTemplates((current) => ({
+                            ...current,
+                            [offering.id]: event.target.value,
+                          }))}
+                          className="h-11 rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
+                          aria-label="Perfil regulatório da oferta"
+                        >
+                          <option value="" disabled>Selecionar perfil regulatório</option>
+                          {templates.map((template) => (
+                            <option key={template.id} value={template.id}>{template.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )) : (
+                      <select
+                        value={selectedTemplate}
+                        onChange={(event) => setSelectedTemplate(event.target.value)}
+                        className="h-11 w-full rounded-lg border border-amber-200 bg-white px-3 text-xs font-semibold text-slate-800"
+                        aria-label="Calendário oficial do subsistema"
+                      >
+                        <option value="" disabled>Selecionar perfil regulatório</option>
+                        {templates.map((template) => (
+                          <option key={template.id} value={template.id}>{template.nome}</option>
+                        ))}
+                      </select>
+                    )}
                     <Button
                       tone="gold"
                       size="sm"
                       onClick={handleCreateTarget}
                       loading={creatingTarget}
-                      disabled={!selectedTemplate}
+                      disabled={offerings.length > 0
+                        ? offerings.some((offering) => !offeringTemplates[offering.id])
+                        : !selectedTemplate}
                     >
                       Criar próximo ano
                     </Button>

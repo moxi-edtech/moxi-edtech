@@ -25,6 +25,7 @@ const normalizeRole = (raw: unknown): UserRole | null => {
     admin_escola: "admin",
     admin: "admin",
     admin_financeiro: "operacoes",
+    admin_secretaria: "admin",
     secretaria: "secretaria",
     secretaria_financeiro: "secretaria",
     financeiro: "financeiro",

@@ -74,6 +74,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Activity",
       children: [
         { href: "/escola/[escolaId]/operacoes/academico", label: "Visão geral" },
+        { href: "/escola/[escolaId]/admin/operacoes-academicas/wizard", label: "Virada 2026/2027" },
         { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico", label: "Fechamento Trimestral" },
         { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico/cockpit", label: "Cockpit de Prontidão" },
         { href: "/escola/[escolaId]/operacoes/academico/sanidade", label: "Sanidade Académica" },
@@ -199,6 +200,7 @@ export const sidebarConfig: SidebarConfig = {
     },
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
     { href: "/escola/[escolaId]/admin/operacoes-academicas", label: "Operações Académicas", icon: "Activity" },
+    { href: "/escola/[escolaId]/admin/operacoes-academicas/wizard", label: "Virada 2026/2027", icon: "RefreshCw" },
     {
       href: "/escola/[escolaId]/admin/turmas",
       label: "Turmas",

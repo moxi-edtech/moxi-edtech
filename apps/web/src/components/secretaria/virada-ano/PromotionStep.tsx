@@ -39,12 +39,13 @@ type PromotionSummary = {
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
-export function PromotionStep({ onComplete }: { onComplete: () => void }) {
+export function PromotionStep({ onComplete, fromSession, toSession }: { onComplete: () => void; fromSession: string; toSession: string }) {
   const [summary, setSummary] = useState<PromotionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [tolerance, setTolerance] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   const fetchSummary = async (tol: number) => {
     setLoading(true);
@@ -60,6 +61,23 @@ export function PromotionStep({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     fetchSummary(tolerance);
   }, [tolerance]);
+
+  const promoteStudent = async (studentId: string) => {
+    setPromotingId(studentId);
+    try {
+      const response = await fetch("/api/secretaria/operacoes-academicas/virada/promote-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aluno_id: studentId, from_session_id: fromSession, to_session_id: toSession }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível promover o aluno.");
+      await fetchSummary(tolerance);
+      onComplete();
+    } finally {
+      setPromotingId(null);
+    }
+  };
 
   const filteredLists = useMemo(() => {
       if (!summary) return null;
@@ -170,6 +188,15 @@ export function PromotionStep({ onComplete }: { onComplete: () => void }) {
                                       <span className="text-[10px] text-slate-400">{s.classe} · {s.turma}</span>
                                   </div>
                                   <span className="text-xs font-black text-rose-600">{money.format(s.saldo)}</span>
+                                  <Button
+                                    size="sm"
+                                    tone="gold"
+                                    loading={promotingId === s.id}
+                                    disabled={promotingId !== null}
+                                    onClick={() => void promoteStudent(s.id)}
+                                  >
+                                    Promover após pagamento
+                                  </Button>
                               </div>
                           ))}
                           {filteredLists?.inadimplentes.length === 0 && <p className="text-center py-4 text-xs text-slate-400">Nenhum aluno encontrado nesta categoria.</p>}

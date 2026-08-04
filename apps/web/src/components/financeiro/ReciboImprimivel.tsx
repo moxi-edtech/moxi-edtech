@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { Printer, Loader2, Check } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
+import { usePlanFeature } from "@/hooks/usePlanFeature";
 
 type ReciboImprimivelProps = {
   escolaNome: string;
@@ -208,6 +209,7 @@ export function ReciboPrintButton({
   kwikChave?: string | null;
 }) {
   const { error } = useToast();
+  const { isEnabled: canPrintReceipt } = usePlanFeature("fin_recibo_pdf");
   const [status, setStatus] = useState<"idle" | "loading" | "preparing" | "success">("idle");
   const [recibo, setRecibo] = useState<ReciboPayload | null>(null);
 
@@ -252,7 +254,8 @@ export function ReciboPrintButton({
       <motion.button
         type="button"
         onClick={handlePrint}
-        disabled={status !== "idle"}
+        disabled={status !== "idle" || !canPrintReceipt}
+        title={!canPrintReceipt ? "Recibos em PDF não estão disponíveis no plano atual." : undefined}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className={`
@@ -298,7 +301,7 @@ export function ReciboPrintButton({
           {status === "loading" && "Gerando..."}
           {status === "preparing" && "Pronto!"}
           {status === "success" && "Impresso"}
-          {status === "idle" && "Recibo"}
+          {status === "idle" && (canPrintReceipt ? "Recibo" : "Indisponível")}
         </span>
       </motion.button>
 

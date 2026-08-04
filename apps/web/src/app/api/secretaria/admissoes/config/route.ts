@@ -176,6 +176,19 @@ export async function PATCH(request: Request) {
     if (fetchError) throw fetchError
     if (!escola) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 404 })
 
+    if (ano_letivo_admissoes !== undefined && ano_letivo_admissoes !== null) {
+      const { data: selectedAcademicYear, error: selectedYearError } = await supabase
+        .from('anos_letivos')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('ano', ano_letivo_admissoes)
+        .maybeSingle()
+      if (selectedYearError) throw selectedYearError
+      if (!selectedAcademicYear) {
+        return NextResponse.json({ error: 'O ano letivo selecionado ainda não foi criado para esta escola.' }, { status: 409 })
+      }
+    }
+
     const currentConfig = isJsonObject(escola.config_portal_admissao) ? escola.config_portal_admissao : {}
     const nextConfig: JsonObject = {
       ...currentConfig,

@@ -247,6 +247,7 @@ export function ViradaWizard() {
   const canProceed = currentStep === 0
     ? Boolean(payload.target_session_id) && !hasTechnicalPreparationBlocker
     : true;
+  const retroactivePending = payload.retroactive_pending === true;
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -309,6 +310,18 @@ export function ViradaWizard() {
                  </button>
                </div>
 
+               <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                 <input
+                   type="checkbox"
+                   checked={retroactivePending}
+                   onChange={(event) => setPayload((current) => ({ ...current, retroactive_pending: event.target.checked }))}
+                   className="mt-1 h-4 w-4 accent-amber-600"
+                 />
+                 <span className="text-left text-xs leading-relaxed text-amber-900">
+                   <strong>Reduzir fricção: permitir virada retroativa.</strong> Arquivar o ano anterior mesmo com pautas, snapshots ou estados académicos pendentes.
+                 </span>
+               </label>
+
                {loadingHealth ? (
                  <div className="space-y-3">
                     {[1,2].map(i => <div key={i} className="h-16 bg-white/50 rounded-2xl border border-slate-100 animate-pulse" />)}
@@ -333,7 +346,9 @@ export function ViradaWizard() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-slate-800 leading-snug">{issue.label}</p>
-                                            <p className="text-[10px] text-amber-600 uppercase font-black tracking-widest mt-1">Bloqueador de Virada</p>
+                                            <p className={`text-[10px] uppercase font-black tracking-widest mt-1 ${retroactivePending ? "text-blue-600" : "text-amber-600"}`}>
+                                              {retroactivePending ? "Pendência acompanhada após a virada" : "Bloqueador de Virada"}
+                                            </p>
                                         </div>
                                     </div>
                                     {issue.action && (
@@ -372,7 +387,7 @@ export function ViradaWizard() {
                   <h3 className="text-sm font-black text-slate-900">1. Fechar o ano atual</h3>
                   <p className="mt-1 text-xs text-slate-500">As pautas são geradas em lote e o histórico fica protegido.</p>
                 </div>
-                <FreezeStep onComplete={fetchHealth} />
+                <FreezeStep onComplete={fetchHealth} retroactivePending={retroactivePending} />
               </section>
 
               <section className="space-y-4 border-t border-slate-200 pt-10">
@@ -385,12 +400,19 @@ export function ViradaWizard() {
             </div>
           )}
 
-          {currentStep === 1 && <PromotionStep onComplete={() => {}} />}
+          {currentStep === 1 && (
+            <PromotionStep
+              onComplete={() => {}}
+              fromSession={health?.active_year?.id || ''}
+              toSession={payload?.target_session_id || ''}
+            />
+          )}
           {currentStep === 2 && (
             <ExecuteStep 
                 onComplete={() => {}} 
                 fromSession={health?.active_year?.id || ''} 
-                toSession={payload?.target_session_id || ''} 
+                toSession={payload?.target_session_id || ''}
+                retroactivePending={retroactivePending}
             />
           )}
 

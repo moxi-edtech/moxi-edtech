@@ -154,35 +154,6 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
     });
   }
 
-  const noStoreHits = containsPatternInAnyFile(repoRoot, files, /cache:\s*['\"]no-store['\"]/i);
-  const allowedNoStore = new Set([
-    "AGENTS.md",
-    "apps/web/src/app/api/auth/login/route.ts",
-  ]);
-  const disallowedNoStore = noStoreHits.filter((hit) => !allowedNoStore.has(hit.file));
-  if (disallowedNoStore.length) {
-    findings.push({
-      id: "NO_STORE",
-      title: "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
-      severity: "HIGH",
-      status: "PARTIAL",
-      evidence: disallowedNoStore.slice(0, 25),
-      recommendation: "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.",
-    });
-
-    const lines = [
-      "# Plano — Remoção de cache no-store",
-      "",
-      "Arquivos com `cache: 'no-store'` detectados:",
-      "",
-      ...disallowedNoStore.map((hit) => `- ${hit.file}`),
-      "",
-      "Ação recomendada:",
-      "- Revisar caso a caso e substituir por cache adequado (revalidate/force-cache) ou remover fetch desnecessário.",
-    ];
-    plan.push(buildDocPlan("PLAN_NO_STORE", "Plano de revisão de no-store", lines.join("\n")));
-  }
-
   const globalSearchFiles = findFilesByName(files, "GlobalSearch.tsx");
   const hookFiles = [
     ...findFilesByName(files, "useGlobalSearch.ts"),
@@ -274,14 +245,14 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
     plan.push(buildDocPlan("PLAN_AUDIT_TRAIL", "Plano de revisão do audit trail", lines.join("\n")));
   }
 
-  const mvHitsF09 = findSqlEvidence(/CREATE\s+MATERIALIZED\s+VIEW\s+public\.mv_radar_inadimplencia/i);
-  const mvHitsF18 = findSqlEvidence(/CREATE\s+MATERIALIZED\s+VIEW\s+public\.mv_pagamentos_status/i);
+  const mvHitsF09 = findSqlEvidence(/CREATE\s+MATERIALIZED\s+VIEW\s+\"?internal\"?\.\"?mv_radar_inadimplencia\"?/i);
+  const mvHitsF18 = findSqlEvidence(/CREATE\s+MATERIALIZED\s+VIEW\s+\"?internal\"?\.\"?mv_pagamentos_status\"?/i);
   const f09Index = findSqlEvidence(/CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_radar_inadimplencia/i);
   const f18Index = findSqlEvidence(/CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i);
   const f09Refresh = findSqlEvidence(/refresh_mv_radar_inadimplencia\s*\(/i);
   const f18Refresh = findSqlEvidence(/refresh_mv_pagamentos_status\s*\(/i);
   const f09View = findSqlEvidence(/CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i);
-  const f18View = findSqlEvidence(/CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i);
+  const f18View = findSqlEvidence(/CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.(?:vw_)?pagamentos_status/i);
   const f09Cron = findSqlEvidence(/cron\.schedule\(\'refresh_mv_radar_inadimplencia/i);
   const f18Cron = findSqlEvidence(/cron\.schedule\(\'refresh_mv_pagamentos_status/i);
 

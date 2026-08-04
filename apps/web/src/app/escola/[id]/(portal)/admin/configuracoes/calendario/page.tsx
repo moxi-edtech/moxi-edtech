@@ -3,13 +3,13 @@
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, Save, RefreshCw, Calendar, Lock, AlertTriangle, CheckCircle2, Wand2, Plus, Trash2, X, ChevronDown } from "lucide-react";
+import { ArrowLeft, Save, RefreshCw, Calendar, Lock, AlertTriangle, CheckCircle2, Wand2, Plus, Trash2, X } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { format, parseISO } from "date-fns";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { fetchPeriodosLetivos } from "@/lib/periodosLetivosClient";
-import { buildContextualPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref, buildPortalHref } from "@/lib/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { Database } from "~types/supabase";
@@ -35,12 +35,6 @@ type EventoCalendario = {
   data_inicio: string;
   data_fim: string;
   cor_hex?: string | null;
-};
-
-type CalendarioTemplate = {
-  id: string;
-  nome: string;
-  ano_base: number;
 };
 
 type Props = {
@@ -72,10 +66,6 @@ export default function CalendarioConfigPage({ params }: Props) {
   const [anosDisponiveis, setAnosDisponiveis] = useState<Array<{ id: string; ano: number; ativo: boolean }>>([]);
   const [selectedAnoId, setSelectedAnoId] = useState<string | null>(null);
   
-  // Templates State
-  const [templates, setTemplates] = useState<CalendarioTemplate[]>([]);
-  const [showTemplateMenu, setShowTemplatesMenu] = useState(false);
-
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
@@ -90,9 +80,8 @@ export default function CalendarioConfigPage({ params }: Props) {
     if (!escolaUuid) return;
     setLoading(true);
     try {
-      const [json, templatesRes, anosRes] = await Promise.all([
+      const [json, anosRes] = await Promise.all([
         fetchPeriodosLetivos(escolaParam, targetAnoId || selectedAnoId || undefined),
-        supabase.from('calendario_templates').select('id, nome, ano_base').order('ano_base', { ascending: false }),
         supabase.from('anos_letivos').select('id, ano, ativo, data_inicio, data_fim').eq('escola_id', escolaUuid).order('ano', { ascending: false })
       ]);
 
@@ -111,7 +100,6 @@ export default function CalendarioConfigPage({ params }: Props) {
         }
       }
 
-      if (templatesRes.data) setTemplates(templatesRes.data);
       if (anosRes.data) setAnosDisponiveis(anosRes.data as any);
 
     } catch (e) {
@@ -204,42 +192,6 @@ export default function CalendarioConfigPage({ params }: Props) {
     } catch (err: any) {
       error(err.message);
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleApplyTemplate = async (templateId: string, templateNome: string) => {
-    const ok = await confirm({
-      title: "Aplicar modelo oficial",
-      message: `Esta acção irá importar as datas e configurações do modelo '${templateNome}'. Os dados actuais do ano seleccionado serão substituídos. Deseja continuar?`,
-      confirmLabel: "Aplicar modelo",
-    });
-    if (!ok) return;
-
-    setSaving(true);
-    setShowTemplatesMenu(false);
-    const tid = toast({ variant: "syncing", title: "A aplicar modelo...", duration: 0 });
-
-    try {
-      const res = await fetch(`/api/escola/${escolaParam}/admin/calendario/aplicar-template`, { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha ao aplicar modelo");
-      
-      success("Modelo aplicado com sucesso!");
-      if (data.anoLetivoId) {
-        setSelectedAnoId(data.anoLetivoId);
-        await loadData(data.anoLetivoId);
-      } else {
-        await loadData();
-      }
-    } catch (err: any) {
-      error(err.message);
-    } finally {
-      dismiss(tid);
       setSaving(false);
     }
   };
@@ -434,37 +386,13 @@ export default function CalendarioConfigPage({ params }: Props) {
               </button>
              )}
 
-             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowTemplatesMenu(!showTemplateMenu)}
-                disabled={saving || loading}
-                className="inline-flex items-center gap-2 rounded-xl border border-klasse-gold/30 bg-white px-4 py-2.5 text-sm font-bold text-klasse-gold shadow-sm transition-all hover:bg-klasse-gold/5 disabled:opacity-50"
-              >
-                <Wand2 className="h-4 w-4" />
-                Importar Modelo Oficial
-                <ChevronDown className={`h-3 w-3 transition-transform ${showTemplateMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showTemplateMenu && (
-                <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in slide-in-from-top-2">
-                  <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Modelos Disponíveis</p>
-                  {templates.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleApplyTemplate(t.id, t.nome)}
-                      className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-between"
-                    >
-                      {t.nome}
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{t.ano_base}</span>
-                    </button>
-                  ))}
-                  {templates.length === 0 && (
-                    <p className="px-3 py-4 text-center text-xs text-slate-400 italic">Nenhum modelo oficial encontrado.</p>
-                  )}
-                </div>
-              )}
-            </div>
+             <Link
+               href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
+               className="inline-flex items-center gap-2 rounded-xl border border-klasse-gold/30 bg-white px-4 py-2.5 text-sm font-bold text-klasse-gold shadow-sm transition-all hover:bg-klasse-gold/5"
+             >
+               <Wand2 className="h-4 w-4" />
+               Configurar por oferta
+             </Link>
 
             <button
               type="button"

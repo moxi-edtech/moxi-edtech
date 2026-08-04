@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
+import Link from "next/link";
 import { 
   FileText, // Ícone de validação (papel)
   User,     // Ícone de professor
@@ -18,7 +19,7 @@ import { buildConfigMenuItems } from "../_shared/menuItems";
 import { SistemaStatusModal } from "../_components/SistemaStatusModal";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildContextualPortalHref } from "@/lib/navigation";
+import { buildContextualPortalHref, buildPortalHref } from "@/lib/navigation";
 
 // --- TYPES ---
 type WorkflowStep = {
@@ -54,6 +55,24 @@ function normalizeDocumentoId(value: string) {
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 120);
+}
+
+function parseOptionalAcademicYear(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100 ? parsed : null;
+}
+
+function formatApiError(value: unknown, fallback: string) {
+  if (typeof value === "string" && value.trim()) return value;
+  if (value && typeof value === "object") {
+    const flattened = Object.values(value as Record<string, unknown>)
+      .flatMap((entry) => (entry && typeof entry === "object" ? Object.values(entry as Record<string, unknown>) : [entry]))
+      .flatMap((entry) => Array.isArray(entry) ? entry : [entry])
+      .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+    if (flattened.length > 0) return flattened.join("; ");
+  }
+  return fallback;
 }
 
 export default function FluxosConfiguracaoPage() {
@@ -139,19 +158,28 @@ export default function FluxosConfiguracaoPage() {
     async function loadAdmissoesConfig() {
       setLoadingAdmissoes(true);
       try {
-        const res = await fetch(`/api/secretaria/admissoes/config?escolaId=${encodeURIComponent(escolaId as string)}`, {
-          cache: "no-store",
-        });
+        const [res, workflowRes] = await Promise.all([
+          fetch(`/api/secretaria/admissoes/config?escolaId=${encodeURIComponent(escolaId as string)}`, { cache: "no-store" }),
+          fetch(`/api/escola/${encodeURIComponent(escolaId as string)}/admin/configuracoes/fluxos`, { cache: "no-store" }),
+        ]);
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Falha ao carregar configuração de admissões");
+        const workflowJson = await workflowRes.json();
+        if (!workflowRes.ok) throw new Error(workflowJson?.error || "Falha ao carregar pipeline de notas");
         if (!cancelled) {
           setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || 48);
           setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || 72);
-          setAnoLetivoAdmissoes(Number.isFinite(Number(json?.admissoes?.ano_letivo_admissoes)) ? Number(json.admissoes.ano_letivo_admissoes) : null);
+          setAnoLetivoAdmissoes(parseOptionalAcademicYear(json?.admissoes?.ano_letivo_admissoes));
           setAnoLetivoAdmissoesEfetivoLabel(typeof json?.admissoes?.ano_letivo_admissoes_efetivo_label === "string" ? json.admissoes.ano_letivo_admissoes_efetivo_label : null);
           setModoPortalAdmissoes(json?.admissoes?.modo_portal_admissoes === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : "ingresso_imediato");
           setAnosLetivos(Array.isArray(json?.anos_letivos) ? json.anos_letivos : []);
           setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : []);
+          if (Array.isArray(workflowJson?.config?.grade_workflow)) {
+            setSteps((current) => current.map((step) => {
+              const saved = workflowJson.config.grade_workflow.find((item: { id?: string }) => item?.id === step.id);
+              return saved ? { ...step, ...saved, icon: step.icon } : step;
+            }));
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -199,17 +227,28 @@ export default function FluxosConfiguracaoPage() {
           }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || "Falha ao guardar configuração");
+        if (!res.ok) throw new Error(formatApiError(json?.error, "Falha ao guardar configuração"));
         setReservaExpiracaoHoras(Number(json?.admissoes?.reserva_expiracao_horas) || normalizedReservaExpiracaoHoras);
         setPendenciaSlaHoras(Number(json?.admissoes?.pendencia_sla_horas) || normalizedPendenciaSlaHoras);
-        setAnoLetivoAdmissoes(Number.isFinite(Number(json?.admissoes?.ano_letivo_admissoes)) ? Number(json.admissoes.ano_letivo_admissoes) : anoLetivoAdmissoes);
+        setAnoLetivoAdmissoes(parseOptionalAcademicYear(json?.admissoes?.ano_letivo_admissoes));
         setAnoLetivoAdmissoesEfetivoLabel(typeof json?.admissoes?.ano_letivo_admissoes_efetivo_label === "string" ? json.admissoes.ano_letivo_admissoes_efetivo_label : anoLetivoAdmissoesEfetivoLabel);
         setModoPortalAdmissoes(json?.admissoes?.modo_portal_admissoes === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : modoPortalAdmissoes);
         setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : normalizedDocumentos);
       }
+      if (escolaId) {
+        const workflowRes = await fetch(`/api/escola/${encodeURIComponent(escolaId)}/admin/configuracoes/fluxos`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            steps: steps.map(({ icon: _icon, ...step }) => step),
+          }),
+        });
+        const workflowJson = await workflowRes.json();
+        if (!workflowRes.ok) throw new Error(formatApiError(workflowJson?.error, "Falha ao guardar pipeline de notas"));
+      }
       success("Fluxo atualizado com sucesso.");
     } catch (err) {
-      toastError("Não foi possível guardar", err instanceof Error ? err.message : "Erro desconhecido");
+      toastError("Não foi possível guardar", err instanceof Error ? formatApiError(err.message, "Erro desconhecido") : formatApiError(err, "Erro desconhecido"));
     } finally {
       setSaving(false);
     }
@@ -226,12 +265,14 @@ export default function FluxosConfiguracaoPage() {
     return anoLetivoAdmissoesEfetivoLabel ?? "ano operacional ativo";
   }, [anoLetivoAdmissoes, anoLetivoAdmissoesEfetivoLabel, anosLetivos, modoPortalAdmissoes]);
 
+  const anoLetivoOperacional = anosLetivos.find((ano) => ano.ativo)?.ano ?? null;
+
   return (
     <>
       <ConfigSystemShell
         escolaId={escolaParam ?? ""}
         title="Fluxos de Trabalho"
-        subtitle="Defina o caminho que a nota percorre até o boletim."
+        subtitle="Use o mesmo ano letivo operacional em notas, admissões, calendário e matrícula."
         menuItems={menuItems}
         showInternalMenu={false}
         embedded
@@ -243,6 +284,30 @@ export default function FluxosConfiguracaoPage() {
         saveDisabled={saving}
         testHref={`${base}/sandbox`} // Botão "Testar" Dourado
       >
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/60 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Contexto operacional único</p>
+              <h3 className="mt-1 text-sm font-bold text-slate-900">
+                Ano letivo usado pelos fluxos: {anoLetivoAdmissoesLabel}
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                O modo automático acompanha o ano letivo ativo. A mesma referência deve alimentar admissões, calendário, turmas, notas e matrícula.
+              </p>
+            </div>
+            <Link
+              href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
+              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+            >
+              Ver virada e calendário
+            </Link>
+          </div>
+          {modoPortalAdmissoes === "ingresso_imediato" && anoLetivoAdmissoes !== null && (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              Atenção: as admissões estão fixadas manualmente em {anoLetivoAdmissoesLabel}. Altere para “Automático” para acompanhar a virada do ano.
+            </p>
+          )}
+        </div>
         <div className="flex items-center justify-between mb-6">
             <h3 className="text-sm font-bold text-slate-900">Pipeline de Aprovação de Notas</h3>
             <button 
@@ -298,15 +363,15 @@ export default function FluxosConfiguracaoPage() {
                     disabled={loadingAdmissoes}
                     value={anoLetivoAdmissoes ?? ""}
                     onChange={(event) => {
-                      const nextValue = Number(event.target.value);
-                      setAnoLetivoAdmissoes(Number.isFinite(nextValue) ? nextValue : null);
+                      setAnoLetivoAdmissoes(parseOptionalAcademicYear(event.target.value));
                     }}
                     className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
                   >
                     <option value="">Automático: ano operacional ativo</option>
                     {anosLetivos.map((ano) => (
                       <option key={ano.id} value={ano.ano}>
-                        {ano.label ?? `${ano.ano}/${ano.ano + 1}`}{ano.ativo ? " · operacional ativo" : ""}
+                        {ano.label ?? `${ano.ano}/${ano.ano + 1}`}
+                        {ano.ativo ? " · operacional ativo" : anoLetivoOperacional !== null && ano.ano > anoLetivoOperacional ? " · próximo ano disponível" : ""}
                       </option>
                     ))}
                   </select>

@@ -17,9 +17,10 @@ type CutoverResponse = {
   result?: Record<string, unknown>;
 };
 
-export function ExecuteStep({ onComplete, fromSession, toSession }: { onComplete: () => void, fromSession: string, toSession: string }) {
+export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePending = false }: { onComplete: () => void, fromSession: string, toSession: string, retroactivePending?: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [allowRetroactivePending, setAllowRetroactivePending] = useState(retroactivePending);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   
   const { success, error: toastError } = useToast();
@@ -31,7 +32,8 @@ export function ExecuteStep({ onComplete, fromSession, toSession }: { onComplete
         method: "POST",
         body: JSON.stringify({
           from_session_id: fromSession,
-          to_session_id: toSession
+          to_session_id: toSession,
+          cutover_mode: allowRetroactivePending ? "retroactive_pending" : "standard",
         }),
       });
       const json = (await res.json()) as CutoverResponse;
@@ -85,6 +87,18 @@ export function ExecuteStep({ onComplete, fromSession, toSession }: { onComplete
             Ao clicar em confirmar, o sistema realizará a virada atômica. Esta operação é <strong>auditada</strong> e <strong>irreversível</strong> em produção.
           </p>
       </div>
+
+      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <input
+            type="checkbox"
+            checked={allowRetroactivePending}
+            onChange={(event) => setAllowRetroactivePending(event.target.checked)}
+            className="mt-1 h-4 w-4 accent-amber-600"
+          />
+          <span className="text-left text-xs leading-relaxed text-amber-900">
+            <strong>Virada retroativa com pendências académicas.</strong> Arquivar o ano anterior mesmo com notas, pautas ou documentos incompletos. Promover todos os alunos sem saldo devedor e manter devedores em pendência para regularização.
+          </span>
+      </label>
 
       <div className="grid gap-4 sm:grid-cols-2">
           <div className="p-6 rounded-2xl bg-white border border-slate-200 flex flex-col items-center justify-center gap-2">
