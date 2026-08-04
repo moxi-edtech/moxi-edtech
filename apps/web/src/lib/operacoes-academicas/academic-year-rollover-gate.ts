@@ -20,6 +20,7 @@ const ROLLOVER_ROLES = new Set([
   "admin_escola",
   "staff_admin",
   "admin_financeiro",
+  "admin_secretaria",
   "super_admin",
   "global_admin",
 ]);
@@ -65,8 +66,12 @@ export async function getAcademicYearRolloverState(
     .limit(1)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     return { shouldOpenWizard: false, activeYear: null, today };
+  }
+
+  if (!data) {
+    return { shouldOpenWizard: true, activeYear: null, today };
   }
 
   const activeYear = {
