@@ -31,9 +31,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     const userEscolaId = access.escolaId;
     const requestedYearParam = new URL(request.url).searchParams.get('ano');
-    const requestedYear = requestedYearParam ? Number(requestedYearParam) : null;
-    if (requestedYearParam && (!Number.isInteger(requestedYear) || requestedYear < 2000 || requestedYear > 2100)) {
-      return NextResponse.json({ ok: false, error: 'Ano letivo inválido.' }, { status: 400 });
+    let requestedYear: number | null = null;
+    if (requestedYearParam) {
+      const parsedRequestedYear = Number(requestedYearParam);
+      if (!Number.isInteger(parsedRequestedYear) || parsedRequestedYear < 2000 || parsedRequestedYear > 2100) {
+        return NextResponse.json({ ok: false, error: 'Ano letivo inválido.' }, { status: 400 });
+      }
+      requestedYear = parsedRequestedYear;
     }
 
     const { data: escolaRow, error: escolaError } = await supabase
