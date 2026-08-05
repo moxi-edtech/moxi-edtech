@@ -7,6 +7,7 @@ import Link from "next/link";
 import { buildCutoverHealthReport } from "@/lib/operacoes-academicas/cutover-health";
 import type { Database } from "~types/supabase";
 import { CutoverResolveActions } from "@/components/secretaria/virada-ano/CutoverResolveActions";
+import { RetroactivePendingPanel } from "@/components/secretaria/virada-ano/RetroactivePendingPanel";
 
 type FechamentoJob = {
   run_id: string;
@@ -220,6 +221,8 @@ export default async function OperacoesAcademicasPage({
             </Link>
           </div>
         </div>
+
+        <RetroactivePendingPanel />
 
         <form className="grid gap-4 md:grid-cols-[1.2fr_1fr_1fr_auto_auto_auto] items-end" method="get">
           <div>

@@ -9,7 +9,7 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: requestedEscolaId } = await params;
     const supabase = await supabaseServerTyped<Database>();
@@ -30,6 +30,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: access.error, code: access.code }, { status: access.status });
     }
     const userEscolaId = access.escolaId;
+    const requestedYearParam = new URL(request.url).searchParams.get('ano');
+    const requestedYear = requestedYearParam ? Number(requestedYearParam) : null;
+    if (requestedYearParam && (!Number.isInteger(requestedYear) || requestedYear < 2000 || requestedYear > 2100)) {
+      return NextResponse.json({ ok: false, error: 'Ano letivo inválido.' }, { status: 400 });
+    }
 
     const { data: escolaRow, error: escolaError } = await supabase
       .from('escolas')
@@ -63,7 +68,22 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: 'Erro ao consultar ano letivo ativo.' }, { status: 500 });
     }
     const activeYear = Array.isArray(activeYearRows) ? activeYearRows[0] : activeYearRows;
-    anoLetivoAtivo = typeof activeYear?.ano === 'number' ? activeYear.ano : null;
+    anoLetivoAtivo = requestedYear ?? (typeof activeYear?.ano === 'number' ? activeYear.ano : null);
+
+    if (requestedYear) {
+      const { data: targetYear, error: targetYearError } = await supabase
+        .from('anos_letivos')
+        .select('id,ano,ativo')
+        .eq('escola_id', userEscolaId)
+        .eq('ano', requestedYear)
+        .maybeSingle();
+      if (targetYearError) {
+        return NextResponse.json({ ok: false, error: 'Erro ao consultar ano letivo alvo.' }, { status: 500 });
+      }
+      if (!targetYear) {
+        return NextResponse.json({ ok: false, error: 'Ano letivo alvo não encontrado.' }, { status: 404 });
+      }
+    }
 
     if (!anoLetivoAtivo) {
       return NextResponse.json({ ok: true, data: {
@@ -157,6 +177,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       data: {
         ...setupData,
         ano_letivo: anoLetivoAtivo,
+        ano_letivo_consultado: requestedYear ?? null,
         ano_letivo_ok: setupData.has_ano_letivo_ativo,
         periodos_ok: setupData.has_3_trimestres,
         avaliacao_ok: avaliacaoOk,

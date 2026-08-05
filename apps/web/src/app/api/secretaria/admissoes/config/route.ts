@@ -9,6 +9,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import {
   DEFAULT_DOCUMENTOS_ADMISSAO,
   getAnoLetivoAdmissoesFromConfig,
+  getAnoLetivoFormaisAbertasFromConfig,
   getDocumentosAdmissaoCatalogoFromConfig,
   getModoPortalAdmissoesFromConfig,
   getPendenciaSlaHorasFromConfig,
@@ -39,6 +40,7 @@ const patchPayloadSchema = z.object({
     id: z.string().trim().min(1).max(120).regex(/^[a-z0-9_-]+$/),
     label: z.string().trim().min(2).max(120),
   })).min(1).max(30).optional(),
+  abrir_admissoes_formais: z.boolean().optional(),
 })
 
 type JsonObject = { [key: string]: Json | undefined }
@@ -128,6 +130,7 @@ export async function GET(request: Request) {
         ano_letivo_admissoes_efetivo: anoLetivoAdmissoesEfetivo,
         ano_letivo_admissoes_efetivo_label: formatAnoLetivoDisplay(anoLetivoAdmissoesEfetivo),
         modo_portal_admissoes: getModoPortalAdmissoesFromConfig(configAdmissoes),
+        ano_letivo_formais_aberto: getAnoLetivoFormaisAbertasFromConfig(configAdmissoes),
         reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(escola.data?.config_portal_admissao),
         pendencia_sla_horas: getPendenciaSlaHorasFromConfig(escola.data?.config_portal_admissao),
         documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(escola.data?.config_portal_admissao),
@@ -148,7 +151,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: validation.error.format() }, { status: 400 })
   }
 
-  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, ano_letivo_admissoes, modo_portal_admissoes, documentos_admissao_catalogo } = validation.data
+  const { escolaId, reserva_expiracao_horas, pendencia_sla_horas, ano_letivo_admissoes, modo_portal_admissoes, documentos_admissao_catalogo, abrir_admissoes_formais } = validation.data
 
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
@@ -189,6 +192,39 @@ export async function PATCH(request: Request) {
       }
     }
 
+    if (abrir_admissoes_formais === true) {
+      const fallbackYear = await supabase
+        .from('anos_letivos')
+        .select('ano')
+        .eq('escola_id', escolaId)
+        .eq('ativo', true)
+        .maybeSingle()
+      const targetYear = getAnoLetivoAdmissoesFromConfig(
+        ano_letivo_admissoes !== undefined
+          ? { ano_letivo_admissoes }
+          : escola.config_portal_admissao,
+        fallbackYear.data?.ano ?? null,
+      )
+      if (!targetYear) return NextResponse.json({ error: 'Defina o ano de admissões antes de abrir candidaturas.' }, { status: 409 })
+
+      const { data: readiness, error: readinessError } = await (supabase as any).rpc('get_school_operational_readiness', {
+        p_escola_id: escolaId,
+        p_ano_letivo: targetYear,
+      })
+      if (readinessError || !readiness?.ok) {
+        return NextResponse.json({ error: 'Não foi possível validar a prontidão do ano de admissões.' }, { status: 503 })
+      }
+      const badges = readiness.badges ?? {}
+      const missing = [
+        !badges.curriculo_published_ok ? 'currículo publicado' : null,
+        !badges.turmas_ok ? 'turmas com disciplinas' : null,
+        !badges.precos_ok ? 'tabela de preços' : null,
+      ].filter((item): item is string => Boolean(item))
+      if (missing.length > 0) {
+        return NextResponse.json({ error: 'Resolva os requisitos antes de abrir candidaturas formais.', missing }, { status: 409 })
+      }
+    }
+
     const currentConfig = isJsonObject(escola.config_portal_admissao) ? escola.config_portal_admissao : {}
     const nextConfig: JsonObject = {
       ...currentConfig,
@@ -206,6 +242,12 @@ export async function PATCH(request: Request) {
         : {}),
       ...(documentos_admissao_catalogo !== undefined
         ? { documentos_admissao_catalogo }
+        : {}),
+      ...(abrir_admissoes_formais !== undefined
+        ? { ano_letivo_formais_aberto: abrir_admissoes_formais ? getAnoLetivoAdmissoesFromConfig(
+          ano_letivo_admissoes !== undefined ? { ano_letivo_admissoes } : currentConfig,
+          null,
+        ) : null }
         : {}),
     }
 
@@ -246,6 +288,7 @@ export async function PATCH(request: Request) {
             : anoLetivoAdmissoesEfetivo
         ),
         modo_portal_admissoes: getModoPortalAdmissoesFromConfig(nextConfig),
+        ano_letivo_formais_aberto: getAnoLetivoFormaisAbertasFromConfig(nextConfig),
         reserva_expiracao_horas: getReservaExpiracaoHorasFromConfig(nextConfig),
         pendencia_sla_horas: getPendenciaSlaHorasFromConfig(nextConfig),
         documentos_admissao_catalogo: getDocumentosAdmissaoCatalogoFromConfig(nextConfig),

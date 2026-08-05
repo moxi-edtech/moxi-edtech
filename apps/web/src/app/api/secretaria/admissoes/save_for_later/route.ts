@@ -8,7 +8,7 @@ import ReactPDF, { type DocumentProps } from '@react-pdf/renderer'
 import { FichaInscricaoPDF } from '@/components/secretaria/FichaInscricaoPDF';
 import type { ReactElement } from 'react'
 import { createElement } from 'react'
-import { getReservaExpiracaoHorasFromConfig } from '@/lib/admissoes/reserva'
+import { getAnoLetivoAdmissoesFromConfig, getReservaExpiracaoHorasFromConfig } from '@/lib/admissoes/reserva'
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 
 export const runtime = 'nodejs';
@@ -99,6 +99,22 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const reservaExpiracaoHoras = getReservaExpiracaoHorasFromConfig(escolaConfig?.config_portal_admissao);
+    const { data: activeYear } = await supabase
+      .from("anos_letivos")
+      .select("ano")
+      .eq("escola_id", cand.escola_id)
+      .eq("ativo", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const configuredAdmissionYear = getAnoLetivoAdmissoesFromConfig(
+      escolaConfig?.config_portal_admissao,
+      activeYear?.ano ?? null
+    );
+    const persistedCandidateYear = candAny.ano_letivo == null ? null : Number(candAny.ano_letivo);
+    const candidateYear = persistedCandidateYear !== null && Number.isInteger(persistedCandidateYear) && persistedCandidateYear >= 2000 && persistedCandidateYear <= 2100
+      ? persistedCandidateYear
+      : configuredAdmissionYear;
     const pdfPath = `${cand.escola_id}/${candidatura_id}.pdf`;
     const expires_at = new Date();
     expires_at.setHours(expires_at.getHours() + reservaExpiracaoHoras);
@@ -144,14 +160,16 @@ export async function POST(request: Request) {
           kwik_chave: typeof rawPagamento.kwik_chave === 'string' ? rawPagamento.kwik_chave : undefined,
         } : null;
 
-        const { data: preco } = await supabase
-          .from("financeiro_tabelas")
-          .select("valor_matricula")
-          .eq("escola_id", cand.escola_id)
-          .eq("ano_letivo", new Date().getFullYear())
-          .is("curso_id", null)
-          .is("classe_id", null)
-          .maybeSingle();
+        const { data: preco } = candidateYear
+          ? await supabase
+            .from("financeiro_tabelas")
+            .select("valor_matricula")
+            .eq("escola_id", cand.escola_id)
+            .eq("ano_letivo", candidateYear)
+            .is("curso_id", null)
+            .is("classe_id", null)
+            .maybeSingle()
+          : { data: null };
 
         // This request won the race. Generate and upload the PDF.
         const pdfComponent = createElement(

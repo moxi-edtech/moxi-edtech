@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
-import { getAnoLetivoAdmissoesFromConfig, getModoPortalAdmissoesFromConfig } from "@/lib/admissoes/reserva";
+import { getAnoLetivoAdmissoesFromConfig, getAnoLetivoFormaisAbertasFromConfig, getModoPortalAdmissoesFromConfig } from "@/lib/admissoes/reserva";
 import { formatAnoLetivoDisplay } from "@/utils/formatters";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function GET(
     }
 
     // 2. Fetch public config and data in parallel
-    const [escolaRes, anosRes, cursosRes, turmasRes] = await Promise.all([
+    const [escolaRes, anosRes, cursosRes, classesRes, turmasRes] = await Promise.all([
       supabase
         .from("escolas")
         .select("id, nome, logo_url, cor_primaria, status, config_portal_admissao")
@@ -48,6 +48,11 @@ export async function GET(
       supabase
         .from("cursos")
         .select("id, nome")
+        .eq("escola_id", escolaId)
+        .order("nome", { ascending: true }),
+      supabase
+        .from("classes")
+        .select("id, nome, curso_id")
         .eq("escola_id", escolaId)
         .order("nome", { ascending: true }),
       supabase
@@ -74,6 +79,11 @@ export async function GET(
     const activeAno = Number(configuredAno);
     const selectedAnoLetivo = anosLetivos.find((ano) => Number(ano.ano) === activeAno) ?? anosLetivos[0] ?? null;
     const modoPortalAdmissoes = getModoPortalAdmissoesFromConfig(escolaRes.data.config_portal_admissao);
+    const anoFormaisAberto = getAnoLetivoFormaisAbertasFromConfig(escolaRes.data.config_portal_admissao);
+    const anoAtivoReal = Number(anosLetivos.find((ano) => ano.ativo)?.ano);
+    const formalAberto = modoPortalAdmissoes !== "ingresso_imediato"
+      || anoFormaisAberto === activeAno
+      || (anoFormaisAberto === null && anoAtivoReal === activeAno);
     const isPreCandidatura = modoPortalAdmissoes === "pre_candidatura_proximo_ano";
     const turmasAtivas = (turmasRes.data || []).filter((turma) => {
       if (isPreCandidatura) return false;
@@ -112,7 +122,9 @@ export async function GET(
           ? { ...selectedAnoLetivo, label: formatAnoLetivoDisplay(selectedAnoLetivo) }
           : null,
         modo_portal_admissoes: modoPortalAdmissoes,
-        cursos: cursosRes.data || [],
+        candidaturas_formais_abertas: formalAberto,
+      cursos: cursosRes.data || [],
+      classes: classesRes.data || [],
         turmas: turmasAtivas.map(t => ({
           id: t.id,
           nome: t.nome,

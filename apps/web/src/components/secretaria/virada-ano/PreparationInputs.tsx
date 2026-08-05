@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Archive, FileSpreadsheet, Loader2, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { normaliseNotaSpreadsheetRow } from "@/lib/virada/notas-import";
+import { RetroactiveGradeGrid } from "./RetroactiveGradeGrid";
 
 type Row = Record<string, unknown>;
 
@@ -59,6 +60,36 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
     setManual(emptyManual);
     setPreview(null);
     setStagedId(null);
+    idempotencyKey.current = crypto.randomUUID();
+  };
+
+  const updateRow = (index: number, field: keyof typeof emptyManual, value: string) => {
+    setRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row));
+    setPreview(null);
+    setStagedId(null);
+    setApplied(false);
+    idempotencyKey.current = crypto.randomUUID();
+  };
+
+  const removeRow = (index: number) => {
+    setRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
+    setPreview(null);
+    setStagedId(null);
+    setApplied(false);
+    idempotencyKey.current = crypto.randomUUID();
+  };
+
+  const addGridRows = (gridRows: Record<string, unknown>[]) => {
+    setRows((current) => {
+      const merged = new Map(current.map((row) => [`${row.matricula_id || row.numero_processo || ""}:${row.avaliacao_id || ""}`, row]));
+      for (const row of gridRows) {
+        merged.set(`${row.matricula_id || row.numero_processo || ""}:${row.avaliacao_id || ""}`, row);
+      }
+      return Array.from(merged.values());
+    });
+    setPreview(null);
+    setStagedId(null);
+    setApplied(false);
     idempotencyKey.current = crypto.randomUUID();
   };
 
@@ -181,6 +212,55 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
           </Button>
         </div>
       </div>
+
+      <RetroactiveGradeGrid anoLetivo={anoLetivo} onAddRows={addGridRows} />
+
+      {rows.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="min-w-full text-left text-xs">
+            <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Processo</th>
+                <th className="px-3 py-2">Avaliação</th>
+                <th className="px-3 py-2">Nota</th>
+                <th className="px-3 py-2">Resultado final</th>
+                <th className="px-3 py-2 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {rows.map((row, index) => (
+                <tr key={`${index}-${String(row.numero_processo ?? "")}`}>
+                  {(["numero_processo", "avaliacao_id", "nota"] as const).map((field) => (
+                    <td key={field} className="px-3 py-2">
+                      <input
+                        value={String(row[field] ?? "")}
+                        onChange={(event) => updateRow(index, field, event.target.value)}
+                        className="h-8 w-full min-w-36 rounded border border-slate-200 px-2 outline-none focus:border-klasse-gold"
+                      />
+                    </td>
+                  ))}
+                  <td className="px-3 py-2">
+                    <select
+                      value={String(row.resultado_final ?? "")}
+                      onChange={(event) => updateRow(index, "resultado_final", event.target.value)}
+                      className="h-8 min-w-32 rounded border border-slate-200 px-2"
+                    >
+                      <option value="">—</option>
+                      <option value="TRANSITADO">Transitado</option>
+                      <option value="RETIDO">Retido</option>
+                      <option value="CONCLUIDO">Concluído</option>
+                      <option value="PENDENTE">Pendente</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button type="button" onClick={() => removeRow(index)} className="font-semibold text-rose-600 hover:underline">Remover</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {preview?.summary && (
         <div className={`grid gap-2 rounded-xl border p-3 text-xs sm:grid-cols-5 ${preview.can_import ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>

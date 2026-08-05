@@ -57,14 +57,18 @@ export async function GET() {
     
     const sessionsWithData = new Set((existingStructure ?? []).map((t) => t.session_id));
 
-    const { data: templates } = await supabase
+    const { data: templates, error: templatesError } = await supabase
       .from("calendario_templates")
       .select("id,nome,ano_base,data_inicio,data_fim,subsistema,versao_documento")
       .eq("is_oficial", true)
       .eq("estado", "PUBLICADO")
-      .gt("ano_base", anoAtivo?.ano || 0)
+      // O calendário 2026/2027 tem ano_base=2026. O ano-base coincide
+      // com o ano letivo de origem e deve aparecer como destino elegível.
+      .gte("ano_base", anoAtivo?.ano || 0)
       .order("ano_base", { ascending: true })
       .order("subsistema", { ascending: true });
+
+    if (templatesError) throw templatesError;
 
     const { data: offerings } = await (supabase as any)
       .from("school_education_offerings")
@@ -72,6 +76,12 @@ export async function GET() {
       .eq("escola_id", escolaId)
       .eq("status", "active")
       .order("education_subsystem", { ascending: true });
+
+    const courseIds = [...new Set((offerings ?? []).map((offering: { course_id: string | null }) => offering.course_id).filter(Boolean))] as string[];
+    const { data: courses } = courseIds.length
+      ? await supabase.from("cursos").select("id,nome").eq("escola_id", escolaId).in("id", courseIds)
+      : { data: [] as Array<{ id: string; nome: string }> };
+    const courseNameById = new Map((courses ?? []).map((course: { id: string; nome: string }) => [course.id, course.nome]));
 
     return NextResponse.json({
       ok: true,
@@ -81,7 +91,10 @@ export async function GET() {
         has_data: sessionsWithData.has(s.id)
       })),
       official_templates: templates ?? [],
-      education_offerings: offerings ?? [],
+      education_offerings: (offerings ?? []).map((offering: { course_id: string | null }) => ({
+        ...offering,
+        course_name: offering.course_id ? courseNameById.get(offering.course_id) ?? null : null,
+      })),
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erro interno";
@@ -145,9 +158,28 @@ export async function POST(request: Request) {
     if (templateError || templateList.length !== templateIds.length) {
       return NextResponse.json({ ok: false, error: "Um ou mais templates oficiais não foram encontrados" }, { status: 404 });
     }
-    if (activeYear && templateList.some((template) => template.ano_base <= activeYear.ano)) {
-      return NextResponse.json({ ok: false, error: "O template deve ser posterior ao ano ativo" }, { status: 409 });
+    if (activeYear && templateList.some((template) => template.ano_base < activeYear.ano)) {
+      return NextResponse.json({ ok: false, error: "O template não pode ser anterior ao ano ativo" }, { status: 409 });
     }
+
+    const offeringById = new Map((educationOfferings ?? []).map((offering: { id: string; education_subsystem: string }) => [offering.id, offering]));
+    const templateById = new Map(templateList.map((template: { id: string; subsistema: string | null }) => [template.id, template]));
+    for (const mapping of scopedMappings) {
+      const offering = offeringById.get(mapping.offering_id as string);
+      const template = templateById.get(mapping.template_id);
+      if (!offering || !template || template.subsistema !== offering.education_subsystem) {
+        return NextResponse.json({
+          ok: false,
+          error: "O calendário selecionado não é compatível com a oferta educativa.",
+        }, { status: 409 });
+      }
+    }
+
+    await Promise.all(scopedMappings.map((mapping) => db
+      .from("school_education_offerings")
+      .update({ calendar_profile_id: mapping.template_id, updated_at: new Date().toISOString() })
+      .eq("id", mapping.offering_id)
+      .eq("escola_id", escolaId)));
 
     const primaryTemplate = templateList[0];
     const { data: existingTarget } = await supabase

@@ -349,13 +349,20 @@ KLASSE Brain V1
 - O resumo da preparação agora diferencia “novos registos” de “estrutura já existente”; zeros numa repetição idempotente não significam que o ano esteja vazio.
 - O resumo do wizard passou a mostrar os totais reais do ano destino e o incremento desta execução, evitando que 2026/2027 apareça falsamente vazio após uma repetição.
 - O primeiro passo do wizard agora permite ativar explicitamente a política retroativa; pendências académicas passam a ser acompanhadas, enquanto bloqueadores técnicos continuam impedindo a operação.
-- A execução local foi validada com `npm run typecheck --workspace apps/web` e `git diff --check`.
+- A ficha individual do aluno passou a aceitar contexto histórico por ano letivo, através da RPC `get_aluno_dossier_contextual`; a migration `20260805000000_contextual_student_dossier_year.sql` foi aplicada e registrada no ledger remoto.
+- A tela de Operações Académicas passou a expor um painel read-only de pendências retroativas por aluno, turma, disciplina e documento, com escopo por escola, pesquisa e limite operacional.
+- A etapa Preparar do wizard passou a ter uma grelha editável de notas do ano de origem: turma, disciplina, trimestre, avaliação, alunos da matrícula de origem, notas existentes e inclusão no lote idempotente.
+- A grelha inclui matrículas pendentes/inativas sem gravar diretamente; as alterações seguem `preview → stage → approve → apply`.
+- Criado o endpoint `POST /api/secretaria/operacoes-academicas/virada/notas/{importacaoId}/rebuild-history`, que executa `gerar_historico_anual` por matrícula aplicada e mantém o snapshot aberto para fechamento legal posterior.
+- O painel de pendências retroativas e a grelha de notas foram validados com ESLint e `git diff --check`; o typecheck completo permaneceu inconclusivo nesta sessão por não finalizar dentro do tempo disponível.
 
 ## Pendências de aplicação
 
 - A migration foi aplicada à base remota e registrada no ledger como `20260804120000`.
 - A migration `20260804150000_school_workflow_configuration.sql` foi aplicada remotamente e registrada no ledger; a tabela está vazia até a primeira gravação de uma escola.
+- A migration `20260805000000_contextual_student_dossier_year.sql` foi aplicada remotamente e registrada no ledger; a UI já permite alternar o ano histórico na ficha do aluno.
 - O backfill remoto criou 14 ofertas ativas em 7 escolas; o Curtume ficou com 3 ofertas: Pré-Escolar, Ensino Primário e Iº Ciclo do Secundário.
+- A instalação de um novo preset K12 passa a criar/actualizar automaticamente a oferta educativa e a associar o template oficial 2026/2027 compatível, através de `ensure_k12_course_offering`; a correspondência continua a ser validada pelo `curriculum_preset_id` exacto.
 - Ainda é necessário executar o dry-run funcional do Curtume e só então confirmar a preparação de 2026/2027.
 - A resolução completa de escopos por nível, ciclo, classe, curso e overrides continua no backlog do `Effective Calendar`.
 
@@ -379,6 +386,9 @@ O problema de descoberta do wizard foi corrigido e a unidade de decisão passou 
 
 - Executar dry-run autenticado em cada escola pendente, começando pelo Curtume.
 - Confirmar que cada curso/classe possui currículo publicado e matriz com disciplinas ativas.
+- Garantir prontidão antes de a secretaria publicar/abrir candidaturas formais para o ano-alvo, usando a checklist existente como ação administrativa única e guiada; não transformar pendências internas em erro para o candidato no formulário público. **IMPLEMENTADO EM CÓDIGO** — a checklist oferece “Abrir candidaturas formais”; a API reutiliza a prontidão, grava o ano publicado no mesmo `config_portal_admissao`, e o portal público só exibe o formulário quando esse ano estiver aberto. Configurações legadas do ano ativo permanecem compatíveis.
+- Garantir que a promoção de pré-candidatura resolve explicitamente `classe + turno + turma` no ano-alvo, validando vaga, preço e conflito antes de criar a matrícula. **IMPLEMENTADO EM CÓDIGO** — helper único reutilizado na promoção individual e em lote, com validação de escola, curso, classe, turno, vaga e preço antes da RPC idempotente.
+- Corrigir o salvamento de rascunhos para usar o ano de admissões configurado, não `new Date().getFullYear()`. **IMPLEMENTADO EM CÓDIGO** — a geração da ficha usa o ano persistido da candidatura ou, na ausência dele, o ano configurado com fallback para o ano ativo.
 - Validar a promoção individual com pagamento real ou ambiente de teste controlado.
 - Confirmar que devedores permanecem pendentes e não recebem matrícula no destino.
 - Testar reexecução dos botões sem duplicar anos, currículos, turmas, preços ou matrículas.
@@ -387,13 +397,37 @@ O problema de descoberta do wizard foi corrigido e a unidade de decisão passou 
 
 ### Backlog P1 — reduzir operação manual
 
-- Criar painel de pendências retroativas por aluno, turma, disciplina e documento.
+- Criar painel de pendências retroativas por aluno, turma, disciplina e documento. **CONCLUÍDO** — painel read-only integrado em Operações Académicas.
 - Adicionar ação de promoção individual diretamente na ficha financeira do aluno.
-- Permitir promoção em lote apenas para alunos cujo saldo esteja zerado.
+- Exibir e regularizar dívidas de anos anteriores no balcão. **APLICADO** — migration `20260805014000_balcon_historical_debt_visibility` registada no ledger; o dossier financeiro inclui mensalidades ligadas ao aluno ou a qualquer matrícula histórica. Foram identificados 176 alunos com dívida em mais de um ano para o teste autenticado.
+- Pré-candidatura K12 deve recolher classe e turno de interesse sem exigir turma. **IMPLEMENTADO EM CÓDIGO** — o portal usa `classes` por curso, valida o vínculo no backend e grava `candidaturas.classe_id`; a promoção continua a resolver a turma posteriormente.
+- Mostrar turmas paralelas individualmente na candidatura formal; o agrupamento por classe + turno pode esconder distinções como `7.ª A` e `7.ª B`. **IMPLEMENTADO EM CÓDIGO** — cada turma real aparece com nome, turno e disponibilidade; a pré-candidatura continua a selecionar apenas classe.
+- Tornar o ano-alvo obrigatório na consulta operacional de vagas quando o fluxo estiver a preparar admissões futuras; evitar fallback silencioso para o ano ativo. **IMPLEMENTADO EM CÓDIGO** — sem `ano`, a API usa o ano de admissões configurado e só recorre ao ano ativo no modo automático; devolve `ano_consultado` no metadata.
+- Rever a clonagem de `turma_disciplinas`: as novas turmas ficam sem alunos, mas podem herdar professores do ano anterior. Definir se a atribuição docente deve ser limpa ou apenas marcada para revisão. **PENDENTE — decisão operacional**.
+- Expor o resultado da reexecução da virada, distinguindo itens criados, reutilizados e ignorados por conflito; `ON CONFLICT DO NOTHING` não deve esconder uma execução parcialmente divergente. **IMPLEMENTADO EM CÓDIGO** — a rota compara antes/depois, estrutura esperada da origem e destino; a UI mostra novos, reutilizados, divergentes e estado idempotente.
+- Migrar alunos em lote sem exigir notas lançadas, mantendo devedores em pendência financeira e permitindo revisão posterior de classe. **IMPLEMENTADO EM CÓDIGO** — a etapa normal da virada oferece “Migrar todos”; a lista não depende de `status = concluído`, e cada aluno é revalidado pela RPC existente.
 - Exibir no dashboard a diferença entre ano ativo, ano de admissões e ano em preparação.
 - Criar alerta para escolas com ano destino criado, mas ainda não ativado.
-- Materializar snapshots e tarefas de preenchimento retroativo sem bloquear a operação.
+- Materializar snapshots e tarefas de preenchimento retroativo sem bloquear a operação. **PARCIAL** — grelha de notas e reconstrução de histórico por lote implementadas; tarefas, estado por disciplina e fechamento legal continuam pendentes.
 - Expor histórico de cada tentativa da virada, incluindo itens reutilizados e novos.
+
+### Critérios de aceite dos gaps de admissões e virada
+
+- A secretaria não consegue publicar/abrir candidaturas formais para um ano incompleto; o candidato nunca recebe um erro causado por uma pendência interna de configuração.
+- Uma pré-candidatura nunca recebe `turma_preferencial_id` automaticamente: na promoção, a secretaria escolhe uma turma concreta do ano-alvo e o servidor revalida classe, turno, vaga, preço e duplicidade.
+- Um rascunho criado para 2027 continua associado a 2027 mesmo que a data corrente ainda seja 2026.
+- Duas turmas paralelas da mesma classe aparecem como opções distintas na candidatura formal.
+- A consulta de vagas para admissões futuras falha de forma explícita sem ano-alvo, em vez de consultar silenciosamente o ano ativo.
+- A segunda execução da virada produz relatório idempotente com contagens de criados, reutilizados e divergentes, sem duplicar nem ocultar conflitos.
+
+### Decisão funcional — virada sem fricção e reclassificação posterior
+
+- O lançamento ou fechamento das notas não bloqueia a migração para o novo ano; notas incompletas serão preenchidas retroativamente durante o novo ano letivo.
+- A operação principal deve migrar todos os alunos com matrícula válida para um estado provisório no ano destino, sem exigir decisão antecipada de aprovação/reprovação.
+- A secretaria poderá rever cada aluno individualmente depois da virada e confirmar a classe efetivamente concluída, reclassificando-o no ano destino sem apagar o histórico do ano anterior.
+- A RPC `reclassificar_aluno_virada` e a rota protegida de reclassificação já foram criadas em código; a ação atualiza a turma da matrícula destino, preserva `matricula_id` e `numero_matricula`, valida ano/capacidade e audita a decisão. **INTERFACE PENDENTE** — falta ligar esta ação à lista de revisão da secretaria.
+- Dívida financeira, ausência de turma destino e inconsistência cadastral devem aparecer como pendências separadas; não podem ser confundidas com falta de notas.
+- Cada reclassificação posterior deve ser idempotente, manter o número de matrícula permanente, preservar auditoria e impedir duas matrículas ativas do mesmo aluno no mesmo ano.
 
 ### Backlog P2 — fundação temporal e inteligência
 

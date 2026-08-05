@@ -9,6 +9,7 @@ import { Metadata } from "next";
 import type { Json } from "~types/supabase";
 import {
   getAnoLetivoAdmissoesFromConfig,
+  getAnoLetivoFormaisAbertasFromConfig,
   getDocumentosAdmissaoCatalogoFromConfig,
   getModoPortalAdmissoesFromConfig,
 } from "@/lib/admissoes/reserva";
@@ -106,7 +107,7 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
   }
 
   // 2. Fetch public config and data in parallel
-  const [escolaRes, anosRes, cursosRes, turmasRes] = await Promise.all([
+  const [escolaRes, anosRes, cursosRes, classesRes, turmasRes] = await Promise.all([
     supabase
       .from("escolas")
       .select("id, nome, logo_url, cor_primaria, status, config_portal_admissao")
@@ -121,6 +122,11 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
     supabase
       .from("cursos")
       .select("id, nome")
+      .eq("escola_id", escolaId)
+      .order("nome", { ascending: true }),
+    supabase
+      .from("classes")
+      .select("id, nome, curso_id")
       .eq("escola_id", escolaId)
       .order("nome", { ascending: true }),
     supabase
@@ -159,6 +165,22 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
   const activeAno = Number(configuredAno);
   const selectedAnoLetivo = anosLetivos.find((ano) => Number(ano.ano) === activeAno) ?? anosLetivos[0] ?? null;
   const isPreCandidatura = getModoPortalAdmissoesFromConfig(escolaRes.data.config_portal_admissao) === "pre_candidatura_proximo_ano";
+  const anoFormaisAberto = getAnoLetivoFormaisAbertasFromConfig(escolaRes.data.config_portal_admissao);
+  const anoAtivoReal = Number(anosLetivos.find((ano) => ano.ativo)?.ano);
+  const candidaturasFormaisAbertas = isPreCandidatura || anoFormaisAberto === activeAno || (anoFormaisAberto === null && anoAtivoReal === activeAno);
+  if (!isPreCandidatura && !candidaturasFormaisAbertas) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-10 w-10">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-black text-slate-900">Candidaturas em preparação</h1>
+        <p className="mt-2 max-w-md text-slate-500">A secretaria ainda está a preparar as turmas e o calendário deste ano letivo. As candidaturas serão abertas assim que a preparação terminar.</p>
+      </div>
+    );
+  }
   const turmasAtivas = (turmasRes.data || []).filter((turma) => {
     if (isPreCandidatura) return false;
     if (!Number.isFinite(activeAno)) return true;
@@ -192,7 +214,11 @@ export default async function PublicAdmissionPage({ params }: PageProps) {
       config_portal: parseConfigPortal(escolaRes.data.config_portal_admissao) ?? undefined,
     },
     ano_letivo: selectedAnoLetivo || null,
+    candidaturas_formais_abertas: candidaturasFormaisAbertas,
     cursos: cursosRes.data || [],
+    classes: (classesRes.data || []).filter(
+      (item): item is { id: string; nome: string; curso_id: string } => Boolean(item.curso_id)
+    ),
     turmas: turmasAtivas.flatMap((t) => {
       if (!t.curso_id) return [];
       return [{

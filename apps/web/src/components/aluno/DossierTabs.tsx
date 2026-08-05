@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BookOpen, FileText, Users, Wallet } from "lucide-react";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
@@ -22,7 +23,12 @@ export function DossierTabs({
   slotHistoricoTransitado: React.ReactNode;
   slotDocumentos: React.ReactNode;
 }) {
-  const [active, setActive] = useState<DossierTab>("perfil");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams?.get("tab");
+  const initialTab: DossierTab = requestedTab === "financeiro" || requestedTab === "historico" || requestedTab === "historico_transitado" || requestedTab === "documentos"
+    ? requestedTab
+    : "perfil";
+  const [active, setActive] = useState<DossierTab>(initialTab);
   const slots = {
     perfil: slotPerfil,
     financeiro: slotFinanceiro,

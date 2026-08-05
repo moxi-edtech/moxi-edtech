@@ -116,6 +116,13 @@ export function getModoPortalAdmissoesFromConfig(config: unknown): ModoPortalAdm
   );
 }
 
+export function getAnoLetivoFormaisAbertasFromConfig(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return null;
+  return normalizeAnoLetivoAdmissoes(
+    (config as Record<string, unknown>).ano_letivo_formais_aberto
+  );
+}
+
 export function getDocumentosAdmissaoCatalogoFromConfig(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return [...DEFAULT_DOCUMENTOS_ADMISSAO];

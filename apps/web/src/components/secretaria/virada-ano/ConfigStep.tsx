@@ -33,12 +33,26 @@ type OfficialTemplate = {
 type EducationOffering = {
   id: string;
   course_id: string | null;
+  course_name: string | null;
   education_subsystem: string;
   education_level: string;
   cycle: string | null;
   grades: string[] | null;
   calendar_profile_id: string | null;
   status: string;
+};
+
+const OFFERING_SUBSYSTEM_LABELS: Record<string, string> = {
+  PRE_ESCOLAR: "Pré-escolar",
+  REGULAR_ADULTOS: "Regular e Adultos",
+  TECNICO_PROFISSIONAL: "Técnico-profissional",
+  SECUNDARIO_PEDAGOGICO: "Secundário pedagógico",
+};
+
+const OFFERING_LEVEL_LABELS: Record<string, string> = {
+  PRE_SCHOOL: "Pré-escolar",
+  PRIMARY: "Ensino Primário",
+  SECONDARY: "Ensino Secundário",
 };
 
 type CloneSummary = {
@@ -52,6 +66,10 @@ type CloneSummary = {
     periodos: number;
     disciplinas: number;
   };
+  created?: { turmas: number; precos: number; periodos: number; disciplinas: number };
+  reused?: { turmas: number; precos: number; periodos: number; disciplinas: number };
+  divergent?: { turmas: number; precos: number; periodos: number; disciplinas: number };
+  idempotent?: boolean;
 };
 
 type SessionsTargetResponse = {
@@ -231,7 +249,9 @@ export function ConfigStep({
   if (loading) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
 
   if (result) {
-    const createdAnything = Boolean(result.turmas || result.precos || result.periodos || result.disciplinas);
+    const createdAnything = result.created
+      ? Object.values(result.created).some((count) => count > 0)
+      : Boolean(result.turmas || result.precos || result.periodos || result.disciplinas);
     return (
       <div className="space-y-6 animate-in zoom-in-95">
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 text-center">
@@ -265,6 +285,26 @@ export function ConfigStep({
                     <p className="text-[10px] text-slate-400">+{result.disciplinas ?? 0} nesta execução</p>
                 </div>
             </div>
+            {result.created && result.reused && (
+              <div className="mx-auto mt-5 max-w-md rounded-xl border border-emerald-100 bg-white p-4 text-left">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resultado desta execução</p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <span className="font-semibold text-emerald-700">Novos registos: {Object.values(result.created).reduce((total, count) => total + count, 0)}</span>
+                  <span className="font-semibold text-slate-600">Já existentes: {Object.values(result.reused).reduce((total, count) => total + count, 0)}</span>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  {result.idempotent ? "A execução foi idempotente: nada novo foi criado." : "Os itens novos foram criados e os itens existentes foram reutilizados."}
+                </p>
+              </div>
+            )}
+            {result.divergent && Object.values(result.divergent).some((count) => count > 0) && (
+              <div className="mx-auto mt-3 max-w-md rounded-xl border border-rose-100 bg-rose-50 p-4 text-left">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600">Divergências a revisar</p>
+                <p className="mt-1 text-xs leading-relaxed text-rose-800">
+                  Faltam {Object.values(result.divergent).reduce((total, count) => total + count, 0)} registos em relação à estrutura da origem. Reveja o destino antes de ativar o ano.
+                </p>
+              </div>
+            )}
         </div>
       </div>
     );
@@ -300,7 +340,12 @@ export function ConfigStep({
                     {offerings.length > 0 ? offerings.map((offering) => (
                       <div key={offering.id} className="grid gap-2 sm:grid-cols-[1fr_1.4fr] sm:items-center">
                         <span className="text-xs font-semibold text-slate-700">
-                          {offering.education_subsystem + " · " + offering.education_level + (offering.cycle ? " · " + offering.cycle : "")}
+                          <span className="block">{offering.course_name || "Oferta educativa"}</span>
+                          <span className="mt-0.5 block text-[10px] font-normal text-slate-500">
+                            {OFFERING_SUBSYSTEM_LABELS[offering.education_subsystem] || "Perfil educativo"}
+                            {" · "}
+                            {OFFERING_LEVEL_LABELS[offering.education_level] || "Nível de ensino"}
+                          </span>
                         </span>
                         <select
                           value={offeringTemplates[offering.id] ?? ""}
@@ -392,11 +437,15 @@ export function ConfigStep({
             </li>
             <li className="flex items-center gap-3 text-xs text-slate-600">
                 <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
-                <span>Catálogo de <strong>Turmas</strong> (vazias, aguardando rematrícula)</span>
+                <span><strong>Currículos, matrizes e disciplinas</strong> preparados para o novo ano</span>
+            </li>
+            <li className="flex items-center gap-3 text-xs text-slate-600">
+                <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-blue-500"><Layers className="h-3.5 w-3.5" /></div>
+                <span>Catálogo de <strong>Turmas sem alunos</strong>, com capacidade, turnos e estrutura académica</span>
             </li>
             <li className="flex items-center gap-3 text-xs text-slate-600">
                 <div className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-emerald-500"><Database className="h-3.5 w-3.5" /></div>
-                <span>Tabela de <strong>Preços e Emolumentos</strong></span>
+                <span>Tabela de <strong>Preços</strong> com o reajuste configurado</span>
             </li>
           </ul>
         </section>

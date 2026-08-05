@@ -52,7 +52,9 @@ export type AdmissionConfig = {
     id: string;
     ano: number;
   } | null;
+  candidaturas_formais_abertas?: boolean;
   cursos: Array<{ id: string; nome: string }>;
+  classes: Array<{ id: string; nome: string; curso_id: string }>;
   turmas: Array<{
     id: string;
     nome: string;
@@ -85,6 +87,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     responsavel_nome: "",
     responsavel_contato: "",
     curso_id: "",
+    classe_id: "",
     turma_preferencial_id: "",
     turno: "",
     hp_field: "",
@@ -155,27 +158,15 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     lista_espera: "Lista de espera",
   };
 
-  // Grouped options for the dropdown: Grade + Shift
-  const groupedTurmas = formData.curso_id
-    ? (() => {
-        const map: Record<string, { id: string, label: string }> = {};
-        config.turmas
-          .filter(t => t.curso_id === formData.curso_id)
-          .forEach(t => {
-            const gradeName = formatTurmaDisplayName(t);
-            const publicTurno = formatTurnoDisplay(t.turno);
-            const disponibilidade = disponibilidadeLabel[t.disponibilidade ?? "disponivel"];
-            const key = `${gradeName}|${publicTurno}`;
-            if (!map[key]) {
-              map[key] = {
-                id: t.id,
-                label: `${gradeName} - ${publicTurno} - ${disponibilidade}`
-              };
-            }
-          });
-        return Object.values(map);
-      })()
+  // Cada turma real permanece visível: turmas paralelas não podem ser colapsadas.
+  const turmasDoCurso = formData.curso_id
+    ? config.turmas.filter((turma) => turma.curso_id === formData.curso_id)
     : [];
+  const turmaOptions = turmasDoCurso.map((turma) => ({
+    id: turma.id,
+    label: `${turma.nome} · ${formatTurnoDisplay(turma.turno)} · ${disponibilidadeLabel[turma.disponibilidade ?? "disponivel"]}`,
+  }));
+  const classesDoCurso = config.classes.filter((item) => item.curso_id === formData.curso_id);
 
   const isDocumentNumberRequired = !["Folha de 25 linhas", "Outro"].includes(formData.tipo_documento);
   const configuredDocumentCatalog = config.escola.config_portal?.documentos_admissao_catalogo ?? [];
@@ -285,6 +276,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
     setFormData((prev) => ({
       ...prev,
       curso_id: cursoId,
+      classe_id: "",
       turma_preferencial_id: "",
       turno: "",
     }));
@@ -311,6 +303,7 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
       setFormData(prev => ({
         ...prev,
         curso_id: value,
+        classe_id: "",
         turma_preferencial_id: "",
         turno: ""
       }));
@@ -530,22 +523,42 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
                   <label>
                     <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                      {isPreCandidatura ? "Classe/turno de interesse" : "Classe pretendida"} {!isPreCandidatura && <span className="text-red-500">*</span>}
+                      {isPreCandidatura ? "Classe de interesse" : "Classe pretendida"} <span className="text-red-500">*</span>
                     </span>
                     <select
-                      required={!isPreCandidatura}
-                      name="turma_preferencial_id"
-                      value={formData.turma_preferencial_id}
+                      required
+                      name={isPreCandidatura ? "classe_id" : "turma_preferencial_id"}
+                      value={isPreCandidatura ? formData.classe_id : formData.turma_preferencial_id}
                       onChange={handleInputChange}
                       disabled={!formData.curso_id}
                       className="w-full rounded-2xl border border-emerald-950/10 bg-[#fbfaf4] px-4 py-3 font-semibold text-slate-900 outline-none transition focus:border-emerald-800 focus:bg-white disabled:opacity-50"
                     >
-                      <option value="">{isPreCandidatura ? "Informar depois com a secretaria" : "Selecionar..."}</option>
-                      {groupedTurmas.map((t) => (
-                        <option key={t.id} value={t.id}>{t.label}</option>
-                      ))}
+                      <option value="">Selecionar...</option>
+                      {isPreCandidatura
+                        ? classesDoCurso.map((item) => (
+                            <option key={item.id} value={item.id}>{item.nome}</option>
+                          ))
+                        : turmaOptions.map((item) => (
+                            <option key={item.id} value={item.id}>{item.label}</option>
+                          ))}
                     </select>
                   </label>
+                  {isPreCandidatura && (
+                    <label>
+                      <span className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Turno de interesse</span>
+                      <select
+                        name="turno"
+                        value={formData.turno}
+                        onChange={handleInputChange}
+                        className="w-full rounded-2xl border border-emerald-950/10 bg-[#fbfaf4] px-4 py-3 font-semibold text-slate-900 outline-none transition focus:border-emerald-800 focus:bg-white"
+                      >
+                        <option value="">Sem preferência</option>
+                        <option value="M">Manhã</option>
+                        <option value="T">Tarde</option>
+                        <option value="N">Noite</option>
+                      </select>
+                    </label>
+                  )}
                 </div>
               </div>
               {isPreCandidatura && (
@@ -859,7 +872,9 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Classe / Turno</p>
                     <p className="text-sm font-black text-slate-900">
-                      {formData.turma_preferencial_id
+                      {isPreCandidatura
+                        ? config.classes.find((item) => item.id === formData.classe_id)?.nome || "Sem preferência"
+                        : formData.turma_preferencial_id
                         ? (() => {
                             const selectedTurma = config.turmas.find(t => t.id === formData.turma_preferencial_id);
                             return selectedTurma ? formatTurmaDisplayName(selectedTurma) : "Sem preferência";

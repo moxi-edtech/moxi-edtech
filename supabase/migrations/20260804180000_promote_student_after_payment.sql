@@ -93,7 +93,7 @@ BEGIN
   ) VALUES (
     p_escola_id, p_aluno_id, v_target_turma_id, p_to_session_id, v_to_year, 'ativo',
     true,
-    COALESCE(v_source.numero_matricula, v_to_year::text || '-' || substr(p_aluno_id::text, 1, 8)),
+    public.next_matricula_number(p_escola_id)::text,
     CURRENT_DATE, now(), now()
   ) RETURNING id INTO v_new_id;
 

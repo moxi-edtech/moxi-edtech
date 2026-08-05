@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import { validatePromotionTarget } from "@/lib/admissoes/validatePromotionTarget";
 
 const payloadSchema = z.object({
   escola_id: z.string().uuid(),
@@ -56,8 +57,8 @@ export async function POST(request: Request) {
       .eq("id", turma_id)
       .maybeSingle(),
     supabase
-      .from("candidaturas")
-      .select("id, status, escola_id")
+    .from("candidaturas")
+      .select("id, status, escola_id, curso_id, classe_id, turno")
       .eq("escola_id", escolaId)
       .in("id", uniqueIds),
   ]);
@@ -89,6 +90,27 @@ export async function POST(request: Request) {
       },
       { status: 400 }
     );
+  }
+
+  for (const candidatura of candidaturaRows) {
+    const targetValidation = await validatePromotionTarget(
+      supabase,
+      escolaId,
+      {
+        curso_id: candidatura.curso_id,
+        classe_id: candidatura.classe_id,
+        turno: candidatura.turno,
+      },
+      turma_id,
+    );
+    if (!targetValidation.ok) {
+      return NextResponse.json({
+        ok: false,
+        error: targetValidation.error,
+        code: targetValidation.code,
+        candidatura_id: candidatura.id,
+      }, { status: targetValidation.code === "PROMOTION_NO_VACANCY" ? 409 : 400 });
+    }
   }
 
   const capacidadeMaxima = Number(turma.capacidade_maxima ?? 0);

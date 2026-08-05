@@ -12,7 +12,8 @@ import {
   Mail, 
   Stamp, 
   FileSignature,
-  LayoutDashboard
+  LayoutDashboard,
+  CheckCircle2,
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
@@ -46,6 +47,14 @@ type AnoLetivoOption = {
 };
 
 type ModoPortalAdmissoes = "ingresso_imediato" | "pre_candidatura_proximo_ano";
+
+type AdmissionReadiness = {
+  ano_letivo?: number | null;
+  operational_readiness?: {
+    badges?: Record<string, boolean>;
+    blockers?: Array<{ code?: string; title?: string; detail?: string; severity?: string }>;
+  };
+};
 
 function normalizeDocumentoId(value: string) {
   return value
@@ -97,6 +106,8 @@ export default function FluxosConfiguracaoPage() {
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivoOption[]>([]);
   const [documentosAdmissao, setDocumentosAdmissao] = useState<DocumentoAdmissao[]>([]);
   const [loadingAdmissoes, setLoadingAdmissoes] = useState(true);
+  const [admissionReadiness, setAdmissionReadiness] = useState<AdmissionReadiness | null>(null);
+  const [formalAdmissionsOpen, setFormalAdmissionsOpen] = useState(false);
   
   // Estado inicial fiel à imagem do print
   const [steps, setSteps] = useState<WorkflowStep[]>([
@@ -174,6 +185,26 @@ export default function FluxosConfiguracaoPage() {
           setModoPortalAdmissoes(json?.admissoes?.modo_portal_admissoes === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : "ingresso_imediato");
           setAnosLetivos(Array.isArray(json?.anos_letivos) ? json.anos_letivos : []);
           setDocumentosAdmissao(Array.isArray(json?.admissoes?.documentos_admissao_catalogo) ? json.admissoes.documentos_admissao_catalogo : []);
+          const configuredYear = parseOptionalAcademicYear(json?.admissoes?.ano_letivo_admissoes);
+          const fallbackYear = Array.isArray(json?.anos_letivos)
+            ? json.anos_letivos.find((ano: AnoLetivoOption) => ano.ativo)?.ano ?? json.anos_letivos[0]?.ano
+            : null;
+          const readinessYear = configuredYear ?? fallbackYear ?? null;
+          setFormalAdmissionsOpen(json?.admissoes?.ano_letivo_formais_aberto === null || json?.admissoes?.ano_letivo_formais_aberto === readinessYear);
+          if (readinessYear) {
+            const readinessRes = await fetch(
+              `/api/escola/${encodeURIComponent(escolaId as string)}/admin/setup/status?ano=${readinessYear}`,
+              { cache: "no-store" },
+            );
+            const readinessJson = await readinessRes.json().catch(() => null);
+            if (readinessRes.ok && readinessJson?.ok) {
+              setAdmissionReadiness(readinessJson.data ?? null);
+            } else {
+              setAdmissionReadiness(null);
+            }
+          } else {
+            setAdmissionReadiness(null);
+          }
           if (Array.isArray(workflowJson?.config?.grade_workflow)) {
             setSteps((current) => current.map((step) => {
               const saved = workflowJson.config.grade_workflow.find((item: { id?: string }) => item?.id === step.id);
@@ -254,6 +285,26 @@ export default function FluxosConfiguracaoPage() {
     }
   };
 
+  const handleOpenFormalAdmissions = async () => {
+    if (!escolaId || !formalAdmissionsReady) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/secretaria/admissoes/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ escolaId, abrir_admissoes_formais: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(formatApiError(json?.error, "Não foi possível abrir candidaturas"));
+      setFormalAdmissionsOpen(true);
+      success("Candidaturas formais abertas para o ano configurado.");
+    } catch (err) {
+      toastError("Não foi possível abrir candidaturas", err instanceof Error ? err.message : "Resolva os requisitos pendentes e tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const anoLetivoAdmissoesLabel = useMemo(() => {
     if (modoPortalAdmissoes === "pre_candidatura_proximo_ano") return "pré-candidatura sem ano letivo operacional definido";
 
@@ -266,6 +317,16 @@ export default function FluxosConfiguracaoPage() {
   }, [anoLetivoAdmissoes, anoLetivoAdmissoesEfetivoLabel, anosLetivos, modoPortalAdmissoes]);
 
   const anoLetivoOperacional = anosLetivos.find((ano) => ano.ativo)?.ano ?? null;
+  const admissionChecks = useMemo(() => {
+    const badges = admissionReadiness?.operational_readiness?.badges ?? {};
+    return [
+      { label: "Ano letivo criado", ok: Boolean(admissionReadiness?.ano_letivo) },
+      { label: "Currículo publicado", ok: Boolean(badges.curriculo_published_ok) },
+      { label: "Turmas com disciplinas", ok: Boolean(badges.turmas_ok) },
+      { label: "Preços configurados", ok: Boolean(badges.precos_ok) },
+    ];
+  }, [admissionReadiness]);
+  const formalAdmissionsReady = admissionChecks.length > 0 && admissionChecks.every((check) => check.ok);
 
   return (
     <>
@@ -305,6 +366,68 @@ export default function FluxosConfiguracaoPage() {
           {modoPortalAdmissoes === "ingresso_imediato" && anoLetivoAdmissoes !== null && (
             <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
               Atenção: as admissões estão fixadas manualmente em {anoLetivoAdmissoesLabel}. Altere para “Automático” para acompanhar a virada do ano.
+            </p>
+          )}
+        </div>
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Prontidão de candidaturas</p>
+              <h3 className="mt-1 text-sm font-bold text-slate-900">
+                {formalAdmissionsReady ? "Pronta para candidaturas formais" : "Ainda existem requisitos para candidaturas formais"}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Ano consultado: {admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.
+              </p>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide ${formalAdmissionsReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+              {formalAdmissionsReady ? "Pronta" : "Pendente"}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {admissionChecks.map((check) => (
+              <div key={check.label} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${check.ok ? "border-emerald-100 bg-emerald-50 text-emerald-800" : "border-amber-100 bg-amber-50 text-amber-800"}`}>
+                <CheckCircle2 className={`h-4 w-4 shrink-0 ${check.ok ? "text-emerald-600" : "text-amber-500"}`} />
+                <span>{check.label}</span>
+              </div>
+            ))}
+          </div>
+          {!formalAdmissionsReady && (
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-relaxed text-blue-900">
+                Resolva os requisitos no wizard. Ao criar o ano, o KLASSE aplica os calendários oficiais compatíveis com cada oferta educativa.
+              </p>
+              <Link
+                href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"
+              >
+                Criar ano com calendário oficial
+              </Link>
+            </div>
+          )}
+          {formalAdmissionsReady && !formalAdmissionsOpen && modoPortalAdmissoes === "ingresso_imediato" && (
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-relaxed text-emerald-900">
+                O ano está pronto. Abra as candidaturas formais para publicar o formulário no portal da escola.
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleOpenFormalAdmissions()}
+                disabled={saving}
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {saving ? "A abrir..." : "Abrir candidaturas formais"}
+              </button>
+            </div>
+          )}
+          {formalAdmissionsReady && formalAdmissionsOpen && modoPortalAdmissoes === "ingresso_imediato" && (
+            <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+              Candidaturas formais abertas para {admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.
+            </p>
+          )}
+          {modoPortalAdmissoes === "pre_candidatura_proximo_ano" && (
+            <p className="mt-3 text-xs font-medium text-blue-700">
+              O modo actual permite recolher pré-candidaturas mesmo antes de concluir todos os requisitos operacionais.
             </p>
           )}
         </div>

@@ -15,7 +15,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 
-export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { escolaId?: string | null; alunoId: string; role: DossierRole }) {
+export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null }) {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return notFound();
@@ -23,9 +23,10 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
   if (!resolvedEscolaId) return notFound();
 
-  const { data: raw, error } = await supabase.rpc("get_aluno_dossier", {
+  const { data: raw, error } = await (supabase as any).rpc(selectedYear != null ? "get_aluno_dossier_contextual" : "get_aluno_dossier", {
     p_escola_id: resolvedEscolaId,
     p_aluno_id: alunoId,
+    ...(selectedYear != null ? { p_ano_letivo: selectedYear } : {}),
   });
   if (error) return notFound();
 
@@ -90,7 +91,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
     };
   }
 
-  const aluno = normalizeDossier(alunoId, enrichedRaw);
+  const aluno = normalizeDossier(alunoId, enrichedRaw, selectedYear);
   if (!aluno) return notFound();
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 

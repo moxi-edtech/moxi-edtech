@@ -5,6 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { validatePromotionTarget } from "@/lib/admissoes/validatePromotionTarget";
 
 const payloadSchema = z.object({
   turma_id: z.string().uuid(),
@@ -39,7 +40,7 @@ export async function POST(
 
   const { data: candidatura, error: candidaturaError } = await supabase
     .from("candidaturas")
-    .select("id, escola_id, status")
+    .select("id, escola_id, status, curso_id, classe_id, turno")
     .eq("id", candidaturaId)
     .maybeSingle();
 
@@ -68,6 +69,20 @@ export async function POST(
       { ok: false, error: "Apenas pré-candidaturas podem ser promovidas." },
       { status: 400 }
     );
+  }
+
+  const targetValidation = await validatePromotionTarget(
+    supabase,
+    escolaId,
+    {
+      curso_id: candidatura.curso_id,
+      classe_id: candidatura.classe_id,
+      turno: candidatura.turno,
+    },
+    parsed.data.turma_id,
+  );
+  if (!targetValidation.ok) {
+    return NextResponse.json(targetValidation, { status: targetValidation.code === "PROMOTION_NO_VACANCY" ? 409 : 400 });
   }
 
   const { data, error } = await (supabase as any).rpc("admissao_promover_pre_candidatura", {

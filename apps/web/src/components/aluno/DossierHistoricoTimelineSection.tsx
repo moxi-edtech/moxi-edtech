@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BookOpen, CalendarCheck, CircleAlert, Eye, Wallet } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza } from "@/lib/formatters";
@@ -93,6 +94,9 @@ export function DossierHistoricoTimelineSection({
   role: DossierRole;
   escolaId?: string | null;
 }) {
+  const searchParams = useSearchParams();
+  const selectedYear = searchParams?.get("ano");
+  const selectedYearNumber = selectedYear && /^\d{4}$/.test(selectedYear) ? Number(selectedYear) : null;
   const [timeline, setTimeline] = useState<TimelineAno[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,7 +175,24 @@ export function DossierHistoricoTimelineSection({
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Percurso académico 360º</p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Percurso académico 360º</p>
+          {selectedYearNumber ? (
+            <Link
+              href={role === "admin" && escolaId
+                ? `/escola/${escolaId}/admin/alunos/${alunoId}?tab=historico`
+                : `/secretaria/alunos/${alunoId}?tab=historico`}
+              className="text-xs font-semibold text-[#1F6B3B] hover:underline"
+            >
+              Ver ano atual
+            </Link>
+          ) : null}
+        </div>
+        {selectedYearNumber ? (
+          <div className="mb-3 rounded-lg border border-[#E3B23C]/30 bg-[#E3B23C]/10 px-3 py-2 text-xs font-semibold text-slate-700">
+            Contexto selecionado: ano letivo {selectedYearNumber}
+          </div>
+        ) : null}
         <div className="space-y-3">
           {cards.map((ano) => {
             const presencaAtual = typeof ano.presenca.percentual_presenca === "number" ? ano.presenca.percentual_presenca : null;

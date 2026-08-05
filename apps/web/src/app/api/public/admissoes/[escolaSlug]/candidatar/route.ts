@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerRole } from "@/lib/supabaseServerRole";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
-import { getAnoLetivoAdmissoesFromConfig, getModoPortalAdmissoesFromConfig } from "@/lib/admissoes/reserva";
+import { getAnoLetivoAdmissoesFromConfig, getAnoLetivoFormaisAbertasFromConfig, getModoPortalAdmissoesFromConfig } from "@/lib/admissoes/reserva";
 import type { Json } from "~types/supabase";
 
 const CandidaturaSchema = z.object({
@@ -24,6 +24,7 @@ const CandidaturaSchema = z.object({
   
   // Dados Acadêmicos Pretendidos
   curso_id: z.string().uuid("Nível de ensino obrigatório"),
+  classe_id: z.string().uuid().optional().nullable().transform(v => v === "" ? null : v),
   ano_letivo: z.coerce.number().int().optional().nullable(),
   turma_preferencial_id: z.string().uuid().optional().nullable().transform(v => v === "" ? null : v),
   turno: z.string().optional().nullable().transform(v => v === "" ? null : v),
@@ -243,6 +244,7 @@ export async function POST(
 
     const modoPortalAdmissoes = getModoPortalAdmissoesFromConfig(escolaConfig?.config_portal_admissao);
     const isPreCandidatura = modoPortalAdmissoes === "pre_candidatura_proximo_ano";
+    const configuredFormalYear = getAnoLetivoFormaisAbertasFromConfig(escolaConfig?.config_portal_admissao);
     const requiredDocumentIds = isPreCandidatura ? [] : getRequiredDocumentIds(escolaConfig?.config_portal_admissao);
     if (requiredDocumentIds.length > 0) {
       if (!data.draftId) {
@@ -314,6 +316,20 @@ export async function POST(
     if (!courseCheck.data) {
       return NextResponse.json({ ok: false, error: "Nível de ensino inválido para esta escola" }, { status: 400 });
     }
+    const { data: classeCheck } = data.classe_id
+      ? await supabase
+        .from("classes")
+        .select("id, nome, curso_id")
+        .eq("id", data.classe_id)
+        .eq("escola_id", escolaId)
+        .maybeSingle()
+      : { data: null };
+    if (isPreCandidatura && !data.classe_id) {
+      return NextResponse.json({ ok: false, error: "Selecione a classe de interesse." }, { status: 400 });
+    }
+    if (data.classe_id && (!classeCheck || classeCheck.curso_id !== data.curso_id)) {
+      return NextResponse.json({ ok: false, error: "Classe inválida para o nível de ensino selecionado" }, { status: 400 });
+    }
     if (!turmaCheck.data) {
       return NextResponse.json({ ok: false, error: "Classe/turma inválida para esta escola" }, { status: 400 });
     }
@@ -354,6 +370,13 @@ export async function POST(
       return NextResponse.json(
         { ok: false, error: "Ano letivo de admissões não configurado." },
         { status: 400 }
+      );
+    }
+    const formalYearOpen = configuredFormalYear ?? Number(activeAnoRes.data?.ano);
+    if (!isPreCandidatura && formalYearOpen !== anoLetivo) {
+      return NextResponse.json(
+        { ok: false, code: "ADMISSION_FORMAL_NOT_OPEN", error: "As candidaturas formais ainda não estão abertas para este ano letivo." },
+        { status: 409 }
       );
     }
 
@@ -477,9 +500,9 @@ export async function POST(
       ? {
           curso_id: data.curso_id,
           curso_nome: typeof courseCheck.data?.nome === "string" ? courseCheck.data.nome : null,
-          classe_id: null,
-          classe_nome: null,
-          turno: null,
+          classe_id: data.classe_id ?? null,
+          classe_nome: classeCheck?.nome ?? null,
+          turno: data.turno ?? null,
           ano_alvo_label: "Próximo ano letivo",
         }
       : null;
@@ -517,13 +540,14 @@ export async function POST(
       ano_letivo: anoLetivo,
       status: statusInicial,
       turma_preferencial_id: isPreCandidatura ? null : data.turma_preferencial_id || null,
+      classe_id: isPreCandidatura ? data.classe_id : null,
       dados_candidato: dadosCandidato as any,
       nome_candidato: data.nome_completo,
       nome_normalizado: nomeNormalizado,
       documento_normalizado: documentoNormalizado,
       telefone_normalizado: telefoneNormalizado,
       responsavel_contato_normalizado: responsavelContatoNormalizado,
-      turno: isPreCandidatura ? null : data.turno || null,
+      turno: data.turno || null,
       protocolo_publico: null as any, // Let DB trigger handle it
     };
 

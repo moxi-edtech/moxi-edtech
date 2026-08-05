@@ -127,6 +127,26 @@ function isMissingOrchestratorFunction(err: { message?: string | null; code?: st
   );
 }
 
+async function ensureInstalledCourseOffering(
+  supabase: any,
+  escolaId: string,
+  cursoId: string,
+  presetKey: string,
+) {
+  const { data, error } = await supabase.rpc('ensure_k12_course_offering', {
+    p_escola_id: escolaId,
+    p_course_id: cursoId,
+    p_curriculum_preset_id: presetKey,
+  });
+
+  if (error) {
+    return { offeringId: null as string | null, error: error.message || 'Falha ao associar o calendário do curso.' };
+  }
+
+  const offeringId = Array.isArray(data) ? data[0] : data;
+  return { offeringId: typeof offeringId === 'string' ? offeringId : null, error: null };
+}
+
 async function compensateInstallPartialFailure(args: {
   supabase: any;
   resolvedEscolaId: string;
@@ -285,6 +305,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!orchestratedError) {
       const orchestrated = Array.isArray(orchestratedDataRaw) ? orchestratedDataRaw[0] : orchestratedDataRaw;
       if (orchestrated?.ok === false && orchestrated?.step === 'already_published') {
+        const cursoId = orchestrated?.applied?.curso_id;
+        if (cursoId) {
+          const offering = await ensureInstalledCourseOffering(
+            supabase,
+            resolvedEscolaId,
+            cursoId,
+            presetKey,
+          );
+          if (offering.error) {
+            return NextResponse.json({
+              ...orchestrated,
+              error: `Curso encontrado, mas o calendário não foi associado: ${offering.error}`,
+              step: 'calendar_setup',
+            }, { status: 409 });
+          }
+        }
+
         const appliedPayload = buildInstallPresetSkippedAppliedPayload(resolvedEscolaId);
         emitirEvento(supabase, {
           escola_id: resolvedEscolaId,
@@ -308,7 +345,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }, { status: 409 });
       }
 
-      return NextResponse.json(orchestrated);
+      const cursoId = orchestrated?.applied?.curso_id;
+      if (!cursoId) {
+        return NextResponse.json({
+          ...orchestrated,
+          error: 'Instalação concluída sem curso resolvido para associar a oferta educativa.',
+          step: 'calendar_setup',
+        }, { status: 409 });
+      }
+
+      const offering = await ensureInstalledCourseOffering(
+        supabase,
+        resolvedEscolaId,
+        cursoId,
+        presetKey,
+      );
+      if (offering.error) {
+        return NextResponse.json({
+          ...orchestrated,
+          error: `Curso instalado, mas o calendário não foi associado: ${offering.error}`,
+          step: 'calendar_setup',
+        }, { status: 409 });
+      }
+
+      return NextResponse.json({
+        ...orchestrated,
+        offering_id: offering.offeringId,
+      });
     }
 
     console.warn('[curriculo.install-preset] RPC curriculo_install_orchestrated indisponível, usando fallback legado.');
@@ -379,6 +442,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         partial_failed: false,
         operation_status: buildOperationStatus(steps),
       }, { status: 500 });
+    }
+
+    const offering = await ensureInstalledCourseOffering(
+      supabase,
+      resolvedEscolaId,
+      cursoId,
+      presetKey,
+    );
+    if (offering.error) {
+      return NextResponse.json({
+        ok: false,
+        step: 'calendar_setup',
+        error: `Curso resolvido, mas o calendário não foi associado: ${offering.error}`,
+        curso_id: cursoId,
+        partial_failed: true,
+        operation_status: buildOperationStatus(steps),
+      }, { status: 409 });
     }
 
     if (publishedExists && !applyResult) {
@@ -673,6 +753,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       presetKey,
       ano_letivo_id: anoLetivo.id,
       applied: appliedPayload,
+      offering_id: offering.offeringId,
       publish: publishResult,
       turmas: turmasResult,
       matriz: matrizBackfill,

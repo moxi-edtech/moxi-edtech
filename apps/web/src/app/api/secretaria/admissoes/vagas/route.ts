@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { requireRoleInSchool } from '@/lib/authz';
 import { applyKf2ListInvariants } from '@/lib/kf2';
+import { getAnoLetivoAdmissoesFromConfig } from '@/lib/admissoes/reserva';
 
 const searchParamsSchema = z.object({
   escolaId: z.string().uuid(),
@@ -32,18 +33,28 @@ export async function GET(request: Request) {
   if (authError) return authError;
 
   try {
-    let effectiveAno = ano ?? null;
-    if (!effectiveAno) {
-      const { data: activeAno } = await supabase
+    const [{ data: activeAno }, { data: escola }] = await Promise.all([
+      supabase
         .from('anos_letivos')
         .select('ano')
         .eq('escola_id', escolaId)
         .eq('ativo', true)
-        .maybeSingle();
+        .maybeSingle(),
+      supabase
+        .from('escolas')
+        .select('config_portal_admissao')
+        .eq('id', escolaId)
+        .maybeSingle(),
+    ]);
 
-      const anoNumber = Number(activeAno?.ano);
-      effectiveAno = Number.isFinite(anoNumber) ? anoNumber : null;
-    }
+    const activeAnoNumber = Number(activeAno?.ano);
+    const configuredAno = getAnoLetivoAdmissoesFromConfig(
+      escola?.config_portal_admissao,
+      Number.isFinite(activeAnoNumber) ? activeAnoNumber : null,
+    );
+    // Sem ano explícito, respeitar o ano configurado para admissões; o ano ativo
+    // fica apenas como fallback para escolas em modo automático.
+    const effectiveAno = ano ?? configuredAno;
 
     let query = supabase
       .from('vw_turmas_para_matricula')
@@ -68,7 +79,6 @@ export async function GET(request: Request) {
     const turmaRows = turmas || [];
 
     const cursoIds = Array.from(new Set(turmaRows.map((row) => row.curso_id).filter(Boolean))) as string[];
-    const classeIds = Array.from(new Set(turmaRows.map((row) => row.classe_id).filter(Boolean))) as string[];
 
     const { data: tabelas } = cursoIds.length
       ? await (() => {
@@ -152,6 +162,7 @@ export async function GET(request: Request) {
       items: turmasComVagas,
       meta: {
         classesComPreco,
+        ano_consultado: effectiveAno,
       },
     })
   } catch (error) {

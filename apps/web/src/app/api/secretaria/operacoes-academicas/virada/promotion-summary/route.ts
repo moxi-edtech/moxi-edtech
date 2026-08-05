@@ -100,12 +100,12 @@ export async function GET(request: Request) {
             saldo: saldo
         };
 
-        if (a.status === 'concluido' && saldo <= tolerance) {
+        // A virada sem fricção não exige notas fechadas nem aprovação académica.
+        // A decisão de classe fica para a revisão individual posterior da secretaria.
+        if (saldo <= tolerance) {
             aptos.push(info);
-        } else if (a.status === 'concluido' && saldo > tolerance) {
+        } else {
             inadimplentes.push(info);
-        } else if (a.status === 'reprovado' || a.status === 'reprovado_por_faltas') {
-            retidos.push(info);
         }
     });
 
@@ -120,6 +120,7 @@ export async function GET(request: Request) {
         },
         lists: {
             aptos: aptos.slice(0, 50), // Amostra para performance, UI pode pedir mais
+            aptos_ids: aptos.map((student) => student.id),
             inadimplentes, // Inadimplentes enviamos todos para ação
             retidos
         }

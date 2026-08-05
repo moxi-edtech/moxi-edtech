@@ -81,7 +81,7 @@ BEGIN
 
       IF v_balance > 0 THEN
         UPDATE public.matriculas
-        SET status = 'pendente', ativo = false, updated_at = now()
+        SET status = 'pendente', ativo = false, numero_matricula = NULL, updated_at = now()
         WHERE id = v_source.id;
         v_debtors := v_debtors + 1;
         CONTINUE;
@@ -103,7 +103,7 @@ BEGIN
       ) VALUES (
         p_escola_id, v_source.aluno_id, v_destination_id, p_to_session_id, v_to_year, 'ativo',
         true,
-        COALESCE(v_source.numero_matricula, v_to_year::text || '-' || substr(v_source.aluno_id::text, 1, 8)),
+        public.next_matricula_number(p_escola_id)::text,
         CURRENT_DATE, now(), now()
       );
 

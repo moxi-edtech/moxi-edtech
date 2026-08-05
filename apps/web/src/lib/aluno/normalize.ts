@@ -82,7 +82,7 @@ function calcularPendencias(
   return pendencias;
 }
 
-export function normalizeDossier(alunoId: string, raw: unknown): AlunoNormalizado | null {
+export function normalizeDossier(alunoId: string, raw: unknown, selectedYear?: number | null): AlunoNormalizado | null {
   if (!raw || typeof raw !== "object") return null;
 
   const dossier = raw as RawDossier;
@@ -108,7 +108,9 @@ export function normalizeDossier(alunoId: string, raw: unknown): AlunoNormalizad
     ? h.map((item) => normalizarHistoricoItem(item, isMatriculaAtiva(item.status)))
     : [];
 
-  const matricula_atual = historico.find((m) => m.is_atual) ?? historico[0] ?? null;
+  const matricula_atual = selectedYear != null
+    ? historico.find((m) => Number(m.ano_letivo) === selectedYear) ?? null
+    : historico.find((m) => m.is_atual) ?? historico[0] ?? null;
 
   const total_em_atraso = Number(f.total_em_atraso ?? 0);
   const total_pago = Number(f.total_pago ?? 0);

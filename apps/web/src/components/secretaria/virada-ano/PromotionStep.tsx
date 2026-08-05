@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { 
-  Users, 
   CheckCircle2, 
   AlertCircle, 
   XCircle,
@@ -32,6 +31,7 @@ type PromotionSummary = {
   };
   lists: {
     aptos: StudentInfo[];
+    aptos_ids?: string[];
     inadimplentes: StudentInfo[];
     retidos: StudentInfo[];
   };
@@ -46,6 +46,7 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
   const [expanded, setExpanded] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [promotingBatch, setPromotingBatch] = useState(false);
 
   const fetchSummary = async (tol: number) => {
     setLoading(true);
@@ -76,6 +77,25 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
       onComplete();
     } finally {
       setPromotingId(null);
+    }
+  };
+
+  const promoteAptosBatch = async () => {
+    const alunoIds = summary?.lists.aptos_ids ?? [];
+    if (!fromSession || !toSession || alunoIds.length === 0) return;
+    setPromotingBatch(true);
+    try {
+      const response = await fetch("/api/secretaria/operacoes-academicas/virada/promote-students-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aluno_ids: alunoIds, from_session_id: fromSession, to_session_id: toSession }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível promover o lote.");
+      await fetchSummary(tolerance);
+      onComplete();
+    } finally {
+      setPromotingBatch(false);
     }
   };
 
@@ -126,10 +146,10 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
         <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 text-emerald-600 mb-2">
             <CheckCircle2 className="h-4 w-4" />
-            <span className="text-[10px] font-bold uppercase">Alunos Aptos</span>
+            <span className="text-[10px] font-bold uppercase">Migração provisória</span>
           </div>
           <div className="text-3xl font-black text-slate-900">{summary?.counts.aptos}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Sinal verde para promoção.</p>
+          <p className="text-[10px] text-slate-400 mt-1">Notas serão revistas depois da virada.</p>
         </div>
 
         <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
@@ -144,11 +164,27 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
         <div className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 text-rose-600 mb-2">
             <XCircle className="h-4 w-4" />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Bloqueados (Notas)</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">Revisão posterior</span>
           </div>
           <div className="text-3xl font-black text-slate-900">{summary?.counts.retidos}</div>
-          <p className="text-[10px] text-slate-400 mt-1">Reprovados academicamente.</p>
+          <p className="text-[10px] text-slate-400 mt-1">A classe será confirmada pela secretaria.</p>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-emerald-900">Migrar alunos provisoriamente</h3>
+          <p className="mt-1 text-xs text-emerald-700">A migração não exige notas lançadas; a secretaria confirma a classe de cada aluno depois.</p>
+        </div>
+        <Button
+          size="sm"
+          tone="gold"
+          loading={promotingBatch}
+          disabled={promotingBatch || promotingId !== null || !summary?.lists.aptos_ids?.length}
+          onClick={() => void promoteAptosBatch()}
+        >
+          Migrar todos ({summary?.counts.aptos ?? 0})
+        </Button>
       </div>
 
       {/* 2. Filtro de Busca */}
