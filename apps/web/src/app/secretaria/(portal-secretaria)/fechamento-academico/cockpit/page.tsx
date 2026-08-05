@@ -24,6 +24,7 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Progress } from "@/components/ui/Progress";
 import { Button } from "@/components/ui/Button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { formatTurmaDisplayName } from "@/utils/formatters";
 
 interface TurmaItem {
   id: string;
@@ -217,7 +218,7 @@ export default function CockpitPedagogicoPage() {
   const currentTurmaLabel = useMemo(() => {
     const found = turmas.find((t) => t.id === selectedTurmaId);
     if (!found) return "";
-    return `${found.turma_nome} (${found.classe_nome || ""} - ${found.curso_nome || ""})`;
+    return formatTurmaDisplayName({ nome: found.turma_nome, turno: found.turno });
   }, [turmas, selectedTurmaId]);
 
   // Copy Reminder Message
@@ -290,7 +291,7 @@ export default function CockpitPedagogicoPage() {
                 ) : (
                   turmas.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.turma_nome} {t.classe_nome ? `· ${t.classe_nome}` : ""} {t.turno ? `(${t.turno})` : ""}
+                      {formatTurmaDisplayName({ nome: t.turma_nome, turno: t.turno })}
                     </option>
                   ))
                 )}

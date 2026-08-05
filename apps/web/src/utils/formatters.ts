@@ -88,6 +88,28 @@ export const formatTurmaDisplayName = (turma: TurmaDisplayInput) => {
     .split("-")
     .map(cleanTurmaToken)
     .filter(Boolean);
+
+  // Exemplo de código técnico de 4 partes: PRE-Pré-Escolar-M-A, ESG-7ª Classe-T-B, TI-10ª Classe-M-A, ENF-10ª Classe-M-A
+  if (rawParts.length >= 4) {
+    const possibleTurno = TURMA_TURNO_LABELS[rawParts[rawParts.length - 2].toUpperCase()];
+    if (possibleTurno) {
+      const prefix = rawParts[0].toUpperCase();
+      const levelPart = normalizeTurmaLevelName(rawParts.slice(1, -2).join("-"));
+      const turmaLetra = rawParts[rawParts.length - 1];
+      const finalTurno = providedTurnoLabel || possibleTurno;
+      const turnoSuffix = finalTurno ? ` (${finalTurno})` : "";
+
+      // Ignora siglas padrão de nível de ensino (PRE, EP, ESG) na exibição abreviada para manter foco na classe
+      if (["PRE", "EP", "ESG"].includes(prefix)) {
+        return `${levelPart} — Turma ${turmaLetra}${turnoSuffix}`;
+      } else {
+        // Cursos do Ensino Médio / Técnico (ex: TI, TG, ENF, AC, CONT, ELT, etc.)
+        const cursoSiglaOrNome = TURMA_CURSO_LABELS[prefix] ?? prefix;
+        return `${cursoSiglaOrNome} — ${levelPart} — Turma ${turmaLetra}${turnoSuffix}`;
+      }
+    }
+  }
+
   const embeddedTurnoLabel = rawParts.length >= 4 ? formatTurnoDisplay(rawParts[rawParts.length - 2]) : "";
   const turnoLabel = providedTurnoLabel || embeddedTurnoLabel;
 
@@ -97,7 +119,7 @@ export const formatTurmaDisplayName = (turma: TurmaDisplayInput) => {
     if (levelTokens.length > 1 && isInternalTurmaPrefix(levelTokens[0])) levelTokens.shift();
 
     const levelName = normalizeTurmaLevelName(joinTurmaLevelTokens(levelTokens));
-    if (levelName && turmaPart) return `${levelName} - Turma ${turmaPart}`;
+    if (levelName && turmaPart) return `${levelName} — Turma ${turmaPart}${turnoLabel ? ` (${turnoLabel})` : ""}`;
   }
 
   const classMatch = originalName.match(/(\d{1,2}\s*[ªº]?\s*Classe)/i);
@@ -115,7 +137,7 @@ export const formatTurmaDisplayName = (turma: TurmaDisplayInput) => {
   if (!turmaPart) return className;
 
   const publicTurmaPart = /^turma\s+/i.test(turmaPart) ? turmaPart : `Turma ${turmaPart}`;
-  return `${className} - ${publicTurmaPart}`;
+  return `${className} — ${publicTurmaPart}${turnoLabel ? ` (${turnoLabel})` : ""}`;
 };
 
 export const formatTurmaOptionDisplay = (
@@ -124,7 +146,6 @@ export const formatTurmaOptionDisplay = (
 ) => {
   const parts = [
     formatTurmaDisplayName(turma),
-    formatTurnoDisplay(turma.turno ?? turma.turma_turno) || inferTurnoFromTurmaName(turma.nome ?? turma.turma_nome),
     disponibilidadeLabel,
   ].filter(Boolean);
 
@@ -151,32 +172,22 @@ export const formatTurmaName = (turma: any, includeCourse = false) => {
 
 const TURMA_CURSO_LABELS: Record<string, string> = {
   TI: "Téc. Informática",
-  CFB: "Ciências Fís.Bio.",
+  CFB: "Ciências Físicas e Bio.",
   EP: "Ens. Primário",
-  ESG: "Ens. Sec. Geral",
+  ESG: "Ens. Secundário Geral",
   TG: "Téc. Gestão",
+  ENF: "Enfermagem",
+  AC: "Análises Clínicas",
+  CONT: "Contabilidade",
+  FIN: "Finanças",
+  ELT: "Electrónica",
+  MEC: "Mecânica",
+  DIR: "Direito",
+  ECO: "Economia",
+  CJ: "Ciências Jurídicas e Económicas",
 };
 
 export const formatTurmaNomeHumano = (raw?: string | null, cursoNome?: string | null) => {
   if (!raw) return "Sem nome";
-  const displayName = formatTurmaDisplayName({ nome: raw });
-  if (displayName !== raw) return displayName;
-
-  const match = raw.trim().match(/^([A-Z]{2,4})-(\d{1,2})-([MTN])-(\w)$/i);
-  if (!match) return raw;
-
-  const [, siglaRaw, anoRaw, turnoRaw, letraRaw] = match;
-  const sigla = siglaRaw.toUpperCase();
-  const curso = TURMA_CURSO_LABELS[sigla] ?? cursoNome?.trim();
-  if (!curso) return raw;
-
-  const anoNum = Number(anoRaw);
-  if (Number.isNaN(anoNum)) return raw;
-
-  const turno = TURMA_TURNO_LABELS[turnoRaw.toUpperCase()];
-  if (!turno) return raw;
-
-  const letra = letraRaw.toUpperCase();
-
-  return `${curso} · ${anoNum}ª · ${turno} · Turma ${letra}`;
+  return formatTurmaDisplayName({ nome: raw });
 };
