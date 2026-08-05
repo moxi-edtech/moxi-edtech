@@ -162,8 +162,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O template não pode ser anterior ao ano ativo" }, { status: 409 });
     }
 
-    const offeringById = new Map((educationOfferings ?? []).map((offering: { id: string; education_subsystem: string }) => [offering.id, offering]));
-    const templateById = new Map(templateList.map((template: { id: string; subsistema: string | null }) => [template.id, template]));
+    const offeringById = new Map<string, { id: string; education_subsystem: string }>(
+      (educationOfferings ?? []).map((offering: { id: string; education_subsystem: string }) => [offering.id, offering])
+    );
+    const templateById = new Map<string, { id: string; subsistema: string | null }>(
+      templateList.map((template: { id: string; subsistema: string | null }) => [template.id, template])
+    );
     for (const mapping of scopedMappings) {
       const offering = offeringById.get(mapping.offering_id as string);
       const template = templateById.get(mapping.template_id);
@@ -182,11 +186,15 @@ export async function POST(request: Request) {
       .eq("escola_id", escolaId)));
 
     const primaryTemplate = templateList[0];
+    const targetAcademicYear = activeYear
+      ? Math.max(primaryTemplate.ano_base, activeYear.ano + 1)
+      : primaryTemplate.ano_base;
+
     const { data: existingTarget } = await supabase
       .from("anos_letivos")
       .select("id,ano,ativo")
       .eq("escola_id", escolaId)
-      .eq("ano", primaryTemplate.ano_base)
+      .eq("ano", targetAcademicYear)
       .maybeSingle();
 
     let targetId = existingTarget?.id ?? null;
@@ -194,7 +202,7 @@ export async function POST(request: Request) {
       const { data: created, error: createError } = await supabase.rpc("setup_active_ano_letivo", {
         p_escola_id: escolaId,
         p_ano_data: {
-          ano: primaryTemplate.ano_base,
+          ano: targetAcademicYear,
           data_inicio: primaryTemplate.data_inicio,
           data_fim: primaryTemplate.data_fim,
           ativo: false,
@@ -211,7 +219,7 @@ export async function POST(request: Request) {
         .from("anos_letivos")
         .select("id")
         .eq("escola_id", escolaId)
-        .eq("ano", primaryTemplate.ano_base)
+        .eq("ano", targetAcademicYear)
         .single();
       targetId = target?.id ?? null;
     }
@@ -305,7 +313,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       reused: Boolean(existingTarget),
-      target_session: { id: targetId, ano: primaryTemplate.ano_base, ativo: false, has_data: false },
+      target_session: { id: targetId, ano: targetAcademicYear, ativo: false, has_data: false },
       templates: templateList.map((template) => ({
         id: template.id,
         nome: template.nome,
