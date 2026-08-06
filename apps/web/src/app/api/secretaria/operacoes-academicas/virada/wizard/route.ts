@@ -41,7 +41,43 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ ok: true, wizard: wizard || null });
+    if (!wizard) return NextResponse.json({ ok: true, wizard: null });
+
+    // O ledger/auditoria é a fonte de verdade da virada. O payload do wizard
+    // pode ter sido gravado antes da UI persistir `cutover_completed`.
+    const { data: latestCutover } = await supabase
+      .from("audit_logs")
+      .select("entity_id,details,created_at")
+      .eq("escola_id", escolaId)
+      .like("action", "ANO_LETIVO_CUTOVER%")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const wizardPayload = (wizard.payload && typeof wizard.payload === "object" && !Array.isArray(wizard.payload))
+      ? wizard.payload as Record<string, unknown>
+      : {};
+    const targetSessionId = typeof wizardPayload.target_session_id === "string"
+      ? wizardPayload.target_session_id
+      : null;
+    const auditTargetSessionId = typeof latestCutover?.entity_id === "string"
+      ? latestCutover.entity_id
+      : typeof (latestCutover?.details as Record<string, unknown> | null)?.to_session_id === "string"
+        ? String((latestCutover?.details as Record<string, unknown>).to_session_id)
+        : null;
+    const cutoverCompleted = wizardPayload.cutover_completed === true
+      || (Boolean(auditTargetSessionId) && (!targetSessionId || targetSessionId === auditTargetSessionId));
+
+    return NextResponse.json({
+      ok: true,
+      wizard: {
+        ...wizard,
+        payload: {
+          ...wizardPayload,
+          ...(cutoverCompleted ? { cutover_completed: true, target_session_id: targetSessionId || auditTargetSessionId } : {}),
+        },
+      },
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

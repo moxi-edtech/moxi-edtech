@@ -145,6 +145,12 @@ export function ViradaWizard() {
     }
   };
 
+  const sourceSessionId = String(
+    payload.source_session_id || health?.previous_year?.id || health?.active_year?.id || ""
+  );
+  const targetSessionId = String(payload.target_session_id || "");
+  const cutoverAlreadyCompleted = payload.cutover_completed === true;
+
   // 3. Ações de Correção (Low Friction)
   const handleFixSessions = async () => {
     setFixingSessions(true);
@@ -403,16 +409,17 @@ export function ViradaWizard() {
           {currentStep === 1 && (
             <PromotionStep
               onComplete={() => {}}
-              fromSession={health?.active_year?.id || ''}
-              toSession={payload?.target_session_id || ''}
+              fromSession={sourceSessionId}
+              toSession={targetSessionId}
             />
           )}
           {currentStep === 2 && (
             <ExecuteStep 
-                onComplete={() => {}} 
-                fromSession={health?.active_year?.id || ''} 
-                toSession={payload?.target_session_id || ''}
+                onComplete={() => { void saveProgress(2, { cutover_completed: true }); }}
+                fromSession={sourceSessionId}
+                toSession={targetSessionId}
                 retroactivePending={retroactivePending}
+                completed={cutoverAlreadyCompleted}
             />
           )}
 

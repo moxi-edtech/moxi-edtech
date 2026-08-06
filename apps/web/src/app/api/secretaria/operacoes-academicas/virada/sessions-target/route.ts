@@ -162,7 +162,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O template não pode ser anterior ao ano ativo" }, { status: 409 });
     }
 
-    const offeringById = new Map((educationOfferings ?? []).map((offering: { id: string; education_subsystem: string }) => [offering.id, offering]));
+    const offeringById = new Map(
+      ((educationOfferings ?? []) as Array<{ id: string; education_subsystem: string }>)
+        .map((offering) => [offering.id, offering] as const)
+    );
     const templateById = new Map(templateList.map((template: { id: string; subsistema: string | null }) => [template.id, template]));
     for (const mapping of scopedMappings) {
       const offering = offeringById.get(mapping.offering_id as string);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -37,6 +37,24 @@ type PromotionSummary = {
   };
 };
 
+type ReviewStudent = {
+  matricula_id: string;
+  aluno_id: string;
+  nome: string;
+  turma_id: string | null;
+  numero_matricula: string | number | null;
+  status: string | null;
+};
+
+type ReviewTurma = {
+  id: string;
+  nome: string;
+  turno: string | null;
+  classe_nome: string | null;
+  capacidade_maxima: number | null;
+  ocupacao_atual: number;
+};
+
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
 export function PromotionStep({ onComplete, fromSession, toSession }: { onComplete: () => void; fromSession: string; toSession: string }) {
@@ -47,11 +65,19 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
   const [searchTerm, setSearchTerm] = useState("");
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [promotingBatch, setPromotingBatch] = useState(false);
+  const [reviewStudents, setReviewStudents] = useState<ReviewStudent[]>([]);
+  const [reviewTurmas, setReviewTurmas] = useState<ReviewTurma[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
+  const [reviewSearch, setReviewSearch] = useState("");
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const fetchSummary = async (tol: number) => {
     setLoading(true);
     try {
-        const res = await fetch(`/api/secretaria/operacoes-academicas/virada/promotion-summary?tolerance=${tol}`);
+        const params = new URLSearchParams({ tolerance: String(tol) });
+        if (fromSession) params.set("from_session_id", fromSession);
+        const res = await fetch(`/api/secretaria/operacoes-academicas/virada/promotion-summary?${params.toString()}`, { cache: "no-store" });
         const json = await res.json();
         if (json.ok) setSummary(json.summary);
     } finally {
@@ -61,7 +87,52 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
 
   useEffect(() => {
     fetchSummary(tolerance);
-  }, [tolerance]);
+  }, [tolerance, fromSession]);
+
+  const fetchReviewList = useCallback(async () => {
+    if (!toSession) return;
+    setReviewLoading(true);
+    setReviewError(null);
+    try {
+      const response = await fetch(`/api/secretaria/operacoes-academicas/virada/review-list?to_session_id=${encodeURIComponent(toSession)}`, { cache: "no-store" });
+      const json = await response.json();
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a revisão.");
+      setReviewStudents(json.students ?? []);
+      setReviewTurmas(json.turmas ?? []);
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : "Não foi possível carregar a revisão.");
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [toSession]);
+
+  useEffect(() => {
+    void fetchReviewList();
+  }, [fetchReviewList]);
+
+  const reclassifyStudent = async (student: ReviewStudent, turmaDestinoId: string) => {
+    if (!turmaDestinoId || turmaDestinoId === student.turma_id) return;
+    setReclassifyingId(student.matricula_id);
+    setReviewError(null);
+    try {
+      const response = await fetch("/api/secretaria/operacoes-academicas/virada/reclassify-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matricula_id: student.matricula_id,
+          turma_destino_id: turmaDestinoId,
+          motivo: "Revisão de classe após virada sem fricção",
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível reclassificar o aluno.");
+      await fetchReviewList();
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : "Não foi possível reclassificar o aluno.");
+    } finally {
+      setReclassifyingId(null);
+    }
+  };
 
   const promoteStudent = async (studentId: string) => {
     setPromotingId(studentId);
@@ -273,11 +344,73 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
           </div>
       </div>
 
+      <section className="rounded-2xl border border-violet-100 bg-violet-50/40 p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-violet-950">Revisão de classe após a virada</h3>
+            <p className="mt-1 max-w-2xl text-xs text-violet-800">
+              Depois da migração, confirme a turma efetiva de cada aluno. A matrícula e o número permanente permanecem os mesmos.
+            </p>
+          </div>
+          <Button size="sm" tone="gray" variant="ghost" loading={reviewLoading} onClick={() => void fetchReviewList()}>
+            Atualizar lista
+          </Button>
+        </div>
+        {reviewError && <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{reviewError}</p>}
+        <div className="mt-4 flex items-center gap-3">
+          <Search className="h-4 w-4 text-violet-300" />
+          <input
+            type="search"
+            value={reviewSearch}
+            onChange={(event) => setReviewSearch(event.target.value)}
+            placeholder="Pesquisar aluno na revisão..."
+            className="h-9 flex-1 rounded-lg border border-violet-100 bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-violet-200"
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-violet-500">{reviewStudents.length} migrados</span>
+        </div>
+        {reviewLoading && reviewStudents.length === 0 ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-violet-400" /></div>
+        ) : reviewStudents.length === 0 ? (
+          <p className="mt-4 rounded-lg border border-dashed border-violet-200 bg-white/70 px-3 py-4 text-center text-xs text-violet-700">
+            Ainda não há matrículas no ano destino. Execute a migração provisória para abrir esta revisão.
+          </p>
+        ) : (
+          <div className="mt-4 max-h-96 space-y-2 overflow-y-auto pr-1">
+            {reviewStudents
+              .filter((student) => student.nome.toLowerCase().includes(reviewSearch.toLowerCase()))
+              .map((student) => (
+                <div key={student.matricula_id} className="flex flex-col gap-3 rounded-xl border border-violet-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-slate-800">{student.nome}</p>
+                    <p className="text-[10px] text-slate-400">Matrícula {student.numero_matricula ?? "—"} · {student.status ?? "ativa"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={student.turma_id ?? ""}
+                      disabled={reclassifyingId !== null}
+                      onChange={(event) => void reclassifyStudent(student, event.target.value)}
+                      className="h-9 min-w-56 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 disabled:opacity-60"
+                    >
+                      <option value="">Sem turma destino</option>
+                      {reviewTurmas.map((turma) => (
+                        <option key={turma.id} value={turma.id}>
+                          {turma.nome}{turma.classe_nome ? ` · ${turma.classe_nome}` : ""} · {turma.ocupacao_atual}/{turma.capacidade_maxima ?? "∞"}
+                        </option>
+                      ))}
+                    </select>
+                    {reclassifyingId === student.matricula_id && <Loader2 className="h-4 w-4 animate-spin text-violet-500" />}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </section>
+
       <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 flex gap-3 shadow-sm">
           <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-800 leading-relaxed font-medium">
               Esta simulação utiliza o estado atual do <strong>Ledger Financeiro</strong> e o <strong>Histórico de Notas</strong>. 
-              Ao avançar, os alunos bloqueados não serão transportados para o novo ano, permanecendo em estado de "pendência" na secretaria.
+              Ao avançar, os alunos bloqueados não serão transportados para o novo ano, permanecendo em estado de &quot;pendência&quot; na secretaria.
           </p>
       </div>
 

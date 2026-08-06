@@ -286,20 +286,28 @@ export default function FluxosConfiguracaoPage() {
   };
 
   const handleOpenFormalAdmissions = async () => {
-    if (!escolaId || !formalAdmissionsReady) return;
+    const targetYear = admissionReadiness?.ano_letivo ?? anoLetivoAdmissoes;
+    if (!escolaId || !formalAdmissionsReady || !targetYear) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/secretaria/admissoes/config", {
-        method: "PATCH",
+      const start = new Date();
+      const end = new Date(start);
+      end.setDate(end.getDate() + 30);
+      const res = await fetch("/api/secretaria/operacoes-academicas/proximo-ano", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ escolaId, abrir_admissoes_formais: true }),
+        body: JSON.stringify({
+          ano_letivo: targetYear,
+          data_inicio: start.toISOString(),
+          data_fim: end.toISOString(),
+        }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(formatApiError(json?.error, "Não foi possível abrir candidaturas"));
+      if (!res.ok) throw new Error(formatApiError(json?.error, "Não foi possível abrir inscrições e rematrículas"));
       setFormalAdmissionsOpen(true);
-      success("Candidaturas formais abertas para o ano configurado.");
+      success("Inscrições e rematrículas abertas para o ano configurado.");
     } catch (err) {
-      toastError("Não foi possível abrir candidaturas", err instanceof Error ? err.message : "Resolva os requisitos pendentes e tente novamente.");
+      toastError("Não foi possível abrir inscrições", err instanceof Error ? err.message : "Resolva os requisitos pendentes e tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -408,7 +416,7 @@ export default function FluxosConfiguracaoPage() {
           {formalAdmissionsReady && !formalAdmissionsOpen && modoPortalAdmissoes === "ingresso_imediato" && (
             <div className="mt-4 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-relaxed text-emerald-900">
-                O ano está pronto. Abra as candidaturas formais para publicar o formulário no portal da escola.
+                O ano está pronto. Abra uma única janela para publicar candidaturas e permitir rematrículas pelo portal do aluno.
               </p>
               <button
                 type="button"
@@ -416,13 +424,13 @@ export default function FluxosConfiguracaoPage() {
                 disabled={saving}
                 className="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
               >
-                {saving ? "A abrir..." : "Abrir candidaturas formais"}
+                {saving ? "A abrir..." : "Abrir inscrições e rematrículas"}
               </button>
             </div>
           )}
           {formalAdmissionsReady && formalAdmissionsOpen && modoPortalAdmissoes === "ingresso_imediato" && (
             <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-              Candidaturas formais abertas para {admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.
+              Inscrições e rematrículas abertas para {admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.
             </p>
           )}
           {modoPortalAdmissoes === "pre_candidatura_proximo_ano" && (

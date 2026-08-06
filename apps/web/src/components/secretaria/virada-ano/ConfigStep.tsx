@@ -198,7 +198,10 @@ export function ConfigStep({
       if (json.ok) {
         success("Próximo ano preparado com sucesso!");
         setResult(json.result?.summary ?? {});
-        await saveProgress(0, { target_session_id: selectedTarget });
+        await saveProgress(0, {
+          source_session_id: currentSession?.id,
+          target_session_id: selectedTarget,
+        });
         onComplete();
       } else {
         error(json.error || "Falha na clonagem.");

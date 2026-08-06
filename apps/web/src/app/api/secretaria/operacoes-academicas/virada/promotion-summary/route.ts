@@ -38,6 +38,7 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const tolerance = Number(url.searchParams.get("tolerance") || 0);
+    const requestedFromSessionId = url.searchParams.get("from_session_id");
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
@@ -56,6 +57,15 @@ export async function GET(request: Request) {
 
     if (!anoAtivo) return NextResponse.json({ ok: false, error: "Nenhum ano letivo ativo." });
 
+    const sourceSessionId = requestedFromSessionId || anoAtivo.id;
+    const { data: sourceSession } = await supabase
+      .from("anos_letivos")
+      .select("id, ano")
+      .eq("escola_id", escolaId)
+      .eq("id", sourceSessionId)
+      .maybeSingle();
+    if (!sourceSession) return NextResponse.json({ ok: false, error: "Ano de origem não encontrado." }, { status: 400 });
+
     // 2. Buscar Dados do Ledger e Matrículas (Simulação)
     const { data: alunos, error } = await supabase
       .from("vw_matriculas_validas")
@@ -67,7 +77,7 @@ export async function GET(request: Request) {
         classe_nome
       `)
       .eq("escola_id", escolaId)
-      .eq("session_id", anoAtivo.id);
+      .eq("session_id", sourceSession.id);
 
     if (error) throw error;
 
@@ -125,7 +135,8 @@ export async function GET(request: Request) {
             retidos
         }
       },
-      ano_ativo: anoAtivo
+      ano_ativo: anoAtivo,
+      ano_origem: sourceSession
     });
 
   } catch (e: unknown) {

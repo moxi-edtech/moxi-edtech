@@ -17,11 +17,11 @@ type CutoverResponse = {
   result?: Record<string, unknown>;
 };
 
-export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePending = false }: { onComplete: () => void, fromSession: string, toSession: string, retroactivePending?: boolean }) {
+export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePending = false, completed = false }: { onComplete: () => void, fromSession: string, toSession: string, retroactivePending?: boolean, completed?: boolean }) {
   const [confirming, setConfirming] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [allowRetroactivePending, setAllowRetroactivePending] = useState(retroactivePending);
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(completed ? {} : null);
   
   const { success, error: toastError } = useToast();
 

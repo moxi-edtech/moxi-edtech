@@ -53,11 +53,18 @@ export async function POST(request: Request) {
       }
     }
 
+    const { data: reclassificationSync, error: reclassificationSyncError } = await (supabase as any).rpc("sync_reclassificacoes_virada", {
+      p_escola_id: escolaId,
+      p_origem_session_id: parsed.data.from_session_id,
+      p_destino_session_id: parsed.data.to_session_id,
+    });
+
     return NextResponse.json({
       ok: failures.length === 0,
       promoted,
       reused,
       failures,
+      reclassification_sync: reclassificationSyncError ? { ok: false, error: reclassificationSyncError.message } : reclassificationSync,
       summary: {
         requested: alunoIds.length,
         promoted: promoted.length,

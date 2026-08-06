@@ -33,7 +33,16 @@ export async function POST(request: Request) {
       p_to_session_id: parsed.data.to_session_id,
     });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 409 });
-    return NextResponse.json({ ok: true, result: data });
+    const { data: reclassificationSync, error: reclassificationSyncError } = await (supabase as any).rpc("sync_reclassificacoes_virada", {
+      p_escola_id: escolaId,
+      p_origem_session_id: parsed.data.from_session_id,
+      p_destino_session_id: parsed.data.to_session_id,
+    });
+    return NextResponse.json({
+      ok: true,
+      result: data,
+      reclassification_sync: reclassificationSyncError ? { ok: false, error: reclassificationSyncError.message } : reclassificationSync,
+    });
   } catch (error: unknown) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Erro interno" }, { status: 500 });
   }
