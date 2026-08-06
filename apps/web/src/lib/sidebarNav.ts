@@ -74,6 +74,8 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Activity",
       children: [
         { href: "/escola/[escolaId]/operacoes/academico", label: "Visão geral" },
+        { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
+        { href: "/escola/[escolaId]/operacoes/academico/reclassificacao-finalistas", label: "Reclassificação de Finalistas" },
         { href: "/escola/[escolaId]/admin/operacoes-academicas/wizard", label: "Virada 2026/2027" },
         { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico", label: "Fechamento Trimestral" },
         { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico/cockpit", label: "Cockpit de Prontidão" },
@@ -290,7 +292,16 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações", icon: "Archive" },
     { href: "/escola/[escolaId]/secretaria/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
-    { href: "/escola/[escolaId]/secretaria/operacoes-academicas", label: "Operações Acadêmicas", icon: "Activity" },
+    {
+      href: "/escola/[escolaId]/secretaria/operacoes-academicas",
+      label: "Operações Acadêmicas",
+      icon: "Activity",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/operacoes-academicas", label: "Visão geral" },
+        { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
+        { href: "/escola/[escolaId]/secretaria/operacoes-academicas/reclassificacao-finalistas", label: "Reclassificação de Finalistas" },
+      ],
+    },
     { href: "/escola/[escolaId]/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
     {
       href: "/escola/[escolaId]/secretaria/relatorios",
@@ -307,6 +318,9 @@ export const sidebarConfig: SidebarConfig = {
   financeiro: [
     { href: "/escola/[escolaId]/financeiro", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/financeiro/turmas-alunos", label: "Turmas & Alunos", icon: "UsersRound" },
+    { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário escolar", icon: "CalendarDays" },
+    { href: "/escola/[escolaId]/operacoes/academico/reclassificacao-finalistas", label: "Reclassificação de Finalistas", icon: "GraduationCap", badge: "Académico" },
+    { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", icon: "AlertTriangle", badge: "Resolver" },
     {
       href: "/escola/[escolaId]/financeiro/pagamentos",
       label: "Pagamentos",

@@ -8,6 +8,7 @@ import { buildCutoverHealthReport } from "@/lib/operacoes-academicas/cutover-hea
 import type { Database } from "~types/supabase";
 import { CutoverResolveActions } from "@/components/secretaria/virada-ano/CutoverResolveActions";
 import { RetroactivePendingPanel } from "@/components/secretaria/virada-ano/RetroactivePendingPanel";
+import { NextYearFlowCard } from "@/components/secretaria/operacoes/NextYearFlowCard";
 
 type FechamentoJob = {
   run_id: string;
@@ -212,15 +213,34 @@ export default async function OperacoesAcademicasPage({
               { label: "Operações Académicas" },
             ]}
           />
-          <div>
+          <div className="flex items-center gap-4 flex-wrap">
             <Link
               href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
               className="text-xs font-semibold text-klasse-green hover:underline"
             >
               Abrir wizard simplificado
             </Link>
+
+            <Link
+              href={buildPortalHref(escolaParam, "/secretaria/operacoes-academicas/reclassificacao-finalistas")}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold hover:bg-amber-100 transition shadow-2xs"
+            >
+              <GraduationCap className="h-4 w-4 text-[#9a7010]" />
+              <span>Reclassificação de Finalistas</span>
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#E3B23C] text-slate-950 text-[10px] font-black">
+                Entrada rápida
+              </span>
+            </Link>
+            <Link
+              href={buildPortalHref(escolaParam, "/operacoes/academico/pendencias-pos-virada")}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800 transition hover:bg-slate-100"
+            >
+              Pendências pós-virada
+            </Link>
           </div>
         </div>
+
+        <NextYearFlowCard href={(path) => buildPortalHref(escolaParam, path)} />
 
         <RetroactivePendingPanel />
 
