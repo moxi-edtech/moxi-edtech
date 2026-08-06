@@ -12,6 +12,7 @@ import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmon
 import { useRouter, usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
+import { ReceiptBlockReclassificacaoModal } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 // Fonte de verdade: nunca usar cores avulsas fora deste mapa.
@@ -657,6 +658,7 @@ function usePagamentoSubmit({
   onPagamentosConcluidos,
   safeClose,
   onSuccess,
+  setReclassificacaoBlockOpen,
 }: {
   aluno:          ModalPagamentoRapidoProps["aluno"];
   mensalidadesSelecionadas: MensalidadeOption[];
@@ -669,6 +671,7 @@ function usePagamentoSubmit({
   onPagamentosConcluidos: (p: PagamentoConcluido[]) => void;
   safeClose:      () => void;
   onSuccess?:     () => void;
+  setReclassificacaoBlockOpen: (open: boolean) => void;
 }) {
   const [processando, setProcessando] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -755,6 +758,10 @@ function usePagamentoSubmit({
             body: JSON.stringify({ mensalidadeId: mensalidade.id }),
           });
           const reciboJson = await reciboRes.json().catch(() => ({}));
+          if (reciboRes.status === 409 && reciboJson?.code === "MATRICULA_AGUARDANDO_RECLASSIFICACAO") {
+            setReclassificacaoBlockOpen(true);
+            throw new Error(reciboJson.error || "Este aluno aguarda reclassificação de finalista antes de emitir o recibo.");
+          }
           if (reciboRes.ok && reciboJson?.ok) {
             reciboId = typeof reciboJson.doc_id === "string" ? reciboJson.doc_id : reciboId;
             reciboUrlValidacao = typeof reciboJson.url_validacao === "string" ? reciboJson.url_validacao : null;
@@ -861,6 +868,7 @@ export function ModalPagamentoRapido({
   const [loadingPagamentosPagos, setLoadingPagamentosPagos] = useState(false);
   const [reversedPagamentoIds, setReversedPagamentoIds] = useState<Set<string>>(new Set());
   const [revertingPagamentoId, setRevertingPagamentoId] = useState<string | null>(null);
+  const [reclassificacaoBlockOpen, setReclassificacaoBlockOpen] = useState(false);
   const [printReadyCount, setPrintReadyCount] = useState(0);
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
@@ -1091,6 +1099,7 @@ export function ModalPagamentoRapido({
     onRecibos:   (payload) => setRecibos(payload),
     onPagamentosConcluidos: (payload) => setPagamentosConcluidos(payload),
     safeClose, onSuccess,
+    setReclassificacaoBlockOpen,
   });
 
   // ── Teclado ──────────────────────────────────────────────────────────────
@@ -1388,6 +1397,16 @@ export function ModalPagamentoRapido({
           onPrintReady={() => setPrintReadyCount((count) => count + 1)}
         />
       ))}
+
+      <ReceiptBlockReclassificacaoModal
+        open={reclassificacaoBlockOpen}
+        alunoId={aluno.id}
+        onClose={() => setReclassificacaoBlockOpen(false)}
+        onResolved={() => {
+          setReclassificacaoBlockOpen(false);
+          submit();
+        }}
+      />
     </>
   );
 }
