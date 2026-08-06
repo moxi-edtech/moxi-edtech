@@ -20,6 +20,7 @@ export type CutoverHealthReport = {
   escola_id: string;
   generated_at: string;
   active_year: ActiveAno;
+  previous_year: ActiveAno;
   metrics: {
     turmas_session_id_null: number;
     matriculas_session_id_null: number;
@@ -216,6 +217,15 @@ export async function buildCutoverHealthReport(
 
   const activeYearRow = activeAnoRes.data
     ? { id: String(activeAnoRes.data.id), ano: Number(activeAnoRes.data.ano), ativo: Boolean(activeAnoRes.data.ativo) }
+    : null;
+
+  const previousYearRow = activeYearRow
+    ? ((anosLetivosRes.data ?? []) as Array<{ id: string; ano: number; ativo?: boolean }>)
+        .filter((row) => Number(row.ano) < activeYearRow.ano)
+        .sort((a, b) => Number(b.ano) - Number(a.ano))[0]
+    : undefined;
+  const previousYear = previousYearRow
+    ? { id: String(previousYearRow.id), ano: Number(previousYearRow.ano), ativo: Boolean(previousYearRow.ativo) }
     : null;
 
   const knownYears = normalizeYearCounts(
@@ -475,6 +485,7 @@ export async function buildCutoverHealthReport(
     escola_id: escolaId,
     generated_at: new Date().toISOString(),
     active_year: activeYearRow,
+    previous_year: previousYear,
     metrics: {
       turmas_session_id_null: turmasSessionNull,
       matriculas_session_id_null: matriculasSessionNull,

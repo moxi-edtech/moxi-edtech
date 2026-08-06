@@ -14,10 +14,20 @@ interface Event {
   cor_hex?: string;
 }
 
+interface AcademicYear {
+  id: string;
+  ano: number;
+  ativo?: boolean | null;
+  data_inicio: string;
+  data_fim: string;
+}
+
 export default function CalendarioPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [years, setYears] = useState<AcademicYear[]>([]);
+  const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -28,10 +38,13 @@ export default function CalendarioPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/secretaria/calendario");
+      const query = selectedYearId ? `?ano_letivo_id=${encodeURIComponent(selectedYearId)}` : "";
+      const res = await fetch(`/api/secretaria/calendario${query}`, { cache: "no-store" });
       const json = await res.json();
       if (json.ok) {
         setEvents(json.items);
+        setYears(json.anos_letivos || []);
+        if (!selectedYearId && json.ano_letivo?.id) setSelectedYearId(json.ano_letivo.id);
       }
     } catch (e) {
       setError("Falha ao carregar eventos.");
@@ -42,7 +55,7 @@ export default function CalendarioPage() {
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [selectedYearId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +104,20 @@ export default function CalendarioPage() {
           { label: "Calendário" },
         ]}
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Contexto académico</p>
+          <p className="text-xs font-semibold text-slate-700">A mostrar eventos da escola no ano letivo selecionado.</p>
+        </div>
+        <select
+          value={selectedYearId ?? ""}
+          onChange={(event) => setSelectedYearId(event.target.value || null)}
+          className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+        >
+          {years.map((year) => <option key={year.id} value={year.id}>{year.ano}/{year.ano + 1}{year.ativo ? " · ativo" : ""}</option>)}
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>

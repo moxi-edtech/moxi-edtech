@@ -427,3 +427,40 @@ Aplicação oficial futura e reconciliação
 ```
 
 O staging não escreve diretamente em `notas` ou `matriculas`. A aplicação oficial será uma fase separada, transacional e aprovada depois que a planilha real permitir mapear disciplinas, avaliações e períodos sem ambiguidade.
+
+## 13. Estado operacional dos portais — Curtume — 2026-08-06
+
+O ano letivo ativo da escola é `2026` (período escolar 2026/2027). O ano anterior `2025` está arquivado.
+
+### Secretaria
+
+- Pode receber e gerir candidaturas no backoffice.
+- Pode criar/confirmar matrículas manualmente quando a candidatura for formal e houver turma do ano ativo.
+- A conversão oficial usa `/api/secretaria/admissoes/convert`; a rota legada de confirmação de candidatura está encerrada.
+- Pré-candidaturas não podem ser convertidas diretamente em matrícula.
+
+### Portal público de candidaturas
+
+No estado remoto atual, `modo_portal_admissoes = pre_candidatura_proximo_ano`, sem ano formal configurado. Portanto:
+
+- o portal recebe pré-candidaturas;
+- grava-as como `pre_candidatura`, sem ano letivo formal;
+- não efetiva matrícula;
+- candidaturas formais para 2026/2027 exigem abertura explícita do ano e do modo formal.
+
+### Portal do aluno
+
+O endpoint de rematrícula procura uma janela aberta para um ano superior ao ano atual. Não há janela aberta para o Curtume após a janela de 2025 já expirada. Logo, a rematrícula pelo portal ainda não está operacional.
+
+### Próximo desbloqueio
+
+Para fechar o fluxo ponta a ponta, a escola deve:
+
+1. abrir candidatura formal para o ano ativo 2026, sem criar uma janela de rematrícula para 2026;
+2. criar/preparar o ano destino 2027/2028 pelo wizard;
+3. abrir a janela acoplada de candidaturas e rematrículas para 2027;
+4. validar uma candidatura pública e uma rematrícula no portal do aluno antes de comunicar a abertura.
+
+O endpoint de abertura do próximo ano rejeita explicitamente anos menores ou iguais ao ano ativo. Essa proteção evita que uma ação de “abrir inscrições e rematrículas” crie uma janela inválida para o ciclo corrente.
+
+Quando o ano ativo estiver pronto, a UI pode sair diretamente de pré-candidatura para candidatura formal. A rematrícula continua reservada ao ano futuro: a API rejeita a ativação isolada de uma janela sem candidatura formal aberta para o mesmo ano.

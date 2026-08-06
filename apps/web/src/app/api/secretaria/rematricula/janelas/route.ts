@@ -29,6 +29,10 @@ const DeleteSchema = z.object({
   id: z.string().uuid(),
 });
 
+class IntakePolicyError extends Error {
+  readonly status = 409;
+}
+
 async function requireAccess(req: Request) {
   const supabase = await supabaseServerTyped();
   const { data: { user } } = await supabase.auth.getUser();
@@ -62,6 +66,36 @@ function assertWindowDates(dataInicio: string, dataFim: string) {
   }
 }
 
+async function assertCoupledFutureIntake(access: { supabase: any; escolaId: string }, anoLetivo: number) {
+  const [{ data: activeYear, error: activeYearError }, { data: school, error: schoolError }] = await Promise.all([
+    access.supabase
+      .from("anos_letivos")
+      .select("ano")
+      .eq("escola_id", access.escolaId)
+      .eq("ativo", true)
+      .maybeSingle(),
+    access.supabase
+      .from("escolas")
+      .select("config_portal_admissao")
+      .eq("id", access.escolaId)
+      .maybeSingle(),
+  ]);
+
+  if (activeYearError) throw activeYearError;
+  if (schoolError) throw schoolError;
+  if (activeYear?.ano !== undefined && anoLetivo <= Number(activeYear.ano)) {
+    throw new IntakePolicyError("A rematrícula só pode ser aberta para um ano posterior ao ano letivo ativo.");
+  }
+
+  const config = school?.config_portal_admissao;
+  const formalYear = config && typeof config === "object" && !Array.isArray(config)
+    ? Number((config as Record<string, unknown>).ano_letivo_formais_aberto)
+    : NaN;
+  if (!Number.isInteger(formalYear) || formalYear !== anoLetivo) {
+    throw new IntakePolicyError("Abra primeiro as candidaturas formais do mesmo ano; candidaturas e rematrículas usam uma única janela.");
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const access = await requireAccess(req);
@@ -88,7 +122,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, items: janelas ?? [], anos: anos ?? [] });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
   }
 }
 
@@ -116,6 +150,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Ano letivo não existe para esta escola" }, { status: 400 });
     }
 
+    if (parsed.data.ativa) {
+      await assertCoupledFutureIntake({ supabase: access.supabase as any, escolaId: access.escolaId }, parsed.data.ano_letivo);
+    }
+
     const { data, error } = await (access.supabase as any)
       .from("rematricula_janelas")
       .insert({
@@ -141,7 +179,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, item: data });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
   }
 }
 
@@ -159,6 +197,19 @@ export async function PATCH(req: Request) {
       assertWindowDates(parsed.data.data_inicio, parsed.data.data_fim);
     }
 
+    let existingWindow: { ano_letivo: number; ativa: boolean } | null = null;
+    if (parsed.data.ano_letivo !== undefined || parsed.data.ativa === true) {
+      const { data: currentWindow, error: currentWindowError } = await (access.supabase as any)
+        .from("rematricula_janelas")
+        .select("ano_letivo, ativa")
+        .eq("id", parsed.data.id)
+        .eq("escola_id", access.escolaId)
+        .maybeSingle();
+      if (currentWindowError) throw currentWindowError;
+      if (!currentWindow) return NextResponse.json({ ok: false, error: "Janela não encontrada" }, { status: 404 });
+      existingWindow = currentWindow;
+    }
+
     if (parsed.data.ano_letivo !== undefined) {
       const { data: anoRow, error: anoError } = await access.supabase
         .from("anos_letivos")
@@ -171,6 +222,12 @@ export async function PATCH(req: Request) {
       if (!anoRow) {
         return NextResponse.json({ ok: false, error: "Ano letivo não existe para esta escola" }, { status: 400 });
       }
+    }
+
+    const effectiveYear = parsed.data.ano_letivo ?? existingWindow?.ano_letivo;
+    const effectiveActive = parsed.data.ativa ?? existingWindow?.ativa;
+    if (effectiveYear !== undefined && effectiveActive) {
+      await assertCoupledFutureIntake({ supabase: access.supabase as any, escolaId: access.escolaId }, effectiveYear);
     }
 
     const patch: Record<string, unknown> = {
@@ -200,7 +257,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, item: data });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: err instanceof IntakePolicyError ? err.status : 500 });
   }
 }
 

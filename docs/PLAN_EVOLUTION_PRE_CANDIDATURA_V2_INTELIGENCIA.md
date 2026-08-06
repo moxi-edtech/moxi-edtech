@@ -64,3 +64,21 @@ Migrar operações em lote (como promover 500 candidatos) para um modelo assínc
 
 ---
 *KLASSE V2 — Transformando intenção em faturamento.*
+
+## 5. Contrato operacional atual — não confundir pré-candidatura com matrícula
+
+No Curtume e nas escolas que usam o modo `pre_candidatura_proximo_ano`, o portal público pode recolher intenção, mas não pode criar matrícula formal. A pré-candidatura deve permanecer com `ano_letivo = null` e estado `pre_candidatura` até que a escola publique o ano, turmas e janela formais.
+
+O fluxo de conversão é deliberadamente separado:
+
+```text
+Pré-candidatura pública
+        ↓ preparação do ano e abertura formal
+Candidatura formal com ano/turma
+        ↓ análise/aprovação e eventual pagamento
+Matrícula no ano letivo da turma
+```
+
+A secretaria pode operar manualmente a conversão quando o ano e a turma estiverem definidos. O portal do aluno só pode oferecer rematrícula quando existir uma `rematricula_janela` ativa, vigente e com `ano_letivo` superior ao ano corrente do aluno.
+
+Critério de comunicação: nunca apresentar uma pré-candidatura como vaga reservada, rematrícula confirmada ou matrícula efetivada.

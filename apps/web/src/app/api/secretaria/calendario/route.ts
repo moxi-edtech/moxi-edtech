@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 
 export async function GET(req: Request) {
@@ -26,25 +25,77 @@ export async function GET(req: Request) {
     });
     if (roleError) return roleError;
 
-    let query = supabase
-      .from('vw_eventos_escola_unificados')
-      .select('id, escola_id, nome, descricao, data_inicio, data_fim, tipo, publico_alvo, cor_hex')
-      .eq('escola_id', escolaId);
+    const requestedYearId = url.searchParams.get("ano_letivo_id");
+    const requestedYear = Number(url.searchParams.get("ano"));
+    const yearsQuery = supabase
+      .from("anos_letivos")
+      .select("id, ano, ativo, data_inicio, data_fim")
+      .eq("escola_id", escolaId)
+      .order("ano", { ascending: false })
+      .limit(20);
+    const { data: years, error: yearsError } = await yearsQuery;
+    if (yearsError) return NextResponse.json({ ok: false, error: yearsError.message }, { status: 400 });
 
-    query = applyKf2ListInvariants(query, {
-      defaultLimit: 100,
-      order: [{ column: "data_inicio", ascending: true }],
-      tieBreakerColumn: "id",
-    });
+    const selectedYear = requestedYearId
+      ? (years ?? []).find((year: any) => year.id === requestedYearId)
+      : Number.isInteger(requestedYear) && requestedYear > 0
+        ? (years ?? []).find((year: any) => Number(year.ano) === requestedYear)
+        : (years ?? []).find((year: any) => year.ativo) ?? years?.[0];
+    if (!selectedYear) return NextResponse.json({ ok: true, items: [], anos_letivos: years ?? [], ano_letivo: null });
 
-    const { data, error } = await query;
+    const rangeStart = String(selectedYear.data_inicio);
+    const rangeEnd = String(selectedYear.data_fim);
 
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-    }
+    const [{ data: genericEvents, error: genericError }, { data: academicEvents, error: academicError }] = await Promise.all([
+      supabase
+      .from('events')
+      .select('id, escola_id, titulo, descricao, inicio_at, fim_at, publico_alvo')
+      .eq('escola_id', escolaId),
+      supabase
+      .from('calendario_eventos')
+      .select('id, escola_id, nome, data_inicio, data_fim, tipo, cor_hex')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', selectedYear.id)
+      .gte('data_fim', rangeStart)
+      .lte('data_inicio', rangeEnd),
+    ]);
+    if (genericError || academicError) return NextResponse.json({ ok: false, error: (genericError || academicError)?.message }, { status: 400 });
 
-    return NextResponse.json({ ok: true, items: data });
+    const startMs = new Date(rangeStart).getTime();
+    const endMs = new Date(rangeEnd).getTime();
+    const items = [
+      ...(genericEvents ?? [])
+        .filter((event: any) => {
+          const start = new Date(event.inicio_at).getTime();
+          const end = new Date(event.fim_at ?? event.inicio_at).getTime();
+          return start <= endMs && end >= startMs;
+        })
+        .map((event: any) => ({
+          id: event.id,
+          escola_id: event.escola_id,
+          nome: event.titulo,
+          descricao: event.descricao,
+          data_inicio: event.inicio_at,
+          data_fim: event.fim_at ?? event.inicio_at,
+          tipo: "EVENTO_GERAL",
+          publico_alvo: event.publico_alvo,
+          cor_hex: "#64748b",
+        })),
+      ...(academicEvents ?? []).map((event: any) => ({
+        id: event.id,
+        escola_id: event.escola_id,
+        nome: event.nome,
+        descricao: "Evento do Calendário Académico",
+        data_inicio: event.data_inicio,
+        data_fim: event.data_fim,
+        tipo: event.tipo,
+        publico_alvo: "todos",
+        cor_hex: event.cor_hex,
+      })),
+    ].sort((a, b) => String(a.data_inicio).localeCompare(String(b.data_inicio)));
 
+    const limitedItems = items.slice(0, 100);
+    return NextResponse.json({ ok: true, items: limitedItems, anos_letivos: years ?? [], ano_letivo: selectedYear });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

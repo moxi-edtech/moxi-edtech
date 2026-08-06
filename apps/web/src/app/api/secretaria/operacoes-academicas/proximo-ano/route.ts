@@ -137,6 +137,18 @@ export async function POST(request: Request) {
     ]);
     if (!targetYear) return NextResponse.json({ ok: false, error: "Prepare este ano letivo antes de abrir inscrições." }, { status: 409 });
 
+    const { data: activeYear } = await db
+      .from("anos_letivos")
+      .select("ano")
+      .eq("escola_id", escolaId)
+      .eq("ativo", true)
+      .order("ano", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (activeYear?.ano !== undefined && ano_letivo <= Number(activeYear.ano)) {
+      return NextResponse.json({ ok: false, error: "Para abrir candidaturas do ano ativo, use a configuração de admissões. Esta operação é exclusiva para o próximo ano e rematrículas." }, { status: 409 });
+    }
+
     const { data: readiness, error: readinessError } = await db.rpc("get_school_operational_readiness", {
       p_escola_id: escolaId,
       p_ano_letivo: ano_letivo,

@@ -330,3 +330,24 @@ POST /api/secretaria/operacoes-academicas/pos-virada
 ```
 
 O endpoint nunca aceita o ano letivo vindo da UI para decidir a operação: ele resolve o ano ativo e o anterior no servidor. A tela deve sempre mostrar “origem → destino”, permitir atualizar os dados e remover o aluno da lista somente após confirmação do servidor.
+
+## 14. Estado dos fluxos de entrada e rematrícula
+
+O contexto da escola deve ser visível para evitar que o utilizador confunda três operações diferentes:
+
+| Operação | Estado no Curtume | Resultado esperado |
+|---|---|---|
+| Candidatura pública | Pré-candidatura aberta | Regista intenção, sem matrícula nem ano formal |
+| Candidatura formal | Ainda não aberta | Só deve abrir após ano/turmas/preçário prontos |
+| Rematrícula pelo portal do aluno | Sem janela vigente | Não mostrar botão de confirmação |
+| Matrícula pela secretaria | Disponível para operação manual | Exige candidatura formal/turma ou cadastro assistido |
+
+Quando a escola abrir o fluxo formal, a UI deve apresentar uma única ação contextual para abrir candidaturas e rematrículas do mesmo ano, sem misturar uma pré-candidatura com uma matrícula efetiva. A mensagem deve indicar claramente o ano: “Candidatura para 2026/2027” ou “Rematrícula para 2027/2028”.
+
+Regra de ação:
+
+- se o ano escolhido for o ano ativo, o botão abre apenas candidaturas formais;
+- se o ano escolhido for posterior ao ativo, o botão abre candidaturas e a janela de rematrícula desse mesmo ano;
+- o backend rejeita tentativas de abrir a operação de “próximo ano” para o ano ativo ou para um ano anterior;
+- o endpoint de janelas não permite ativar rematrícula sem candidatura formal aberta para o mesmo ano futuro;
+- se o modo atual for pré-candidatura e o ano ativo estiver pronto, mostrar “Abrir candidaturas formais” como ação direta.

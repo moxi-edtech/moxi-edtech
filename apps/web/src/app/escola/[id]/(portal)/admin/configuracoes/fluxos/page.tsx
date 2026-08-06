@@ -190,7 +190,10 @@ export default function FluxosConfiguracaoPage() {
             ? json.anos_letivos.find((ano: AnoLetivoOption) => ano.ativo)?.ano ?? json.anos_letivos[0]?.ano
             : null;
           const readinessYear = configuredYear ?? fallbackYear ?? null;
-          setFormalAdmissionsOpen(json?.admissoes?.ano_letivo_formais_aberto === null || json?.admissoes?.ano_letivo_formais_aberto === readinessYear);
+          setFormalAdmissionsOpen(
+            Number.isInteger(readinessYear)
+              && json?.admissoes?.ano_letivo_formais_aberto === readinessYear,
+          );
           if (readinessYear) {
             const readinessRes = await fetch(
               `/api/escola/${encodeURIComponent(escolaId as string)}/admin/setup/status?ano=${readinessYear}`,
@@ -290,22 +293,36 @@ export default function FluxosConfiguracaoPage() {
     if (!escolaId || !formalAdmissionsReady || !targetYear) return;
     setSaving(true);
     try {
+      const currentYear = anosLetivos.find((ano) => ano.ativo)?.ano ?? null;
+      const isCurrentYear = currentYear !== null && targetYear === currentYear;
       const start = new Date();
       const end = new Date(start);
       end.setDate(end.getDate() + 30);
-      const res = await fetch("/api/secretaria/operacoes-academicas/proximo-ano", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ano_letivo: targetYear,
-          data_inicio: start.toISOString(),
-          data_fim: end.toISOString(),
-        }),
-      });
+      const res = isCurrentYear
+        ? await fetch("/api/secretaria/admissoes/config", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              escolaId,
+              ano_letivo_admissoes: targetYear,
+              modo_portal_admissoes: "ingresso_imediato",
+              abrir_admissoes_formais: true,
+            }),
+          })
+        : await fetch("/api/secretaria/operacoes-academicas/proximo-ano", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ano_letivo: targetYear,
+              data_inicio: start.toISOString(),
+              data_fim: end.toISOString(),
+            }),
+          });
       const json = await res.json();
       if (!res.ok) throw new Error(formatApiError(json?.error, "Não foi possível abrir inscrições e rematrículas"));
+      if (isCurrentYear) setModoPortalAdmissoes("ingresso_imediato");
       setFormalAdmissionsOpen(true);
-      success("Inscrições e rematrículas abertas para o ano configurado.");
+      success(isCurrentYear ? "Candidaturas formais abertas para o ano ativo." : "Candidaturas e rematrículas abertas para o próximo ano.");
     } catch (err) {
       toastError("Não foi possível abrir inscrições", err instanceof Error ? err.message : "Resolva os requisitos pendentes e tente novamente.");
     } finally {
@@ -335,6 +352,8 @@ export default function FluxosConfiguracaoPage() {
     ];
   }, [admissionReadiness]);
   const formalAdmissionsReady = admissionChecks.length > 0 && admissionChecks.every((check) => check.ok);
+  const targetYear = admissionReadiness?.ano_letivo ?? anoLetivoAdmissoes;
+  const targetYearIsCurrent = targetYear !== null && targetYear === anoLetivoOperacional;
 
   return (
     <>
@@ -413,10 +432,12 @@ export default function FluxosConfiguracaoPage() {
               </Link>
             </div>
           )}
-          {formalAdmissionsReady && !formalAdmissionsOpen && modoPortalAdmissoes === "ingresso_imediato" && (
+          {formalAdmissionsReady && !formalAdmissionsOpen && (
             <div className="mt-4 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-relaxed text-emerald-900">
-                O ano está pronto. Abra uma única janela para publicar candidaturas e permitir rematrículas pelo portal do aluno.
+                {targetYearIsCurrent
+                  ? "O ano está pronto. Abra as candidaturas formais para novas entradas neste ano letivo."
+                  : "O ano está pronto. Abra uma única janela para publicar candidaturas e permitir rematrículas pelo portal do aluno."}
               </p>
               <button
                 type="button"
@@ -424,13 +445,15 @@ export default function FluxosConfiguracaoPage() {
                 disabled={saving}
                 className="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
               >
-                {saving ? "A abrir..." : "Abrir inscrições e rematrículas"}
+                {saving ? "A abrir..." : targetYearIsCurrent ? "Abrir candidaturas formais" : "Abrir inscrições e rematrículas"}
               </button>
             </div>
           )}
           {formalAdmissionsReady && formalAdmissionsOpen && modoPortalAdmissoes === "ingresso_imediato" && (
             <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-              Inscrições e rematrículas abertas para {admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.
+              {targetYearIsCurrent
+                ? `Candidaturas formais abertas para ${admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.`
+                : `Inscrições e rematrículas abertas para ${admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.`}
             </p>
           )}
           {modoPortalAdmissoes === "pre_candidatura_proximo_ano" && (

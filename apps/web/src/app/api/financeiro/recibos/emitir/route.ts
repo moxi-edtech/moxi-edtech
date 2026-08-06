@@ -320,6 +320,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { data: reclassificacaoPendente } = await supabaseAny
+      .from("matricula_reclassificacoes")
+      .select("id,tipo")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", mensalidade.aluno_id)
+      .eq("status", "aguardando_destino")
+      .limit(1)
+      .maybeSingle();
+    if (reclassificacaoPendente) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Não é possível emitir recibo enquanto o aluno aguarda definição de destino académico.",
+          code: "MATRICULA_AGUARDANDO_RECLASSIFICACAO",
+          reclassificacao_tipo: reclassificacaoPendente.tipo,
+        },
+        { status: 409 }
+      );
+    }
+
     const valorRecibo = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
     if (!Number.isFinite(valorRecibo) || valorRecibo <= 0) {
       return NextResponse.json(
