@@ -5,6 +5,7 @@ export const PAPEIS_ESCOLA_VALIDOS = [
   'admin',
   'staff_admin',
   'secretaria',
+  'admin_secretaria',
   'financeiro',
   'secretaria_financeiro',
   'admin_financeiro',
@@ -45,7 +46,8 @@ export const K12_OPERACOES_PRIMARY_ROLE = 'admin_financeiro' as const satisfies 
 
 export const K12_OPERACOES_ROLE_GROUP = [
   ...K12_ADMIN_ROLE_GROUP,
-  ...K12_SECRETARIA_ROLE_GROUP,
+  'admin_financeiro',
+  'admin_secretaria',
 ] as const satisfies readonly PapelEscola[]
 
 export const K12_SECRETARIA_OPERACIONAL_ROLE_GROUP = [
@@ -69,6 +71,7 @@ export const K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP = [
 
 export const K12_ADMIN_SECRETARIA_ROLE_GROUP = [
   'admin_escola',
+  'admin_secretaria',
   'secretaria',
   'admin',
   'staff_admin',

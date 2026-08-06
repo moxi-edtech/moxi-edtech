@@ -7,6 +7,7 @@ export type Papel =
   | 'staff_admin'
   | 'financeiro'
   | 'secretaria'
+  | 'admin_secretaria'
   | 'secretaria_financeiro'
   | 'admin_financeiro'
   | 'aluno'
@@ -72,6 +73,7 @@ export type GlobalRole =
   | 'professor'
   | 'aluno'
   | 'secretaria'
+  | 'admin_secretaria'
   | 'financeiro'
   | 'secretaria_financeiro'
   | 'admin_financeiro'
@@ -112,7 +114,7 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
     financeiro: 'financeiro',
     secretaria_financeiro: 'secretaria_financeiro',
     admin_financeiro: 'admin_financeiro',
-    admin_secretaria: 'admin_escola',
+    admin_secretaria: 'admin_secretaria',
     professor: 'professor',
     aluno: 'aluno',
     encarregado: 'encarregado',
@@ -251,6 +253,8 @@ const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
     'enviar_comunicado',
     'visualizar_relatorios_academicos',
   ]),
+
+  admin_secretaria: ADMIN_PERMISSIONS,
 
   professor: new Set<Permission>([
     'lançar_notas',
@@ -412,6 +416,8 @@ export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): 
       return 'secretaria_financeiro'
     case 'admin_financeiro':
       return 'admin_financeiro'
+    case 'admin_secretaria':
+      return 'admin_secretaria'
     case 'professor':
       return 'professor'
     case 'aluno':
@@ -445,10 +451,11 @@ export function getDefaultK12PortalPathForRole(
       return '/super-admin'
     case 'admin':
     case 'admin_escola':
-    case 'admin_secretaria':
     case 'staff_admin':
       return escolaSegment ? `${escolaSegment}/admin/dashboard` : '/admin'
     case 'admin_financeiro':
+      return escolaSegment ? `${escolaSegment}/operacoes/dashboard` : '/operacoes/dashboard'
+    case 'admin_secretaria':
       return escolaSegment ? `${escolaSegment}/operacoes/dashboard` : '/operacoes/dashboard'
     case 'secretaria':
     case 'secretaria_financeiro':

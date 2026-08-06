@@ -32,7 +32,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         .eq("user_id", user.id)
         .maybeSingle();
       const papel = String(vinculo?.papel ?? "").trim().toLowerCase();
-      if (papel === K12_OPERACOES_PRIMARY_ROLE) {
+      if (papel === K12_OPERACOES_PRIMARY_ROLE || papel === "admin_secretaria") {
         redirect(getDefaultK12PortalPathForRole(papel, escolaParam));
       }
 

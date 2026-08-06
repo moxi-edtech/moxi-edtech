@@ -9,6 +9,7 @@ export type Role =
   | "super_admin"
   | "financeiro"
   | "admin_financeiro"
+  | "admin_secretaria"
   | "secretaria_financeiro"
   | "admin_escola"
   | "staff_admin"

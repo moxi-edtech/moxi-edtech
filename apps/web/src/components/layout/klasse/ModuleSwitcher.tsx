@@ -55,6 +55,7 @@ export function ModuleSwitcherInner({
         ? ["secretaria", "operacoes", "financeiro"]
         : ["operacoes", "financeiro"];
     }
+    if (papel === "admin_secretaria") return ["operacoes"];
     if (papel === "secretaria_financeiro") return ["secretaria", "financeiro"];
     return [];
   }, [currentModule, papel]);

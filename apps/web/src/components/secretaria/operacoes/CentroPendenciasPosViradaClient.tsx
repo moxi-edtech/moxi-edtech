@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw, WalletCards, ShieldAlert, GraduationCap, FileCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, WalletCards, ShieldAlert, GraduationCap, FileCheck, X } from "lucide-react";
+import { ReclassificacaoFinalistasClient } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
 
 type PendingRow = {
   id: string;
@@ -24,13 +24,14 @@ const tabs = [
   ["revisao", "Revisão"],
 ] as const;
 
-export function CentroPendenciasPosViradaClient({ finalistasHref = "/", reviewHref = "/" }: { finalistasHref?: string; reviewHref?: string }) {
+export function CentroPendenciasPosViradaClient() {
   const [data, setData] = useState<ResponseState | null>(null);
   const [filter, setFilter] = useState<(typeof tabs)[number][0]>("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [resolutionRow, setResolutionRow] = useState<PendingRow | null>(null);
 
   async function load() {
     setLoading(true);
@@ -59,6 +60,7 @@ export function CentroPendenciasPosViradaClient({ finalistasHref = "/", reviewHr
       const json = await response.json();
       if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível promover o aluno");
       await load();
+      setResolutionRow(null);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao promover aluno"); }
     finally { setBusy(null); }
   }
@@ -213,23 +215,24 @@ export function CentroPendenciasPosViradaClient({ finalistasHref = "/", reviewHr
                   )}
 
                   {row.motivo === "finalista" && (
-                    <Link
-                      href={finalistasHref}
+                    <button
+                      type="button"
+                      onClick={() => setResolutionRow(row)}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-[#E3B23C] hover:bg-[#d8a733] px-4 py-2 text-xs font-bold text-slate-950 transition shadow-2xs"
                     >
                       <span>Resolver destino</span>
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </Link>
+                    </button>
                   )}
 
                   {row.motivo === "revisao" && (
-                    <Link
-                      href={reviewHref}
+                    <button
+                      type="button"
+                      onClick={() => setResolutionRow(row)}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition shadow-2xs"
                     >
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                       <span>Abrir revisão</span>
-                    </Link>
+                    </button>
                   )}
                 </div>
               </div>
@@ -264,6 +267,52 @@ export function CentroPendenciasPosViradaClient({ finalistasHref = "/", reviewHr
           </div>
         )}
       </div>
+
+      {resolutionRow && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Resolver pendência pós-virada">
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Resolução rápida</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">{resolutionRow.nome}</h2>
+                <p className="mt-1 text-xs text-slate-500">{resolutionRow.turma} · {resolutionRow.estado}</p>
+              </div>
+              <button type="button" onClick={() => setResolutionRow(null)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Fechar resolução">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+              {resolutionRow.motivo === "finalista" && resolutionRow.reclassificacao_id ? (
+                <ReclassificacaoFinalistasClient
+                  initialAlunoId={resolutionRow.aluno_id}
+                  isModalContext
+                  onResolved={() => {
+                    setResolutionRow(null);
+                    void load();
+                  }}
+                />
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    <p className="font-bold">Revisão necessária</p>
+                    <p className="mt-1 text-xs leading-relaxed">Este aluno ficou no ano anterior sem dívida identificada. O KLASSE tentará promover para a turma correspondente do ano atual; se não existir uma turma compatível, a mensagem indicará a decisão que a secretaria precisa tomar.</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy === resolutionRow.id}
+                    onClick={() => void promote(resolutionRow)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#18542e] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {busy === resolutionRow.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Tentar resolver agora
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

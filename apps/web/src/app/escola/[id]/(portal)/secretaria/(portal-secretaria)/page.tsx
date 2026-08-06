@@ -41,7 +41,7 @@ export default async function SecretariaLandingPage({
   const papel = (vinculo?.papel ?? null) as string | null;
 
   const normalizedPapel = String(papel ?? "").trim().toLowerCase();
-  if (normalizedPapel === K12_OPERACOES_PRIMARY_ROLE) {
+  if (normalizedPapel === K12_OPERACOES_PRIMARY_ROLE || normalizedPapel === "admin_secretaria") {
     const qp = new URLSearchParams(sp as Record<string, string> | undefined);
     const query = qp.toString();
     const dest = `/escola/${escolaParam}/operacoes/dashboard`;

@@ -351,3 +351,13 @@ Regra de ação:
 - o backend rejeita tentativas de abrir a operação de “próximo ano” para o ano ativo ou para um ano anterior;
 - o endpoint de janelas não permite ativar rematrícula sem candidatura formal aberta para o mesmo ano futuro;
 - se o modo atual for pré-candidatura e o ano ativo estiver pronto, mostrar “Abrir candidaturas formais” como ação direta.
+
+### Resolução sem navegação
+
+Na página **Pendências pós-virada**, cada ação deve resolver o caso no próprio contexto:
+
+- dívida: ação imediata na linha, após regularização financeira;
+- finalista: abrir o Centro de Reclassificação em modal/drawer, mantendo o aluno e os filtros da fila;
+- revisão: abrir um modal de decisão e executar a tentativa de resolução sem encaminhar para outra página.
+
+Links para `/operacoes/academico/reclassificacao-finalistas` ou `/operacoes/rematricula` não devem ser usados como única forma de resolver uma pendência.
