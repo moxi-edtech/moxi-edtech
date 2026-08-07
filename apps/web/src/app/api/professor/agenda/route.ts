@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import type { Database } from '~types/supabase'
+import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 type QuadroRow = { slot_id: string | null; turma_id: string | null; disciplina_id: string | null; sala_id: string | null }
 type SlotRow = { id: string; turno_id: string | null; ordem: number | null; inicio: string | null; fim: string | null; dia_semana: number | null; is_intervalo: boolean | null }
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
@@ -24,6 +25,11 @@ export async function GET() {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: new URL(req.url).searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    })
 
     const { data: prof } = await applyKf2ListInvariants(
       supabase
@@ -96,8 +102,9 @@ export async function GET() {
         ? applyKf2ListInvariants(
             supabase
               .from('turmas')
-              .select('id, nome, sala')
+              .select('id, nome, sala, session_id')
               .eq('escola_id', escolaId)
+              .eq('session_id', academicContext.anoLetivoId)
               .in('id', turmaIds)
           )
         : Promise.resolve({ data: [] as TurmaRow[] }),
@@ -162,8 +169,11 @@ export async function GET() {
       })
       .filter(Boolean)
 
-    return NextResponse.json({ ok: true, items })
+    return NextResponse.json({ ok: true, context: academicContext, items })
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.code, message: err.message }, { status: err.status })
+    }
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

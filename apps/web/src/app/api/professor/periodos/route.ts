@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 const Query = z.object({
   turma_id: z.string().uuid(),
@@ -23,6 +24,15 @@ export async function GET(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+    const academicContext = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: new URL(req.url).searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    })
+    await assertAcademicYearEntity(supabase as any, {
+      table: 'turmas', entityId: parsed.data.turma_id,
+      escolaId: academicContext.escolaId, anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const { data: professor } = await supabase
       .from('professores')
@@ -53,22 +63,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à turma' }, { status: 403 })
     }
 
-    const { data: anoLetivo } = await supabase
-      .from('anos_letivos')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('ano', turma.ano_letivo)
-      .maybeSingle()
-
-    if (!anoLetivo?.id) {
-      return NextResponse.json({ ok: true, items: [] })
-    }
-
     const { data: periodos, error: periodosError } = await supabase
       .from('periodos_letivos')
       .select('id, numero, tipo, data_inicio, data_fim')
       .eq('escola_id', escolaId)
-      .eq('ano_letivo_id', anoLetivo.id)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
       .eq('tipo', 'TRIMESTRE')
       .order('numero', { ascending: true })
       .order('id', { ascending: true })
@@ -78,8 +77,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 })
     }
 
-    return NextResponse.json({ ok: true, items: periodos || [] })
+    return NextResponse.json({ ok: true, context: academicContext, items: periodos || [] })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

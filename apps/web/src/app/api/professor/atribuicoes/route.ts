@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import type { Database } from '~types/supabase'
+import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -51,6 +52,11 @@ export async function GET(req: Request) {
     // Resolve escola ativa
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    })
 
     const { data: professor } = await supabase
       .from('professores')
@@ -79,7 +85,12 @@ export async function GET(req: Request) {
     }
 
     if (Array.isArray(rpcItems) && rpcItems.length > 0) {
-      const items = rpcItems.map((row: any) => ({
+      const rpcTurmaIds = Array.from(new Set(rpcItems.map((row: any) => row.turma_id).filter(Boolean)))
+      const { data: rpcTurmas } = rpcTurmaIds.length
+        ? await supabase.from('turmas').select('id').eq('escola_id', escolaId).eq('session_id', academicContext.anoLetivoId).in('id', rpcTurmaIds)
+        : { data: [] as Array<{ id: string }> }
+      const allowedRpcTurmas = new Set((rpcTurmas ?? []).map((row: { id: string }) => row.id))
+      const items = rpcItems.filter((row: any) => allowedRpcTurmas.has(row.turma_id)).map((row: any) => ({
         id: row.turma_disciplina_id,
         turma_disciplina_id: row.turma_disciplina_id,
         curso_matriz_id: row.curso_matriz_id,
@@ -109,9 +120,10 @@ export async function GET(req: Request) {
     const turmaMetaRows = turmaIds.length
       ? await supabase
           .from('turmas')
-          .select('id, nome, curso_id, classe_id, status_fecho')
+          .select('id, nome, curso_id, classe_id, status_fecho, session_id')
           .in('id', turmaIds)
           .eq('escola_id', escolaId)
+          .eq('session_id', academicContext.anoLetivoId)
       : { data: [] as TurmaMetaRow[] }
 
     const turmaMeta = (turmaMetaRows as { data?: TurmaMetaRow[] }).data || []
@@ -273,6 +285,7 @@ export async function GET(req: Request) {
       return NextResponse.json({
         ok: true,
         escola_id: escolaId,
+        context: academicContext,
         items: fallbackItems,
         ...(debug
           ? {
@@ -299,6 +312,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       escola_id: escolaId,
+      context: academicContext,
       items,
       ...(debug
         ? {
@@ -322,6 +336,9 @@ export async function GET(req: Request) {
         : {}),
     })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

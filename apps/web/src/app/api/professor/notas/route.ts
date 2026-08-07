@@ -5,8 +5,10 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { markOutboxEventFailed } from '@/lib/outbox'
 import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
 import type { Database } from '~types/supabase'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 const Body = z.object({
+  ano_letivo_id: z.string().uuid(),
   turma_id: z.string().uuid(),
   disciplina_id: z.string().uuid().optional(),
   turma_disciplina_id: z.string().uuid().optional(),
@@ -48,6 +50,16 @@ export async function POST(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }
+
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: body.ano_letivo_id,
+      operation: 'WRITE',
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas', entityId: body.turma_id,
+      escolaId: academicContext.escolaId, anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const { data: existingIdempotency } = await supabase
       .from('idempotency_keys')
@@ -129,7 +141,10 @@ export async function POST(req: Request) {
     const disciplinaNome = body.disciplina_nome ?? (disciplinaRow as any)?.nome ?? null
     const turmaNome = (turmaRow as any)?.nome ?? null
 
-    const responsePayload = { ok: true, data, turma_nome: turmaNome, disciplina_nome: disciplinaNome };
+    const responsePayload = {
+      ok: true, data, turma_nome: turmaNome, disciplina_nome: disciplinaNome,
+      context: academicContext,
+    };
 
     await supabase.from('idempotency_keys').upsert(
       {
@@ -168,6 +183,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(responsePayload);
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     if (supabase && escolaId && idempotencyKey && !mutationCommitted) {
       try {

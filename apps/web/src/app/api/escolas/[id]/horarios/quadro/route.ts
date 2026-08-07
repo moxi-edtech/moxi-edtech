@@ -5,11 +5,13 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { emitirEvento } from '@/lib/eventos/emitirEvento'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const BodySchema = z.object({
+  ano_letivo_id: z.string().uuid(),
   versao_id: z.string().uuid().optional(),
   turma_id: z.string().uuid(),
   items: z.array(
@@ -71,10 +73,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!turmaId) {
       return NextResponse.json({ ok: false, error: 'turma_id é obrigatório' }, { status: 400 })
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas', entityId: turmaId, escolaId: escolaIdResolved,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const effectiveVersionId = await resolveVersionForRead(supabase, escolaIdResolved, turmaId, versaoId)
     if (!effectiveVersionId) {
-      return NextResponse.json({ ok: true, items: [], versao_id: null })
+      return NextResponse.json({ ok: true, context: academicContext, items: [], versao_id: null })
     }
 
     let quadroQuery = supabase
@@ -93,10 +104,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
-    const response = NextResponse.json({ ok: true, versao_id: effectiveVersionId, items: data || [] })
+    const response = NextResponse.json({ ok: true, context: academicContext, versao_id: effectiveVersionId, items: data || [] })
     response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
     return response
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
@@ -121,6 +135,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
+
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: 'WRITE',
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas', entityId: parsed.data.turma_id, escolaId: escolaIdResolved,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const mode = parsed.data.mode ?? 'draft'
     const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
@@ -329,10 +353,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     emitObs('success', 200, { published: false, versao_id: versaoId })
-    const response = NextResponse.json({ ok: true, versao_id: versaoId, status: 'draft', items: data || [] })
+    const response = NextResponse.json({ ok: true, context: academicContext, versao_id: versaoId, status: 'draft', items: data || [] })
     response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
     return response
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
@@ -358,6 +385,15 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
     if (!versaoId || !turmaId) {
       return NextResponse.json({ ok: false, error: 'versao_id e turma_id são obrigatórios' }, { status: 400 })
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get('ano_letivo_id'),
+      operation: 'WRITE',
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas', entityId: turmaId, escolaId: escolaIdResolved,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const { data: versaoData } = await supabase
       .from('horario_versoes')
@@ -388,8 +424,11 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
       .eq('turma_id', turmaId)
       .neq('status', 'publicada')
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, context: academicContext })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

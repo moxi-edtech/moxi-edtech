@@ -10,6 +10,7 @@ import {
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 import type { Database } from '~types/supabase'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 type ProfessorRow = { id: string }
 type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
@@ -73,6 +74,15 @@ export async function GET(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 400 })
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas', entityId: turmaIdValue,
+      escolaId: academicContext.escolaId, anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const admin = supabase
 
@@ -145,6 +155,7 @@ export async function GET(req: Request) {
       .select('id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaIdValue)
+      .eq('session_id', academicContext.anoLetivoId)
       .eq('disciplina_id', disciplinaIdValue)
       .eq('professor_id', professorId)
       .maybeSingle()
@@ -394,6 +405,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(payload)
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ error: e.code, message: e.message }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: message }, { status: 500 })
   }

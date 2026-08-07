@@ -46,6 +46,7 @@ export default function ProfessorNotasPage() {
 
 function ProfessorNotasContent() {
   const searchParams = useSearchParams()
+  const anoLetivoId = searchParams?.get("ano_letivo_id") ?? ""
   const highlightAlunoId = searchParams?.get("alunoId") ?? null
   const [atribs, setAtribs] = useState<Atrib[]>([])
   const [loadingAtribs, setLoadingAtribs] = useState(true)
@@ -115,6 +116,7 @@ function ProfessorNotasContent() {
         const params = new URLSearchParams({
           turmaId,
           disciplinaId,
+          ...(anoLetivoId ? { ano_letivo_id: anoLetivoId } : {}),
           detalhado: "1",
           trimestre: String(trimestreSelecionado),
         })
@@ -150,7 +152,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId, trimestreSelecionado])
+  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId])
 
   useEffect(() => {
     if (!turmaId) {
@@ -160,7 +162,9 @@ function ProfessorNotasContent() {
 
     let active = true
     const load = async () => {
-      const res = await fetch(`/api/professor/periodos?turma_id=${turmaId}`, { cache: "no-store" })
+      const periodosParams = new URLSearchParams({ turma_id: turmaId })
+      if (anoLetivoId) periodosParams.set("ano_letivo_id", anoLetivoId)
+      const res = await fetch(`/api/professor/periodos?${periodosParams.toString()}`, { cache: "no-store" })
       const json = await res.json().catch(() => null)
       if (!active) return
       if (res.ok && json?.ok && Array.isArray(json.items)) {
@@ -180,7 +184,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId])
+  }, [turmaId, anoLetivoId])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
@@ -204,6 +208,7 @@ function ProfessorNotasContent() {
         `nota-${turmaId}-${disciplinaId}-${trimestre}-${tipo}-${Date.now()}`
       )
       const body = {
+        ano_letivo_id: anoLetivoId || undefined,
         turma_id: turmaId,
         disciplina_id: disciplinaId,
         turma_disciplina_id: turmaDisciplinaId || undefined,

@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { z } from 'zod';
 import type { Database } from '~types/supabase';
+import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parseResult.error.issues }, { status: 400 });
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parseResult.data[0]?.ano_letivo_id,
+      operation: 'WRITE',
+    });
+
     const firstAnoLetivoId = parseResult.data[0]?.ano_letivo_id;
     const mixedAnoLetivoIds = parseResult.data.some((item) => item.ano_letivo_id !== firstAnoLetivoId);
     if (mixedAnoLetivoIds) {
@@ -141,9 +148,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Erro ao salvar os períodos letivos.' }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data }, { status: 200 });
+    return NextResponse.json({ ok: true, context: academicContext, data }, { status: 200 });
 
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     console.error('Error in periodos-letivos upsert-bulk API:', message);
     return NextResponse.json({ 

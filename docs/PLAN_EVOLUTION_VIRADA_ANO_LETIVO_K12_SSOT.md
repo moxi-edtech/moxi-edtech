@@ -178,3 +178,16 @@ Implementar a lógica de inteligência que diz ao sistema o que está acontecend
 ## 16. Atualização de Execução (2026-05-10)
 ... (mantendo histórico anterior) ...
 - **Evolução de Visão**: O sistema passa a ser tratado como um **Organismo Vivo**, onde as datas do calendário ditam o comportamento das UIs e permissões de escrita (Cockpit de Operações Académicas).
+
+## 17. Cockpit de Promoção e Rematrícula — 2026-08-06
+
+A tela `secretaria/rematricula` deixou de depender exclusivamente de seleção manual:
+
+- resolve os anos letivos pela fonte `school-sessions`, carregando o ano anterior como origem e o ano ativo como destino;
+- restringe as turmas de destino a anos posteriores e sugere automaticamente a única correspondência quando ela é inequívoca;
+- mantém a promoção em massa, mas também expõe a ação individual `Promover` usando o mesmo contrato transacional `fn_transitar_alunos`;
+- permite resolver notas incompletas numa modal contextual, reutilizando `pauta-grid`, `GradeEntryGrid` e `/api/secretaria/notas`;
+- após o lançamento de notas, a triagem é recarregada e os gates pedagógico/financeiro são recalculados;
+- não contorna dívida, reprovação, período fechado ou hard lock: esses casos continuam pendentes para a resolução própria.
+
+Regra de produto: lançamento de notas pode ser contextual e rápido, mas nunca implícito na promoção. A transferência só ocorre depois de a secretaria confirmar explicitamente a ação individual ou em massa.

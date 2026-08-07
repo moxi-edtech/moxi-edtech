@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,7 +45,7 @@ const toIsoDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
@@ -72,12 +73,18 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Professor não encontrado" }, { status: 403 });
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: new URL(req.url).searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+
     const activeYearQuery = applyKf2ListInvariants(
       supabase
         .from("anos_letivos")
         .select("id, ano, ativo, data_inicio, data_fim")
         .eq("escola_id", escolaId)
-        .eq("ativo", true),
+        .eq("id", academicContext.anoLetivoId),
       {
         defaultLimit: 1,
         order: [{ column: "ano", ascending: false }],
@@ -91,28 +98,6 @@ export async function GET() {
 
     if (anoLetivoError) {
       return NextResponse.json({ ok: false, error: anoLetivoError.message }, { status: 400 });
-    }
-
-    if (!anoLetivo) {
-      const fallbackYearQuery = applyKf2ListInvariants(
-        supabase
-          .from("anos_letivos")
-          .select("id, ano, ativo, data_inicio, data_fim")
-          .eq("escola_id", escolaId),
-        {
-          defaultLimit: 1,
-          order: [{ column: "ano", ascending: false }],
-          tieBreakerColumn: "id",
-        }
-      );
-
-      const fallbackResult = await fallbackYearQuery.maybeSingle();
-      anoLetivo = (fallbackResult.data as AnoLetivoRow | null) ?? null;
-      anoLetivoError = fallbackResult.error ?? null;
-
-      if (anoLetivoError) {
-        return NextResponse.json({ ok: false, error: anoLetivoError.message }, { status: 400 });
-      }
     }
 
     const today = new Date();
@@ -165,11 +150,15 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+      context: academicContext,
       ano_letivo: anoLetivo ?? null,
       periodos: ((periodos as PeriodoRow[] | null) ?? []).filter(Boolean),
       items: ((items as EventoRow[] | null) ?? []).filter(Boolean),
     });
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.code, message: err.message }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

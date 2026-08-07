@@ -4,6 +4,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 import type { Database } from "~types/supabase";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 type MatriculaAlunoRow = {
   aluno_id: string | null;
@@ -30,6 +31,15 @@ export async function GET(
     }
 
     const { id: turmaId } = await params;
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: new URL(_req.url).searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas", entityId: turmaId, escolaId: academicContext.escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
 
     const { data: professor } = await supabase
       .from("professores")
@@ -76,8 +86,11 @@ export async function GET(
       nome: row?.alunos?.nome ?? null,
     }));
 
-    return NextResponse.json({ ok: true, turmaId, items });
+    return NextResponse.json({ ok: true, context: academicContext, turmaId, items });
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

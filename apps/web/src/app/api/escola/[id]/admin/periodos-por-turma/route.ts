@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -49,6 +50,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas', entityId: parsed.data.turma_id,
+      escolaId: effectiveEscolaId, anoLetivoId: academicContext.anoLetivoId,
+    });
+
     const { data: turma } = await supabase
       .from('turmas')
       .select('id, ano_letivo, ano_letivo_id')
@@ -60,29 +71,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Turma não encontrada.' }, { status: 404 });
     }
 
-    const anoLetivoId = turma.ano_letivo_id ?? null;
-    let resolvedAnoLetivoId = anoLetivoId;
-
-    if (!resolvedAnoLetivoId && turma.ano_letivo != null) {
-      const { data: anoLetivo } = await supabase
-        .from('anos_letivos')
-        .select('id')
-        .eq('escola_id', effectiveEscolaId)
-        .eq('ano', Number(turma.ano_letivo))
-        .maybeSingle();
-
-      resolvedAnoLetivoId = anoLetivo?.id ?? null;
-    }
-
-    if (!resolvedAnoLetivoId) {
-      return NextResponse.json({ ok: true, items: [] });
-    }
-
     const { data: periodos, error: periodosError } = await supabase
       .from('periodos_letivos')
       .select('id, numero, tipo, data_inicio, data_fim')
       .eq('escola_id', effectiveEscolaId)
-      .eq('ano_letivo_id', resolvedAnoLetivoId)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
       .eq('tipo', 'TRIMESTRE')
       .order('numero', { ascending: true })
       .order('id', { ascending: true })
@@ -92,8 +85,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, items: periodos || [] });
+    return NextResponse.json({ ok: true, context: academicContext, items: periodos || [] });
   } catch (e: unknown) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : 'Erro inesperado';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

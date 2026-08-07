@@ -196,10 +196,12 @@ O contexto devolvido inclui:
 
 ## Backlog P1 — cobertura funcional
 
-- [x] Integrar contexto em Notas — endpoint e clientes principais alinhados; faltam fluxos secundários.
+- [x] Integrar contexto em Notas — incluindo `/api/professor/notas`, pauta e propagação do cliente legado.
 - [x] Integrar contexto em Frequências — endpoint e página operacional alinhados; histórico de relatórios ainda pendente.
 - [x] Integrar contexto em Pautas — geração em lote alinhada; conselhos e restantes emissões ainda pendentes.
-- [x] Integrar contexto em Calendário e Períodos principais.
+- [x] Integrar contexto em Calendário e Períodos principais — professor e administração.
+- [x] Integrar contexto em agenda/horários do professor — leitura, publicação e remoção validam a turma no ano.
+- [x] Filtrar atribuições e pendências do professor pelo ano seleccionado.
 - [x] Integrar contexto em Documentos Oficiais em lote — criação valida ano e todas as turmas contra o mesmo `session_id`; emissões individuais e reprocessamentos continuam pendentes.
 - [x] Integrar contexto em cockpit, mapa de aproveitamento e exportações principais.
 - [x] Integrar contexto em pagamentos e mensalidades fora do Radar — registo financeiro e balcão alinhados; recibos e fluxos fiscais adicionais continuam pendentes.
@@ -209,6 +211,14 @@ O contexto devolvido inclui:
 - [ ] Configurar `staleTime: 0` em queries académicas quando forem migradas para React Query.
 - [ ] Cancelar requests antigos ao trocar rapidamente de ano.
 - [ ] Impedir atualizações otimistas no contexto anterior.
+
+### P1 — próximos módulos
+
+- [ ] Rotas antigas de professor ainda não cobertas: detalhes adicionais, frequência legada e exportações.
+- [ ] Currículos e configurações académicas — mutações administrativas restantes.
+- [ ] Fluxos legados de virada de ano e reprocessamentos.
+- [ ] Declarações/documentos individuais restantes e relatórios académicos secundários.
+- [ ] Recibos e fluxos fiscais além do registo de pagamento.
 
 ## Backlog P2 — robustez e evolução
 

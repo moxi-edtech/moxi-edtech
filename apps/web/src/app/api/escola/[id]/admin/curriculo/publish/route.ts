@@ -9,6 +9,7 @@ import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfess
 import { buildSyncTurmasSummary, requiresNoRebuildConfirmation } from '@/lib/academico/curriculo-operacao';
 import { buildBaseHorarioAssignments } from '@/lib/horarios/buildBaseHorarioAssignments';
 import type { Database } from '~types/supabase';
+import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context';
 
 export const dynamic = 'force-dynamic';
 
@@ -619,6 +620,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       classeId,
       bulk,
     } = parsed.data;
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: anoLetivoId,
+      operation: 'WRITE',
+    });
+    if (academicContext.escolaId !== resolvedEscolaId) {
+      return NextResponse.json({ ok: false, error: 'ACADEMIC_YEAR_NOT_FOUND' }, { status: 404 });
+    }
     const idempotencyKey = req.headers.get('Idempotency-Key') ?? randomUUID();
 
     const { count: turmasExistentesAntes } = await supabase
@@ -1095,6 +1104,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({
       ok: true,
+      context: academicContext,
       data: result,
       idempotency_key: idempotencyKey,
       sync_turmas: syncTurmas,
@@ -1104,6 +1114,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
     });
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

@@ -4,6 +4,7 @@ import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export async function GET(
   req: NextRequest,
@@ -33,19 +34,18 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const url = new URL(req.url);
-    const requestedAnoId = url.searchParams.get("ano_letivo_id");
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: new URL(req.url).searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
 
     let anoLetivoQuery = supabase
       .from('anos_letivos')
       .select('id, ano, data_inicio, data_fim, ativo')
       .eq('escola_id', userEscolaId);
 
-    if (requestedAnoId) {
-      anoLetivoQuery = anoLetivoQuery.eq('id', requestedAnoId);
-    } else {
-      anoLetivoQuery = anoLetivoQuery.eq('ativo', true);
-    }
+    anoLetivoQuery = anoLetivoQuery.eq('id', academicContext.anoLetivoId);
 
     anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {
       defaultLimit: 1,
@@ -75,8 +75,11 @@ export async function GET(
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, ano_letivo: anoLetivo, periodos: periodos ?? [] });
+    return NextResponse.json({ ok: true, context: academicContext, ano_letivo: anoLetivo, periodos: periodos ?? [] });
   } catch (e: unknown) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status });
+    }
     const msg = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

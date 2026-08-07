@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import type { Database } from '~types/supabase'
+import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -33,7 +34,7 @@ type PendenciaRow = {
   trimestre: number | null
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
@@ -44,6 +45,11 @@ export async function GET() {
     if (!escolaId) {
       return NextResponse.json({ ok: true, avaliacoes_pendentes: 0, faltas_a_lancar: 0 })
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: new URL(req.url).searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    })
 
     const { data: professor } = await supabase
       .from('professores')
@@ -74,9 +80,10 @@ export async function GET() {
     const turmaMetaRows = turmaIds.length
       ? await supabase
           .from('turmas')
-          .select('id, curso_id, classe_id')
+          .select('id, curso_id, classe_id, session_id')
           .in('id', turmaIds)
           .eq('escola_id', escolaId)
+          .eq('session_id', academicContext.anoLetivoId)
       : { data: [] as TurmaMetaRow[] }
 
     const turmaMeta = (turmaMetaRows as { data?: TurmaMetaRow[] }).data || []
@@ -217,10 +224,14 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+      context: academicContext,
       avaliacoes_pendentes: avaliacoesPendentes,
       faltas_a_lancar: faltasALancar,
     })
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.code, message: err.message }, { status: err.status })
+    }
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
