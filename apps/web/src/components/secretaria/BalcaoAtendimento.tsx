@@ -17,6 +17,7 @@ import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoCard } from "@/components/secretaria/RematriculaBalcaoCard";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
+import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -1393,6 +1394,13 @@ return (
 <>
 <div className={embedded ? "" : "min-h-screen bg-slate-50"}>
 <div className={embedded ? "" : "mx-auto max-w-screen-2xl px-6 py-6"}>
+<div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#1F6B3B]/15 bg-white px-4 py-3 shadow-sm">
+  <div>
+    <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B]">Contexto da operação</p>
+    <p className="text-sm text-slate-600">Confirme o ano letivo antes de consultar ou rematricular o aluno.</p>
+  </div>
+  <AcademicYearSelector escolaId={escolaId} />
+</div>
 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
 
         {/* Coluna esquerda */}

@@ -96,20 +96,6 @@ export async function GET(request: Request) {
       .eq("codigo", "SERV_REMATRICULA")
       .maybeSingle();
 
-    // ── Check debts ───────────────────────────────────────────────────────
-    const { data: debts } = await supabase
-      .from("mensalidades")
-      .select("valor_previsto, valor_pago_total")
-      .eq("escola_id", escolaId)
-      .eq("matricula_id", matricula_id)
-      .in("status", ["pendente", "pago_parcial"]);
-
-    const outstanding = (debts ?? []).reduce((total: number, debt: any) => {
-      const remaining =
-        Number(debt.valor_previsto ?? 0) - Number(debt.valor_pago_total ?? 0);
-      return total + Math.max(0, remaining);
-    }, 0);
-
     // ── Check existing pedido ─────────────────────────────────────────────
     const { data: pedidoExistente } = await supabase
       .from("servico_pedidos")
@@ -149,8 +135,6 @@ export async function GET(request: Request) {
     let status = "READY";
     if (!service || !service.ativo || Number(service.valor_base) <= 0) {
       status = "PRICE_NOT_CONFIGURED";
-    } else if (outstanding > 0) {
-      status = "DEBT_BLOCKED";
     } else if (pedidoExistente?.status === "granted") {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
@@ -178,10 +162,7 @@ export async function GET(request: Request) {
             valor_base: Number(service.valor_base),
           }
         : null,
-      debt:
-        outstanding > 0
-          ? { total: outstanding, count: (debts ?? []).length }
-          : null,
+      debt: null,
       pedido: pedidoExistente
         ? {
             id: pedidoExistente.id,

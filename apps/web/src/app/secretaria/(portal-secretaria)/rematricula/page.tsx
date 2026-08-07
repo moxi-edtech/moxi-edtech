@@ -7,6 +7,8 @@ import { buildPortalHref } from "@/lib/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { createClient } from "@/lib/supabaseClient";
+import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { 
   ArrowRight, 
@@ -34,6 +36,7 @@ interface Turma {
 }
 
 type Session = { id: string; ano_letivo: number; status: string };
+type PaymentMensalidade = { id: string; mes: number; ano: number; valor: number; vencimento?: string; status: string };
 
 function classeNumero(nome?: string | null) {
   const match = String(nome ?? "").match(/(\d{1,2})\s*(?:ª|a|º)?/i);
@@ -235,6 +238,9 @@ export default function RematriculaPage() {
   const [originYear, setOriginYear] = useState<number | null>(null);
   const [destinationYear, setDestinationYear] = useState<number | null>(null);
   const [notesStudent, setNotesStudent] = useState<AlunoTriagem | null>(null);
+  const [paymentStudent, setPaymentStudent] = useState<AlunoTriagem | null>(null);
+  const [paymentItems, setPaymentItems] = useState<PaymentMensalidade[]>([]);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   
   // Limpa o destino se a origem mudar
@@ -273,6 +279,46 @@ export default function RematriculaPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [motivoFilter, setMotivoFilter] = useState("todos");
+
+  const openDebtPayment = async (student: AlunoTriagem) => {
+    if (!escolaId) {
+      setError("Escola não identificada para abrir o pagamento.");
+      return;
+    }
+    setPaymentLoading(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data, error: dossierError } = await supabase.rpc("get_aluno_dossier", {
+        p_escola_id: escolaId,
+        p_aluno_id: student.id,
+      });
+      if (dossierError) throw dossierError;
+      const raw = (data ?? {}) as { financeiro?: { mensalidades?: Array<Record<string, unknown>> } };
+      const items = (raw.financeiro?.mensalidades ?? [])
+        .filter((item) => ["pendente", "pago_parcial", "atrasado"].includes(String(item.status ?? "").toLowerCase()))
+        .map((item) => {
+          const valor = Number(item.valor ?? item.valor_previsto ?? 0);
+          const pago = Number(item.pago ?? item.valor_pago_total ?? 0);
+          return {
+            id: String(item.id),
+            mes: Number(item.mes ?? item.mes_referencia ?? 0),
+            ano: Number(item.ano ?? item.ano_referencia ?? 0),
+            valor: Math.max(0, valor - pago),
+            vencimento: String(item.vencimento ?? item.data_vencimento ?? "") || undefined,
+            status: String(item.status ?? "pendente"),
+          };
+        })
+        .filter((item) => item.valor > 0);
+      if (items.length === 0) throw new Error("Não existem mensalidades abertas para este aluno. Atualize a fila e tente novamente.");
+      setPaymentItems(items);
+      setPaymentStudent(student);
+    } catch (paymentError) {
+      setError(paymentError instanceof Error ? paymentError.message : "Não foi possível abrir o pagamento.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   // Contexto canónico: ano anterior → ano ativo (ou próximo ano preparado).
   useEffect(() => {
@@ -691,6 +737,15 @@ export default function RematriculaPage() {
                             >
                               Promover
                             </button>
+                          ) : aluno.motivos_bloqueio.includes("inadimplencia") ? (
+                            <button
+                              type="button"
+                              disabled={paymentLoading}
+                              onClick={() => void openDebtPayment(aluno)}
+                              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                            >
+                              {paymentLoading ? "A abrir…" : "Regularizar dívida"}
+                            </button>
                           ) : aluno.pedagogico.status === "INCOMPLETA" ? (
                             <button
                               type="button"
@@ -763,6 +818,22 @@ export default function RematriculaPage() {
           }}
         />
       )}
+      <ModalPagamentoRapido
+        escolaId={escolaId}
+        aluno={paymentStudent ? { id: paymentStudent.id, nome: paymentStudent.nome } : { id: "", nome: "" }}
+        mensalidade={paymentItems[0] ?? null}
+        mensalidades={paymentItems}
+        open={Boolean(paymentStudent)}
+        onClose={() => {
+          setPaymentStudent(null);
+          setPaymentItems([]);
+        }}
+        onSuccess={() => {
+          setPaymentStudent(null);
+          setPaymentItems([]);
+          setReloadToken((value) => value + 1);
+        }}
+      />
     </div>
   );
 }

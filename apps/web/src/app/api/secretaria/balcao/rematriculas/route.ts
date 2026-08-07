@@ -108,21 +108,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O emolumento de rematrícula ainda não está configurado.", code: "REMATRICULA_PRICE_NOT_CONFIGURED" }, { status: 409 });
     }
 
-    const { data: debts, error: debtsError } = await supabase
-      .from("mensalidades")
-      .select("id, valor_previsto, valor_pago_total, status")
-      .eq("escola_id", escolaId)
-      .eq("matricula_id", body.matricula_id)
-      .in("status", ["pendente", "pago_parcial"]);
-    if (debtsError) throw debtsError;
-    const outstanding = (debts ?? []).reduce((total, debt) => {
-      const remaining = Number(debt.valor_previsto ?? 0) - Number(debt.valor_pago_total ?? 0);
-      return total + Math.max(0, remaining);
-    }, 0);
-    if (outstanding > 0) {
-      return NextResponse.json({ ok: false, error: "Regularize as dívidas do aluno antes de efectuar a rematrícula.", code: "REMATRICULA_DEBT_REQUIRED", outstanding }, { status: 409 });
-    }
-
     const { data: pedidoExistente } = await (supabase as any)
       .from("servico_pedidos")
       .select("id, status, contexto")

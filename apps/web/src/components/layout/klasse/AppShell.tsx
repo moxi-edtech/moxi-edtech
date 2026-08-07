@@ -9,7 +9,7 @@ import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { sidebarConfig, type NavItem, type SidebarRole } from "@/lib/sidebarNav";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
@@ -19,6 +19,50 @@ import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import AcademicContextBanner from "@/components/academic/AcademicContextBanner";
 import { preserveAcademicContextHref, supportsAcademicContext } from "@/lib/academic-year/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+
+function AcademicContextSync({
+  pathname,
+  onSearchSync,
+}: {
+  pathname: string | null;
+  onSearchSync: (search: string) => void;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentSearch = searchParams?.toString() ?? "";
+
+  useEffect(() => {
+    onSearchSync(currentSearch);
+  }, [currentSearch, onSearchSync]);
+
+  useEffect(() => {
+    if (!pathname || !supportsAcademicContext(pathname) || searchParams?.has(ACADEMIC_YEAR_PARAM)) return;
+    let cancelled = false;
+    fetch("/api/academic-context", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => {
+        if (cancelled || !json?.ok || !json.context?.anoLetivoId) return;
+        const params = new URLSearchParams(currentSearch);
+        params.set(ACADEMIC_YEAR_PARAM, String(json.context.anoLetivoId));
+        router.replace(`${pathname}?${params.toString()}`);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentSearch, pathname, router, searchParams]);
+
+  return null;
+}
+
+function AcademicContextChrome({ escolaId }: { escolaId?: string | null }) {
+  return (
+    <>
+      <AcademicYearSelector escolaId={escolaId} />
+      <AcademicContextBanner />
+    </>
+  );
+}
 
 const TOPBAR_LABELS: Record<SidebarRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
@@ -31,8 +75,6 @@ const TOPBAR_LABELS: Record<SidebarRole, { title: string; subtitle: string }> = 
   gestor: { title: "Gestor", subtitle: "Portal do gestor" },
 };
 
-
-
 export default function AppShell({
   children,
   mobileNav,
@@ -44,7 +86,7 @@ export default function AppShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [currentSearch, setCurrentSearch] = useState("");
   const { userRole } = useUserRoleContext();
   const { escolaId: escolaIdFromSession, escolaSlug } = useEscolaId();
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
@@ -53,7 +95,6 @@ export default function AppShell({
   const [userName, setUserName] = useState<string | null>(null);
   const [_status, setStatus] = useState<string | null>(null);
 
-  // Extract escolaId from the pathname if available
   const safePathname = pathname ?? "";
 
   const escolaIdFromPath = useMemo(() => {
@@ -61,9 +102,8 @@ export default function AppShell({
     const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|operacoes|secretaria|financeiro|professor|aluno|professores|alunos|horarios)/);
     return match?.[1] ?? null;
   }, [safePathname]);
-  
+
   const inferredRole = useMemo<UserRole | null>(() => {
-    // fallback por rota
     if (safePathname.startsWith("/super-admin")) return "superadmin";
     if (safePathname.startsWith("/admin")) return "admin";
     if (safePathname.startsWith("/operacoes")) return "admin";
@@ -72,22 +112,19 @@ export default function AppShell({
     if (safePathname.startsWith("/professor")) return "professor";
     if (safePathname.startsWith("/aluno")) return "aluno";
 
-    // canonical routes
     if (safePathname.includes("/escola/")) {
-        if (safePathname.includes("/operacoes")) return "admin";
-        if (safePathname.includes("/admin")) return "admin";
-        if (safePathname.includes("/secretaria")) return "secretaria";
-        if (safePathname.includes("/financeiro")) return "financeiro";
-        if (safePathname.includes("/horarios")) return "secretaria";
-        if (safePathname.includes("/professores")) return "admin";
-        if (safePathname.includes("/alunos")) return "admin";
-        if (safePathname.includes("/professor")) return "professor";
-        if (safePathname.includes("/aluno")) return "aluno";
+      if (safePathname.includes("/operacoes")) return "admin";
+      if (safePathname.includes("/admin")) return "admin";
+      if (safePathname.includes("/secretaria")) return "secretaria";
+      if (safePathname.includes("/financeiro")) return "financeiro";
+      if (safePathname.includes("/horarios")) return "secretaria";
+      if (safePathname.includes("/professores")) return "admin";
+      if (safePathname.includes("/alunos")) return "admin";
+      if (safePathname.includes("/professor")) return "professor";
+      if (safePathname.includes("/aluno")) return "aluno";
     }
 
-    if (userRole) return userRole;
-
-    return null;
+    return userRole;
   }, [userRole, safePathname]);
 
   const navRole = useMemo<SidebarRole | null>(() => {
@@ -132,22 +169,10 @@ export default function AppShell({
   const navEscolaId = escolaSlug || escolaIdFromPath || escolaIdFromSession;
   const displayedEscolaNome = navEscolaId ? escolaNome : null;
   const displayedPlanoNome = navEscolaId ? planoNome : null;
-  const currentSearch = searchParams?.toString() ?? "";
 
-  useEffect(() => {
-    if (!pathname || !supportsAcademicContext(pathname) || searchParams?.has(ACADEMIC_YEAR_PARAM)) return;
-    let cancelled = false;
-    fetch("/api/academic-context", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((json) => {
-        if (cancelled || !json?.ok || !json.context?.anoLetivoId) return;
-        const params = new URLSearchParams(currentSearch);
-        params.set(ACADEMIC_YEAR_PARAM, String(json.context.anoLetivoId));
-        router.replace(`${pathname}?${params.toString()}`);
-      })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [currentSearch, pathname, router, searchParams]);
+  const handleSearchSync = useCallback((search: string) => {
+    setCurrentSearch(search);
+  }, []);
 
   const navItems = useMemo(() => {
     if (!navRole) return [];
@@ -335,11 +360,21 @@ export default function AppShell({
     : null;
 
   if (isPrintView) {
-    return <div className="min-h-screen bg-white">{children}</div>;
+    return (
+      <div className="min-h-screen bg-white">
+        <Suspense fallback={null}>
+          <AcademicContextSync pathname={pathname} onSearchSync={handleSearchSync} />
+        </Suspense>
+        {children}
+      </div>
+    );
   }
   
   return (
     <div className="min-h-screen bg-slate-50">
+      <Suspense fallback={null}>
+        <AcademicContextSync pathname={pathname} onSearchSync={handleSearchSync} />
+      </Suspense>
       <div className="flex">
         <div className={hideSidebarOnMobile ? "hidden md:block" : "block"}>
           <Sidebar
@@ -361,12 +396,13 @@ export default function AppShell({
             escolaParam={navEscolaId}
             portal={navRole ?? undefined}
           />
-          <div className="border-b border-slate-200/70 bg-slate-50 px-4 py-2">
-            <div className="flex max-w-7xl items-center justify-end">
-              <AcademicYearSelector escolaId={escolaIdFromSession} />
+          <Suspense fallback={null}>
+            <div className="border-b border-slate-200/70 bg-slate-50 px-4 py-2">
+              <div className="flex max-w-7xl items-center justify-end">
+                <AcademicContextChrome escolaId={escolaIdFromSession} />
+              </div>
             </div>
-          </div>
-          <AcademicContextBanner />
+          </Suspense>
           <MaintenanceBanner />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>
         </div>
