@@ -86,41 +86,6 @@ const nextConfig = {
         destination: `/escola/:id/operacoes/${segment}/:path*`,
         permanent: false,
       })),
-      {
-        source: "/escola/:id/secretaria",
-        destination: "/escola/:id/operacoes/dashboard",
-        permanent: false,
-      },
-      {
-        source: "/escola/:id/secretaria/operacoes-academicas/:path*",
-        destination: "/escola/:id/operacoes/academico/:path*",
-        permanent: false,
-      },
-      {
-        source: "/escola/:id/secretaria/acesso/:path*",
-        destination: "/escola/:id/operacoes/acessos/:path*",
-        permanent: false,
-      },
-      ...[
-        "admissoes",
-        "alunos",
-        "matriculas",
-        "rematricula",
-        "turmas",
-        "classes",
-        "calendario",
-        "documentos-oficiais",
-        "documentos",
-        "importacoes",
-        "exportacoes",
-        "relatorios",
-        "fecho",
-        "recebimentos",
-      ].map((segment) => ({
-        source: `/escola/:id/secretaria/${segment}/:path*`,
-        destination: `/escola/:id/operacoes/${segment}/:path*`,
-        permanent: false,
-      })),
     ];
   },
   async headers() {

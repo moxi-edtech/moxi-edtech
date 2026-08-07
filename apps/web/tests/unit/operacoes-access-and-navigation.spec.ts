@@ -14,8 +14,6 @@ test("matriz de acesso de Operações preserva o grupo autorizado", () => {
     "admin",
     "admin_escola",
     "staff_admin",
-    "secretaria",
-    "secretaria_financeiro",
     "admin_financeiro",
   ]) {
     assert.equal(
@@ -117,7 +115,7 @@ test("middleware classifica Operações como contexto K12", () => {
   assert.match(functionSource, /pathname\.startsWith\('\/operacoes'\)/);
 });
 
-test("legado Admin e Secretaria redireciona temporariamente para Operações", () => {
+test("legado Admin redireciona para Operações, Secretaria preserva o portal próprio", () => {
   const testDir = dirname(fileURLToPath(import.meta.url));
   const source = readFileSync(resolve(testDir, "../../next.config.ts"), "utf8");
 
@@ -125,9 +123,6 @@ test("legado Admin e Secretaria redireciona temporariamente para Operações", (
     source,
     /source: "\/escola\/:id\/admin\/dashboard"[\s\S]*destination: "\/escola\/:id\/operacoes\/dashboard"/
   );
-  assert.match(
-    source,
-    /source: "\/escola\/:id\/secretaria"[\s\S]*destination: "\/escola\/:id\/operacoes\/dashboard"/
-  );
+  assert.doesNotMatch(source, /source: "\/escola\/:id\/secretaria"[\s\S]*destination: "\/escola\/:id\/operacoes/);
   assert.doesNotMatch(source, /permanent: true/);
 });
