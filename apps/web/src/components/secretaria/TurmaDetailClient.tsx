@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   RefreshCw, UsersRound, BookOpen, UserCheck, Download,
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings,
@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, buildContextualPortalHref } from "@/lib/navigation";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -484,6 +485,8 @@ export default function TurmaDetailClient({
   const [bulkAssigningProfessor, setBulkAssigningProfessor] = useState(false);
   const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'));
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
@@ -654,7 +657,7 @@ export default function TurmaDetailClient({
     return () => {
       active = false;
     };
-  }, [actionModal, turmaId, notasPeriodoNumero]);
+  }, [academicYearId, actionModal, turmaId, notasPeriodoNumero]);
 
   useEffect(() => {
     if (actionModal?.type !== "professor" || !escolaId) return;
@@ -878,6 +881,7 @@ export default function TurmaDetailClient({
           },
           body: JSON.stringify({
             turma_id: turmaId,
+            ano_letivo_id: academicYearId,
             disciplina_id: actionModal.disciplina.id,
             turma_disciplina_id: actionModal.disciplina.turma_disciplina_id || undefined,
             trimestre: notasPeriodoNumero,
@@ -905,7 +909,7 @@ export default function TurmaDetailClient({
     setPautaGeralLoading(true)
     try {
       const json = await fetchPautaOficial(
-        `/api/secretaria/turmas/${turmaId}/pauta-geral/oficial?periodo_letivo_id=${encodeURIComponent(periodoId)}&mode=json`
+        `/api/secretaria/turmas/${turmaId}/pauta-geral/oficial?periodo_letivo_id=${encodeURIComponent(periodoId)}&ano_letivo_id=${encodeURIComponent(academicYearId ?? "")}&mode=json`
       )
       if ((json as any).status === "PROCESSING") {
         setToast({ message: "Pauta em processamento. Aguarde.", type: "success" })
@@ -924,7 +928,7 @@ export default function TurmaDetailClient({
     setPautaAnualLoading(true)
     try {
       const json = await fetchPautaOficial(
-        `/api/secretaria/turmas/${turmaId}/pauta-anual/oficial?periodo_letivo_id=${encodeURIComponent(periodoId)}&mode=json`
+        `/api/secretaria/turmas/${turmaId}/pauta-anual/oficial?periodo_letivo_id=${encodeURIComponent(periodoId)}&ano_letivo_id=${encodeURIComponent(academicYearId ?? "")}&mode=json`
       )
       if ((json as any).status === "PROCESSING") {
         setToast({ message: "Pauta em processamento. Aguarde.", type: "success" })

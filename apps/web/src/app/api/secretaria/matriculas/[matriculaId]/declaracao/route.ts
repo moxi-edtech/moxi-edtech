@@ -7,6 +7,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import type { Database } from "~types/supabase";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,6 +41,27 @@ export async function GET(
   });
   if (authz.error) {
     return authz.error;
+  }
+
+  const anoLetivoId = new URL(request.url).searchParams.get("ano_letivo_id");
+  let academicContext;
+  try {
+    academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: anoLetivoId,
+      operation: "WRITE",
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: "matriculas",
+      entityId: matriculaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
   }
 
   const { data: matricula, error: matriculaError } = await supabase
@@ -118,6 +140,7 @@ export async function GET(
       matricula_id: matriculaId,
       aluno_id: matricula.aluno_id,
       doc_status: docError ? 400 : 200,
+      ano_letivo_id: academicContext.anoLetivoId,
       deprecated: true,
       sunset_date: SUNSET_DATE,
     },

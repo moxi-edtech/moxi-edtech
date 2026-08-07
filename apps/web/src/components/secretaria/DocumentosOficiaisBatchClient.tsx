@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Check,
@@ -17,6 +18,7 @@ import {
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 type TurmaItem = {
   id: string;
@@ -76,6 +78,8 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 }
 
 export default function DocumentosOficiaisBatchClient() {
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
@@ -301,6 +305,7 @@ export default function DocumentosOficiaisBatchClient() {
         body: JSON.stringify({
           turma_ids: Array.from(selected),
           tipo,
+          ano_letivo_id: academicYearId,
           periodo_letivo_id: tipo === "trimestral" ? periodoId : null,
         }),
       });

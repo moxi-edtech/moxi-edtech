@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   BookOpen,
   CalendarCheck,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 type TurmaItem = {
   id: string;
@@ -247,6 +249,8 @@ function buildClasseDocUrl(
 }
 
 export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) {
+  const searchParams = useSearchParams();
+  const academicYearIdFromUrl = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const storageKey = escolaId ? `quick-doc-hub:last-turma:${escolaId}` : null;
   const historyStorageKey = escolaId ? `quick-doc-hub:history:${escolaId}` : null;
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivoItem[]>([]);
@@ -658,6 +662,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           body: JSON.stringify({
             turma_ids: targetTurmaIds,
             tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
+            ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id,
             month,
             year: String(anoLetivo),
             is_album: isAlbum,
@@ -670,8 +675,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       const tipo = doc.key === "pauta-geral" ? "trimestral" : "anual";
       const body =
         tipo === "trimestral"
-          ? { turma_ids: targetTurmaIds, tipo, periodo_letivo_id: periodoId }
-          : { turma_ids: targetTurmaIds, tipo };
+          ? { turma_ids: targetTurmaIds, tipo, ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id, periodo_letivo_id: periodoId }
+          : { turma_ids: targetTurmaIds, tipo, ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id };
 
       await fetch("/api/secretaria/documentos-oficiais/lote", {
         method: "POST",
@@ -679,7 +684,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         body: JSON.stringify(body),
       });
     }
-  }, [anoLetivo, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&

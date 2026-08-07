@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 type Props = {
   activeYearId: string | null;
@@ -45,7 +46,11 @@ export function CutoverResolveActions({ activeYearId, metrics }: Props) {
       if (action === "generate_pautas_anuais") {
         res = dryRun
           ? await fetch("/api/secretaria/operacoes-academicas/virada/pautas-status", { cache: "no-store" })
-          : await fetch("/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote", { method: "POST" });
+          : await fetch("/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ano_letivo_id: activeYearId }),
+            });
       } else if (action === "close_year_snapshots") {
         if (!activeYearId) throw new Error("Ano letivo ativo não identificado.");
         res = dryRun

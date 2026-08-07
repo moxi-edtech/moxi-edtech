@@ -8,6 +8,8 @@ import RadarInadimplenciaActive, {
 } from "@/app/financeiro/_components/RadarInadimplenciaActive";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 // --- TIPAGENS ---
 type Campanha = {
@@ -42,6 +44,9 @@ const getCanalNome = (canal: string) => {
 export default function SistemaCobrancas() {
   const params = useParams();
   const escolaId = params?.id as string;
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const [writeBlockedByAcademicYear, setWriteBlockedByAcademicYear] = useState(false);
   const hasFetched = useRef(false);
   const { success, error } = useToast();
 
@@ -60,6 +65,14 @@ export default function SistemaCobrancas() {
     canal: "whatsapp",
     template_id: undefined,
   });
+
+  useEffect(() => {
+    const query = academicYearId ? `?${ACADEMIC_YEAR_PARAM}=${encodeURIComponent(academicYearId)}` : "";
+    fetch(`/api/academic-context${query}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => setWriteBlockedByAcademicYear(json?.ok && json.context?.mode === "HISTORICAL_READ"))
+      .catch(() => setWriteBlockedByAcademicYear(false));
+  }, [academicYearId]);
 
   // --- FETCHING ---
   const fetchCampanhas = useCallback(async () => {
@@ -104,6 +117,10 @@ export default function SistemaCobrancas() {
   // --- ACTIONS ---
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (writeBlockedByAcademicYear) {
+      error("Ano letivo em modo de consulta", "As campanhas de cobrança estão bloqueadas neste ano.");
+      return;
+    }
     
     if (!novaCampanha.nome || !novaCampanha.canal) {
       error("Título e canal são obrigatórios.");
@@ -129,6 +146,7 @@ export default function SistemaCobrancas() {
         destinatariosTipo: "selecionados",
         destinatariosIds: alunosSelecionados,
         dataAgendamento: new Date().toISOString(),
+        ano_letivo_id: academicYearId,
       };
 
       const res = await fetch("/api/financeiro/cobrancas/campanhas/nova", {
@@ -182,7 +200,9 @@ export default function SistemaCobrancas() {
           </div>
           <button
             onClick={() => setMostrarCriarCampanha(true)}
-            className="flex items-center gap-2 rounded-xl bg-klasse-green px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-klasse-green/90 hover:shadow-md"
+            disabled={writeBlockedByAcademicYear}
+            title={writeBlockedByAcademicYear ? "Edição bloqueada no ano histórico" : undefined}
+            className="flex items-center gap-2 rounded-xl bg-klasse-green px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-klasse-green/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
             Nova Campanha
@@ -226,6 +246,7 @@ export default function SistemaCobrancas() {
               </div>
             <RadarInadimplenciaActive
               onSelectionChange={setSelecionadosRadar}
+              disableActions={writeBlockedByAcademicYear}
             />
             </div>
           </div>
@@ -343,7 +364,7 @@ export default function SistemaCobrancas() {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || writeBlockedByAcademicYear}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-3 text-sm font-bold text-white transition-all hover:bg-klasse-green/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {submitting ? "A criar campanha..." : "Disparar Campanha"}

@@ -112,7 +112,7 @@ export async function GET(req: Request) {
       .eq('escola_id', escolaId);
 
     if (sessionId && anoLetivo) {
-      query = query.eq('ano_letivo', anoLetivo).or(`session_id.eq.${sessionId},session_id.is.null`);
+      query = query.eq('ano_letivo', anoLetivo).eq('session_id', sessionId);
     } else if (sessionId) {
       query = query.eq('session_id', sessionId);
     } else if (anoLetivo) {
@@ -148,7 +148,7 @@ export async function GET(req: Request) {
         .eq('escola_id', escolaId);
 
       if (sessionId && anoLetivo) {
-        turmasQuery = turmasQuery.eq('ano_letivo', anoLetivo).or(`session_id.eq.${sessionId},session_id.is.null`);
+        turmasQuery = turmasQuery.eq('ano_letivo', anoLetivo).eq('session_id', sessionId);
       } else if (sessionId) {
         turmasQuery = turmasQuery.eq('session_id', sessionId);
       } else if (anoLetivo) {
@@ -211,12 +211,20 @@ export async function GET(req: Request) {
 
     // 5. Filtrar se aluno já está matriculado (Lógica de Negócio)
     if (alunoId && items.length > 0) {
-      const { data: matriculasExistentes } = await supabase
+      let matriculasQuery = supabase
         .from('matriculas')
         .select('turma_id')
         .eq('escola_id', escolaId)
         .eq('aluno_id', alunoId)
         .in('status', ['ativo', 'ativa']);
+
+      if (sessionId) {
+        matriculasQuery = matriculasQuery.eq('session_id', sessionId);
+      } else if (anoLetivo) {
+        matriculasQuery = matriculasQuery.eq('ano_letivo', anoLetivo);
+      }
+
+      const { data: matriculasExistentes } = await matriculasQuery;
         
       const turmasOcupadas = new Set((matriculasExistentes || []).map((m: any) => m.turma_id));
       items = items.filter((t: any) => !turmasOcupadas.has(t.id));

@@ -4,7 +4,7 @@ import {
   useEffect, useMemo, useState, useCallback, useRef, type CSSProperties,
 } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Search, X, UsersRound, CalendarCheck, Eye, Pencil, Plus,
   AlertTriangle, CheckCircle2, GraduationCap, UserCheck, UserX,
@@ -18,6 +18,7 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { formatTurmaNomeHumano } from "@/utils/formatters";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import type { TurmaItem } from "~/types/turmas";
 
@@ -667,7 +668,10 @@ export default function TurmasListClient({
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const { success, error, toast } = useToast();
   const confirm = useConfirm();
-  const pathname = usePathname();  const slugFromPath = useMemo(() => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const slugFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
@@ -933,6 +937,7 @@ export default function TurmasListClient({
       if (filters.curso   !== "todos") params.set("curso_id",  filters.curso);
       if (busca.trim())                params.set("busca",  busca.trim());
       params.set("limit", "100");
+      if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId);
       if (options?.cursor) params.set("cursor", options.cursor);
 
       const res  = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
@@ -950,7 +955,7 @@ export default function TurmasListClient({
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [escolaId, filters, busca]);
+  }, [escolaId, filters, busca, academicYearId]);
 
   const initialRender = useRef(true);
 

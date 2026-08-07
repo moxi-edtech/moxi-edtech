@@ -4,11 +4,13 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { requireRoleInSchool } from '@/lib/authz'
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 
 const BodySchema = z.object({
   turma_id: z.string().uuid(),
+  ano_letivo_id: z.string().uuid(),
   alunos_ids: z.array(z.string().uuid()).optional(),
 })
 
@@ -25,6 +27,20 @@ export async function POST(request: Request) {
 
   const { turma_id, alunos_ids } = parsed.data
 
+  let academicContext;
+  try {
+    academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: "WRITE",
+    });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
+  }
+
   const { data: turma, error: turmaError } = await supabase
     .from('turmas')
     .select('id, escola_id, ano_letivo')
@@ -36,6 +52,22 @@ export async function POST(request: Request) {
   }
 
   const escolaId = turma.escola_id as string
+  if (academicContext.escolaId !== escolaId) {
+    return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+  }
+  try {
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: turma_id,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
+  }
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId)
   if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
     return NextResponse.json({ ok: false, error: 'Escola inválida' }, { status: 403 })
@@ -53,6 +85,7 @@ export async function POST(request: Request) {
     .select('id, aluno_id')
     .eq('escola_id', escolaId)
     .eq('turma_id', turma_id)
+    .eq('session_id', academicContext.anoLetivoId)
     .in('status', ['concluido', 'reprovado'])
 
   if (alunos_ids && alunos_ids.length > 0) query = query.in('aluno_id', alunos_ids)
@@ -130,5 +163,5 @@ export async function POST(request: Request) {
     })
   }
 
-  return NextResponse.json({ ok: true, snapshots })
+  return NextResponse.json({ ok: true, context: academicContext, snapshots })
 }

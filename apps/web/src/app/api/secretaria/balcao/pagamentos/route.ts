@@ -4,6 +4,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { 
   emitirDocumentoFiscalViaAdapter, 
   resolveEmpresaFiscalAtiva 
@@ -22,6 +23,7 @@ const payloadSchema = z.object({
   reference: z.string().trim().min(1).nullable().optional(),
   evidence_url: z.string().trim().min(1).nullable().optional(),
   gateway_ref: z.string().trim().min(1).nullable().optional(),
+  ano_letivo_id: z.string().uuid().optional(),
   meta: z.record(z.unknown()).optional(),
 });
 
@@ -110,6 +112,45 @@ export async function POST(request: Request) {
     }
 
     const payload = parsed.data;
+    let academicContext;
+    try {
+      academicContext = await resolveAcademicYearContext(supabase as any, {
+        userId: user.id,
+        requestedAcademicYearId: payload.ano_letivo_id,
+        operation: "WRITE",
+      });
+    } catch (err) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
+    }
+
+    if (payload.mensalidade_id) {
+      const { data: mensalidade, error: mensalidadeError } = await supabase
+        .from("mensalidades")
+        .select("id, matricula_id")
+        .eq("escola_id", escolaId)
+        .eq("id", payload.mensalidade_id)
+        .maybeSingle();
+      if (mensalidadeError) throw mensalidadeError;
+      if (!mensalidade?.matricula_id) {
+        return NextResponse.json({ ok: false, error: "Mensalidade não encontrada.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 404 });
+      }
+      try {
+        await assertAcademicYearEntity(supabase as any, {
+          table: "matriculas",
+          entityId: mensalidade.matricula_id,
+          escolaId,
+          anoLetivoId: academicContext.anoLetivoId,
+        });
+      } catch (err) {
+        if (err instanceof AcademicYearContextError) {
+          return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+        }
+        throw err;
+      }
+    }
     const meta = asRecord(payload.meta);
     const metodo = payload.metodo === "kiwk" ? "kwik" : payload.metodo;
     
@@ -220,7 +261,7 @@ export async function POST(request: Request) {
       acao: "PAGAMENTO_REGISTRADO",
       entity: "pagamento",
       entityId: pagamentoRow?.id ?? null,
-      details: { valor: payload.valor, metodo, fiscal_ok: fiscalResult.ok },
+      details: { valor: payload.valor, metodo, fiscal_ok: fiscalResult.ok, ano_letivo_id: academicContext.anoLetivoId },
     }).catch(() => null);
 
     const intentId = getStringField(meta, "pagamento_intent_id");

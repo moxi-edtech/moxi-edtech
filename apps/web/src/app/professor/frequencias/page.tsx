@@ -7,6 +7,8 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from '@/components/feedback/FeedbackSystem';
 import { formatTurmaDisplayName } from "@/utils/formatters";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { useSearchParams } from "next/navigation";
 
 import { Printer } from 'lucide-react'
 
@@ -25,6 +27,8 @@ export default function ProfessorFrequenciasPage() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'saved' | 'failed'>('idle')
   const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'))
   const { online } = useOfflineStatus()
+  const searchParams = useSearchParams()
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM)
 
   useEffect(() => {
     (async () => {
@@ -70,7 +74,7 @@ export default function ProfessorFrequenciasPage() {
           'Content-Type': 'application/json',
           'idempotency-key': idempotencyKey,
         },
-        body: JSON.stringify({ turma_id: turmaId, disciplina_id: disciplinaId, data, presencas }),
+        body: JSON.stringify({ turma_id: turmaId, disciplina_id: disciplinaId, data, presencas, ano_letivo_id: academicYearId }),
         type: 'professor_presencas',
       }
 

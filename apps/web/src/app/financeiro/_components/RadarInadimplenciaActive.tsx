@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Loader2,
   Filter,
@@ -213,6 +214,8 @@ export default function RadarInadimplenciaActive({
   onSelectionChange,
   disableActions = false,
 }: RadarInadimplenciaActiveProps) {
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get("ano_letivo_id");
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -259,10 +262,13 @@ export default function RadarInadimplenciaActive({
     const fetchDados = async () => {
       try {
         setLoading(true);
+        const contextQuery = academicYearId
+          ? `?ano_letivo_id=${encodeURIComponent(academicYearId)}`
+          : "";
         const [radarRes, dashRes, cobrancasRes] = await Promise.all([
-          fetch("/api/financeiro/radar", { cache: "no-store" }),
-          fetch("/api/financeiro", { cache: "no-store" }),
-          fetch("/api/financeiro/cobrancas/resumo", { cache: "no-store" }),
+          fetch(`/api/financeiro/radar${contextQuery}`, { cache: "no-store" }),
+          fetch(`/api/financeiro${contextQuery}`, { cache: "no-store" }),
+          fetch(`/api/financeiro/cobrancas/resumo${contextQuery}`, { cache: "no-store" }),
         ]);
 
         if (!radarRes.ok) {
@@ -333,7 +339,7 @@ export default function RadarInadimplenciaActive({
     };
 
     fetchDados();
-  }, []);
+  }, [academicYearId]);
 
   useEffect(() => {
     if (!onSelectionChange) return;
@@ -368,7 +374,10 @@ export default function RadarInadimplenciaActive({
   };
 
   const carregarResumoCobrancas = async () => {
-    const res = await fetch("/api/financeiro/cobrancas/resumo", { cache: "no-store" });
+    const contextQuery = academicYearId
+      ? `?ano_letivo_id=${encodeURIComponent(academicYearId)}`
+      : "";
+    const res = await fetch(`/api/financeiro/cobrancas/resumo${contextQuery}`, { cache: "no-store" });
     if (!res.ok) return;
     const json = await res.json();
     if (!json?.ok || !json?.resumo) return;

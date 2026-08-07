@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 type TurmaItem = {
   id: string;
@@ -60,6 +61,8 @@ export function PautaRapidaModal({
   hideNavigation = false,
 }: PautaRapidaModalProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
@@ -273,6 +276,7 @@ export function PautaRapidaModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           turma_id: turmaId,
+          ano_letivo_id: academicYearId,
           disciplina_id: disciplinaCanonicalId,
           turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,
@@ -311,6 +315,7 @@ export function PautaRapidaModal({
         },
         body: JSON.stringify({
           turma_id: turmaId,
+          ano_letivo_id: academicYearId,
           disciplina_id: disciplinaCanonicalId,
           turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,

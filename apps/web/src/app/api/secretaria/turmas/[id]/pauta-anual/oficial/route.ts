@@ -8,6 +8,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico/pauta-anual"
 import { requireFeature } from "@/lib/plan/requireFeature"
 import { HttpError } from "@/lib/errors"
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -16,6 +17,7 @@ export const runtime = "nodejs"
 
 const Query = z.object({
   periodoLetivoId: z.string().uuid(),
+  anoLetivoId: z.string().uuid(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -28,13 +30,26 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { id: turmaId } = await ctx.params
     const { searchParams } = new URL(req.url)
     const periodoLetivoId = searchParams.get("periodoLetivoId") ?? searchParams.get("periodo_letivo_id")
-    const parsed = Query.safeParse({ periodoLetivoId })
+    const anoLetivoId = searchParams.get("ano_letivo_id")
+    const parsed = Query.safeParse({ periodoLetivoId, anoLetivoId })
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 })
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 })
+
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.anoLetivoId,
+      operation: "WRITE",
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: turmaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) {
@@ -154,6 +169,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, status: "FAILED", error: message }, { status: 500 })
     }
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

@@ -4,6 +4,7 @@ import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,6 +36,19 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
+  let academicContext;
+  try {
+    academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
+  }
   const parsed = QuerySchema.safeParse({
     periodo: url.searchParams.get("periodo") || undefined,
     status: url.searchParams.get("status") || undefined,
@@ -84,6 +98,7 @@ export async function GET(req: Request) {
   });
 
   const payload = {
+    context: academicContext,
     periodo,
     status: statusFilter,
     tipo,

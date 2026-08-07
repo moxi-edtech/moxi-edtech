@@ -9,6 +9,9 @@ import { requireFeature } from "@/lib/plan/requireFeature"
 import { HttpError } from "@/lib/errors"
 import type { Database } from "~types/supabase"
 
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context"
+import { recordAuditServer } from "@/lib/audit"
+
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const fetchCache = "force-no-store"
@@ -17,6 +20,7 @@ const Body = z.object({
   turma_ids: z.array(z.string().uuid()).min(1),
   tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado", "lista_nominal", "attendance"]),
   periodo_letivo_id: z.string().uuid().optional(),
+  ano_letivo_id: z.string().uuid().optional(),
   month: z.string().optional(),
   year: z.string().optional(),
   is_album: z.boolean().optional(),
@@ -99,6 +103,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 })
     }
 
+    // Validação P0 WRITE do contexto do ano letivo para geração de documentos em lote
+    let academicContext;
+    try {
+      academicContext = await resolveAcademicYearContext(supabase as any, {
+        userId: user.id,
+        requestedAcademicYearId: parsed.data.ano_letivo_id,
+        operation: "WRITE",
+      });
+    } catch (err: any) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      return NextResponse.json({ ok: false, error: "Erro ao validar contexto académico" }, { status: 500 });
+    }
+
+    const { data: turmaRows, error: turmaRowsError } = await supabase
+      .from("turmas")
+      .select("id, session_id")
+      .eq("escola_id", escolaId)
+      .in("id", parsed.data.turma_ids);
+    if (turmaRowsError) {
+      return NextResponse.json({ ok: false, error: turmaRowsError.message }, { status: 500 });
+    }
+    if ((turmaRows ?? []).length !== new Set(parsed.data.turma_ids).size) {
+      return NextResponse.json({ ok: false, error: "Uma ou mais turmas não foram encontradas.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 404 });
+    }
+    if ((turmaRows ?? []).some((turma) => turma.session_id !== academicContext.anoLetivoId)) {
+      return NextResponse.json({ ok: false, error: "As turmas não pertencem ao ano académico selecionado.", code: "CROSS_YEAR_ENTITY_MISMATCH" }, { status: 409 });
+    }
+
     if (parsed.data.tipo === "trimestral" && !parsed.data.periodo_letivo_id) {
       return NextResponse.json({ ok: false, error: "Período letivo obrigatório" }, { status: 400 })
     }
@@ -125,7 +159,7 @@ export async function POST(req: Request) {
         .from("periodos_letivos")
         .select("id")
         .eq("escola_id", escolaId)
-        .eq("ano_letivo_id", turmaRef.session_id)
+        .eq("ano_letivo_id", academicContext.anoLetivoId)
         .order("data_fim", { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -219,6 +253,19 @@ export async function POST(req: Request) {
         include_all_status: parsed.data.include_all_status,
       },
     })
+
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "DOCUMENTOS_OFICIAIS_LOTE_INICIADO",
+      entity: "pautas_lote_jobs",
+      entityId: job.id,
+      details: {
+        ano_letivo_id: academicContext.anoLetivoId,
+        documento_tipo: documentoTipo,
+        turma_ids: parsed.data.turma_ids,
+      },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true, job_id: job.id }, { status: 202 })
   } catch (e) {

@@ -7,11 +7,13 @@ import { requireFeature } from '@/lib/plan/requireFeature'
 import { HttpError } from '@/lib/errors'
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from '@/lib/documentos/certificadoSnapshot'
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 
 const BodySchema = z.object({
   turma_id: z.string().uuid(),
+  ano_letivo_id: z.string().uuid(),
   alunos_ids: z.array(z.string().uuid()).optional(),
 })
 
@@ -42,6 +44,20 @@ export async function POST(request: Request) {
     }
 
     const escolaId = turma.escola_id as string
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: "WRITE",
+    })
+    if (academicContext.escolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Escola inválida' }, { status: 403 })
+    }
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: turma_id,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
     const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId)
     if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola inválida' }, { status: 403 })
@@ -59,6 +75,7 @@ export async function POST(request: Request) {
       .select('id, aluno_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turma_id)
+      .eq('session_id', academicContext.anoLetivoId)
       .in('status', ['concluido', 'reprovado'])
 
     if (alunos_ids && alunos_ids.length > 0) {
@@ -97,8 +114,11 @@ export async function POST(request: Request) {
       snapshots.push(certificado)
     }
 
-    return NextResponse.json({ ok: true, snapshots })
+    return NextResponse.json({ ok: true, context: academicContext, snapshots })
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
+    }
     if (err instanceof HttpError) {
       return NextResponse.json(
         {

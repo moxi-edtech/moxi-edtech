@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   CheckCircle2, 
   FileText, 
@@ -29,6 +30,8 @@ type JobStatus = {
 };
 
 export function FreezeStep({ onComplete, retroactivePending = false }: { onComplete: () => void; retroactivePending?: boolean }) {
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get("ano_letivo_id");
   const [stats, setStats] = useState<PautaStatus | null>(null);
   const [activeJob, setActiveJob] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +71,11 @@ export function FreezeStep({ onComplete, retroactivePending = false }: { onCompl
   const handleStartJob = async () => {
     setStarting(true);
     try {
-      const res = await fetch("/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote", { method: "POST" });
+      const res = await fetch("/api/secretaria/operacoes-academicas/virada/gerar-pautas-lote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ano_letivo_id: academicYearId }),
+      });
       const json = await res.json();
       if (json.ok) {
         success("Geração de pautas iniciada em lote.");

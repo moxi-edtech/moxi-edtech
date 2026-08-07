@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
 
 type DocumentoTipo =
@@ -79,6 +80,7 @@ export default function DocumentosEmissaoHubClient({
   const escolaParam = escolaId;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Array<{ id: string; label: string; highlight?: string | null }>>([]);
   const [loading, setLoading] = useState(false);
@@ -97,6 +99,10 @@ export default function DocumentosEmissaoHubClient({
   const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; nome: string; ano_letivo: number; status: string }>>([]);
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
   const [loadingAnoLetivo, setLoadingAnoLetivo] = useState(false);
+  const selectedAnoLetivoId = useMemo(
+    () => anoLetivoOptions.find((item) => item.ano_letivo === anoLetivoSelecionado)?.id ?? academicYearId ?? null,
+    [anoLetivoOptions, anoLetivoSelecionado, academicYearId],
+  );
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
@@ -357,6 +363,7 @@ export default function DocumentosEmissaoHubClient({
           },
           body: JSON.stringify({
             aluno_id: selectedAluno.id,
+            ano_letivo_id: academicYearId,
             mensalidade_id: null,
             valor: valorBase,
             metodo,
@@ -384,6 +391,7 @@ export default function DocumentosEmissaoHubClient({
           alunoId: selectedAluno.id,
           tipoDocumento: tipo,
           escolaId,
+          ano_letivo_id: selectedAnoLetivoId,
           ano_letivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : undefined,
         }),
       });

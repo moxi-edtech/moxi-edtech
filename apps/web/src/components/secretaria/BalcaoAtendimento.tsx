@@ -11,7 +11,12 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { BalcaoServicoModal, type BalcaoDecision } from "@/components/secretaria/BalcaoServicoModal";
 import { MotivoBloqueioModal } from "@/components/secretaria/MotivoBloqueioModal";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useSearchParams } from "next/navigation";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
+import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
+import { RematriculaBalcaoCard } from "@/components/secretaria/RematriculaBalcaoCard";
+import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -414,12 +419,13 @@ return { entries, loading, open, setOpen, scope, setScope, fetch: fetch_ };
 // ─── Hook: checkout ───────────────────────────────────────────────────────────
 
 function useCheckout({
-escolaId, aluno, carrinho, onSuccess,
+escolaId, aluno, carrinho, academicYearId, onSuccess,
 }: {
-escolaId:  string;
-aluno:     AlunoDossier | null;
-carrinho:  ReturnType<typeof useCarrinho>;
-onSuccess: () => void;
+  escolaId:  string;
+  aluno:     AlunoDossier | null;
+  carrinho:  ReturnType<typeof useCarrinho>;
+  academicYearId: string | null;
+  onSuccess: () => void;
 }) {
 const { success, error } = useToast();
 const [isSubmitting,  setIsSubmitting]  = useState(false);
@@ -463,7 +469,7 @@ setEmittingDocId(servico.id);
 try {
   const res  = await fetch("/api/secretaria/documentos/emitir", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ alunoId: aluno.id, tipoDocumento: tipo, escolaId }),
+    body: JSON.stringify({ alunoId: aluno.id, tipoDocumento: tipo, escolaId, ano_letivo_id: academicYearId }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok || !json?.docId) throw new Error(json?.error || "Falha ao emitir documento.");
@@ -510,6 +516,7 @@ try {
       headers: { "Content-Type": "application/json", "Idempotency-Key": idKey() },
       body: JSON.stringify({
         aluno_id: aluno.id, mensalidade_id: m.id, valor: m.preco, metodo,
+        ano_letivo_id: academicYearId,
         reference:    detalhes.referencia    || null,
         evidence_url: detalhes.evidencia_url || null,
         gateway_ref:  detalhes.gateway_ref   || null,
@@ -576,6 +583,7 @@ try {
       headers: { "Content-Type": "application/json", "Idempotency-Key": idKey() },
       body: JSON.stringify({
         aluno_id: aluno.id, mensalidade_id: null, valor: s.preco, metodo,
+        ano_letivo_id: academicYearId,
         reference:    detalhes.referencia    || null,
         evidence_url: detalhes.evidencia_url || null,
         gateway_ref:  detalhes.gateway_ref   || null,
@@ -811,6 +819,7 @@ function Catalogo({
 mensalidades, servicos,
 onAdicionarMensalidade, onAdicionarServico,
 emittingDocId, addingServicoId, onServicoAvulso, unlockedMensalidadeIds,
+rematriculaReady, rematriculaPrice, onRematricula,
 }: {
 mensalidades:           Mensalidade[];
 servicos:               Servico[];
@@ -820,6 +829,9 @@ emittingDocId:          string | null;
 addingServicoId:        string | null;
 onServicoAvulso:        () => void;
 unlockedMensalidadeIds: Set<string>;
+rematriculaReady: boolean;
+rematriculaPrice: number | null;
+onRematricula: () => void;
 }) {
 const atrasadas  = useMemo(() => mensalidades.filter(m => m.atrasada),    [mensalidades]);
 const correntes  = useMemo(() => mensalidades.filter(m => !m.atrasada),   [mensalidades]);
@@ -843,6 +855,29 @@ className="text-[10px] font-bold text-[#E3B23C] hover:underline">
 </div>
 
   <div className="space-y-5 max-h-[480px] overflow-y-auto pr-1">
+
+    {rematriculaReady && (
+      <div>
+        <SecaoLabel>Operações escolares</SecaoLabel>
+        <button
+          type="button"
+          onClick={onRematricula}
+          className="w-full flex items-center justify-between p-3 rounded-xl border
+            border-[#1F6B3B]/25 bg-[#1F6B3B]/5 hover:bg-[#1F6B3B]/10
+            transition-all text-left"
+        >
+          <div>
+            <p className="text-sm font-bold text-[#1F6B3B]">Rematrícula escolar</p>
+            <p className="text-[10px] text-slate-500">
+              Pagamento, atualização da matrícula e comprovante
+            </p>
+          </div>
+          <span className="text-sm font-black text-slate-900">
+            {rematriculaPrice != null ? kwanza.format(rematriculaPrice) : "—"}
+          </span>
+        </button>
+      </div>
+    )}
 
     {atrasadas.length > 0 && (
       <div>
@@ -1236,10 +1271,19 @@ escolaId, selectedAlunoId = null, showSearch = true, embedded = false,
 }: BalcaoAtendimentoProps) {
 const supabase = createClient();
 const { error } = useToast();
+const searchParams = useSearchParams();
+const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
 
 const search   = useAlunoSearch();
 const dossier  = useAlunoDossier(escolaId);
 const servicos = useServicos(escolaId);
+
+const rematricula = useRematriculaBalcao({
+  escolaId,
+  alunoId: dossier.aluno?.id ?? null,
+  matriculaId: dossier.aluno?.matricula_id ?? null,
+  academicYearId: academicYearId ?? null,
+});
 const carrinho = useCarrinho();
 const audit    = useAuditTrail();
 
@@ -1256,7 +1300,7 @@ void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
 }, [dossier, audit]);
 
 const checkout = useCheckout({
-escolaId, aluno: dossier.aluno, carrinho, onSuccess: onCheckoutSuccess,
+escolaId, aluno: dossier.aluno, carrinho, academicYearId: academicYearId ?? null, onSuccess: onCheckoutSuccess,
 });
 
 const selectedMensalidadeIds = useMemo(
@@ -1372,21 +1416,60 @@ return (
               <p className="text-sm text-slate-400">A carregar ficha do aluno...</p>
             </div>
           ) : dossier.aluno ? (
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-              <AlunoCard aluno={dossier.aluno} />
-              <Catalogo
-                mensalidades={dossier.mensalidades}
-                servicos={servicos}
-                onAdicionarMensalidade={handleAdicionarMensalidade}
-                onAdicionarServico={handleAdicionarServico}
-                emittingDocId={checkout.emittingDocId}
-                addingServicoId={addingServicoId}
-                onServicoAvulso={() => {
-                  setServicoModalCodigo(null);
-                  setServicoModalOpen(true);
-                }}
-                unlockedMensalidadeIds={unlockedMensalidadeIds}
-              />
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                <AlunoCard aluno={dossier.aluno} />
+                <Catalogo
+                  mensalidades={dossier.mensalidades}
+                  servicos={servicos}
+                  onAdicionarMensalidade={handleAdicionarMensalidade}
+                  onAdicionarServico={handleAdicionarServico}
+                  emittingDocId={checkout.emittingDocId}
+                  addingServicoId={addingServicoId}
+                  onServicoAvulso={() => {
+                    setServicoModalCodigo(null);
+                    setServicoModalOpen(true);
+                  }}
+                  unlockedMensalidadeIds={unlockedMensalidadeIds}
+                  rematriculaReady={rematricula.cardState === "READY"}
+                  rematriculaPrice={rematricula.service?.valor_base ?? null}
+                  onRematricula={rematricula.openModal}
+                />
+              </div>
+
+              {/* Rematrícula card — below student info */}
+              {dossier.aluno.matricula_id && (
+                <RematriculaBalcaoCard
+                  cardState={rematricula.cardState}
+                  loading={rematricula.loading}
+                  anoLetivo={rematricula.anoLetivo}
+                  service={rematricula.service}
+                  debt={rematricula.debt}
+                  pedido={rematricula.pedido}
+                  comprovante={rematricula.comprovante}
+                  turmaAtual={dossier.aluno.turma_codigo ?? dossier.aluno.turma ?? null}
+                  onConfirmar={rematricula.openModal}
+                  onRetomar={rematricula.openModal}
+                  onVerDividas={() => {
+                    const params = new URLSearchParams();
+                    params.set("aluno_id", dossier.aluno?.id ?? "");
+                    if (rematricula.anoLetivo?.id) {
+                      params.set(ACADEMIC_YEAR_PARAM, rematricula.anoLetivo.id);
+                    }
+                    window.location.assign(`/financeiro/turmas-alunos?${params.toString()}`);
+                  }}
+                  onConfigurarEmolumentos={() => {
+                    const params = new URLSearchParams();
+                    if (rematricula.anoLetivo?.id) {
+                      params.set(ACADEMIC_YEAR_PARAM, rematricula.anoLetivo.id);
+                    }
+                    window.location.assign(`/financeiro/configuracoes/precos?${params.toString()}`);
+                  }}
+                  onAbrirPendencia={() => {
+                    window.location.assign("/financeiro/conciliacao");
+                  }}
+                />
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
@@ -1475,6 +1558,40 @@ return (
     reasonCode={bloqueioInfo?.code ?? ""}
     reasonDetail={bloqueioInfo?.detail ?? null}
   />
+
+  {/* Rematrícula modal */}
+  {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && (
+    <RematriculaBalcaoModal
+      open={rematricula.modalOpen}
+      onClose={() => {
+        rematricula.closeModal();
+        // Refresh dossier after successful rematrícula
+        if (rematricula.result && dossier.aluno?.id) {
+          void dossier.load(dossier.aluno.id);
+        }
+      }}
+      alunoNome={dossier.aluno?.nome ?? "Aluno"}
+      alunoProcesso={dossier.aluno?.numero_processo ?? "—"}
+      turmaAtual={dossier.aluno?.turma_codigo ?? dossier.aluno?.turma ?? null}
+      matriculaId={dossier.aluno?.matricula_id ?? ""}
+      anoLetivo={rematricula.anoLetivo}
+      service={rematricula.service}
+      turmas={rematricula.turmas}
+      turmasLoading={rematricula.turmasLoading}
+      step={rematricula.step}
+      setStep={rematricula.setStep}
+      selectedTurmaId={rematricula.selectedTurmaId}
+      setSelectedTurmaId={rematricula.setSelectedTurmaId}
+      metodo={rematricula.metodo}
+      setMetodo={rematricula.setMetodo}
+      detalhes={rematricula.detalhes}
+      setDetalhes={rematricula.setDetalhes}
+      submitting={rematricula.submitting}
+      result={rematricula.result}
+      apiError={rematricula.apiError}
+      submit={rematricula.submit}
+    />
+  )}
 </>
 
 );

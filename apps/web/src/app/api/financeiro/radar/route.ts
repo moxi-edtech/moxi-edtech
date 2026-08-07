@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import {
+  AcademicYearContextError,
+  resolveAcademicYearContext,
+} from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 
@@ -39,34 +41,45 @@ export async function GET(req: Request) {
       );
     }
 
-    const metaEscolaId =
-      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
-    const escolaId = await resolveEscolaIdForUser(
-      s as any,
-      user.id,
-      null,
-      metaEscolaId ? String(metaEscolaId) : null
-    );
-    if (!escolaId) {
-      return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
-    }
-
     const { searchParams } = new URL(req.url);
-    const anoLetivoId =
-      searchParams.get("ano_letivo_id") ||
-      searchParams.get("session_id") ||
-      searchParams.get("sessionId") ||
-      null;
-    const anoParam = searchParams.get("ano");
+    const requestedAcademicYearId = searchParams.get("ano_letivo_id");
     const mesRef = searchParams.get("mes_ref");
     const turmaId = searchParams.get("turma_id");
     const classeId = searchParams.get("classe_id");
-    const anoScope = await resolveAnoLetivoScope(s, escolaId, {
-      anoLetivoId,
-      ano: anoParam ? parseInt(anoParam, 10) : null,
+    const context = await resolveAcademicYearContext(s as any, {
+      userId: user.id,
+      requestedAcademicYearId,
+      operation: "READ",
     });
+    const { escolaId } = context;
+    const { data: academicYearRow, error: academicYearError } = await s
+      .from("anos_letivos")
+      .select("ano, data_inicio, data_fim")
+      .eq("escola_id", escolaId)
+      .eq("id", context.anoLetivoId)
+      .single();
+    if (academicYearError) throw academicYearError;
 
     const monthRange = mesRef ? parseMonthRange(mesRef) : null;
+
+    const { data: sessionMatriculas, error: sessionMatriculasError } = await s
+      .from("matriculas")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .eq("session_id", context.anoLetivoId);
+    if (sessionMatriculasError) throw sessionMatriculasError;
+
+    const matriculaIds = (sessionMatriculas ?? []).map((row) => row.id);
+    const { data: sessionMensalidades, error: sessionMensalidadesError } = matriculaIds.length
+      ? await s
+          .from("mensalidades")
+          .select("id")
+          .eq("escola_id", escolaId)
+          .in("matricula_id", matriculaIds)
+      : { data: [], error: null };
+    if (sessionMensalidadesError) throw sessionMensalidadesError;
+
+    const mensalidadeIds = (sessionMensalidades ?? []).map((row) => row.id);
     
     // A view vw_radar_inadimplencia já filtra por `escola_id = current_tenant_escola_id()`
     // Apenas precisamos garantir que a chamada é autenticada.
@@ -90,16 +103,17 @@ export async function GET(req: Request) {
         ].join(", ")
       )
       .eq("escola_id", escolaId)
+      .in("mensalidade_id", mensalidadeIds)
       .not("aluno_id", "is", null);
 
     if (monthRange) {
       query = query
         .gte("data_vencimento", monthRange.start)
         .lte("data_vencimento", monthRange.end);
-    } else if (anoScope?.dataInicio && anoScope?.dataFim) {
+    } else {
       query = query
-        .gte("data_vencimento", anoScope.dataInicio)
-        .lte("data_vencimento", anoScope.dataFim);
+        .gte("data_vencimento", academicYearRow.data_inicio)
+        .lte("data_vencimento", academicYearRow.data_fim);
     }
 
     query = applyKf2ListInvariants(query, {
@@ -189,19 +203,17 @@ export async function GET(req: Request) {
     if (alunoIds.length > 0) {
       const { data: mats, error: matsError } = await s
         .from("matriculas")
-        .select("aluno_id, numero_matricula, turma_id, ano_letivo, created_at, turma:turmas(nome, classe_id)")
+        .select("aluno_id, numero_matricula, turma_id, session_id, ano_letivo, created_at, turma:turmas(nome, classe_id)")
         .in("aluno_id", alunoIds)
         .eq("escola_id", escolaId)
+        .eq("session_id", context.anoLetivoId)
         .in("status", ["ativo", "ativa", "active"])
         .order("created_at", { ascending: false });
 
       if (matsError) {
         console.error("Erro ao buscar numeros de matrícula:", matsError.message);
       } else {
-        const scopedMatriculas = (mats || []).filter((m: any) => {
-          if (!anoScope?.ano) return true;
-          return Number(m.ano_letivo ?? 0) === Number(anoScope.ano);
-        });
+        const scopedMatriculas = mats || [];
 
         const classIds = Array.from(
           new Set(
@@ -302,15 +314,22 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      anoLetivo: anoScope?.ano ?? null,
-      anoLetivoId: anoScope?.id ?? null,
+      anoLetivo: Number(academicYearRow.ano),
+      anoLetivoId: context.anoLetivoId,
+      context,
       periodo: {
-        inicio: monthRange?.start ?? anoScope?.dataInicio ?? null,
-        fim: monthRange?.end ?? anoScope?.dataFim ?? null,
+        inicio: monthRange?.start ?? academicYearRow.data_inicio,
+        fim: monthRange?.end ?? academicYearRow.data_fim,
       },
       items: ordered,
     });
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json(
+        { ok: false, error: err.message, code: err.code },
+        { status: err.status },
+      );
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.error("Erro inesperado no radar financeiro:", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

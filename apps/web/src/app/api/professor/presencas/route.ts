@@ -4,6 +4,8 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { markOutboxEventFailed } from '@/lib/outbox'
 import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+import { recordAuditServer } from '@/lib/audit'
 import type { Database } from '~types/supabase'
 
 const Body = z.object({
@@ -11,6 +13,7 @@ const Body = z.object({
   disciplina_id: z.string().uuid(),
   data: z.string(), // ISO date yyyy-mm-dd
   presencas: z.array(z.object({ aluno_id: z.string().uuid(), status: z.enum(['presente','falta','atraso']) })),
+  ano_letivo_id: z.string().uuid().optional(),
 })
 
 export async function POST(req: Request) {
@@ -37,6 +40,21 @@ export async function POST(req: Request) {
 
     escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+
+    // Validação de contexto académico para escrita (P0 - Frequências)
+    let academicContext
+    try {
+      academicContext = await resolveAcademicYearContext(supabase as any, {
+        userId: user.id,
+        requestedAcademicYearId: body.ano_letivo_id,
+        operation: 'WRITE',
+      })
+    } catch (err: any) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
+      }
+      return NextResponse.json({ ok: false, error: 'Erro de validação do contexto académico' }, { status: 500 })
+    }
 
     const { data: existingIdempotency } = await supabase
       .from('idempotency_keys')
@@ -88,11 +106,24 @@ export async function POST(req: Request) {
 
     const { data: turma } = await supabase
       .from('turmas')
-      .select('id, curso_id, classe_id, ano_letivo')
+      .select('id, curso_id, classe_id, ano_letivo, session_id')
       .eq('id', body.turma_id)
       .eq('escola_id', escolaId)
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
+    try {
+      await assertAcademicYearEntity(supabase as any, {
+        table: 'turmas',
+        entityId: body.turma_id,
+        escolaId,
+        anoLetivoId: academicContext.anoLetivoId,
+      })
+    } catch (err: any) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
+      }
+      throw err
+    }
     if (!turma.ano_letivo) {
       return NextResponse.json({ ok: false, error: 'Ano letivo não definido para a turma.' }, { status: 400 })
     }
@@ -100,23 +131,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Turma sem curso/classe associada.' }, { status: 400 })
     }
 
-    const { data: anoLetivo } = await supabase
-      .from('anos_letivos')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('ano', turma.ano_letivo)
-      .maybeSingle()
+    const anoLetivoId = academicContext.anoLetivoId
 
-    if (!anoLetivo?.id) {
-      return NextResponse.json({ ok: false, error: 'Ano letivo não encontrado para a turma.' }, { status: 400 })
-    }
-
-    if (anoLetivo?.id) {
+    if (anoLetivoId) {
       const { data: periodo } = await supabase
         .from('periodos_letivos')
         .select('id')
         .eq('escola_id', escolaId)
-        .eq('ano_letivo_id', anoLetivo.id)
+        .eq('ano_letivo_id', anoLetivoId)
         .eq('tipo', 'TRIMESTRE')
         .lte('data_inicio', body.data)
         .gte('data_fim', body.data)
@@ -198,6 +220,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
     mutationCommitted = true
+
+    recordAuditServer({
+      escolaId,
+      portal: 'professor',
+      acao: 'PRESENCAS_REGISTADAS',
+      entity: 'presencas',
+      entityId: body.turma_id,
+      details: {
+        ano_letivo_id: academicContext.anoLetivoId,
+        disciplina_id: body.disciplina_id,
+        data: body.data,
+        total: body.presencas.length,
+      },
+    }).catch(() => null)
 
     const responsePayload = { ok: true, data };
 

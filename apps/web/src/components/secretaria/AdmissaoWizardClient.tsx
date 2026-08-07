@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Archive, Check, Edit3, ExternalLink, RefreshCw, Save } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { toContextualPortalPath } from "@/lib/navigation";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -1873,6 +1874,7 @@ function Step3Pagamento(props: {
                         alunoId: targetAlunoId,
                         tipoDocumento: "comprovante_matricula",
                         escolaId: targetEscolaId,
+                        ano_letivo_id: new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM),
                       }),
                     });
                     const json = await res.json();

@@ -5,6 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { listAllAlunos, listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import { NextResponse } from "next/server";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,6 +23,11 @@ export async function GET(req: Request) {
     const user = userRes.user;
 
     const url = new URL(req.url);
+    const context = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
     const requestedEscolaId = url.searchParams.get("escolaId") || url.searchParams.get("escola_id");
     const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     if (!escolaId) {
@@ -42,6 +48,7 @@ export async function GET(req: Request) {
       const allItems = await listAllAlunos(supabase, escolaId, filters, {
         includeFinanceiro: true,
         includeResumo,
+        academicYearId: context.anoLetivoId,
       });
       const sorted = [...allItems].sort((a, b) => {
         const nomeA = (a.nome ?? "").toLocaleLowerCase("pt-AO");
@@ -70,12 +77,14 @@ export async function GET(req: Request) {
           nextCursor: null,
           total: sorted.length,
         },
+        context,
       });
     }
 
     const { items, page } = await listAlunos(supabase, escolaId, filters, {
       includeFinanceiro: true,
       includeResumo,
+      academicYearId: context.anoLetivoId,
     });
 
     return NextResponse.json({
@@ -87,8 +96,12 @@ export async function GET(req: Request) {
         ...page,
         total: items.length,
       },
+      context,
     });
   } catch (e: any) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     console.error("[alunos list error]", e);
     return NextResponse.json({ ok: false, error: e.message || "Erro desconhecido" }, { status: 500 });
   }

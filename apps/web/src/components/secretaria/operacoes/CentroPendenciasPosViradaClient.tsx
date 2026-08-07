@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, WalletCards, ShieldAlert, GraduationCap, FileCheck, X } from "lucide-react";
 import { ReclassificacaoFinalistasClient } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
+import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { createClient } from "@/lib/supabaseClient";
 
 type PendingRow = {
   id: string;
@@ -16,6 +19,7 @@ type PendingRow = {
   pode_promover: boolean;
 };
 type ResponseState = { rows: PendingRow[]; sessions: { current?: { ano: number }; previous?: { ano: number } }; summary: { total: number; debt: number; finalists: number; review: number } };
+type PaymentMensalidade = { id: string; mes: number; ano: number; valor: number; vencimento?: string; status: string };
 
 const tabs = [
   ["all", "Todos"],
@@ -32,6 +36,10 @@ export function CentroPendenciasPosViradaClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [resolutionRow, setResolutionRow] = useState<PendingRow | null>(null);
+  const [paymentRow, setPaymentRow] = useState<PendingRow | null>(null);
+  const [paymentItems, setPaymentItems] = useState<PaymentMensalidade[]>([]);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const { escolaId } = useEscolaId();
 
   async function load() {
     setLoading(true);
@@ -63,6 +71,49 @@ export function CentroPendenciasPosViradaClient() {
       setResolutionRow(null);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao promover aluno"); }
     finally { setBusy(null); }
+  }
+
+  async function openPayment(row: PendingRow) {
+    if (!escolaId) {
+      setMessage("Escola não identificada para abrir o pagamento.");
+      return;
+    }
+    setPaymentLoading(true);
+    setMessage(null);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_aluno_dossier", {
+        p_escola_id: escolaId,
+        p_aluno_id: row.aluno_id,
+      });
+      if (error) throw error;
+      const raw = (data ?? {}) as { financeiro?: { mensalidades?: Array<Record<string, unknown>> } };
+      const mensalidades = (raw.financeiro?.mensalidades ?? [])
+        .filter((item) => ["pendente", "pago_parcial", "atrasado"].includes(String(item.status ?? "").toLowerCase()))
+        .map((item) => {
+          const valor = Number(item.valor ?? 0);
+          const pago = Number(item.pago ?? item.valor_pago_total ?? 0);
+          return {
+            id: String(item.id),
+            mes: Number(item.mes ?? item.mes_referencia ?? 0),
+            ano: Number(item.ano ?? item.ano_referencia ?? 0),
+            valor: Math.max(0, valor - pago),
+            vencimento: String(item.vencimento ?? item.data_vencimento ?? "") || undefined,
+            status: String(item.status ?? "pendente"),
+          };
+        })
+        .filter((item) => item.valor > 0);
+      if (mensalidades.length === 0) {
+        await load();
+        throw new Error("Não existem mensalidades abertas para este aluno. Atualize a fila e tente promover novamente.");
+      }
+      setPaymentItems(mensalidades);
+      setPaymentRow(row);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível abrir o pagamento.");
+    } finally {
+      setPaymentLoading(false);
+    }
   }
 
   if (loading) return (
@@ -200,16 +251,16 @@ export function CentroPendenciasPosViradaClient() {
                 <div className="flex shrink-0 items-center gap-2">
                   {row.motivo === "divida" && (
                     <button
-                      disabled={!row.pode_promover || busy === row.id}
-                      onClick={() => void promote(row)}
+                      disabled={busy === row.id || paymentLoading}
+                      onClick={() => void (row.pode_promover ? promote(row) : openPayment(row))}
                       className="rounded-xl bg-[#1F6B3B] hover:bg-[#18542e] px-4 py-2 text-xs font-bold text-white transition shadow-2xs disabled:cursor-not-allowed disabled:opacity-40 flex items-center gap-2"
                     >
-                      {busy === row.id ? (
+                      {busy === row.id || (paymentLoading && paymentRow?.id === row.id) ? (
                         <Loader2 className="h-4 w-4 animate-spin text-white" />
                       ) : row.pode_promover ? (
                         "Promover agora"
                       ) : (
-                        "Aguarda pagamento"
+                        "Receber pagamento"
                       )}
                     </button>
                   )}
@@ -313,6 +364,23 @@ export function CentroPendenciasPosViradaClient() {
           </div>
         </div>
       )}
+
+      <ModalPagamentoRapido
+        escolaId={escolaId}
+        aluno={paymentRow ? { id: paymentRow.aluno_id, nome: paymentRow.nome, turma: paymentRow.turma } : { id: "", nome: "" }}
+        mensalidade={paymentItems[0] ?? null}
+        mensalidades={paymentItems}
+        open={Boolean(paymentRow)}
+        onClose={() => {
+          setPaymentRow(null);
+          setPaymentItems([]);
+        }}
+        onSuccess={() => {
+          setPaymentRow(null);
+          setPaymentItems([]);
+          void load();
+        }}
+      />
     </section>
   );
 }

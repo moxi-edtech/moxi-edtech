@@ -10,6 +10,11 @@ import {
   resolveEmpresaFiscalAtiva,
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Json } from "~types/supabase";
+import {
+  AcademicYearContextError,
+  assertAcademicYearEntity,
+  resolveAcademicYearContext,
+} from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +28,7 @@ const payloadSchema = z.object({
   meta: z.record(z.any()).optional(),
   metodo_pagamento: z.string().optional(),
   observacao: z.string().trim().max(255).optional().nullable(),
+  ano_letivo_id: z.string().uuid().optional().nullable(),
 });
 
 const normalizeMetodo = (raw: string) => {
@@ -102,6 +108,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: "WRITE",
+    });
+
     const { error: roleError } = await requireRoleInSchool({
       supabase,
       escolaId,
@@ -119,6 +131,30 @@ export async function POST(req: Request) {
     const alunoId = parsed.data.aluno_id ?? mensalidade?.aluno_id ?? null;
     if (!alunoId) {
       return NextResponse.json({ ok: false, error: "Aluno não identificado." }, { status: 400 });
+    }
+
+    if (mensalidade?.id) {
+      const { data: mensalidadeMeta, error: mensalidadeMetaError } = await supabase
+        .from("mensalidades")
+        .select("matricula_id, turma_id")
+        .eq("id", mensalidade.id)
+        .maybeSingle();
+      if (mensalidadeMetaError) throw mensalidadeMetaError;
+      if (mensalidadeMeta?.matricula_id) {
+        await assertAcademicYearEntity(supabase as any, {
+          table: "matriculas",
+          entityId: String(mensalidadeMeta.matricula_id),
+          escolaId: academicContext.escolaId,
+          anoLetivoId: academicContext.anoLetivoId,
+        });
+      } else if (mensalidadeMeta?.turma_id) {
+        await assertAcademicYearEntity(supabase as any, {
+          table: "turmas",
+          entityId: String(mensalidadeMeta.turma_id),
+          escolaId: academicContext.escolaId,
+          anoLetivoId: academicContext.anoLetivoId,
+        });
+      }
     }
 
     const valor = Number(parsed.data.valor ?? mensalidade?.valor_previsto ?? mensalidade?.valor ?? 0);
@@ -421,6 +457,9 @@ export async function POST(req: Request) {
       status_fiscal: fiscalResult.ok ? "ok" : "pending",
     });
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

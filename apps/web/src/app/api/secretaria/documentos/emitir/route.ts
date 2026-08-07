@@ -10,6 +10,7 @@ import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotifi
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -25,6 +26,7 @@ const payloadSchema = z.object({
     "certificado",
   ]),
   ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
+  ano_letivo_id: z.string().uuid().optional(),
 });
 
 type TipoDocumento = z.infer<typeof payloadSchema>["tipoDocumento"];
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
     }
 
-    const { alunoId, escolaId, tipoDocumento, ano_letivo } = parsed.data;
+    const { alunoId, escolaId, tipoDocumento, ano_letivo, ano_letivo_id } = parsed.data;
 
     if (tipoDocumento === "certificado") {
       await requireFeature("doc_qr_code");
@@ -76,9 +78,32 @@ export async function POST(request: Request) {
     });
     if (authError) return authError;
 
+    const requiresAcademicContext =
+      FINAL_DOCUMENT_TYPES.includes(tipoDocumento) || tipoDocumento === "boletim_trimestral";
+    let academicContext: Awaited<ReturnType<typeof resolveAcademicYearContext>> | null = null;
+    if (requiresAcademicContext && !ano_letivo_id) {
+      return NextResponse.json(
+        { ok: false, error: "ano_letivo_id é obrigatório para este documento.", code: "ACADEMIC_YEAR_REQUIRED" },
+        { status: 400 },
+      );
+    }
+    if (ano_letivo_id) {
+      academicContext = await resolveAcademicYearContext(supabase, {
+        userId: user.id,
+        requestedAcademicYearId: ano_letivo_id,
+        operation: "WRITE",
+      });
+      if (academicContext.escolaId !== escolaId) {
+        return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+      }
+    }
+
     // Se for um documento final, usa a nova RPC baseada no histórico
     if (FINAL_DOCUMENT_TYPES.includes(tipoDocumento)) {
-      if (!ano_letivo) {
+      const anoLetivoNumero = academicContext
+        ? Number(academicContext.anoLetivoLabel.slice(0, 4))
+        : ano_letivo;
+      if (!anoLetivoNumero) {
         return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
       }
 
@@ -86,7 +111,7 @@ export async function POST(request: Request) {
         .rpc("emitir_documento_final", {
           p_escola_id: escolaId,
           p_aluno_id: alunoId,
-          p_ano_letivo: ano_letivo,
+          p_ano_letivo: anoLetivoNumero,
           p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento] as any,
         })
         .single();
@@ -100,7 +125,7 @@ export async function POST(request: Request) {
         acao: "DOCUMENTO_FINAL_EMITIDO",
         entity: "documentos_emitidos",
         entityId: (result as any)?.id ?? null,
-        details: { alunoId, tipoDocumento, ano_letivo },
+        details: { alunoId, tipoDocumento, ano_letivo: anoLetivoNumero, ano_letivo_id: academicContext?.anoLetivoId ?? null },
       }).catch(() => null);
 
       await dispatchAlunoNotificacao({
@@ -116,7 +141,7 @@ export async function POST(request: Request) {
     }
 
     // Lógica para documentos baseados na matrícula ativa
-    if (tipoDocumento === "boletim_trimestral" && !ano_letivo) {
+    if (tipoDocumento === "boletim_trimestral" && !academicContext) {
       return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
     }
 
@@ -142,7 +167,9 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: false })
       .limit(1);
 
-    if (tipoDocumento === "boletim_trimestral" && ano_letivo) {
+    if (academicContext) {
+      matriculaQuery = matriculaQuery.eq("session_id", academicContext.anoLetivoId);
+    } else if (tipoDocumento === "boletim_trimestral" && ano_letivo) {
       matriculaQuery = matriculaQuery.eq("ano_letivo", ano_letivo);
     }
 
@@ -229,7 +256,7 @@ export async function POST(request: Request) {
       acao: "DOCUMENTO_EMITIDO",
       entity: "documentos_emitidos",
       entityId: doc.id,
-      details: { alunoId, tipoDocumento },
+      details: { alunoId, tipoDocumento, ano_letivo_id: academicContext?.anoLetivoId ?? null },
     }).catch(() => null);
 
     await dispatchAlunoNotificacao({
@@ -250,6 +277,9 @@ export async function POST(request: Request) {
       tipo: tipoDocumento,
     });
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+    }
     if (err instanceof HttpError) {
       return NextResponse.json(
         {

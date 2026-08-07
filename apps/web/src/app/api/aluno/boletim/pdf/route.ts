@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -24,6 +25,12 @@ export async function GET(request: Request) {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: ctx.userId,
+      requestedAcademicYearId: new URL(request.url).searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+
     const { data: userRes } = await supabase.auth.getUser();
     const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: userRes?.user?.email });
     const selectedId = new URL(request.url).searchParams.get("studentId");
@@ -33,7 +40,7 @@ export async function GET(request: Request) {
     const [{ data: escola }, { data: aluno }, { data: matricula }] = await Promise.all([
       supabase.from("escolas").select("nome, nif, endereco, logo_url").eq("id", ctx.escolaId).maybeSingle(),
       supabase.from("alunos").select("nome").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
-      supabase.from("matriculas").select("id").eq("aluno_id", alunoId).eq("escola_id", ctx.escolaId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("matriculas").select("id").eq("aluno_id", alunoId).eq("escola_id", ctx.escolaId).eq("session_id", academicContext.anoLetivoId).limit(1).maybeSingle(),
     ]);
 
     if (!matricula?.id) return NextResponse.json({ ok: false, error: "Sem matrícula" }, { status: 404 });
@@ -99,6 +106,9 @@ export async function GET(request: Request) {
 
     return new NextResponse(pdfBytes as BodyInit, { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="boletim_${(aluno?.nome ?? "aluno").replace(/\s+/g, "_")}.pdf"` } });
   } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

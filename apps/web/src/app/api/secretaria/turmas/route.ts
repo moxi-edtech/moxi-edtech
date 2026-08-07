@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 // Força a renderização dinâmica para garantir que a autenticação seja verificada a cada request
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,11 @@ export async function GET(req: Request) {
 
     // 3. Parâmetros da URL
     const url = new URL(req.url);
+    const context = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
     const turno = url.searchParams.get('turno');
     const busca = url.searchParams.get('busca')?.trim().toLowerCase() || "";
     const status = url.searchParams.get('status');
@@ -64,7 +70,8 @@ export async function GET(req: Request) {
         ocupacao_atual,
         status_validacao
       `)
-      .eq('escola_id', escolaId);
+      .eq('escola_id', escolaId)
+      .eq('session_id', context.anoLetivoId);
 
     // Filtro de turno no Nível do Banco (Mais performático)
     if (turno && turno !== 'todos') {
@@ -161,9 +168,13 @@ export async function GET(req: Request) {
       total: items.length,
       stats,
       next_cursor: nextCursor,
+      context,
     }, { headers });
 
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     console.error("[API] Critical Error:", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
@@ -194,13 +205,19 @@ export async function POST(req: Request) {
       turma_codigo,
       turno,
       sala,
-      session_id,
+      ano_letivo_id,
       ano_letivo,
       capacidade_maxima,
       curso_id,
       classe_id,
       status_validacao // Opcional: frontend pode mandar 'rascunho'
     } = body;
+
+    const writeContext = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: ano_letivo_id,
+      operation: "WRITE",
+    });
 
     // 3. Validação Básica
     if (!turma_codigo || !turno || !ano_letivo) {
@@ -224,7 +241,7 @@ export async function POST(req: Request) {
         ano_letivo: anoLetivoInt,
         turno,
         sala: sala || null,
-        session_id: session_id || null,
+        session_id: writeContext.anoLetivoId,
         capacidade_maxima: capacidadeInt,
         curso_id: curso_id || null,   
         classe_id: classe_id || null,
@@ -251,6 +268,9 @@ export async function POST(req: Request) {
     }, { headers });
 
   } catch (e: any) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     console.error("[API] Erro POST Turma:", e);
     return NextResponse.json({ ok: false, error: e.message || "Erro interno ao criar turma." }, { status: 500 });
   }

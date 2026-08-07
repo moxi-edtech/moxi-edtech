@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DBWithRPC } from "@/types/supabase-augment";
 import { requireRoleInSchool } from "@/lib/authz";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,6 +12,7 @@ export const revalidate = 0;
 const QuerySchema = z.object({
   turmaId: z.string().uuid("O campo turmaId deve ser um UUID válido"),
   trimestre: z.preprocess((val) => Number(val), z.number().int().min(1).max(3)),
+  anoLetivoId: z.string().uuid("O campo ano_letivo_id deve ser um UUID válido"),
 });
 
 export async function GET(req: Request) {
@@ -19,6 +21,7 @@ export async function GET(req: Request) {
     const params = {
       turmaId: url.searchParams.get("turmaId"),
       trimestre: url.searchParams.get("trimestre"),
+      anoLetivoId: url.searchParams.get("ano_letivo_id"),
     };
 
     const parsed = QuerySchema.safeParse(params);
@@ -44,6 +47,17 @@ export async function GET(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.anoLetivoId,
+      operation: "READ",
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: turmaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
 
     // Permitir acesso apenas para gestores escolares (admin, secretaria, etc.)
     const { error: roleError } = await requireRoleInSchool({
@@ -100,12 +114,16 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       data: {
+        context: academicContext,
         prontidao: prontidao || [],
         pendentes: pendentes || [],
         alunosRisco: alunosRisco || [],
       },
     });
   } catch (err) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.error("Erro no fetch do cockpit pedagógico:", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

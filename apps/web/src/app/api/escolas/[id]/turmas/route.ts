@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { validarCurriculoParaTurma } from "@/lib/academico/turma-gate";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
   const t = (turno || "").trim().toLowerCase();
@@ -75,6 +76,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // 3. Parâmetros da URL
     const url = new URL(request.url);
+    const context = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
     const turno = url.searchParams.get('turno');
     const cursoId = url.searchParams.get('curso_id');
     const status = url.searchParams.get('status');
@@ -87,8 +93,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // 4. Query usando a view que resolve curso/classe
     let query = supabase
       .from('vw_turmas_para_matricula')
-      .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
+      .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id, session_id, ano_letivo')
       .eq('escola_id', userEscolaId)
+      .eq('session_id', context.anoLetivoId)
     
     if (cursor) {
       const [cursorNome, cursorId] = cursor.split(',');
@@ -140,8 +147,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
       let fallbackQuery = supabase
         .from('turmas' as any)
-        .select('id, nome, turma_codigo, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id')
+        .select('id, nome, turma_codigo, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id, session_id, ano_letivo')
         .eq('escola_id', userEscolaId)
+        .eq('session_id', context.anoLetivoId)
 
       if (cursor) {
         const [cursorNome, cursorId] = cursor.split(',');
@@ -233,11 +241,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       total: items.length,
       stats,
       next_cursor: nextCursor,
+      context,
     });
     if (shouldLog) log('total', performance.now() - totalStart);
     return response;
 
   } catch (e: any) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     const rawMessage =
       e?.message || e?.error || (typeof e === 'string' ? e : null);
     const fallbackMessage = (() => {
@@ -289,6 +301,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       nome, 
       turno: turnoRaw, 
       sala, 
+      ano_letivo_id,
       ano_letivo, // OBRIGATÓRIO PARA A CONSTRAINT
       capacidade_maxima, 
       curso_id, 
@@ -296,6 +309,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       letra,
       classe_num
     } = body;
+
+    const writeContext = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: ano_letivo_id,
+      operation: "WRITE",
+    });
     
     const turno = normalizeTurno(turnoRaw);
 
@@ -334,6 +353,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from('turmas')
       .insert({
         escola_id: userEscolaId,
+        session_id: writeContext.anoLetivoId,
         nome,
         turno,
         ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
@@ -364,6 +384,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ ok: true, data, message: "Turma criada com sucesso" });
 
   } catch (e: any) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     console.error("Erro POST Turma:", e);
     return NextResponse.json({ ok: false, error: e.message || String(e) }, { status: 500 });
   }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,11 @@ export async function GET(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada para o utilizador." }, { status: 400 });
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
     const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
@@ -68,8 +74,15 @@ export async function GET(req: Request) {
     }));
 
     if (!turmaId) {
-      return NextResponse.json({ ok: true, filtros: { turmas, periodos }, report: null });
+      return NextResponse.json({ ok: true, context: academicContext, filtros: { turmas, periodos }, report: null });
     }
+
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: turmaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
 
     const { data: report, error: rpcError } = await (supabase as any).rpc("gerar_mapa_aproveitamento_turma", {
       p_escola_id: escolaId,
@@ -81,8 +94,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: rpcError.message, filtros: { turmas, periodos } }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, filtros: { turmas, periodos }, report: report ?? { colunas: [], linhas: [] } });
+    return NextResponse.json({ ok: true, context: academicContext, filtros: { turmas, periodos }, report: report ?? { colunas: [], linhas: [] } });
   } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : "Erro inesperado.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

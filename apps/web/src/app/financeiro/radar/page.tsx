@@ -1,10 +1,15 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = 'force-dynamic';
 
-export default async function RadarRedirectPage() {
+export default async function RadarRedirectPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ano_letivo_id?: string | string[] }>;
+}) {
   const supabase = await supabaseServer();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
@@ -21,7 +26,16 @@ export default async function RadarRedirectPage() {
   }
 
   if (escolaId) {
-    redirect(`/escola/${escolaId}/financeiro/radar`);
+    const params = await searchParams;
+    const requested = Array.isArray(params.ano_letivo_id)
+      ? params.ano_letivo_id[0]
+      : params.ano_letivo_id;
+    const context = await resolveAcademicYearContext(supabase as any, {
+      userId: user?.id ?? "",
+      requestedAcademicYearId: requested,
+      operation: "READ",
+    });
+    redirect(`/escola/${escolaId}/financeiro/radar?ano_letivo_id=${encodeURIComponent(context.anoLetivoId)}`);
   }
 
   redirect("/");

@@ -11,9 +11,14 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { sidebarConfig, type NavItem, type SidebarRole } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { createClient } from "@/lib/supabaseClient";
 import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
+import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
+import AcademicContextBanner from "@/components/academic/AcademicContextBanner";
+import { preserveAcademicContextHref, supportsAcademicContext } from "@/lib/academic-year/navigation";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 const TOPBAR_LABELS: Record<SidebarRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
@@ -39,13 +44,14 @@ export default function AppShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { userRole, isLoading: isLoadingRole } = useUserRoleContext();
+  const searchParams = useSearchParams();
+  const { userRole } = useUserRoleContext();
   const { escolaId: escolaIdFromSession, escolaSlug } = useEscolaId();
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [_status, setStatus] = useState<string | null>(null);
 
   // Extract escolaId from the pathname if available
   const safePathname = pathname ?? "";
@@ -126,6 +132,22 @@ export default function AppShell({
   const navEscolaId = escolaSlug || escolaIdFromPath || escolaIdFromSession;
   const displayedEscolaNome = navEscolaId ? escolaNome : null;
   const displayedPlanoNome = navEscolaId ? planoNome : null;
+  const currentSearch = searchParams?.toString() ?? "";
+
+  useEffect(() => {
+    if (!pathname || !supportsAcademicContext(pathname) || searchParams?.has(ACADEMIC_YEAR_PARAM)) return;
+    let cancelled = false;
+    fetch("/api/academic-context", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => {
+        if (cancelled || !json?.ok || !json.context?.anoLetivoId) return;
+        const params = new URLSearchParams(currentSearch);
+        params.set(ACADEMIC_YEAR_PARAM, String(json.context.anoLetivoId));
+        router.replace(`${pathname}?${params.toString()}`);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [currentSearch, pathname, router, searchParams]);
 
   const navItems = useMemo(() => {
     if (!navRole) return [];
@@ -178,8 +200,15 @@ export default function AppShell({
       });
     }
     
-    return items;
-  }, [navRole, isLoadingRole, navEscolaId, financeBadges]);
+    return items.map((item) => ({
+      ...item,
+      href: preserveAcademicContextHref(item.href, currentSearch),
+      children: item.children?.map((child) => ({
+        ...child,
+        href: preserveAcademicContextHref(child.href, currentSearch),
+      })),
+    }));
+  }, [navRole, navEscolaId, financeBadges, currentSearch]);
 
   useEffect(() => {
     if (!navEscolaId) return;
@@ -332,6 +361,12 @@ export default function AppShell({
             escolaParam={navEscolaId}
             portal={navRole ?? undefined}
           />
+          <div className="border-b border-slate-200/70 bg-slate-50 px-4 py-2">
+            <div className="flex max-w-7xl items-center justify-end">
+              <AcademicYearSelector escolaId={escolaIdFromSession} />
+            </div>
+          </div>
+          <AcademicContextBanner />
           <MaintenanceBanner />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>
         </div>

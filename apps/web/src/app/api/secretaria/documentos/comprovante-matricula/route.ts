@@ -7,6 +7,7 @@ import type { Database } from "~types/supabase";
 import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,10 +17,12 @@ const EmitSchema = z.object({
   matriculaId: z.string().uuid(),
   dataHoraEfetivacao: z.string().datetime(),
   observacao: z.string().max(500).optional(),
+  ano_letivo_id: z.string().uuid(),
 });
 
 const QuerySchema = z.object({
   matriculaId: z.string().uuid(),
+  anoLetivoId: z.string().uuid(),
 });
 
 export async function POST(request: Request) {
@@ -47,6 +50,26 @@ export async function POST(request: Request) {
     roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
   });
   if (authError) return authError;
+
+  let academicContext;
+  try {
+    academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: "WRITE",
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: "matriculas",
+      entityId: matriculaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
+  }
 
   const emitResult = await emitirComprovanteMatricula({
     supabase,
@@ -106,14 +129,17 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const parsedQuery = QuerySchema.safeParse({ matriculaId: url.searchParams.get("matriculaId") });
+  const parsedQuery = QuerySchema.safeParse({
+    matriculaId: url.searchParams.get("matriculaId"),
+    anoLetivoId: url.searchParams.get("ano_letivo_id"),
+  });
   if (!parsedQuery.success) {
-    return NextResponse.json({ ok: false, error: "matriculaId inválido" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "matriculaId e ano_letivo_id são obrigatórios" }, { status: 400 });
   }
 
   const { data: matricula } = await supabase
     .from("matriculas")
-    .select("id, escola_id, aluno_id")
+    .select("id, escola_id, aluno_id, session_id")
     .eq("id", parsedQuery.data.matriculaId)
     .single();
 
@@ -124,6 +150,22 @@ export async function GET(request: Request) {
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, String(matricula.escola_id));
   if (!escolaId || escolaId !== matricula.escola_id) {
     return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
+  }
+
+  try {
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsedQuery.data.anoLetivoId,
+      operation: "READ",
+    });
+    if (String(matricula.session_id ?? "") !== academicContext.anoLetivoId) {
+      return NextResponse.json({ ok: false, error: "O comprovante não pertence ao ano letivo selecionado.", code: "CROSS_YEAR_ENTITY_MISMATCH" }, { status: 409 });
+    }
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+    }
+    throw error;
   }
 
   const { data: doc, error: docError } = await supabase

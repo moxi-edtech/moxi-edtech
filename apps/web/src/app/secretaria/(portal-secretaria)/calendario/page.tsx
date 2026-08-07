@@ -72,6 +72,7 @@ export default function CalendarioPage() {
           inicio_at: inicioAt,
           fim_at: fimAt,
           publico_alvo: publicoAlvo,
+          ano_letivo_id: selectedYearId,
         }),
       });
 

@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type ListOptions = {
   includeFinanceiro?: boolean;
   includeResumo?: boolean;
+  academicYearId?: string;
 };
 
 type ListPage = {
@@ -111,9 +112,10 @@ export async function listAlunos(
   if (filters.turmaId) {
     const { data: turmaRow, error: turmaErr } = await supabase
       .from("turmas")
-      .select("nome")
+      .select("nome, session_id")
       .eq("id", filters.turmaId)
       .eq("escola_id", escolaId)
+      .eq("session_id", options.academicYearId ?? "")
       .maybeSingle();
     if (turmaErr) throw turmaErr;
     turmaNome = turmaRow?.nome ?? null;
@@ -238,9 +240,10 @@ export async function listAlunos(
       const { data: matriculas } = await supabase
         .from("matriculas")
         .select(
-          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada"
+          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id"
         )
         .eq("escola_id", escolaId)
+        .eq("session_id", options.academicYearId ?? "")
         .in("aluno_id", alunoIds)
         .in("status", ["ativo", "ativa"])
         .order("updated_at", { ascending: false, nullsFirst: false })

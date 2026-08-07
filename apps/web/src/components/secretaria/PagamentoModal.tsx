@@ -4,10 +4,11 @@ import { useMemo, useState, useEffect } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -60,6 +61,8 @@ export function PagamentoModal({
   const { escolaId, escolaSlug } = useEscolaId();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const escolaParam = escolaSlug || escolaId;
 
   const needsRef = useMemo(() => method === "tpa", [method]);
@@ -126,6 +129,7 @@ export function PagamentoModal({
       cache: "no-store",
       body: JSON.stringify({
         aluno_id: alunoId,
+        ano_letivo_id: academicYearId,
         mensalidade_id: null,
         valor: totalKz,
         metodo: method,

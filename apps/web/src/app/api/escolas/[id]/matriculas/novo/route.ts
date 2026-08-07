@@ -8,6 +8,8 @@ import { hasPermission, type Papel } from '@/lib/permissions'
 import { normalizeAnoLetivo } from '@/lib/financeiro/tabela-preco'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
+
 // Schema validation
 const BodySchema = z.object({
   aluno_id: z.string().uuid('aluno_id inválido'),
@@ -50,6 +52,29 @@ export async function POST(
       return NextResponse.json({ ok: false, error: msg }, { status: 400 })
     }
     const body = parse.data
+
+    // 2.1 Validate Academic Year Context (WRITE Protection)
+    try {
+      const academicContext = await resolveAcademicYearContext(supabase as any, {
+        userId,
+        requestedAcademicYearId: body.ano_letivo_id,
+        operation: 'WRITE',
+      })
+
+      if (body.turma_id) {
+        await assertAcademicYearEntity(supabase as any, {
+          table: 'turmas',
+          entityId: body.turma_id,
+          escolaId: resolvedEscolaId,
+          anoLetivoId: academicContext.anoLetivoId,
+        })
+      }
+    } catch (err: any) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
+      }
+      return NextResponse.json({ ok: false, error: 'Erro ao validar contexto do ano letivo' }, { status: 500 })
+    }
     
     // 3. Authorization (Permissions)
     const { data: vinc } = await supabase.from('escola_usuarios').select('papel').eq('user_id', userId).eq('escola_id', resolvedEscolaId).limit(1)
@@ -138,6 +163,7 @@ export async function POST(
         .eq('escola_id', resolvedEscolaId)
         .eq('aluno_id', body.aluno_id)
         .eq('ano_letivo', anoLetivoInt)
+        .eq('session_id', body.ano_letivo_id)
         .select()
         .single();
 
@@ -156,8 +182,9 @@ export async function POST(
       details: { 
           aluno_id: matUpdated.aluno_id, 
           numero: numeroGerado, 
-          status: matUpdated.status 
-      },
+          status: matUpdated.status,
+          ano_letivo_id: body.ano_letivo_id,
+        },
     }).catch(() => null)
 
     return NextResponse.json({ ok: true, matricula: matUpdated })

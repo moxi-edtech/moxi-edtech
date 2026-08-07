@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { ACADEMIC_YEAR_PARAM } from '@/lib/academic-year/context';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -63,6 +64,7 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
           matriculaId,
           dataHoraEfetivacao: new Date().toISOString(),
           observacao: `Emissão imediata após finalização (${statusFinal}).`,
+          ano_letivo_id: new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM),
         }),
       });
 

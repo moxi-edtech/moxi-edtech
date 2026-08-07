@@ -7,6 +7,9 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { inngest } from "@/inngest/client";
 import type { Database } from "~types/supabase";
 
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { recordAuditServer } from "@/lib/audit";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
@@ -22,22 +25,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }
 
-    // 1. Obter o ano ativo
-    const { data: anoAtivo } = await supabase
-      .from("anos_letivos")
-      .select("id, ano")
-      .eq("escola_id", escolaId)
-      .eq("ativo", true)
-      .maybeSingle();
+    const body = await request.json().catch(() => ({}));
 
-    if (!anoAtivo) return NextResponse.json({ ok: false, error: "Nenhum ano letivo ativo." });
+    // 1. Resolver e validar o contexto académico para geração de pautas (P0 WRITE)
+    let academicContext;
+    try {
+      academicContext = await resolveAcademicYearContext(supabase as any, {
+        userId: user.id,
+        requestedAcademicYearId: body.ano_letivo_id,
+        operation: "WRITE",
+      });
+    } catch (err: any) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      return NextResponse.json({ ok: false, error: "Erro de contexto do ano letivo" }, { status: 500 });
+    }
 
-    // 2. Obter todas as turmas da sessão
+    // 2. Obter todas as turmas da sessão resolvida
     const { data: turmas } = await supabase
       .from("turmas")
       .select("id")
       .eq("escola_id", escolaId)
-      .eq("session_id", anoAtivo.id);
+      .eq("session_id", academicContext.anoLetivoId);
 
     if (!turmas || turmas.length === 0) {
       return NextResponse.json({ ok: false, error: "Nenhuma turma encontrada nesta sessão." });
@@ -47,7 +57,7 @@ export async function POST(request: Request) {
       .from("periodos_letivos")
       .select("id")
       .eq("escola_id", escolaId)
-      .eq("ano_letivo_id", anoAtivo.id)
+      .eq("ano_letivo_id", academicContext.anoLetivoId)
       .order("data_fim", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -65,7 +75,7 @@ export async function POST(request: Request) {
     // 3. Criar Job de Lote (Pauta Anual)
     // Usamos a lógica atômica do sistema de documentos oficiais
     const documentoTipo = "pauta_anual";
-    const idempotencyKey = `virada_wizard:pautas_anual:${anoAtivo.id}`;
+    const idempotencyKey = `virada_wizard:pautas_anual:${academicContext.anoLetivoId}`;
 
     // Verifica se já existe
     const { data: existing } = await supabase
@@ -115,6 +125,19 @@ export async function POST(request: Request) {
         periodo_letivo_id: periodoFinal.id
       },
     });
+
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "PAUTAS_ANUAIS_GERACAO_INICIADA",
+      entity: "pautas_lote_jobs",
+      entityId: job.id,
+      details: {
+        ano_letivo_id: academicContext.anoLetivoId,
+        periodo_letivo_id: periodoFinal.id,
+        total_turmas: turmaIds.length,
+      },
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, job_id: job.id, status: "STARTED" });
 

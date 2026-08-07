@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export async function GET(req: Request) {
   try {
@@ -25,8 +26,13 @@ export async function GET(req: Request) {
     });
     if (roleError) return roleError;
 
-    const requestedYearId = url.searchParams.get("ano_letivo_id");
-    const requestedYear = Number(url.searchParams.get("ano"));
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+
+    const requestedYearId = academicContext.anoLetivoId;
     const yearsQuery = supabase
       .from("anos_letivos")
       .select("id, ano, ativo, data_inicio, data_fim")
@@ -36,11 +42,7 @@ export async function GET(req: Request) {
     const { data: years, error: yearsError } = await yearsQuery;
     if (yearsError) return NextResponse.json({ ok: false, error: yearsError.message }, { status: 400 });
 
-    const selectedYear = requestedYearId
-      ? (years ?? []).find((year: any) => year.id === requestedYearId)
-      : Number.isInteger(requestedYear) && requestedYear > 0
-        ? (years ?? []).find((year: any) => Number(year.ano) === requestedYear)
-        : (years ?? []).find((year: any) => year.ativo) ?? years?.[0];
+    const selectedYear = (years ?? []).find((year: any) => year.id === requestedYearId);
     if (!selectedYear) return NextResponse.json({ ok: true, items: [], anos_letivos: years ?? [], ano_letivo: null });
 
     const rangeStart = String(selectedYear.data_inicio);
@@ -95,8 +97,11 @@ export async function GET(req: Request) {
     ].sort((a, b) => String(a.data_inicio).localeCompare(String(b.data_inicio)));
 
     const limitedItems = items.slice(0, 100);
-    return NextResponse.json({ ok: true, items: limitedItems, anos_letivos: years ?? [], ano_letivo: selectedYear });
+    return NextResponse.json({ ok: true, items: limitedItems, anos_letivos: years ?? [], ano_letivo: selectedYear, context: academicContext });
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
@@ -124,11 +129,17 @@ export async function POST(req: Request) {
     if (roleError) return roleError;
 
     const body = await req.json();
-    const { titulo, descricao, inicio_at, fim_at, publico_alvo } = body;
+    const { titulo, descricao, inicio_at, fim_at, publico_alvo, ano_letivo_id } = body;
 
     if (!titulo || !inicio_at) {
       return NextResponse.json({ ok: false, error: 'Campos obrigatórios em falta' }, { status: 400 });
     }
+
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: ano_letivo_id,
+      operation: "WRITE",
+    });
 
     const { data: newEvent, error } = await supabase
       .from('events')
@@ -147,9 +158,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, data: newEvent });
+    return NextResponse.json({ ok: true, context: academicContext, data: newEvent });
 
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

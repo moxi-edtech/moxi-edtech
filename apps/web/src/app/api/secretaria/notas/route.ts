@@ -4,11 +4,17 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import type { Database } from '~types/supabase'
+import {
+  AcademicYearContextError,
+  assertAcademicYearEntity,
+  resolveAcademicYearContext,
+} from '@/lib/academic-year/context'
 
 const Body = z.object({
   turma_id: z.string().uuid(),
   disciplina_id: z.string().uuid().optional(),
   turma_disciplina_id: z.string().uuid().optional(),
+  ano_letivo_id: z.string().uuid().optional().nullable(),
   trimestre: z.number().int().min(1).max(3),
   tipo_avaliacao: z.string().trim().min(2).max(40).optional(),
   is_isento: z.boolean().optional().default(false),
@@ -45,6 +51,18 @@ export async function POST(req: Request) {
     const authz = await authorizeTurmasManage(supabase, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: body.ano_letivo_id,
+      operation: 'WRITE',
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: 'turmas',
+      entityId: body.turma_id,
+      escolaId: academicContext.escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
+
     const { data, error } = await supabase.rpc('lancar_notas_batch', {
       p_escola_id: escolaId,
       p_turma_id: body.turma_id,
@@ -62,6 +80,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, data })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

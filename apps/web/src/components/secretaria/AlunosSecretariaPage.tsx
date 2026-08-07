@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatTurmaDisplayName } from "@/utils/formatters";
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import {
   AlertCircle,
   Archive,
@@ -1092,6 +1093,8 @@ const TAB_TO_STATUS: Record<TabStatus, string> = {
 
 export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string | null }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const { success, error } = useToast();
   const slugFromPath = React.useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
@@ -1160,6 +1163,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       if (escolaId) {
         params.set("escolaId", escolaId);
       }
+      if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId);
       if (currentFilters.ano) {
         params.set("ano", currentFilters.ano);
       }
@@ -1199,7 +1203,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [academicYearId, escolaId]);
 
   useEffect(() => {
     setPage(1);

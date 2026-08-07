@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,6 +49,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: ctx.userId,
+      requestedAcademicYearId: new URL(request.url).searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+
     const { data: userRes } = await supabase.auth.getUser();
     const authorizedIds = await resolveAuthorizedStudentIds({
       supabase,
@@ -68,13 +75,14 @@ export async function GET(request: Request) {
             .select("id, ano_letivo")
             .eq("id", ctx.matriculaId)
             .eq("escola_id", ctx.escolaId)
+            .eq("session_id", academicContext.anoLetivoId)
             .maybeSingle()
         : supabase
             .from("matriculas")
             .select("id, ano_letivo")
             .eq("aluno_id", alunoId)
             .eq("escola_id", ctx.escolaId)
-            .order("created_at", { ascending: false })
+            .eq("session_id", academicContext.anoLetivoId)
             .limit(1)
             .maybeSingle(),
     ]);
@@ -83,18 +91,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
     }
 
-    const { data: anoLetivoRow } = await supabase
-      .from("anos_letivos")
-      .select("id")
-      .eq("escola_id", ctx.escolaId)
-      .eq("ano", matricula.ano_letivo)
-      .limit(1)
-      .maybeSingle();
-
-    const anoLetivoId = anoLetivoRow?.id;
-    if (!anoLetivoId) {
-      return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
-    }
+    const anoLetivoId = academicContext.anoLetivoId;
 
     // --- SEGURANÇA: Verificar permissão de visualização detalhada (serviço pago) ---
     const { data: permission } = await supabase
@@ -204,12 +201,16 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      context: academicContext,
       nome_aluno: aluno?.nome ?? null,
       trimestre_atual: trimestreAtual ?? null,
       is_liberado: isLiberado,
       disciplinas,
     });
   } catch (e: unknown) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

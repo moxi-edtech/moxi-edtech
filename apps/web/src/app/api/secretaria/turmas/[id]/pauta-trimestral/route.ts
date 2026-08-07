@@ -12,6 +12,7 @@ import {
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -20,6 +21,7 @@ export const fetchCache = 'force-no-store'
 const Query = z.object({
   disciplinaId: z.string().uuid(),
   periodoNumero: z.coerce.number().int().min(1).max(3),
+  anoLetivoId: z.string().uuid(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -33,13 +35,26 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { searchParams } = new URL(req.url)
     const disciplinaId = searchParams.get('disciplinaId') ?? searchParams.get('disciplina_id')
     const periodoNumero = searchParams.get('periodoNumero') ?? searchParams.get('periodo')
-    const parsed = Query.safeParse({ disciplinaId, periodoNumero })
+    const anoLetivoId = searchParams.get('ano_letivo_id')
+    const parsed = Query.safeParse({ disciplinaId, periodoNumero, anoLetivoId })
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
+
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.anoLetivoId,
+      operation: "READ",
+    })
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: turmaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
@@ -94,12 +109,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .maybeSingle()
     const professorId = (turmaProfessor as { professor_id?: string | null } | null)?.professor_id ?? null
 
-    const { data: anoLetivo } = await supabase
-      .from('anos_letivos')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('ano', turma.ano_letivo)
-      .maybeSingle()
+    const anoLetivo = { id: academicContext.anoLetivoId }
 
     const { data: periodosRows } = anoLetivo?.id
       ? await supabase
@@ -304,8 +314,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       periodosDisponiveis: (periodosRows || []).map((p: any) => p.numero),
     }
 
-    return NextResponse.json({ ok: true, payload })
+    return NextResponse.json({ ok: true, context: academicContext, payload })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

@@ -4,12 +4,14 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const BodySchema = z.object({
   target_turma_id: z.string().uuid(),
+  ano_letivo_id: z.string().uuid(),
   motivo: z.string().trim().max(300).optional().nullable(),
 });
 
@@ -57,6 +59,26 @@ export async function POST(
     }
 
     const escolaId = sourceTurma.escola_id;
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: "WRITE",
+    });
+    if (academicContext.escolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
+    }
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: sourceTurmaId,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas",
+      entityId: parsed.data.target_turma_id,
+      escolaId,
+      anoLetivoId: academicContext.anoLetivoId,
+    });
     const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
     if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão." }, { status: 403 });
@@ -189,6 +211,9 @@ export async function POST(
       failures,
     });
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

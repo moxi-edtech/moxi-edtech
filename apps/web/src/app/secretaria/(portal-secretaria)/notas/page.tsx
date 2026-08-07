@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters"
+import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context"
 
 type TurmaItem = {
   id: string
@@ -55,6 +56,7 @@ export default function SecretariaNotasPage() {
 
 function SecretariaNotasContent() {
   const searchParams = useSearchParams()
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM)
   const initialTurmaId = searchParams?.get("turmaId") ?? ""
   const initialDisciplinaId = searchParams?.get("disciplinaId") ?? ""
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear())
@@ -197,6 +199,7 @@ function SecretariaNotasContent() {
         headers: { "Content-Type": "application/json", "idempotency-key": `isento-${Date.now()}` },
         body: JSON.stringify({
           turma_id: turmaId,
+          ano_letivo_id: academicYearId,
           disciplina_id: disciplinaId,
           turma_disciplina_id: turmaDisciplinaId || undefined,
           trimestre: periodoNumero,
@@ -235,6 +238,7 @@ function SecretariaNotasContent() {
         },
         body: JSON.stringify({
           turma_id: turmaId,
+          ano_letivo_id: academicYearId,
           disciplina_id: disciplinaId,
           turma_disciplina_id: turmaDisciplinaId || undefined,
           trimestre: periodoNumero,

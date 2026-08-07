@@ -8,6 +8,9 @@ import { buildPautaGeralPayload, renderPautaGeralStream } from '@/lib/pedagogico
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox';
 import { applyKf2ListInvariants } from '@/lib/kf2';
 
+import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context';
+import { recordAuditServer } from '@/lib/audit';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const runtime = 'nodejs';
@@ -15,6 +18,7 @@ export const runtime = 'nodejs';
 const Body = z.object({
   turma_id: z.string().uuid(),
   periodo_letivo_id: z.string().uuid(),
+  ano_letivo_id: z.string().uuid().optional(),
 });
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -128,13 +132,50 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Idempotency-Key header is required' }, { status: 400 });
     }
 
-    const { turma_id, periodo_letivo_id } = parse.data;
+    const { turma_id, periodo_letivo_id, ano_letivo_id } = parse.data;
 
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
     const effectiveEscolaId = userEscolaId;
+
+    // Validação P0 WRITE do contexto do ano letivo para encerramento de período
+    let academicContext;
+    try {
+      academicContext = await resolveAcademicYearContext(supabase as any, {
+        userId: user.id,
+        requestedAcademicYearId: ano_letivo_id,
+        operation: 'WRITE',
+      });
+      await assertAcademicYearEntity(supabase as any, {
+        table: 'turmas',
+        entityId: turma_id,
+        escolaId: academicContext.escolaId,
+        anoLetivoId: academicContext.anoLetivoId,
+      });
+      const { data: periodo } = await supabase
+        .from('periodos_letivos')
+        .select('id, ano_letivo_id')
+        .eq('escola_id', academicContext.escolaId)
+        .eq('id', periodo_letivo_id)
+        .maybeSingle();
+      if (!periodo) {
+        throw new AcademicYearContextError('ACADEMIC_ENTITY_NOT_FOUND', 404, 'Período letivo não encontrado.');
+      }
+      if (periodo.ano_letivo_id !== academicContext.anoLetivoId) {
+        throw new AcademicYearContextError(
+          'CROSS_YEAR_ENTITY_MISMATCH',
+          409,
+          'O período letivo não pertence ao ano académico selecionado.',
+        );
+      }
+    } catch (err: any) {
+      if (err instanceof AcademicYearContextError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      return NextResponse.json({ ok: false, error: 'Erro de validação do contexto académico' }, { status: 500 });
+    }
 
     const { data: hasAdminRole, error: rolesError } = await supabase
       .rpc('user_has_role_in_school', {
@@ -186,6 +227,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       console.error('Error calling fechar_periodo_academico RPC:', error);
       return NextResponse.json({ ok: false, error: 'Erro ao fechar o período.' }, { status: 500 });
     }
+
+    recordAuditServer({
+      escolaId: effectiveEscolaId,
+      portal: 'secretaria',
+      acao: 'PERIODO_ACADEMICO_FECHADO',
+      entity: 'periodos_letivos',
+      entityId: periodo_letivo_id,
+      details: { ano_letivo_id: academicContext.anoLetivoId, turma_id },
+    }).catch(() => null);
 
     let pdfGenerated = false;
     let pdfError: string | null = null;
