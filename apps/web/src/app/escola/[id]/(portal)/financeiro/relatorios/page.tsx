@@ -46,6 +46,10 @@ export default async function RelatoriosPage({
           <div className="text-lg font-semibold mb-1">Relatórios Detalhados</div>
           <div className="text-sm text-gray-600">Auditoria por período e exportação</div>
         </Link>
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/reconciliacao-mensalidades`} className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition border-amber-200 bg-amber-50/30">
+          <div className="text-lg font-semibold mb-1">Reconciliação de Mensalidades</div>
+          <div className="text-sm text-gray-600">Identifica mensalidades sem matrícula, com ano/turma divergente ou fora do calendário.</div>
+        </Link>
       </div>
     </div>
   );

@@ -230,11 +230,28 @@ export function GlobalSearchActionSheet({ active, escolaId, onClose, onSuccess }
 
   if (active.action.kind === "desk") {
     return (
-      <ModalShell open title={title} description={active.result.label} onClose={onClose}>
-        <div className="min-h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <BalcaoAtendimento escolaId={escolaId} selectedAlunoId={active.result.id} showSearch={false} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 sm:p-6 animate-in fade-in-50">
+        <div className="relative flex h-[84vh] w-[88vw] max-w-[1280px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl animate-in zoom-in-95">
+          <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 flex-shrink-0">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">{title}</h2>
+              <p className="text-xs text-slate-500">{active.result.label}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Fechar
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-full">
+              <BalcaoAtendimento escolaId={escolaId} selectedAlunoId={active.result.id} showSearch={false} embedded />
+            </div>
+          </div>
         </div>
-      </ModalShell>
+      </div>
     );
   }
 

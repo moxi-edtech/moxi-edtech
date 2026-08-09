@@ -11,14 +11,18 @@ type EstadoVital = {
   periodo_numero: number | null;
   hoje_bloqueado_pedagogico: boolean;
   evento_hoje_nome: string | null;
-  fase_operacional: 'REGULAR' | 'EXAMES';
+  fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };
 
 export function EstadoVitalBanner({ estado, isOperacoes = false }: { estado: EstadoVital | null; isOperacoes?: boolean }) {
   if (!estado) return null;
 
   const isExames = estado.fase_operacional === 'EXAMES';
-  const isBloqueado = estado.hoje_bloqueado_pedagogico;
+  const isBoundary = estado.fase_operacional === 'PRE_INICIO' || estado.fase_operacional === 'POS_ENCERRAMENTO';
+  const isBloqueado = estado.hoje_bloqueado_pedagogico || isBoundary;
+  const faseLabel = isBoundary
+    ? estado.fase_operacional === 'PRE_INICIO' ? 'Pré-início' : 'Encerrado'
+    : isExames ? 'Exames' : 'Aulas';
 
   return (
     <div className={`border border-slate-200 bg-white p-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-xl shadow-sm"}`}>
@@ -59,7 +63,7 @@ export function EstadoVitalBanner({ estado, isOperacoes = false }: { estado: Est
           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
             isExames ? 'bg-amber-50 text-amber-700 border border-amber-100/50' : 'bg-emerald-50 text-emerald-700 border border-emerald-100/50'
           }`}>
-            {isBloqueado ? 'Interrupção' : isExames ? 'Exames' : 'Aulas'}
+            {isBloqueado && !isBoundary ? 'Interrupção' : faseLabel}
           </span>
         </div>
 

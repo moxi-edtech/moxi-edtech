@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
+import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
@@ -17,8 +17,12 @@ async function context() {
   if (!user) return { error: NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }) };
   const escolaId = await resolveEscolaIdForUser(supabase, user.id);
   if (!escolaId) return { error: NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 }) };
-  const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
-  if (!authz.allowed) return { error: NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 }) };
+  const authz = await requireRoleInSchool({
+    supabase,
+    escolaId,
+    roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin_secretaria", "admin", "admin_escola", "staff_admin", "diretor"],
+  });
+  if (authz.error) return { error: authz.error };
   return { supabase: supabase as any, escolaId };
 }
 
@@ -50,20 +54,24 @@ export async function GET() {
       p_destino_session_id: current.id,
     });
     if (pendingError) throw pendingError;
-    const rows = ((pendingRows ?? []) as Row[]).map((row) => ({
-      id: row.reclassificacao_id ? `reclassificacao:${row.reclassificacao_id}` : `source:${row.matricula_id}`,
-      reclassificacao_id: row.reclassificacao_id,
-      matricula_id: row.matricula_id,
-      aluno_id: row.aluno_id,
-      nome: row.nome || "Aluno sem nome",
-      turma: row.turma || "Turma anterior",
-      status_matricula: row.status_matricula,
-      saldo: Number(row.saldo ?? 0),
-      motivo: row.motivo,
-      estado: row.motivo === "divida" ? "Aguarda regularização financeira" : row.motivo === "finalista" ? "Aguardando destino académico" : "Revisão necessária",
-      tipo: row.tipo,
-      pode_promover: row.motivo === "divida" && Number(row.saldo ?? 0) <= 0,
-    }));
+    const rows = ((pendingRows ?? []) as Row[]).map((row) => {
+      const saldo = Number(row.saldo ?? 0);
+      const podePromover = row.motivo !== "finalista" && saldo <= 0;
+      return {
+        id: row.reclassificacao_id ? `reclassificacao:${row.reclassificacao_id}` : `source:${row.matricula_id}`,
+        reclassificacao_id: row.reclassificacao_id,
+        matricula_id: row.matricula_id,
+        aluno_id: row.aluno_id,
+        nome: row.nome || "Aluno sem nome",
+        turma: row.turma || "Turma anterior",
+        status_matricula: row.status_matricula,
+        saldo,
+        motivo: row.motivo,
+        estado: row.motivo === "divida" ? "Aguarda regularização financeira" : row.motivo === "finalista" ? "Aguardando destino académico" : podePromover ? "Pronto para promoção" : "Revisão necessária",
+        tipo: row.tipo,
+        pode_promover: podePromover,
+      };
+    });
     return NextResponse.json({
       ok: true,
       sessions: { current, previous },

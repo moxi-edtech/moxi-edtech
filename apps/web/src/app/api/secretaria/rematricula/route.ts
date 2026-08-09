@@ -319,6 +319,19 @@ async function generateMensalidadesForAlunos(client: DbClient, escolaId: string,
     const anoLetivoNum = normalizeAnoLetivo(anoLetivoNome ?? dataInicioSess.getFullYear());
     const anoLetivo = String(anoLetivoNum);
 
+    const [{ data: matriculas }, { data: turma }] = await Promise.all([
+      client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at')
+        .eq('escola_id', escolaId).eq('turma_id', turmaId).eq('ano_letivo', anoLetivoNum)
+        .in('aluno_id', alunoIds).in('status', ['ativo', 'ativa', 'active']),
+      client.from('turmas').select('is_classe_exame, classe_num, nome').eq('id', turmaId).maybeSingle(),
+    ]);
+    if (!matriculas || matriculas.length === 0) return;
+    const turmaNome = String((turma as any)?.nome ?? '');
+    const isClasseExame = Boolean((turma as any)?.is_classe_exame)
+      || [6, 9].includes(Number((turma as any)?.classe_num))
+      || /\b(6|9)(ª|a)?\s*classe\b/i.test(turmaNome);
+    const mesFinal = new Date(dataFimSess.getFullYear(), dataFimSess.getMonth(), 1);
+
     const pricing = await resolveMensalidadeAtual(client, escolaId, turmaId, anoLetivoNome, classeId);
     const valor = pricing?.valor;
     const dia = pricing?.dia_vencimento || 5;
@@ -326,35 +339,31 @@ async function generateMensalidadesForAlunos(client: DbClient, escolaId: string,
     if (valor == null || !Number.isFinite(valor)) return;
 
     const today = new Date();
-    const startMonth = gerarTodas ? dataInicioSess : new Date(today.getFullYear(), today.getMonth(), 1);
-    const endMonth = new Date(dataFimSess.getFullYear(), dataFimSess.getMonth(), 1);
-
     const rows: MensalidadeInsert[] = [];
-    const cursor = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
-    let firstLoop = true;
-    while (cursor <= endMonth) {
-      const ano = cursor.getFullYear();
-      const mesIndex = cursor.getMonth();
-      const mes = mesIndex + 1;
-      const lastDay = new Date(ano, mesIndex + 1, 0).getDate();
-      const dd = Math.min(dia, lastDay);
-      const venc = new Date(ano, mesIndex, dd);
-
-      let valorMes = Number(Number(valor).toFixed(2));
-      if (firstLoop && !gerarTodas) {
-        // pró-rata se já passou o dia nesse mês corrente
-        if (today.getFullYear() === ano && today.getMonth() === mesIndex && today.getDate() > dia) {
+    for (const matricula of matriculas as any[]) {
+      const enrollmentDate = new Date(matricula.data_inicio_financeiro || matricula.data_matricula || matricula.created_at || dataInicioSess);
+      const baseStart = new Date(Math.max(dataInicioSess.getTime(), enrollmentDate.getTime()));
+      const startMonth = gerarTodas ? new Date(baseStart.getFullYear(), baseStart.getMonth(), 1) : new Date(Math.max(baseStart.getTime(), new Date(today.getFullYear(), today.getMonth(), 1).getTime()));
+      const cursor = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
+      let firstLoop = true;
+      while (cursor <= mesFinal) {
+        if (!isClasseExame && cursor.getTime() === mesFinal.getTime()) break;
+        const ano = cursor.getFullYear();
+        const mesIndex = cursor.getMonth();
+        const mes = mesIndex + 1;
+        const lastDay = new Date(ano, mesIndex + 1, 0).getDate();
+        const dd = Math.min(dia, lastDay);
+        const venc = new Date(ano, mesIndex, dd);
+        let valorMes = Number(Number(valor).toFixed(2));
+        if (firstLoop && !gerarTodas && today.getFullYear() === ano && today.getMonth() === mesIndex && today.getDate() > dia) {
           const daysInMonth = new Date(ano, mesIndex + 1, 0).getDate();
           const remainingDays = Math.max(0, daysInMonth - today.getDate() + 1);
-          const prorata = (valorMes * remainingDays) / daysInMonth;
-          valorMes = Math.max(0, Math.round(prorata * 100) / 100);
+          valorMes = Math.max(0, Math.round(((valorMes * remainingDays) / daysInMonth) * 100) / 100);
         }
-      }
-
-      for (const alunoId of alunoIds) {
         rows.push({
           escola_id: escolaId,
-          aluno_id: alunoId,
+          aluno_id: matricula.aluno_id,
+          matricula_id: matricula.id,
           turma_id: turmaId,
           ano_letivo: anoLetivo,
           mes_referencia: mes,
@@ -365,15 +374,15 @@ async function generateMensalidadesForAlunos(client: DbClient, escolaId: string,
           status: 'pendente',
           tabela_id: tabelaId,
         });
+        firstLoop = false;
+        cursor.setMonth(cursor.getMonth() + 1);
       }
-
-      firstLoop = false;
-      cursor.setMonth(cursor.getMonth() + 1);
     }
 
     if (rows.length > 0) {
       for (let i=0; i<rows.length; i+=1000) {
-        await client.from('mensalidades').insert(rows.slice(i, i + 1000));
+        const { error } = await client.from('mensalidades').insert(rows.slice(i, i + 1000));
+        if (error) throw error;
       }
     }
   } catch (e) {

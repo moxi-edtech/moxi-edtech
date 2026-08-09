@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveAcademicYearContext } from "@/lib/academic-year/context";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -53,16 +54,38 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: parsed.data.ano_letivo_id,
+      operation: "READ",
+    });
+    const { data: academicYearRow, error: academicYearError } = academicContext
+      ? await supabase
+          .from("anos_letivos")
+          .select("data_inicio, data_fim")
+          .eq("id", academicContext.anoLetivoId)
+          .eq("escola_id", escolaId)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (academicYearError) {
+      return NextResponse.json({ ok: false, error: academicYearError.message }, { status: 500 });
+    }
+    const academicStart = academicYearRow?.data_inicio ?? null;
+    const academicEnd = academicYearRow?.data_fim ?? null;
+
     const start = toMonthStart(normalizeDate(parsed.data.range_start));
     const end = toMonthStart(normalizeDate(parsed.data.range_end));
 
-    let kpisQuery = supabase
-      .from("vw_financeiro_kpis_mes")
+    let kpisQuery = (supabase as any)
+      .from("vw_financeiro_kpis_mes_ano")
       .select("escola_id, mes_ref, previsto_total, realizado_total, inadimplencia_total")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo_id", academicContext?.anoLetivoId ?? "");
 
     if (start) kpisQuery = kpisQuery.gte("mes_ref", start);
     if (end) kpisQuery = kpisQuery.lte("mes_ref", end);
+    if (academicStart) kpisQuery = kpisQuery.gte("mes_ref", academicStart);
+    if (academicEnd) kpisQuery = kpisQuery.lte("mes_ref", academicEnd);
 
     const { data: kpis, error: kpisError } = await kpisQuery;
     if (kpisError) {
@@ -84,16 +107,18 @@ export async function GET(request: Request) {
 
     const percentRealizado = previsto ? Math.round((realizado / previsto) * 100) : 0;
 
-    const { data: dashboardRow } = await supabase
-      .from("vw_financeiro_dashboard")
+    const { data: dashboardRow } = await (supabase as any)
+      .from("vw_financeiro_dashboard_ano")
       .select("alunos_inadimplentes, alunos_em_dia")
       .eq("escola_id", escolaId)
+      .eq("ano_letivo_id", academicContext?.anoLetivoId ?? "")
       .maybeSingle();
 
-    const { count: inadimplentesCount } = await supabase
-      .from("vw_financeiro_inadimplencia_top")
+    const { count: inadimplentesCount } = await (supabase as any)
+      .from("vw_financeiro_inadimplencia_top_ano")
       .select("aluno_id", { count: "exact", head: true })
-      .eq("escola_id", escolaId);
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo_id", academicContext?.anoLetivoId ?? "");
 
     const alunosInadimplentesCount = Number(
       inadimplentesCount ?? dashboardRow?.alunos_inadimplentes ?? 0

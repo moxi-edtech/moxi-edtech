@@ -6,6 +6,9 @@ export type RematriculaCardState =
   | "READY"
   | "DEBT_BLOCKED"
   | "PRICE_NOT_CONFIGURED"
+  | "RECONFIRMATION_REQUIRED"
+  | "FINALIST_PENDING"
+  | "LEGACY_REVIEW_REQUIRED"
   | "ALREADY_COMPLETED"
   | "PAYMENT_IN_PROGRESS"
   | "RECONCILIATION_REQUIRED";
@@ -20,6 +23,16 @@ export interface TurmaOption {
   curso_nome: string | null;
   turma_codigo: string | null;
   session_id: string | null;
+}
+
+export interface ProgressaoBalcao {
+  aplicada: boolean;
+  modo: "promocao" | "retencao" | "indefinida";
+  estado: "notas_pendentes" | "reprovado" | "classe_nao_identificada";
+  classe_origem: number | null;
+  classe_destino: number | null;
+  turma_origem_id: string | null;
+  mensagem: string;
 }
 
 export interface RematriculaResult {
@@ -61,6 +74,14 @@ interface StatusResponse {
     printUrl: string;
   } | null;
   ano_letivo: { id: string; ano: number; label: string } | null;
+  destino_turma_id?: string | null;
+  reclassificacao?: {
+    id: string;
+    tipo: string;
+    status: string;
+    destino_turma_id?: string | null;
+  } | null;
+  reconciliation?: { can_cancel: boolean; reason: string } | null;
 }
 
 // ─── Error code → human message ──────────────────────────────────────────────
@@ -78,10 +99,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_IN_PROGRESS: "Já existe um pagamento em andamento.",
   REMATRICULA_RECONCILIATION_REQUIRED:
     "Pagamento confirmado; atendimento enviado para reconciliação.",
+  REMATRICULA_PROGRESSION_INVALID:
+    "A turma destino não respeita a progressão académica do aluno.",
+  REMATRICULA_DECISION_REQUIRED:
+    "Confirme que as notas serão lançadas posteriormente.",
   CROSS_YEAR_ENTITY_MISMATCH:
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
     "Rematrícula concluída; comprovante pendente de emissão.",
+  REMATRICULA_LEGACY_REVIEW_REQUIRED:
+    "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
+  FINALISTA_PROGRESSION_INVALID:
+    "O finalista deve seguir para a classe imediatamente seguinte.",
 };
 
 const DETALHES_VAZIOS = {
@@ -108,9 +137,13 @@ export function useRematriculaBalcao(opts: {
     useState<StatusResponse["comprovante"]>(null);
   const [anoLetivo, setAnoLetivo] =
     useState<StatusResponse["ano_letivo"]>(null);
+  const [destinoTurmaId, setDestinoTurmaId] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState(false);
 
   // ── Turmas ──────────────────────────────────────────────────────────────
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
+  const [progressao, setProgressao] = useState<ProgressaoBalcao | null>(null);
+  const [notasLancarDepois, setNotasLancarDepois] = useState(false);
   const [turmasLoading, setTurmasLoading] = useState(false);
   const [turmasFetched, setTurmasFetched] = useState(false);
 
@@ -157,6 +190,7 @@ export function useRematriculaBalcao(opts: {
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
+        setDestinoTurmaId(data.destino_turma_id ?? null);
       } else {
         setCardState(null);
       }
@@ -179,6 +213,8 @@ export function useRematriculaBalcao(opts: {
     setApiError(null);
     setTurmasFetched(false);
     setTurmas([]);
+    setProgressao(null);
+    setNotasLancarDepois(false);
   }, [fetchStatus]);
 
   // ────────────────────────────────────────────────────────────────────────
@@ -194,10 +230,12 @@ export function useRematriculaBalcao(opts: {
         session_id: anoLetivo.id,
         aluno_id: opts.alunoId,
       });
+      if (opts.matriculaId) params.set("matricula_id", opts.matriculaId);
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
       );
       const data = await res.json();
+      setProgressao(data.progressao ?? null);
       if (data.items && Array.isArray(data.items)) {
         setTurmas(
           data.items.map((t: any) => ({
@@ -219,7 +257,7 @@ export function useRematriculaBalcao(opts: {
     } finally {
       setTurmasLoading(false);
     }
-  }, [anoLetivo?.id, opts.alunoId, turmasFetched]);
+  }, [anoLetivo?.id, opts.alunoId, opts.matriculaId, turmasFetched]);
 
   // ────────────────────────────────────────────────────────────────────────
   // Modal controls
@@ -227,10 +265,14 @@ export function useRematriculaBalcao(opts: {
   const openModal = useCallback(() => {
     setModalOpen(true);
     setStep(1);
+    setSelectedTurmaId(
+      cardState === "RECONFIRMATION_REQUIRED" ? destinoTurmaId : null,
+    );
+    setNotasLancarDepois(false);
     setResult(null);
     setApiError(null);
     fetchTurmas();
-  }, [fetchTurmas]);
+  }, [cardState, destinoTurmaId, fetchTurmas]);
 
   const closeModal = useCallback(() => {
     if (submitting) return;
@@ -240,6 +282,38 @@ export function useRematriculaBalcao(opts: {
       fetchStatus();
     }
   }, [submitting, result, fetchStatus]);
+
+  const resolveLegacyPedido = useCallback(async () => {
+    if (!pedido?.id || cardState !== "LEGACY_REVIEW_REQUIRED") return;
+    const anoLetivoId = anoLetivo?.id;
+    if (!anoLetivoId) {
+      setApiError("Não foi possível identificar o ano letivo atual para este pedido.");
+      return;
+    }
+    const anoLetivoLabel = anoLetivo.label ?? "o ano letivo atual";
+    if (!window.confirm(`Associar este pedido incompleto a ${anoLetivoLabel} e iniciar uma nova operação de rematrícula?`)) {
+      return;
+    }
+    setReconciling(true);
+    try {
+      const response = await fetch("/api/secretaria/balcao/rematriculas/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pedido_id: pedido.id,
+          action: "associate",
+          ano_letivo_id: anoLetivoId,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || "Não foi possível resolver o pedido incompleto.");
+      await fetchStatus();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Não foi possível resolver o pedido incompleto.");
+    } finally {
+      setReconciling(false);
+    }
+  }, [anoLetivo?.id, anoLetivo?.label, cardState, fetchStatus, pedido?.id]);
 
   // Reset detalhes when payment method changes
   const setMetodo = useCallback((m: MetodoPagamento) => {
@@ -287,6 +361,7 @@ export function useRematriculaBalcao(opts: {
           reference: detalhes.referencia.trim() || null,
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
+          notas_lancar_depois: notasLancarDepois,
         }),
       });
 
@@ -314,6 +389,7 @@ export function useRematriculaBalcao(opts: {
     selectedTurmaId,
     metodo,
     detalhes,
+    notasLancarDepois,
   ]);
 
   // ────────────────────────────────────────────────────────────────────────
@@ -330,10 +406,16 @@ export function useRematriculaBalcao(opts: {
     pedido,
     comprovante,
     anoLetivo,
+    destinoTurmaId,
+    reconciling,
+    resolveLegacyPedido,
 
     // Turmas
     turmas,
     turmasLoading,
+    progressao,
+    notasLancarDepois,
+    setNotasLancarDepois,
 
     // Modal
     modalOpen,

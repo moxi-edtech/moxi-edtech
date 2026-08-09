@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 type Dia = {
   dia: string | null;
@@ -13,6 +13,8 @@ type Dia = {
 export default function Page() {
   const params = useParams();
   const escolaId = params?.id as string;
+  const searchParams = useSearchParams();
+  const anoLetivoId = searchParams?.get("ano_letivo_id") ?? "";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Dia[]>([]);
@@ -24,7 +26,9 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/financeiro/relatorios/fluxo-caixa?escolaId=${escolaId}`, { cache: 'no-store' });
+        const query = new URLSearchParams({ escolaId });
+        if (anoLetivoId) query.set("ano_letivo_id", anoLetivoId);
+        const res = await fetch(`/api/financeiro/relatorios/fluxo-caixa?${query.toString()}`, { cache: 'no-store' });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j?.error || `Erro ${res.status}`);
@@ -39,7 +43,7 @@ export default function Page() {
     }
     load();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaId, anoLetivoId]);
 
   return (
     <div className="space-y-4">

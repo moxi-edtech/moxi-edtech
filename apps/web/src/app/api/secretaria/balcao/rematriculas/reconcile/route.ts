@@ -1,0 +1,135 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireRoleInSchool } from "@/lib/authz";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveAcademicYearContext } from "@/lib/academic-year/context";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const Body = z.object({
+  pedido_id: z.string().uuid(),
+  action: z.enum(["associate", "cancel"]).default("associate"),
+  ano_letivo_id: z.string().uuid().optional(),
+});
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await supabaseServerTyped<any>();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    const authz = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+    });
+    if (authz.error) return authz.error;
+
+    const parsed = Body.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ ok: false, error: "Pedido inválido" }, { status: 400 });
+
+    const { data: pedido } = await supabase
+      .from("servico_pedidos")
+      .select("id, status, servico_codigo, contexto")
+      .eq("id", parsed.data.pedido_id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (!pedido || pedido.servico_codigo !== "SERV_REMATRICULA") {
+      return NextResponse.json({ ok: false, error: "Pedido de rematrícula não encontrado" }, { status: 404 });
+    }
+    if (pedido.status !== "pending_payment") {
+      return NextResponse.json({ ok: false, error: "Este pedido já não está pendente", code: "PEDIDO_NOT_PENDING" }, { status: 409 });
+    }
+    if (pedido.contexto && Object.keys(pedido.contexto).length > 0) {
+      return NextResponse.json({ ok: false, error: "Este pedido tem contexto e deve ser reconciliado pelo fluxo financeiro", code: "PEDIDO_CONTEXTUAL" }, { status: 409 });
+    }
+
+    let academicContext: Awaited<ReturnType<typeof resolveAcademicYearContext>> | null = null;
+    let matriculaDestino: { id: string; turma_id: string | null; ano_letivo: number } | null = null;
+    if (parsed.data.action === "associate") {
+      if (!parsed.data.ano_letivo_id) {
+        return NextResponse.json({ ok: false, error: "Ano letivo é obrigatório para associar o pedido", code: "ACADEMIC_YEAR_REQUIRED" }, { status: 400 });
+      }
+      academicContext = await resolveAcademicYearContext(supabase, {
+        userId: user.id,
+        requestedAcademicYearId: parsed.data.ano_letivo_id,
+        operation: "WRITE",
+      });
+      const { data: alunoPedido } = await supabase
+        .from("servico_pedidos")
+        .select("aluno_id")
+        .eq("id", pedido.id)
+        .eq("escola_id", escolaId)
+        .single();
+      if (!alunoPedido?.aluno_id) {
+        return NextResponse.json({ ok: false, error: "Aluno do pedido não encontrado", code: "PEDIDO_STUDENT_NOT_FOUND" }, { status: 404 });
+      }
+      const targetAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+      const { data: target } = await supabase
+        .from("matriculas")
+        .select("id, turma_id, ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", alunoPedido.aluno_id)
+        .eq("ano_letivo", targetAno)
+        .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
+        .limit(1)
+        .maybeSingle();
+      matriculaDestino = target;
+    }
+
+    const { data: intentes } = await supabase
+      .from("pagamento_intents")
+      .select("status")
+      .eq("escola_id", escolaId)
+      .eq("servico_pedido_id", pedido.id);
+    const temPagamentoLiquidado = (intentes ?? []).some((intent: any) =>
+      ["settled", "confirmed", "paid", "succeeded"].includes(String(intent.status).toLowerCase()),
+    );
+    if (temPagamentoLiquidado) {
+      return NextResponse.json({ ok: false, error: "Existe pagamento liquidado; encaminhe para reconciliação financeira", code: "PAYMENT_SETTLED" }, { status: 409 });
+    }
+
+    if (parsed.data.action === "associate") {
+      const { error: annotateError } = await supabase
+        .from("servico_pedidos")
+        .update({
+          matricula_id: matriculaDestino?.id ?? null,
+          reason_code: "LEGACY_ASSOCIATED_REPLACED",
+          reason_detail: `Pedido associado ao ano ${academicContext?.anoLetivoLabel}; será substituído por uma operação com contexto completo`,
+          contexto: {
+            ...(pedido.contexto ?? {}),
+            origem: "rematricula_balcao_legacy_reconciliada",
+            ano_letivo_id: academicContext?.anoLetivoId,
+            destino_turma_id: matriculaDestino?.turma_id ?? null,
+            legacy_pedido_id: pedido.id,
+          },
+        })
+        .eq("id", pedido.id)
+        .eq("escola_id", escolaId);
+      if (annotateError) throw annotateError;
+    }
+
+    const { data, error } = await supabase.rpc("balcao_cancelar_pedido", {
+      p_pedido_id: pedido.id,
+      p_reason: parsed.data.action === "associate"
+        ? "Pedido antigo associado ao ano correto e substituído por operação contextual"
+        : "Pedido incompleto cancelado pela secretaria",
+    });
+    if (error) throw error;
+
+    return NextResponse.json({
+      ok: true,
+      pedido_id: pedido.id,
+      result: data,
+      action: parsed.data.action,
+      ano_letivo_id: academicContext?.anoLetivoId ?? null,
+      matricula_destino_id: matriculaDestino?.id ?? null,
+    });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  }
+}

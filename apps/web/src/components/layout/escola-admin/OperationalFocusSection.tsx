@@ -38,39 +38,30 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
   return (
     <Link
       href={card.href}
-      className="group flex flex-col justify-between min-h-[128px] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs transition-all hover:border-slate-300 hover:shadow-md hover:translate-y-[-1px]"
+      title={card.description}
+      className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-klasse-green/40 hover:shadow-xs"
     >
-      <div className="space-y-2">
-        <div className="flex items-start justify-between gap-2 min-w-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 line-clamp-1">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${card.tone}`}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-xs font-semibold text-slate-600 truncate group-hover:text-slate-900 transition-colors">
             {card.label}
           </span>
-          <span
-            className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-              isZero ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50" : "bg-amber-50 text-amber-700 border border-amber-200/50"
-            }`}
-          >
-            {isZero ? "Estável" : "Acção"}
-          </span>
         </div>
-
-        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
-          {card.description}
-        </p>
+        {!isZero && (
+          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-klasse-green animate-pulse" />
+        )}
       </div>
 
-      <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3">
-        <div>
-          <p className="text-2xl font-black leading-none tracking-tight text-slate-900 font-sora">
-            {card.value}
-          </p>
-          <span className="text-[10px] font-semibold text-slate-400 group-hover:text-[#1F6B3B] transition-colors mt-1 inline-block">
-            {card.cta} &rarr;
-          </span>
-        </div>
-        <div className={`flex items-center justify-center rounded-xl p-2.5 transition-transform group-hover:scale-105 ${card.tone}`}>
-          <Icon className="h-5 w-5" />
-        </div>
+      <div className="mt-3 flex items-baseline justify-between">
+        <span className={`text-2xl font-extrabold tracking-tight font-sora ${isZero ? "text-slate-400" : "text-slate-900"}`}>
+          {card.value}
+        </span>
+        <span className="text-xs font-bold text-slate-300 group-hover:text-klasse-green transition-colors">
+          &rarr;
+        </span>
       </div>
     </Link>
   );
@@ -132,7 +123,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver carteira",
       icon: ShieldAlert,
-      tone: "bg-klasse-gold/10 text-klasse-gold",
+      tone: "bg-klasse-gold/15 text-klasse-gold-600",
     },
     {
       key: "turmas",
@@ -152,7 +143,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: horarioQuadroHref,
       cta: "Publicar quadro",
       icon: CalendarClock,
-      tone: "bg-klasse-gold/10 text-klasse-gold",
+      tone: "bg-klasse-gold/15 text-klasse-gold-600",
     },
     {
       key: "setup",
@@ -162,24 +153,24 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       href: buildPortalHref(escolaParam, "/operacoes/configuracoes"),
       cta: "Finalizar setup",
       icon: AlertTriangle,
-      tone: "bg-klasse-gold/10 text-klasse-gold",
+      tone: "bg-klasse-gold/15 text-klasse-gold-600",
     },
   ];
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+    <section className="space-y-3.5">
+      <div className="flex items-baseline justify-between gap-4">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-[0.22em] text-slate-500 font-sora">
+          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 font-sora">
             Foco da Operação
           </h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs font-medium text-slate-500">
             Filas e bloqueios que realmente movem a escola no dia-a-dia.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
           <FocusMetricCard key={card.key} card={card} />
         ))}

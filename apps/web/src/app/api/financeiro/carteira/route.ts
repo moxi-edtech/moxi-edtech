@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -59,6 +60,13 @@ export async function GET(request: Request) {
       );
     }
 
+    const academicContext = await resolveAcademicYearContext(supabase as any, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+    const academicYear = Number(academicContext.anoLetivoLabel.slice(0, 4));
+
     const page = parseBoundedInteger(searchParams.get("page"), 1, 1, 100_000);
     const limit = parseBoundedInteger(searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
     const offset = (page - 1) * limit;
@@ -68,12 +76,6 @@ export async function GET(request: Request) {
     const classeId = validUuid(searchParams.get("classe_id"));
     const cursoId = validUuid(searchParams.get("curso_id"));
     const alunoId = validUuid(searchParams.get("aluno_id"));
-    const anoLetivo = parseBoundedInteger(
-      searchParams.get("ano_letivo"),
-      0,
-      0,
-      9999
-    );
     const busca = (searchParams.get("q") ?? "").trim().slice(0, 80);
 
     let query = supabase
@@ -91,7 +93,7 @@ export async function GET(request: Request) {
     if (classeId) query = query.eq("classe_id", classeId);
     if (cursoId) query = query.eq("curso_id", cursoId);
     if (alunoId) query = query.eq("aluno_id", alunoId);
-    if (anoLetivo > 0) query = query.eq("ano_letivo", anoLetivo);
+    query = query.eq("ano_letivo", academicYear);
     if (busca) query = query.ilike("nome_aluno", `%${busca}%`);
 
     const { data, error, count } = await query

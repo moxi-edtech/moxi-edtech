@@ -1,6 +1,7 @@
 import { instantiateAssistantActionV2, type AssistantActionV2 } from "../../actions-v2";
 import type { AiWidgetContext } from "../../screen-context";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { createDataCopilotResponse } from "../answer-composer";
 import { matchesIntentQuery } from "../query-matcher";
 import type { DataCopilotTool } from "../types";
@@ -32,10 +33,12 @@ export const financeRiskSummaryTool: DataCopilotTool = {
   match: isFinanceRiskSummaryQuery,
   async run({ schoolId, role }) {
     const supabase = await supabaseServerTyped();
+    const anoScope = await resolveAnoLetivoScope(supabase, schoolId);
     const { data, count, error } = await supabase
-      .from("vw_financeiro_inadimplencia_top")
+      .from("vw_financeiro_inadimplencia_top_ano" as any)
       .select("valor_em_atraso, dias_em_atraso", { count: "exact" })
       .eq("escola_id", schoolId)
+      .eq("ano_letivo_id", anoScope?.id ?? "")
       .order("valor_em_atraso", { ascending: false })
       .limit(50);
 

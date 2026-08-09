@@ -12,6 +12,7 @@ import { academicLowAttendanceTool } from "./academic-low-attendance";
 import { academicPedagogicalRiskTool } from "./academic-pedagogical-risk";
 import { admissionsPendingTool } from "./admissions-pending";
 import { financeRiskSummaryTool } from "./finance-risk-summary";
+import { academicCalendarOperationsTool } from "./academic-calendar-operations";
 
 const BRIEFING_SOURCES = [
   { label: "Financeiro", tool: financeRiskSummaryTool },
@@ -19,6 +20,7 @@ const BRIEFING_SOURCES = [
   { label: "Risco pedagógico", tool: academicPedagogicalRiskTool },
   { label: "Notas", tool: academicGradeGapsTool },
   { label: "Frequência", tool: academicLowAttendanceTool },
+  { label: "Calendário MED", tool: academicCalendarOperationsTool },
 ] as const;
 
 type BriefingSource = (typeof BRIEFING_SOURCES)[number];

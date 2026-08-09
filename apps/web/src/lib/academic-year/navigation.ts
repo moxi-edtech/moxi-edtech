@@ -6,7 +6,13 @@ import { useSearchParams } from "next/navigation";
 
 export const academicContextRoutes = [
   "/secretaria/alunos",
+  "/secretaria/balcao",
   "/secretaria/turmas",
+  "/secretaria/notas",
+  "/secretaria/financeiro",
+  "/admin/notas",
+  "/admin/operacoes-academicas",
+  "/financeiro",
   "/financeiro/radar",
   "/financeiro/turmas-alunos",
   "/professor/notas",

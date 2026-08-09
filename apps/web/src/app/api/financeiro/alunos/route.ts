@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { applyKf2ListInvariants } from '@/lib/kf2';
+import { resolveAcademicYearContext } from '@/lib/academic-year/context';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,12 @@ export async function GET(request: Request) {
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 403 });
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    });
+    const academicYear = Number(academicContext.anoLetivoLabel.slice(0, 4));
     const turmaId = searchParams.get('turmaId');
 
     let query = supabase
@@ -54,8 +61,11 @@ export async function GET(request: Request) {
         bi_numero,
         telefone_responsavel,
         matriculas(
+          id,
           status,
           turma_id,
+          session_id,
+          ano_letivo,
           turma:turmas(nome)
         )
       `)
@@ -78,7 +88,8 @@ export async function GET(request: Request) {
 
     const alunosComTurma = (alunos ?? [])
       .map((aluno: any) => {
-        const matriculas = Array.isArray(aluno.matriculas) ? aluno.matriculas : [];
+        const matriculas = (Array.isArray(aluno.matriculas) ? aluno.matriculas : [])
+          .filter((matricula: any) => matricula.session_id === academicContext.anoLetivoId || Number(matricula.ano_letivo) === academicYear);
         const matriculaAtiva =
           matriculas.find((matricula: any) => ACTIVE_MATRICULA_STATUSES.has(String(matricula?.status ?? '').toLowerCase())) ??
           matriculas[0];
@@ -91,12 +102,13 @@ export async function GET(request: Request) {
           telefone: aluno.telefone_responsavel,
           turmaId: matriculaAtiva?.turma_id ?? null,
           turmaNome: matriculaAtiva?.turma?.nome ?? null,
+          matriculaId: matriculaAtiva?.id ?? null,
         };
       })
       .filter((aluno: any) => aluno.turmaId)
       .filter((aluno: any) => !turmaId || turmaId === 'todas' || aluno.turmaId === turmaId);
 
-    const alunoIds = alunosComTurma.map((aluno: any) => aluno.id);
+    const matriculaIds = alunosComTurma.map((aluno: any) => aluno.matriculaId).filter(Boolean);
     const resumoFinanceiro = new Map<string, {
       totalEmDivida: number;
       diasAtraso: number;
@@ -106,16 +118,17 @@ export async function GET(request: Request) {
       possuiMensalidadeAberta: boolean;
     }>();
 
-    if (alunoIds.length > 0) {
+    if (matriculaIds.length > 0) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      for (const alunoIdsBatch of chunk(alunoIds, MENSALIDADES_BATCH_SIZE)) {
+      for (const matriculaIdsBatch of chunk(matriculaIds, MENSALIDADES_BATCH_SIZE)) {
         let mensalidadesQuery = supabase
           .from('mensalidades')
           .select('id, aluno_id, valor, status, data_vencimento')
           .eq('escola_id', escolaId)
-          .in('aluno_id', alunoIdsBatch);
+          .in('matricula_id', matriculaIdsBatch)
+          .eq('ano_letivo', String(academicYear));
 
         mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
           defaultLimit: 5000,

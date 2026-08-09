@@ -295,13 +295,13 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
           />
           <div
             className={cx(
-              "relative flex w-full max-w-6xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl",
+              "relative flex w-[88vw] max-w-[1280px] h-[84vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-2xl",
               "transition-all duration-200 ease-out",
               workspaceActive ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-[0.98]"
             )}
           >
-            <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
-              <div className="mx-auto flex w-full max-w-6xl items-center gap-4">
+            <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur flex-shrink-0">
+              <div className="mx-auto flex w-full max-w-[1280px] items-center gap-4">
                 <div className="flex-1">
                   <OmniSearchInput
                     query={query}
@@ -321,15 +321,15 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
                 <button
                   type="button"
                   onClick={handleCloseWorkspace}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Fechar
                 </button>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-6 py-8">
-              <div className="mx-auto w-full max-w-6xl space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              <div className="mx-auto w-full max-w-[1280px] rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-full">
                 {escolaId && alunoSelecionadoId ? (
                   <BalcaoAtendimento
                     escolaId={escolaId}

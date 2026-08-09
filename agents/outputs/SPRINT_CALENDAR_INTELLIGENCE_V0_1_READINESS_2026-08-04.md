@@ -1,6 +1,6 @@
 # KLASSE Temporal Foundation V0.1 — acompanhamento do sprint
 
-Data da atualização: **2026-08-04**
+Data da atualização: **2026-08-05**
 Escopo: código, migrations e verificação somente leitura da base Supabase configurada para o projeto.
 
 > Não guardar credenciais de PostgreSQL neste documento. A senha usada na verificação deve ser rodada após esta sessão.
@@ -425,7 +425,7 @@ O problema de descoberta do wizard foi corrigido e a unidade de decisão passou 
 - O lançamento ou fechamento das notas não bloqueia a migração para o novo ano; notas incompletas serão preenchidas retroativamente durante o novo ano letivo.
 - A operação principal deve migrar todos os alunos com matrícula válida para um estado provisório no ano destino, sem exigir decisão antecipada de aprovação/reprovação.
 - A secretaria poderá rever cada aluno individualmente depois da virada e confirmar a classe efetivamente concluída, reclassificando-o no ano destino sem apagar o histórico do ano anterior.
-- A RPC `reclassificar_aluno_virada` e a rota protegida de reclassificação já foram criadas em código; a ação atualiza a turma da matrícula destino, preserva `matricula_id` e `numero_matricula`, valida ano/capacidade e audita a decisão. **INTERFACE PENDENTE** — falta ligar esta ação à lista de revisão da secretaria.
+- A RPC `reclassificar_aluno_virada` e a rota protegida de reclassificação atualizam a turma da matrícula destino, preservam `matricula_id` e `numero_matricula`, validam ano/capacidade e auditam a decisão. **CONCLUÍDO EM CÓDIGO** — a etapa de exceções carrega as matrículas migradas, permite selecionar a turma destino e aplica a reclassificação de forma idempotente.
 - Dívida financeira, ausência de turma destino e inconsistência cadastral devem aparecer como pendências separadas; não podem ser confundidas com falta de notas.
 - Cada reclassificação posterior deve ser idempotente, manter o número de matrícula permanente, preservar auditoria e impedir duas matrículas ativas do mesmo aluno no mesmo ano.
 
@@ -497,3 +497,51 @@ Os gates gerais de performance estão fechados. Permanecem apenas findings baixo
 - `pnpm agents:gate`: `PASS`, com `0` blockers.
 - `git diff --check`: passou.
 - Veredito: gates técnicos aprovados; permanecem apenas validações funcionais da virada por escola.
+
+## Recuperação pós-virada do Curtume — 2026-08-05
+
+Durante a confirmação da virada do Curtume, o ano `2026` foi ativado, mas a primeira execução registrou `promoted: 0`. A causa foi confirmada: as turmas legadas tinham `classe_num = NULL`, enquanto a RPC dependia de `classe_num + 1`. A UI também reconstruía a etapa 3 usando o ano ativo como origem, permitindo uma nova tentativa `2026 → 2026`.
+
+### Correções implementadas
+
+- `20260805100000_fix_rollover_class_mapping_and_idempotency.sql`: adiciona `turma_classe_numero(uuid)`, usando `turmas.classe_num`, `classes.numero` e fallback controlado pelo nome legado; torna a RPC retroativa idempotente e compatível com turmas antigas.
+- `20260805101000_fix_standard_rollover_class_mapping.sql`: aplica o mesmo resolvedor à RPC padrão e aos pré-requisitos de matching.
+- `20260805102000_fix_retroactive_ledger_enum_cast.sql`: corrige a leitura do enum `financeiro_ledger.tipo` sem conversão inválida para texto vazio.
+- `20260805103000_fix_retroactive_source_number_constraint.sql`: limpa o número da matrícula histórica transferida, respeitando `matriculas_numero_only_when_ativa`; o destino recebe novo número ativo.
+- `20260805104000_fix_rollover_terminal_class_fallback.sql`: usa a classe seguinte quando existe e, para finalistas/Pré-Escolar, a mesma classe/curso como destino provisório.
+- O wizard preserva `source_session_id`, consulta a etapa de exceções pelo ano de origem, reconhece o estado concluído e persiste `cutover_completed`.
+
+### Estado remoto confirmado
+
+- Curtume: ano `2025` arquivado/inativo; ano `2026` ativo.
+- Turmas: `22` em 2025 e `22` em 2026.
+- Matrículas após recuperação: `230` ativas em 2026; `334` pendentes/inativas em 2025.
+- Matrículas ativas restantes em 2025: `0`.
+- Auditoria final: `185` migrados na primeira recuperação útil e `45` na segunda; `251` e `83` mantidos como pendentes por dívida, totalizando `230` migrados e `334` pendentes.
+- Total preservado: `564` matrículas de origem contabilizadas.
+- As cinco migrations foram aplicadas e registradas no ledger remoto.
+
+### Validação
+
+- `npm run typecheck --workspace apps/web`: PASS.
+- `git diff --check`: PASS.
+- A execução de `supabase db reset` local não foi realizada porque o Docker não estava disponível; as migrations foram validadas pela aplicação transacional no PostgreSQL remoto.
+
+### Resultado operacional
+
+O Curtume não possui mais matrículas ativas presas no ano arquivado. A etapa de confirmação deve ser recarregada após o deploy do frontend; a nova execução é idempotente e não duplica matrículas.
+
+## Estado de candidaturas e rematrículas do Curtume — 2026-08-06
+
+Verificação remota da configuração da escola:
+
+- ano `2025`: inativo, período 2025/2026;
+- ano `2026`: ativo, período 2026/2027;
+- janela de rematrícula encontrada: ano `2025`, já expirada;
+- configuração do portal: `pre_candidatura_proximo_ano`;
+- ano formal de candidaturas: não configurado;
+- ano destino seguinte: ainda não criado.
+
+Conclusão operacional: a secretaria pode gerir candidaturas e efetivar matrículas manualmente quando houver candidatura formal e turma válida. O portal público recebe apenas pré-candidaturas, que não podem ser convertidas diretamente em matrícula. O portal do aluno ainda não pode confirmar rematrícula porque não existe janela vigente para um ano posterior ao atual.
+
+Próximo gate funcional: criar/configurar o ano destino e abrir, na mesma operação contextual, a candidatura formal e a janela de rematrícula; depois validar um caso completo em cada portal.

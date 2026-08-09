@@ -54,12 +54,13 @@ export default async function FinanceiroDashboardPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ aluno?: string; view?: string }>;
+  searchParams?: Promise<{ aluno?: string; view?: string; ano_letivo_id?: string }>;
 }) {
   const { id: escolaParam } = await params;
-  const p = (searchParams ? await searchParams : {}) as { aluno?: string; view?: string };
+  const p = (searchParams ? await searchParams : {}) as { aluno?: string; view?: string; ano_letivo_id?: string };
   const { aluno } = p;
   const view = p.view === "atrasos" || p.view === "descontos" || p.view === "fecho" ? p.view : "visao";
+  const anoLetivoQuery = p.ano_letivo_id ? `&ano_letivo_id=${encodeURIComponent(p.ano_letivo_id)}` : "";
   const supabase = await supabaseServer();
   const {
     data: { user },
@@ -95,26 +96,27 @@ export default async function FinanceiroDashboardPage({
   const [resumoRes, inadimplenciaRes, recentesRes] = escolaId
     ? await Promise.all([
         fetchJson(
-          `/api/financeiro/dashboard/resumo?range_start=${rangeStart}&range_end=${rangeEnd}&escolaId=${escolaId}`,
+          `/api/financeiro/dashboard/resumo?range_start=${rangeStart}&range_end=${rangeEnd}&escolaId=${escolaId}${anoLetivoQuery}`,
           { ok: false, data: null }
         ),
         fetchJson(
-          `/api/financeiro/inadimplencia/top?limit=5&escolaId=${escolaId}`,
+          `/api/financeiro/inadimplencia/top?limit=5&escolaId=${escolaId}${anoLetivoQuery}`,
           { ok: false, data: [] }
         ),
         fetchJson(
-          `/api/financeiro/pagamentos/recentes?limit=20&day_key=${today.toISOString().slice(0, 10)}&escolaId=${escolaId}`,
+          `/api/financeiro/pagamentos/recentes?limit=20&day_key=${today.toISOString().slice(0, 10)}&escolaId=${escolaId}${anoLetivoQuery}`,
           { ok: false, data: [] }
         ),
       ])
     : [{ ok: false, data: null }, { ok: false, data: [] }, { ok: false, data: [] }];
 
-  const { data: pagamentosStatus } = escolaId
-    ? await supabase
-        .from("vw_pagamentos_status")
-        .select("status, total")
-        .eq("escola_id", escolaId)
-    : { data: [] };
+  const pagamentosStatusRes = escolaId
+    ? await fetchJson<{ items?: PagamentoStatusRow[] }>(
+        `/api/financeiro/relatorios/pagamentos-status?escolaId=${escolaId}${anoLetivoQuery}`,
+        { ok: false, items: [] },
+      )
+    : { ok: false, items: [] };
+  const pagamentosStatus = pagamentosStatusRes.items ?? [];
 
   const resumo = resumoRes?.data ?? {
     previsto: 0,

@@ -13,7 +13,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import type { TurmaOption, RematriculaResult } from "@/hooks/useRematriculaBalcao";
+import type { TurmaOption, RematriculaResult, ProgressaoBalcao } from "@/hooks/useRematriculaBalcao";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -25,15 +25,21 @@ interface RematriculaBalcaoModalProps {
   // Student data
   alunoNome: string;
   alunoProcesso: string;
+  alunoId: string | null;
   turmaAtual: string | null;
   matriculaId: string;
   // Academic
   anoLetivo: { id: string; ano: number; label: string };
   // Financial
   service: { id: string; nome: string; valor_base: number };
+  skipTurmaSelection?: boolean;
+  debt?: { total: number; count: number } | null;
   // Turmas
   turmas: TurmaOption[];
   turmasLoading: boolean;
+  progressao: ProgressaoBalcao | null;
+  notasLancarDepois: boolean;
+  setNotasLancarDepois: (value: boolean) => void;
   // Wizard state
   step: number;
   setStep: (n: number) => void;
@@ -78,10 +84,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_IN_PROGRESS: "Já existe um pagamento em andamento.",
   REMATRICULA_RECONCILIATION_REQUIRED:
     "Pagamento confirmado; atendimento enviado para reconciliação.",
+  REMATRICULA_PROGRESSION_INVALID:
+    "A turma destino não respeita a progressão académica do aluno.",
+  REMATRICULA_DECISION_REQUIRED:
+    "Confirme que as notas serão lançadas posteriormente.",
   CROSS_YEAR_ENTITY_MISMATCH:
     "A turma seleccionada não pertence ao ano lectivo.",
   DOCUMENT_PENDING:
     "Rematrícula concluída; comprovante pendente de emissão.",
+  REMATRICULA_LEGACY_REVIEW_REQUIRED:
+    "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
+  FINALISTA_PROGRESSION_INVALID:
+    "O finalista deve seguir para a classe imediatamente seguinte.",
 };
 
 const METODOS_UI = [
@@ -102,12 +116,18 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     onClose,
     alunoNome,
     alunoProcesso,
+    alunoId,
     turmaAtual,
     matriculaId,
     anoLetivo,
     service,
+    skipTurmaSelection = false,
+    debt = null,
     turmas,
     turmasLoading,
+    progressao,
+    notasLancarDepois,
+    setNotasLancarDepois,
     step,
     setStep,
     selectedTurmaId,
@@ -182,6 +202,9 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     Boolean(selectedTurmaId) &&
     !(metodo === "tpa" && !detalhes.referencia.trim()) &&
     !(metodo === "transfer" && !detalhes.evidencia_url.trim());
+  const academicReady =
+    Boolean(selectedTurmaId) &&
+    !(progressao?.estado === "notas_pendentes" && !notasLancarDepois);
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -274,13 +297,18 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               anoLetivo={anoLetivo}
               turmas={turmas}
               turmasLoading={turmasLoading}
+              progressao={progressao}
+              skipTurmaSelection={skipTurmaSelection}
+              alunoId={alunoId}
+              notasLancarDepois={notasLancarDepois}
+              setNotasLancarDepois={setNotasLancarDepois}
               selectedTurmaId={selectedTurmaId}
               setSelectedTurmaId={setSelectedTurmaId}
               selectRef={firstFocusRef as React.RefObject<HTMLSelectElement>}
             />
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
-            <StepFinanceiro service={service} />
+            <StepFinanceiro service={service} debt={debt} />
           ) : (
             /* ── Step 3: Payment ────────────────────────────────── */
             <StepPagamento
@@ -319,6 +347,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               onClose={onClose}
               submitting={submitting}
               canSubmit={canSubmit}
+              academicReady={academicReady}
               selectedTurmaId={selectedTurmaId}
               serviceValor={service.valor_base}
               submit={submit}
@@ -339,22 +368,32 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
 function StepAcademico({
   alunoNome,
   alunoProcesso,
+  alunoId,
   turmaAtual,
   matriculaId,
   anoLetivo,
   turmas,
   turmasLoading,
+  progressao,
+  skipTurmaSelection,
+  notasLancarDepois,
+  setNotasLancarDepois,
   selectedTurmaId,
   setSelectedTurmaId,
   selectRef,
 }: {
   alunoNome: string;
   alunoProcesso: string;
+  alunoId: string | null;
   turmaAtual: string | null;
   matriculaId: string;
   anoLetivo: { id: string; ano: number; label: string };
   turmas: TurmaOption[];
   turmasLoading: boolean;
+  progressao: ProgressaoBalcao | null;
+  skipTurmaSelection: boolean;
+  notasLancarDepois: boolean;
+  setNotasLancarDepois: (value: boolean) => void;
   selectedTurmaId: string | null;
   setSelectedTurmaId: (id: string | null) => void;
   selectRef: React.RefObject<HTMLSelectElement>;
@@ -371,7 +410,46 @@ function StepAcademico({
       </div>
 
       {/* Turma selector */}
-      <div className="space-y-2">
+      {progressao && (
+        <div className={`rounded-xl border p-3 text-sm ${progressao.estado === "reprovado" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-sky-200 bg-sky-50 text-sky-800"}`}>
+          <strong>{progressao.estado === "reprovado" ? "Retenção académica" : "Progressão académica"}</strong>
+          <p className="mt-1 text-xs">{progressao.mensagem}</p>
+        </div>
+      )}
+
+      {progressao?.estado === "notas_pendentes" && progressao.turma_origem_id && (
+        <a
+          href={`/secretaria/notas?turmaId=${encodeURIComponent(progressao.turma_origem_id)}${alunoId ? `&alunoId=${encodeURIComponent(alunoId)}` : ""}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-bold text-sky-700 hover:bg-sky-50"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Lançar notas na tela de Notas
+        </a>
+      )}
+
+      {progressao?.estado === "notas_pendentes" && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={notasLancarDepois}
+            onChange={(event) => setNotasLancarDepois(event.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B]"
+          />
+          <span>
+            <strong className="block text-slate-900">Lançar notas depois e rematricular agora</strong>
+            <span className="mt-0.5 block text-xs text-slate-500">A progressão fica provisória até o fechamento académico.</span>
+          </span>
+        </label>
+      )}
+
+      {skipTurmaSelection ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <strong className="block text-emerald-950">Reconfirmação de matrícula</strong>
+          <span className="text-xs">A matrícula na classe destino já foi preparada. Esta operação apenas regista a taxa de reconfirmação.</span>
+        </div>
+      ) : <div className="space-y-2">
         <label
           htmlFor="rematricula-turma-select"
           className="block text-sm font-semibold text-slate-700"
@@ -410,7 +488,7 @@ function StepAcademico({
             );
           })}
         </select>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -419,8 +497,10 @@ function StepAcademico({
 
 function StepFinanceiro({
   service,
+  debt,
 }: {
   service: { id: string; nome: string; valor_base: number };
+  debt: { total: number; count: number } | null;
 }) {
   return (
     <div className="space-y-5">
@@ -446,6 +526,16 @@ function StepFinanceiro({
           </span>
         </div>
       </div>
+
+      {debt && debt.total > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <strong className="block text-amber-950">Mensalidades em aberto</strong>
+          <span>
+            Existem {debt.count} mensalidade(s) pendente(s), no total de {kwanza.format(debt.total)}.
+            Esta taxa não substitui a regularização da dívida.
+          </span>
+        </div>
+      )}
 
       {service.valor_base <= 0 && (
         <div
@@ -734,6 +824,7 @@ function FooterWizard({
   onClose,
   submitting,
   canSubmit,
+  academicReady,
   selectedTurmaId,
   serviceValor,
   submit,
@@ -743,6 +834,7 @@ function FooterWizard({
   onClose: () => void;
   submitting: boolean;
   canSubmit: boolean;
+  academicReady: boolean;
   selectedTurmaId: string | null;
   serviceValor: number;
   submit: () => Promise<void>;
@@ -763,7 +855,7 @@ function FooterWizard({
           onClick={() => setStep(step + 1)}
           disabled={
             submitting ||
-            (step === 1 && !selectedTurmaId) ||
+            (step === 1 && !academicReady) ||
             (step === 2 && serviceValor <= 0)
           }
           className="rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-slate-900

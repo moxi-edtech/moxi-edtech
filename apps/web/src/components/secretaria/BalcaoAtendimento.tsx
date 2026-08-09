@@ -1,1606 +1,1387 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
-AlertCircle, Banknote, CheckCircle, ChevronRight,
-CreditCard, Loader2, Plus, Printer,
-Search, ShoppingCart, Smartphone, User, Wallet, X,
+  Search,
+  ShoppingCart,
+  Plus,
+  Printer,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  X,
+  CreditCard,
+  Banknote,
+  QrCode,
+  ArrowRightLeft,
+  Info,
+  User,
+  ChevronRight,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { useDebounce } from "@/hooks/useDebounce";
-import { BalcaoServicoModal, type BalcaoDecision } from "@/components/secretaria/BalcaoServicoModal";
-import { MotivoBloqueioModal } from "@/components/secretaria/MotivoBloqueioModal";
-import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useSearchParams } from "next/navigation";
-import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
-import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
+
+import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useDebounce } from "@/hooks/useDebounce";
+import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
-import { RematriculaBalcaoCard } from "@/components/secretaria/RematriculaBalcaoCard";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
-import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-
-const kwanza = new Intl.NumberFormat("pt-AO", {
-style: "currency", currency: "AOA", maximumFractionDigits: 0,
-});
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
-type DocumentoTipo   = "declaracao_frequencia" | "declaracao_notas" | "cartao_estudante" | "ficha_inscricao";
-
-interface AlunoBusca {
-id: string; nome: string; numero_processo: string;
-bi_numero: string | null; turma: string;
-foto_url: string | null; matricula_id: string | null;
-}
-
-interface AlunoDossier extends AlunoBusca {
-status_financeiro: "em_dia" | "inadimplente";
-divida_total:  number;
-turma_codigo?: string | null;
-classe?:       string | null;
-curso?:        string | null;
-curso_codigo?: string | null;
-}
-
-interface Mensalidade {
-id: string; nome: string; preco: number; tipo: "mensalidade";
-atrasada: boolean; mes_referencia: number; ano_referencia: number;
-}
-
-interface Servico {
-id: string; codigo: string; nome: string; preco: number; tipo: "servico";
-descricao?: string | null; documento_tipo?: DocumentoTipo | null;
-pedido_id?: string | null; pagamento_intent_id?: string | null;
-}
-
-interface AuditEntry {
-created_at: string; portal: string | null; action: string | null;
-entity: string | null; entity_id: string | null;
-details: Record<string, unknown> | null;
-}
-
-interface MetodoDetalhes { referencia: string; evidencia_url: string; gateway_ref: string; }
-
-type ItemCarrinho = Mensalidade | Servico;
-
-type ReciboBatchItem = {
-id: string;
-url_validacao: string | null;
-valor: number;
-referencia: string;
-referenciasDetalhadas?: string[];
-itensDetalhados?: Array<{ referencia: string; valor: number }>;
-};
+const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
 
 export interface BalcaoAtendimentoProps {
-escolaId:         string;
-selectedAlunoId?: string | null;
-showSearch?:      boolean;
-embedded?:        boolean;
+  escolaId: string;
+  selectedAlunoId?: string | null;
+  showSearch?: boolean;
+  embedded?: boolean;
 }
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+const kwanza = new Intl.NumberFormat("pt-AO", {
+  style: "currency",
+  currency: "AOA",
+  maximumFractionDigits: 0,
+});
 
-const DETALHES_VAZIOS: MetodoDetalhes = { referencia: "", evidencia_url: "", gateway_ref: "" };
-
-const METODOS_UI = [
-{ id: "cash"     as const, icon: Banknote,   label: "Cash"  },
-{ id: "tpa"      as const, icon: CreditCard, label: "TPA"   },
-{ id: "transfer" as const, icon: Wallet,     label: "Transf"},
-{ id: "mcx"      as const, icon: Smartphone, label: "MCX"   },
-{ id: "kiwk"     as const, icon: Smartphone, label: "KIWK"  },
-] as const;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function idKey(): string {
-return (crypto as any).randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+export interface AlunoDossier {
+  id: string;
+  nome: string;
+  foto_url?: string | null;
+  numero_processo: string;
+  turma_codigo?: string | null;
+  curso_codigo?: string | null;
+  classe?: string | null;
+  status_financeiro: "em_dia" | "inadimplente" | "sem_matricula";
+  divida_total: number;
+  matricula_id?: string | null;
 }
 
-function formatMesAno(mes?: number, ano?: number): string {
-if (!mes || mes < 1 || mes > 12 || !ano) return "Mensalidade";
-const label = new Date(0, mes - 1).toLocaleString("pt-PT", { month: "short" });
-return `Mensalidade ${label}/${ano}`;
+export interface Mensalidade {
+  id: string;
+  nome: string;
+  preco: number;
+  atrasada: boolean;
+  referencia_mes?: number;
+  referencia_ano?: number;
+  origem_ano?: string | null;
+  origem_matricula_id?: string | null;
+  origem_turma?: string | null;
+  tipo: "mensalidade";
 }
+
+export interface Servico {
+  id: string;
+  codigo: string;
+  nome: string;
+  preco: number;
+  tipo: "servico";
+  descricao?: string | null;
+  documento_tipo?: string;
+}
+
+export type ItemCarrinho = Mensalidade | Servico;
+
+export type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
+
+const METODOS_UI: { id: MetodoPagamento; icon: React.ElementType; label: string }[] = [
+  { id: "cash", icon: Banknote, label: "Numerario" },
+  { id: "tpa", icon: CreditCard, label: "TPA" },
+  { id: "transfer", icon: ArrowRightLeft, label: "Transf." },
+  { id: "mcx", icon: QrCode, label: "Multicaixa" },
+  { id: "kiwk", icon: QrCode, label: "Kwik" },
+];
 
 function isDocServico(s: Servico): boolean {
-const h = `${s.codigo} ${s.nome} ${s.descricao ?? ""}`.toLowerCase();
-return ["doc","declaracao","declaração","documento","certificado","cartao","cartão","ficha"]
-.some(t => h.includes(t));
+  const text = `${s.codigo} ${s.nome} ${s.descricao ?? ""} ${s.documento_tipo ?? ""}`.toLowerCase();
+  return ["doc", "declara", "documento", "certificado", "cartao", "cartão", "ficha"].some((term) => text.includes(term));
 }
 
-function getDocTipo(s: Servico): DocumentoTipo | null {
-const h = `${s.codigo} ${s.nome} ${s.descricao ?? ""}`.toLowerCase();
-if (h.includes("nota"))                              return "declaracao_notas";
-if (h.includes("frequencia") || h.includes("freq")) return "declaracao_frequencia";
-if (h.includes("cartao") || h.includes("cartão"))   return "cartao_estudante";
-if (h.includes("ficha") || h.includes("inscricao")) return "ficha_inscricao";
-return null;
+function isServicoRematricula(s: Servico): boolean {
+  return s.codigo.trim().toUpperCase() === "SERV_REMATRICULA";
 }
 
-function getDocDestino(docId: string, tipo: DocumentoTipo): string {
-const seg: Record<DocumentoTipo, string> = {
-declaracao_frequencia: "frequencia",
-declaracao_notas:      "notas",
-cartao_estudante:      "cartao",
-ficha_inscricao:       "ficha",
-};
-return `/secretaria/documentos/${docId}/${seg[tipo]}/print`;
+function getDocTipo(s: Servico): string {
+  if (s.documento_tipo) return s.documento_tipo;
+  return s.codigo.replace("DOC_", "").toLowerCase();
 }
 
-function summarizeReferencias(referencias: string[]): string {
-const limpas = referencias.filter((item) => item && item.trim().length > 0);
-if (limpas.length <= 1) return limpas[0] ?? "Mensalidade";
-return `${limpas.length} mensalidades liquidadas`;
-}
-
-function compareMensalidadeCompetenciaAsc(
-a: Pick<Mensalidade, "ano_referencia" | "mes_referencia">,
-b: Pick<Mensalidade, "ano_referencia" | "mes_referencia">
-) {
-if (a.ano_referencia !== b.ano_referencia) return a.ano_referencia - b.ano_referencia;
-return a.mes_referencia - b.mes_referencia;
-}
-
-function getUnlockedMensalidadeIds(mensalidades: Mensalidade[], selectedIds: string[]) {
-const unlocked = new Set<string>();
-const selected = new Set(selectedIds);
-const ordered = [...mensalidades].sort(compareMensalidadeCompetenciaAsc);
-
-for (let i = 0; i < ordered.length; i += 1) {
-  const item = ordered[i];
-  if (i === 0) {
-    unlocked.add(item.id);
-    continue;
-  }
-
-  const allPreviousSelected = ordered.slice(0, i).every((prev) => selected.has(prev.id));
-  if (allPreviousSelected) unlocked.add(item.id);
-}
-
-return unlocked;
-}
-
-function getFirstMissingPriorMensalidade(target: Mensalidade, mensalidades: Mensalidade[], selectedIds: string[]) {
-const selected = new Set(selectedIds);
-const ordered = [...mensalidades].sort(compareMensalidadeCompetenciaAsc);
-const targetIndex = ordered.findIndex((item) => item.id === target.id);
-if (targetIndex <= 0) return null;
-return ordered.slice(0, targetIndex).find((item) => !selected.has(item.id)) ?? null;
-}
-
-function labelMetodo(metodo: MetodoPagamento): string {
-if (metodo === "cash") return "Dinheiro";
-if (metodo === "tpa") return "TPA";
-if (metodo === "transfer") return "Transferência";
-if (metodo === "mcx") return "Multicaixa";
-return "KWIK";
-}
-
-// ─── Hook: serviços ───────────────────────────────────────────────────────────
-
-function useServicos(escolaId: string) {
-const supabase = createClient();
-const { error } = useToast();
-const [servicos, setServicos] = useState<Servico[]>([]);
-
-useEffect(() => {
-let alive = true;
-supabase
-.from("servicos_escola")
-.select("id, codigo, nome, descricao, valor_base")
-.eq("escola_id", escolaId)
-.eq("ativo", true)
-.then(({ data, error: e }) => {
-if (!alive) return;
-if (e) { error("Erro ao carregar serviços."); return; }
-setServicos((data ?? []).map((r: any) => ({
-id: r.id, codigo: r.codigo, nome: r.nome, descricao: r.descricao,
-preco: Number(r.valor_base ?? 0), tipo: "servico" as const,
-})));
-});
-return () => { alive = false; };
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [escolaId]);
-
-return servicos;
-}
-
-// ─── Hook: busca de alunos ────────────────────────────────────────────────────
-
-function useAlunoSearch() {
-const [searchTerm,        setSearchTerm]        = useState("");
-const [alunosEncontrados, setAlunosEncontrados] = useState<AlunoBusca[]>([]);
-const [isSearching,       setIsSearching]       = useState(false);
-const debouncedTerm = useDebounce(searchTerm, 400);
-const abortRef      = useRef<AbortController | null>(null);
-
-useEffect(() => {
-const q = debouncedTerm.trim();
-if (!q) {
-setAlunosEncontrados([]);
-setIsSearching(false);
-abortRef.current?.abort();
-return;
-}
-setIsSearching(true);
-abortRef.current?.abort();
-abortRef.current = new AbortController();
-
-fetch(`/api/secretaria/balcao/alunos/search?query=${encodeURIComponent(q)}`,
-  { signal: abortRef.current.signal })
-  .then(r => r.json().catch(() => ({})))
-  .then(json => {
-    setAlunosEncontrados(json?.ok && Array.isArray(json.alunos) ? json.alunos : []);
-  })
-  .catch((e: any) => { if (e?.name !== "AbortError") setAlunosEncontrados([]); })
-  .finally(() => setIsSearching(false));
-
-}, [debouncedTerm]);
-
-const clear = useCallback(() => {
-setSearchTerm("");
-setAlunosEncontrados([]);
-abortRef.current?.abort();
-}, []);
-
-return { searchTerm, setSearchTerm, alunosEncontrados, isSearching, clear };
-}
-
-// ─── Hook: dossier do aluno ───────────────────────────────────────────────────
-
-function useAlunoDossier(escolaId: string) {
-const supabase = createClient();
-const { error } = useToast();
-const [aluno,        setAluno]        = useState<AlunoDossier | null>(null);
-const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
-const [loading,      setLoading]      = useState(false);
-
-const load = useCallback(async (alunoId: string) => {
-setLoading(true);
-try {
-const { data, error: e } = await supabase.rpc("get_aluno_dossier", {
-p_escola_id: escolaId, p_aluno_id: alunoId,
-});
-if (e || !data) throw new Error(e?.message || "Erro ao carregar dossier.");
-
-  const raw        = data as any;
-  const financeiro = raw.financeiro || {};
-  const perfil     = raw.perfil     || {};
-  const historico  = Array.isArray(raw.historico) ? raw.historico : [];
-  const matriculaAtiva = raw.matricula_ativa ?? null;
-  const atual      = matriculaAtiva
-    ?? historico.find((h: any) =>
-      ["ativo","ativa","active"].includes(String(h?.status ?? "").toLowerCase())
-    ) ?? historico[0] ?? null;
-
-  const divida = Number(financeiro.total_em_atraso ?? 0);
-
-  setAluno({
-    id:              alunoId,
-    nome:            perfil.nome_completo || perfil.nome || "Aluno",
-    numero_processo: perfil.numero_processo || "—",
-    bi_numero:       perfil.bi_numero || null,
-    turma:           atual?.turma || "—",
-    turma_codigo:    atual?.turma_codigo ?? atual?.turma_code ?? null,
-    classe:          atual?.classe ?? null,
-    curso:           atual?.curso ?? atual?.curso_nome ?? null,
-    curso_codigo:    atual?.curso_codigo ?? atual?.curso_code ?? null,
-    status_financeiro: divida > 0 ? "inadimplente" : "em_dia",
-    divida_total:    divida,
-    foto_url:        perfil.foto_url || null,
-    matricula_id:    atual?.matricula_id || null,
+function getUnlockedMensalidadeIds(mensalidades: Mensalidade[], selectedIds: string[]): Set<string> {
+  const sorted = [...mensalidades].sort((a, b) => {
+    if (a.atrasada !== b.atrasada) return a.atrasada ? -1 : 1;
+    const mesA = a.referencia_mes ?? 0;
+    const mesB = b.referencia_mes ?? 0;
+    return mesA - mesB;
   });
 
-  setMensalidades(
-    (financeiro.mensalidades || [])
-      .filter((m: any) => ["pendente","pago_parcial"].includes(String(m.status)))
-      .map((m: any) => {
-        const mes   = Number(m.mes ?? m.mes_referencia);
-        const ano   = Number(m.ano ?? m.ano_referencia);
-        const valor = Number(m.valor ?? 0);
-        const pago  = Number(m.pago ?? m.valor_pago_total ?? 0);
-        const saldo = Math.max(0, valor - pago);
-        const venc  = m.vencimento || m.data_vencimento || null;
-        return {
-          id: String(m.id), nome: formatMesAno(mes, ano), preco: saldo,
-          tipo: "mensalidade" as const,
-          atrasada: venc ? new Date(venc) < new Date() : false,
-          mes_referencia: mes, ano_referencia: ano,
-        };
+  const unlocked = new Set<string>();
+  const selectedSet = new Set(selectedIds);
+
+  for (const m of sorted) {
+    unlocked.add(m.id);
+    if (!selectedSet.has(m.id)) {
+      break;
+    }
+  }
+
+  return unlocked;
+}
+
+function useAlunoSearch() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [alunosEncontrados, setAlunosEncontrados] = useState<AlunoDossier[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debouncedTerm = useDebounce(searchTerm, 400);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const query = debouncedTerm.trim();
+    if (!query) {
+      setAlunosEncontrados([]);
+      setIsSearching(false);
+      abortRef.current?.abort();
+      return;
+    }
+
+    setIsSearching(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    fetch(`/api/secretaria/balcao/alunos/search?query=${encodeURIComponent(query)}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then((response) => response.json().catch(() => ({})))
+      .then((json) => {
+        if (!controller.signal.aborted) {
+          setAlunosEncontrados(json?.ok && Array.isArray(json.alunos) ? json.alunos : []);
+        }
       })
-      .filter((m: Mensalidade) => m.preco > 0)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (!controller.signal.aborted) setAlunosEncontrados([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsSearching(false);
+      });
+
+    return () => controller.abort();
+  }, [debouncedTerm]);
+
+  const clear = useCallback(() => {
+    setSearchTerm("");
+    setAlunosEncontrados([]);
+  }, []);
+
+  return { searchTerm, setSearchTerm, alunosEncontrados, isSearching, clear };
+}
+
+function useAlunoDossier(escolaId: string, academicYearId: string | null) {
+  const [aluno, setAluno] = useState<AlunoDossier | null>(null);
+  const [mensalidades, setMensalidades] = useState<Mensalidade[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(
+    async (alunoId: string) => {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        let dossierRpc = "get_aluno_dossier";
+        let dossierArgs: Record<string, unknown> = {
+          p_escola_id: escolaId,
+          p_aluno_id: alunoId,
+        };
+
+        // The contextual RPC expects the numeric academic year, while the UI
+        // carries the academic-year UUID in `ano_letivo_id`.
+        if (academicYearId) {
+          const { data: year } = await supabase
+            .from("anos_letivos")
+            .select("ano")
+            .eq("escola_id", escolaId)
+            .eq("id", academicYearId)
+            .maybeSingle();
+          const numericYear = Number(year?.ano);
+          if (Number.isInteger(numericYear)) {
+            dossierRpc = "get_aluno_dossier_contextual";
+            dossierArgs = { ...dossierArgs, p_ano_letivo: numericYear };
+          }
+        }
+
+        const { data, error } = await (supabase as any).rpc(dossierRpc, dossierArgs);
+
+        if (error) throw error;
+
+        const raw = (data ?? {}) as any;
+        const perfil = raw.perfil ?? raw.aluno ?? {};
+        const financeiro = raw.financeiro ?? {};
+        const historico = Array.isArray(raw.historico) ? raw.historico : [];
+        const atual = raw.matricula_ativa ?? historico[0] ?? {};
+        const divida = Number(financeiro.total_em_atraso ?? raw.aluno?.divida_total ?? 0);
+
+        setAluno({
+          id: String(raw.aluno?.id ?? alunoId),
+          nome: String(perfil.nome_completo ?? perfil.nome ?? raw.aluno?.nome ?? "Aluno"),
+          foto_url: perfil.foto_url ? String(perfil.foto_url) : null,
+          numero_processo: String(perfil.numero_processo ?? raw.aluno?.numero_processo ?? "-"),
+          turma_codigo: atual.turma_codigo ? String(atual.turma_codigo) : null,
+          curso_codigo: atual.curso_codigo ? String(atual.curso_codigo) : null,
+          classe: atual.classe ? String(atual.classe) : null,
+          status_financeiro: divida > 0 ? "inadimplente" : "em_dia",
+          divida_total: divida,
+          // The dossier RPC returns the active registration as `{ id }`;
+          // older payloads used `{ matricula_id }`. The rematricula status
+          // endpoint needs the registration UUID in either case.
+          matricula_id: atual.matricula_id
+            ? String(atual.matricula_id)
+            : atual.id
+              ? String(atual.id)
+              : null,
+        });
+
+        const rawMensalidades = (financeiro.mensalidades ?? raw.mensalidades ?? []) as Array<Record<string, unknown>>;
+        const mensalidadeIds = rawMensalidades
+          .map((m) => (m.id ? String(m.id) : ""))
+          .filter(Boolean);
+        const { data: origins } = mensalidadeIds.length > 0
+          ? await supabase
+              .from("mensalidades")
+              .select("id, matricula_id, turma_id, ano_letivo")
+              .eq("escola_id", escolaId)
+              .eq("aluno_id", alunoId)
+              .in("id", mensalidadeIds)
+          : { data: [] };
+        const originById = new Map((origins ?? []).map((origin) => [String(origin.id), origin]));
+        const turmaIds = (origins ?? [])
+          .map((origin) => origin.turma_id)
+          .filter((id): id is string => Boolean(id));
+        const { data: originTurmas } = turmaIds.length > 0
+          ? await supabase.from("turmas").select("id, nome, turma_codigo").in("id", turmaIds)
+          : { data: [] };
+        const turmaById = new Map((originTurmas ?? []).map((turma) => [String(turma.id), turma]));
+
+        const ms: Mensalidade[] = rawMensalidades
+          .filter((m: any) => !m.status || ["pendente", "pago_parcial"].includes(String(m.status)))
+          .map((m: any) => {
+            const mes = Number(m.mes ?? m.mes_referencia ?? 0);
+            const ano = Number(m.ano ?? m.ano_referencia ?? 0);
+            const valor = Number(m.valor ?? m.preco ?? 0);
+            const pago = Number(m.pago ?? m.valor_pago_total ?? 0);
+            const vencimento = m.vencimento ?? m.data_vencimento;
+            const origin = originById.get(String(m.id));
+            const turma = origin?.turma_id ? turmaById.get(String(origin.turma_id)) : null;
+            return {
+              id: String(m.id),
+              nome: mes && ano ? `Mensalidade ${new Date(0, mes - 1).toLocaleString("pt-PT", { month: "short" })}/${ano}` : String(m.nome ?? "Mensalidade"),
+              preco: Math.max(0, valor - pago),
+              atrasada: vencimento ? new Date(vencimento) < new Date() : Boolean(m.atrasada),
+              referencia_mes: mes || undefined,
+              referencia_ano: ano || undefined,
+              origem_ano: origin?.ano_letivo ? String(origin.ano_letivo) : null,
+              origem_matricula_id: origin?.matricula_id ? String(origin.matricula_id) : null,
+              origem_turma: turma ? String(turma.turma_codigo ?? turma.nome ?? "Turma") : null,
+              tipo: "mensalidade" as const,
+            };
+          })
+          .filter((m: Mensalidade) => m.preco > 0)
+          .sort((a, b) => {
+            const aKey = Number(a.referencia_ano ?? 0) * 100 + Number(a.referencia_mes ?? 0);
+            const bKey = Number(b.referencia_ano ?? 0) * 100 + Number(b.referencia_mes ?? 0);
+            return aKey - bKey;
+          });
+        setMensalidades(ms);
+      } catch {
+        setAluno(null);
+        setMensalidades([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [escolaId, academicYearId]
   );
-} catch (err: any) {
-  error(err.message || "Erro ao carregar dossier.");
-  setAluno(null);
-  setMensalidades([]);
-} finally {
-  setLoading(false);
+
+  const clear = useCallback(() => {
+    setAluno(null);
+    setMensalidades([]);
+  }, []);
+
+  return { aluno, mensalidades, loading, load, clear };
 }
 
-}, [escolaId, supabase, error]);
+function useServicos(escolaId: string) {
+  const { error } = useToast();
+  const [servicos, setServicos] = useState<Servico[]>([]);
 
-const clear = useCallback(() => {
-setAluno(null);
-setMensalidades([]);
-}, []);
+  useEffect(() => {
+    let alive = true;
 
-return { aluno, mensalidades, loading, load, clear };
+    async function fetchServicos() {
+      try {
+        const supabase = createClient();
+        const { data, error: queryError } = await supabase
+          .from("servicos_escola")
+          .select("id, codigo, nome, descricao, valor_base")
+          .eq("escola_id", escolaId)
+          .eq("ativo", true);
+
+        if (!alive) return;
+        if (queryError) {
+          error("Erro ao carregar serviços.");
+          setServicos([]);
+          return;
+        }
+
+        setServicos((data ?? []).map((service) => ({
+          id: service.id,
+          codigo: service.codigo,
+          nome: service.nome,
+          descricao: service.descricao,
+          preco: Number(service.valor_base ?? 0),
+          tipo: "servico" as const,
+        })));
+      } catch {
+        if (alive) {
+          setServicos([]);
+          error("Erro ao carregar serviços.");
+        }
+      }
+    }
+    if (escolaId) void fetchServicos();
+
+    return () => {
+      alive = false;
+    };
+    // `useToast` creates action functions per render; including `error` here
+    // would refetch the catalogue after every state update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaId]);
+
+  return servicos;
 }
-
-// ─── Hook: carrinho ───────────────────────────────────────────────────────────
 
 function useCarrinho() {
-const { toast: rawToast } = useToast();
-const [itens,         setItens]         = useState<ItemCarrinho[]>([]);
-const [metodo,        setMetodo]        = useState<MetodoPagamento>("cash");
-const [detalhes,      setDetalhesState] = useState<MetodoDetalhes>(DETALHES_VAZIOS);
-const [valorRecebido, setValorRecebido] = useState("");
+  const [itens, setItens] = useState<ItemCarrinho[]>([]);
+  const [metodo, setMetodo] = useState<MetodoPagamento>("tpa");
+  const [detalhes, setDetalhesState] = useState({ referencia: "", evidencia_url: "", gateway_ref: "" });
+  const [valorRecebido, setValorRecebido] = useState("");
 
-// Reset campos de método ao trocar
-useEffect(() => { setDetalhesState(DETALHES_VAZIOS); }, [metodo]);
+  const setDetalhes = useCallback((patch: Partial<typeof detalhes>) => {
+    setDetalhesState((prev) => ({ ...prev, ...patch }));
+  }, []);
 
-const total    = useMemo(() => itens.reduce((s, i) => s + Number(i.preco || 0), 0), [itens]);
-const valorNum = useMemo(() => { const n = Number(valorRecebido); return isFinite(n) ? n : 0; }, [valorRecebido]);
-const troco    = useMemo(() => Math.max(0, valorNum - total), [valorNum, total]);
+  const adicionar = useCallback((item: ItemCarrinho) => {
+    setItens((prev) => {
+      if (prev.some((i) => i.id === item.id && i.tipo === item.tipo)) return prev;
+      return [...prev, item];
+    });
+  }, []);
 
-useEffect(() => {
-if (metodo !== "cash") return;
-setValorRecebido(total > 0 ? String(total) : "");
-}, [metodo, total]);
+  const remover = useCallback((id: string, tipo: string) => {
+    setItens((prev) => prev.filter((i) => !(i.id === id && i.tipo === tipo)));
+  }, []);
 
-const prontoParaPagar = itens.length > 0 &&
-(total === 0 || metodo !== "cash" || (valorNum >= total && valorNum > 0));
+  const limpar = useCallback(() => {
+    setItens([]);
+    setValorRecebido("");
+    setDetalhesState({ referencia: "", evidencia_url: "", gateway_ref: "" });
+  }, []);
 
-const adicionar = useCallback((item: ItemCarrinho) => {
-const dup = item.tipo === "mensalidade"
-? itens.some(i =>
-i.tipo === "mensalidade" &&
-(i as Mensalidade).mes_referencia === (item as Mensalidade).mes_referencia &&
-(i as Mensalidade).ano_referencia === (item as Mensalidade).ano_referencia)
-: itens.some(i => i.tipo === "servico" && i.id === item.id);
+  const total = useMemo(() => itens.reduce((acc, item) => acc + item.preco, 0), [itens]);
+  const valorNum = Number(valorRecebido) || 0;
+  const troco = Math.max(0, valorNum - total);
 
-if (dup) { rawToast({ variant: "info", title: "Item já está no carrinho." }); return; }
-setItens(prev => [...prev, item]);
+  const prontoParaPagar = useMemo(() => {
+    if (itens.length === 0) return false;
+    if (metodo === "tpa" && !detalhes.referencia.trim()) return false;
+    if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return false;
+    if (metodo === "cash" && total > 0 && valorNum < total) return false;
+    return true;
+  }, [itens.length, metodo, detalhes, total, valorNum]);
 
-}, [itens, rawToast]);
-
-const remover = useCallback((id: string, tipo: ItemCarrinho["tipo"]) => {
-setItens(prev => prev.filter(i => !(i.id === id && i.tipo === tipo)));
-}, []);
-
-const limpar = useCallback(() => {
-setItens([]);
-setValorRecebido("");
-setDetalhesState(DETALHES_VAZIOS);
-}, []);
-
-const setDetalhes = useCallback((d: Partial<MetodoDetalhes>) => {
-setDetalhesState(prev => ({ ...prev, ...d }));
-}, []);
-
-return {
-itens, total, metodo, setMetodo, detalhes, setDetalhes,
-valorRecebido, setValorRecebido, valorNum, troco,
-prontoParaPagar, adicionar, remover, limpar,
-};
+  return {
+    itens,
+    total,
+    metodo,
+    setMetodo,
+    detalhes,
+    setDetalhes,
+    valorRecebido,
+    setValorRecebido,
+    valorNum,
+    troco,
+    prontoParaPagar,
+    adicionar,
+    remover,
+    limpar,
+  };
 }
-
-// ─── Hook: audit trail ────────────────────────────────────────────────────────
 
 function useAuditTrail() {
-const [entries,  setEntries]  = useState<AuditEntry[]>([]);
-const [loading,  setLoading]  = useState(false);
-const [open,     setOpen]     = useState(false);
-const [scope,    setScope]    = useState<"aluno" | "todos">("aluno");
+  const [open, setOpen] = useState(false);
+  const [scope, setScope] = useState<"aluno" | "todos">("aluno");
+  const [entries, setEntries] = useState<Array<{ created_at: string; action: string; entity?: string; portal?: string }>>([]);
+  const [loading, setLoading] = useState(false);
 
-const fetch_ = useCallback(async (alunoId?: string | null, matriculaId?: string | null) => {
-setLoading(true);
-const params = new URLSearchParams({ limit: "20" });
-if (scope === "aluno") {
-if (alunoId)     params.set("alunoId", alunoId);
-if (matriculaId) params.set("matriculaId", matriculaId);
-}
-try {
-const res  = await fetch(`/api/secretaria/balcao/audit?${params}`, { cache: "no-store" });
-const json = await res.json().catch(() => ({}));
-setEntries(res.ok && json?.ok && Array.isArray(json.logs) ? json.logs : []);
-} finally {
-setLoading(false);
-}
-}, [scope]);
+  const fetch = useCallback(async (alunoId?: string, matriculaId?: string | null) => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      let query = supabase.from("audit_logs").select("created_at, action, entity, portal").order("created_at", { ascending: false }).limit(15);
+      if (scope === "aluno" && alunoId) {
+        query = query.eq("entity_id", alunoId);
+      }
+      const { data } = await query;
+      setEntries(
+        (data ?? []).map((entry) => ({
+          created_at: entry.created_at ?? "",
+          action: entry.action ?? "",
+          ...(entry.entity ? { entity: entry.entity } : {}),
+          ...(entry.portal ? { portal: entry.portal } : {}),
+        })),
+      );
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [scope]);
 
-return { entries, loading, open, setOpen, scope, setScope, fetch: fetch_ };
+  return { open, setOpen, scope, setScope, entries, loading, fetch };
 }
-
-// ─── Hook: checkout ───────────────────────────────────────────────────────────
 
 function useCheckout({
-escolaId, aluno, carrinho, academicYearId, onSuccess,
+  escolaId,
+  aluno,
+  carrinho,
+  academicYearId,
+  onSuccess,
 }: {
-  escolaId:  string;
-  aluno:     AlunoDossier | null;
-  carrinho:  ReturnType<typeof useCarrinho>;
+  escolaId: string;
+  aluno: AlunoDossier | null;
+  carrinho: ReturnType<typeof useCarrinho>;
   academicYearId: string | null;
   onSuccess: () => void;
 }) {
-const { success, error } = useToast();
-const [isSubmitting,  setIsSubmitting]  = useState(false);
-const [printQueue,    setPrintQueue]    = useState<Array<{ label: string; url: string }>>([]);
-const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
-const [recibosParaImpressao, setRecibosParaImpressao] = useState<ReciboBatchItem[]>([]);
-const [printReadyCount, setPrintReadyCount] = useState(0);
-const [escolaNome, setEscolaNome] = useState("Escola");
-const [escolaLogoUrl, setEscolaLogoUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
+  const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
+  const { success, error } = useToast();
 
-useEffect(() => {
-let alive = true;
-fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
-  .then((res) => res.json().catch(() => ({})))
-  .then((json) => {
-    if (!alive) return;
-    if (json?.ok && typeof json.nome === "string" && json.nome.trim()) {
-      setEscolaNome(json.nome);
-    }
-    if (json?.ok) {
-      setEscolaLogoUrl(typeof json.logo_url === "string" ? json.logo_url : null);
-    }
-  })
-  .catch(() => null);
-return () => { alive = false; };
-}, [escolaId]);
+  const checkout = useCallback(async () => {
+    if (!aluno || !carrinho.prontoParaPagar) return;
+    setIsSubmitting(true);
 
-useEffect(() => {
-if (recibosParaImpressao.length === 0 || printReadyCount < recibosParaImpressao.length) return;
-const timer = window.setTimeout(() => window.print(), 150);
-return () => window.clearTimeout(timer);
-}, [recibosParaImpressao, printReadyCount]);
-
-const emitirDocumento = useCallback(async (servico: Servico): Promise<string | null> => {
-if (!aluno?.id) { error("Aluno não seleccionado."); return null; }
-const tipo = getDocTipo(servico);
-if (!tipo)     { error("Tipo de documento não identificado."); return null; }
-
-const popup = window.open("", "_blank", "noopener,noreferrer");
-setEmittingDocId(servico.id);
-try {
-  const res  = await fetch("/api/secretaria/documentos/emitir", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ alunoId: aluno.id, tipoDocumento: tipo, escolaId, ano_letivo_id: academicYearId }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json?.ok || !json?.docId) throw new Error(json?.error || "Falha ao emitir documento.");
-  const destino = getDocDestino(json.docId, tipo);
-  if (popup) popup.location.href = destino; else window.location.href = destino;
-  return destino;
-} catch (err: any) {
-  popup?.close();
-  error(err.message || "Erro ao emitir documento.");
-  return null;
-} finally {
-  setEmittingDocId(null);
-}
-
-}, [aluno, escolaId, error]);
-
-const checkout = useCallback(async () => {
-if (!aluno?.id)                 return error("Nenhum aluno seleccionado.");
-if (carrinho.itens.length === 0) return error("Carrinho vazio.");
-
-const { metodo, detalhes, itens, total, troco } = carrinho;
-
-if (total > 0) {
-  if (metodo === "cash"     && carrinho.valorNum < total) return error("Valor recebido insuficiente.");
-  if (metodo === "tpa"      && !detalhes.referencia.trim()) return error("Referência obrigatória para TPA.");
-  if (metodo === "transfer" && !detalhes.evidencia_url.trim()) return error("Comprovativo obrigatório para Transferência.");
-}
-
-const mensalidadesCarrinho = itens
-  .filter((i): i is Mensalidade => i.tipo === "mensalidade")
-  .sort(compareMensalidadeCompetenciaAsc);
-const servicosCarrinho     = itens.filter((i): i is Servico     => i.tipo === "servico");
-
-setIsSubmitting(true);
-try {
-  setRecibosParaImpressao([]);
-  setPrintReadyCount(0);
-  const recibosMensalidades: ReciboBatchItem[] = [];
-
-  // 1. Pagar mensalidades
-  for (const m of mensalidadesCarrinho) {
-    const res  = await fetch("/api/secretaria/balcao/pagamentos", {
-      method: "POST", cache: "no-store",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": idKey() },
-      body: JSON.stringify({
-        aluno_id: aluno.id, mensalidade_id: m.id, valor: m.preco, metodo,
-        ano_letivo_id: academicYearId,
-        reference:    detalhes.referencia    || null,
-        evidence_url: detalhes.evidencia_url || null,
-        gateway_ref:  detalhes.gateway_ref   || null,
-        meta: { observacao: "Pagamento via balcão" },
-      }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao registar pagamento.");
-
-    // Emissão fiscal do recibo da mensalidade (não bloqueia o pagamento já registado)
     try {
-      const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
+      const response = await fetch("/api/secretaria/pagamentos/processar", {
         method: "POST",
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": `balcao-recibo-${m.id}`,
-        },
-        body: JSON.stringify({ mensalidadeId: m.id }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          escola_id: escolaId,
+          aluno_id: aluno.id,
+          matricula_id: aluno.matricula_id,
+          ano_letivo_id: academicYearId,
+          metodo_pagamento: carrinho.metodo,
+          detalhes: carrinho.detalhes,
+          itens: carrinho.itens,
+        }),
       });
-      const reciboJson = await reciboRes.json().catch(() => ({}));
-      if (!reciboRes.ok || !reciboJson?.ok) {
-        error("Pagamento registado, mas recibo pendente", reciboJson?.error || "Não foi possível emitir o recibo agora.");
-      } else {
-        const docId = typeof reciboJson?.doc_id === "string" ? reciboJson.doc_id : null;
-        recibosMensalidades.push({
-          id: docId ?? m.id,
-          url_validacao: typeof reciboJson?.url_validacao === 'string' ? reciboJson.url_validacao : null,
-          valor: m.preco,
-          referencia: formatMesAno(m.mes_referencia, m.ano_referencia),
-        });
-        if (docId && mensalidadesCarrinho.length === 1) {
-          const printUrl = `/secretaria/documentos/${docId}/recibo/print`;
-          setPrintQueue(prev => [{ label: "Recibo de pagamento", url: printUrl }, ...prev]);
-          window.open(printUrl, "_blank", "noopener,noreferrer");
-        }
-      }
-    } catch {
-      error("Pagamento registado, mas recibo pendente", "Não foi possível emitir o recibo agora.");
+
+      const json = await response.json();
+      if (!response.ok || !json.ok) throw new Error(json.error || "Erro ao processar pagamento");
+
+      success("Pagamento processado com sucesso!");
+      carrinho.limpar();
+      onSuccess();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Nao foi possivel concluir o pagamento.");
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  }, [aluno, carrinho, escolaId, academicYearId, onSuccess, success, error]);
 
-  if (recibosMensalidades.length > 1) {
-    const referenciasDetalhadas = recibosMensalidades.map((item) => item.referencia);
-    setRecibosParaImpressao([
-      {
-        id: `batch:${mensalidadesCarrinho.map((item) => item.id).join(",")}`,
-        url_validacao: recibosMensalidades.find((item) => item.url_validacao)?.url_validacao ?? null,
-        valor: recibosMensalidades.reduce((sum, item) => sum + Number(item.valor || 0), 0),
-        referencia: summarizeReferencias(referenciasDetalhadas),
-        referenciasDetalhadas,
-        itensDetalhados: recibosMensalidades.map((item) => ({
-          referencia: item.referencia,
-          valor: Number(item.valor || 0),
-        })),
-      },
-    ]);
-  }
+  const emitirDocumento = useCallback(
+    async (servico: Servico): Promise<string | null> => {
+      if (!aluno) return null;
+      setEmittingDocId(servico.id);
+      try {
+        const response = await fetch("/api/secretaria/documentos/emitir", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            escola_id: escolaId,
+            aluno_id: aluno.id,
+            servico_id: servico.id,
+            documento_tipo: getDocTipo(servico),
+          }),
+        });
 
-  // 2. Pagar serviços com valor
-  for (const s of servicosCarrinho.filter(s => (s.preco ?? 0) > 0)) {
-    const res  = await fetch("/api/secretaria/balcao/pagamentos", {
-      method: "POST", cache: "no-store",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": idKey() },
-      body: JSON.stringify({
-        aluno_id: aluno.id, mensalidade_id: null, valor: s.preco, metodo,
-        ano_letivo_id: academicYearId,
-        reference:    detalhes.referencia    || null,
-        evidence_url: detalhes.evidencia_url || null,
-        gateway_ref:  detalhes.gateway_ref   || null,
-        meta: {
-          observacao: "Pagamento via balcão",
-          pedido_id:           s.pedido_id           ?? null,
-          pagamento_intent_id: s.pagamento_intent_id ?? null,
-          servico_codigo:      s.codigo,
-          documento_tipo:      s.documento_tipo       ?? null,
-        },
-      }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao registar pagamento.");
-  }
+        const json = await response.json();
+        if (!response.ok || !json.url) throw new Error(json.error || "Erro ao emitir documento");
+        return json.url;
+      } catch (err) {
+        error(err instanceof Error ? err.message : "Nao foi possivel emitir o documento.");
+        return null;
+      } finally {
+        setEmittingDocId(null);
+      }
+    },
+    [aluno, escolaId, error]
+  );
 
-  // 3. Emitir documentos
-  const docs      = servicosCarrinho.filter(s => s.documento_tipo);
-  const novosLinks: Array<{ label: string; url: string }> = [];
-  for (const s of docs) {
-    const url = await emitirDocumento(s);
-    if (url) novosLinks.push({ label: s.nome, url });
-  }
-  if (novosLinks.length > 0) setPrintQueue(prev => [...novosLinks, ...prev]);
-
-  const msg = total === 0
-    ? "Documento emitido."
-    : metodo === "cash"
-      ? `Pagamento registado. Troco: ${kwanza.format(troco)}`
-      : "Pagamento registado.";
-
-  success(msg);
-  carrinho.limpar();
-  onSuccess();
-} catch (err: any) {
-  const msg = err.message || "Erro ao finalizar pagamento.";
-  error(msg);
-} finally {
-  setIsSubmitting(false);
+  return { isSubmitting, emittingDocId, printQueue, setPrintQueue, checkout, emitirDocumento };
 }
-
-}, [aluno, carrinho, emitirDocumento, success, error, onSuccess]);
-
-return {
-  isSubmitting,
-  printQueue,
-  setPrintQueue,
-  emittingDocId,
-  recibosParaImpressao,
-  setPrintReadyCount,
-  escolaNome,
-  escolaLogoUrl,
-  checkout,
-  emitirDocumento,
-};
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Componentes UI
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ─── Atoms ────────────────────────────────────────────────────────────────────
 
 function Avatar({ url, nome, size = "md" }: { url?: string | null; nome?: string | null; size?: "sm" | "md" | "lg" }) {
-const dim = size === "lg" ? "h-16 w-16" : size === "sm" ? "h-9 w-9" : "h-10 w-10";
-const txt = size === "lg" ? "text-xl"   : "text-sm";
-return (
-<div className={`${dim} rounded-2xl bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
-{url
-? <img src={url} alt="" className="h-full w-full object-cover" />
-: <span className={`font-black text-[#1F6B3B] ${txt}`}>{(nome ?? "?").charAt(0).toUpperCase()}</span>
-}
-</div>
-);
+  const dim = size === "lg" ? "h-14 w-14" : size === "sm" ? "h-9 w-9" : "h-10 w-10";
+  const txt = size === "lg" ? "text-lg" : "text-sm";
+  return (
+    <div className={`${dim} rounded-2xl bg-klasse-green/10 border border-klasse-green/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
+      {url ? (
+        <img src={url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className={`font-black text-klasse-green ${txt}`}>{(nome ?? "?").charAt(0).toUpperCase()}</span>
+      )}
+    </div>
+  );
 }
 
-function StatusPill({ status }: { status: "em_dia" | "inadimplente" }) {
-return status === "inadimplente"
-? <span className="inline-flex items-center rounded-full border border-rose-200
-bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 uppercase tracking-wide">
-Inadimplente
-</span>
-: <span className="inline-flex items-center rounded-full border border-[#1F6B3B]/20
-bg-[#1F6B3B]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#1F6B3B] uppercase tracking-wide">
-Em dia
-</span>;
+function StatusPill({ status }: { status: "em_dia" | "inadimplente" | "sem_matricula" }) {
+  return status === "inadimplente" ? (
+    <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 uppercase tracking-wide">
+      Inadimplente
+    </span>
+  ) : status === "sem_matricula" ? (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+      Sem matricula
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full border border-klasse-green/20 bg-klasse-green/10 px-2.5 py-0.5 text-[10px] font-bold text-klasse-green uppercase tracking-wide">
+      Em dia
+    </span>
+  );
 }
 
 function Tag({ children }: { children: React.ReactNode }) {
-return (
-<span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-{children}
-</span>
-);
+  return (
+    <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+      {children}
+    </span>
+  );
 }
 
 function SecaoLabel({ children }: { children: React.ReactNode }) {
-return (
-<p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 pl-1">
-{children}
-</p>
-);
+  return (
+    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 pl-1 font-mono">
+      {children}
+    </p>
+  );
 }
-
-function SkeletonLine() {
-return <div className="h-3 w-full animate-pulse rounded bg-slate-100" />;
-}
-
-// ─── SearchCard ───────────────────────────────────────────────────────────────
-
-function SearchCard({
-searchTerm, setSearchTerm, alunosEncontrados, isSearching, clear, onSelect,
-}: {
-searchTerm:        string;
-setSearchTerm:     (v: string) => void;
-alunosEncontrados: AlunoBusca[];
-isSearching:       boolean;
-clear:             () => void;
-onSelect:          (id: string) => void;
-}) {
-return (
-<div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-<div className="px-5 py-4 flex items-center gap-3">
-<div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200
-flex items-center justify-center flex-shrink-0">
-<Search className="h-4 w-4 text-slate-400" />
-</div>
-<div className="flex-1 min-w-0">
-<p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
-Buscar Aluno
-</p>
-<input
-value={searchTerm}
-onChange={e => setSearchTerm(e.target.value)}
-placeholder="Nome, BI, Nº Processo..."
-className="w-full text-sm font-medium text-slate-900 placeholder:text-slate-300
-outline-none bg-transparent"
-/>
-</div>
-{isSearching && <Loader2 className="h-4 w-4 animate-spin text-[#E3B23C] flex-shrink-0" />}
-{searchTerm && (
-<button type="button" onClick={clear}
-className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0">
-<X className="h-4 w-4 text-slate-400" />
-</button>
-)}
-</div>
-
-  {searchTerm.trim() && (
-    <div className="border-t border-slate-100 max-h-72 overflow-y-auto">
-      {alunosEncontrados.length === 0 && !isSearching ? (
-        <p className="p-6 text-center text-sm text-slate-400">Nenhum aluno encontrado.</p>
-      ) : (
-        alunosEncontrados.map(a => (
-          <button key={a.id} type="button"
-            onClick={() => { clear(); onSelect(a.id); }}
-            className="w-full px-5 py-3 flex items-center gap-3 text-left
-              hover:bg-slate-50 transition-colors
-              border-b border-slate-50 last:border-b-0 group">
-            <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200
-              flex items-center justify-center overflow-hidden flex-shrink-0">
-              {a.foto_url
-                ? <img src={a.foto_url} alt="" className="h-full w-full object-cover" />
-                : <User className="h-4 w-4 text-slate-400" />
-              }
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-700 group-hover:text-slate-900 truncate">
-                {a.nome}
-              </p>
-              <p className="text-xs text-slate-400">{a.turma} · Proc: {a.numero_processo}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#E3B23C] flex-shrink-0" />
-          </button>
-        ))
-      )}
-    </div>
-  )}
-</div>
-
-);
-}
-
-// ─── AlunoCard ────────────────────────────────────────────────────────────────
 
 function AlunoCard({ aluno }: { aluno: AlunoDossier }) {
-const inadimplente = aluno.status_financeiro === "inadimplente";
-return (
-<div className="xl:col-span-5 rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-<div className="flex items-start gap-4">
-<Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
-<div className="flex-1 min-w-0 space-y-2">
-<h2 className="text-base font-black text-slate-900 leading-tight">{aluno.nome}</h2>
-<div className="flex flex-wrap gap-1.5">
-{aluno.turma_codigo && <Tag>Turma {aluno.turma_codigo}</Tag>}
-{aluno.curso_codigo && <Tag>Curso {aluno.curso_codigo}</Tag>}
-{aluno.classe       && <Tag>Classe {aluno.classe}</Tag>}
-<Tag>Proc {aluno.numero_processo}</Tag>
-<StatusPill status={aluno.status_financeiro} />
-</div>
-</div>
-</div>
+  const inadimplente = aluno.status_financeiro === "inadimplente";
+  const semMatricula = aluno.status_financeiro === "sem_matricula";
 
-  {inadimplente ? (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <AlertCircle className="h-4 w-4 text-rose-600" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600">
-          Dívida acumulada
-        </p>
-      </div>
-      <p className="text-2xl font-black text-rose-700">{kwanza.format(aluno.divida_total)}</p>
-    </div>
-  ) : (
-    <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-4 flex items-center gap-3">
-      <div className="p-2 rounded-full bg-[#1F6B3B]/10">
-        <CheckCircle className="h-4 w-4 text-[#1F6B3B]" />
-      </div>
-      <div>
-        <p className="text-xs font-bold text-[#1F6B3B]">Situação regular</p>
-        <p className="text-[11px] text-[#1F6B3B]/70">Nenhuma pendência.</p>
-      </div>
-    </div>
-  )}
-</div>
-
-);
-}
-
-// ─── Catalogo ─────────────────────────────────────────────────────────────────
-
-function Catalogo({
-mensalidades, servicos,
-onAdicionarMensalidade, onAdicionarServico,
-emittingDocId, addingServicoId, onServicoAvulso, unlockedMensalidadeIds,
-rematriculaReady, rematriculaPrice, onRematricula,
-}: {
-mensalidades:           Mensalidade[];
-servicos:               Servico[];
-onAdicionarMensalidade: (m: Mensalidade) => void;
-onAdicionarServico:     (s: Servico) => Promise<void>;
-emittingDocId:          string | null;
-addingServicoId:        string | null;
-onServicoAvulso:        () => void;
-unlockedMensalidadeIds: Set<string>;
-rematriculaReady: boolean;
-rematriculaPrice: number | null;
-onRematricula: () => void;
-}) {
-const atrasadas  = useMemo(() => mensalidades.filter(m => m.atrasada),    [mensalidades]);
-const correntes  = useMemo(() => mensalidades.filter(m => !m.atrasada),   [mensalidades]);
-const documentos = useMemo(() => servicos.filter(isDocServico),            [servicos]);
-const extras     = useMemo(() => servicos.filter(s => !isDocServico(s)),   [servicos]);
-
-const servicoBtnCls = (busy: boolean) =>
-`p-3 rounded-xl border border-slate-200 bg-slate-50 text-left transition-all hover:bg-white hover:border-[#E3B23C] ${busy ? "opacity-50 cursor-not-allowed" : ""}`;
-
-return (
-<div className="xl:col-span-7 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-<div className="flex items-center justify-between mb-5">
-<div className="flex items-center gap-2">
-<Plus className="h-4 w-4 text-[#E3B23C]" />
-<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Adicionar item</p>
-</div>
-<button onClick={onServicoAvulso}
-className="text-[10px] font-bold text-[#E3B23C] hover:underline">
-+ Serviço avulso
-</button>
-</div>
-
-  <div className="space-y-5 max-h-[480px] overflow-y-auto pr-1">
-
-    {rematriculaReady && (
-      <div>
-        <SecaoLabel>Operações escolares</SecaoLabel>
-        <button
-          type="button"
-          onClick={onRematricula}
-          className="w-full flex items-center justify-between p-3 rounded-xl border
-            border-[#1F6B3B]/25 bg-[#1F6B3B]/5 hover:bg-[#1F6B3B]/10
-            transition-all text-left"
-        >
+  return (
+    <div className="xl:col-span-4 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3.5 h-fit">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
           <div>
-            <p className="text-sm font-bold text-[#1F6B3B]">Rematrícula escolar</p>
-            <p className="text-[10px] text-slate-500">
-              Pagamento, atualização da matrícula e comprovante
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5 font-mono">Situacao</span>
+            <StatusPill status={aluno.status_financeiro} />
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-0.5">
+        <h2 className="text-base font-black text-slate-900 leading-snug break-words">
+          {aluno.nome}
+        </h2>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
+        <Tag>Proc. {aluno.numero_processo}</Tag>
+        {aluno.turma_codigo && <Tag>Turma {aluno.turma_codigo}</Tag>}
+        {aluno.curso_codigo && <Tag>Curso {aluno.curso_codigo}</Tag>}
+        {aluno.classe && <Tag>Classe {aluno.classe}</Tag>}
+      </div>
+
+      {inadimplente ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertCircle className="h-4 w-4 text-rose-600" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600 font-mono">
+              Divida acumulada
             </p>
           </div>
-          <span className="text-sm font-black text-slate-900">
-            {rematriculaPrice != null ? kwanza.format(rematriculaPrice) : "—"}
-          </span>
-        </button>
-      </div>
-    )}
-
-    {atrasadas.length > 0 && (
-      <div>
-        <SecaoLabel>Em atraso</SecaoLabel>
-        <div className="grid gap-2">
-          {atrasadas.map(m => (
-            <button key={m.id} onClick={() => onAdicionarMensalidade(m)}
-              disabled={!unlockedMensalidadeIds.has(m.id)}
-              title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
-              className="flex items-center justify-between p-3 rounded-xl border
-                border-rose-200 bg-rose-50 hover:border-rose-300 transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60">
-              <div>
-                <p className="text-sm font-bold text-rose-900">{m.nome}</p>
-                <p className="text-[10px] text-rose-500">
-                  {!unlockedMensalidadeIds.has(m.id) ? "Bloqueada até regularizar a anterior" : "Vencida"}
-                </p>
-              </div>
-              <span className="text-sm font-black text-rose-800">{kwanza.format(m.preco)}</span>
-            </button>
-          ))}
+          <p className="text-2xl font-black text-rose-700 font-sora">{kwanza.format(aluno.divida_total)}</p>
         </div>
-      </div>
-    )}
-
-    {correntes.length > 0 && (
-      <div>
-        <SecaoLabel>Mensalidades</SecaoLabel>
-        <div className="grid gap-2">
-          {correntes.map(m => (
-            <button key={m.id} onClick={() => onAdicionarMensalidade(m)}
-              disabled={!unlockedMensalidadeIds.has(m.id)}
-              title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
-              className="flex items-center justify-between p-3 rounded-xl border
-                border-slate-200 bg-white hover:border-[#E3B23C] transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60">
-              <div>
-                <p className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{m.nome}</p>
-                <p className="text-[10px] text-slate-400">
-                  {!unlockedMensalidadeIds.has(m.id) ? "Bloqueada até regularizar a anterior" : "Corrente"}
-                </p>
-              </div>
-              <span className="text-sm font-bold text-slate-900">{kwanza.format(m.preco)}</span>
-            </button>
-          ))}
+      ) : semMatricula ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex items-center gap-3">
+          <div className="p-2 rounded-full bg-slate-200">
+            <Info className="h-4 w-4 text-slate-600" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-700">Sem matricula neste ano</p>
+            <p className="text-[11px] text-slate-500">Nenhuma mensalidade foi lancada.</p>
+          </div>
         </div>
-      </div>
-    )}
-
-    {documentos.length > 0 && (
-      <div>
-        <SecaoLabel>Documentos</SecaoLabel>
-        <div className="grid grid-cols-2 gap-2">
-          {documentos.map(s => {
-            const busy = addingServicoId === s.id || emittingDocId === s.id;
-            return (
-              <button key={s.id} disabled={busy}
-                onClick={() => void onAdicionarServico(s)}
-                className={servicoBtnCls(busy)}>
-                <p className="text-xs font-bold text-slate-700 truncate">{s.nome}</p>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">{kwanza.format(s.preco)}</span>
-                  <span className={`text-[10px] font-bold ${
-                    s.preco > 0 ? "text-[#9a7010]" : "text-[#1F6B3B]"
-                  }`}>
-                    {busy ? "..." : s.preco > 0 ? "Cobrar" : "Adicionar"}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+      ) : (
+        <div className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-3.5 flex items-center gap-3">
+          <div className="p-2 rounded-full bg-klasse-green/10">
+            <CheckCircle className="h-4 w-4 text-klasse-green" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-klasse-green">Situacao regular</p>
+            <p className="text-[11px] text-klasse-green/70">Nenhuma pendencia.</p>
+          </div>
         </div>
-      </div>
-    )}
-
-    {extras.length > 0 && (
-      <div>
-        <SecaoLabel>Serviços extras</SecaoLabel>
-        <div className="grid grid-cols-2 gap-2">
-          {extras.map(s => {
-            const busy = addingServicoId === s.id;
-            return (
-              <button key={s.id} disabled={busy}
-                onClick={() => void onAdicionarServico(s)}
-                className={servicoBtnCls(busy)}>
-                <p className="text-xs font-bold text-slate-700 truncate">{s.nome}</p>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">{kwanza.format(s.preco)}</span>
-                  <span className={`text-[10px] font-bold ${
-                    s.preco > 0 ? "text-[#9a7010]" : "text-[#1F6B3B]"
-                  }`}>
-                    {busy ? "..." : s.preco > 0 ? "Pago" : "Grátis"}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    )}
-
-    {mensalidades.length === 0 && servicos.length === 0 && (
-      <p className="text-sm text-slate-400 text-center py-8">
-        Nenhum item disponível para este aluno.
-      </p>
-    )}
-  </div>
-</div>
-
-);
-}
-
-// ─── AuditTrail (inline no carrinho) ─────────────────────────────────────────
-
-function AuditTrail({
-audit, aluno, onRefresh,
-}: {
-audit:     ReturnType<typeof useAuditTrail>;
-aluno:     AlunoDossier | null;
-onRefresh: () => void;
-}) {
-if (!audit.open) return null;
-return (
-<div className="border-b border-slate-100">
-<div className="flex items-center justify-between px-6 py-3">
-<p className="text-[10px] uppercase tracking-widest text-slate-400">
-{audit.scope === "aluno" ? "Só este aluno" : "Todos"}
-</p>
-<div className="flex items-center gap-3">
-<button
-onClick={() => audit.setScope(audit.scope === "aluno" ? "todos" : "aluno")}
-className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-700">
-{audit.scope === "aluno" ? "Ver todos" : "Ver aluno"}
-</button>
-<button onClick={onRefresh}
-className="text-[10px] font-bold uppercase tracking-widest text-[#E3B23C] hover:underline">
-Actualizar
-</button>
-</div>
-</div>
-<div className="max-h-52 overflow-y-auto px-6 pb-4 space-y-2">
-{!aluno ? (
-<p className="text-xs text-slate-400">Seleccione um aluno para ver o histórico.</p>
-) : audit.loading ? (
-<div className="space-y-2"><SkeletonLine /><SkeletonLine /></div>
-) : audit.entries.length === 0 ? (
-<p className="text-xs text-slate-400">Sem registos recentes.</p>
-) : (
-audit.entries.map((e, i) => (
-<div key={`${e.created_at}-${i}`}
-className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-<div className="flex items-center justify-between gap-2">
-<p className="text-xs font-bold text-slate-800">{e.action || "Evento"}</p>
-<p className="text-[10px] text-slate-400 flex-shrink-0">
-{e.created_at
-? new Date(e.created_at).toLocaleString("pt-PT", {
-day: "2-digit", month: "short",
-hour: "2-digit", minute: "2-digit",
-})
-: "—"}
-</p>
-</div>
-{(e.entity || e.portal) && (
-<p className="text-[10px] text-slate-500 mt-0.5">
-{[e.entity, e.portal].filter(Boolean).join(" · ")}
-</p>
-)}
-</div>
-))
-)}
-</div>
-</div>
-);
-}
-
-// ─── CarrinhoPanel ────────────────────────────────────────────────────────────
-
-function CarrinhoPanel({
-carrinho, checkout, audit, aluno,
-}: {
-carrinho:  ReturnType<typeof useCarrinho>;
-checkout:  ReturnType<typeof useCheckout>;
-audit:     ReturnType<typeof useAuditTrail>;
-aluno:     AlunoDossier | null;
-}) {
-const { itens, total, metodo, setMetodo, detalhes, setDetalhes,
-valorRecebido, setValorRecebido, valorNum, troco,
-prontoParaPagar, remover, limpar } = carrinho;
-
-const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20`;
-
-return (
-<div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden
-flex flex-col h-[calc(100vh-140px)] sticky top-6">
-
-  {/* Header */}
-  <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
-    <div className="flex items-center gap-2">
-      <ShoppingCart className="h-5 w-5 text-[#E3B23C]" />
-      <span className="text-sm font-bold text-white">Resumo da venda</span>
-      {itens.length > 0 && (
-        <span className="flex h-5 w-5 items-center justify-center rounded-full
-          bg-[#E3B23C] text-[10px] font-black text-slate-900">
-          {itens.length}
-        </span>
       )}
     </div>
-    <div className="flex items-center gap-3">
-      <button
-        onClick={() => {
-          audit.setOpen(o => !o);
-          if (!audit.open) audit.fetch(aluno?.id, aluno?.matricula_id);
-        }}
-        className="text-[10px] font-bold uppercase tracking-widest
-          text-slate-500 hover:text-white transition-colors">
-        {audit.open ? "Fechar audit" : "Audit trail"}
-      </button>
-      {itens.length > 0 && (
-        <button onClick={limpar}
-          className="text-[10px] font-bold uppercase tracking-widest
-            text-slate-500 hover:text-white transition-colors">
-          Limpar
+  );
+}
+
+function Catalogo({
+  mensalidades,
+  servicos,
+  onAdicionarMensalidade,
+  onAdicionarServico,
+  emittingDocId,
+  addingServicoId,
+  onServicoAvulso,
+  unlockedMensalidadeIds,
+  rematriculaReady,
+  rematriculaState,
+  rematriculaPrice,
+  rematriculaDebt,
+  rematriculaAnoLabel,
+  reconcilingPedido,
+  onResolverPedido,
+  onRematricula,
+}: {
+  mensalidades: Mensalidade[];
+  servicos: Servico[];
+  onAdicionarMensalidade: (m: Mensalidade) => void;
+  onAdicionarServico: (s: Servico) => Promise<void>;
+  emittingDocId: string | null;
+  addingServicoId: string | null;
+  onServicoAvulso: () => void;
+  unlockedMensalidadeIds: Set<string>;
+  rematriculaReady: boolean;
+  rematriculaState:
+    | "READY"
+    | "PRICE_NOT_CONFIGURED"
+    | "CHECKING"
+    | "RECONFIRMATION_REQUIRED"
+    | "FINALIST_PENDING"
+    | "LEGACY_REVIEW_REQUIRED"
+    | "ALREADY_COMPLETED"
+    | "PAYMENT_IN_PROGRESS"
+    | "RECONCILIATION_REQUIRED"
+    | "DEBT_BLOCKED"
+    | null;
+  rematriculaPrice: number | null;
+  rematriculaDebt: { total: number; count: number } | null;
+  rematriculaAnoLabel: string | null;
+  reconcilingPedido: boolean;
+  onResolverPedido: () => Promise<void>;
+  onRematricula: () => void;
+}) {
+  const atrasadas = useMemo(() => mensalidades.filter((m) => m.atrasada), [mensalidades]);
+  const correntes = useMemo(() => mensalidades.filter((m) => !m.atrasada), [mensalidades]);
+  const documentos = useMemo(
+    () => servicos.filter((s) => !isServicoRematricula(s) && isDocServico(s)),
+    [servicos],
+  );
+  const extras = useMemo(
+    () => servicos.filter((s) => !isServicoRematricula(s) && !isDocServico(s)),
+    [servicos],
+  );
+
+  const servicoBtnCls = (busy: boolean) =>
+    `p-3 rounded-xl border border-slate-200/90 bg-slate-50/70 text-left transition-all hover:bg-white hover:border-klasse-gold hover:shadow-xs ${
+      busy ? "opacity-50 cursor-not-allowed" : ""
+    }`;
+
+  return (
+    <div className="xl:col-span-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Plus className="h-4 w-4 text-klasse-gold" />
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Adicionar item</p>
+        </div>
+        <button onClick={onServicoAvulso} className="text-xs font-bold text-klasse-gold hover:underline">
+          + Servico avulso
         </button>
-      )}
-    </div>
-  </div>
-
-  {/* Audit trail */}
-  <AuditTrail
-    audit={audit} aluno={aluno}
-    onRefresh={() => audit.fetch(aluno?.id, aluno?.matricula_id)}
-  />
-
-  {/* Lista de itens */}
-  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50">
-    {itens.length === 0 ? (
-      <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-300">
-        <ShoppingCart className="h-10 w-10 opacity-30" />
-        <p className="text-xs font-medium">Carrinho vazio</p>
       </div>
-    ) : (
-      itens.map(item => {
-        const podeImprimir =
-          item.tipo === "servico" &&
-          Number(item.preco ?? 0) <= 0 &&
-          (item as Servico).documento_tipo;
 
-        return (
-          <div key={`${item.id}-${item.tipo}`}
-            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm
-              flex items-start justify-between gap-3 group">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
-              <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">{item.tipo}</p>
-              {podeImprimir && (
-                <button type="button"
-                  onClick={async () => {
-                    const url = await checkout.emitirDocumento(item as Servico);
-                    if (url) checkout.setPrintQueue(prev => [{ label: item.nome, url }, ...prev]);
-                  }}
-                  className="mt-1.5 text-[10px] font-semibold text-[#1F6B3B] hover:underline">
-                  Imprimir agora
-                </button>
+      <div className="space-y-6 max-h-[620px] overflow-y-auto pr-2">
+        {rematriculaState && (
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <SecaoLabel>Operacoes escolares</SecaoLabel>
+              {rematriculaAnoLabel && (
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
+                  Ano: {rematriculaAnoLabel}
+                </span>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <p className="text-sm font-black text-slate-900">{kwanza.format(item.preco)}</p>
-              <button onClick={() => remover(item.id, item.tipo)}
-                className="p-1 text-slate-300 hover:text-rose-500 transition-colors
-                  opacity-0 group-hover:opacity-100">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+            {rematriculaState === "LEGACY_REVIEW_REQUIRED" ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong className="block text-amber-950">Pedido incompleto encontrado</strong>
+                <p className="mt-1">
+                  Este pedido não tem ano letivo nem contexto suficiente. Será associado a {rematriculaAnoLabel ?? "o ano letivo atual"} e substituído por uma operação válida, sem cobrança duplicada.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void onResolverPedido()}
+                  disabled={reconcilingPedido}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {reconcilingPedido ? "A resolver pedido…" : "Resolver e iniciar operação correta"}
+                </button>
+              </div>
+            ) : null}
+            {rematriculaDebt && rematriculaDebt.total > 0 && (
+              <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                <strong className="block">Atenção financeira</strong>
+                <span>
+                  {rematriculaDebt.count} mensalidade(s) em aberto · {kwanza.format(rematriculaDebt.total)}.
+                  A dívida deve ser tratada no atendimento; as notas pendentes, por si só, não impedem a progressão quando a secretaria confirmar a aptidão.
+                </span>
+              </div>
+            )}
+            {rematriculaState !== "LEGACY_REVIEW_REQUIRED" && <button
+              type="button"
+              onClick={onRematricula}
+              disabled={!rematriculaReady}
+              className="w-full flex items-center justify-between p-3.5 rounded-xl border
+                border-klasse-green/25 bg-klasse-green/5 hover:bg-klasse-green/10
+                transition-all text-left disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <div>
+                <p className="text-sm font-bold text-klasse-green">
+                  {rematriculaState === "RECONFIRMATION_REQUIRED"
+                    ? "Reconfirmar matrícula"
+                    : rematriculaState === "FINALIST_PENDING"
+                      ? "Finalista: decidir continuidade"
+                      : "Rematricula escolar"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {rematriculaReady
+                    ? rematriculaState === "RECONFIRMATION_REQUIRED"
+                      ? "Pagar taxa e confirmar a matrícula já existente"
+                      : rematriculaState === "FINALIST_PENDING"
+                        ? "Pagar taxa e escolher continuidade ou conclusão"
+                        : "Pagamento, atualizacao da matricula e comprovante"
+                    : rematriculaState === "CHECKING"
+                      ? "A verificar elegibilidade da matrícula..."
+                      : rematriculaState === "ALREADY_COMPLETED"
+                        ? "Aluno já possui matrícula neste ano letivo"
+                        : rematriculaState === "PAYMENT_IN_PROGRESS"
+                          ? "Pagamento de rematrícula já iniciado"
+                          : rematriculaState === "RECONCILIATION_REQUIRED"
+                            ? "Rematrícula aguarda reconciliação"
+                            : rematriculaState === "DEBT_BLOCKED"
+                              ? "Regularize as mensalidades em atraso"
+                              : "Configure o valor da taxa para ativar esta operacao"}
+                </p>
+              </div>
+              <span className="text-sm font-black text-slate-900 font-sora">
+                {rematriculaPrice != null && rematriculaPrice > 0
+                  ? kwanza.format(rematriculaPrice)
+                  : "Valor pendente"}
+              </span>
+            </button>}
+          </div>
+        )}
+
+        {atrasadas.length > 0 && (
+          <div>
+            <SecaoLabel>Em atraso ({atrasadas.length})</SecaoLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {atrasadas.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => onAdicionarMensalidade(m)}
+                  disabled={!unlockedMensalidadeIds.has(m.id)}
+                  title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
+                  className="flex items-center justify-between p-3.5 rounded-xl border
+                    border-rose-200 bg-rose-50/70 hover:bg-rose-50 hover:border-rose-300 transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div className="min-w-0 pr-2">
+                    <p className="text-xs font-bold text-rose-900 truncate">{m.nome}</p>
+                    <p className="text-[10px] font-medium text-rose-500 truncate mt-0.5">
+                      {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
+                        (!unlockedMensalidadeIds.has(m.id) ? "Bloqueada (regularizar anterior)" : "Vencida")}
+                    </p>
+                  </div>
+                  <span className="text-xs font-black text-rose-800 font-sora flex-shrink-0">{kwanza.format(m.preco)}</span>
+                </button>
+              ))}
             </div>
           </div>
-        );
-      })
-    )}
-  </div>
+        )}
 
-  {/* Footer de pagamento */}
-  <div className="border-t border-slate-100 bg-white p-5 space-y-4 flex-shrink-0">
+        {correntes.length > 0 && (
+          <div>
+            <SecaoLabel>Mensalidades ({correntes.length})</SecaoLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {correntes.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => onAdicionarMensalidade(m)}
+                  disabled={!unlockedMensalidadeIds.has(m.id)}
+                  title={!unlockedMensalidadeIds.has(m.id) ? "Regularize primeiro as mensalidades mais antigas." : undefined}
+                  className="flex items-center justify-between p-3.5 rounded-xl border
+                    border-slate-200 bg-white hover:border-klasse-gold hover:shadow-xs transition-all text-left group disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div className="min-w-0 pr-2">
+                    <p className="text-xs font-bold text-slate-700 group-hover:text-slate-900 truncate">{m.nome}</p>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                      {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
+                        (!unlockedMensalidadeIds.has(m.id) ? "Bloqueada (regularizar anterior)" : "Corrente")}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 font-sora flex-shrink-0">{kwanza.format(m.preco)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-    {/* Total */}
-    <div className="flex items-end justify-between">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total a pagar</p>
-      <p className="text-3xl font-black text-slate-900">{kwanza.format(total)}</p>
-    </div>
+        {documentos.length > 0 && (
+          <div>
+            <SecaoLabel>Documentos ({documentos.length})</SecaoLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {documentos.map((s) => {
+                const busy = addingServicoId === s.id || emittingDocId === s.id;
+                return (
+                  <button key={s.id} disabled={busy} onClick={() => void onAdicionarServico(s)} className={servicoBtnCls(busy)}>
+                    <p className="text-xs font-bold text-slate-800 truncate" title={s.nome}>
+                      {s.nome}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-1">
+                      <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
+                      <span
+                        className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
+                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-klasse-green"
+                        }`}
+                      >
+                        {busy ? "..." : s.preco > 0 ? "Cobrar" : "Adicionar"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-    {/* Métodos */}
-    <div className="grid grid-cols-5 gap-1.5">
-      {METODOS_UI.map(({ id, icon: Icon, label }) => {
-        const active = metodo === id;
-        return (
-          <button key={id} onClick={() => setMetodo(id)}
-            className={`flex flex-col items-center justify-center py-2.5 rounded-xl border gap-1
-              transition-all ${active
-                ? "border-[#E3B23C] bg-[#E3B23C]/5 text-slate-900"
-                : "border-slate-200 text-slate-400 hover:border-slate-300"}`}>
-            <Icon className={`h-4 w-4 ${active ? "text-[#E3B23C]" : "text-current"}`} />
-            <span className="text-[9px] font-bold uppercase">{label}</span>
-          </button>
-        );
-      })}
-    </div>
+        {extras.length > 0 && (
+          <div>
+            <SecaoLabel>Servicos extras ({extras.length})</SecaoLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {extras.map((s) => {
+                const busy = addingServicoId === s.id;
+                return (
+                  <button key={s.id} disabled={busy} onClick={() => void onAdicionarServico(s)} className={servicoBtnCls(busy)}>
+                    <p className="text-xs font-bold text-slate-800 truncate" title={s.nome}>
+                      {s.nome}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-1">
+                      <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
+                      <span
+                        className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 ${
+                          s.preco > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-klasse-green"
+                        }`}
+                      >
+                        {busy ? "..." : s.preco > 0 ? "Pago" : "Gratis"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-    {/* Referência TPA / MCX / KIWK */}
-    {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
-      <div className="space-y-2">
-        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          Referência {metodo === "tpa" && <span className="text-rose-500">*</span>}
-        </label>
-        <input value={detalhes.referencia}
-          onChange={e => setDetalhes({ referencia: e.target.value })}
-          placeholder={metodo === "tpa" ? "TPA-2026-000882" : "Opcional"}
-          className={inputCls} />
-        {(metodo === "mcx" || metodo === "kiwk") && (
-          <input value={detalhes.gateway_ref}
-            onChange={e => setDetalhes({ gateway_ref: e.target.value })}
-            placeholder="Gateway ref (opcional)"
-            className={inputCls} />
+        {mensalidades.length === 0 && servicos.length === 0 && (
+          <p className="text-sm text-slate-400 text-center py-8">Nenhum item disponivel para este aluno.</p>
         )}
       </div>
-    )}
+    </div>
+  );
+}
 
-    {/* Comprovativo transferência */}
-    {metodo === "transfer" && (
-      <div>
-        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-          Comprovativo (URL) <span className="text-rose-500">*</span>
-        </label>
-        <input value={detalhes.evidencia_url}
-          onChange={e => setDetalhes({ evidencia_url: e.target.value })}
-          placeholder="https://..." className={inputCls} />
+function AuditTrail({ audit, aluno, onRefresh }: { audit: ReturnType<typeof useAuditTrail>; aluno: AlunoDossier | null; onRefresh: () => void }) {
+  if (!audit.open) return null;
+  return (
+    <div className="border-b border-slate-100">
+      <div className="flex items-center justify-between px-6 py-3">
+        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-mono">
+          {audit.scope === "aluno" ? "So este aluno" : "Todos"}
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => audit.setScope(audit.scope === "aluno" ? "todos" : "aluno")}
+            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-700"
+          >
+            {audit.scope === "aluno" ? "Ver todos" : "Ver aluno"}
+          </button>
+          <button onClick={onRefresh} className="text-[10px] font-bold uppercase tracking-widest text-klasse-gold hover:underline">
+            Actualizar
+          </button>
+        </div>
       </div>
-    )}
+      <div className="max-h-52 overflow-y-auto px-6 pb-4 space-y-2">
+        {!aluno ? (
+          <p className="text-xs text-slate-400">Seleccione um aluno para ver o historico.</p>
+        ) : audit.loading ? (
+          <div className="space-y-2 py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-slate-400 mx-auto" />
+          </div>
+        ) : audit.entries.length === 0 ? (
+          <p className="text-xs text-slate-400">Sem registos recentes.</p>
+        ) : (
+          audit.entries.map((e, i) => (
+            <div key={`${e.created_at}-${i}`} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold text-slate-800">{e.action || "Evento"}</p>
+                <p className="text-[10px] text-slate-400 flex-shrink-0 font-mono">
+                  {e.created_at
+                    ? new Date(e.created_at).toLocaleString("pt-PT", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "-"}
+                </p>
+              </div>
+              {(e.entity || e.portal) && <p className="text-[10px] text-slate-500 mt-0.5">{[e.entity, e.portal].filter(Boolean).join(" · ")}</p>}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
-    {/* Valor recebido (cash) */}
-    {metodo === "cash" && (
-      <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            Recebido
-          </label>
-          {valorNum > total && (
-            <span className="text-xs font-bold text-[#1F6B3B]">
-              Troco: {kwanza.format(troco)}
+function CarrinhoPanel({
+  carrinho,
+  checkout,
+  audit,
+  aluno,
+  embedded = false,
+}: {
+  carrinho: ReturnType<typeof useCarrinho>;
+  checkout: ReturnType<typeof useCheckout>;
+  audit: ReturnType<typeof useAuditTrail>;
+  aluno: AlunoDossier | null;
+  embedded?: boolean;
+}) {
+  const { itens, total, metodo, setMetodo, detalhes, setDetalhes, valorRecebido, setValorRecebido, valorNum, troco, prontoParaPagar, remover, limpar } = carrinho;
+
+  const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20`;
+
+  return (
+    <div
+      className={`rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden flex flex-col sticky top-6 ${
+        embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"
+      }`}
+    >
+      <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="h-5 w-5 text-klasse-gold" />
+          <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
+          {itens.length > 0 && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-klasse-gold text-[10px] font-black text-slate-900 font-mono">
+              {itens.length}
             </span>
           )}
         </div>
-        <div className="relative">
-          <input type="number" value={valorRecebido}
-            onChange={e => setValorRecebido(e.target.value)}
-            placeholder="0"
-            className={`${inputCls} pr-12 text-lg font-black`} />
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-            KZ
-          </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              audit.setOpen((o) => !o);
+              if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
+            }}
+            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
+          >
+            {audit.open ? "Fechar audit" : "Audit trail"}
+          </button>
+          {itens.length > 0 && (
+            <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
+              Limpar
+            </button>
+          )}
         </div>
       </div>
-    )}
 
-    {/* Botão finalizar */}
-    <button
-      disabled={!prontoParaPagar || checkout.isSubmitting}
-      onClick={checkout.checkout}
-      className={`w-full py-3.5 rounded-xl text-sm font-bold flex items-center
-        justify-center gap-2 transition-all ${
-        prontoParaPagar && !checkout.isSubmitting
-          ? "bg-[#E3B23C] text-white shadow-lg shadow-[#E3B23C]/20 hover:brightness-105"
-          : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}>
-      {checkout.isSubmitting
-        ? <><Loader2 className="h-4 w-4 animate-spin" /> A processar...</>
-        : total === 0
-          ? <><Printer className="h-4 w-4" /> Emitir documentos</>
-          : <><Printer className="h-4 w-4" /> Finalizar · {kwanza.format(total)}</>
-      }
-    </button>
-  </div>
-</div>
+      <AuditTrail audit={audit} aluno={aluno} onRefresh={() => void audit.fetch(aluno?.id, aluno?.matricula_id)} />
 
-);
-}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50">
+        {itens.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-300">
+            <ShoppingCart className="h-10 w-10 opacity-30" />
+            <p className="text-xs font-medium">Carrinho vazio</p>
+          </div>
+        ) : (
+          itens.map((item) => {
+            const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && (item as Servico).documento_tipo;
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Componente principal
-// ═════════════════════════════════════════════════════════════════════════════
-
-export default function BalcaoAtendimento({
-escolaId, selectedAlunoId = null, showSearch = true, embedded = false,
-}: BalcaoAtendimentoProps) {
-const supabase = createClient();
-const { error } = useToast();
-const searchParams = useSearchParams();
-const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
-
-const search   = useAlunoSearch();
-const dossier  = useAlunoDossier(escolaId);
-const servicos = useServicos(escolaId);
-
-const rematricula = useRematriculaBalcao({
-  escolaId,
-  alunoId: dossier.aluno?.id ?? null,
-  matriculaId: dossier.aluno?.matricula_id ?? null,
-  academicYearId: academicYearId ?? null,
-});
-const carrinho = useCarrinho();
-const audit    = useAuditTrail();
-
-const [servicoModalOpen,   setServicoModalOpen]   = useState(false);
-const [servicoModalCodigo, setServicoModalCodigo] = useState<string | null>(null);
-const [bloqueioInfo,       setBloqueioInfo]       = useState<{ code: string; detail?: string } | null>(null);
-const [addingServicoId,    setAddingServicoId]    = useState<string | null>(null);
-
-const onCheckoutSuccess = useCallback(() => {
-if (dossier.aluno?.id) {
-void dossier.load(dossier.aluno.id);
-void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
-}
-}, [dossier, audit]);
-
-const checkout = useCheckout({
-escolaId, aluno: dossier.aluno, carrinho, academicYearId: academicYearId ?? null, onSuccess: onCheckoutSuccess,
-});
-
-const selectedMensalidadeIds = useMemo(
-() => carrinho.itens.filter((item): item is Mensalidade => item.tipo === "mensalidade").map((item) => item.id),
-[carrinho.itens]
-);
-
-const unlockedMensalidadeIds = useMemo(
-() => getUnlockedMensalidadeIds(dossier.mensalidades, selectedMensalidadeIds),
-[dossier.mensalidades, selectedMensalidadeIds]
-);
-
-// selectedAlunoId externo (ex: navegação programática)
-useEffect(() => {
-if (!selectedAlunoId) { dossier.clear(); return; }
-search.clear();
-void dossier.load(selectedAlunoId);
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [selectedAlunoId]);
-
-// Audit quando o aluno muda
-useEffect(() => {
-if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
-else audit.setOpen(false);
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [dossier.aluno?.id]);
-
-// Decisão de serviço (modal ou directo)
-const handleDecision = useCallback((decision: BalcaoDecision, servicoOverride?: Servico) => {
-const servico = servicoOverride ?? servicos.find(s => s.codigo === decision.servico_codigo);
-
-if (decision.decision === "BLOCKED") {
-  setBloqueioInfo({ code: decision.reason_code, detail: decision.reason_detail ?? undefined });
-  if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
-  return;
-}
-
-if (!servico) { error("Serviço não encontrado."); return; }
-const docTipo = getDocTipo(servico);
-
-if (decision.decision === "GRANTED") {
-  carrinho.adicionar({ ...servico, preco: 0, documento_tipo: docTipo, pedido_id: decision.pedido_id });
-  if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
-  return;
-}
-
-carrinho.adicionar({
-  ...servico,
-  preco:               decision.amounts?.total ?? servico.preco,
-  documento_tipo:      docTipo,
-  pedido_id:           decision.pedido_id,
-  pagamento_intent_id: decision.payment_intent_id,
-});
-
-}, [servicos, carrinho, dossier.aluno, audit, error]);
-
-const handleAdicionarServico = useCallback(async (servico: Servico) => {
-if (!dossier.aluno?.id) { error("Aluno não seleccionado."); return; }
-setAddingServicoId(servico.id);
-try {
-const { data, error: rpcError } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
-p_servico_codigo: servico.codigo,
-p_aluno_id:       dossier.aluno.id,
-p_contexto:       {},
-});
-if (rpcError || !data) throw new Error(rpcError?.message || "Erro ao criar pedido.");
-handleDecision({ ...(data as object), servico_codigo: servico.codigo } as BalcaoDecision, servico);
-} catch (err: any) {
-error(err.message || "Erro ao adicionar serviço.");
-} finally {
-setAddingServicoId(null);
-}
-}, [dossier.aluno, supabase, handleDecision, error]);
-
-const handleAdicionarMensalidade = useCallback((mensalidade: Mensalidade) => {
-if (unlockedMensalidadeIds.has(mensalidade.id)) {
-  carrinho.adicionar(mensalidade);
-  return;
-}
-
-const missingPrior = getFirstMissingPriorMensalidade(mensalidade, dossier.mensalidades, selectedMensalidadeIds);
-error(
-  missingPrior
-    ? `Regularize primeiro ${missingPrior.nome} antes de adicionar ${mensalidade.nome}.`
-    : "Regularize primeiro as mensalidades mais antigas."
-);
-}, [unlockedMensalidadeIds, carrinho, dossier.mensalidades, selectedMensalidadeIds, error]);
-
-return (
-<>
-<div className={embedded ? "" : "min-h-screen bg-slate-50"}>
-<div className={embedded ? "" : "mx-auto max-w-screen-2xl px-6 py-6"}>
-<div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#1F6B3B]/15 bg-white px-4 py-3 shadow-sm">
-  <div>
-    <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B]">Contexto da operação</p>
-    <p className="text-sm text-slate-600">Confirme o ano letivo antes de consultar ou rematricular o aluno.</p>
-  </div>
-  <AcademicYearSelector escolaId={escolaId} />
-</div>
-<div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-
-        {/* Coluna esquerda */}
-        <div className="xl:col-span-8 space-y-5">
-
-          {showSearch && (
-            <SearchCard
-              searchTerm={search.searchTerm}
-              setSearchTerm={search.setSearchTerm}
-              alunosEncontrados={search.alunosEncontrados}
-              isSearching={search.isSearching}
-              clear={search.clear}
-              onSelect={id => void dossier.load(id)}
-            />
-          )}
-
-          {dossier.loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-12
-              flex flex-col items-center justify-center gap-3 min-h-[280px]">
-              <Loader2 className="h-8 w-8 animate-spin text-[#E3B23C]" />
-              <p className="text-sm text-slate-400">A carregar ficha do aluno...</p>
-            </div>
-          ) : dossier.aluno ? (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-                <AlunoCard aluno={dossier.aluno} />
-                <Catalogo
-                  mensalidades={dossier.mensalidades}
-                  servicos={servicos}
-                  onAdicionarMensalidade={handleAdicionarMensalidade}
-                  onAdicionarServico={handleAdicionarServico}
-                  emittingDocId={checkout.emittingDocId}
-                  addingServicoId={addingServicoId}
-                  onServicoAvulso={() => {
-                    setServicoModalCodigo(null);
-                    setServicoModalOpen(true);
-                  }}
-                  unlockedMensalidadeIds={unlockedMensalidadeIds}
-                  rematriculaReady={rematricula.cardState === "READY"}
-                  rematriculaPrice={rematricula.service?.valor_base ?? null}
-                  onRematricula={rematricula.openModal}
-                />
-              </div>
-
-              {/* Rematrícula card — below student info */}
-              {dossier.aluno.matricula_id && (
-                <RematriculaBalcaoCard
-                  cardState={rematricula.cardState}
-                  loading={rematricula.loading}
-                  anoLetivo={rematricula.anoLetivo}
-                  service={rematricula.service}
-                  debt={rematricula.debt}
-                  pedido={rematricula.pedido}
-                  comprovante={rematricula.comprovante}
-                  turmaAtual={dossier.aluno.turma_codigo ?? dossier.aluno.turma ?? null}
-                  onConfirmar={rematricula.openModal}
-                  onRetomar={rematricula.openModal}
-                  onVerDividas={() => {
-                    const params = new URLSearchParams();
-                    params.set("aluno_id", dossier.aluno?.id ?? "");
-                    if (rematricula.anoLetivo?.id) {
-                      params.set(ACADEMIC_YEAR_PARAM, rematricula.anoLetivo.id);
-                    }
-                    window.location.assign(`/financeiro/turmas-alunos?${params.toString()}`);
-                  }}
-                  onConfigurarEmolumentos={() => {
-                    const params = new URLSearchParams();
-                    if (rematricula.anoLetivo?.id) {
-                      params.set(ACADEMIC_YEAR_PARAM, rematricula.anoLetivo.id);
-                    }
-                    window.location.assign(`/financeiro/configuracoes/precos?${params.toString()}`);
-                  }}
-                  onAbrirPendencia={() => {
-                    window.location.assign("/financeiro/conciliacao");
-                  }}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-              <div className="mx-auto h-14 w-14 rounded-full bg-slate-50
-                flex items-center justify-center mb-4">
-                <Search className="h-7 w-7 text-slate-300" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Balcão de Atendimento</h3>
-              <p className="mt-1 text-sm text-slate-400 max-w-sm mx-auto">
-                Pesquise um aluno para iniciar o atendimento.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Coluna direita */}
-        <div className="xl:col-span-4 space-y-4">
-
-          {/* Documentos prontos */}
-          {checkout.printQueue.length > 0 && (
-            <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">
-                Documentos prontos
-              </p>
-              <div className="space-y-1.5">
-                {checkout.printQueue.map((doc, i) => (
-                  <button key={`${doc.url}-${i}`}
-                    onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                    className="w-full rounded-lg border border-[#1F6B3B]/20 bg-white
-                      px-3 py-2 text-left text-xs font-semibold text-[#1F6B3B]
-                      hover:bg-[#1F6B3B]/5 transition-colors">
-                    Abrir {doc.label}
+            return (
+              <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-start justify-between gap-3 group">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5 font-mono">{item.tipo}</p>
+                  {podeImprimir && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const url = await checkout.emitirDocumento(item as Servico);
+                        if (url) checkout.setPrintQueue((prev) => [{ label: item.nome, url }, ...prev]);
+                      }}
+                      className="mt-1.5 text-[10px] font-semibold text-klasse-green hover:underline"
+                    >
+                      Imprimir agora
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className="text-sm font-black text-slate-900 font-sora">{kwanza.format(item.preco)}</p>
+                  <button onClick={() => remover(item.id, item.tipo)} className="p-1 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                    <X className="h-3.5 w-3.5" />
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })
+        )}
+      </div>
 
-          <CarrinhoPanel
-            carrinho={carrinho}
-            checkout={checkout}
-            audit={audit}
-            aluno={dossier.aluno}
-          />
+      <div className="border-t border-slate-100 bg-white p-5 space-y-4 flex-shrink-0">
+        <div className="flex items-end justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
+          <p className="text-3xl font-black text-slate-900 font-sora">{kwanza.format(total)}</p>
         </div>
 
+        <div className="grid grid-cols-5 gap-1.5">
+          {METODOS_UI.map(({ id, icon: Icon, label }) => {
+            const active = metodo === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setMetodo(id)}
+                className={`flex flex-col items-center justify-center py-2.5 rounded-xl border gap-1 transition-all ${
+                  active ? "border-klasse-gold bg-klasse-gold/10 text-slate-900 font-bold" : "border-slate-200 text-slate-400 hover:border-slate-300"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${active ? "text-klasse-gold" : "text-current"}`} />
+                <span className="text-[9px] font-bold uppercase font-mono">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
+              Referencia {metodo === "tpa" && <span className="text-rose-500">*</span>}
+            </label>
+            <input
+              value={detalhes.referencia}
+              onChange={(e) => setDetalhes({ referencia: e.target.value })}
+              placeholder={metodo === "tpa" ? "TPA-2026-000882" : "Opcional"}
+              className={inputCls}
+            />
+            {(metodo === "mcx" || metodo === "kiwk") && (
+              <input
+                value={detalhes.gateway_ref}
+                onChange={(e) => setDetalhes({ gateway_ref: e.target.value })}
+                placeholder="Gateway ref (opcional)"
+                className={inputCls}
+              />
+            )}
+          </div>
+        )}
+
+        {metodo === "transfer" && (
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 font-mono">
+              Comprovativo (URL) <span className="text-rose-500">*</span>
+            </label>
+            <input value={detalhes.evidencia_url} onChange={(e) => setDetalhes({ evidencia_url: e.target.value })} placeholder="https://..." className={inputCls} />
+          </div>
+        )}
+
+        {metodo === "cash" && (
+          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Recebido</label>
+              {valorNum > total && <span className="text-xs font-bold text-klasse-green">Troco: {kwanza.format(troco)}</span>}
+            </div>
+            <div className="relative">
+              <input
+                type="number"
+                value={valorRecebido}
+                onChange={(e) => setValorRecebido(e.target.value)}
+                placeholder="0"
+                className={`${inputCls} pr-12 text-lg font-black font-sora`}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">KZ</span>
+            </div>
+          </div>
+        )}
+
+        <button
+          disabled={!prontoParaPagar || checkout.isSubmitting}
+          onClick={() => void checkout.checkout()}
+          className={`w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            prontoParaPagar && !checkout.isSubmitting
+              ? "bg-klasse-gold text-slate-950 shadow-md shadow-klasse-gold/20 hover:brightness-105 font-sora"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+          }`}
+        >
+          {checkout.isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> A processar...
+            </>
+          ) : total === 0 ? (
+            <>
+              <Printer className="h-4 w-4" /> Emitir documentos
+            </>
+          ) : (
+            <>
+              <Printer className="h-4 w-4" /> Finalizar · {kwanza.format(total)}
+            </>
+          )}
+        </button>
       </div>
     </div>
-  </div>
+  );
+}
 
-  {checkout.recibosParaImpressao.map((recibo) => (
-    <ReciboImprimivel
-      key={recibo.id}
-      escolaNome={checkout.escolaNome}
-      alunoNome={dossier.aluno?.nome ?? "Aluno"}
-      alunoBi={dossier.aluno?.bi_numero ?? "—"}
-      turmaNome={dossier.aluno?.turma ?? "—"}
-      classeNome={dossier.aluno?.classe ?? "—"}
-      cursoNome={dossier.aluno?.curso ?? ""}
-      valor={recibo.valor}
-      data={new Date().toISOString()}
-      urlValidacao={recibo.url_validacao}
-      logoUrl={checkout.escolaLogoUrl}
-      referencia={recibo.referencia}
-      referenciasDetalhadas={recibo.referenciasDetalhadas}
-      itensDetalhados={recibo.itensDetalhados}
-      onPrintReady={() => checkout.setPrintReadyCount((count) => count + 1)}
-      metodo={labelMetodo(carrinho.metodo)}
-    />
-  ))}
+export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, showSearch = true, embedded = false }: BalcaoAtendimentoProps) {
+  const { error } = useToast();
+  const searchParams = useSearchParams();
+  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
 
-  <BalcaoServicoModal
-    open={servicoModalOpen}
-    onClose={() => setServicoModalOpen(false)}
-    alunoId={dossier.aluno?.id ?? null}
-    servicos={servicos}
-    initialCodigo={servicoModalCodigo}
-    onDecision={decision => {
-      setServicoModalOpen(false);
-      handleDecision(decision);
-    }}
-  />
-  <MotivoBloqueioModal
-    open={!!bloqueioInfo}
-    onClose={() => setBloqueioInfo(null)}
-    reasonCode={bloqueioInfo?.code ?? ""}
-    reasonDetail={bloqueioInfo?.detail ?? null}
-  />
+  const search = useAlunoSearch();
+  const dossier = useAlunoDossier(escolaId, academicYearId ?? null);
+  const servicos = useServicos(escolaId);
 
-  {/* Rematrícula modal */}
-  {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && (
-    <RematriculaBalcaoModal
-      open={rematricula.modalOpen}
-      onClose={() => {
-        rematricula.closeModal();
-        // Refresh dossier after successful rematrícula
-        if (rematricula.result && dossier.aluno?.id) {
-          void dossier.load(dossier.aluno.id);
-        }
-      }}
-      alunoNome={dossier.aluno?.nome ?? "Aluno"}
-      alunoProcesso={dossier.aluno?.numero_processo ?? "—"}
-      turmaAtual={dossier.aluno?.turma_codigo ?? dossier.aluno?.turma ?? null}
-      matriculaId={dossier.aluno?.matricula_id ?? ""}
-      anoLetivo={rematricula.anoLetivo}
-      service={rematricula.service}
-      turmas={rematricula.turmas}
-      turmasLoading={rematricula.turmasLoading}
-      step={rematricula.step}
-      setStep={rematricula.setStep}
-      selectedTurmaId={rematricula.selectedTurmaId}
-      setSelectedTurmaId={rematricula.setSelectedTurmaId}
-      metodo={rematricula.metodo}
-      setMetodo={rematricula.setMetodo}
-      detalhes={rematricula.detalhes}
-      setDetalhes={rematricula.setDetalhes}
-      submitting={rematricula.submitting}
-      result={rematricula.result}
-      apiError={rematricula.apiError}
-      submit={rematricula.submit}
-    />
-  )}
-</>
+  const rematricula = useRematriculaBalcao({
+    escolaId,
+    alunoId: dossier.aluno?.id ?? null,
+    matriculaId: dossier.aluno?.matricula_id ?? null,
+    academicYearId: academicYearId ?? null,
+  });
+  const carrinho = useCarrinho();
+  const audit = useAuditTrail();
 
-);
+  const [addingServicoId] = useState<string | null>(null);
+
+  const onCheckoutSuccess = useCallback(() => {
+    if (dossier.aluno?.id) {
+      void dossier.load(dossier.aluno.id);
+      void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
+    }
+  }, [dossier, audit]);
+
+  const checkout = useCheckout({
+    escolaId,
+    aluno: dossier.aluno,
+    carrinho,
+    academicYearId: academicYearId ?? null,
+    onSuccess: onCheckoutSuccess,
+  });
+
+  const selectedMensalidadeIds = useMemo(
+    () => carrinho.itens.filter((item): item is Mensalidade => item.tipo === "mensalidade").map((item) => item.id),
+    [carrinho.itens]
+  );
+
+  const unlockedMensalidadeIds = useMemo(
+    () => getUnlockedMensalidadeIds(dossier.mensalidades, selectedMensalidadeIds),
+    [dossier.mensalidades, selectedMensalidadeIds]
+  );
+
+  useEffect(() => {
+    if (!selectedAlunoId) {
+      dossier.clear();
+      return;
+    }
+    search.clear();
+    void dossier.load(selectedAlunoId);
+  }, [selectedAlunoId, academicYearId]);
+
+  useEffect(() => {
+    if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
+    else audit.setOpen(false);
+  }, [dossier.aluno?.id]);
+
+  const handleSelectAluno = useCallback(
+    (alunoId: string) => {
+      void dossier.load(alunoId);
+    },
+    [dossier]
+  );
+
+  const handleAdicionarMensalidade = useCallback(
+    (m: Mensalidade) => {
+      carrinho.adicionar(m);
+    },
+    [carrinho]
+  );
+
+  const handleAdicionarServico = useCallback(
+    async (s: Servico) => {
+      if (!dossier.aluno?.id) {
+        error("Selecione um aluno primeiro.");
+        return;
+      }
+      carrinho.adicionar(s);
+    },
+    [dossier.aluno, carrinho, error]
+  );
+
+  return (
+    <>
+      <div className="w-full">
+      {showSearch && (
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <Search className="h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              value={search.searchTerm}
+              onChange={(e) => {
+                search.setSearchTerm(e.target.value);
+              }}
+              placeholder="Buscar aluno por nome ou n. de processo..."
+              className="w-full text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
+            />
+            {search.isSearching && <Loader2 className="h-4 w-4 animate-spin text-klasse-gold" />}
+            {search.searchTerm && (
+              <button onClick={search.clear} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {search.alunosEncontrados.length > 0 && (
+            <div className="mt-3 border-t border-slate-100 pt-3 space-y-1">
+              {search.alunosEncontrados.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => {
+                    handleSelectAluno(a.id);
+                    search.clear();
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 text-left transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar url={a.foto_url} nome={a.nome} size="sm" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{a.nome}</p>
+                      <p className="text-[10px] text-slate-500 font-mono">Proc. {a.numero_processo}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {dossier.loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
+          <Loader2 className="h-8 w-8 animate-spin text-klasse-gold" />
+          <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
+        </div>
+      ) : dossier.aluno ? (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+          <div className="xl:col-span-8">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+              <AlunoCard aluno={dossier.aluno} />
+              <Catalogo
+                mensalidades={dossier.mensalidades}
+                servicos={servicos}
+                onAdicionarMensalidade={handleAdicionarMensalidade}
+                onAdicionarServico={handleAdicionarServico}
+                emittingDocId={checkout.emittingDocId}
+                addingServicoId={addingServicoId}
+                onServicoAvulso={() => {}}
+                unlockedMensalidadeIds={unlockedMensalidadeIds}
+                rematriculaReady={
+                  rematricula.cardState === "READY" ||
+                  rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
+                  rematricula.cardState === "FINALIST_PENDING"
+                }
+                rematriculaState={
+                  servicos.some(isServicoRematricula)
+                    ? rematricula.cardState ?? "CHECKING"
+                    : null
+                }
+                rematriculaPrice={rematricula.service?.valor_base ?? null}
+                rematriculaDebt={rematricula.debt}
+                rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
+                reconcilingPedido={rematricula.reconciling}
+                onResolverPedido={rematricula.resolveLegacyPedido}
+                onRematricula={rematricula.openModal}
+              />
+            </div>
+          </div>
+
+          <div className="xl:col-span-4">
+            <CarrinhoPanel carrinho={carrinho} checkout={checkout} audit={audit} aluno={dossier.aluno} embedded={embedded} />
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-16 text-center space-y-2">
+          <User className="h-10 w-10 text-slate-300 mx-auto" />
+          <p className="text-sm font-bold text-slate-700 font-sora">Nenhum aluno seleccionado</p>
+          <p className="text-xs text-slate-400">Utilize a barra de pesquisa acima para abrir a ficha de atendimento do aluno.</p>
+        </div>
+      )}
+      </div>
+
+      {rematricula.modalOpen && rematricula.anoLetivo && rematricula.service && dossier.aluno && (
+        <RematriculaBalcaoModal
+          open={rematricula.modalOpen}
+          onClose={() => {
+            rematricula.closeModal();
+            if (rematricula.result) void dossier.load(dossier.aluno!.id);
+          }}
+          alunoNome={dossier.aluno.nome}
+          alunoProcesso={dossier.aluno.numero_processo}
+          alunoId={dossier.aluno.id}
+          turmaAtual={dossier.aluno.turma_codigo ?? null}
+          matriculaId={dossier.aluno.matricula_id ?? ""}
+          anoLetivo={rematricula.anoLetivo}
+          service={rematricula.service}
+          debt={rematricula.debt}
+          skipTurmaSelection={rematricula.cardState === "RECONFIRMATION_REQUIRED"}
+          turmas={rematricula.turmas}
+          turmasLoading={rematricula.turmasLoading}
+          progressao={rematricula.progressao}
+          notasLancarDepois={rematricula.notasLancarDepois}
+          setNotasLancarDepois={rematricula.setNotasLancarDepois}
+          step={rematricula.step}
+          setStep={rematricula.setStep}
+          selectedTurmaId={rematricula.selectedTurmaId}
+          setSelectedTurmaId={rematricula.setSelectedTurmaId}
+          metodo={rematricula.metodo}
+          setMetodo={rematricula.setMetodo}
+          detalhes={rematricula.detalhes}
+          setDetalhes={rematricula.setDetalhes}
+          submitting={rematricula.submitting}
+          result={rematricula.result}
+          apiError={rematricula.apiError}
+          submit={rematricula.submit}
+        />
+      )}
+    </>
+  );
 }

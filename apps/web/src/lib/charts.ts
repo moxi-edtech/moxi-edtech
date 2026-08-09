@@ -1,5 +1,6 @@
 // apps/web/src/lib/charts.ts
 import { supabaseServer } from "@/lib/supabaseServer"
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 
 export type ChartsData = {
@@ -14,12 +15,14 @@ export async function getChartsData(): Promise<ChartsData> {
   
   // Try to resolve escolaId
   const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id) : null
+  const anoScope = escolaId ? await resolveAnoLetivoScope(supabase, escolaId) : null
 
   // Use type casting to bypass TS issues if the table/view name is not in the generated types
-  let query = (supabase.from("vw_pagamentos_status") as any).select("status, total")
+  let query = ((supabase as any).from(escolaId ? "vw_pagamentos_status_ano" : "vw_pagamentos_status") as any).select("status, total")
   
   if (escolaId) {
     query = query.eq("escola_id", escolaId)
+    if (anoScope?.id) query = query.eq("ano_letivo_id", anoScope.id)
   }
 
   const { data: pagamentos, error } = await query
@@ -66,6 +69,7 @@ export async function getDashboardData() {
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
   const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id) : null
+  const anoScope = escolaId ? await resolveAnoLetivoScope(supabase, escolaId) : null
 
   // Se for super-admin (sem escolaId), buscamos globais
   if (!escolaId) {
@@ -98,7 +102,7 @@ export async function getDashboardData() {
 
   // Lógica original para escola específica (se necessário no futuro por este import)
   const countsQuery = (supabase.from("vw_admin_dashboard_counts") as any).select("alunos_ativos, turmas_total, professores_total").eq("escola_id", escolaId).maybeSingle()
-  const financeiroQuery = (supabase.from("vw_financeiro_dashboard") as any).select("total_pendente, total_pago, total_inadimplente").eq("escola_id", escolaId).maybeSingle()
+  const financeiroQuery = (supabase.from("vw_financeiro_dashboard_ano") as any).select("total_pendente, total_pago, total_inadimplente").eq("escola_id", escolaId).eq("ano_letivo_id", anoScope?.id ?? "").maybeSingle()
 
   const [c, f] = await Promise.all([countsQuery, financeiroQuery])
   

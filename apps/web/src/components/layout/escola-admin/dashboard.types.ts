@@ -74,5 +74,5 @@ export type EstadoVital = {
   periodo_numero: number | null;
   hoje_bloqueado_pedagogico: boolean;
   evento_hoje_nome: string | null;
-  fase_operacional: 'REGULAR' | 'EXAMES';
+  fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };

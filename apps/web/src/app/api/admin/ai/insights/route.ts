@@ -4,6 +4,7 @@ import type { Json } from "~types/supabase";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { schoolDailyBriefingTool } from "@/lib/assistant/data-copilot/tools/school-daily-briefing";
+import { academicCalendarOperationsTool } from "@/lib/assistant/data-copilot/tools/academic-calendar-operations";
 import { canAccessAiActions, getUserAiRole } from "@/lib/server/ai/ai-actions";
 import {
   AI_INSIGHT_MODULES,
@@ -115,6 +116,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Não foi possível gerar o briefing diário." }, { status: 422 });
   }
 
+  const calendarResponse = await academicCalendarOperationsTool.run({
+    schoolId: parsed.data.schoolId,
+    role: access.role,
+    query: "Qual é o próximo marco do calendário escolar?",
+    context: { module: "academico", page: "klasse-ai-cockpit" },
+  });
+
   const dateKey = new Date().toISOString().slice(0, 10);
   const insight = await upsertAiInsight(access.supabase, {
     schoolId: parsed.data.schoolId,
@@ -130,5 +138,27 @@ export async function POST(req: Request) {
     suggestedAction: (response.insight.actions[0] ?? null) as Json,
   });
 
-  return NextResponse.json({ ok: true, insight, response });
+  const calendarInsight = calendarResponse
+    ? await upsertAiInsight(access.supabase, {
+        schoolId: parsed.data.schoolId,
+        generatedBy: access.user.id,
+        toolId: academicCalendarOperationsTool.id,
+        fingerprint: `${academicCalendarOperationsTool.id}:${dateKey}:${calendarResponse.insight.evidence.find((item) => item.label === "Próximo marco")?.value ?? "sem-marco"}`,
+        title: "Próximo marco do calendário MED",
+        severity: calendarResponse.insight.severity ?? "medium",
+        module: "academico",
+        explanation: calendarResponse.insight.diagnosis,
+        evidence: calendarResponse.insight.evidence as Json,
+        recommendation: calendarResponse.insight.recommendation,
+        suggestedAction: (calendarResponse.insight.actions[0] ?? null) as Json,
+      })
+    : null;
+
+  return NextResponse.json({
+    ok: true,
+    insight,
+    insights: calendarInsight ? [insight, calendarInsight] : [insight],
+    response,
+    calendarResponse,
+  });
 }

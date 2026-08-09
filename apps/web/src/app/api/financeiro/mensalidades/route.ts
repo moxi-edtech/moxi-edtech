@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { applyKf2ListInvariants } from '@/lib/kf2';
+import { resolveAcademicYearContext } from '@/lib/academic-year/context';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,12 @@ export async function GET(request: Request) {
     if (!escolaId) {
       return NextResponse.json({ error: 'Escola não identificada' }, { status: 403 });
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: user.id,
+      requestedAcademicYearId: searchParams.get('ano_letivo_id'),
+      operation: 'READ',
+    });
+    const academicYear = Number(academicContext.anoLetivoLabel.slice(0, 4));
     const alunoId = searchParams.get('alunoId');
     const turmaId = searchParams.get('turmaId');
 
@@ -51,6 +58,7 @@ export async function GET(request: Request) {
         metodo_pagamento
       `)
       .eq('escola_id', escolaId);
+    query = query.eq('ano_letivo', String(academicYear));
 
     if (alunoId) {
       query = query.eq('aluno_id', alunoId);

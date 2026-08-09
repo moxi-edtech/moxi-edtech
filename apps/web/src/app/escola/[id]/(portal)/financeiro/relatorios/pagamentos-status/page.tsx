@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 type Item = {
   status: string;
@@ -11,6 +11,7 @@ type Item = {
 
 export default function Page() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const escolaId = params?.id as string;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,10 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/financeiro/relatorios/pagamentos-status?escolaId=${escolaId}`, { cache: 'no-store' });
+        const query = new URLSearchParams({ escolaId });
+        const anoLetivoId = searchParams.get("ano_letivo_id");
+        if (anoLetivoId) query.set("ano_letivo_id", anoLetivoId);
+        const res = await fetch(`/api/financeiro/relatorios/pagamentos-status?${query.toString()}`, { cache: 'no-store' });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j?.error || `Erro ${res.status}`);
@@ -42,7 +46,7 @@ export default function Page() {
     }
     load();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaId, searchParams]);
 
   const colors: Record<string, string> = {
     pago: 'bg-green-500',

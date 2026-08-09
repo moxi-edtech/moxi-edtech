@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ function isMissingReadModelError(error: unknown): boolean {
   );
 }
 
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>();
     const { data: userRes } = await supabase.auth.getUser();
@@ -39,17 +40,25 @@ export async function GET(_req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
+    const academicContext = await resolveAcademicYearContext(supabase, {
+      userId: userRes.user.id,
+      requestedAcademicYearId: new URL(req.url).searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
+    const academicYear = Number(academicContext.anoLetivoLabel.slice(0, 4));
 
     // Prefer view simples (vw_financeiro_escola_dia). Se não existir, retorna vazio.
-    let query = supabase
-      .from('vw_financeiro_escola_dia')
-      .select('dia, qtd_pagos, qtd_total')
-      .eq('escola_id', escolaId);
+    let query = (supabase as any)
+      .from('vw_financeiro_escola_dia_ano')
+      .select('dia, ano_letivo, qtd_pagos, qtd_total')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo', academicYear);
 
     query = applyKf2ListInvariants(query, {
       defaultLimit: 50,
       order: [
         { column: 'dia', ascending: true },
+        { column: 'ano_letivo', ascending: true },
       ],
     });
 

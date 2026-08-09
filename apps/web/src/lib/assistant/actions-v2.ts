@@ -62,6 +62,36 @@ function stringParam(params: ActionParams, key: string) {
 
 export const ASSISTANT_ACTIONS_V2: AssistantActionV2Definition[] = [
   {
+    id: "academico:open_council",
+    kind: "open_screen",
+    module: "academico",
+    label: "Abrir conselho e fechamento",
+    description: "Abre o cockpit de fechamento académico, conselho e validação de pautas.",
+    roles: SECRETARIA_ROLES,
+    riskLevel: "low",
+    requiresApproval: false,
+    permission: "assistant.academico",
+    href: (params) => {
+      const schoolId = stringParam(params, "schoolId");
+      return schoolId ? `/escola/${schoolId}/admin/operacoes-academicas/fechamento-academico/cockpit` : undefined;
+    },
+  },
+  {
+    id: "academico:open_calendar",
+    kind: "open_screen",
+    module: "academico",
+    label: "Abrir calendário escolar",
+    description: "Abre o calendário escolar e os marcos operacionais da escola.",
+    roles: SECRETARIA_ROLES,
+    riskLevel: "low",
+    requiresApproval: false,
+    permission: "assistant.academico",
+    href: (params) => {
+      const schoolId = stringParam(params, "schoolId");
+      return schoolId ? `/escola/${schoolId}/secretaria/calendario` : undefined;
+    },
+  },
+  {
     id: "academico:open_grades",
     kind: "open_screen",
     module: "academico",

@@ -40,6 +40,7 @@ export async function GET(req: Request) {
     let sessionId = url.searchParams.get('session_id');
     const turno = url.searchParams.get('turno');
     const alunoId = url.searchParams.get('aluno_id');
+    const matriculaId = url.searchParams.get('matricula_id');
     const anoParam = url.searchParams.get('ano') || url.searchParams.get('ano_letivo');
 
     let anoLetivo = anoParam ? Number(anoParam) : null;
@@ -137,6 +138,78 @@ export async function GET(req: Request) {
     }
 
     let items: any[] = turmasView || [];
+
+    // Rematrícula no balcão deve ser progressiva. Ausência de notas não é
+    // reprovação: só um resultado final explicitamente reprovado mantém o
+    // aluno na mesma classe.
+    let progressao: {
+      aplicada: boolean;
+      modo: 'promocao' | 'retencao' | 'indefinida';
+      estado: 'notas_pendentes' | 'reprovado' | 'classe_nao_identificada';
+      classe_origem: number | null;
+      classe_destino: number | null;
+      turma_origem_id: string | null;
+      mensagem: string;
+    } | null = null;
+
+    if (matriculaId && alunoId && sessionId && anoLetivo && items.length > 0) {
+      const { data: origem } = await supabase
+        .from('matriculas')
+        .select('id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id)')
+        .eq('escola_id', escolaId)
+        .eq('id', matriculaId)
+        .eq('aluno_id', alunoId)
+        .maybeSingle();
+
+      const turmaOrigem = Array.isArray((origem as any)?.turmas)
+        ? (origem as any).turmas[0]
+        : (origem as any)?.turmas;
+      const classeOrigemId = turmaOrigem?.classe_id ?? null;
+      const cursoOrigemId = turmaOrigem?.curso_id ?? null;
+      const classeIds = Array.from(new Set([
+        classeOrigemId,
+        ...items.map((item: any) => item.classe_id).filter(Boolean),
+      ]));
+      const { data: classesProgressao } = classeIds.length > 0
+        ? await supabase.from('classes').select('id, nome, numero').eq('escola_id', escolaId).in('id', classeIds)
+        : { data: [] };
+      const classeById = new Map((classesProgressao || []).map((classe: any) => [classe.id, classe]));
+      const numeroClasse = (classe: any) => {
+        const numero = Number(classe?.numero);
+        if (Number.isFinite(numero) && numero > 0) return numero;
+        const match = String(classe?.nome || '').match(/(\d{1,2})\s*(?:ª|a)?/i);
+        return match ? Number(match[1]) : null;
+      };
+      const origemClasseNumero = numeroClasse(classeById.get(classeOrigemId));
+      const statusMatricula = String((origem as any)?.status || '').toLowerCase();
+      const { data: historico } = origem?.ano_letivo != null
+        ? await supabase.from('historico_anos').select('resultado_final').eq('escola_id', escolaId).eq('aluno_id', alunoId).eq('ano_letivo', Number((origem as any).ano_letivo)).maybeSingle()
+        : { data: null };
+      const resultadoFinal = String((historico as any)?.resultado_final || '').toLowerCase();
+      const reprovado = ['reprovado', 'reprovada', 'reprovado_por_faltas'].includes(statusMatricula) || resultadoFinal.includes('reprov');
+      const modo = reprovado ? 'retencao' : 'promocao';
+      const classeDestinoNumero = origemClasseNumero == null ? null : (reprovado ? origemClasseNumero : origemClasseNumero + 1);
+      const cursoFiltrado = cursoOrigemId
+        ? items.filter((item: any) => !item.curso_id || item.curso_id === cursoOrigemId)
+        : items;
+      const elegiveis = classeDestinoNumero == null
+        ? []
+        : cursoFiltrado.filter((item: any) => numeroClasse(classeById.get(item.classe_id)) === classeDestinoNumero);
+      items = elegiveis;
+      progressao = {
+        aplicada: origemClasseNumero != null,
+        modo,
+        estado: reprovado ? 'reprovado' : (origemClasseNumero == null ? 'classe_nao_identificada' : 'notas_pendentes'),
+        classe_origem: origemClasseNumero,
+        classe_destino: classeDestinoNumero,
+        turma_origem_id: (origem as any)?.turma_id ?? null,
+        mensagem: origemClasseNumero == null
+          ? 'A classe de origem não foi identificada; configure a classe antes de rematricular.'
+          : reprovado
+            ? `Resultado final reprovado: retenção na ${origemClasseNumero}ª classe.`
+            : `Notas ainda não lançadas: progressão provisória para a ${classeDestinoNumero}ª classe.`,
+      };
+    }
 
     // Fallback operacional:
     // algumas escolas têm turmas em produção, mas a view de matrícula pode vir vazia
@@ -253,7 +326,8 @@ export async function GET(req: Request) {
         ok: true, 
         data: itemsFormatados, 
         items: itemsFormatados,
-        total: itemsFormatados.length 
+        total: itemsFormatados.length,
+        progressao,
     }, { headers });
 
   } catch (e) {

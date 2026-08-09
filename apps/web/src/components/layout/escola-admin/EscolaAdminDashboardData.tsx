@@ -172,10 +172,11 @@ export default async function EscolaAdminDashboardData({
       tieBreakerColumn: "ano_letivo",
     });
 
-    let financeiroKpiQuery = s
-      .from("vw_financeiro_kpis_mes")
-      .select("mes_ref, previsto_total, realizado_total, pago_competencia_total")
+    let financeiroKpiQuery = (s as any)
+      .from("vw_financeiro_kpis_mes_ano")
+      .select("mes_ref, previsto_total, realizado_total, pago_competencia_total, ano_letivo_id")
       .eq("escola_id", validId)
+      .eq("ano_letivo", currentYear)
       .eq("mes_ref", currentMonthStart);
     financeiroKpiQuery = applyKf2ListInvariants(financeiroKpiQuery, {
       defaultLimit: 1,
@@ -248,7 +249,7 @@ export default async function EscolaAdminDashboardData({
         .maybeSingle(),
 
       s.from("matriculas")
-        .select("id", { count: "exact", head: true })
+        .select("id, ano_letivo")
         .eq("escola_id", validId)
         .in("status", ["pendente", "rascunho", "indefinido"]),
 
@@ -272,9 +273,10 @@ export default async function EscolaAdminDashboardData({
       missingPricingQuery,
       financeiroKpiQuery,
 
-      s.from("vw_financeiro_dashboard")
+      (s as any).from("vw_financeiro_dashboard_ano")
         .select("total_pendente, total_pago, total_inadimplente")
         .eq("escola_id", validId)
+        .eq("ano_letivo", currentYear)
         .maybeSingle(),
 
       s.from("escolas").select("nome, slug").eq("id", validId).maybeSingle(),
@@ -417,6 +419,7 @@ export default async function EscolaAdminDashboardData({
 
     // ─── Derived values ───────────────────────────────────────────────────
     const anoLetivo        = deriveAnoLetivo(anoLetivoResult.data?.ano ?? undefined);
+    const anoAtivoNumero   = Number(anoLetivoResult.data?.ano ?? 0);
     const escolaParam = escolaNomeResult.data?.slug ? String(escolaNomeResult.data.slug) : escolaId;
     financeiroHref = `/escola/${escolaParam}/financeiro`;
     const pendingTurmasCount = pendingTurmasResult.data?.pendentes_total ?? 0;
@@ -477,22 +480,25 @@ export default async function EscolaAdminDashboardData({
       Number(admissoesCounts?.submetida_total ?? 0) +
       Number(admissoesCounts?.em_analise_total ?? 0) +
       Number(admissoesCounts?.aprovada_total ?? 0);
-    const matriculasPendentes = Number(matriculasPendentesResult.count ?? 0);
+    const matriculasPendentes = ((matriculasPendentesResult.data ?? []) as Array<{ ano_letivo?: number | null }>)
+      .filter((row) => Number(row.ano_letivo ?? 0) === anoAtivoNumero)
+      .length;
     const documentosEmProcessamento = Number(documentosEmProcessamentoResult.count ?? 0);
     const turmasComHorarioPublicadoSet = new Set(
       ((horariosPublicadosResult.data ?? []) as Array<{ turma_id?: string | null }>)
         .map((row) => row.turma_id)
         .filter(Boolean)
     );
-    const turmasComHorarioPublicado = turmasComHorarioPublicadoSet.size;
     const turmaRows = (turmasHorarioResult.data ?? []) as TurmaHorarioRow[];
-    const anoAtivoNumero = Number(anoLetivoResult.data?.ano ?? 0);
     const turmasDoAnoAtivo = turmaRows.filter((row) =>
       anoAtivoNumero > 0 ? Number(row.ano_letivo ?? 0) === anoAtivoNumero : true
     );
+    const turmasComHorarioPublicadoNoAno = turmasDoAnoAtivo.filter((row) =>
+      turmasComHorarioPublicadoSet.has(row.id)
+    ).length;
     const primeiraTurmaSemHorarioPublicadoId =
       turmasDoAnoAtivo.find((row) => !turmasComHorarioPublicadoSet.has(row.id))?.id ?? null;
-    const turmasSemHorarioPublicado = Math.max(0, Number(stats.turmas ?? 0) - turmasComHorarioPublicado);
+    const turmasSemHorarioPublicado = Math.max(0, turmasDoAnoAtivo.length - turmasComHorarioPublicadoNoAno);
 
     const operationalSnapshot: OperationalSnapshot = {
       mensalidadesPendentes: pagamentosResumo.pendente,

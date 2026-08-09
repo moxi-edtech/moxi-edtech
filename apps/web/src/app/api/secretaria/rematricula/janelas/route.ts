@@ -70,7 +70,7 @@ async function assertCoupledFutureIntake(access: { supabase: any; escolaId: stri
   const [{ data: activeYear, error: activeYearError }, { data: school, error: schoolError }] = await Promise.all([
     access.supabase
       .from("anos_letivos")
-      .select("ano")
+      .select("ano, data_inicio")
       .eq("escola_id", access.escolaId)
       .eq("ativo", true)
       .maybeSingle(),
@@ -83,8 +83,26 @@ async function assertCoupledFutureIntake(access: { supabase: any; escolaId: stri
 
   if (activeYearError) throw activeYearError;
   if (schoolError) throw schoolError;
-  if (activeYear?.ano !== undefined && anoLetivo <= Number(activeYear.ano)) {
+  const activeYearStartsAt = activeYear?.data_inicio
+    ? new Date(`${activeYear.data_inicio}T00:00:00`)
+    : null;
+  const activeYearNotStarted = Boolean(
+    activeYearStartsAt && Number.isFinite(activeYearStartsAt.getTime()) && activeYearStartsAt > new Date(),
+  );
+
+  if (
+    activeYear?.ano !== undefined &&
+    anoLetivo <= Number(activeYear.ano) &&
+    !(anoLetivo === Number(activeYear.ano) && activeYearNotStarted)
+  ) {
     throw new IntakePolicyError("A rematrícula só pode ser aberta para um ano posterior ao ano letivo ativo.");
+  }
+
+  // Durante a preparação pré-início, alunos já matriculados no ano anterior
+  // podem rematricular-se para o ano ativo sem depender da candidatura formal
+  // de novos alunos. Esses fluxos são independentes para a escola.
+  if (anoLetivo === Number(activeYear?.ano) && activeYearNotStarted) {
+    return;
   }
 
   const config = school?.config_portal_admissao;

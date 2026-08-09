@@ -8,7 +8,7 @@ import {
   Download, ArrowUpRight, Ban, Wallet, MessageCircle, X, Loader2
 } from 'lucide-react';
 import ModalExtratoAluno from './modal-extrato-aluno';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { buildPortalHref } from '@/lib/navigation';
 import { formatTurmaDisplayName } from '@/utils/formatters';
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
@@ -91,6 +91,8 @@ const TurmaSkeleton = () => (
 const TurmasAlunosFinanceiro: React.FC = () => {
   const params = useParams();
   const escolaParam = params?.id as string;
+  const searchParams = useSearchParams();
+  const anoLetivoId = searchParams?.get('ano_letivo_id') ?? '';
   
   // --- States ---
   const [data, setData] = useState<{ turmas: Turma[], alunos: Aluno[] }>({ turmas: [], alunos: [] });
@@ -117,7 +119,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const escolaQuery = `escola_id=${encodeURIComponent(escolaParam)}`;
+        const escolaQuery = `escola_id=${encodeURIComponent(escolaParam)}&ano_letivo_id=${encodeURIComponent(anoLetivoId)}`;
         const [turmasRes, alunosRes] = await Promise.all([
           fetch(`/api/financeiro/turmas?${escolaQuery}`, { cache: 'no-store' }),
           fetch(`/api/financeiro/alunos?${escolaQuery}`, { cache: 'no-store' })
@@ -139,7 +141,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       }
     };
     fetchData();
-  }, [escolaParam]);
+  }, [escolaParam, anoLetivoId]);
 
   useEffect(() => {
     if (!escolaParam) return;
@@ -179,7 +181,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
     try {
       const response = await fetch(
-        `/api/financeiro/mensalidades?alunoId=${encodeURIComponent(aluno.id)}&escola_id=${encodeURIComponent(escolaParam)}`,
+        `/api/financeiro/mensalidades?alunoId=${encodeURIComponent(aluno.id)}&escola_id=${encodeURIComponent(escolaParam)}&ano_letivo_id=${encodeURIComponent(anoLetivoId)}`,
         { cache: 'no-store' }
       );
       const payload = await response.json();

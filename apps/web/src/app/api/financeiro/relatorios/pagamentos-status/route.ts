@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ function isMissingReadModelError(error: unknown): boolean {
   );
 }
 
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
@@ -34,10 +35,20 @@ export async function GET(_req: Request) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const anoScope = await resolveAnoLetivoScope(supabase, escolaId, {
+      anoLetivoId: searchParams.get("ano_letivo_id") || searchParams.get("session_id"),
+      ano: searchParams.get("ano") ? Number(searchParams.get("ano")) : null,
+    });
+    if (!anoScope?.id) {
+      return NextResponse.json({ ok: false, error: "Ano letivo não encontrado" }, { status: 400 });
+    }
+
     let query = supabase
-      .from('vw_pagamentos_status')
+      .from('vw_pagamentos_status_ano' as any)
       .select('status, total')
-      .eq('escola_id', escolaId);
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', anoScope.id);
 
     query = applyKf2ListInvariants(query, {
       defaultLimit: 50,
@@ -65,7 +76,7 @@ export async function GET(_req: Request) {
     const totalGeral = items.reduce((acc, it) => acc + it.total, 0);
     const withPct = items.map((it) => ({ ...it, pct: totalGeral > 0 ? (it.total / totalGeral) * 100 : 0 }));
 
-    return NextResponse.json({ ok: true, escolaId, total: totalGeral, items: withPct }, { status: 200 });
+    return NextResponse.json({ ok: true, escolaId, anoLetivoId: anoScope.id, anoLetivo: anoScope.ano, total: totalGeral, items: withPct }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || 'Erro inesperado' }, { status: 500 });
   }

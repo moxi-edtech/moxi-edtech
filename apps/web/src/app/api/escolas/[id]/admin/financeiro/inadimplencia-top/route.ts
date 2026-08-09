@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export const revalidate = 0;
 
 const querySchema = z.object({
   limit: z.string().optional(),
+  ano_letivo_id: z.string().uuid().optional(),
 });
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -38,6 +40,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const { searchParams } = new URL(request.url);
     const parsed = querySchema.safeParse({
       limit: searchParams.get("limit") || undefined,
+      ano_letivo_id: searchParams.get("ano_letivo_id") || undefined,
     });
 
     if (!parsed.success) {
@@ -45,11 +48,18 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
 
     const limit = Math.min(Math.max(Number(parsed.data.limit ?? 5), 1), 50);
+    const anoScope = await resolveAnoLetivoScope(supabase as any, resolvedEscolaId, {
+      anoLetivoId: parsed.data.ano_letivo_id ?? null,
+    });
+    if (!anoScope?.id) {
+      return NextResponse.json({ ok: false, error: "Ano letivo não encontrado" }, { status: 400 });
+    }
 
     const { data, error } = await (supabase as any)
-      .from("vw_financeiro_inadimplencia_top")
+      .from("vw_financeiro_inadimplencia_top_ano")
       .select("aluno_id, aluno_nome, valor_em_atraso, dias_em_atraso")
       .eq("escola_id", resolvedEscolaId)
+      .eq("ano_letivo_id", anoScope.id)
       .order("valor_em_atraso", { ascending: false })
       .order("aluno_id", { ascending: true })
       .limit(limit);
@@ -60,6 +70,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     return NextResponse.json({
       ok: true,
+      anoLetivoId: anoScope.id,
+      anoLetivo: anoScope.ano,
       data: (data ?? []).map((row: any) => ({
         aluno_id: row.aluno_id,
         aluno_nome: row.aluno_nome || "Aluno",

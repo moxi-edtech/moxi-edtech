@@ -174,6 +174,15 @@ O briefing executa em paralelo as ferramentas permitidas para o perfil:
 
 Os três sinais com maior indicador principal são apresentados como prioridades. As ações são deduplicadas e uma falha isolada não impede o restante do briefing.
 
+#### `academic-calendar-operations`
+
+Consulta `anos_letivos`, `periodos_letivos` e `calendario_eventos` do ano activo para
+identificar a fase temporal, o período actual e o próximo marco do calendário MED.
+Quando o briefing é gerado no cockpit, este marco também é persistido em `ai_insights`
+como alerta operacional independente, com ciclo `new → seen → in_progress → resolved`.
+As acções apenas abrem as telas oficiais de calendário e notas; conselho e pauta
+continuam dependentes da validação humana e dos fluxos académicos oficiais.
+
 ## 6. Permissões
 
 Permissões específicas:

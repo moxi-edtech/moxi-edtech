@@ -5,11 +5,11 @@ import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, WalletCards, ShieldAle
 import { ReclassificacaoFinalistasClient } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
 import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { createClient } from "@/lib/supabaseClient";
 
 type PendingRow = {
   id: string;
   aluno_id: string;
+  matricula_id: string;
   reclassificacao_id?: string;
   nome: string;
   turma: string;
@@ -18,7 +18,7 @@ type PendingRow = {
   estado: string;
   pode_promover: boolean;
 };
-type ResponseState = { rows: PendingRow[]; sessions: { current?: { ano: number }; previous?: { ano: number } }; summary: { total: number; debt: number; finalists: number; review: number } };
+type ResponseState = { rows: PendingRow[]; sessions: { current?: { id: string; ano: number }; previous?: { id: string; ano: number } }; summary: { total: number; debt: number; finalists: number; review: number } };
 type PaymentMensalidade = { id: string; mes: number; ano: number; valor: number; vencimento?: string; status: string };
 
 const tabs = [
@@ -81,28 +81,10 @@ export function CentroPendenciasPosViradaClient() {
     setPaymentLoading(true);
     setMessage(null);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc("get_aluno_dossier", {
-        p_escola_id: escolaId,
-        p_aluno_id: row.aluno_id,
-      });
-      if (error) throw error;
-      const raw = (data ?? {}) as { financeiro?: { mensalidades?: Array<Record<string, unknown>> } };
-      const mensalidades = (raw.financeiro?.mensalidades ?? [])
-        .filter((item) => ["pendente", "pago_parcial", "atrasado"].includes(String(item.status ?? "").toLowerCase()))
-        .map((item) => {
-          const valor = Number(item.valor ?? 0);
-          const pago = Number(item.pago ?? item.valor_pago_total ?? 0);
-          return {
-            id: String(item.id),
-            mes: Number(item.mes ?? item.mes_referencia ?? 0),
-            ano: Number(item.ano ?? item.ano_referencia ?? 0),
-            valor: Math.max(0, valor - pago),
-            vencimento: String(item.vencimento ?? item.data_vencimento ?? "") || undefined,
-            status: String(item.status ?? "pendente"),
-          };
-        })
-        .filter((item) => item.valor > 0);
+      const response = await fetch(`/api/secretaria/operacoes-academicas/pos-virada/pagamentos?aluno_id=${encodeURIComponent(row.aluno_id)}&matricula_id=${encodeURIComponent(row.matricula_id)}`, { cache: "no-store" });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a dívida da matrícula de origem.");
+      const mensalidades = Array.isArray(json.mensalidades) ? json.mensalidades as PaymentMensalidade[] : [];
       if (mensalidades.length === 0) {
         await load();
         throw new Error("Não existem mensalidades abertas para este aluno. Atualize a fila e tente promover novamente.");
@@ -252,16 +234,12 @@ export function CentroPendenciasPosViradaClient() {
                   {row.motivo === "divida" && (
                     <button
                       disabled={busy === row.id || paymentLoading}
-                      onClick={() => void (row.pode_promover ? promote(row) : openPayment(row))}
+          onClick={() => void openPayment(row)}
                       className="rounded-xl bg-[#1F6B3B] hover:bg-[#18542e] px-4 py-2 text-xs font-bold text-white transition shadow-2xs disabled:cursor-not-allowed disabled:opacity-40 flex items-center gap-2"
                     >
                       {busy === row.id || (paymentLoading && paymentRow?.id === row.id) ? (
                         <Loader2 className="h-4 w-4 animate-spin text-white" />
-                      ) : row.pode_promover ? (
-                        "Promover agora"
-                      ) : (
-                        "Receber pagamento"
-                      )}
+                      ) : "Receber pagamento"}
                     </button>
                   )}
 
@@ -278,11 +256,11 @@ export function CentroPendenciasPosViradaClient() {
                   {row.motivo === "revisao" && (
                     <button
                       type="button"
-                      onClick={() => setResolutionRow(row)}
+                      onClick={() => void (row.pode_promover ? promote(row) : setResolutionRow(row))}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition shadow-2xs"
                     >
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                      <span>Abrir revisão</span>
+                      <span>{row.pode_promover ? "Promover agora" : "Abrir revisão"}</span>
                     </button>
                   )}
                 </div>
@@ -338,6 +316,14 @@ export function CentroPendenciasPosViradaClient() {
                 <ReclassificacaoFinalistasClient
                   initialAlunoId={resolutionRow.aluno_id}
                   isModalContext
+                  onPaymentRequired={(alunoId) => {
+                    const anoLetivoId = data.sessions.current?.id;
+                    if (!anoLetivoId) {
+                      setMessage("Ano letivo destino não identificado para abrir o pagamento.");
+                      return;
+                    }
+                    window.location.assign(`/secretaria/balcao?alunoId=${encodeURIComponent(alunoId)}&ano_letivo_id=${encodeURIComponent(anoLetivoId)}`);
+                  }}
                   onResolved={() => {
                     setResolutionRow(null);
                     void load();
@@ -370,6 +356,10 @@ export function CentroPendenciasPosViradaClient() {
         aluno={paymentRow ? { id: paymentRow.aluno_id, nome: paymentRow.nome, turma: paymentRow.turma } : { id: "", nome: "" }}
         mensalidade={paymentItems[0] ?? null}
         mensalidades={paymentItems}
+        posViradaContext={paymentRow && data?.sessions.current ? {
+          anoLetivoId: data.sessions.current.id,
+          matriculaOrigemId: paymentRow.matricula_id,
+        } : undefined}
         open={Boolean(paymentRow)}
         onClose={() => {
           setPaymentRow(null);

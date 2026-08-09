@@ -156,6 +156,18 @@ export const SERVICOS_ESCOLA_PADRAO: ServicoCatalogoPadrao[] = [
     aceita_pagamento_pendente: false,
     exige_aprovacao: true,
   },
+  {
+    codigo: "SERV_REMATRICULA",
+    nome: "Taxa de Rematricula",
+    descricao: "Emolumento para confirmacao da matricula no ano letivo.",
+    categoria: "emolumento",
+    valor_base: 0,
+    ativo: true,
+    pode_bloquear_por_debito: false,
+    exige_pagamento_antes_de_liberar: true,
+    aceita_pagamento_pendente: false,
+    exige_aprovacao: false,
+  },
 ];
 
 export function getServicoCategoria(codigo: string): ServicoCatalogoPadrao["categoria"] {

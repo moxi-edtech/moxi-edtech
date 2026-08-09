@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ChevronLeft,
@@ -129,6 +129,8 @@ function navigateWithinFinance(path: string, query = "") {
 export default function CarteiraCobrancasClient() {
   const params = useParams<{ id: string }>();
   const escolaId = params?.id;
+  const searchParams = useSearchParams();
+  const anoLetivoId = searchParams?.get("ano_letivo_id") ?? "";
   const confirm = useConfirm();
   const { error: showError, success, warning } = useToast();
   const [items, setItems] = useState<PortfolioItem[]>([]);
@@ -161,7 +163,8 @@ export default function CarteiraCobrancasClient() {
 
     const loadTurmas = async () => {
       try {
-        const response = await fetch("/api/financeiro/turmas", {
+        const query = anoLetivoId ? `?ano_letivo_id=${encodeURIComponent(anoLetivoId)}` : "";
+        const response = await fetch(`/api/financeiro/turmas${query}`, {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -183,13 +186,14 @@ export default function CarteiraCobrancasClient() {
 
     void loadTurmas();
     return () => controller.abort();
-  }, []);
+  }, [anoLetivoId]);
 
   const loadPortfolio = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
     const params = new URLSearchParams({ page: String(page), limit: "25" });
+    if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId);
     if (query) params.set("q", query);
     if (status !== "todos") params.set("status", status);
     if (risk !== "todos") params.set("risco", risk);
@@ -215,7 +219,7 @@ export default function CarteiraCobrancasClient() {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [page, query, risk, status, turmaId]);
+  }, [page, query, risk, status, turmaId, anoLetivoId]);
 
   useEffect(() => {
     const controller = new AbortController();

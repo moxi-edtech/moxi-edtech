@@ -124,7 +124,11 @@ export default function KlasseAiCockpitClient({ schoolId }: { schoolId: string }
       });
       const json = await response.json();
       if (!response.ok || !json.ok) throw new Error(json.error || "Erro ao gerar briefing.");
-      setInsights((current) => [json.insight, ...current.filter((item) => item.id !== json.insight.id)]);
+      const generatedInsights = Array.isArray(json.insights) ? json.insights : [json.insight];
+      setInsights((current) => [
+        ...generatedInsights,
+        ...current.filter((item) => !generatedInsights.some((generated: Insight) => generated.id === item.id)),
+      ]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Erro ao gerar briefing.");
     } finally {

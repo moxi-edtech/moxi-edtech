@@ -100,6 +100,10 @@ export interface ModalPagamentoRapidoProps {
   open:       boolean;
   onClose:    () => void;
   onSuccess?: () => void;
+  posViradaContext?: {
+    anoLetivoId: string;
+    matriculaOrigemId: string;
+  };
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -658,6 +662,7 @@ function usePagamentoSubmit({
   onPagamentosConcluidos,
   safeClose,
   onSuccess,
+  posViradaContext,
   setReclassificacaoBlockOpen,
 }: {
   aluno:          ModalPagamentoRapidoProps["aluno"];
@@ -671,6 +676,7 @@ function usePagamentoSubmit({
   onPagamentosConcluidos: (p: PagamentoConcluido[]) => void;
   safeClose:      () => void;
   onSuccess?:     () => void;
+  posViradaContext?: ModalPagamentoRapidoProps["posViradaContext"];
   setReclassificacaoBlockOpen: (open: boolean) => void;
 }) {
   const [processando, setProcessando] = useState(false);
@@ -720,9 +726,11 @@ function usePagamentoSubmit({
             metodo,
             reference:      detalhes.referencia    || null,
             evidence_url:   detalhes.evidencia_url || null,
+            ano_letivo_id:  posViradaContext?.anoLetivoId,
             meta: {
               observacao:      `Pagamento rápido - ${referencia}`,
-              origem:          "pagamento_rapido",
+              origem:          posViradaContext ? "pos_virada" : "pagamento_rapido",
+              matricula_origem_id: posViradaContext?.matriculaOrigemId ?? null,
               gateway_ref:     detalhes.gateway_ref || null,
               partial_reason:  detalhes.partial_reason || null,
               promise_date:    detalhes.promise_date || null,
@@ -838,6 +846,7 @@ function usePagamentoSubmit({
     valorPagoNum, aluno.id,
     onConcluido, onRecibos, onSuccess, error,
     onPagamentosConcluidos,
+    posViradaContext,
   ]);
 
   return { processando, submit };
@@ -856,6 +865,7 @@ export function ModalPagamentoRapido({
   open,
   onClose,
   onSuccess,
+  posViradaContext,
 }: ModalPagamentoRapidoProps) {
   // ── Estado do formulário ─────────────────────────────────────────────────
   const [metodo,   setMetodo]   = useState<MetodoPagamento>("cash");
@@ -1099,6 +1109,7 @@ export function ModalPagamentoRapido({
     onRecibos:   (payload) => setRecibos(payload),
     onPagamentosConcluidos: (payload) => setPagamentosConcluidos(payload),
     safeClose, onSuccess,
+    posViradaContext,
     setReclassificacaoBlockOpen,
   });
 

@@ -19,7 +19,7 @@ export async function upsertAiInsight(
   client: AiInsightsClient,
   params: {
     schoolId: string;
-    generatedBy: string;
+    generatedBy: string | null;
     toolId: string;
     fingerprint: string;
     title: string;

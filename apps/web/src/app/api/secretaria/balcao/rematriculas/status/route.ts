@@ -66,18 +66,17 @@ export async function GET(request: Request) {
     const targetAnoLetivoId = academicContext.anoLetivoId;
     const targetAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
 
-    // ── Verify active matrícula in academic year ──────────────────────────
-    const { data: matricula } = await supabase
+    // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
+    const { data: matriculaOrigem } = await supabase
       .from("matriculas")
-      .select("id")
+      .select("id, ano_letivo, status")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
-      .eq("session_id", targetAnoLetivoId)
-      .in("status", ["ativo", "ativa", "active"])
+      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
       .maybeSingle();
 
-    if (!matricula) {
+    if (!matriculaOrigem) {
       return NextResponse.json(
         {
           ok: false,
@@ -88,6 +87,45 @@ export async function GET(request: Request) {
       );
     }
 
+    // A rematrícula só é elegível quando ainda não existe matrícula do aluno
+    // no ano destino. A matrícula de origem pode ser do ano anterior.
+    const { data: matriculaDestino } = await supabase
+      .from("matriculas")
+      .select("id, turma_id")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", aluno_id)
+      .eq("ano_letivo", targetAnoLetivoAno)
+      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
+      .limit(1)
+      .maybeSingle();
+
+    const { data: reclassificacao } = matriculaDestino
+      ? await supabase
+          .from("matricula_reclassificacoes")
+          .select("id, tipo, status, destino_turma_id")
+          .eq("escola_id", escolaId)
+          .eq("matricula_id", matriculaDestino.id)
+          .eq("status", "aguardando_destino")
+          .maybeSingle()
+      : { data: null };
+
+    const { data: mensalidadesFinanceiras } = await supabase
+      .from("mensalidades")
+      .select("status, valor_previsto, valor, valor_pago_total")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", aluno_id)
+      .eq("matricula_id", matricula_id);
+    const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter(
+      (mensalidade: any) => !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()),
+    );
+    const dividaTotal = mensalidadesEmAberto.reduce(
+      (total: number, mensalidade: any) => total + Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      ),
+      0,
+    );
+
     // ── Check service config ──────────────────────────────────────────────
     const { data: service } = await supabase
       .from("servicos_escola")
@@ -97,17 +135,22 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     // ── Check existing pedido ─────────────────────────────────────────────
-    const { data: pedidoExistente } = await supabase
+    const { data: pedidosExistentes } = await supabase
       .from("servico_pedidos")
       .select("id, status, created_at, reason_code, valor_cobrado, contexto")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("servico_codigo", "SERV_REMATRICULA")
-      .contains("contexto", { ano_letivo_id: targetAnoLetivoId })
       .in("status", ["pending_payment", "granted"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: false });
+    const pedidoExistente = (pedidosExistentes ?? []).find(
+      (pedido: any) => pedido.contexto?.ano_letivo_id === targetAnoLetivoId,
+    ) ?? (pedidosExistentes ?? []).find(
+      (pedido: any) => !pedido.contexto || Object.keys(pedido.contexto).length === 0,
+    );
+    const pedidoLegado = Boolean(
+      pedidoExistente && (!pedidoExistente.contexto || Object.keys(pedidoExistente.contexto).length === 0),
+    );
 
     // ── Check comprovante for granted pedido ──────────────────────────────
     let comprovanteData: { docId: string; publicId: string; printUrl: string } | null = null;
@@ -117,7 +160,7 @@ export async function GET(request: Request) {
         .select("id, public_id")
         .eq("escola_id", escolaId)
         .eq("tipo", "comprovante_matricula")
-        .contains("dados_snapshot", { matricula_id })
+        .contains("dados_snapshot", { matricula_id: pedidoExistente.contexto?.matricula_destino_id ?? matricula_id })
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -133,19 +176,18 @@ export async function GET(request: Request) {
 
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
-    if (!service || !service.ativo || Number(service.valor_base) <= 0) {
-      status = "PRICE_NOT_CONFIGURED";
-    } else if (pedidoExistente?.status === "granted") {
+    if (pedidoExistente?.status === "granted") {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
-      if (
-        pedidoExistente.reason_code ===
-        "REMATRICULA_RECONCILIATION_REQUIRED"
-      ) {
-        status = "RECONCILIATION_REQUIRED";
-      } else {
-        status = "PAYMENT_IN_PROGRESS";
-      }
+      status = pedidoLegado
+        ? "LEGACY_REVIEW_REQUIRED"
+        : pedidoExistente.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
+          ? "RECONCILIATION_REQUIRED"
+        : "PAYMENT_IN_PROGRESS";
+    } else if (matriculaDestino) {
+      status = reclassificacao ? "FINALIST_PENDING" : "RECONFIRMATION_REQUIRED";
+    } else if (!service || !service.ativo || Number(service.valor_base) <= 0) {
+      status = "PRICE_NOT_CONFIGURED";
     }
 
     // ── Extract turma_id from granted pedido contexto ─────────────────────
@@ -162,7 +204,12 @@ export async function GET(request: Request) {
             valor_base: Number(service.valor_base),
           }
         : null,
-      debt: null,
+      debt: {
+        total: dividaTotal,
+        count: mensalidadesEmAberto.filter((mensalidade: any) =>
+          Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0) > 0,
+        ).length,
+      },
       pedido: pedidoExistente
         ? {
             id: pedidoExistente.id,
@@ -174,12 +221,27 @@ export async function GET(request: Request) {
               : undefined,
           }
         : null,
+      reconciliation: pedidoLegado
+        ? {
+            can_cancel: pedidoExistente?.status === "pending_payment",
+            reason: "Pedido incompleto sem ano letivo identificado",
+          }
+        : null,
       comprovante: comprovanteData,
       ano_letivo: {
         id: targetAnoLetivoId,
         ano: targetAnoLetivoAno,
         label: academicContext.anoLetivoLabel,
       },
+      destino_turma_id: matriculaDestino?.turma_id ?? null,
+      reclassificacao: reclassificacao
+        ? {
+            id: reclassificacao.id,
+            tipo: reclassificacao.tipo,
+            status: reclassificacao.status,
+            destino_turma_id: reclassificacao.destino_turma_id,
+          }
+        : null,
       context: academicContext,
     });
   } catch (error) {

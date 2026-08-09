@@ -1,5 +1,6 @@
 // apps/web/src/app/lib/dashboard.ts
 import { supabaseServer } from "@/lib/supabaseServer"
+import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 
 export async function getDashboardData() {
@@ -7,6 +8,7 @@ export async function getDashboardData() {
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
   const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id) : null
+  const anoScope = escolaId ? await resolveAnoLetivoScope(supabase, escolaId) : null
 
   const [countsRes, financeiroRes] = escolaId
     ? await Promise.all([
@@ -15,10 +17,11 @@ export async function getDashboardData() {
           .select("alunos_ativos, turmas_total, professores_total")
           .eq("escola_id", escolaId)
           .maybeSingle(),
-        supabase
-          .from("vw_financeiro_dashboard")
+        (supabase as any)
+          .from("vw_financeiro_dashboard_ano")
           .select("total_pendente, total_pago, total_inadimplente")
           .eq("escola_id", escolaId)
+          .eq("ano_letivo_id", anoScope?.id ?? "")
           .maybeSingle(),
       ])
     : [{ data: null }, { data: null }]

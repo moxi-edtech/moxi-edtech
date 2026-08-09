@@ -112,6 +112,8 @@ export async function POST(request: Request) {
     }
 
     const payload = parsed.data;
+    const meta = asRecord(payload.meta);
+    const isPosViradaPayment = meta.origem === "pos_virada";
     let academicContext;
     try {
       academicContext = await resolveAcademicYearContext(supabase as any, {
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
     if (payload.mensalidade_id) {
       const { data: mensalidade, error: mensalidadeError } = await supabase
         .from("mensalidades")
-        .select("id, matricula_id")
+        .select("id, matricula_id, aluno_id")
         .eq("escola_id", escolaId)
         .eq("id", payload.mensalidade_id)
         .maybeSingle();
@@ -137,21 +139,30 @@ export async function POST(request: Request) {
       if (!mensalidade?.matricula_id) {
         return NextResponse.json({ ok: false, error: "Mensalidade não encontrada.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 404 });
       }
-      try {
-        await assertAcademicYearEntity(supabase as any, {
-          table: "matriculas",
-          entityId: mensalidade.matricula_id,
-          escolaId,
-          anoLetivoId: academicContext.anoLetivoId,
-        });
-      } catch (err) {
-        if (err instanceof AcademicYearContextError) {
-          return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      if (String(mensalidade.aluno_id) !== String(payload.aluno_id)) {
+        return NextResponse.json({ ok: false, error: "A mensalidade não pertence ao aluno selecionado.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
+      }
+      if (isPosViradaPayment) {
+        const matriculaOrigemId = getStringField(meta, "matricula_origem_id");
+        if (!matriculaOrigemId || matriculaOrigemId !== mensalidade.matricula_id) {
+          return NextResponse.json({ ok: false, error: "A mensalidade não pertence à matrícula de origem da pendência.", code: "POS_VIRADA_CONTEXT_MISMATCH" }, { status: 409 });
         }
-        throw err;
+      } else {
+        try {
+          await assertAcademicYearEntity(supabase as any, {
+            table: "matriculas",
+            entityId: mensalidade.matricula_id,
+            escolaId,
+            anoLetivoId: academicContext.anoLetivoId,
+          });
+        } catch (err) {
+          if (err instanceof AcademicYearContextError) {
+            return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+          }
+          throw err;
+        }
       }
     }
-    const meta = asRecord(payload.meta);
     const metodo = payload.metodo === "kiwk" ? "kwik" : payload.metodo;
     
     // 1. Registro Financeiro

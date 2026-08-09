@@ -62,10 +62,12 @@ const TIPO_LABELS: Record<string, { label: string; badgeCls: string }> = {
 export function ReclassificacaoFinalistasClient({
   initialAlunoId,
   onResolved,
+  onPaymentRequired,
   isModalContext = false,
 }: {
   initialAlunoId?: string;
   onResolved?: () => void;
+  onPaymentRequired?: (alunoId: string) => void;
   isModalContext?: boolean;
 }) {
   const { escolaId } = useEscolaId();
@@ -87,6 +89,7 @@ export function ReclassificacaoFinalistasClient({
   const [motivo, setMotivo] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [paymentRequired, setPaymentRequired] = useState(false);
 
   // Turmas disponíveis para destino
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
@@ -180,6 +183,7 @@ export function ReclassificacaoFinalistasClient({
     }
     setActionType(action);
     setActionError(null);
+    setPaymentRequired(false);
     setTargetTurmaId("");
     setMotivo("");
     setDrawerOpen(true);
@@ -211,11 +215,19 @@ export function ReclassificacaoFinalistasClient({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) {
+        if (json.code === "FINALISTA_PAYMENT_REQUIRED") setPaymentRequired(true);
         throw new Error(json.error || "Falha ao processar reclassificação dos finalistas.");
       }
 
       const count = selectedIds.size;
-      const msg = `${count} ${count === 1 ? "aluno resolvido" : "alunos resolvidos"} com sucesso.`;
+      const certificados = Array.isArray(json.certificados) ? json.certificados : [];
+      const certificadosComNotas = certificados.filter((item: any) => item.modo === "com_notas").length;
+      const certificadosSemNotas = certificados.filter((item: any) => item.modo === "sem_notas").length;
+      const certificadosPendentes = certificados.filter((item: any) => item.status === "pendente").length;
+      const certificadoMsg = certificados.length > 0
+        ? ` Certificados: ${certificadosComNotas} com notas, ${certificadosSemNotas} sem notas${certificadosPendentes ? `, ${certificadosPendentes} pendente(s)` : ""}.`
+        : "";
+      const msg = `${count} ${count === 1 ? "aluno resolvido" : "alunos resolvidos"} com sucesso.${certificadoMsg}`;
       setToastMessage(msg);
       setTimeout(() => setToastMessage(null), 4000);
 
@@ -531,6 +543,16 @@ export function ReclassificacaoFinalistasClient({
                 </div>
               )}
 
+              {paymentRequired && onPaymentRequired && selectedRecords[0]?.aluno_id && (
+                <button
+                  type="button"
+                  onClick={() => onPaymentRequired(selectedRecords[0].aluno_id)}
+                  className="w-full rounded-xl border border-[#E3B23C] bg-[#E3B23C]/10 px-4 py-3 text-left text-xs font-bold text-[#795b08] hover:bg-[#E3B23C]/20"
+                >
+                  Abrir o Balcão para pagar a taxa no ano correto
+                </button>
+              )}
+
               {actionType === "enroll" && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -580,7 +602,7 @@ export function ReclassificacaoFinalistasClient({
                     </div>
                     <p>
                       Estes alunos deixarão de ocupar uma vaga ativa na escola e passarão ao estado oficial de{" "}
-                      <strong>“Concluído”</strong>.
+                      <strong>“Concluído”</strong>. O sistema tentará emitir automaticamente o certificado; se as notas existirem, sairá com notas, caso contrário ficará disponível sem notas para regularização posterior.
                     </p>
                   </div>
 
