@@ -752,8 +752,9 @@ function usePagamentoSubmit({
           });
         }
 
-        let reciboId = mensalidade.id;
+        let reciboId: string | null = null;
         let reciboUrlValidacao: string | null = null;
+        let erroEmissaoRecibo: string | null = null;
 
         try {
           const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
@@ -771,46 +772,54 @@ function usePagamentoSubmit({
             throw new Error(reciboJson.error || "Este aluno aguarda reclassificação de finalista antes de emitir o recibo.");
           }
           if (reciboRes.ok && reciboJson?.ok) {
-            reciboId = typeof reciboJson.doc_id === "string" ? reciboJson.doc_id : reciboId;
-            reciboUrlValidacao = typeof reciboJson.url_validacao === "string" ? reciboJson.url_validacao : null;
-            const print =
-              reciboJson.print && typeof reciboJson.print === "object" ? reciboJson.print : null;
-            recibosGerados.push({
-              id: reciboId,
-              url_validacao: reciboUrlValidacao,
-              valor,
-              referencia,
-              escola_nome: typeof print?.escola_nome === "string" ? print.escola_nome : undefined,
-              aluno_nome: typeof print?.aluno_nome === "string" ? print.aluno_nome : undefined,
-              aluno_bi: typeof print?.aluno_bi === "string" ? print.aluno_bi : null,
-              classe_nome: typeof print?.classe_nome === "string" ? print.classe_nome : null,
-              curso_nome: typeof print?.curso_nome === "string" ? print.curso_nome : null,
-              turma_nome: typeof print?.turma_nome === "string" ? print.turma_nome : null,
-              logo_url: typeof print?.logo_url === "string" ? print.logo_url : null,
-              numero:
-                typeof print?.numero_sequencial === "number"
-                  ? String(print.numero_sequencial)
-                  : null,
-              public_id: typeof print?.public_id === "string" ? print.public_id : null,
-              emitido_em: typeof print?.emitido_em === "string" ? print.emitido_em : null,
-              banco: typeof print?.banco === "string" ? print.banco : null,
-              titular_conta:
-                typeof print?.titular_conta === "string" ? print.titular_conta : null,
-              iban: typeof print?.iban === "string" ? print.iban : null,
-              kwik_chave: typeof print?.kwik_chave === "string" ? print.kwik_chave : null,
-            });
-            continue;
+            const emittedDocId = typeof reciboJson.doc_id === "string" ? reciboJson.doc_id : null;
+            if (!emittedDocId) {
+              erroEmissaoRecibo = "O pagamento foi registado, mas a emissão devolveu um recibo sem identificador.";
+            } else {
+              reciboId = emittedDocId;
+              reciboUrlValidacao = typeof reciboJson.url_validacao === "string" ? reciboJson.url_validacao : null;
+              const print =
+                reciboJson.print && typeof reciboJson.print === "object" ? reciboJson.print : null;
+              recibosGerados.push({
+                id: emittedDocId,
+                url_validacao: reciboUrlValidacao,
+                valor,
+                referencia,
+                escola_nome: typeof print?.escola_nome === "string" ? print.escola_nome : undefined,
+                aluno_nome: typeof print?.aluno_nome === "string" ? print.aluno_nome : undefined,
+                aluno_bi: typeof print?.aluno_bi === "string" ? print.aluno_bi : null,
+                classe_nome: typeof print?.classe_nome === "string" ? print.classe_nome : null,
+                curso_nome: typeof print?.curso_nome === "string" ? print.curso_nome : null,
+                turma_nome: typeof print?.turma_nome === "string" ? print.turma_nome : null,
+                logo_url: typeof print?.logo_url === "string" ? print.logo_url : null,
+                numero:
+                  typeof print?.numero_sequencial === "number"
+                    ? String(print.numero_sequencial)
+                    : null,
+                public_id: typeof print?.public_id === "string" ? print.public_id : null,
+                emitido_em: typeof print?.emitido_em === "string" ? print.emitido_em : null,
+                banco: typeof print?.banco === "string" ? print.banco : null,
+                titular_conta:
+                  typeof print?.titular_conta === "string" ? print.titular_conta : null,
+                iban: typeof print?.iban === "string" ? print.iban : null,
+                kwik_chave: typeof print?.kwik_chave === "string" ? print.kwik_chave : null,
+              });
+              continue;
+            }
           }
+          erroEmissaoRecibo ??= typeof reciboJson?.error === "string"
+            ? reciboJson.error
+            : "O pagamento foi registado, mas não foi possível emitir o recibo.";
         } catch (reciboErr: any) {
           if (reciboErr?.name === "AbortError") throw reciboErr;
+          erroEmissaoRecibo = reciboErr instanceof Error
+            ? reciboErr.message
+            : "O pagamento foi registado, mas não foi possível emitir o recibo.";
         }
 
-        recibosGerados.push({
-          id: reciboId,
-          url_validacao: reciboUrlValidacao,
-          valor,
-          referencia,
-        });
+        if (erroEmissaoRecibo) {
+          error(`${erroEmissaoRecibo} Pode reemitir o recibo no módulo Financeiro.`);
+        }
       }
 
       if (recibosGerados.length > 1) {
@@ -1396,7 +1405,7 @@ export function ModalPagamentoRapido({
           turmaNome={recibo.turma_nome ?? undefined}
           numero={recibo.numero ?? null}
           publicId={recibo.public_id ?? "—"}
-          logoUrl={recibo.logo_url ?? escolaLogoUrl}
+          logoUrl={recibo.logo_url?.trim() || escolaLogoUrl?.trim() || null}
           referencia={recibo.referencia}
           referenciasDetalhadas={recibo.referenciasDetalhadas}
           itensDetalhados={recibo.itensDetalhados}

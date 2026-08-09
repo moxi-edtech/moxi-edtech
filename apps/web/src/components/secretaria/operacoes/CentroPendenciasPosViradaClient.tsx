@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, WalletCards, ShieldAle
 import { ReclassificacaoFinalistasClient } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
 import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { formatTurmaOptionDisplay } from "@/utils/formatters";
 
 type PendingRow = {
   id: string;
@@ -20,6 +21,18 @@ type PendingRow = {
 };
 type ResponseState = { rows: PendingRow[]; sessions: { current?: { id: string; ano: number }; previous?: { id: string; ano: number } }; summary: { total: number; debt: number; finalists: number; review: number } };
 type PaymentMensalidade = { id: string; mes: number; ano: number; valor: number; vencimento?: string; status: string };
+type PromotionOption = {
+  id: string;
+  nome: string;
+  turno: string | null;
+  letra: string | null;
+  classe_num: number | null;
+  ocupacao: number;
+  capacidade_maxima: number | null;
+  vagas: number | null;
+  disponivel: boolean;
+  mesmo_turno: boolean;
+};
 
 const tabs = [
   ["all", "Todos"],
@@ -39,6 +52,10 @@ export function CentroPendenciasPosViradaClient() {
   const [paymentRow, setPaymentRow] = useState<PendingRow | null>(null);
   const [paymentItems, setPaymentItems] = useState<PaymentMensalidade[]>([]);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [promotionRow, setPromotionRow] = useState<PendingRow | null>(null);
+  const [promotionOptions, setPromotionOptions] = useState<PromotionOption[]>([]);
+  const [promotionTargetId, setPromotionTargetId] = useState("");
+  const [promotionLoading, setPromotionLoading] = useState(false);
   const { escolaId } = useEscolaId();
 
   async function load() {
@@ -61,14 +78,36 @@ export function CentroPendenciasPosViradaClient() {
   const currentPage = Math.min(page, totalPages);
   const visibleRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  async function promote(row: PendingRow) {
+  async function openPromotion(row: PendingRow) {
+    setPromotionLoading(true);
+    setMessage(null);
+    setPromotionTargetId("");
+    try {
+      const response = await fetch(`/api/secretaria/operacoes-academicas/pos-virada?options_for_matricula_id=${encodeURIComponent(row.matricula_id)}`, { cache: "no-store" });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar as turmas de destino.");
+      const options = (Array.isArray(json.options) ? json.options : []) as PromotionOption[];
+      const available = options.filter((option) => option.disponivel);
+      setPromotionOptions(available);
+      if (available.length === 1) setPromotionTargetId(available[0].id);
+      setPromotionRow(row);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível carregar as turmas de destino.");
+    } finally {
+      setPromotionLoading(false);
+    }
+  }
+
+  async function promote(row: PendingRow, turmaDestinoId?: string) {
     setBusy(row.id); setMessage(null);
     try {
-      const response = await fetch("/api/secretaria/operacoes-academicas/pos-virada", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "promote_after_payment", aluno_id: row.aluno_id }) });
+      const payload = { action: "promote_after_payment", aluno_id: row.aluno_id, turma_destino_id: turmaDestinoId };
+      const response = await fetch("/api/secretaria/operacoes-academicas/pos-virada", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const json = await response.json();
       if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível promover o aluno");
       await load();
       setResolutionRow(null);
+      setPromotionRow(null);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao promover aluno"); }
     finally { setBusy(null); }
   }
@@ -256,11 +295,12 @@ export function CentroPendenciasPosViradaClient() {
                   {row.motivo === "revisao" && (
                     <button
                       type="button"
-                      onClick={() => void (row.pode_promover ? promote(row) : setResolutionRow(row))}
+                      disabled={promotionLoading}
+                      onClick={() => void (row.pode_promover ? openPromotion(row) : setResolutionRow(row))}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition shadow-2xs"
                     >
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                      <span>{row.pode_promover ? "Promover agora" : "Abrir revisão"}</span>
+                      <span>{row.pode_promover ? "Escolher turma e promover" : "Abrir revisão"}</span>
                     </button>
                   )}
                 </div>
@@ -296,6 +336,57 @@ export function CentroPendenciasPosViradaClient() {
           </div>
         )}
       </div>
+
+      {promotionRow && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Escolher turma de destino">
+          <div className="w-full max-w-xl rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Promoção pós-pagamento</p>
+                <h2 className="mt-1 text-base font-bold text-slate-900">{promotionRow.nome}</h2>
+                <p className="mt-1 text-xs text-slate-500">Escolha uma turma disponível da classe seguinte no novo ano.</p>
+              </div>
+              <button type="button" onClick={() => setPromotionRow(null)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Fechar escolha de turma">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4 p-5 sm:p-6">
+              {promotionOptions.length === 0 ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  <p className="font-bold">Não há turmas disponíveis</p>
+                  <p className="mt-1 text-xs leading-relaxed">Não foi encontrada uma turma da classe seguinte com vagas no novo ano letivo. Crie/liberte uma turma e tente novamente.</p>
+                </div>
+              ) : (
+                <label className="block space-y-2">
+                  <span className="text-xs font-bold text-slate-700">Turma de destino</span>
+                  <select value={promotionTargetId} onChange={(event) => setPromotionTargetId(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/15">
+                    <option value="">Selecione a turma disponível...</option>
+                    {promotionOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {formatTurmaOptionDisplay(
+                          { nome: option.nome, turno: option.turno },
+                          option.vagas === null
+                            ? "Vagas abertas"
+                            : `${option.vagas} ${option.vagas === 1 ? "vaga" : "vagas"}`,
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setPromotionRow(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">Cancelar</button>
+                {promotionOptions.length > 0 && (
+                  <button type="button" disabled={!promotionTargetId || busy === promotionRow.id} onClick={() => void promote(promotionRow, promotionTargetId)} className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#18542e] disabled:cursor-not-allowed disabled:opacity-50">
+                    {busy === promotionRow.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Confirmar promoção
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {resolutionRow && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Resolver pendência pós-virada">

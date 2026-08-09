@@ -19,6 +19,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { useSearchParams } from "next/navigation";
 import { buildPortalHref } from "@/lib/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { Progress } from "@/components/ui/Progress";
@@ -71,6 +72,7 @@ interface CockpitData {
 
 export default function CockpitPedagogicoPage() {
   const { escolaId, escolaSlug, isLoading: loadingEscola } = useEscolaId();
+  const searchParams = useSearchParams();
   const escolaParam = escolaSlug || escolaId;
 
   // Filter states
@@ -123,6 +125,8 @@ export default function CockpitPedagogicoPage() {
         turmaId,
         trimestre: String(trimestre),
       });
+      const anoLetivoId = searchParams?.get("ano_letivo_id");
+      if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId);
       const res = await fetch(`/api/secretaria/fechamento-academico/cockpit?${params.toString()}`, {
         cache: "no-store",
       });
@@ -146,7 +150,7 @@ export default function CockpitPedagogicoPage() {
     } else {
       setCockpitData(null);
     }
-  }, [selectedTurmaId, selectedTrimestre]);
+  }, [selectedTurmaId, selectedTrimestre, searchParams]);
 
   // Group progress data by discipline
   const prontidaoAgrupada = useMemo(() => {

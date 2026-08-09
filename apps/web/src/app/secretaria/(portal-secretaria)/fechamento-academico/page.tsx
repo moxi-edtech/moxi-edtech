@@ -366,7 +366,7 @@ function FechamentoAcademicoContent() {
               Verificar novamente
             </button>
             <Link
-              href="/secretaria/fechamento-academico/sanidade"
+              href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico/sanidade")}
               className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
             >
               Abrir relatório completo
@@ -448,7 +448,7 @@ function FechamentoAcademicoContent() {
         {validacaoMensagem ? <p className="text-sm text-amber-700">{validacaoMensagem}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={buildPortalHref(escolaParam, "/secretaria/fechamento-academico/cockpit")}
+            href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico/cockpit")}
             className="px-4 py-2 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-sm font-semibold transition flex items-center gap-1.5 shadow-sm"
           >
             <Sliders className="w-4 h-4" /> Cockpit de Prontidão
@@ -460,7 +460,7 @@ function FechamentoAcademicoContent() {
             Verificar se está tudo pronto
           </button>
           <Link
-            href="/secretaria/fechamento-academico/sanidade"
+            href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico/sanidade")}
             className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
           >
             Abrir sanidade detalhada

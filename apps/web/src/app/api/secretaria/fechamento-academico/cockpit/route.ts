@@ -12,7 +12,7 @@ export const revalidate = 0;
 const QuerySchema = z.object({
   turmaId: z.string().uuid("O campo turmaId deve ser um UUID válido"),
   trimestre: z.preprocess((val) => Number(val), z.number().int().min(1).max(3)),
-  anoLetivoId: z.string().uuid("O campo ano_letivo_id deve ser um UUID válido"),
+  anoLetivoId: z.string().uuid("O campo ano_letivo_id deve ser um UUID válido").optional(),
 });
 
 export async function GET(req: Request) {

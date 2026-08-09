@@ -199,17 +199,26 @@ async function enrichReciboSnapshot({
 async function resolveReciboPrintPayload({
   supabase,
   docId,
+  escolaId,
 }: {
   supabase: any;
   docId: string;
+  escolaId: string;
 }) {
   if (!docId) return null;
 
-  const { data: doc } = await supabase
-    .from("documentos_emitidos")
-    .select("public_id, created_at, numero_sequencial, dados_snapshot")
-    .eq("id", docId)
-    .maybeSingle();
+  const [{ data: doc }, { data: escola }] = await Promise.all([
+    supabase
+      .from("documentos_emitidos")
+      .select("public_id, created_at, numero_sequencial, dados_snapshot")
+      .eq("id", docId)
+      .maybeSingle(),
+    supabase
+      .from("escolas")
+      .select("logo_url")
+      .eq("id", escolaId)
+      .maybeSingle(),
+  ]);
 
   if (!doc) return null;
 
@@ -228,7 +237,12 @@ async function resolveReciboPrintPayload({
     classe_nome: typeof snapshot.classe_nome === "string" ? snapshot.classe_nome : null,
     curso_nome: typeof snapshot.curso_nome === "string" ? snapshot.curso_nome : null,
     turma_nome: typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : null,
-    logo_url: typeof snapshot.escola_logo_url === "string" ? snapshot.escola_logo_url : null,
+    logo_url:
+      typeof escola?.logo_url === "string" && escola.logo_url.trim()
+        ? escola.logo_url
+        : typeof snapshot.escola_logo_url === "string" && snapshot.escola_logo_url.trim()
+          ? snapshot.escola_logo_url
+          : null,
     numero_sequencial: typeof doc.numero_sequencial === "number" ? doc.numero_sequencial : null,
     public_id: typeof doc.public_id === "string" ? doc.public_id : null,
     emitido_em: typeof doc.created_at === "string" ? doc.created_at : new Date().toISOString(),
@@ -292,6 +306,15 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existingIdempotency?.result) {
+      const cachedResult = existingIdempotency.result as Partial<ReciboResponse>;
+      if (cachedResult.ok === true && typeof cachedResult.doc_id === "string") {
+        const print = await resolveReciboPrintPayload({
+          supabase,
+          docId: cachedResult.doc_id,
+          escolaId,
+        });
+        return NextResponse.json({ ...cachedResult, print }, { status: 200 });
+      }
       return NextResponse.json(existingIdempotency.result, { status: 200 });
     }
 
@@ -405,6 +428,7 @@ export async function POST(req: NextRequest) {
           response.print = await resolveReciboPrintPayload({
             supabase,
             docId: legacyDocId,
+            escolaId,
           });
         }
 
@@ -572,6 +596,7 @@ export async function POST(req: NextRequest) {
     response.print = await resolveReciboPrintPayload({
       supabase,
       docId: fiscal.documento_id,
+      escolaId,
     });
 
     await supabaseAny.from("idempotency_keys").upsert(
