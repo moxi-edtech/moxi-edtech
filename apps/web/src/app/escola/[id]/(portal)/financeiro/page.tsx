@@ -113,9 +113,9 @@ export default async function FinanceiroDashboardPage({
   const pagamentosStatusRes = escolaId
     ? await fetchJson<{ items?: PagamentoStatusRow[] }>(
         `/api/financeiro/relatorios/pagamentos-status?escolaId=${escolaId}${anoLetivoQuery}`,
-        { ok: false, items: [] },
+        { items: [] },
       )
-    : { ok: false, items: [] };
+    : { items: [] };
   const pagamentosStatus = pagamentosStatusRes.items ?? [];
 
   const resumo = resumoRes?.data ?? {

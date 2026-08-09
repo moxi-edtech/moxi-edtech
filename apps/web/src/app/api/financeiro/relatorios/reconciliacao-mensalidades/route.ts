@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import type { Database } from "~types/supabase";
+import type { DBWithRPC } from "@/types/supabase-augment";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,7 +11,7 @@ const MAX_PAGE_SIZE = 50;
 
 export async function GET(req: Request) {
   try {
-    const supabase = await supabaseServerTyped<Database>();
+    const supabase = await supabaseServerTyped<DBWithRPC>();
     const { data: userRes } = await supabase.auth.getUser();
     if (!userRes?.user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });

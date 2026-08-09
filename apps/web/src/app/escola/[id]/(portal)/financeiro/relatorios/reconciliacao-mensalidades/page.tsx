@@ -69,7 +69,7 @@ export default function ReconciliacaoMensalidadesPage() {
     if (!escolaId) return;
     let cancelled = false;
     const query = new URLSearchParams({ escolaId, limit: "50" });
-    const academicYear = searchParams.get("ano_letivo_id");
+    const academicYear = searchParams?.get("ano_letivo_id");
     if (academicYear) query.set("ano_letivo_id", academicYear);
 
     async function load() {

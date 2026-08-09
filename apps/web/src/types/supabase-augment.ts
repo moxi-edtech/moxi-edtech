@@ -1040,6 +1040,17 @@ export type DBWithRPC = Omit<Database, "public"> & {
           nota_final: number
         }>
       }
+      get_financeiro_mensalidades_reconciliacao_resumo: {
+        Args: {
+          p_escola_id: string
+          p_ano_letivo_id?: string | null
+        }
+        Returns: Array<{
+          problema: string
+          total: number
+          saldo: number
+        }>
+      }
     }
   }
 }

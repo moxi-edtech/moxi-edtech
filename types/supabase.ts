@@ -162,6 +162,47 @@ export type Database = {
           },
         ]
       }
+      afiliado_membros: {
+        Row: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          pin_hash: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          afiliado_id: string
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          pin_hash: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          afiliado_id?: string
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          pin_hash?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "afiliado_membros_afiliado_id_fkey"
+            columns: ["afiliado_id"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       afiliados: {
         Row: {
           ativo: boolean
@@ -429,6 +470,600 @@ export type Database = {
           {
             foreignKeyName: "aggregates_secretaria_escola_fk"
             columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      ai_actions: {
+        Row: {
+          action_type: string
+          approved_at: string | null
+          approved_by: string | null
+          content: string
+          created_at: string
+          created_by: string
+          failed_at: string | null
+          id: string
+          last_error: string | null
+          metadata: Json
+          queued_at: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          requires_approval: boolean
+          risk_level: string
+          school_id: string
+          sent_at: string | null
+          source_entity_id: string | null
+          source_entity_type: string | null
+          source_module: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          approved_at?: string | null
+          approved_by?: string | null
+          content: string
+          created_at?: string
+          created_by: string
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          queued_at?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          requires_approval?: boolean
+          risk_level?: string
+          school_id: string
+          sent_at?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_module: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          metadata?: Json
+          queued_at?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          requires_approval?: boolean
+          risk_level?: string
+          school_id?: string
+          sent_at?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_module?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_actions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_actions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_actions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_actions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      ai_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          draft_id: string | null
+          id: string
+          rating: number | null
+          school_id: string
+          usage_log_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          draft_id?: string | null
+          id?: string
+          rating?: number | null
+          school_id: string
+          usage_log_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          draft_id?: string | null
+          id?: string
+          rating?: number | null
+          school_id?: string
+          usage_log_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generated_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_usage_log_id_fkey"
+            columns: ["usage_log_id"]
+            isOneToOne: false
+            referencedRelation: "ai_usage_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_generated_drafts: {
+        Row: {
+          channel: string | null
+          content: string
+          created_at: string
+          feature: string
+          id: string
+          metadata: Json
+          school_id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          channel?: string | null
+          content: string
+          created_at?: string
+          feature: string
+          id?: string
+          metadata?: Json
+          school_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string | null
+          content?: string
+          created_at?: string
+          feature?: string
+          id?: string
+          metadata?: Json
+          school_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generated_drafts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generated_drafts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generated_drafts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_generated_drafts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_generated_drafts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      ai_insights: {
+        Row: {
+          created_at: string
+          evidence: Json
+          explanation: string
+          fingerprint: string
+          first_detected_at: string
+          generated_by: string | null
+          id: string
+          ignored_at: string | null
+          last_detected_at: string
+          module: string
+          recommendation: string
+          resolved_at: string | null
+          school_id: string
+          seen_at: string | null
+          severity: string
+          started_at: string | null
+          status: string
+          suggested_action: Json | null
+          title: string
+          tool_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence?: Json
+          explanation: string
+          fingerprint: string
+          first_detected_at?: string
+          generated_by?: string | null
+          id?: string
+          ignored_at?: string | null
+          last_detected_at?: string
+          module: string
+          recommendation: string
+          resolved_at?: string | null
+          school_id: string
+          seen_at?: string | null
+          severity: string
+          started_at?: string | null
+          status?: string
+          suggested_action?: Json | null
+          title: string
+          tool_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence?: Json
+          explanation?: string
+          fingerprint?: string
+          first_detected_at?: string
+          generated_by?: string | null
+          id?: string
+          ignored_at?: string | null
+          last_detected_at?: string
+          module?: string
+          recommendation?: string
+          resolved_at?: string | null
+          school_id?: string
+          seen_at?: string | null
+          severity?: string
+          started_at?: string | null
+          status?: string
+          suggested_action?: Json | null
+          title?: string
+          tool_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_insights_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_insights_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      ai_prompt_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature: string
+          id: string
+          is_active: boolean
+          key: string
+          language: string
+          name: string
+          system_prompt: string | null
+          updated_at: string
+          user_prompt_template: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature: string
+          id?: string
+          is_active?: boolean
+          key: string
+          language?: string
+          name: string
+          system_prompt?: string | null
+          updated_at?: string
+          user_prompt_template?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          language?: string
+          name?: string
+          system_prompt?: string | null
+          updated_at?: string
+          user_prompt_template?: string | null
+        }
+        Relationships: []
+      }
+      ai_school_settings: {
+        Row: {
+          allowed_features: Json
+          created_at: string
+          daily_limit: number
+          enabled: boolean
+          id: string
+          monthly_limit: number
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_features?: Json
+          created_at?: string
+          daily_limit?: number
+          enabled?: boolean
+          id?: string
+          monthly_limit?: number
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_features?: Json
+          created_at?: string
+          daily_limit?: number
+          enabled?: boolean
+          id?: string
+          monthly_limit?: number
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_school_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_school_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_school_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_school_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_school_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          feature: string
+          id: string
+          input_hash: string | null
+          input_preview: string | null
+          model: string | null
+          output_preview: string | null
+          prompt_template_id: string | null
+          provider: string | null
+          school_id: string
+          status: string
+          tokens_input: number | null
+          tokens_output: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          feature: string
+          id?: string
+          input_hash?: string | null
+          input_preview?: string | null
+          model?: string | null
+          output_preview?: string | null
+          prompt_template_id?: string | null
+          provider?: string | null
+          school_id: string
+          status?: string
+          tokens_input?: number | null
+          tokens_output?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          feature?: string
+          id?: string
+          input_hash?: string | null
+          input_preview?: string | null
+          model?: string | null
+          output_preview?: string | null
+          prompt_template_id?: string | null
+          provider?: string | null
+          school_id?: string
+          status?: string
+          tokens_input?: number | null
+          tokens_output?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_prompt_template_id_fkey"
+            columns: ["prompt_template_id"]
+            isOneToOne: false
+            referencedRelation: "ai_prompt_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_usage_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "ai_usage_logs_school_id_fkey"
+            columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "vw_financeiro_kpis_geral"
             referencedColumns: ["escola_id"]
@@ -958,6 +1593,9 @@ export type Database = {
       anos_letivos: {
         Row: {
           ano: number
+          arquivado_com_pendencias: boolean
+          arquivado_em: string | null
+          arquivado_por: string | null
           ativo: boolean
           created_at: string
           data_fim: string
@@ -969,6 +1607,9 @@ export type Database = {
         }
         Insert: {
           ano: number
+          arquivado_com_pendencias?: boolean
+          arquivado_em?: string | null
+          arquivado_por?: string | null
           ativo?: boolean
           created_at?: string
           data_fim: string
@@ -980,6 +1621,9 @@ export type Database = {
         }
         Update: {
           ano?: number
+          arquivado_com_pendencias?: boolean
+          arquivado_em?: string | null
+          arquivado_por?: string | null
           ativo?: boolean
           created_at?: string
           data_fim?: string
@@ -1659,6 +2303,8 @@ export type Database = {
       calendario_eventos: {
         Row: {
           ano_letivo_id: string
+          applied_at: string | null
+          applied_by: string | null
           cor_hex: string | null
           created_at: string
           data_fim: string
@@ -1666,11 +2312,17 @@ export type Database = {
           escola_id: string
           id: string
           nome: string
+          offering_id: string | null
+          source_item_id: string | null
+          source_template_id: string | null
+          source_version: string | null
           tipo: Database["public"]["Enums"]["tipo_evento_calendario"]
           updated_at: string
         }
         Insert: {
           ano_letivo_id: string
+          applied_at?: string | null
+          applied_by?: string | null
           cor_hex?: string | null
           created_at?: string
           data_fim: string
@@ -1678,11 +2330,17 @@ export type Database = {
           escola_id: string
           id?: string
           nome: string
+          offering_id?: string | null
+          source_item_id?: string | null
+          source_template_id?: string | null
+          source_version?: string | null
           tipo: Database["public"]["Enums"]["tipo_evento_calendario"]
           updated_at?: string
         }
         Update: {
           ano_letivo_id?: string
+          applied_at?: string | null
+          applied_by?: string | null
           cor_hex?: string | null
           created_at?: string
           data_fim?: string
@@ -1690,6 +2348,10 @@ export type Database = {
           escola_id?: string
           id?: string
           nome?: string
+          offering_id?: string | null
+          source_item_id?: string | null
+          source_template_id?: string | null
+          source_version?: string | null
           tipo?: Database["public"]["Enums"]["tipo_evento_calendario"]
           updated_at?: string
         }
@@ -1714,6 +2376,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_escola_estado_hoje"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "calendario_eventos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "calendario_eventos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
           },
           {
             foreignKeyName: "calendario_eventos_escola_id_fkey"
@@ -1750,13 +2426,41 @@ export type Database = {
             referencedRelation: "vw_financeiro_kpis_geral"
             referencedColumns: ["escola_id"]
           },
+          {
+            foreignKeyName: "calendario_eventos_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "school_education_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendario_eventos_source_item_id_fkey"
+            columns: ["source_item_id"]
+            isOneToOne: false
+            referencedRelation: "calendario_template_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendario_eventos_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "calendario_templates"
+            referencedColumns: ["id"]
+          },
         ]
       }
       calendario_template_items: {
         Row: {
+          applies_to_all_offerings: boolean
+          audience_roles: string[]
+          course_types: string[]
           created_at: string | null
+          cycles: string[]
           data_fim: string
           data_inicio: string
+          education_levels: string[]
+          education_subsystems: string[]
+          grade_codes: string[]
           id: string
           nome: string
           numero: number | null
@@ -1765,9 +2469,16 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_evento_calendario"]
         }
         Insert: {
+          applies_to_all_offerings?: boolean
+          audience_roles?: string[]
+          course_types?: string[]
           created_at?: string | null
+          cycles?: string[]
           data_fim: string
           data_inicio: string
+          education_levels?: string[]
+          education_subsystems?: string[]
+          grade_codes?: string[]
           id?: string
           nome: string
           numero?: number | null
@@ -1776,9 +2487,16 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_evento_calendario"]
         }
         Update: {
+          applies_to_all_offerings?: boolean
+          audience_roles?: string[]
+          course_types?: string[]
           created_at?: string | null
+          cycles?: string[]
           data_fim?: string
           data_inicio?: string
+          education_levels?: string[]
+          education_subsystems?: string[]
+          grade_codes?: string[]
           id?: string
           nome?: string
           numero?: number | null
@@ -2404,6 +3122,576 @@ export type Database = {
           },
         ]
       }
+      communication_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          outbox_id: string | null
+          payload_sanitized: Json
+          provider: string
+          provider_event_id: string | null
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          outbox_id?: string | null
+          payload_sanitized?: Json
+          provider?: string
+          provider_event_id?: string | null
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          outbox_id?: string | null
+          payload_sanitized?: Json
+          provider?: string
+          provider_event_id?: string | null
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_logs_outbox_id_fkey"
+            columns: ["outbox_id"]
+            isOneToOne: false
+            referencedRelation: "communication_outbox"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      communication_messages: {
+        Row: {
+          body: string
+          body_preview: string | null
+          body_sanitized: string | null
+          channel: string
+          created_at: string
+          direction: string
+          id: string
+          message_type: string
+          metadata: Json
+          provider: string
+          provider_event_id: string | null
+          provider_message_id: string | null
+          received_at: string
+          recipient_phone_hash: string
+          recipient_phone_masked: string
+          school_id: string
+          sender_phone_hash: string
+          sender_phone_masked: string
+          sent_by: string | null
+          status: string
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          body_preview?: string | null
+          body_sanitized?: string | null
+          channel?: string
+          created_at?: string
+          direction: string
+          id?: string
+          message_type: string
+          metadata?: Json
+          provider?: string
+          provider_event_id?: string | null
+          provider_message_id?: string | null
+          received_at?: string
+          recipient_phone_hash: string
+          recipient_phone_masked: string
+          school_id: string
+          sender_phone_hash: string
+          sender_phone_masked: string
+          sent_by?: string | null
+          status?: string
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          body_preview?: string | null
+          body_sanitized?: string | null
+          channel?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          message_type?: string
+          metadata?: Json
+          provider?: string
+          provider_event_id?: string | null
+          provider_message_id?: string | null
+          received_at?: string
+          recipient_phone_hash?: string
+          recipient_phone_masked?: string
+          school_id?: string
+          sender_phone_hash?: string
+          sender_phone_masked?: string
+          sent_by?: string | null
+          status?: string
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "communication_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_outbox: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          cancelled_at: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          failed_at: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          message_type: string
+          metadata: Json
+          next_retry_at: string | null
+          provider: string
+          provider_message_id: string | null
+          queued_at: string | null
+          read_at: string | null
+          recipient_name: string | null
+          recipient_phone_hash: string | null
+          recipient_phone_masked: string | null
+          recipient_ref_id: string | null
+          recipient_type: string
+          requires_approval: boolean
+          retry_count: number
+          risk_level: string
+          school_id: string
+          sending_at: string | null
+          sent_at: string | null
+          source_entity_id: string | null
+          source_entity_type: string | null
+          source_module: string | null
+          status: Database["public"]["Enums"]["communication_outbox_status"]
+          template_key: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body: string
+          cancelled_at?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          failed_at?: string | null
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          message_type: string
+          metadata?: Json
+          next_retry_at?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          queued_at?: string | null
+          read_at?: string | null
+          recipient_name?: string | null
+          recipient_phone_hash?: string | null
+          recipient_phone_masked?: string | null
+          recipient_ref_id?: string | null
+          recipient_type: string
+          requires_approval?: boolean
+          retry_count?: number
+          risk_level?: string
+          school_id: string
+          sending_at?: string | null
+          sent_at?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_module?: string | null
+          status?: Database["public"]["Enums"]["communication_outbox_status"]
+          template_key?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          body?: string
+          cancelled_at?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          failed_at?: string | null
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          message_type?: string
+          metadata?: Json
+          next_retry_at?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          queued_at?: string | null
+          read_at?: string | null
+          recipient_name?: string | null
+          recipient_phone_hash?: string | null
+          recipient_phone_masked?: string | null
+          recipient_ref_id?: string | null
+          recipient_type?: string
+          requires_approval?: boolean
+          retry_count?: number
+          risk_level?: string
+          school_id?: string
+          sending_at?: string | null
+          sent_at?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_module?: string | null
+          status?: Database["public"]["Enums"]["communication_outbox_status"]
+          template_key?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_outbox_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_outbox_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_outbox_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_outbox_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_outbox_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_outbox_template_key_fkey"
+            columns: ["template_key"]
+            isOneToOne: false
+            referencedRelation: "communication_templates"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      communication_rate_limits: {
+        Row: {
+          created_at: string
+          max_messages_per_day: number
+          max_messages_per_hour: number
+          max_messages_per_minute: number
+          quiet_hours_end: string
+          quiet_hours_start: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          max_messages_per_day?: number
+          max_messages_per_hour?: number
+          max_messages_per_minute?: number
+          quiet_hours_end?: string
+          quiet_hours_start?: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          max_messages_per_day?: number
+          max_messages_per_hour?: number
+          max_messages_per_minute?: number
+          quiet_hours_end?: string
+          quiet_hours_start?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_rate_limits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_rate_limits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_rate_limits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_rate_limits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_rate_limits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      communication_templates: {
+        Row: {
+          active: boolean
+          allowed_roles: string[]
+          body: string
+          category: string
+          created_at: string
+          id: string
+          key: string
+          required_variables: string[]
+          requires_approval: boolean
+          risk_level: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          allowed_roles?: string[]
+          body: string
+          category: string
+          created_at?: string
+          id?: string
+          key: string
+          required_variables?: string[]
+          requires_approval?: boolean
+          risk_level?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          allowed_roles?: string[]
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          key?: string
+          required_variables?: string[]
+          requires_approval?: boolean
+          risk_level?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      communication_threads: {
+        Row: {
+          assigned_to: string | null
+          channel: string
+          contact_name: string | null
+          contact_phone_hash: string
+          contact_phone_masked: string
+          contact_role: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          linked_entity_id: string | null
+          linked_entity_type: string
+          provider: string
+          school_id: string
+          session_name_hash: string | null
+          status: string
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          channel: string
+          contact_name?: string | null
+          contact_phone_hash: string
+          contact_phone_masked: string
+          contact_role: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          linked_entity_id?: string | null
+          linked_entity_type: string
+          provider: string
+          school_id: string
+          session_name_hash?: string | null
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          channel?: string
+          contact_name?: string | null
+          contact_phone_hash?: string
+          contact_phone_masked?: string
+          contact_role?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          linked_entity_id?: string | null
+          linked_entity_type?: string
+          provider?: string
+          school_id?: string
+          session_name_hash?: string | null
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_threads_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_threads_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_threads_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_threads_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "communication_threads_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       conciliacao_uploads: {
         Row: {
           banco: string | null
@@ -2718,6 +4006,292 @@ export type Database = {
           },
         ]
       }
+      configuracoes_pedagogicas: {
+        Row: {
+          created_at: string
+          escola_id: string
+          media_minima_aprovacao: number
+          negativas_para_reprovar: number
+          permitir_recurso: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          escola_id: string
+          media_minima_aprovacao?: number
+          negativas_para_reprovar?: number
+          permitir_recurso?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          escola_id?: string
+          media_minima_aprovacao?: number
+          negativas_para_reprovar?: number
+          permitir_recurso?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_pedagogicas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuracoes_pedagogicas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuracoes_pedagogicas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "configuracoes_pedagogicas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "configuracoes_pedagogicas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      crm_commercial_proposals: {
+        Row: {
+          accepted_at: string | null
+          afiliado_codigo: string
+          alunos_estimados: number
+          created_at: string
+          created_by_membro_id: string | null
+          crm_lead_id: string
+          id: string
+          mensalidade_kz: number | null
+          metadata: Json
+          plano_estimado: string
+          proposal_file_name: string | null
+          proposal_file_path: string | null
+          status: string
+          taxa_ativacao: number
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          afiliado_codigo: string
+          alunos_estimados?: number
+          created_at?: string
+          created_by_membro_id?: string | null
+          crm_lead_id: string
+          id?: string
+          mensalidade_kz?: number | null
+          metadata?: Json
+          plano_estimado?: string
+          proposal_file_name?: string | null
+          proposal_file_path?: string | null
+          status?: string
+          taxa_ativacao?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          afiliado_codigo?: string
+          alunos_estimados?: number
+          created_at?: string
+          created_by_membro_id?: string | null
+          crm_lead_id?: string
+          id?: string
+          mensalidade_kz?: number | null
+          metadata?: Json
+          plano_estimado?: string
+          proposal_file_name?: string | null
+          proposal_file_path?: string | null
+          status?: string
+          taxa_ativacao?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_commercial_proposals_afiliado_codigo_fkey"
+            columns: ["afiliado_codigo"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "crm_commercial_proposals_created_by_membro_id_fkey"
+            columns: ["created_by_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_commercial_proposals_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          aceite_comercial_at: string | null
+          afiliado_codigo: string
+          alunos_estimados: number | null
+          commercial_status: string
+          commercial_status_updated_at: string
+          contacto_financeiro: Json | null
+          contacto_pedagogico: Json | null
+          contacto_secretaria: Json | null
+          converted_at: string | null
+          converted_by_membro_id: string | null
+          created_at: string | null
+          curriculum_preset: string | null
+          email: string | null
+          etapa: string
+          id: string
+          membro_id: string | null
+          mensalidade_kz: number | null
+          motivo_perda: string | null
+          niveis_ensino: string[] | null
+          nome_contacto: string | null
+          nome_escola: string
+          onboarding_request_id: string | null
+          plano_estimado: string | null
+          proposal_file_name: string | null
+          proposal_file_path: string | null
+          proxima_acao: string | null
+          proxima_acao_data: string | null
+          responsavel_membro_id: string | null
+          segmento: string | null
+          taxa_ativacao: number | null
+          telefone: string | null
+          trial_days: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          aceite_comercial_at?: string | null
+          afiliado_codigo: string
+          alunos_estimados?: number | null
+          commercial_status?: string
+          commercial_status_updated_at?: string
+          contacto_financeiro?: Json | null
+          contacto_pedagogico?: Json | null
+          contacto_secretaria?: Json | null
+          converted_at?: string | null
+          converted_by_membro_id?: string | null
+          created_at?: string | null
+          curriculum_preset?: string | null
+          email?: string | null
+          etapa?: string
+          id?: string
+          membro_id?: string | null
+          mensalidade_kz?: number | null
+          motivo_perda?: string | null
+          niveis_ensino?: string[] | null
+          nome_contacto?: string | null
+          nome_escola: string
+          onboarding_request_id?: string | null
+          plano_estimado?: string | null
+          proposal_file_name?: string | null
+          proposal_file_path?: string | null
+          proxima_acao?: string | null
+          proxima_acao_data?: string | null
+          responsavel_membro_id?: string | null
+          segmento?: string | null
+          taxa_ativacao?: number | null
+          telefone?: string | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          aceite_comercial_at?: string | null
+          afiliado_codigo?: string
+          alunos_estimados?: number | null
+          commercial_status?: string
+          commercial_status_updated_at?: string
+          contacto_financeiro?: Json | null
+          contacto_pedagogico?: Json | null
+          contacto_secretaria?: Json | null
+          converted_at?: string | null
+          converted_by_membro_id?: string | null
+          created_at?: string | null
+          curriculum_preset?: string | null
+          email?: string | null
+          etapa?: string
+          id?: string
+          membro_id?: string | null
+          mensalidade_kz?: number | null
+          motivo_perda?: string | null
+          niveis_ensino?: string[] | null
+          nome_contacto?: string | null
+          nome_escola?: string
+          onboarding_request_id?: string | null
+          plano_estimado?: string | null
+          proposal_file_name?: string | null
+          proposal_file_path?: string | null
+          proxima_acao?: string | null
+          proxima_acao_data?: string | null
+          responsavel_membro_id?: string | null
+          segmento?: string | null
+          taxa_ativacao?: number | null
+          telefone?: string | null
+          trial_days?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_afiliado_codigo_fkey"
+            columns: ["afiliado_codigo"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "crm_leads_converted_by_membro_id_fkey"
+            columns: ["converted_by_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_onboarding_request_id_fkey"
+            columns: ["onboarding_request_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_responsavel_membro_id_fkey"
+            columns: ["responsavel_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curriculum_preset_subjects: {
         Row: {
           avaliacao_mode: string | null
@@ -2940,6 +4514,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_escola_estado_hoje"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "curso_curriculos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "curso_curriculos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
           },
           {
             foreignKeyName: "curso_curriculos_curso_id_fkey"
@@ -3666,6 +5254,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
@@ -4636,6 +6238,20 @@ export type Database = {
             referencedColumns: ["session_id"]
           },
           {
+            foreignKeyName: "fechamento_academico_jobs_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_jobs_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
             foreignKeyName: "fechamento_academico_jobs_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -4959,6 +6575,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
@@ -5403,6 +7033,20 @@ export type Database = {
             foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -5627,6 +7271,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
@@ -6132,6 +7790,118 @@ export type Database = {
           },
         ]
       }
+      financeiro_reconciliacoes_mensalidades: {
+        Row: {
+          acao: string | null
+          actor_id: string | null
+          created_at: string
+          dados_antes: Json
+          dados_depois: Json
+          escola_id: string
+          id: string
+          justificativa: string | null
+          mensalidade_id: string
+          problema: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acao?: string | null
+          actor_id?: string | null
+          created_at?: string
+          dados_antes?: Json
+          dados_depois?: Json
+          escola_id: string
+          id?: string
+          justificativa?: string | null
+          mensalidade_id: string
+          problema: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acao?: string | null
+          actor_id?: string | null
+          created_at?: string
+          dados_antes?: Json
+          dados_depois?: Json
+          escola_id?: string
+          id?: string
+          justificativa?: string | null
+          mensalidade_id?: string
+          problema?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "mensalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "financeiro_reconciliacoes_mensalidades_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_mensalidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_tabelas: {
         Row: {
           ano_letivo: number
@@ -6262,6 +8032,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_escola_estado_hoje"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "financeiro_tabelas_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "financeiro_tabelas_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
           },
         ]
       }
@@ -10355,6 +12139,84 @@ export type Database = {
         }
         Relationships: []
       }
+      frequencias_2026_08: {
+        Row: {
+          aula_id: string | null
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          periodo_letivo_id: string | null
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      frequencias_2026_09: {
+        Row: {
+          aula_id: string | null
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          periodo_letivo_id: string | null
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       frequencias_default: {
         Row: {
           aula_id: string | null
@@ -10717,6 +12579,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_escola_estado_hoje"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
           },
           {
             foreignKeyName: "historico_snapshot_locks_escola_id_fkey"
@@ -11279,6 +13155,47 @@ export type Database = {
           },
         ]
       }
+      influencer_portal_sessions: {
+        Row: {
+          afiliado_codigo: string
+          created_at: string
+          expires_at: string
+          id: string
+          last_seen_at: string
+          member_id: string
+          member_name: string
+          updated_at: string
+        }
+        Insert: {
+          afiliado_codigo: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          last_seen_at?: string
+          member_id: string
+          member_name: string
+          updated_at?: string
+        }
+        Update: {
+          afiliado_codigo?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_seen_at?: string
+          member_id?: string
+          member_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_portal_sessions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lancamentos: {
         Row: {
           avaliacao_id: string
@@ -11711,6 +13628,72 @@ export type Database = {
         }
         Relationships: []
       }
+      lancamentos_2026_08: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      lancamentos_2026_09: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       lancamentos_default: {
         Row: {
           avaliacao_id: string
@@ -11826,7 +13809,10 @@ export type Database = {
       marketing_leads: {
         Row: {
           afiliado_codigo: string | null
+          converted_at: string | null
+          converted_by_membro_id: string | null
           created_at: string | null
+          crm_lead_id: string | null
           email: string
           escola: string
           id: string
@@ -11838,11 +13824,13 @@ export type Database = {
           status: string | null
           updated_at: string | null
           whatsapp: string
-          crm_lead_id: string | null
         }
         Insert: {
           afiliado_codigo?: string | null
+          converted_at?: string | null
+          converted_by_membro_id?: string | null
           created_at?: string | null
+          crm_lead_id?: string | null
           email: string
           escola: string
           id?: string
@@ -11854,11 +13842,13 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           whatsapp: string
-          crm_lead_id?: string | null
         }
         Update: {
           afiliado_codigo?: string | null
+          converted_at?: string | null
+          converted_by_membro_id?: string | null
           created_at?: string | null
+          crm_lead_id?: string | null
           email?: string
           escola?: string
           id?: string
@@ -11870,9 +13860,23 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           whatsapp?: string
-          crm_lead_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "marketing_leads_converted_by_membro_id_fkey"
+            columns: ["converted_by_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_leads_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       matricula_counters: {
         Row: {
@@ -11925,6 +13929,299 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "vw_financeiro_kpis_geral"
             referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      matricula_reclassificacoes: {
+        Row: {
+          aluno_id: string
+          created_at: string
+          destino_session_id: string
+          destino_turma_id: string | null
+          escola_id: string
+          id: string
+          matricula_id: string
+          motivo: string | null
+          origem_session_id: string
+          origem_turma_id: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          created_at?: string
+          destino_session_id: string
+          destino_turma_id?: string | null
+          escola_id: string
+          id?: string
+          matricula_id: string
+          motivo?: string | null
+          origem_session_id: string
+          origem_turma_id?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          created_at?: string
+          destino_session_id?: string
+          destino_turma_id?: string | null
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          motivo?: string | null
+          origem_session_id?: string
+          origem_turma_id?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matricula_reclassificacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_session_id_fkey"
+            columns: ["destino_session_id"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_session_id_fkey"
+            columns: ["destino_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_ano_letivo_preferido"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_session_id_fkey"
+            columns: ["destino_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_session_id_fkey"
+            columns: ["destino_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_session_id_fkey"
+            columns: ["destino_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_turma_id_fkey"
+            columns: ["destino_turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_turma_id_fkey"
+            columns: ["destino_turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_turma_id_fkey"
+            columns: ["destino_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_destino_turma_id_fkey"
+            columns: ["destino_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_session_id_fkey"
+            columns: ["origem_session_id"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_session_id_fkey"
+            columns: ["origem_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_ano_letivo_preferido"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_session_id_fkey"
+            columns: ["origem_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_session_id_fkey"
+            columns: ["origem_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_session_id_fkey"
+            columns: ["origem_session_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_turma_id_fkey"
+            columns: ["origem_turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_turma_id_fkey"
+            columns: ["origem_turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_turma_id_fkey"
+            columns: ["origem_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matricula_reclassificacoes_origem_turma_id_fkey"
+            columns: ["origem_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -13132,6 +15429,279 @@ export type Database = {
           },
         ]
       }
+      notification_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          opt_in_at: string | null
+          opt_in_source: string | null
+          person_id: string | null
+          person_type: string
+          phone_e164: string
+          school_id: string
+          whatsapp_opt_in: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          opt_in_at?: string | null
+          opt_in_source?: string | null
+          person_id?: string | null
+          person_type: string
+          phone_e164: string
+          school_id: string
+          whatsapp_opt_in?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          opt_in_at?: string | null
+          opt_in_source?: string | null
+          person_id?: string | null
+          person_type?: string
+          phone_e164?: string
+          school_id?: string
+          whatsapp_opt_in?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_contacts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_contacts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_contacts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notification_contacts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notification_contacts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      notification_messages: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          channel: string
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          error_message: string | null
+          external_message_id: string | null
+          failed_at: string | null
+          id: string
+          idempotency_key: string | null
+          message_body: string
+          message_type: string
+          provider_id: string | null
+          recipient_name: string | null
+          recipient_phone_e164: string
+          requires_approval: boolean
+          school_id: string
+          sent_at: string | null
+          status: string
+          template_key: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          channel: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          external_message_id?: string | null
+          failed_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          message_body: string
+          message_type?: string
+          provider_id?: string | null
+          recipient_name?: string | null
+          recipient_phone_e164: string
+          requires_approval?: boolean
+          school_id: string
+          sent_at?: string | null
+          status?: string
+          template_key?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          channel?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          external_message_id?: string | null
+          failed_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          message_body?: string
+          message_type?: string
+          provider_id?: string | null
+          recipient_name?: string | null
+          recipient_phone_e164?: string
+          requires_approval?: boolean
+          school_id?: string
+          sent_at?: string | null
+          status?: string
+          template_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "notification_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_messages_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "school_notification_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notification_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notification_messages_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      notification_usage_daily: {
+        Row: {
+          created_at: string
+          failed_count: number
+          id: string
+          provider_id: string | null
+          school_id: string
+          sent_count: number
+          usage_date: string
+        }
+        Insert: {
+          created_at?: string
+          failed_count?: number
+          id?: string
+          provider_id?: string | null
+          school_id: string
+          sent_count?: number
+          usage_date: string
+        }
+        Update: {
+          created_at?: string
+          failed_count?: number
+          id?: string
+          provider_id?: string | null
+          school_id?: string
+          sent_count?: number
+          usage_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_usage_daily_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "school_notification_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_usage_daily_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_usage_daily_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_usage_daily_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notification_usage_daily_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notification_usage_daily_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -13261,6 +15831,44 @@ export type Database = {
           },
         ]
       }
+      onboarding_doubts: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          onboarding_id: string
+          sender_name: string
+          sender_type: string
+          step_code: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          onboarding_id: string
+          sender_name: string
+          sender_type: string
+          step_code?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          onboarding_id?: string
+          sender_name?: string
+          sender_type?: string
+          step_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_doubts_onboarding_id_fkey"
+            columns: ["onboarding_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_drafts: {
         Row: {
           data: Json
@@ -13326,9 +15934,26 @@ export type Database = {
       }
       onboarding_requests: {
         Row: {
+          acceptance_notes: string | null
+          acceptance_signed_at: string | null
+          acceptance_signed_by: string | null
+          acceptance_signed_role: string | null
+          acceptance_term_file_path: string | null
+          acceptance_validated_at: string | null
+          acceptance_validated_by: string | null
           ano_letivo: string | null
           classes: Json | null
+          contacto_financeiro: Json | null
+          contacto_pedagogico: Json | null
+          contacto_secretaria: Json | null
           created_at: string | null
+          crm_lead_id: string | null
+          crm_risk_level: string
+          crm_risk_reasons: Json
+          crm_risk_score: number
+          crm_risk_snapshot: Json
+          crm_risk_updated_at: string | null
+          curriculum_preset: string | null
           director_nome: string | null
           director_tel: string | null
           escola_abrev: string | null
@@ -13344,18 +15969,40 @@ export type Database = {
           faixa_propina: string | null
           financeiro: Json | null
           id: string
+          implantation_checklist: Json
+          implantation_checklist_updated_at: string
+          implantation_status: string
+          niveis_ensino: string[] | null
           notas_admin: string | null
           source: string | null
           status: string
+          tracking_token: string
           turmas: Json | null
           turnos: Json | null
           updated_at: string | null
           utilizadores: Json | null
         }
         Insert: {
+          acceptance_notes?: string | null
+          acceptance_signed_at?: string | null
+          acceptance_signed_by?: string | null
+          acceptance_signed_role?: string | null
+          acceptance_term_file_path?: string | null
+          acceptance_validated_at?: string | null
+          acceptance_validated_by?: string | null
           ano_letivo?: string | null
           classes?: Json | null
+          contacto_financeiro?: Json | null
+          contacto_pedagogico?: Json | null
+          contacto_secretaria?: Json | null
           created_at?: string | null
+          crm_lead_id?: string | null
+          crm_risk_level?: string
+          crm_risk_reasons?: Json
+          crm_risk_score?: number
+          crm_risk_snapshot?: Json
+          crm_risk_updated_at?: string | null
+          curriculum_preset?: string | null
           director_nome?: string | null
           director_tel?: string | null
           escola_abrev?: string | null
@@ -13371,18 +16018,40 @@ export type Database = {
           faixa_propina?: string | null
           financeiro?: Json | null
           id?: string
+          implantation_checklist?: Json
+          implantation_checklist_updated_at?: string
+          implantation_status?: string
+          niveis_ensino?: string[] | null
           notas_admin?: string | null
           source?: string | null
           status?: string
+          tracking_token: string
           turmas?: Json | null
           turnos?: Json | null
           updated_at?: string | null
           utilizadores?: Json | null
         }
         Update: {
+          acceptance_notes?: string | null
+          acceptance_signed_at?: string | null
+          acceptance_signed_by?: string | null
+          acceptance_signed_role?: string | null
+          acceptance_term_file_path?: string | null
+          acceptance_validated_at?: string | null
+          acceptance_validated_by?: string | null
           ano_letivo?: string | null
           classes?: Json | null
+          contacto_financeiro?: Json | null
+          contacto_pedagogico?: Json | null
+          contacto_secretaria?: Json | null
           created_at?: string | null
+          crm_lead_id?: string | null
+          crm_risk_level?: string
+          crm_risk_reasons?: Json
+          crm_risk_score?: number
+          crm_risk_snapshot?: Json
+          crm_risk_updated_at?: string | null
+          curriculum_preset?: string | null
           director_nome?: string | null
           director_tel?: string | null
           escola_abrev?: string | null
@@ -13398,15 +16067,27 @@ export type Database = {
           faixa_propina?: string | null
           financeiro?: Json | null
           id?: string
+          implantation_checklist?: Json
+          implantation_checklist_updated_at?: string
+          implantation_status?: string
+          niveis_ensino?: string[] | null
           notas_admin?: string | null
           source?: string | null
           status?: string
+          tracking_token?: string
           turmas?: Json | null
           turnos?: Json | null
           updated_at?: string | null
           utilizadores?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "onboarding_requests_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onboarding_requests_escola_id_fkey"
             columns: ["escola_id"]
@@ -13441,6 +16122,132 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_financeiro_kpis_geral"
             referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      onboarding_steps: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          deadline_at: string | null
+          id: string
+          onboarding_id: string
+          owner_type: string
+          sla_days: number
+          started_at: string | null
+          status: string
+          step_code: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          deadline_at?: string | null
+          id?: string
+          onboarding_id: string
+          owner_type: string
+          sla_days?: number
+          started_at?: string | null
+          status?: string
+          step_code: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          deadline_at?: string | null
+          id?: string
+          onboarding_id?: string
+          owner_type?: string
+          sla_days?: number
+          started_at?: string | null
+          status?: string
+          step_code?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_steps_onboarding_id_fkey"
+            columns: ["onboarding_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_uploads: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          criado_por_membro_id: string | null
+          document_type: string | null
+          file_path: string
+          id: string
+          onboarding_id: string
+          partner_review_note: string | null
+          partner_reviewed_at: string | null
+          partner_reviewed_by: string | null
+          rejection_reason: string | null
+          status: string
+          step_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          criado_por_membro_id?: string | null
+          document_type?: string | null
+          file_path: string
+          id?: string
+          onboarding_id: string
+          partner_review_note?: string | null
+          partner_reviewed_at?: string | null
+          partner_reviewed_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          step_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          criado_por_membro_id?: string | null
+          document_type?: string | null
+          file_path?: string
+          id?: string
+          onboarding_id?: string
+          partner_review_note?: string | null
+          partner_reviewed_at?: string | null
+          partner_reviewed_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          step_code?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_uploads_criado_por_membro_id_fkey"
+            columns: ["criado_por_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_uploads_onboarding_id_fkey"
+            columns: ["onboarding_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_uploads_partner_reviewed_by_fkey"
+            columns: ["partner_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -13789,6 +16596,20 @@ export type Database = {
             foreignKeyName: "pagamentos_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "pagamentos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["mensalidade_id"]
+          },
+          {
+            foreignKeyName: "pagamentos_mensalidade_id_fkey"
+            columns: ["mensalidade_id"]
+            isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
             referencedColumns: ["id"]
           },
@@ -13882,6 +16703,502 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_financeiro_kpis_geral"
             referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      partner_commission_payout_items: {
+        Row: {
+          commission_id: string
+          created_at: string
+          payout_id: string
+          valor_kz: number
+        }
+        Insert: {
+          commission_id: string
+          created_at?: string
+          payout_id: string
+          valor_kz: number
+        }
+        Update: {
+          commission_id?: string
+          created_at?: string
+          payout_id?: string
+          valor_kz?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_commission_payout_items_commission_id_fkey"
+            columns: ["commission_id"]
+            isOneToOne: false
+            referencedRelation: "partner_commissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commission_payout_items_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "partner_commission_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_commission_payouts: {
+        Row: {
+          afiliado_codigo: string
+          afiliado_id: string
+          approved_at: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          paid_at: string | null
+          receipt_file_name: string
+          receipt_file_path: string
+          receipt_file_size: number | null
+          receipt_file_type: string | null
+          rejected_at: string | null
+          requested_at: string
+          requested_by_membro_id: string | null
+          status: string
+          total_kz: number
+          updated_at: string
+        }
+        Insert: {
+          afiliado_codigo: string
+          afiliado_id: string
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          receipt_file_name: string
+          receipt_file_path: string
+          receipt_file_size?: number | null
+          receipt_file_type?: string | null
+          rejected_at?: string | null
+          requested_at?: string
+          requested_by_membro_id?: string | null
+          status?: string
+          total_kz?: number
+          updated_at?: string
+        }
+        Update: {
+          afiliado_codigo?: string
+          afiliado_id?: string
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          receipt_file_name?: string
+          receipt_file_path?: string
+          receipt_file_size?: number | null
+          receipt_file_type?: string | null
+          rejected_at?: string | null
+          requested_at?: string
+          requested_by_membro_id?: string | null
+          status?: string
+          total_kz?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_commission_payouts_afiliado_id_fkey"
+            columns: ["afiliado_id"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commission_payouts_requested_by_membro_id_fkey"
+            columns: ["requested_by_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_commissions: {
+        Row: {
+          afiliado_codigo: string
+          afiliado_id: string
+          approved_at: string | null
+          assinatura_id: string | null
+          base_valor_kz: number
+          competencia_fim: string | null
+          competencia_inicio: string | null
+          created_at: string
+          crm_lead_id: string | null
+          due_at: string | null
+          escola_id: string
+          id: string
+          membro_id: string | null
+          metadata: Json
+          onboarding_request_id: string | null
+          pagamento_saas_id: string | null
+          paid_at: string | null
+          percentual: number
+          status: string
+          tipo: string
+          updated_at: string
+          valor_kz: number
+        }
+        Insert: {
+          afiliado_codigo: string
+          afiliado_id: string
+          approved_at?: string | null
+          assinatura_id?: string | null
+          base_valor_kz: number
+          competencia_fim?: string | null
+          competencia_inicio?: string | null
+          created_at?: string
+          crm_lead_id?: string | null
+          due_at?: string | null
+          escola_id: string
+          id?: string
+          membro_id?: string | null
+          metadata?: Json
+          onboarding_request_id?: string | null
+          pagamento_saas_id?: string | null
+          paid_at?: string | null
+          percentual?: number
+          status?: string
+          tipo: string
+          updated_at?: string
+          valor_kz: number
+        }
+        Update: {
+          afiliado_codigo?: string
+          afiliado_id?: string
+          approved_at?: string | null
+          assinatura_id?: string | null
+          base_valor_kz?: number
+          competencia_fim?: string | null
+          competencia_inicio?: string | null
+          created_at?: string
+          crm_lead_id?: string | null
+          due_at?: string | null
+          escola_id?: string
+          id?: string
+          membro_id?: string | null
+          metadata?: Json
+          onboarding_request_id?: string | null
+          pagamento_saas_id?: string | null
+          paid_at?: string | null
+          percentual?: number
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_kz?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_commissions_afiliado_id_fkey"
+            columns: ["afiliado_id"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "assinaturas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_onboarding_request_id_fkey"
+            columns: ["onboarding_request_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_commissions_pagamento_saas_id_fkey"
+            columns: ["pagamento_saas_id"]
+            isOneToOne: false
+            referencedRelation: "pagamentos_saas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_support_tickets: {
+        Row: {
+          afiliado_codigo: string
+          afiliado_id: string
+          canal: string
+          categoria: string
+          created_at: string
+          criado_por_membro_id: string | null
+          descricao: string | null
+          escalated_at: string | null
+          escalation_reason: string | null
+          escola_nome: string
+          first_responded_at: string | null
+          first_response_due_at: string
+          gravidade: string
+          id: string
+          notes: string | null
+          onboarding_request_id: string | null
+          resolution_due_at: string
+          resolved_at: string | null
+          responsavel_membro_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          afiliado_codigo: string
+          afiliado_id: string
+          canal?: string
+          categoria?: string
+          created_at?: string
+          criado_por_membro_id?: string | null
+          descricao?: string | null
+          escalated_at?: string | null
+          escalation_reason?: string | null
+          escola_nome: string
+          first_responded_at?: string | null
+          first_response_due_at: string
+          gravidade?: string
+          id?: string
+          notes?: string | null
+          onboarding_request_id?: string | null
+          resolution_due_at: string
+          resolved_at?: string | null
+          responsavel_membro_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          afiliado_codigo?: string
+          afiliado_id?: string
+          canal?: string
+          categoria?: string
+          created_at?: string
+          criado_por_membro_id?: string | null
+          descricao?: string | null
+          escalated_at?: string | null
+          escalation_reason?: string | null
+          escola_nome?: string
+          first_responded_at?: string | null
+          first_response_due_at?: string
+          gravidade?: string
+          id?: string
+          notes?: string | null
+          onboarding_request_id?: string | null
+          resolution_due_at?: string
+          resolved_at?: string | null
+          responsavel_membro_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_support_tickets_afiliado_id_fkey"
+            columns: ["afiliado_id"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_support_tickets_criado_por_membro_id_fkey"
+            columns: ["criado_por_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_support_tickets_onboarding_request_id_fkey"
+            columns: ["onboarding_request_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_support_tickets_responsavel_membro_id_fkey"
+            columns: ["responsavel_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_tasks: {
+        Row: {
+          afiliado_codigo: string
+          completed_at: string | null
+          created_at: string
+          crm_lead_id: string | null
+          description: string | null
+          due_at: string | null
+          escola_id: string | null
+          id: string
+          membro_id: string | null
+          metadata: Json
+          onboarding_request_id: string | null
+          responsavel_membro_id: string | null
+          status: string
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          afiliado_codigo: string
+          completed_at?: string | null
+          created_at?: string
+          crm_lead_id?: string | null
+          description?: string | null
+          due_at?: string | null
+          escola_id?: string | null
+          id?: string
+          membro_id?: string | null
+          metadata?: Json
+          onboarding_request_id?: string | null
+          responsavel_membro_id?: string | null
+          status?: string
+          task_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          afiliado_codigo?: string
+          completed_at?: string | null
+          created_at?: string
+          crm_lead_id?: string | null
+          description?: string | null
+          due_at?: string | null
+          escola_id?: string | null
+          id?: string
+          membro_id?: string | null
+          metadata?: Json
+          onboarding_request_id?: string | null
+          responsavel_membro_id?: string | null
+          status?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_tasks_afiliado_codigo_fkey"
+            columns: ["afiliado_codigo"]
+            isOneToOne: false
+            referencedRelation: "afiliados"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "partner_tasks_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_onboarding_request_id_fkey"
+            columns: ["onboarding_request_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_tasks_responsavel_membro_id_fkey"
+            columns: ["responsavel_membro_id"]
+            isOneToOne: false
+            referencedRelation: "afiliado_membros"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -14208,39 +17525,57 @@ export type Database = {
       periodos_letivos: {
         Row: {
           ano_letivo_id: string
+          applied_at: string | null
+          applied_by: string | null
           created_at: string
           data_fim: string
           data_inicio: string
           escola_id: string
           id: string
           numero: number
+          offering_id: string | null
           peso: number | null
+          source_item_id: string | null
+          source_template_id: string | null
+          source_version: string | null
           tipo: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em: string | null
           updated_at: string | null
         }
         Insert: {
           ano_letivo_id: string
+          applied_at?: string | null
+          applied_by?: string | null
           created_at?: string
           data_fim: string
           data_inicio: string
           escola_id: string
           id?: string
           numero: number
+          offering_id?: string | null
           peso?: number | null
+          source_item_id?: string | null
+          source_template_id?: string | null
+          source_version?: string | null
           tipo: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em?: string | null
           updated_at?: string | null
         }
         Update: {
           ano_letivo_id?: string
+          applied_at?: string | null
+          applied_by?: string | null
           created_at?: string
           data_fim?: string
           data_inicio?: string
           escola_id?: string
           id?: string
           numero?: number
+          offering_id?: string | null
           peso?: number | null
+          source_item_id?: string | null
+          source_template_id?: string | null
+          source_version?: string | null
           tipo?: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em?: string | null
           updated_at?: string | null
@@ -14266,6 +17601,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_escola_estado_hoje"
             referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
           },
           {
             foreignKeyName: "periodos_letivos_escola_id_fkey1"
@@ -14301,6 +17650,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_financeiro_kpis_geral"
             referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "school_education_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_source_item_id_fkey"
+            columns: ["source_item_id"]
+            isOneToOne: false
+            referencedRelation: "calendario_template_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "calendario_templates"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -15328,6 +18698,211 @@ export type Database = {
           },
         ]
       }
+      school_education_offerings: {
+        Row: {
+          active_from: string
+          active_to: string | null
+          calendar_profile_id: string
+          classification_reason: string | null
+          classification_source: string | null
+          course_id: string | null
+          created_at: string
+          curriculum_preset_id: string | null
+          cycle: string | null
+          education_level: string
+          education_subsystem: string
+          escola_id: string
+          grades: string[]
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active_from?: string
+          active_to?: string | null
+          calendar_profile_id: string
+          classification_reason?: string | null
+          classification_source?: string | null
+          course_id?: string | null
+          created_at?: string
+          curriculum_preset_id?: string | null
+          cycle?: string | null
+          education_level: string
+          education_subsystem: string
+          escola_id: string
+          grades?: string[]
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active_from?: string
+          active_to?: string | null
+          calendar_profile_id?: string
+          classification_reason?: string | null
+          classification_source?: string | null
+          course_id?: string | null
+          created_at?: string
+          curriculum_preset_id?: string | null
+          cycle?: string | null
+          education_level?: string
+          education_subsystem?: string
+          escola_id?: string
+          grades?: string[]
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_education_offerings_calendar_profile_id_fkey"
+            columns: ["calendar_profile_id"]
+            isOneToOne: false
+            referencedRelation: "calendario_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_curriculum_preset_id_fkey"
+            columns: ["curriculum_preset_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_presets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "school_education_offerings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      school_notification_providers: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          daily_limit: number
+          display_name: string | null
+          id: string
+          is_experimental: boolean
+          monthly_limit: number
+          provider_type: string
+          school_id: string
+          session_name: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          daily_limit?: number
+          display_name?: string | null
+          id?: string
+          is_experimental?: boolean
+          monthly_limit?: number
+          provider_type: string
+          school_id: string
+          session_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          daily_limit?: number
+          display_name?: string | null
+          id?: string
+          is_experimental?: boolean
+          monthly_limit?: number
+          provider_type?: string
+          school_id?: string
+          session_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_notification_providers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_notification_providers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_notification_providers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "school_notification_providers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "school_notification_providers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       school_subjects: {
         Row: {
           conta_para_media_med: boolean
@@ -15401,6 +18976,104 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "curriculum_preset_subjects"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_workflow_configs: {
+        Row: {
+          academic_year_id: string | null
+          created_at: string
+          escola_id: string
+          grade_workflow: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          academic_year_id?: string | null
+          created_at?: string
+          escola_id: string
+          grade_workflow?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          academic_year_id?: string | null
+          created_at?: string
+          escola_id?: string
+          grade_workflow?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_workflow_configs_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_ano_letivo_preferido"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "school_workflow_configs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -17059,6 +20732,340 @@ export type Database = {
           },
         ]
       }
+      virada_importacao_linhas: {
+        Row: {
+          aluno_id: string | null
+          aplicado_em: string | null
+          chave: string | null
+          created_at: string
+          erros: string[]
+          escola_id: string
+          id: string
+          importacao_id: string
+          linha: number
+          matricula_id: string | null
+          normalized_data: Json | null
+          raw_data: Json
+          status: string
+        }
+        Insert: {
+          aluno_id?: string | null
+          aplicado_em?: string | null
+          chave?: string | null
+          created_at?: string
+          erros?: string[]
+          escola_id: string
+          id?: string
+          importacao_id: string
+          linha: number
+          matricula_id?: string | null
+          normalized_data?: Json | null
+          raw_data: Json
+          status: string
+        }
+        Update: {
+          aluno_id?: string | null
+          aplicado_em?: string | null
+          chave?: string | null
+          created_at?: string
+          erros?: string[]
+          escola_id?: string
+          id?: string
+          importacao_id?: string
+          linha?: number
+          matricula_id?: string | null
+          normalized_data?: Json | null
+          raw_data?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virada_importacao_linhas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_importacao_id_fkey"
+            columns: ["importacao_id"]
+            isOneToOne: false
+            referencedRelation: "virada_importacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "virada_importacao_linhas_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      virada_importacoes: {
+        Row: {
+          ano_letivo_origem: number
+          aplicado_em: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          checksum: string
+          created_at: string
+          criado_por: string
+          escola_id: string
+          id: string
+          idempotency_key: string
+          origem: string
+          resumo: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ano_letivo_origem: number
+          aplicado_em?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          checksum: string
+          created_at?: string
+          criado_por: string
+          escola_id: string
+          id?: string
+          idempotency_key: string
+          origem: string
+          resumo?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ano_letivo_origem?: number
+          aplicado_em?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          checksum?: string
+          created_at?: string
+          criado_por?: string
+          escola_id?: string
+          id?: string
+          idempotency_key?: string
+          origem?: string
+          resumo?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virada_importacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virada_importacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "virada_importacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "virada_importacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
+      waha_webhook_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          external_message_id: string | null
+          id: string
+          idempotency_key: string | null
+          payload: Json
+          processed_at: string | null
+          provider_id: string | null
+          school_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          external_message_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          payload?: Json
+          processed_at?: string | null
+          provider_id?: string | null
+          school_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          external_message_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          payload?: Json
+          processed_at?: string | null
+          provider_id?: string | null
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waha_webhook_events_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "school_notification_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waha_webhook_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waha_webhook_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waha_webhook_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "waha_webhook_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "waha_webhook_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       wizard_processos: {
         Row: {
           created_at: string | null
@@ -17136,6 +21143,69 @@ export type Database = {
       }
     }
     Views: {
+      avisos: {
+        Row: {
+          created_at: string | null
+          escola_id: string | null
+          id: string | null
+          origem: string | null
+          resumo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          escola_id?: string | null
+          id?: string | null
+          origem?: never
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          escola_id?: string | null
+          id?: string | null
+          origem?: never
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notices_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notices_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notices_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_admin_dashboard_counts"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notices_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_estado_hoje"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notices_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_kpis_geral"
+            referencedColumns: ["escola_id"]
+          },
+        ]
+      }
       escola_usuarios: {
         Row: {
           created_at: string | null
@@ -18357,6 +22427,38 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_financeiro_carteira_alunos: {
+        Row: {
+          aluno_id: string | null
+          ano_letivo: number | null
+          classe_id: string | null
+          curso_id: string | null
+          dias_maximo_atraso: number | null
+          escola_id: string | null
+          matricula_id: string | null
+          nome_aluno: string | null
+          nome_classe: string | null
+          nome_curso: string | null
+          nome_turma: string | null
+          numero_matricula: string | null
+          proximo_vencimento: string | null
+          qtd_mensalidades: number | null
+          qtd_mensalidades_atrasadas: number | null
+          qtd_mensalidades_pagas: number | null
+          qtd_mensalidades_pendentes: number | null
+          responsavel: string | null
+          status_financeiro: string | null
+          status_risco: string | null
+          telefone: string | null
+          turma_id: string | null
+          valor_em_aberto: number | null
+          valor_em_atraso: number | null
+          valor_pago_total: number | null
+          valor_previsto_total: number | null
+          vencimento_mais_antigo: string | null
+        }
+        Relationships: []
+      }
       vw_financeiro_cobrancas_diario: {
         Row: {
           dia: string | null
@@ -18382,8 +22484,40 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_financeiro_dashboard_ano: {
+        Row: {
+          alunos_em_dia: number | null
+          alunos_inadimplentes: number | null
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          data_referencia: string | null
+          escola_id: string | null
+          mensalidades_ativas: number | null
+          mensalidades_com_pagamento: number | null
+          mensalidades_em_dia: number | null
+          mensalidades_inadimplentes: number | null
+          mensalidades_pendentes: number | null
+          mensalidades_total: number | null
+          sync_status: string | null
+          sync_updated_at: string | null
+          total_inadimplente: number | null
+          total_pago: number | null
+          total_pendente: number | null
+        }
+        Relationships: []
+      }
       vw_financeiro_escola_dia: {
         Row: {
+          dia: string | null
+          escola_id: string | null
+          qtd_pagos: number | null
+          qtd_total: number | null
+        }
+        Relationships: []
+      }
+      vw_financeiro_escola_dia_ano: {
+        Row: {
+          ano_letivo: number | null
           dia: string | null
           escola_id: string | null
           qtd_pagos: number | null
@@ -18395,6 +22529,18 @@ export type Database = {
         Row: {
           aluno_id: string | null
           aluno_nome: string | null
+          dias_em_atraso: number | null
+          escola_id: string | null
+          valor_em_atraso: number | null
+        }
+        Relationships: []
+      }
+      vw_financeiro_inadimplencia_top_ano: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          ano_letivo: number | null
+          ano_letivo_id: string | null
           dias_em_atraso: number | null
           escola_id: string | null
           valor_em_atraso: number | null
@@ -18421,10 +22567,295 @@ export type Database = {
           escola_id: string | null
           inadimplencia_total: number | null
           mes_ref: string | null
+          pago_competencia_total: number | null
           previsto_total: number | null
           realizado_total: number | null
         }
         Relationships: []
+      }
+      vw_financeiro_kpis_mes_ano: {
+        Row: {
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          escola_id: string | null
+          inadimplencia_total: number | null
+          mes_ref: string | null
+          pago_competencia_total: number | null
+          previsto_total: number | null
+          realizado_total: number | null
+        }
+        Relationships: []
+      }
+      vw_financeiro_mensalidades_reconciliacao: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          ano_referencia: number | null
+          calendario_fim: string | null
+          calendario_inicio: string | null
+          data_vencimento: string | null
+          escola_id: string | null
+          matricula_ano_letivo: number | null
+          matricula_id: string | null
+          matricula_turma_id: string | null
+          mensalidade_ano_letivo: string | null
+          mensalidade_id: string | null
+          mensalidade_turma_id: string | null
+          mes_referencia: number | null
+          problema_principal: string | null
+          problemas: string[] | null
+          saldo: number | null
+          session_id: string | null
+          status: string | null
+          turma_nome: string | null
+          valor_pago_total: number | null
+          valor_previsto: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_financeiro_mensalidades_reconciliacao_assistida: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          ano_letivo: number | null
+          ano_letivo_id: string | null
+          ano_referencia: number | null
+          calendario_fim: string | null
+          calendario_inicio: string | null
+          data_vencimento: string | null
+          escola_id: string | null
+          matricula_ano_letivo: number | null
+          matricula_id: string | null
+          matricula_turma_id: string | null
+          mensalidade_ano_letivo: string | null
+          mensalidade_id: string | null
+          mensalidade_turma_id: string | null
+          mes_referencia: number | null
+          problema_principal: string | null
+          problemas: string[] | null
+          problemas_abertos: string[] | null
+          saldo: number | null
+          session_id: string | null
+          status: string | null
+          turma_nome: string | null
+          valor_pago_total: number | null
+          valor_previsto: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "view_admissao_oportunidades_lista_espera"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["matricula_turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_financeiro_missing_pricing_count: {
         Row: {
@@ -19424,6 +23855,20 @@ export type Database = {
             referencedColumns: ["session_id"]
           },
           {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
             foreignKeyName: "historico_snapshot_locks_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -19731,6 +24176,20 @@ export type Database = {
             referencedColumns: ["session_id"]
           },
           {
+            foreignKeyName: "periodos_letivos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_financeiro_mensalidades_reconciliacao_assistida"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
             foreignKeyName: "turmas_classe_id_fkey"
             columns: ["classe_id"]
             isOneToOne: false
@@ -19811,6 +24270,17 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_operacoes_dashboard_work: {
+        Row: {
+          classes_without_published_schedule: number | null
+          documents_pending: number | null
+          escola_id: string | null
+          failed_messages: number | null
+          first_class_without_published_schedule_id: string | null
+          refreshed_at: string | null
+        }
+        Relationships: []
+      }
       vw_pagamentos_pendentes: {
         Row: {
           aluno_id: string | null
@@ -19850,6 +24320,16 @@ export type Database = {
       }
       vw_pagamentos_status: {
         Row: {
+          escola_id: string | null
+          status: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      vw_pagamentos_status_ano: {
+        Row: {
+          ano_letivo: number | null
+          ano_letivo_id: string | null
           escola_id: string | null
           status: string | null
           total: number | null
@@ -19972,28 +24452,6 @@ export type Database = {
         }
         Relationships: []
       }
-      vw_risco_pedagogico_aluno: {
-        Row: {
-          absence_records_30d: number | null
-          aluno_id: string | null
-          attendance_rate_30d: number | null
-          attendance_records_30d: number | null
-          calculated_at: string | null
-          consecutive_absences: number | null
-          current_grade_rate: number | null
-          data_coverage: string | null
-          escola_id: string | null
-          grade_drop_points: number | null
-          matricula_id: string | null
-          previous_grade_rate: number | null
-          risk_level: string | null
-          risk_reasons: string[] | null
-          risk_score: number | null
-          terms_with_grades: number | null
-          turma_id: string | null
-        }
-        Relationships: []
-      }
       vw_relatorio_financeiro_escolar_capitacao_mensal: {
         Row: {
           ano_letivo: number | null
@@ -20036,6 +24494,28 @@ export type Database = {
           total_em_atraso: number | null
           total_parcial_em_aberto: number | null
           valor_unitario_medio: number | null
+        }
+        Relationships: []
+      }
+      vw_risco_pedagogico_aluno: {
+        Row: {
+          absence_records_30d: number | null
+          aluno_id: string | null
+          attendance_rate_30d: number | null
+          attendance_records_30d: number | null
+          calculated_at: string | null
+          consecutive_absences: number | null
+          current_grade_rate: number | null
+          data_coverage: string | null
+          escola_id: string | null
+          grade_drop_points: number | null
+          matricula_id: string | null
+          previous_grade_rate: number | null
+          risk_level: string | null
+          risk_reasons: string[] | null
+          risk_score: number | null
+          terms_with_grades: number | null
+          turma_id: string | null
         }
         Relationships: []
       }
@@ -20983,6 +25463,17 @@ export type Database = {
         }
         Returns: Json
       }
+      admissao_promover_pre_candidatura: {
+        Args: {
+          p_actor_user_id?: string
+          p_candidatura_id: string
+          p_escola_id: string
+          p_idempotency_key?: string
+          p_observacao?: string
+          p_turma_id: string
+        }
+        Returns: Json
+      }
       admissao_public_lookup_by_protocolo: {
         Args: { p_escola_id: string; p_protocolo: string }
         Returns: {
@@ -21080,6 +25571,10 @@ export type Database = {
           telefone: string
         }[]
       }
+      aluno_belongs_to_escola: {
+        Args: { p_aluno_id: string; p_escola_id: string }
+        Returns: boolean
+      }
       aluno_confirmar_rematricula: {
         Args: { p_matricula_id: string }
         Returns: {
@@ -21114,6 +25609,10 @@ export type Database = {
         }
         Returns: Json
       }
+      aplicar_virada_importacao: {
+        Args: { p_importacao_id: string }
+        Returns: Json
+      }
       aprovar_fecho_caixa: { Args: { p_fecho_caixa_id: string }; Returns: Json }
       aprovar_turmas:
         | {
@@ -21124,6 +25623,10 @@ export type Database = {
             Args: { p_escola_id: string; p_turma_ids: string[] }
             Returns: undefined
           }
+      aprovar_virada_importacao: {
+        Args: { p_importacao_id: string }
+        Returns: Json
+      }
       assert_course_class_range: {
         Args: { p_class_num: number; p_curriculum_key: string }
         Returns: undefined
@@ -21145,11 +25648,35 @@ export type Database = {
           professor_profile_id: string
         }[]
       }
+      attach_influencer_crm_lead_proposal: {
+        Args: {
+          p_codigo: string
+          p_file_name: string
+          p_file_path: string
+          p_lead_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       audit_redact_jsonb: {
         Args: { p_entity: string; p_payload: Json }
         Returns: Json
       }
+      audit_rematricula_integrity: {
+        Args: { p_ano_letivo_id?: string; p_escola_id: string }
+        Returns: {
+          check_name: string
+          details: Json
+          scope: string
+          severity: string
+          total: number
+        }[]
+      }
       audit_request_context: { Args: never; Returns: Json }
+      auto_assign_school_teachers_by_specialty: {
+        Args: { p_escola_id: string }
+        Returns: Json
+      }
       balcao_cancelar_pedido: {
         Args: { p_pedido_id: string; p_reason?: string }
         Returns: Json
@@ -21181,6 +25708,14 @@ export type Database = {
         Args: { p_notas: Json; p_regras: Json }
         Returns: number
       }
+      calcular_status_pedagogico: {
+        Args: {
+          p_escola_id: string
+          p_media_geral: number
+          p_qtd_negativas: number
+        }
+        Returns: string
+      }
       can_access: { Args: { eid: string }; Returns: boolean }
       can_access_formacao_backoffice: {
         Args: { p_escola_id: string }
@@ -21204,7 +25739,12 @@ export type Database = {
         Returns: boolean
       }
       can_manage_school: { Args: { p_escola_id: string }; Returns: boolean }
+      can_manage_school_notifications: {
+        Args: { p_school_id: string }
+        Returns: boolean
+      }
       can_professor_school: { Args: { p_escola_id: string }; Returns: boolean }
+      can_use_klasse_ai: { Args: { p_school_id: string }; Returns: boolean }
       canonicalize_matricula_status_text: {
         Args: { input: string }
         Returns: string
@@ -21229,6 +25769,63 @@ export type Database = {
         Returns: Json
       }
       check_super_admin_role: { Args: never; Returns: boolean }
+      claim_ai_usage_slot: {
+        Args: {
+          p_feature: string
+          p_prompt_template_key: string
+          p_school_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      claim_communication_outbox: {
+        Args: { p_limit?: number }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          cancelled_at: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          failed_at: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          message_type: string
+          metadata: Json
+          next_retry_at: string | null
+          provider: string
+          provider_message_id: string | null
+          queued_at: string | null
+          read_at: string | null
+          recipient_name: string | null
+          recipient_phone_hash: string | null
+          recipient_phone_masked: string | null
+          recipient_ref_id: string | null
+          recipient_type: string
+          requires_approval: boolean
+          retry_count: number
+          risk_level: string
+          school_id: string
+          sending_at: string | null
+          sent_at: string | null
+          source_entity_id: string | null
+          source_entity_type: string | null
+          source_module: string | null
+          status: Database["public"]["Enums"]["communication_outbox_status"]
+          template_key: string | null
+          title: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "communication_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_outbox_events: {
         Args: { p_limit?: number; p_topic?: string }
         Returns: {
@@ -21269,6 +25866,15 @@ export type Database = {
         Returns: Json
       }
       clone_academic_structure_v1: {
+        Args: {
+          p_escola_id: string
+          p_from_session_id: string
+          p_readjust_percent?: number
+          p_to_session_id: string
+        }
+        Returns: Json
+      }
+      clone_academic_structure_v2: {
         Args: {
           p_escola_id: string
           p_from_session_id: string
@@ -21321,6 +25927,10 @@ export type Database = {
         }
         Returns: number
       }
+      convert_influencer_crm_lead_to_onboarding: {
+        Args: { p_codigo: string; p_lead_id: string; p_session_id: string }
+        Returns: Json
+      }
       create_afiliado_admin: {
         Args: {
           p_codigo: string
@@ -21336,6 +25946,36 @@ export type Database = {
           id: string
           nome: string
         }[]
+      }
+      create_afiliado_membro_admin: {
+        Args: {
+          p_afiliado_id: string
+          p_ativo?: boolean
+          p_nome: string
+          p_pin: string
+        }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }[]
+      }
+      create_and_provision_escola_from_onboarding: {
+        Args: {
+          p_actor_id?: string
+          p_admin_email?: string
+          p_admin_nome?: string
+          p_admin_telefone?: string
+          p_endereco?: string
+          p_nif?: string
+          p_nome: string
+          p_plano?: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       create_audit_event: {
         Args: {
@@ -21377,6 +26017,114 @@ export type Database = {
           nome: string
         }[]
       }
+      create_influencer_crm_lead:
+        | {
+            Args: {
+              p_alunos_estimados: number
+              p_codigo: string
+              p_email: string
+              p_nome_contacto: string
+              p_nome_escola: string
+              p_plano_estimado: string
+              p_proxima_acao: string
+              p_proxima_acao_data?: string
+              p_segmento: string
+              p_session_id: string
+              p_telefone: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_alunos_estimados: number
+              p_codigo: string
+              p_email: string
+              p_marketing_lead_id?: string
+              p_nome_contacto: string
+              p_nome_escola: string
+              p_plano_estimado: string
+              p_proxima_acao: string
+              p_proxima_acao_data?: string
+              p_responsavel_membro_id?: string
+              p_segmento: string
+              p_session_id: string
+              p_taxa_ativacao?: number
+              p_telefone: string
+              p_trial_days?: number
+            }
+            Returns: Json
+          }
+      create_influencer_member_admin: {
+        Args: {
+          p_afiliado_id: string
+          p_ativo?: boolean
+          p_nome: string
+          p_pin: string
+        }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }[]
+      }
+      create_influencer_member_by_session: {
+        Args: {
+          p_ativo?: boolean
+          p_codigo: string
+          p_nome: string
+          p_pin: string
+          p_role?: string
+          p_session_id: string
+        }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          role: string
+          updated_at: string
+        }[]
+      }
+      create_influencer_partner_commission_payout: {
+        Args: {
+          p_codigo: string
+          p_commission_ids: string[]
+          p_receipt_file_name: string
+          p_receipt_file_path: string
+          p_receipt_file_size?: number
+          p_receipt_file_type?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      create_influencer_portal_session: {
+        Args: {
+          p_codigo: string
+          p_member_id: string
+          p_pin: string
+          p_ttl_minutes?: number
+        }
+        Returns: Json
+      }
+      create_influencer_support_ticket: {
+        Args: {
+          p_canal?: string
+          p_categoria?: string
+          p_codigo: string
+          p_descricao?: string
+          p_escola_nome?: string
+          p_gravidade?: string
+          p_onboarding_token?: string
+          p_responsavel_membro_id?: string
+          p_session_id: string
+          p_titulo?: string
+        }
+        Returns: Json
+      }
       create_month_partition: {
         Args: { month_start: string; tbl: string }
         Returns: undefined
@@ -21385,6 +26133,35 @@ export type Database = {
         Args: { month_start: string; tbl: string }
         Returns: undefined
       }
+      create_onboarding_doubt_by_token: {
+        Args: {
+          p_message: string
+          p_sender_name: string
+          p_step_code?: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      create_onboarding_upload_by_token:
+        | {
+            Args: {
+              p_created_by: string
+              p_file_path: string
+              p_step_code: string
+              p_token: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_created_by: string
+              p_criado_por_membro_id?: string
+              p_file_path: string
+              p_step_code: string
+              p_token: string
+            }
+            Returns: Json
+          }
       create_or_confirm_matricula: {
         Args: {
           p_aluno_id: string
@@ -21625,6 +26402,14 @@ export type Database = {
         Args: { p_curso_matriz_id?: string; p_escola_id: string }
         Returns: undefined
       }
+      cutover_ano_letivo_retroativo: {
+        Args: {
+          p_escola_id: string
+          p_from_session_id: string
+          p_to_session_id: string
+        }
+        Returns: Json
+      }
       cutover_ano_letivo_v1: {
         Args: {
           p_escola_id: string
@@ -21659,6 +26444,11 @@ export type Database = {
           p_valor_declarado_transferencia: number
         }
         Returns: Json
+      }
+      default_onboarding_implantation_checklist: { Args: never; Returns: Json }
+      delete_influencer_member_by_session: {
+        Args: { p_codigo: string; p_member_id: string; p_session_id: string }
+        Returns: boolean
       }
       emitir_documento_final: {
         Args: {
@@ -21702,6 +26492,14 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_k12_course_offering: {
+        Args: {
+          p_course_id: string
+          p_curriculum_preset_id: string
+          p_escola_id: string
+        }
+        Returns: string
+      }
       escola_has_feature: {
         Args: { p_escola_id: string; p_feature: string }
         Returns: boolean
@@ -21719,6 +26517,23 @@ export type Database = {
         Returns: undefined
       }
       fill_frequencias_periodo_letivo: { Args: never; Returns: undefined }
+      finalistas_concluir_arquivar: {
+        Args: {
+          p_escola_id: string
+          p_motivo?: string
+          p_reclassificacao_ids: string[]
+        }
+        Returns: Json
+      }
+      finalistas_matricular_novo_ciclo: {
+        Args: {
+          p_escola_id: string
+          p_motivo?: string
+          p_reclassificacao_ids: string[]
+          p_turma_destino_id: string
+        }
+        Returns: Json
+      }
       finalizar_matricula_anual: {
         Args: {
           p_escola_id: string
@@ -21735,6 +26550,17 @@ export type Database = {
           p_matricula_id: string
           p_motivo?: string
           p_status_override?: string
+        }
+        Returns: Json
+      }
+      finalizar_rematricula_balcao: {
+        Args: {
+          p_aluno_id: string
+          p_ano_letivo_id: string
+          p_destino_turma_id: string
+          p_escola_id: string
+          p_matricula_origem_id: string
+          p_pedido_id: string
         }
         Returns: Json
       }
@@ -22229,6 +27055,43 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      formacao_self_service_create_inscricao_internal: {
+        Args: {
+          p_bi_numero?: string
+          p_cohort_ref: string
+          p_email?: string
+          p_escola_slug: string
+          p_formando_user_id: string
+          p_nome: string
+          p_telefone?: string
+        }
+        Returns: {
+          bi_snapshot: string | null
+          cancelled_at: string | null
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          email_snapshot: string | null
+          escola_id: string
+          estado: string
+          formando_user_id: string
+          id: string
+          metadata: Json
+          modalidade: string
+          nome_snapshot: string | null
+          origem: string
+          status_pagamento: string
+          telefone_snapshot: string | null
+          updated_at: string
+          valor_cobrado: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "formacao_inscricoes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       formacao_self_service_precheck: {
         Args: {
           p_bi_numero: string
@@ -22345,6 +27208,10 @@ export type Database = {
         Args: { p_id?: string; p_nome: string }
         Returns: string
       }
+      generate_partner_commission_for_saas_payment: {
+        Args: { p_actor_id?: string; p_pagamento_id: string }
+        Returns: Json
+      }
       generate_unique_numero_login: {
         Args: {
           p_escola_id: string
@@ -22357,6 +27224,14 @@ export type Database = {
       gerar_historico_anual: {
         Args: { p_matricula_id: string }
         Returns: string
+      }
+      gerar_mapa_aproveitamento_turma: {
+        Args: {
+          p_escola_id: string
+          p_periodo_letivo_id?: string
+          p_turma_id: string
+        }
+        Returns: Json
       }
       gerar_mensalidades_lote:
         | {
@@ -22402,6 +27277,10 @@ export type Database = {
             }
             Returns: Json
           }
+      get_afiliado_member_portal: {
+        Args: { p_codigo: string; p_member_id: string; p_pin: string }
+        Returns: Json
+      }
       get_afiliado_portal: {
         Args: { p_codigo: string; p_pin: string }
         Returns: Json
@@ -22409,6 +27288,10 @@ export type Database = {
       get_afiliado_stats: { Args: { p_codigo: string }; Returns: Json }
       get_aluno_dossier: {
         Args: { p_aluno_id: string; p_escola_id: string }
+        Returns: Json
+      }
+      get_aluno_dossier_contextual: {
+        Args: { p_aluno_id: string; p_ano_letivo: number; p_escola_id: string }
         Returns: Json
       }
       get_aluno_timeline_360: {
@@ -22426,6 +27309,16 @@ export type Database = {
       get_config_impact: {
         Args: { p_ano_letivo: number; p_changes?: Json; p_escola_id: string }
         Returns: Json
+      }
+      get_conselho_turma_risco: {
+        Args: { p_escola_id: string; p_trimestre: number; p_turma_id: string }
+        Returns: {
+          aluno_id: string
+          aluno_nome: string
+          disciplina_nome: string
+          nota_final: number
+          numero_processo: string
+        }[]
       }
       get_curso_professor_responsavel_map: {
         Args: { p_curso_ids: string[]; p_escola_id: string }
@@ -22453,9 +27346,69 @@ export type Database = {
         }
         Returns: Json
       }
+      get_financeiro_carteira_alunos_for_current_user: {
+        Args: never
+        Returns: {
+          aluno_id: string
+          ano_letivo: number
+          classe_id: string
+          curso_id: string
+          dias_maximo_atraso: number
+          escola_id: string
+          matricula_id: string
+          nome_aluno: string
+          nome_classe: string
+          nome_curso: string
+          nome_turma: string
+          numero_matricula: string
+          proximo_vencimento: string
+          qtd_mensalidades: number
+          qtd_mensalidades_atrasadas: number
+          qtd_mensalidades_pagas: number
+          qtd_mensalidades_pendentes: number
+          responsavel: string
+          status_financeiro: string
+          status_risco: string
+          telefone: string
+          turma_id: string
+          valor_em_aberto: number
+          valor_em_atraso: number
+          valor_pago_total: number
+          valor_previsto_total: number
+          vencimento_mais_antigo: string
+        }[]
+      }
+      get_financeiro_mensalidades_reconciliacao_resumo: {
+        Args: { p_ano_letivo_id?: string; p_escola_id: string }
+        Returns: {
+          problema: string
+          saldo: number
+          total: number
+        }[]
+      }
       get_import_summary: { Args: { p_import_id: string }; Returns: Json }
+      get_influencer_crm_leads: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: Json
+      }
+      get_influencer_member_portal: {
+        Args: { p_codigo: string; p_member_id: string; p_pin: string }
+        Returns: Json
+      }
+      get_influencer_member_portal_by_session: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: Json
+      }
+      get_influencer_partner_commissions: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: Json
+      }
       get_influencer_portal: {
         Args: { p_codigo: string; p_pin: string }
+        Returns: Json
+      }
+      get_influencer_portal_session: {
+        Args: { p_codigo?: string; p_session_id: string }
         Returns: Json
       }
       get_metricas_acesso_alunos: {
@@ -22469,6 +27422,14 @@ export type Database = {
       }
       get_my_escola_id: { Args: never; Returns: string }
       get_my_escola_ids: { Args: never; Returns: string[] }
+      get_onboarding_public_handoff: {
+        Args: { p_token: string }
+        Returns: Json
+      }
+      get_onboarding_tracking_payload: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       get_outbox_status_summary: {
         Args: never
         Returns: {
@@ -22478,9 +27439,40 @@ export type Database = {
           total: number
         }[]
       }
+      get_pedagogico_prontidao_lancamentos: {
+        Args: { p_escola_id: string; p_trimestre: number; p_turma_id: string }
+        Returns: {
+          disciplina_nome: string
+          notas_lancadas: number
+          pendentes: number
+          percentual_lancado: number
+          professor_nome: string
+          tipo: string
+          total_alunos: number
+          turma_disciplina_id: string
+        }[]
+      }
       get_pending_turmas_count: {
         Args: { p_escola_id: string }
         Returns: number
+      }
+      get_pos_virada_pendencias: {
+        Args: {
+          p_destino_session_id: string
+          p_escola_id: string
+          p_origem_session_id: string
+        }
+        Returns: {
+          aluno_id: string
+          matricula_id: string
+          motivo: string
+          nome: string
+          reclassificacao_id: string
+          saldo: number
+          status_matricula: string
+          tipo: string
+          turma: string
+        }[]
       }
       get_professor_atribuicoes: {
         Args: never
@@ -22523,6 +27515,10 @@ export type Database = {
         Args: { p_escola_id?: string }
         Returns: string
       }
+      get_real_school_implantation_checklist: {
+        Args: { p_escola_id: string }
+        Returns: Json
+      }
       get_recent_cron_runs: {
         Args: { p_limit?: number }
         Returns: {
@@ -22532,6 +27528,10 @@ export type Database = {
           start_time: string
           status: string
         }[]
+      }
+      get_school_operational_readiness: {
+        Args: { p_ano_letivo?: number; p_escola_id: string }
+        Returns: Json
       }
       get_secretaria_caixa_hoje: {
         Args: { p_escola_id: string }
@@ -22581,6 +27581,18 @@ export type Database = {
           professor_email: string
           professor_nome: string
           turma_id: string
+        }[]
+      }
+      get_turma_notas_pendentes_detalhe: {
+        Args: { p_escola_id: string; p_trimestre: number; p_turma_id: string }
+        Returns: {
+          aluno_id: string
+          aluno_nome: string
+          disciplina_nome: string
+          numero_processo: string
+          professor_nome: string
+          professor_telefone: string
+          tipo_avaliacao: string
         }[]
       }
       get_turma_occupancy_history: {
@@ -22726,6 +27738,7 @@ export type Database = {
       is_staff_escola: { Args: { escola_uuid: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_super_or_global_admin: { Args: never; Returns: boolean }
+      is_turma_classe_exame: { Args: { p_turma_id: string }; Returns: boolean }
       lancar_notas_batch: {
         Args: {
           p_disciplina_id: string
@@ -22746,6 +27759,27 @@ export type Database = {
           codigo_ativacao: string
           enfileirado: boolean
           request_id: string
+        }[]
+      }
+      list_afiliado_membros_admin: {
+        Args: { p_afiliado_id: string }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }[]
+      }
+      list_afiliado_membros_public: {
+        Args: { p_codigo: string }
+        Returns: {
+          afiliado_codigo: string
+          afiliado_id: string
+          afiliado_nome: string
+          membro_id: string
+          membro_nome: string
         }[]
       }
       list_afiliados_admin: {
@@ -22770,6 +27804,43 @@ export type Database = {
           telefone: string
           user_id: string
         }[]
+      }
+      list_influencer_members_admin: {
+        Args: { p_afiliado_id: string }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }[]
+      }
+      list_influencer_members_by_session: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          role: string
+          updated_at: string
+        }[]
+      }
+      list_influencer_members_public: {
+        Args: { p_codigo: string }
+        Returns: {
+          afiliado_codigo: string
+          afiliado_id: string
+          afiliado_nome: string
+          membro_id: string
+          membro_nome: string
+        }[]
+      }
+      list_influencer_support_tickets: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: Json
       }
       list_influencers_admin: {
         Args: never
@@ -22799,6 +27870,27 @@ export type Database = {
           p_versao_id: string
         }
         Returns: undefined
+      }
+      log_onboarding_call_followup: {
+        Args: {
+          p_codigo: string
+          p_member_id: string
+          p_notes: string
+          p_onboarding_token: string
+          p_pin: string
+          p_step_code: string
+        }
+        Returns: Json
+      }
+      log_onboarding_call_followup_by_session: {
+        Args: {
+          p_codigo: string
+          p_notes: string
+          p_onboarding_token: string
+          p_session_id: string
+          p_step_code: string
+        }
+        Returns: Json
       }
       map_admin_activity_family: { Args: { p_action: string }; Returns: string }
       mark_outbox_event_failed: {
@@ -22874,6 +27966,14 @@ export type Database = {
         Args: { p_escola_id: string; p_matrix: Json; p_session_id: string }
         Returns: Json
       }
+      onboarding_implantation_checklist_complete: {
+        Args: { p_items: Json }
+        Returns: boolean
+      }
+      onboarding_step_sort_order: {
+        Args: { p_step_code: string }
+        Returns: number
+      }
       outbox_claim: {
         Args: { batch_size?: number; worker_id?: string }
         Returns: {
@@ -22907,6 +28007,34 @@ export type Database = {
       }
       outbox_requeue_stuck: { Args: never; Returns: undefined }
       partitions_info: { Args: never; Returns: Json }
+      partner_support_sla_interval: {
+        Args: { p_gravidade: string; p_kind: string }
+        Returns: string
+      }
+      partner_triage_onboarding_upload: {
+        Args: {
+          p_codigo: string
+          p_document_type?: string
+          p_note?: string
+          p_session_id: string
+          p_status: string
+          p_tracking_token: string
+          p_upload_id: string
+        }
+        Returns: Json
+      }
+      portal_user_can_access_aluno: {
+        Args: { p_aluno_id: string }
+        Returns: boolean
+      }
+      prepare_curricula_for_academic_year: {
+        Args: {
+          p_escola_id: string
+          p_from_session_id: string
+          p_to_session_id: string
+        }
+        Returns: number
+      }
       preview_apply_changes:
         | {
             Args: { p_ano_letivo: number; p_changes: Json; p_escola_id: string }
@@ -22945,10 +28073,25 @@ export type Database = {
           turma_id: string
         }[]
       }
-      provisionar_escola_from_onboarding: {
-        Args: { p_escola_id: string; p_request_id: string }
+      promover_aluno_pos_pagamento: {
+        Args: {
+          p_aluno_id: string
+          p_escola_id: string
+          p_from_session_id: string
+          p_to_session_id: string
+        }
         Returns: Json
       }
+      provisionar_escola_from_onboarding:
+        | { Args: { p_escola_id: string; p_request_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_actor_id?: string
+              p_escola_id: string
+              p_request_id: string
+            }
+            Returns: Json
+          }
       public_get_documento_by_token: {
         Args: { p_hash: string; p_public_id: string }
         Returns: {
@@ -22985,7 +28128,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      reclassificar_aluno_virada: {
+        Args: {
+          p_escola_id: string
+          p_matricula_id: string
+          p_motivo?: string
+          p_turma_destino_id: string
+        }
+        Returns: Json
+      }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
+      refresh_financeiro_read_models_ano: { Args: never; Returns: undefined }
       refresh_frequencia_status_periodo_deprecated: {
         Args: { p_periodo_letivo_id: string; p_turma_id: string }
         Returns: undefined
@@ -22999,8 +28152,10 @@ export type Database = {
       refresh_mv_boletim_por_matricula: { Args: never; Returns: undefined }
       refresh_mv_escola_cursos_stats: { Args: never; Returns: undefined }
       refresh_mv_escola_info: { Args: never; Returns: undefined }
+      refresh_mv_financeiro_carteira_alunos: { Args: never; Returns: undefined }
       refresh_mv_financeiro_dashboard: { Args: never; Returns: undefined }
       refresh_mv_financeiro_escola_dia: { Args: never; Returns: undefined }
+      refresh_mv_financeiro_escola_dia_ano: { Args: never; Returns: undefined }
       refresh_mv_financeiro_inadimplencia_top: {
         Args: never
         Returns: undefined
@@ -23026,6 +28181,7 @@ export type Database = {
       }
       refresh_mv_formacao_margem_por_edicao: { Args: never; Returns: undefined }
       refresh_mv_freq_por_turma_dia: { Args: never; Returns: undefined }
+      refresh_mv_operacoes_dashboard_work: { Args: never; Returns: undefined }
       refresh_mv_pagamentos_status: { Args: never; Returns: undefined }
       refresh_mv_professor_pendencias: { Args: never; Returns: undefined }
       refresh_mv_radar_inadimplencia: { Args: never; Returns: undefined }
@@ -23041,6 +28197,7 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      refresh_mv_risco_pedagogico_aluno: { Args: never; Returns: undefined }
       refresh_mv_secretaria_alunos_resumo: { Args: never; Returns: undefined }
       refresh_mv_secretaria_dashboard_counts: {
         Args: never
@@ -23112,11 +28269,55 @@ export type Database = {
           request_id: string
         }[]
       }
+      require_influencer_active_session: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: {
+          afiliado_id: string
+          codigo: string
+          member_id: string
+          member_name: string
+          member_role: string
+        }[]
+      }
+      require_influencer_owner_session: {
+        Args: { p_codigo: string; p_session_id: string }
+        Returns: {
+          afiliado_id: string
+          codigo: string
+          member_id: string
+          member_name: string
+          member_role: string
+        }[]
+      }
+      resolve_financeiro_mensalidade_reconciliacao: {
+        Args: {
+          p_acao: string
+          p_confirmacao?: boolean
+          p_escola_id: string
+          p_justificativa?: string
+          p_mensalidade_id: string
+          p_problema: string
+          p_target_matricula_id?: string
+        }
+        Returns: Json
+      }
       resync_matricula_counter: {
         Args: { p_escola_id: string }
         Returns: number
       }
       retry_outbox_event: { Args: { p_event_id: string }; Returns: undefined }
+      reverter_pagamento_realizado: {
+        Args: {
+          p_idempotency_key?: string
+          p_motivo: string
+          p_pagamento_id: string
+        }
+        Returns: Json
+      }
+      revoke_influencer_portal_session: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       safe_auth_uid: { Args: never; Returns: string }
       search_alunos_global: {
         Args: { p_escola_id: string; p_limit?: number; p_query: string }
@@ -23229,6 +28430,62 @@ export type Database = {
           telefone_responsavel: string
         }[]
       }
+      seed_onboarding_steps_v2: {
+        Args: {
+          p_created_at: string
+          p_onboarding_id: string
+          p_request_status?: string
+        }
+        Returns: undefined
+      }
+      set_communication_outbox_action: {
+        Args: { p_action: string; p_outbox_id: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          cancelled_at: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          failed_at: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          message_type: string
+          metadata: Json
+          next_retry_at: string | null
+          provider: string
+          provider_message_id: string | null
+          queued_at: string | null
+          read_at: string | null
+          recipient_name: string | null
+          recipient_phone_hash: string | null
+          recipient_phone_masked: string | null
+          recipient_ref_id: string | null
+          recipient_type: string
+          requires_approval: boolean
+          retry_count: number
+          risk_level: string
+          school_id: string
+          sending_at: string | null
+          sent_at: string | null
+          source_entity_id: string | null
+          source_entity_type: string | null
+          source_module: string | null
+          status: Database["public"]["Enums"]["communication_outbox_status"]
+          template_key: string | null
+          title: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "communication_outbox"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_curso_professor_responsavel: {
         Args: {
           p_actor_id?: string
@@ -23273,6 +28530,16 @@ export type Database = {
         Returns: undefined
       }
       sum_component_pesos: { Args: { p_componentes: Json }; Returns: number }
+      super_admin_reclassificar_aluno_turma: {
+        Args: {
+          p_matricula_id: string
+          p_motivo?: string
+          p_reprecificar_abertas?: boolean
+          p_reprecificar_pagas?: boolean
+          p_turma_destino_id: string
+        }
+        Returns: Json
+      }
       sync_escola_plano_from_assinatura: {
         Args: { p_escola_id: string }
         Returns: undefined
@@ -23280,6 +28547,22 @@ export type Database = {
       sync_formacao_fiscal_memberships_for_escola: {
         Args: { p_escola_id: string }
         Returns: undefined
+      }
+      sync_influencer_school_360_risk: {
+        Args: { p_codigo: string; p_items: Json; p_session_id: string }
+        Returns: Json
+      }
+      sync_onboarding_workflow_state: {
+        Args: { p_onboarding_id: string }
+        Returns: undefined
+      }
+      sync_reclassificacoes_virada: {
+        Args: {
+          p_destino_session_id: string
+          p_escola_id: string
+          p_origem_session_id: string
+        }
+        Returns: Json
       }
       tenant_profiles_by_ids: {
         Args: { p_user_ids: string[] }
@@ -23307,6 +28590,17 @@ export type Database = {
           nome: string
         }[]
       }
+      toggle_afiliado_membro_admin: {
+        Args: { p_ativo: boolean; p_member_id: string }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }[]
+      }
       toggle_influencer_admin: {
         Args: { p_ativo: boolean; p_id: string }
         Returns: {
@@ -23316,6 +28610,17 @@ export type Database = {
           email: string
           id: string
           nome: string
+        }[]
+      }
+      toggle_influencer_member_admin: {
+        Args: { p_ativo: boolean; p_member_id: string }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
         }[]
       }
       transferir_aluno_turma: {
@@ -23354,6 +28659,7 @@ export type Database = {
         Args: { p_escola_id: string; p_job_id: string }
         Returns: boolean
       }
+      turma_classe_numero: { Args: { p_turma_id: string }; Returns: number }
       turma_set_status_fecho: {
         Args: {
           p_escola_id: string
@@ -23374,6 +28680,88 @@ export type Database = {
       }
       update_import_configuration: {
         Args: { p_cursos_data: Json; p_import_id: string; p_turmas_data: Json }
+        Returns: Json
+      }
+      update_influencer_crm_lead_action: {
+        Args: {
+          p_codigo: string
+          p_interaction_note?: string
+          p_lead_id: string
+          p_proxima_acao: string
+          p_proxima_acao_data: string
+          p_responsavel_membro_id?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      update_influencer_crm_lead_commercial_terms: {
+        Args: {
+          p_alunos_estimados: number
+          p_codigo: string
+          p_commercial_status: string
+          p_contacto_financeiro?: Json
+          p_contacto_pedagogico?: Json
+          p_contacto_secretaria?: Json
+          p_curriculum_preset?: string
+          p_lead_id: string
+          p_mensalidade_kz: number
+          p_niveis_ensino?: string[]
+          p_plano_estimado: string
+          p_session_id: string
+          p_taxa_ativacao: number
+          p_trial_days: number
+        }
+        Returns: Json
+      }
+      update_influencer_crm_lead_stage: {
+        Args: {
+          p_codigo: string
+          p_etapa: string
+          p_lead_id: string
+          p_motivo_perda?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      update_influencer_member_by_session: {
+        Args: {
+          p_ativo?: boolean
+          p_codigo: string
+          p_member_id: string
+          p_nome?: string
+          p_pin?: string
+          p_role?: string
+          p_session_id: string
+        }
+        Returns: {
+          afiliado_id: string
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          role: string
+          updated_at: string
+        }[]
+      }
+      update_influencer_onboarding_implantation_checklist: {
+        Args: {
+          p_codigo: string
+          p_items: Json
+          p_session_id: string
+          p_tracking_token: string
+        }
+        Returns: Json
+      }
+      update_influencer_support_ticket: {
+        Args: {
+          p_codigo: string
+          p_escalation_reason?: string
+          p_note?: string
+          p_responsavel_membro_id?: string
+          p_session_id: string
+          p_status?: string
+          p_ticket_id: string
+        }
         Returns: Json
       }
       update_pedagogico_from_nota: {
@@ -23440,6 +28828,18 @@ export type Database = {
           preset_id: string
         }[]
       }
+      validate_onboarding_implantation_acceptance: {
+        Args: {
+          p_acceptance_notes?: string
+          p_acceptance_signed_at: string
+          p_acceptance_signed_by: string
+          p_acceptance_signed_role?: string
+          p_acceptance_term_file_path: string
+          p_actor_id?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       validate_presets_global: {
         Args: never
         Returns: {
@@ -23457,6 +28857,18 @@ export type Database = {
     Enums: {
       app_plan_tier: "essencial" | "profissional" | "premium"
       cobranca_status: "enviada" | "entregue" | "respondida" | "paga" | "falha"
+      communication_outbox_status:
+        | "draft"
+        | "review_required"
+        | "approved"
+        | "queued"
+        | "sending"
+        | "sent"
+        | "delivered"
+        | "read"
+        | "failed"
+        | "cancelled"
+        | "rejected"
       course_category:
         | "PRIMARIO"
         | "ESG_CICLO1"
@@ -23753,6 +29165,19 @@ export const Constants = {
     Enums: {
       app_plan_tier: ["essencial", "profissional", "premium"],
       cobranca_status: ["enviada", "entregue", "respondida", "paga", "falha"],
+      communication_outbox_status: [
+        "draft",
+        "review_required",
+        "approved",
+        "queued",
+        "sending",
+        "sent",
+        "delivered",
+        "read",
+        "failed",
+        "cancelled",
+        "rejected",
+      ],
       course_category: [
         "PRIMARIO",
         "ESG_CICLO1",

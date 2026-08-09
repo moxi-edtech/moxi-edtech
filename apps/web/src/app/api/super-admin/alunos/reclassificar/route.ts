@@ -206,7 +206,7 @@ export async function POST(request: Request) {
 
     const reprecificarAbertas = body?.reprecificarAbertas !== false;
     const reprecificarPagas = body?.reprecificarPagas === true;
-    const motivo = typeof body?.motivo === "string" && body.motivo.trim() ? body.motivo.trim().slice(0, 500) : null;
+    const motivo = typeof body?.motivo === "string" && body.motivo.trim() ? body.motivo.trim().slice(0, 500) : undefined;
 
     const { data, error } = await supabase.rpc("super_admin_reclassificar_aluno_turma", {
       p_matricula_id: matriculaId,

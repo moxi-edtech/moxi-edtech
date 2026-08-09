@@ -46,7 +46,12 @@ export async function GET(req: Request) {
     const { data: turmas } = turmaIds.length
       ? await (supabase as any).from("turmas").select("id,nome,turno").eq("escola_id", escolaId).in("id", turmaIds)
       : { data: [] };
-    const turmaMap = new Map((turmas ?? []).map((row: any) => [row.id, row]));
+    const turmaMap = new Map<string, { nome: string | null; turno: string | null }>(
+      (turmas ?? []).map((row: any) => [
+        row.id as string,
+        { nome: row.nome ?? null, turno: row.turno ?? null },
+      ] as const),
+    );
 
     const year = /^\d{4}$/.test(String(mensalidade.ano_letivo ?? ""))
       ? Number(mensalidade.ano_letivo)

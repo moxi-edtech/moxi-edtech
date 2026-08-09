@@ -112,7 +112,7 @@ export async function validateAiAccess(
     p_school_id: escolaId,
     p_user_id: userId,
     p_feature: feature,
-    p_prompt_template_key: promptTemplateKey || null,
+    p_prompt_template_key: promptTemplateKey || "",
   });
 
   if (rpcError) {

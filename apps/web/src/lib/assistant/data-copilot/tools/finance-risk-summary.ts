@@ -44,7 +44,7 @@ export const financeRiskSummaryTool: DataCopilotTool = {
 
     if (error) throw error;
 
-    const rows = (data ?? []) as RiskRow[];
+    const rows = (data ?? []) as unknown as RiskRow[];
     const debtors = count ?? rows.length;
     const sampleDebt = rows.reduce((sum, row) => sum + Number(row.valor_em_atraso ?? 0), 0);
     const maxDays = rows.reduce((max, row) => Math.max(max, Number(row.dias_em_atraso ?? 0)), 0);

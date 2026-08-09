@@ -26,7 +26,7 @@ export default function Page() {
       setError(null);
       try {
         const query = new URLSearchParams({ escolaId });
-        const anoLetivoId = searchParams.get("ano_letivo_id");
+        const anoLetivoId = searchParams?.get("ano_letivo_id");
         if (anoLetivoId) query.set("ano_letivo_id", anoLetivoId);
         const res = await fetch(`/api/financeiro/relatorios/pagamentos-status?${query.toString()}`, { cache: 'no-store' });
         if (!res.ok) {
