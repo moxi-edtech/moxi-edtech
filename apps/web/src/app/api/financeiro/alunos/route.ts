@@ -8,6 +8,18 @@ import { resolveAcademicYearContext } from '@/lib/academic-year/context';
 export const dynamic = 'force-dynamic';
 
 const ACTIVE_MATRICULA_STATUSES = new Set(['ativa', 'ativo']);
+const HISTORICAL_MATRICULA_STATUSES = new Set([
+  'ativa',
+  'ativo',
+  'concluida',
+  'concluido',
+  'encerrada',
+  'encerrado',
+  'finalizada',
+  'finalizado',
+  'transferida',
+  'transferido',
+]);
 const MENSALIDADES_BATCH_SIZE = 100;
 
 const chunk = <T,>(items: T[], size: number): T[][] => {
@@ -69,8 +81,7 @@ export async function GET(request: Request) {
           turma:turmas(nome)
         )
       `)
-      .eq('escola_id', escolaId)
-      .eq('status', 'ativo');
+      .eq('escola_id', escolaId);
 
     query = applyKf2ListInvariants(query, {
       defaultLimit: 1000,
@@ -89,7 +100,8 @@ export async function GET(request: Request) {
     const alunosComTurma = (alunos ?? [])
       .map((aluno: any) => {
         const matriculas = (Array.isArray(aluno.matriculas) ? aluno.matriculas : [])
-          .filter((matricula: any) => matricula.session_id === academicContext.anoLetivoId || Number(matricula.ano_letivo) === academicYear);
+          .filter((matricula: any) => matricula.session_id === academicContext.anoLetivoId || Number(matricula.ano_letivo) === academicYear)
+          .filter((matricula: any) => HISTORICAL_MATRICULA_STATUSES.has(String(matricula?.status ?? '').toLowerCase()));
         const matriculaAtiva =
           matriculas.find((matricula: any) => ACTIVE_MATRICULA_STATUSES.has(String(matricula?.status ?? '').toLowerCase())) ??
           matriculas[0];

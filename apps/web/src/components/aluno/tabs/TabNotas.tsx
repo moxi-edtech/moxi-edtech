@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
-import { Lock as LockIcon, FileText, ChevronRight, AlertCircle, Loader2 } from "lucide-react";
+import { Lock as LockIcon, FileText, ChevronRight, AlertCircle, Loader2, Calculator } from "lucide-react";
 import Link from "next/link";
+import { SimuladorNotasModal } from "@/components/aluno/academico/SimuladorNotasModal";
 
 type Disciplina = {
   id: string;
@@ -46,6 +47,7 @@ export function TabNotas() {
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [listaDisciplinas, setListaDisciplinas] = useState<ListaDisciplina[]>([]);
   const [loadingLista, setLoadingLista] = useState(true);
+  const [isSimuladorOpen, setIsSimuladorOpen] = useState(false);
 
   const query = studentId ? `?aluno=${studentId}` : "";
 
@@ -84,13 +86,22 @@ export function TabNotas() {
   return (
     <div className="space-y-6 pb-8">
       <div className="space-y-4">
-        <header className="flex items-center justify-between px-1">
+        <header className="flex flex-wrap items-center justify-between gap-2 px-1">
             <SectionTitle>Meu Boletim</SectionTitle>
-            {!loading && !isLiberado && (
-                <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-tight border border-amber-100">
-                    <LockIcon size={12} /> Acesso Restrito
-                </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSimuladorOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold transition-all border border-emerald-200 shadow-sm active:scale-95"
+              >
+                <Calculator size={14} className="text-emerald-600" /> Simulador de Aprovação
+              </button>
+              {!loading && !isLiberado && (
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-tight border border-amber-100">
+                      <LockIcon size={12} /> Acesso Restrito
+                  </span>
+              )}
+            </div>
         </header>
 
         {loading ? (
@@ -249,6 +260,12 @@ export function TabNotas() {
             </Button>
         </div>
       )}
+
+      <SimuladorNotasModal
+        isOpen={isSimuladorOpen}
+        onClose={() => setIsSimuladorOpen(false)}
+        disciplinas={disciplinas}
+      />
     </div>
   );
 }

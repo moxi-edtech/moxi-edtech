@@ -6,6 +6,19 @@ import { resolveAcademicYearContext } from '@/lib/academic-year/context';
 
 export const dynamic = 'force-dynamic';
 
+const HISTORICAL_MATRICULA_STATUSES = new Set([
+  'ativa',
+  'ativo',
+  'concluida',
+  'concluido',
+  'encerrada',
+  'encerrado',
+  'finalizada',
+  'finalizado',
+  'transferida',
+  'transferido',
+]);
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -42,7 +55,7 @@ export async function GET(request: Request) {
         curso:cursos(nome),
         capacidade_maxima,
         status_validacao,
-        alunos:matriculas(count)
+        matriculas(id, status)
       `)
       .eq('escola_id', escolaId)
       .eq('status_validacao', 'ativo')
@@ -63,7 +76,9 @@ export async function GET(request: Request) {
         anoLetivo: t.ano_letivo,
         cursoNome: Array.isArray(t.curso) ? t.curso[0]?.nome : t.curso?.nome || 'Não definido',
         capacidadeMaxima: t.capacidade_maxima,
-        alunosInscritos: t.alunos[0]?.count || 0,
+        alunosInscritos: Array.isArray(t.matriculas)
+          ? t.matriculas.filter((matricula: any) => HISTORICAL_MATRICULA_STATUSES.has(String(matricula?.status ?? '').toLowerCase())).length
+          : 0,
         statusValidacao: t.status_validacao,
     }));
 

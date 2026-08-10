@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  RefreshCw, UsersRound, BookOpen, UserCheck, Download,
+  RefreshCw, UsersRound, BookOpen, UserCheck, Download, Search,
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings,
   School, LayoutDashboard, GraduationCap, MapPin, X,
   AlertCircle, CheckCircle2, Lock, Unlock, ChevronLeft,
@@ -48,6 +48,8 @@ type Aluno = {
   status_financeiro?: "em_dia" | "atraso";
   saldo_pendente?:    number;
 };
+
+const EMPTY_ALUNOS: Aluno[] = [];
 
 type TurmaData = {
   turma: {
@@ -340,7 +342,12 @@ function AlunoRow({
       </td>
       <td className="px-5 py-3.5">
         <div className="min-w-0">
-          <p className="font-bold text-slate-800 truncate">{aluno.nome}</p>
+          <Link
+            href={profileHref}
+            className="font-bold text-slate-800 truncate hover:text-[#1F6B3B] hover:underline"
+          >
+            {aluno.nome}
+          </Link>
           <p className="text-[10px] text-slate-400">BI: {aluno.bi || "—"}</p>
         </div>
       </td>
@@ -366,9 +373,10 @@ function AlunoRow({
         <Link
           href={profileHref}
           title="Ver perfil do aluno"
-          className="inline-flex rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors opacity-0 group-hover:opacity-100"
+          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-[#1F6B3B] hover:text-[#1F6B3B]"
         >
           <MoreVertical size={15} />
+          <span className="hidden lg:inline">Perfil</span>
         </Link>
       </td>
     </tr>
@@ -473,6 +481,8 @@ export default function TurmaDetailClient({
   const [professoresDisponiveis, setProfessoresDisponiveis] = useState<ProfessorOption[]>([]);
   const [professoresLoading, setProfessoresLoading] = useState(false);
   const [professorSearch, setProfessorSearch] = useState("");
+  const [alunoSearch, setAlunoSearch] = useState("");
+  const [alunoFinanceiroFilter, setAlunoFinanceiroFilter] = useState<"todos" | "em_dia" | "atraso">("todos");
   const [selectedProfessorUserId, setSelectedProfessorUserId] = useState("");
   const [assigningProfessor, setAssigningProfessor] = useState(false);
   const [assignProfessorError, setAssignProfessorError] = useState<string | null>(null);
@@ -490,7 +500,20 @@ export default function TurmaDetailClient({
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
-  const alunos                        = data?.alunos ?? [];
+  const alunos                        = data?.alunos ?? EMPTY_ALUNOS;
+  const alunosFiltrados = useMemo(() => {
+    const termo = alunoSearch.trim().toLowerCase();
+
+    return alunos.filter((aluno) => {
+      const matchesSearch = !termo || [aluno.nome, aluno.bi, aluno.numero_matricula]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(termo));
+      const matchesFinanceiro = alunoFinanceiroFilter === "todos"
+        || aluno.status_financeiro === alunoFinanceiroFilter;
+
+      return matchesSearch && matchesFinanceiro;
+    });
+  }, [alunoFinanceiroFilter, alunoSearch, alunos]);
   const { escolaSlug } = useEscolaId();
   const escolaId = data?.turma.escola_id;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaId;
@@ -520,7 +543,7 @@ export default function TurmaDetailClient({
   }, [escolaId]);
 
   const alunosVirtualizer = useVirtualizer({
-    count:            alunos.length,
+    count:            alunosFiltrados.length,
     getScrollElement: () => alunosScrollRef.current,
     estimateSize:     () => 64,
     overscan:         6,
@@ -1423,10 +1446,36 @@ export default function TurmaDetailClient({
       {/* ── Content area ─────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Alunos */}
-        {activeTab === "alunos" && (
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-300">
-            <div className="overflow-x-auto">
+      {/* Alunos */}
+      {activeTab === "alunos" && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-300">
+          <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/70 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="relative w-full md:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={alunoSearch}
+                onChange={(event) => setAlunoSearch(event.target.value)}
+                placeholder="Pesquisar aluno, BI ou matrícula..."
+                aria-label="Pesquisar aluno dentro da turma"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#1F6B3B] focus:ring-4 focus:ring-[#1F6B3B]/10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="aluno-financeiro-filter" className="text-xs font-bold text-slate-500">Financeiro</label>
+              <select
+                id="aluno-financeiro-filter"
+                value={alunoFinanceiroFilter}
+                onChange={(event) => setAlunoFinanceiroFilter(event.target.value as typeof alunoFinanceiroFilter)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#1F6B3B]"
+              >
+                <option value="todos">Todos ({alunos.length})</option>
+                <option value="em_dia">Em dia</option>
+                <option value="atraso">Em atraso</option>
+              </select>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
               <div ref={alunosScrollRef} className="max-h-[600px] overflow-y-auto">
                 <table className="min-w-full text-sm">
                   <thead
@@ -1449,15 +1498,18 @@ export default function TurmaDetailClient({
                       height: alunosVirtualizer.getTotalSize(),
                     } : undefined}
                   >
-                    {alunos.length === 0 ? (
+                    {alunosFiltrados.length === 0 ? (
                       <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                         <td colSpan={5} className="py-16 text-center">
-                          <p className="text-sm text-slate-400">Nenhum aluno matriculado nesta turma.</p>
+                          <Search className="mx-auto mb-3 h-7 w-7 text-slate-300" />
+                          <p className="text-sm text-slate-400">
+                            {alunos.length === 0 ? "Nenhum aluno matriculado nesta turma." : "Nenhum aluno corresponde aos filtros."}
+                          </p>
                         </td>
                       </tr>
                     ) : (
                       alunosVirtualizer.getVirtualItems().map((vr) => {
-                        const aluno = alunos[vr.index];
+                        const aluno = alunosFiltrados[vr.index];
                         const profileHref = buildPortalHref(
                           escolaParam,
                           `${contextPrefix}/alunos/${aluno.aluno_id}`

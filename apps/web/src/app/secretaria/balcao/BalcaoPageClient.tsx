@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import { ResumoCaixaSecretaria } from "@/components/secretaria/ResumoCaixaSecretaria";
+import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -26,6 +27,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
               <p className="text-xs text-slate-500">Gestão de pagamentos e serviços</p>
             </div>
           </div>
+          <AcademicYearSelector escolaId={escolaId} />
         </div>
       </header>
 

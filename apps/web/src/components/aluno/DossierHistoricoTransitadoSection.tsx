@@ -10,6 +10,12 @@ type ClasseOption = {
   numero: number | null;
 };
 
+type AcademicYearOption = {
+  id: string;
+  label: string;
+  ativo: boolean;
+};
+
 type SavedNota = {
   id?: string;
   disciplina_id: string;
@@ -23,7 +29,9 @@ type SavedRecord = {
   classe_id: string;
   classe_nome: string;
   curso_nome: string | null;
+  ano_letivo_id: string;
   ano_letivo: number;
+  ano_letivo_label: string;
   created_at: string;
   updated_at: string;
   notas: SavedNota[];
@@ -32,7 +40,8 @@ type SavedRecord = {
 type EditorPayload = {
   classe_id: string;
   classe_nome: string;
-  ano_letivo: number;
+  ano_letivo_id: string;
+  ano_letivo_label: string;
   disciplinas: SavedNota[];
 };
 
@@ -45,14 +54,15 @@ async function fetchHistoricoTransitadoSummary(alunoId: string) {
 
   return {
     classes: Array.isArray(json.classes) ? (json.classes as ClasseOption[]) : [],
+    academicYears: Array.isArray(json.academic_years) ? (json.academic_years as AcademicYearOption[]) : [],
     records: Array.isArray(json.records) ? (json.records as SavedRecord[]) : [],
   };
 }
 
-async function fetchHistoricoTransitadoEditor(alunoId: string, classeId: string, anoLetivo: number) {
+async function fetchHistoricoTransitadoEditor(alunoId: string, classeId: string, anoLetivoId: string) {
   const params = new URLSearchParams({
     classe_id: classeId,
-    ano_letivo: String(anoLetivo),
+    ano_letivo_id: anoLetivoId,
   });
 
   const res = await fetch(`/api/secretaria/alunos/${alunoId}/historico-transitado?${params.toString()}`, {
@@ -94,10 +104,11 @@ export function DossierHistoricoTransitadoSection({
   const [saving, setSaving] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [classes, setClasses] = useState<ClasseOption[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
   const [records, setRecords] = useState<SavedRecord[]>([]);
   const [classeId, setClasseId] = useState("");
   const [classeNome, setClasseNome] = useState("");
-  const [anoLetivo, setAnoLetivo] = useState(String(new Date().getFullYear() - 1));
+  const [anoLetivoId, setAnoLetivoId] = useState("");
   const [disciplinas, setDisciplinas] = useState<SavedNota[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -111,12 +122,15 @@ export function DossierHistoricoTransitadoSection({
         const summary = await fetchHistoricoTransitadoSummary(alunoId);
         if (!active) return;
         setClasses(summary.classes);
+        setAcademicYears(summary.academicYears);
         setRecords(summary.records);
+        setAnoLetivoId(summary.records[0]?.ano_letivo_id ?? summary.academicYears.find((item) => item.ativo)?.id ?? summary.academicYears[0]?.id ?? "");
       } catch (err) {
         if (!active) return;
         const message = err instanceof Error ? err.message : "Erro desconhecido.";
         setFeedback(message);
         setClasses([]);
+        setAcademicYears([]);
         setRecords([]);
       } finally {
         if (active) setLoading(false);
@@ -131,8 +145,7 @@ export function DossierHistoricoTransitadoSection({
 
   useEffect(() => {
     if (!editorOpen) return;
-    const nextAnoLetivo = Number.parseInt(anoLetivo, 10);
-    if (!classeId || !Number.isFinite(nextAnoLetivo) || nextAnoLetivo < 1900 || nextAnoLetivo > 2100) {
+    if (!classeId || !anoLetivoId) {
       setClasseNome("");
       setDisciplinas([]);
       return;
@@ -144,7 +157,7 @@ export function DossierHistoricoTransitadoSection({
       setGridLoading(true);
       setFeedback(null);
       try {
-        const editor = await fetchHistoricoTransitadoEditor(alunoId, classeId, nextAnoLetivo);
+        const editor = await fetchHistoricoTransitadoEditor(alunoId, classeId, anoLetivoId);
         if (!active) return;
         if (!editor) {
           setClasseNome("");
@@ -169,7 +182,7 @@ export function DossierHistoricoTransitadoSection({
     return () => {
       active = false;
     };
-  }, [alunoId, anoLetivo, classeId, editorOpen]);
+  }, [alunoId, anoLetivoId, classeId, editorOpen]);
 
   const missingIndex = disciplinas.findIndex((disciplina) => disciplina.nota_final == null);
   const canSave =
@@ -181,9 +194,8 @@ export function DossierHistoricoTransitadoSection({
     missingIndex === -1;
 
   async function handleSave() {
-    const parsedAnoLetivo = Number.parseInt(anoLetivo, 10);
-    if (!classeId || !Number.isFinite(parsedAnoLetivo)) {
-      error("Dados incompletos", "Selecione a classe e o ano civil antes de salvar.");
+    if (!classeId || !anoLetivoId) {
+      error("Dados incompletos", "Selecione a classe e o ano letivo antes de salvar.");
       return;
     }
 
@@ -201,7 +213,7 @@ export function DossierHistoricoTransitadoSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           classe_id: classeId,
-          ano_letivo: parsedAnoLetivo,
+          ano_letivo_id: anoLetivoId,
           notas: disciplinas.map((disciplina) => ({
             disciplina_id: disciplina.disciplina_id,
             disciplina_nome: disciplina.disciplina_nome,
@@ -219,9 +231,10 @@ export function DossierHistoricoTransitadoSection({
       success("Histórico salvo", "As notas transitadas ficaram guardadas no perfil do aluno.");
       const summary = await fetchHistoricoTransitadoSummary(alunoId);
       setClasses(summary.classes);
+      setAcademicYears(summary.academicYears);
       setRecords(summary.records);
 
-      const editor = await fetchHistoricoTransitadoEditor(alunoId, classeId, parsedAnoLetivo);
+      const editor = await fetchHistoricoTransitadoEditor(alunoId, classeId, anoLetivoId);
       setClasseNome(editor?.classe_nome ?? "");
       setDisciplinas(Array.isArray(editor?.disciplinas) ? editor.disciplinas : []);
     } catch (err) {
@@ -237,15 +250,15 @@ export function DossierHistoricoTransitadoSection({
     setEditorOpen(true);
     setClasseNome("");
     setDisciplinas([]);
-    if (!anoLetivo) {
-      setAnoLetivo(String(new Date().getFullYear() - 1));
+    if (!anoLetivoId) {
+      setAnoLetivoId(academicYears.find((item) => item.ativo)?.id ?? academicYears[0]?.id ?? "");
     }
   }
 
   function handleEditRecord(record: SavedRecord) {
     setEditorOpen(true);
     setClasseId(record.classe_id);
-    setAnoLetivo(String(record.ano_letivo));
+    setAnoLetivoId(record.ano_letivo_id);
   }
 
   function updateNota(index: number, value: string) {
@@ -324,7 +337,7 @@ export function DossierHistoricoTransitadoSection({
               >
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    {record.classe_nome} · {record.ano_letivo}
+                    {record.classe_nome} · {record.ano_letivo_label}
                   </p>
                   <p className="text-xs text-slate-500">
                     {record.notas.length} disciplinas · Atualizado em {formatTimestamp(record.updated_at)}
@@ -366,15 +379,17 @@ export function DossierHistoricoTransitadoSection({
             </label>
 
             <label className="space-y-1 text-sm text-slate-700">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ano civil</span>
-              <input
-                type="number"
-                min={1900}
-                max={2100}
-                value={anoLetivo}
-                onChange={(event) => setAnoLetivo(event.target.value)}
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ano letivo</span>
+              <select
+                value={anoLetivoId}
+                onChange={(event) => setAnoLetivoId(event.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B]"
-              />
+              >
+                <option value="">Selecione o ano letivo</option>
+                {academicYears.map((year) => (
+                  <option key={year.id} value={year.id}>{year.label}{year.ativo ? " · atual" : ""}</option>
+                ))}
+              </select>
             </label>
 
             <button
@@ -395,7 +410,9 @@ export function DossierHistoricoTransitadoSection({
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Modo DataGrid</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">
-              {classeNome ? `${classeNome} · ${anoLetivo}` : "Escolha a classe e o ano para gerar a grelha"}
+              {classeNome
+                ? `${classeNome} · ${academicYears.find((item) => item.id === anoLetivoId)?.label ?? "Ano letivo"}`
+                : "Escolha a classe e o ano letivo para gerar a grelha"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Digite a nota e use <strong>Enter</strong> para avançar verticalmente. Faixa aceite: 0 a 20 valores.

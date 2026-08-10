@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { IdCard } from "lucide-react";
+import { IdCard, Calendar, FileCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import AvisosRecentesCard from "./AvisosRecentesCard";
@@ -239,21 +239,50 @@ export default function DashboardLoader() {
           const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
           router.push(buildPortalHref(escolaParam, "/aluno/identidade"));
         }}
-        className="group border-blue-100 bg-blue-50/30"
+        className="group border border-slate-100 bg-white hover:border-slate-200 p-3.5 transition-all"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              <IdCard className="h-6 w-6" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm group-hover:scale-105 transition-transform">
+              <IdCard className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">Identidade Digital</p>
-              <p className="text-xs text-slate-500">Acesse seu cartão de estudante e QR de validação.</p>
+              <p className="text-xs font-bold text-slate-900">Identidade Digital</p>
+              <p className="text-[11px] text-slate-500">Cartão de estudante e QR Code de acesso.</p>
             </div>
           </div>
-          <div className="rounded-full bg-white p-2 shadow-sm border border-blue-100 group-hover:translate-x-1 transition-transform">
-            <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          <div className="rounded-full bg-slate-50 p-1.5 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </AlunoCard>
+
+      {/* Card Minimalista de Próxima Avaliação (Contagem Regressiva) */}
+      <AlunoCard
+        onClick={() => {
+          const escolaParam = getEscolaParamFromPath(window.location.pathname) || "default";
+          router.push(buildPortalHref(escolaParam, "/aluno/horario"));
+        }}
+        className="group border border-slate-100 bg-white hover:border-slate-200 p-3.5 transition-all"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100/80 shadow-sm">
+              <FileCheck className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-slate-900">Prova de Matemática (NPP)</p>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-700">Faltam 3 dias</span>
+              </div>
+              <p className="text-[11px] text-slate-500">2º Trimestre • Sexta-feira às 08:00</p>
+            </div>
+          </div>
+          <div className="rounded-full bg-slate-50 p-1.5 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
             </svg>
           </div>
         </div>

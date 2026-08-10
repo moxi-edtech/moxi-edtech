@@ -112,7 +112,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `)
       .eq('turma_id', turmaId)
       .eq('escola_id', escolaId)
-      .in('status', ['ativa', 'ativo'])
+      .in('status', ['ativa', 'ativo', 'concluida', 'concluido', 'transferida', 'transferido'])
       .order('numero_chamada', { ascending: true });
 
     alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 50 });

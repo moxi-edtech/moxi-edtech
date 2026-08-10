@@ -17,6 +17,7 @@ import {
   Info,
   User,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -106,9 +107,9 @@ function getDocTipo(s: Servico): string {
 function getUnlockedMensalidadeIds(mensalidades: Mensalidade[], selectedIds: string[]): Set<string> {
   const sorted = [...mensalidades].sort((a, b) => {
     if (a.atrasada !== b.atrasada) return a.atrasada ? -1 : 1;
-    const mesA = a.referencia_mes ?? 0;
-    const mesB = b.referencia_mes ?? 0;
-    return mesA - mesB;
+    const competenciaA = (a.referencia_ano ?? 0) * 100 + (a.referencia_mes ?? 0);
+    const competenciaB = (b.referencia_ano ?? 0) * 100 + (b.referencia_mes ?? 0);
+    return competenciaA - competenciaB;
   });
 
   const unlocked = new Set<string>();
@@ -359,7 +360,7 @@ function useServicos(escolaId: string) {
 
 function useCarrinho() {
   const [itens, setItens] = useState<ItemCarrinho[]>([]);
-  const [metodo, setMetodo] = useState<MetodoPagamento>("tpa");
+  const [metodo, setMetodoState] = useState<MetodoPagamento>("tpa");
   const [detalhes, setDetalhesState] = useState({ referencia: "", evidencia_url: "", gateway_ref: "" });
   const [valorRecebido, setValorRecebido] = useState("");
 
@@ -385,6 +386,11 @@ function useCarrinho() {
   }, []);
 
   const total = useMemo(() => itens.reduce((acc, item) => acc + item.preco, 0), [itens]);
+  const setMetodo = useCallback((next: MetodoPagamento) => {
+    setMetodoState(next);
+    setValorRecebido(next === "cash" && total > 0 ? String(total) : "");
+  }, [total]);
+
   const valorNum = Number(valorRecebido) || 0;
   const troco = Math.max(0, valorNum - total);
 
@@ -575,7 +581,7 @@ function SecaoLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function AlunoCard({ aluno }: { aluno: AlunoDossier }) {
+function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAluno: () => void }) {
   const inadimplente = aluno.status_financeiro === "inadimplente";
   const semMatricula = aluno.status_financeiro === "sem_matricula";
 
@@ -592,9 +598,17 @@ function AlunoCard({ aluno }: { aluno: AlunoDossier }) {
       </div>
 
       <div className="pt-0.5">
-        <h2 className="text-base font-black text-slate-900 leading-snug break-words">
-          {aluno.nome}
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-black text-slate-900 leading-snug break-words">{aluno.nome}</h2>
+          <button
+            type="button"
+            onClick={onTrocarAluno}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-slate-500 hover:border-klasse-gold hover:text-slate-900"
+          >
+            <ArrowRightLeft className="h-3 w-3" />
+            Trocar
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
@@ -654,7 +668,9 @@ function Catalogo({
   rematriculaDebt,
   rematriculaAnoLabel,
   reconcilingPedido,
+  rematriculaError,
   onResolverPedido,
+  onResolverReconciliacao,
   onRematricula,
 }: {
   mensalidades: Mensalidade[];
@@ -682,7 +698,9 @@ function Catalogo({
   rematriculaDebt: { total: number; count: number } | null;
   rematriculaAnoLabel: string | null;
   reconcilingPedido: boolean;
+  rematriculaError: string | null;
   onResolverPedido: () => Promise<void>;
+  onResolverReconciliacao: () => Promise<void>;
   onRematricula: () => void;
 }) {
   const atrasadas = useMemo(() => mensalidades.filter((m) => m.atrasada), [mensalidades]);
@@ -739,6 +757,32 @@ function Catalogo({
                   {reconcilingPedido ? "A resolver pedido…" : "Resolver e iniciar operação correta"}
                 </button>
               </div>
+            ) : null}
+            {rematriculaState === "RECONCILIATION_REQUIRED" ? (
+              <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                  <div>
+                    <strong className="block">Pagamento recebido — falta concluir a matrícula</strong>
+                    <p className="mt-1 text-amber-900/80">
+                      Não cobre novamente. O sistema vai reconciliar o pagamento com a matrícula destino e emitir o comprovante.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onResolverReconciliacao()}
+                  disabled={reconcilingPedido}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {reconcilingPedido ? "A concluir reconciliação…" : "Concluir reconciliação"}
+                </button>
+              </div>
+            ) : null}
+            {rematriculaError ? (
+              <p role="alert" className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-800">
+                {rematriculaError}
+              </p>
             ) : null}
             {rematriculaDebt && rematriculaDebt.total > 0 && (
               <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
@@ -1165,16 +1209,29 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const { error } = useToast();
   const searchParams = useSearchParams();
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const [contextAcademicYearId, setContextAcademicYearId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(showSearch);
+
+  useEffect(() => {
+    if (academicYearId) return;
+
+    fetch("/api/academic-context", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => setContextAcademicYearId(payload?.context?.anoLetivoId ?? null))
+      .catch(() => setContextAcademicYearId(null));
+  }, [academicYearId]);
+
+  const effectiveAcademicYearId = academicYearId ?? contextAcademicYearId;
 
   const search = useAlunoSearch();
-  const dossier = useAlunoDossier(escolaId, academicYearId ?? null);
+  const dossier = useAlunoDossier(escolaId, effectiveAcademicYearId);
   const servicos = useServicos(escolaId);
 
   const rematricula = useRematriculaBalcao({
     escolaId,
     alunoId: dossier.aluno?.id ?? null,
     matriculaId: dossier.aluno?.matricula_id ?? null,
-    academicYearId: academicYearId ?? null,
+    academicYearId: effectiveAcademicYearId,
   });
   const carrinho = useCarrinho();
   const audit = useAuditTrail();
@@ -1192,7 +1249,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     escolaId,
     aluno: dossier.aluno,
     carrinho,
-    academicYearId: academicYearId ?? null,
+    academicYearId: effectiveAcademicYearId,
     onSuccess: onCheckoutSuccess,
   });
 
@@ -1213,7 +1270,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
     }
     search.clear();
     void dossier.load(selectedAlunoId);
-  }, [selectedAlunoId, academicYearId]);
+  }, [selectedAlunoId, effectiveAcademicYearId]);
 
   useEffect(() => {
     if (dossier.aluno?.id) void audit.fetch(dossier.aluno.id, dossier.aluno.matricula_id);
@@ -1222,10 +1279,19 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
 
   const handleSelectAluno = useCallback(
     (alunoId: string) => {
+      if (dossier.aluno?.id && dossier.aluno.id !== alunoId) carrinho.limpar();
       void dossier.load(alunoId);
+      setSearchOpen(false);
     },
-    [dossier]
+    [carrinho, dossier]
   );
+
+  const handleTrocarAluno = useCallback(() => {
+    carrinho.limpar();
+    dossier.clear();
+    search.clear();
+    setSearchOpen(true);
+  }, [carrinho, dossier, search]);
 
   const handleAdicionarMensalidade = useCallback(
     (m: Mensalidade) => {
@@ -1248,7 +1314,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   return (
     <>
       <div className="w-full">
-      {showSearch && (
+      {searchOpen && (
         <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <Search className="h-5 w-5 text-slate-400" />
@@ -1304,7 +1370,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
           <div className="xl:col-span-8">
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-              <AlunoCard aluno={dossier.aluno} />
+              <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} />
               <Catalogo
                 mensalidades={dossier.mensalidades}
                 servicos={servicos}
@@ -1328,7 +1394,9 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 rematriculaDebt={rematricula.debt}
                 rematriculaAnoLabel={rematricula.anoLetivo?.label ?? null}
                 reconcilingPedido={rematricula.reconciling}
+                rematriculaError={rematricula.apiError}
                 onResolverPedido={rematricula.resolveLegacyPedido}
+                onResolverReconciliacao={rematricula.resolveReconciliation}
                 onRematricula={rematricula.openModal}
               />
             </div>

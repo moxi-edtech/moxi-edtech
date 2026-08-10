@@ -14,12 +14,12 @@ const ParamsSchema = z.object({
 
 const QuerySchema = z.object({
   classe_id: z.string().uuid().optional(),
-  ano_letivo: z.coerce.number().int().min(1900).max(2100).optional(),
+  ano_letivo_id: z.string().uuid().optional(),
 });
 
 const BodySchema = z.object({
   classe_id: z.string().uuid(),
-  ano_letivo: z.number().int().min(1900).max(2100),
+  ano_letivo_id: z.string().uuid(),
   notas: z
     .array(
       z.object({
@@ -115,15 +115,21 @@ export async function GET(request: Request, context: RouteContext) {
     if (!routeContext.ok) return routeContext.response;
 
     const { supabase, escolaId } = routeContext;
-    const { classe_id: classeId, ano_letivo: anoLetivo } = parsedQuery.data;
+    const { classe_id: classeId, ano_letivo_id: anoLetivoId } = parsedQuery.data;
 
-    const [classesRes, recordsRes] = await Promise.all([
+    const [classesRes, sessionsRes, recordsRes] = await Promise.all([
       supabase
         .from("classes")
         .select("id, nome, numero, curso_id")
         .eq("escola_id", escolaId)
         .order("numero", { ascending: true, nullsFirst: false })
         .order("nome", { ascending: true }),
+      supabase
+        .from("anos_letivos")
+        .select("id, ano, ativo, data_inicio, data_fim")
+        .eq("escola_id", escolaId)
+        .order("data_inicio", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: true }),
       supabase
         .from("historico_transitado_anos")
         .select(
@@ -133,6 +139,7 @@ export async function GET(request: Request, context: RouteContext) {
             classe_nome,
             curso_id,
             curso_nome,
+            ano_letivo_id,
             ano_letivo,
             created_at,
             updated_at,
@@ -147,7 +154,7 @@ export async function GET(request: Request, context: RouteContext) {
         )
         .eq("escola_id", escolaId)
         .eq("aluno_id", params.data.id)
-        .order("ano_letivo", { ascending: false })
+        .order("ano_letivo_id", { ascending: false })
         .order("updated_at", { ascending: false }),
     ]);
 
@@ -158,6 +165,23 @@ export async function GET(request: Request, context: RouteContext) {
     if (recordsRes.error) {
       return NextResponse.json({ ok: false, error: recordsRes.error.message }, { status: 400 });
     }
+
+    if (sessionsRes.error) {
+      return NextResponse.json({ ok: false, error: sessionsRes.error.message }, { status: 400 });
+    }
+
+    const academicYears = (sessionsRes.data ?? []).map((row: any) => {
+      const startYear = row.data_inicio ? new Date(row.data_inicio).getUTCFullYear() : Number(row.ano);
+      const endYear = row.data_fim ? new Date(row.data_fim).getUTCFullYear() : startYear + 1;
+      return {
+        id: row.id as string,
+        ano: Number(row.ano),
+        label: `${startYear}/${endYear}`,
+        ativo: Boolean(row.ativo),
+        data_inicio: row.data_inicio as string | null,
+        data_fim: row.data_fim as string | null,
+      };
+    });
 
     const classes = (classesRes.data ?? []).map((row: any) => ({
       id: row.id as string,
@@ -172,7 +196,10 @@ export async function GET(request: Request, context: RouteContext) {
       classe_nome: row.classe_nome as string,
       curso_id: (row.curso_id as string | null) ?? null,
       curso_nome: (row.curso_nome as string | null) ?? null,
+      ano_letivo_id: row.ano_letivo_id as string,
       ano_letivo: Number(row.ano_letivo),
+      ano_letivo_label:
+        academicYears.find((item) => item.id === row.ano_letivo_id)?.label ?? `Ano letivo ${row.ano_letivo}`,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
       notas: sortNotas(Array.isArray(row.notas) ? row.notas : []).map((nota: any) => ({
@@ -187,7 +214,8 @@ export async function GET(request: Request, context: RouteContext) {
     let editor: null | {
       classe_id: string;
       classe_nome: string;
-      ano_letivo: number;
+      ano_letivo_id: string;
+      ano_letivo_label: string;
       disciplinas: Array<{
         disciplina_id: string;
         disciplina_nome: string;
@@ -196,7 +224,7 @@ export async function GET(request: Request, context: RouteContext) {
       }>;
     } = null;
 
-    if (classeId && typeof anoLetivo === "number") {
+    if (classeId && anoLetivoId) {
       const classeSelecionada = classes.find((item) => item.id === classeId);
       if (!classeSelecionada) {
         return NextResponse.json({ ok: false, error: "Classe inválida para esta escola." }, { status: 404 });
@@ -230,7 +258,11 @@ export async function GET(request: Request, context: RouteContext) {
 
       const obrigatorias = (matrizRows ?? []).filter((row: any) => row.obrigatoria !== false);
       const sourceRows = obrigatorias.length > 0 ? obrigatorias : matrizRows ?? [];
-      const existingRecord = records.find((item) => item.classe_id === classeId && item.ano_letivo === anoLetivo) ?? null;
+      const academicYear = academicYears.find((item) => item.id === anoLetivoId);
+      if (!academicYear) {
+        return NextResponse.json({ ok: false, error: "Ano letivo inválido para esta escola." }, { status: 404 });
+      }
+      const existingRecord = records.find((item) => item.classe_id === classeId && item.ano_letivo_id === anoLetivoId) ?? null;
       const existingMap = new Map(
         (existingRecord?.notas ?? []).map((nota) => [nota.disciplina_id, nota]),
       );
@@ -238,7 +270,8 @@ export async function GET(request: Request, context: RouteContext) {
       editor = {
         classe_id: classeId,
         classe_nome: classeSelecionada.nome,
-        ano_letivo: anoLetivo,
+        ano_letivo_id: academicYear.id,
+        ano_letivo_label: academicYear.label,
         disciplinas: sourceRows.map((row: any) => {
           const disciplinaId = row.disciplina_id as string;
           const existing = existingMap.get(disciplinaId);
@@ -256,6 +289,7 @@ export async function GET(request: Request, context: RouteContext) {
       ok: true,
       aluno_id: params.data.id,
       classes,
+      academic_years: academicYears,
       records,
       editor,
     });
@@ -281,13 +315,24 @@ export async function POST(request: Request, context: RouteContext) {
     if (!routeContext.ok) return routeContext.response;
 
     const { supabase, escolaId } = routeContext;
-    const { classe_id, ano_letivo, notas } = parsedBody.data;
+    const { classe_id, ano_letivo_id, notas } = parsedBody.data;
+
+    const { data: academicYear, error: academicYearError } = await supabase
+      .from("anos_letivos")
+      .select("id, ano")
+      .eq("id", ano_letivo_id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+
+    if (academicYearError || !academicYear) {
+      return NextResponse.json({ ok: false, error: "Ano letivo inválido para esta escola." }, { status: 400 });
+    }
 
     const { data, error } = await supabase.rpc("upsert_historico_transitado", {
       p_escola_id: escolaId,
       p_aluno_id: params.data.id,
       p_classe_id: classe_id,
-      p_ano_letivo: ano_letivo,
+      p_ano_letivo: Number(academicYear.ano),
       p_notas: notas,
     });
 

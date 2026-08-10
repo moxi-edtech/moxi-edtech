@@ -47,6 +47,8 @@ export const K12_OPERACOES_PRIMARY_ROLE = 'admin_financeiro' as const satisfies 
 export const K12_OPERACOES_ROLE_GROUP = [
   ...K12_ADMIN_ROLE_GROUP,
   ...K12_SECRETARIA_ROLE_GROUP,
+  'financeiro',
+  'secretaria_financeiro',
   'admin_financeiro',
   'admin_secretaria',
 ] as const satisfies readonly PapelEscola[]

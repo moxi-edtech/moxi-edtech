@@ -4,13 +4,15 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
+import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const Body = z.object({
   pedido_id: z.string().uuid(),
-  action: z.enum(["associate", "cancel"]).default("associate"),
+  action: z.enum(["associate", "cancel", "complete"]).default("associate"),
   ano_letivo_id: z.string().uuid().optional(),
 });
 
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
     const authz = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: ["secretaria", "secretaria_financeiro", "financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
     });
     if (authz.error) return authz.error;
 
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
 
     const { data: pedido } = await supabase
       .from("servico_pedidos")
-      .select("id, status, servico_codigo, contexto")
+      .select("id, status, servico_codigo, contexto, aluno_id, matricula_id")
       .eq("id", parsed.data.pedido_id)
       .eq("escola_id", escolaId)
       .maybeSingle();
@@ -43,6 +45,76 @@ export async function POST(request: Request) {
     }
     if (pedido.status !== "pending_payment") {
       return NextResponse.json({ ok: false, error: "Este pedido já não está pendente", code: "PEDIDO_NOT_PENDING" }, { status: 409 });
+    }
+
+    if (parsed.data.action === "complete") {
+      if (pedido.contexto?.origem !== "rematricula_balcao" || pedido.contexto?.ano_letivo_id == null) {
+        return NextResponse.json({ ok: false, error: "Este pedido não tem contexto suficiente para reconciliação", code: "PEDIDO_CONTEXT_INVALID" }, { status: 409 });
+      }
+      if (!pedido.aluno_id) {
+        return NextResponse.json({ ok: false, error: "Aluno do pedido não encontrado", code: "PEDIDO_STUDENT_NOT_FOUND" }, { status: 404 });
+      }
+
+      const { data: pagamentos } = await supabase
+        .from("pagamentos")
+        .select("id, status, valor_pago, meta")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", pedido.aluno_id)
+        .in("status", ["settled", "confirmed", "paid", "succeeded"]);
+      const pagamentoConfirmado = (pagamentos ?? []).find(
+        (pagamento: any) => pagamento.meta?.pedido_id === pedido.id,
+      );
+      if (!pagamentoConfirmado) {
+        return NextResponse.json({ ok: false, error: "Não foi encontrado um pagamento liquidado para este pedido", code: "PAYMENT_NOT_SETTLED" }, { status: 409 });
+      }
+
+      const academicContext = await resolveAcademicYearContext(supabase, {
+        userId: user.id,
+        requestedAcademicYearId: String(pedido.contexto.ano_letivo_id),
+        operation: "WRITE",
+      });
+      const destinoTurmaId = String(pedido.contexto.destino_turma_id ?? "");
+      if (!destinoTurmaId) {
+        return NextResponse.json({ ok: false, error: "Turma destino não encontrada no pedido", code: "DESTINATION_CLASS_REQUIRED" }, { status: 409 });
+      }
+
+      const { data: finalizacao, error: finalizacaoError } = await supabase.rpc("finalizar_rematricula_balcao", {
+        p_escola_id: escolaId,
+        p_aluno_id: pedido.aluno_id,
+        p_matricula_origem_id: pedido.matricula_id,
+        p_ano_letivo_id: academicContext.anoLetivoId,
+        p_destino_turma_id: destinoTurmaId,
+        p_pedido_id: pedido.id,
+      });
+      if (finalizacaoError || !finalizacao?.ok) {
+        return NextResponse.json({ ok: false, error: finalizacaoError?.message || finalizacao?.erro || "Não foi possível concluir a matrícula", code: "RECONCILIATION_FAILED" }, { status: 409 });
+      }
+
+      const comprovante = await emitirComprovanteMatricula({
+        supabase,
+        escolaId,
+        matriculaId: String(finalizacao.matricula_id),
+        dataHoraEfetivacao: new Date().toISOString(),
+        createdBy: user.id,
+        audit: { portal: "secretaria", acao: "REMATRICULA_RECONCILIADA_COMPROVANTE" },
+      });
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "REMATRICULA_BALCAO_RECONCILIADA",
+        entity: "servico_pedidos",
+        entityId: pedido.id,
+        details: {
+          aluno_id: pedido.aluno_id,
+          matricula_id: finalizacao.matricula_id,
+          pagamento_id: pagamentoConfirmado.id,
+          ano_letivo_id: academicContext.anoLetivoId,
+        },
+      });
+      if (!comprovante.ok) {
+        return NextResponse.json({ ok: false, error: "Rematrícula reconciliada, mas o comprovante precisa de emissão.", code: "DOCUMENT_PENDING", pedido_id: pedido.id, rematricula: finalizacao, comprovante }, { status: 202 });
+      }
+      return NextResponse.json({ ok: true, pedido_id: pedido.id, rematricula: finalizacao, comprovante });
     }
     if (pedido.contexto && Object.keys(pedido.contexto).length > 0) {
       return NextResponse.json({ ok: false, error: "Este pedido tem contexto e deve ser reconciliado pelo fluxo financeiro", code: "PEDIDO_CONTEXTUAL" }, { status: 409 });

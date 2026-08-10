@@ -265,15 +265,17 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
   // --- Filtering ---
   const turmasProcessadas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return data.turmas;
+
     return data.turmas.filter(t => {
-      if (busca) {
-        const matchTurma = t.nome.toLowerCase().includes(busca.toLowerCase());
-        const matchAluno = data.alunos.some(a => 
-          a.turmaId === t.id && a.nome.toLowerCase().includes(busca.toLowerCase())
-        );
-        return matchTurma || matchAluno;
-      }
-      return true;
+      const matchTurma = t.nome.toLowerCase().includes(termo);
+      const matchAluno = data.alunos.some(a =>
+        a.turmaId === t.id && [a.nome, a.numeroEstudante, a.bi]
+          .filter(Boolean)
+          .some(value => String(value).toLowerCase().includes(termo))
+      );
+      return matchTurma || matchAluno;
     });
   }, [data.turmas, data.alunos, busca]);
 
@@ -474,7 +476,15 @@ const TurmasAlunosFinanceiro: React.FC = () => {
           turmasProcessadas.map(turma => {
             const stats = getResumoFinanceiro(turma.id);
             const isExpanded = expandedTurmas.includes(turma.id) || busca.length > 0;
-            const alunosFiltrados = data.alunos.filter(a => a.turmaId === turma.id);
+            const termo = busca.trim().toLowerCase();
+            const matchTurma = termo.length > 0 && turma.nome.toLowerCase().includes(termo);
+            const alunosFiltrados = data.alunos.filter(a => {
+              if (a.turmaId !== turma.id) return false;
+              if (!termo || matchTurma) return true;
+              return [a.nome, a.numeroEstudante, a.bi]
+                .filter(Boolean)
+                .some(value => String(value).toLowerCase().includes(termo));
+            });
 
             // Se filtro ativo, esconde turmas "limpas"
             if (filtroStatus === 'inadimplentes' && stats.atrasadas === 0) return null;
@@ -580,7 +590,13 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                     {aluno.nome.charAt(0)}
                                   </div>
                                   <div>
-                                    <div className="font-bold text-slate-700">{aluno.nome}</div>
+                                    <Link
+                                      href={buildPortalHref(escolaParam, `/secretaria/alunos/${aluno.id}`)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="font-bold text-slate-700 hover:text-[#1F6B3B] hover:underline"
+                                    >
+                                      {aluno.nome}
+                                    </Link>
                                     <div className="text-[10px] text-slate-400 font-mono">
                                       ID: {aluno.numeroEstudante || 'N/A'}
                                     </div>
@@ -598,7 +614,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                 {aluno.valorEmDivida > 0 ? formatCurrency(aluno.valorEmDivida) : '-'}
                               </td>
                               <td className="px-6 py-4 pr-8 text-right">
-                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                   {/* Botão Pagar: Dourado (Ação) */}
                                   <button 
                                     title="Ver Extrato"
@@ -624,11 +640,12 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   </button>
                                   {/* Botão Perfil: Slate (Neutro) */}
                                   <Link
-                                    href={buildPortalHref(escolaParam, `/admin/alunos/${aluno.id}`)}
-                                    title="Ver Perfil Completo"
-                                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                                    href={buildPortalHref(escolaParam, `/secretaria/alunos/${aluno.id}`)}
+                                    title="Ver perfil completo"
+                                    className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
                                   >
                                     <ArrowUpRight className="w-4 h-4" />
+                                    <span className="hidden lg:inline">Perfil</span>
                                   </Link>
                                 </div>
                               </td>

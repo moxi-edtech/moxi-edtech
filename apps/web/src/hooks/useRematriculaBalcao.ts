@@ -315,6 +315,28 @@ export function useRematriculaBalcao(opts: {
     }
   }, [anoLetivo?.id, anoLetivo?.label, cardState, fetchStatus, pedido?.id]);
 
+  const resolveReconciliation = useCallback(async () => {
+    if (!pedido?.id || cardState !== "RECONCILIATION_REQUIRED") return;
+    setReconciling(true);
+    setApiError(null);
+    try {
+      const response = await fetch("/api/secretaria/balcao/rematriculas/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pedido_id: pedido.id, action: "complete" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 202) {
+        throw new Error(data.error || "Não foi possível concluir a reconciliação.");
+      }
+      await fetchStatus();
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Não foi possível concluir a reconciliação.");
+    } finally {
+      setReconciling(false);
+    }
+  }, [cardState, fetchStatus, pedido?.id]);
+
   // Reset detalhes when payment method changes
   const setMetodo = useCallback((m: MetodoPagamento) => {
     setMetodoState(m);
@@ -409,6 +431,7 @@ export function useRematriculaBalcao(opts: {
     destinoTurmaId,
     reconciling,
     resolveLegacyPedido,
+    resolveReconciliation,
 
     // Turmas
     turmas,
