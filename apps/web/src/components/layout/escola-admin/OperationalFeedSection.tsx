@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity, ArrowRight, AlertTriangle, CheckCircle2, Eye, ExternalLink } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { familyBadgeClasses, familyLabel, toFeedSubline, type ActivityFeedItem } from "@/lib/admin/activityFeed";
@@ -40,6 +40,47 @@ function formatTime(iso: string): string {
   if (Number.isNaN(dt.getTime())) return "--:--";
   return dt.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
 }
+
+function getActivityAction(item: ActivityFeedItem, escolaParam: string) {
+  const payload = (item.payload || {}) as Record<string, unknown>;
+  const turmaId = typeof payload.turma_id === "string" ? payload.turma_id : null;
+  const avaliacaoId = typeof payload.avaliacao_id === "string" ? payload.avaliacao_id : null;
+
+  if (item.event_type === "NOTA_LANCADA_BATCH" && turmaId) {
+    const params = new URLSearchParams({ turma_id: turmaId });
+    if (avaliacaoId) params.set("avaliacao_id", avaliacaoId);
+    return {
+      href: buildPortalHref(escolaParam, `/admin/notas?${params.toString()}`),
+      label: "Ver pauta",
+    };
+  }
+
+  if (item.event_type === "PAUTA_FECHADA" && turmaId) {
+    return {
+      href: buildPortalHref(escolaParam, `/admin/notas?turma_id=${encodeURIComponent(turmaId)}`),
+      label: "Ver pauta fechada",
+    };
+  }
+
+  return null;
+}
+
+function getActivityPriority(item: ActivityFeedItem): "urgente" | "importante" | "informativa" {
+  const payload = (item.payload || {}) as Record<string, unknown>;
+  if (payload.critical === true || item.event_type.includes("ERRO") || item.event_type.includes("FALHA")) {
+    return "urgente";
+  }
+  if (["NOTA_LANCADA_BATCH", "PAUTA_FECHADA", "PAGAMENTO_REGISTRADO", "ADMISSAO_CONVERTIDA_MATRICULA"].includes(item.event_type)) {
+    return "importante";
+  }
+  return "informativa";
+}
+
+const priorityStyles = {
+  urgente: "bg-rose-50 text-rose-700 ring-rose-200",
+  importante: "bg-klasse-gold-50 text-klasse-gold-700 ring-klasse-gold-200",
+  informativa: "bg-slate-50 text-slate-500 ring-slate-200",
+} as const;
 
 function ActivityPayloadDetails({ item }: { item: ActivityFeedItem }) {
   const [showRaw, setShowRaw] = useState(false);
@@ -107,6 +148,24 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
     portalBase === "operacoes" ? operationalFeed : adminFeed;
   const [selectedItem, setSelectedAction] = useState<ActivityFeedItem | null>(null);
   const [viewType, setViewType] = useState<"validate" | "details">("details");
+  const [newItem, setNewItem] = useState<ActivityFeedItem | null>(null);
+  const [newCount, setNewCount] = useState(0);
+  const knownIdsRef = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+    const currentIds = new Set(items.map((item) => item.id));
+    if (!knownIdsRef.current) {
+      knownIdsRef.current = currentIds;
+      return;
+    }
+    const added = items.filter((item) => !knownIdsRef.current?.has(item.id));
+    if (added.length > 0) {
+      setNewItem(added[0]);
+      setNewCount((count) => count + added.length);
+    }
+    knownIdsRef.current = currentIds;
+  }, [items, loading]);
 
   const handleAction = (item: ActivityFeedItem, type: "validate" | "details") => {
     setViewType(type);
@@ -139,6 +198,36 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
         </Link>
       </header>
 
+      {newItem && (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-widest text-klasse-green">
+              Nova actividade{newCount > 1 ? ` · ${newCount} novidades` : ""}
+            </p>
+            <p className="truncate text-sm font-bold text-slate-900">{newItem.headline}</p>
+            <p className="truncate text-xs text-slate-500">{toFeedSubline(newItem) || "Acção registada no sistema."}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {getActivityAction(newItem, escolaParam) && (
+              <Link
+                href={getActivityAction(newItem, escolaParam)!.href}
+                onClick={() => { setNewItem(null); setNewCount(0); }}
+                className="rounded-lg bg-klasse-green px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-klasse-green/90"
+              >
+                {getActivityAction(newItem, escolaParam)!.label}
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => { setNewItem(null); setNewCount(0); }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-600 hover:bg-slate-50"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      )}
+
       {realtimeState === "polling" && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold uppercase text-amber-700">
           <AlertTriangle className="h-3.5 w-3.5" />
@@ -165,6 +254,8 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
           {items.slice(0, 8).map((item) => {
             const isDocument = item.event_family === "documentos";
             const canValidate = isDocument && item.event_type?.includes("enviado");
+            const activityAction = getActivityAction(item, escolaParam);
+            const priority = getActivityPriority(item);
 
             return (
               <li key={item.id} className="group rounded-xl border border-slate-50 bg-white p-3 shadow-sm transition-all hover:border-slate-200 hover:shadow-md">
@@ -180,12 +271,15 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                         {familyLabel(item.event_family)}
                       </span>
                       <p className="truncate text-sm font-bold text-slate-900 group-hover:text-klasse-green transition-colors">{item.headline}</p>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ring-1 ${priorityStyles[priority]}`}>
+                        {priority}
+                      </span>
                     </div>
                     {toFeedSubline(item) && (
                       <p className="truncate text-xs font-medium text-slate-500 mb-3">{toFeedSubline(item)}</p>
                     )}
 
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex flex-wrap items-center gap-2 transition-opacity">
                       {canValidate && (
                         <Button 
                           variant="secondary" 
@@ -195,6 +289,14 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
                         >
                           <CheckCircle2 className="mr-1.5 h-3 w-3" /> Validar Rápido
                         </Button>
+                      )}
+                      {activityAction && (
+                        <Link
+                          href={activityAction.href}
+                          className="inline-flex h-7 items-center gap-1 rounded-md border border-klasse-green/20 bg-klasse-green/5 px-2 text-[10px] font-black uppercase tracking-wider text-klasse-green hover:bg-klasse-green/10"
+                        >
+                          {activityAction.label} <ExternalLink className="h-3 w-3" />
+                        </Link>
                       )}
                       <Button 
                         variant="outline" 

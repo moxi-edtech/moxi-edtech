@@ -1,11 +1,13 @@
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
+import { resolveAuthorizedStudentIds } from "@/lib/portalAlunoAuth";
 
 export type AlunoContext = {
   userId: string;
   escolaId: string | null;
   alunoId: string | null;
+  alunoIds: string[];
   matriculaId: string | null;
   turmaId: string | null;
   anoLetivo: number | null;
@@ -19,6 +21,7 @@ export async function getAlunoContext() {
 
   let escolaId: string | null = null;
   let alunoId: string | null = null;
+  let alunoIds: string[] = [];
   let matriculaId: string | null = null;
   let turmaId: string | null = null;
   let anoLetivo: number | null = null;
@@ -32,16 +35,25 @@ export async function getAlunoContext() {
     const vincPortal = (vinc || []).find((row) => row.papel === "aluno" || row.papel === "encarregado");
     escolaId = vincPortal?.escola_id ?? null;
 
-    let alunoQuery = supabase
-      .from("alunos")
-      .select("id, escola_id")
-      .eq('profile_id', user.id)
-      .limit(1);
-    if (escolaId) alunoQuery = alunoQuery.eq('escola_id', escolaId);
+    if (!escolaId) {
+      const { data: directAluno } = await supabase
+        .from("alunos")
+        .select("escola_id")
+        .eq("profile_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      escolaId = directAluno?.escola_id ?? null;
+    }
 
-    const { data: alunos } = await alunoQuery;
-    alunoId = alunos?.[0]?.id ?? null;
-    escolaId = escolaId ?? (alunos?.[0]?.escola_id ?? null);
+    if (escolaId) {
+      alunoIds = await resolveAuthorizedStudentIds({
+        supabase,
+        userId: user.id,
+        escolaId,
+        userEmail: user.email,
+      });
+    }
+    alunoId = alunoIds[0] ?? null;
 
     if (alunoId) {
       let activeAno: number | null = null;
@@ -99,6 +111,7 @@ export async function getAlunoContext() {
       userId: user.id,
       escolaId,
       alunoId,
+      alunoIds,
       matriculaId,
       turmaId,
       anoLetivo,

@@ -14,6 +14,7 @@ export type Role =
   | "admin_escola"
   | "staff_admin"
   | "diretor"
+  | "professor"
   | "formacao_admin"
   | "formacao_secretaria"
   | "formacao_financeiro"

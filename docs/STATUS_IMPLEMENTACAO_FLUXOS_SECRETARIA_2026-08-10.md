@@ -43,6 +43,33 @@ Implementado:
 - pagamento em numerário com total pré-preenchido e cálculo de troco;
 - ordenação cronológica por ano e mês, evitando que Janeiro/2027 preceda Setembro/2026.
 
+## Recebimentos de serviços e comprovativos
+
+O portal do aluno e a secretaria utilizam a mesma fila operacional para mensalidades e
+serviços/emolumentos. O operador não recebe apenas uma falha técnica: a decisão mantém
+o item na fila e apresenta uma recuperação executável.
+
+Implementado em 2026-08-12:
+
+- aprovação de serviço com acção explícita `Aprovar e liberar`;
+- rejeição com motivo obrigatório, devolvido ao aluno para correcção e novo envio;
+- falha de RPC com `Tentar novamente` e `Actualizar fila`, sem perder o contexto do pagamento;
+- filtros server-side por origem (`serviço`/`mensalidade`), estado do comprovativo e prioridade;
+- classificação operacional `normal`, `importante` (mais de 24h) e `urgente` (mais de 48h);
+- alerta persistente para comprovativos enviados que aguardam processamento há mais de 24h;
+- função idempotente `public.reconciliar_pagamentos_pendentes(24)` integrada ao feed de actividade;
+- cron `reconciliar-pagamentos-pendentes`, executado a cada 15 minutos;
+- link de recuperação para a actividade financeira e ficha do aluno.
+
+Migração aplicada:
+
+```text
+supabase/migrations/20260812140002_recebimentos_reconciliation_queue.sql
+```
+
+Critério de saída: nenhum comprovativo enviado deve desaparecer silenciosamente, ficar
+sem estado operacional ou apresentar apenas um toast sem acção seguinte.
+
 ## Lista de turmas e alunos
 
 Na tela de detalhe da turma:
@@ -91,6 +118,9 @@ O perfil do aluno deixou de apresentar `Ano civil` e passou a usar o seletor `An
 - PostgreSQL: tabelas, RLS, índices e RPC do histórico transitado confirmados.
 - PostgreSQL: anos letivos do Curtume confirmados como intervalos, incluindo `2026-09-01 → 2027-08-31`.
 - PostgreSQL: `historico_transitado_anos.ano_letivo_id` criado como FK para `anos_letivos.id`, sem registos órfãos no momento da migração.
+- PostgreSQL: view `vw_pagamentos_pendentes` verificada com estado, idade e prioridade.
+- PostgreSQL: função de reconciliação executada e cron de 15 minutos confirmado.
+- PostgreSQL: TypeScript e `git diff --check` aprovados após a fila de recebimentos.
 
 ## Próximos passos
 

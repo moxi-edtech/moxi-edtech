@@ -22,6 +22,15 @@ export type PagamentoPendenteRow = {
   tipo_entidade: 'mensalidade' | 'servico';
   servico_codigo: string | null;
   servico_nome: string | null;
+  estado_operacional: "sem_comprovativo" | "comprovativo_enviado";
+  idade_horas: number;
+  prioridade: "normal" | "importante" | "urgente";
+};
+
+export type PagamentosPendentesFilters = {
+  origem?: "todos" | "mensalidade" | "servico";
+  estado?: "todos" | "sem_comprovativo" | "comprovativo_enviado";
+  prioridade?: "todos" | "normal" | "importante" | "urgente";
 };
 
 type ValidarPagamentoReturn = {
@@ -54,7 +63,7 @@ type ExtendedDatabase = Omit<Database, "public"> & {
   };
 };
 
-export function usePagamentosPendentes(pageSize = 20) {
+export function usePagamentosPendentes(pageSize = 20, filters: PagamentosPendentesFilters = {}) {
   const supabase = useMemo(
     () => createClient() as unknown as SupabaseClient<ExtendedDatabase>,
     [],
@@ -74,11 +83,22 @@ export function usePagamentosPendentes(pageSize = 20) {
       const from = targetPage * pageSize;
       const to = from + pageSize - 1;
 
-      const { data, count, error: queryError } = await supabase
+      let query = supabase
         .from("vw_pagamentos_pendentes")
         .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(from, to);
+        .order("created_at", { ascending: false });
+
+      if (filters.origem && filters.origem !== "todos") {
+        query = query.eq("tipo_entidade", filters.origem);
+      }
+      if (filters.estado && filters.estado !== "todos") {
+        query = query.eq("estado_operacional", filters.estado);
+      }
+      if (filters.prioridade && filters.prioridade !== "todos") {
+        query = query.eq("prioridade", filters.prioridade);
+      }
+
+      const { data, count, error: queryError } = await query.range(from, to);
 
       if (queryError) {
         setRows([]);
@@ -91,10 +111,14 @@ export function usePagamentosPendentes(pageSize = 20) {
 
       setLoading(false);
     },
-    [pageSize, supabase],
+    [filters.estado, filters.origem, filters.prioridade, pageSize, supabase],
   );
 
   useEffect(() => {
+    if (page !== 0) {
+      setPage(0);
+      return;
+    }
     void load(page);
   }, [load, page]);
 

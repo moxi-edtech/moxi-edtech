@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     let query = (supabase as any)
       .from("vw_admin_activity_feed_enriched")
       .select(
-        "id, escola_id, occurred_at, event_family, event_type, actor_name, headline, subline, amount_kz, turma_nome, aluno_nome, payload"
+        "id, escola_id, occurred_at, event_family, event_type, actor_name, headline, subline, amount_kz, turma_nome, aluno_nome, priority, action_label, action_url, payload"
       )
       .eq("escola_id", resolvedEscolaId)
       .in("event_family", families)

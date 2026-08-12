@@ -214,11 +214,13 @@ Critério de saída:
 
 ### Fase 2 — Caixa e pagamentos
 
-- [ ] Criar uma página agregadora ou navegação interna para Recebimentos, Pagamentos, Conciliação e Fecho.
+- [x] Criar uma página agregadora ou navegação interna para Recebimentos, Pagamentos, Conciliação e Fecho.
 - [ ] Renomear “Caixa & Receita Unificada” para um título operacional curto, se necessário.
-- [ ] Diferenciar claramente `pendente de validação`, `confirmado`, `conciliado`, `revertido` e `anulado`.
-- [ ] Usar “comprovativo de pagamento” em upload e validação.
-- [ ] Usar “recibo” para o documento emitido após confirmação.
+- [x] Diferenciar claramente `pendente de validação`, `confirmado`, `conciliado`, `revertido` e `anulado`.
+- [x] Usar “comprovativo de pagamento” em upload e validação.
+- [x] Usar “recibo” para o documento emitido após confirmação.
+- [x] Filtrar recebimentos por serviço, mensalidade, estado e prioridade operacional.
+- [x] Reconciliar comprovativos enviados sem processamento e alertar a equipa financeira.
 - [ ] Referenciar Multicaixa Express, TPA e transferência apenas quando suportados pelo fluxo.
 
 Critério de saída:

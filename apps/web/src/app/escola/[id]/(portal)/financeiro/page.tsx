@@ -28,6 +28,7 @@ import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
 import { MissingPricingAlert } from "@/components/financeiro/MissingPricingAlert";
+import OperationalFeedSection from "@/components/layout/escola-admin/OperationalFeedSection";
 
 export const dynamic = 'force-dynamic';
 
@@ -285,6 +286,7 @@ export default async function FinanceiroDashboardPage({
 
       {escolaId ? <MissingPricingAlert escolaId={escolaId} anoLetivo={anoLetivo} /> : null}
       <FinanceiroAlerts notifications={financeNotifications} />
+      {escolaId ? <OperationalFeedSection escolaId={escolaId} portalBase="admin" /> : null}
 
       <section className="rounded-xl border border-slate-200/70 bg-white p-2 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">

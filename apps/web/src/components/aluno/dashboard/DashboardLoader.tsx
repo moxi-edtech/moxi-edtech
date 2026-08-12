@@ -11,6 +11,7 @@ import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
 import { NotaBar } from "@/components/aluno/shared/NotaBar";
 import { Pill } from "@/components/aluno/shared/Pill";
 import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
+import { DiarioFamiliarTimeline } from "@/components/aluno/dashboard/DiarioFamiliarTimeline";
 
 type DashboardData = {
   ok: boolean;
@@ -352,6 +353,7 @@ export default function DashboardLoader() {
       </AlunoCard>
 
       <AvisosRecentesCard items={data?.avisos_recentes ?? []} />
+      <DiarioFamiliarTimeline />
     </div>
   );
 }

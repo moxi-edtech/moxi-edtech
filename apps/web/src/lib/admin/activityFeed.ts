@@ -22,6 +22,9 @@ export type ActivityFeedItem = {
   amount_kz: number | null;
   turma_nome: string | null;
   aluno_nome: string | null;
+  priority: "urgente" | "importante" | "informativa";
+  action_label: string | null;
+  action_url: string | null;
   payload: Record<string, unknown>;
 };
 

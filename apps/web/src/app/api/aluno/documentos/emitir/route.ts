@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import { createElement, type ReactElement } from 'react'
 import { getAlunoContext } from '@/lib/alunoContext'
+import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
 import { supabaseServerRole } from '@/lib/supabaseServerRole'
 import { notaParaExtensoPTAO } from '@/lib/academico/extenso'
 import { BoletimBatchV1, type BoletimSnapshot } from '@/templates/pdf/ministerio/BoletimBatchV1'
@@ -14,6 +15,8 @@ export const dynamic = 'force-dynamic'
 
 const RequestSchema = z.object({
   type: z.enum(['boletim', 'declaracao']),
+  studentId: z.string().uuid().optional(),
+  serviceCode: z.string().trim().min(3).optional(),
 })
 
 const buildQrDataUrl = (value: string) =>
@@ -35,8 +38,8 @@ interface DocSnapshot {
 export async function POST(req: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext()
-    if (!ctx || !ctx.alunoId || !ctx.escolaId || !ctx.matriculaId) {
-      return NextResponse.json({ ok: false, error: 'Contexto de aluno não encontrado' }, { status: 401 })
+    if (!ctx || !ctx.escolaId) {
+      return NextResponse.json({ ok: false, error: 'Contexto de aluno não encontrado', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 401 })
     }
 
     const body = await req.json().catch(() => ({}))
@@ -45,11 +48,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos' }, { status: 400 })
     }
 
-    const { type } = parsed.data
-    const { escolaId, alunoId, matriculaId, anoLetivo } = ctx
+    const { type, studentId, serviceCode } = parsed.data
+    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email })
+    const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId })
+    if (!alunoId) return NextResponse.json({ ok: false, error: 'Educando não autorizado', next_action: { type: 'contact_secretaria', label: 'Regularizar acesso', href: '/aluno/avisos' } }, { status: 403 })
+    const { escolaId } = ctx
+    const { data: matricula } = await supabase.from('matriculas').select('id, turma_id, ano_letivo').eq('escola_id', escolaId).eq('aluno_id', alunoId).in('status', ['ativa', 'ativo']).order('ano_letivo', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (!matricula?.id) return NextResponse.json({ ok: false, error: 'O educando não possui matrícula activa', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 })
+    const matriculaId = matricula.id
+    const turmaId = matricula.turma_id
+    const anoLetivo = matricula.ano_letivo
 
     // --- SEGURANÇA: Verificar se o aluno tem permissão (serviço pago/liberado) ---
-    const serviceCode = type === 'boletim' ? 'DOC_DECLARACAO_NOTAS' : 'DOC_DECLARACAO_FREQ';
+    const resolvedServiceCode = serviceCode ?? (type === 'boletim' ? 'DOC_DECLARACAO_NOTAS' : 'DOC_DECLARACAO_FREQUENCIA');
+    const supportedServiceCodes = new Set(['DOC_DECLARACAO_NOTAS', 'DOC_DECLARACAO_FREQUENCIA', 'DOC_BOLETIM_TRIMESTRAL', 'DOC_COMPROVANTE_MATRICULA']);
+    if (!supportedServiceCodes.has(resolvedServiceCode)) {
+      return NextResponse.json({ ok: false, error: 'Este serviço foi aprovado, mas a emissão digital ainda precisa ser concluída pela secretaria.', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 });
+    }
     
     const { data: permission, error: permError } = await supabase
       .from('servico_pedidos')
@@ -57,7 +72,7 @@ export async function POST(req: Request) {
       .eq('escola_id', escolaId)
       .eq('aluno_id', alunoId)
       .eq('matricula_id', matriculaId)
-      .eq('servico_codigo', serviceCode)
+      .eq('servico_codigo', resolvedServiceCode)
       .eq('status', 'granted')
       .limit(1)
       .maybeSingle();
@@ -67,7 +82,8 @@ export async function POST(req: Request) {
     if (!permission) {
       return NextResponse.json({ 
         ok: false, 
-        error: 'Acesso negado. Este documento requer solicitação prévia e confirmação de pagamento pela secretaria.' 
+        error: 'Acesso pendente. Confirme o pagamento do serviço para liberar o documento.',
+        next_action: { type: 'pay_service', label: 'Abrir Secretaria Digital', href: '/aluno/documentos' }
       }, { status: 403 });
     }
     // ----------------------------------------------------------------------------
@@ -91,7 +107,7 @@ export async function POST(req: Request) {
 
       if (!comprovante) {
         return NextResponse.json(
-          { ok: false, error: 'O comprovante de matrícula ainda não foi emitido pela secretaria.' },
+          { ok: false, error: 'O comprovante ainda não foi emitido pela secretaria.', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } },
           { status: 404 }
         )
       }
@@ -149,7 +165,7 @@ export async function POST(req: Request) {
           )
         `)
         .eq('escola_id', escolaId)
-        .eq('turma_id', ctx.turmaId || '')
+        .eq('turma_id', turmaId || '')
 
       const tdMap = new Map<string, { nome: string; conta: boolean; disciplina_id: string | null }>()
       for (const td of turmaDisciplinas || []) {

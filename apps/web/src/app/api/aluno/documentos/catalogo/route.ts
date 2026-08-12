@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
-    if (!ctx || !ctx.alunoId || !ctx.escolaId || !ctx.matriculaId) {
-      return NextResponse.json({ ok: false, error: "Contexto não encontrado" }, { status: 401 });
+    if (!ctx || !ctx.escolaId) {
+      return NextResponse.json({ ok: false, error: "Não foi possível identificar o aluno ou encarregado", next_action: { type: "contact_secretaria", label: "Contactar a secretaria", href: "/aluno/avisos" } }, { status: 401 });
     }
 
-    const { escolaId, alunoId } = ctx;
+    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: (await supabase.auth.getUser()).data.user?.email });
+    const selectedId = resolveSelectedStudentId({ selectedId: new URL(request.url).searchParams.get("studentId"), authorizedIds, fallbackId: ctx.alunoId });
+    if (!selectedId) return NextResponse.json({ ok: false, error: "Nenhum educando autorizado encontrado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
+
+    const { escolaId } = ctx;
+    const { data: matricula } = await supabase.from("matriculas").select("id").eq("escola_id", escolaId).eq("aluno_id", selectedId).in("status", ["ativa", "ativo"]).order("ano_letivo", { ascending: false }).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!matricula?.id) return NextResponse.json({ ok: false, error: "O educando não possui matrícula activa", next_action: { type: "contact_secretaria", label: "Contactar a secretaria", href: "/aluno/avisos" } }, { status: 409 });
 
     // 1. Buscar catálogo de documentos da escola
     const { data: catalogo, error: catError } = await supabase
@@ -27,9 +34,9 @@ export async function GET() {
     const { data: pedidos, error: pedError } = await supabase
       .from("servico_pedidos")
       .select("id, status, servico_codigo, valor_cobrado, created_at, pagamento_intents(id, status, meta)")
-      .eq("aluno_id", alunoId)
+      .eq("aluno_id", selectedId)
       .eq("escola_id", escolaId)
-      .eq("matricula_id", ctx.matriculaId)
+      .eq("matricula_id", matricula.id)
       .order("created_at", { ascending: false });
 
     if (pedError) throw pedError;
@@ -54,6 +61,7 @@ export async function GET() {
       
       let status: any = pedido?.status || "available";
       if (intent?.status === 'pending') status = 'pending';
+      else if (intent?.status === 'settled' || pedido?.status === 'granted') status = 'granted';
       else if (intent?.status === 'failed' || pedido?.status === 'canceled') status = 'rejected';
 
       return {
@@ -63,6 +71,13 @@ export async function GET() {
         status,
         valor: item.valor_base,
         reject_reason: (intent?.meta as any)?.reject_reason || null,
+        next_action: status === "granted"
+          ? { type: "download", label: "Descarregar", href: "/aluno/documentos" }
+          : status === "pending" || status === "blocked"
+            ? { type: "refresh_status", label: "Actualizar estado", href: "/aluno/documentos" }
+            : status === "rejected"
+              ? { type: "resubmit", label: "Reenviar comprovativo", href: "/aluno/documentos" }
+              : { type: "request", label: "Solicitar serviço", href: "/aluno/documentos" },
       };
     });
 

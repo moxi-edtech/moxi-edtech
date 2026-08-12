@@ -15,7 +15,7 @@ type RealtimeState = "live" | "polling";
 const POLLING_MS = 15_000;
 const WS_TIMEOUT_MS = 12_000;
 const REALTIME_THROTTLE_MS = 2_000;
-const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED === "true";
+const REALTIME_ENABLED = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED !== "false";
 
 const parseEnvMs = (value: string | undefined, fallback: number) => {
   const parsed = Number.parseInt((value ?? "").trim(), 10);

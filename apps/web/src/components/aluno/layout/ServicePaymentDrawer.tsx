@@ -37,6 +37,7 @@ export function ServicePaymentDrawer({
   dadosPagamento,
   onClose,
   onSuccess,
+  studentId,
 }: {
   open: boolean;
   documento: { codigo: string, nome: string, valor: number, intentId?: string | null } | null;
@@ -48,6 +49,7 @@ export function ServicePaymentDrawer({
   } | null;
   onClose: () => void;
   onSuccess: () => void;
+  studentId?: string | null;
 }) {
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -74,6 +76,7 @@ export function ServicePaymentDrawer({
     const fd = new FormData();
     fd.append("intentId", documento.intentId || "");
     fd.append("file", original);
+    if (studentId) fd.append("studentId", studentId);
     if (mensagem.trim()) fd.append("mensagem", mensagem.trim());
 
     setSending(true);

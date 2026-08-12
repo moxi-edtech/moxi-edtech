@@ -665,7 +665,6 @@ function Catalogo({
   onAdicionarServico,
   emittingDocId,
   addingServicoId,
-  onServicoAvulso,
   unlockedMensalidadeIds,
   rematriculaReady,
   rematriculaState,
@@ -685,7 +684,6 @@ function Catalogo({
   onAdicionarServico: (s: Servico) => Promise<void>;
   emittingDocId: string | null;
   addingServicoId: string | null;
-  onServicoAvulso: () => void;
   unlockedMensalidadeIds: Set<string>;
   rematriculaReady: boolean;
   rematriculaState:
@@ -733,9 +731,6 @@ function Catalogo({
           <Plus className="h-4 w-4 text-klasse-gold" />
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Adicionar item</p>
         </div>
-        <button onClick={onServicoAvulso} className="text-xs font-bold text-klasse-gold hover:underline">
-          + Servico avulso
-        </button>
       </div>
 
       <div className="space-y-6 max-h-[620px] overflow-y-auto pr-2">
@@ -1393,7 +1388,6 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 onAdicionarServico={handleAdicionarServico}
                 emittingDocId={checkout.emittingDocId}
                 addingServicoId={addingServicoId}
-                onServicoAvulso={() => {}}
                 unlockedMensalidadeIds={unlockedMensalidadeIds}
                 rematriculaReady={
                   rematricula.cardState === "READY" ||

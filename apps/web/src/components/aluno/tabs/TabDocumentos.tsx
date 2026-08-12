@@ -23,6 +23,13 @@ interface DocumentoCatalogo {
   reject_reason?: string | null;
 }
 
+const DIGITAL_DOCUMENT_CODES = new Set([
+  'DOC_DECLARACAO_NOTAS',
+  'DOC_DECLARACAO_FREQUENCIA',
+  'DOC_BOLETIM_TRIMESTRAL',
+  'DOC_COMPROVANTE_MATRICULA',
+]);
+
 export function TabDocumentos() {
   const searchParams = useSearchParams();
   const { error, success } = useToast();
@@ -59,12 +66,16 @@ export function TabDocumentos() {
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (doc.status === 'granted') {
-      handleDownload(doc);
+      if (DIGITAL_DOCUMENT_CODES.has(doc.codigo)) handleDownload(doc);
+      else window.location.assign('/aluno/avisos');
     } else if (doc.status === 'available' || doc.status === 'rejected') {
       handleRequest(doc);
     } else if (doc.status === 'pending_payment') {
       setSelectedDoc(doc);
       setShowDrawer(true);
+    } else if (doc.status === 'pending' || doc.status === 'blocked') {
+      await fetchCatalogo();
+      success("Pedido em acompanhamento", "O estado foi actualizado. A secretaria será avisada quando houver uma decisão.");
     }
   };
 
@@ -74,7 +85,7 @@ export function TabDocumentos() {
       const res = await fetch(`/api/aluno/documentos/solicitar${query}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo: doc.codigo })
+        body: JSON.stringify({ codigo: doc.codigo, ...(studentId ? { studentId } : {}) })
       });
       
       const json = await res.json();
@@ -98,12 +109,12 @@ export function TabDocumentos() {
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const type = doc.codigo === 'DOC_DECLARACAO_NOTAS' ? 'boletim' : 'declaracao';
+      const type = ['DOC_DECLARACAO_NOTAS', 'DOC_BOLETIM_TRIMESTRAL'].includes(doc.codigo) ? 'boletim' : 'declaracao';
       
       const res = await fetch(`/api/aluno/documentos/emitir${query}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type })
+        body: JSON.stringify({ type, serviceCode: doc.codigo, ...(studentId ? { studentId } : {}) })
       });
       
       const json = await res.json();
@@ -192,7 +203,7 @@ export function TabDocumentos() {
                       <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                     </div>
                   ) : (
-                    <ActionButton status={doc.status} />
+                    <ActionButton status={doc.status} codigo={doc.codigo} />
                   )}
                 </div>
               </div>
@@ -236,6 +247,7 @@ export function TabDocumentos() {
           success("Comprovativo enviado", "Aguarde a validação pela secretaria.");
           fetchCatalogo();
         }}
+        studentId={studentId}
         dadosPagamento={dadosPagamento}
         documento={selectedDoc ? {
           codigo: selectedDoc.codigo,
@@ -338,9 +350,16 @@ function StatusBadge({ status }: { status: DocumentoStatus }) {
   }
 }
 
-function ActionButton({ status }: { status: DocumentoStatus }) {
+function ActionButton({ status, codigo }: { status: DocumentoStatus; codigo: string }) {
   switch (status) {
     case 'granted':
+      if (!DIGITAL_DOCUMENT_CODES.has(codigo)) {
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm">
+            Contactar secretaria
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95">
           <Download size={14} /> Baixar
@@ -353,10 +372,15 @@ function ActionButton({ status }: { status: DocumentoStatus }) {
         </span>
       );
     case 'pending':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3 py-2.5 text-xs font-bold text-blue-700">
+          <Clock size={14} /> Acompanhar
+        </span>
+      );
     case 'blocked':
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500">
-          <Clock size={14} />
+        <span className="inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-600">
+          <Clock size={14} /> Actualizar
         </span>
       );
     case 'rejected':

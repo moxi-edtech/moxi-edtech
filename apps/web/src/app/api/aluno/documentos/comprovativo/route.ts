@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,12 +11,14 @@ const COMPROVATIVOS_BUCKET = "billing-proofs";
 export async function POST(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
-    if (!ctx?.escolaId || !ctx.userId || !ctx.alunoId) {
+    if (!ctx?.escolaId || !ctx.userId) {
         return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
+    const { data: userRes } = await supabase.auth.getUser();
 
     const formData = await request.formData();
     const intentId = formData.get("intentId")?.toString();
+    const studentIdParam = formData.get("studentId")?.toString() ?? null;
     const mensagemRaw = formData.get("mensagem")?.toString() ?? null;
     const file = formData.get("file");
 
@@ -30,6 +33,9 @@ export async function POST(request: Request) {
     }
 
     const routeClient = await createRouteClient();
+    const authorizedIds = await resolveAuthorizedStudentIds({ supabase, userId: ctx.userId, escolaId: ctx.escolaId, userEmail: userRes?.user?.email });
+    const alunoId = resolveSelectedStudentId({ selectedId: studentIdParam, authorizedIds, fallbackId: ctx.alunoId });
+    if (!alunoId) return NextResponse.json({ ok: false, error: "Educando não autorizado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
     
     // Validar se a intenção pertence ao aluno
     const { data: intent } = await routeClient
@@ -37,7 +43,7 @@ export async function POST(request: Request) {
       .select("id, status")
       .eq("id", intentId)
       .eq("escola_id", ctx.escolaId)
-      .eq("aluno_id", ctx.alunoId)
+      .eq("aluno_id", alunoId)
       .maybeSingle();
 
     if (!intent) {
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Esta solicitação já está paga e concluída." }, { status: 400 });
     }
 
-    const objectPath = `${ctx.escolaId}/${ctx.alunoId}/servicos/${intentId}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    const objectPath = `${ctx.escolaId}/${alunoId}/servicos/${intentId}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await routeClient.storage

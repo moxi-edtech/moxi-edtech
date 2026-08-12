@@ -1,8 +1,9 @@
 "use client";
 
 import { Loader2, FileText, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
-import { usePagamentosPendentes } from "@/hooks/usePagamentosPendentes";
+import { usePagamentosPendentes, type PagamentosPendentesFilters } from "@/hooks/usePagamentosPendentes";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { useMemo, useState } from "react";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -17,6 +18,10 @@ function isPdf(url: string) {
 export default function PagamentosPendentesWindow() {
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
+  const [decisionNotice, setDecisionNotice] = useState<{ tone: "success" | "info"; title: string; detail: string; alunoId?: string } | null>(null);
+  const [filters, setFilters] = useState<PagamentosPendentesFilters>({ origem: "todos", estado: "todos", prioridade: "todos" });
+  const [actionError, setActionError] = useState<{ pagamentoId: string; aprovado: boolean; message: string } | null>(null);
+  const queryFilters = useMemo(() => filters, [filters]);
   const {
     rows,
     total,
@@ -28,8 +33,9 @@ export default function PagamentosPendentesWindow() {
     canPrev,
     canNext,
     setPage,
+    reload,
     validar,
-  } = usePagamentosPendentes(15);
+  } = usePagamentosPendentes(15, queryFilters);
 
   async function handleAction(pagamentoId: string, aprovado: boolean) {
     let mensagemSecretaria: string | null = null;
@@ -54,10 +60,25 @@ export default function PagamentosPendentesWindow() {
 
     const result = await validar(pagamentoId, aprovado, mensagemSecretaria);
     if (!result.ok) {
-      toastError(result.error || "Falha ao validar pagamento.");
+      const message = result.error || "Falha ao validar pagamento.";
+      setActionError({ pagamentoId, aprovado, message });
+      toastError(message);
       return;
     }
-    success(aprovado ? "Pagamento aprovado com sucesso." : "Pagamento rejeitado com sucesso.");
+    setActionError(null);
+    const row = rows.find((item) => item.pagamento_id === pagamentoId);
+    const isServico = row?.tipo_entidade === "servico";
+    setDecisionNotice({
+      tone: aprovado ? "success" : "info",
+      title: aprovado
+        ? isServico ? "Serviço liberado" : "Pagamento aprovado"
+        : "Comprovativo rejeitado",
+      detail: aprovado
+        ? isServico ? "O aluno já pode voltar ao portal e descarregar o serviço." : "O pagamento foi liquidado e o recibo será actualizado."
+        : "O motivo foi enviado ao aluno. Ele poderá corrigir e reenviar o comprovativo.",
+      alunoId: row?.aluno_id,
+    });
+    success(aprovado ? "Decisão concluída e registada." : "Rejeição registada com motivo.");
   }
 
   return (
@@ -72,6 +93,79 @@ export default function PagamentosPendentesWindow() {
         </span>
       </header>
 
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-3">
+        <label className="text-xs font-semibold text-slate-600">
+          Serviço / mensalidade
+          <select value={filters.origem} onChange={(event) => setFilters((prev) => ({ ...prev, origem: event.target.value as PagamentosPendentesFilters["origem"] }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-800">
+            <option value="todos">Todos</option>
+            <option value="servico">Serviços</option>
+            <option value="mensalidade">Mensalidades</option>
+          </select>
+        </label>
+        <label className="text-xs font-semibold text-slate-600">
+          Estado
+          <select value={filters.estado} onChange={(event) => setFilters((prev) => ({ ...prev, estado: event.target.value as PagamentosPendentesFilters["estado"] }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-800">
+            <option value="todos">Todos</option>
+            <option value="comprovativo_enviado">Comprovativo enviado</option>
+            <option value="sem_comprovativo">Sem comprovativo</option>
+          </select>
+        </label>
+        <label className="text-xs font-semibold text-slate-600">
+          Prioridade
+          <select value={filters.prioridade} onChange={(event) => setFilters((prev) => ({ ...prev, prioridade: event.target.value as PagamentosPendentesFilters["prioridade"] }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-800">
+            <option value="todos">Todas</option>
+            <option value="urgente">Urgente — mais de 48h</option>
+            <option value="importante">Importante — mais de 24h</option>
+            <option value="normal">Normal</option>
+          </select>
+        </label>
+      </div>
+
+      {rows.some((row) => row.estado_operacional === "comprovativo_enviado" && row.idade_horas >= 24) ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div>
+            <p className="font-bold">Há comprovativos enviados sem processamento há mais de 24 horas.</p>
+            <p className="text-xs">Priorize estes casos ou abra o feed operacional para acompanhar a reconciliação.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setFilters((prev) => ({ ...prev, estado: "comprovativo_enviado", prioridade: "importante" }))} className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold hover:bg-amber-100">Ver atrasados</button>
+            <a href="/financeiro" className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-800">Abrir actividade</a>
+          </div>
+        </div>
+      ) : null}
+
+      {actionError ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <div>
+            <p className="font-bold">Não foi possível concluir esta decisão.</p>
+            <p className="text-xs">{actionError.message} O comprovativo continua na fila; pode tentar novamente ou actualizar o estado.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void handleAction(actionError.pagamentoId, actionError.aprovado)} className="rounded-lg bg-rose-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-800">Tentar novamente</button>
+            <button type="button" onClick={() => { setActionError(null); void reload(); }} className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold hover:bg-rose-100">Actualizar fila</button>
+          </div>
+        </div>
+      ) : null}
+
+      {decisionNotice ? (
+        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${decisionNotice.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-blue-200 bg-blue-50 text-blue-800"}`}>
+          <div>
+            <p className="font-bold">{decisionNotice.title}</p>
+            <p className="mt-0.5 text-xs">{decisionNotice.detail}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {decisionNotice.alunoId ? (
+              <a href={`/secretaria/alunos/${decisionNotice.alunoId}`} className="rounded-lg border border-current/20 bg-white/70 px-3 py-1.5 text-xs font-bold hover:bg-white">
+                Abrir ficha do aluno
+              </a>
+            ) : null}
+            <button type="button" onClick={() => setDecisionNotice(null)} className="rounded-lg px-2 py-1 text-xs font-semibold opacity-70 hover:opacity-100">
+              Fechar
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-10 text-slate-600">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -81,7 +175,7 @@ export default function PagamentosPendentesWindow() {
 
       {!loading && error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-          {error}
+          <div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><button type="button" onClick={() => void reload()} className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold hover:bg-rose-100">Tentar carregar novamente</button></div>
         </div>
       ) : null}
 
@@ -113,6 +207,9 @@ export default function PagamentosPendentesWindow() {
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-900">{row.aluno_nome}</p>
                       <p className="text-[10px] text-slate-500">{row.turma_codigo || "—"}</p>
+                      <a href={`/secretaria/alunos/${row.aluno_id}`} className="mt-1 inline-block text-[10px] font-bold text-blue-700 hover:underline">
+                        Ver contexto do aluno
+                      </a>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
@@ -164,7 +261,7 @@ export default function PagamentosPendentesWindow() {
                           className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actioning ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                          Aprovar
+                          {row.tipo_entidade === "servico" ? "Aprovar e liberar" : "Aprovar"}
                         </button>
                         <button
                           type="button"
@@ -173,7 +270,7 @@ export default function PagamentosPendentesWindow() {
                           className="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 font-medium text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actioning ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                          Rejeitar
+                          Rejeitar e informar
                         </button>
                       </div>
                     </td>
