@@ -17,11 +17,12 @@ const searchParamsSchema = z
     cursor: z.string().optional(),
     turmaId: z.string().uuid().optional(),
     q: z.string().trim().max(120).optional(),
-    status: z.enum(['novas', 'pre_candidaturas', 'lista_espera', 'pendentes', 'concluidas', 'expirando', 'reenviados', 'all']).optional(),
+    status: z.enum(['novas', 'rascunhos', 'pre_candidaturas', 'lista_espera', 'pendentes', 'concluidas', 'expirando', 'reenviados', 'all']).optional(),
   })
   .strict()
 
 type Status =
+  | 'rascunho'
   | 'submetida'
   | 'pre_candidatura'
   | 'documentos_reenviados'
@@ -36,7 +37,7 @@ const SUBMETIDA_STATUSES = ['submetida', 'pendente', 'documentos_reenviados']
 const PRE_CANDIDATURA_STATUSES = ['pre_candidatura']
 const LISTA_ESPERA_STATUSES = ['lista_espera']
 const EM_ANALISE_STATUSES = ['em_analise']
-const APROVADA_STATUSES = ['aprovada', 'aguardando_pagamento']
+const APROVADA_STATUSES = ['aprovada', 'aguardando_pagamento', 'aguardando_compensacao']
 const MATRICULADO_STATUSES = ['matriculado', 'convertida']
 const RASCUNHO_STATUSES = ['rascunho']
 const REJEITADA_STATUSES = ['rejeitada', 'arquivado']
@@ -65,6 +66,7 @@ function escapeIlike(value: string) {
 
 function statusesForFilter(filter: string | undefined) {
   if (filter === 'novas') return SUBMETIDA_STATUSES
+  if (filter === 'rascunhos') return RASCUNHO_STATUSES
   if (filter === 'pre_candidaturas') return PRE_CANDIDATURA_STATUSES
   if (filter === 'lista_espera') return LISTA_ESPERA_STATUSES
   if (filter === 'pendentes') return [...RASCUNHO_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]

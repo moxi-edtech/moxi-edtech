@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     .from("candidaturas")
     .select("id, nome_candidato, status, created_at, updated_at")
     .eq("escola_id", escolaId)
-    .in("status", ["rascunho", "pendente", "submetida", "em_analise"])
+    .eq("status", "rascunho")
 
   candidaturasQuery = applyKf2ListInvariants(candidaturasQuery, {
     limit: limit ?? 20,

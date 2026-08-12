@@ -139,6 +139,12 @@ type SimpleResult = {
   ok: boolean;
   message?: string;
   error?: string;
+  details?: string;
+  code?: string;
+  action?: {
+    id: "review_admission" | "open_academic_calendar";
+    label: string;
+  };
   aluno_id?: string;
   matricula_id?: string;
   numero_matricula?: string;
@@ -1808,17 +1814,40 @@ function Step3Pagamento(props: {
         return;
       }
 
-      const shouldReopen = convertResp.status >= 500;
+      const recoverableConversionCodes = new Set([
+        "FINANCIAL_ENTRY_DATE_CONFLICT",
+        "FINANCIAL_START_OUTSIDE_ACADEMIC_CALENDAR",
+        "ACADEMIC_CALENDAR_NOT_CONFIGURED",
+        "ACADEMIC_CALENDAR_YEAR_MISMATCH",
+      ]);
+      const shouldReopen = convertResp.status >= 500 || (responseCode ? recoverableConversionCodes.has(responseCode) : false);
       if (shouldReopen && isUuid(candidaturaId)) {
         try {
-          await postJson<SimpleResult>(
+          const reopenResp = await postJson<SimpleResult>(
             "/api/secretaria/admissoes/reabrir",
             { candidatura_id: candidaturaId }
           );
+          if (!reopenResp.ok) {
+            return setResult({
+              ok: false,
+              error: "A conversão falhou e a candidatura não pôde ser reaberta automaticamente. Atualize a página e retome o rascunho.",
+            });
+          }
           setBaseCanEditDraft(true);
           setEditOverride(true);
           setResumeMode(false);
-          setResult({ ok: false, error: "Falha na conversão. Candidatura reaberta para edição." });
+          const requiresCalendarAction = responseCode === "ACADEMIC_CALENDAR_NOT_CONFIGURED" || responseCode === "ACADEMIC_CALENDAR_YEAR_MISMATCH";
+          setResult({
+            ok: false,
+            error: requiresCalendarAction
+              ? "A candidatura foi reaberta. Corrija o calendário MED da turma e tente novamente."
+              : "A candidatura foi reaberta para ajuste antes de tentar novamente.",
+            details: convertResp.error,
+            code: responseCode ?? undefined,
+            action: requiresCalendarAction
+              ? { id: "open_academic_calendar", label: "Corrigir calendário MED" }
+              : { id: "review_admission", label: "Rever matrícula" },
+          });
           return;
         } catch {}
       }
@@ -1966,6 +1995,24 @@ function Step3Pagamento(props: {
           >
             Tentar novamente
           </button>
+          {result.action?.id === "review_admission" && (
+            <button
+              type="button"
+              onClick={() => setResult(null)}
+              className="rounded-xl border border-klasse-gold/40 bg-klasse-gold/10 px-4 py-2 text-sm font-semibold text-klasse-green hover:bg-klasse-gold/20"
+            >
+              {result.action.label}
+            </button>
+          )}
+          {result.action?.id === "open_academic_calendar" && (
+            <button
+              type="button"
+              onClick={() => window.open(`/escola/${escolaId}/admin/configuracoes/calendario`, "_blank", "noopener,noreferrer")}
+              className="rounded-xl border border-klasse-gold/40 bg-klasse-gold/10 px-4 py-2 text-sm font-semibold text-klasse-green hover:bg-klasse-gold/20"
+            >
+              {result.action.label}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => router.push(`${secretariaBase}/admissoes`)}
@@ -2186,6 +2233,7 @@ export default function AdmissaoWizardClient({
   const [showDrafts, setShowDrafts] = useState(false);
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [draftsError, setDraftsError] = useState<string | null>(null);
+  const [dismissedResumePrompt, setDismissedResumePrompt] = useState(false);
   const [wizardError, setWizardError] = useState<string | null>(null);
   const [draftItems, setDraftItems] = useState<Array<{ id: string; nome_candidato: string | null; status: string | null; updated_at?: string | null }>>([]);
 
@@ -2301,6 +2349,10 @@ export default function AdmissaoWizardClient({
     }
   }, [escolaId]);
 
+  useEffect(() => {
+    if (hydrated && !candidaturaId) void loadDrafts();
+  }, [candidaturaId, hydrated, loadDrafts]);
+
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
     const next = withSlug(`/secretaria/admissoes/nova?candidaturaId=${id}`);
@@ -2375,6 +2427,7 @@ export default function AdmissaoWizardClient({
     setBaseCanEditDraft(true);
     setResumeMode(false);
     setEditOverride(false);
+    setDismissedResumePrompt(false);
     setWizardError(null);
     
     // Clear URL query parameters without triggering a hard reload or RSC re-fetch
@@ -2414,6 +2467,51 @@ export default function AdmissaoWizardClient({
 
   return (
     <div className="space-y-4">
+      {!candidaturaId && !dismissedResumePrompt && draftItems.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-klasse-gold/40 bg-klasse-gold/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-klasse-green">
+              Tem uma candidatura em andamento
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {draftItems.length === 1
+                ? `${draftItems[0].nome_candidato || "A candidatura"} ficou guardada como rascunho. Deseja continuar de onde parou?`
+                : `Encontrámos ${draftItems.length} candidaturas guardadas. Deseja continuar de onde parou?`}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {draftItems.length === 1 ? (
+              <button
+                type="button"
+                onClick={() => handleResume(draftItems[0].id)}
+                className="rounded-xl bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green/90"
+              >
+                Continuar candidatura
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowDrafts(true)}
+                className="rounded-xl bg-klasse-green px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green/90"
+              >
+                Ver candidaturas
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDismissedResumePrompt(true)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Iniciar nova
+            </button>
+          </div>
+        </div>
+      )}
+      {draftsError && !showDrafts && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+          Não foi possível verificar candidaturas em andamento agora. Tente novamente em “Retomar rascunho”.
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-semibold text-klasse-green">Nova Admissão</h1>
         <div className="relative">

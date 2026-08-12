@@ -317,7 +317,7 @@ export default function AdmissoesInboxClient({
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [search, setSearch] = useState(initialSearch || '')
-  const [statusFilter, setStatusFilter] = useState<'novas' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
+  const [statusFilter, setStatusFilter] = useState<'novas' | 'rascunhos' | 'pre_candidaturas' | 'lista_espera' | 'pendentes' | 'concluidas' | 'expirando' | 'reenviados'>('novas')
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
   const supabase = useMemo(() => createClient(), [])
 
@@ -414,6 +414,8 @@ export default function AdmissoesInboxClient({
       let matchesStatus = false
       if (statusFilter === 'novas') {
         matchesStatus = item.status === 'submetida' || item.status === 'documentos_reenviados'
+      } else if (statusFilter === 'rascunhos') {
+        matchesStatus = item.status === 'rascunho'
       } else if (statusFilter === 'pre_candidaturas') {
         matchesStatus = item.status === 'pre_candidatura'
       } else if (statusFilter === 'lista_espera') {
@@ -1226,6 +1228,7 @@ export default function AdmissoesInboxClient({
           <div className="flex p-1 bg-slate-100 rounded-xl mb-4">
             {([
               { id: 'novas', label: 'Novas' },
+              { id: 'rascunhos', label: 'Rascunhos' },
               { id: 'pre_candidaturas', label: 'Pré' },
               { id: 'lista_espera', label: 'Lista' },
               { id: 'pendentes', label: 'Pendentes' },

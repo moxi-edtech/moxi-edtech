@@ -541,6 +541,78 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+    if (
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      error.code === 'P0001' &&
+      /Mensalidade anterior à entrada financeira/i.test(errorMessage)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'A matrícula não pôde ser finalizada porque o plano financeiro começa depois da primeira mensalidade gerada.',
+          details: 'A candidatura foi preservada para edição. Tente novamente após a atualização financeira.',
+          code: 'FINANCIAL_ENTRY_DATE_CONFLICT',
+          action: { id: 'review_admission', label: 'Rever matrícula' },
+        },
+        { status: 409 }
+      )
+    }
+    if (
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      error.code === 'P0001' &&
+      /Data de início financeiro .* depois do fim do calendário/i.test(errorMessage)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'A data financeira escolhida está fora do calendário académico da turma.',
+          details: 'Escolha uma competência dentro do calendário MED da turma. A candidatura continua disponível para edição.',
+          code: 'FINANCIAL_START_OUTSIDE_ACADEMIC_CALENDAR',
+          action: { id: 'review_admission', label: 'Rever matrícula' },
+        },
+        { status: 409 }
+      )
+    }
+    if (
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      error.code === 'P0001' &&
+      /Calendário académico MED não configurado/i.test(errorMessage)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'A turma não tem calendário académico MED configurado.',
+          details: 'Configure o calendário do ano letivo da turma e retome a candidatura para finalizar a matrícula.',
+          code: 'ACADEMIC_CALENDAR_NOT_CONFIGURED',
+          action: { id: 'open_academic_calendar', label: 'Corrigir calendário MED' },
+        },
+        { status: 409 }
+      )
+    }
+    if (
+      typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      error.code === 'P0001' &&
+      /Calendário académico da turma não corresponde/i.test(errorMessage)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'O calendário académico da turma não corresponde ao ano letivo da matrícula.',
+          details: 'Corrija o vínculo da turma ao calendário MED e retome a candidatura.',
+          code: 'ACADEMIC_CALENDAR_YEAR_MISMATCH',
+          action: { id: 'open_academic_calendar', label: 'Corrigir calendário MED' },
+        },
+        { status: 409 }
+      )
+    }
     if (typeof error === 'object' && error && 'code' in error && error.code === '42883') {
       const message = String((error as { message?: string }).message ?? '')
       const missingFunction = /confirmar_matricula_core/i.test(message)

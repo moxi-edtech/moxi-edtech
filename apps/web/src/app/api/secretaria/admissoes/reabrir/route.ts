@@ -43,6 +43,9 @@ export async function POST(request: Request) {
 
   // Se o status for rejeitada ou arquivada, usamos a nova admissao_reabrir
   const currentStatus = String(cand.status ?? "").toLowerCase();
+  if (currentStatus === "rascunho") {
+    return NextResponse.json({ ok: true, already_reopened: true });
+  }
   const isFromClosed = ["rejeitada", "arquivada", "arquivado"].includes(currentStatus);
 
   let rpcName = "admissao_unsubmit";
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
     rpcName = "admissao_reabrir";
   } else {
     // Para os outros estados, verificamos se o unsubmit é permitido
-    const allowedUnsubmit = ["submetida", "em_analise", "aprovada", "aguardando_pagamento"];
+    const allowedUnsubmit = ["submetida", "em_analise", "aprovada", "aguardando_pagamento", "aguardando_compensacao"];
     if (!allowedUnsubmit.includes(currentStatus)) {
       return NextResponse.json({ ok: false, error: "Status não pode ser reaberto ou revertido para rascunho" }, { status: 400 });
     }

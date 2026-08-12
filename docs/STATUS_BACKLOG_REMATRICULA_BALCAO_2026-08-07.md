@@ -4,6 +4,11 @@
 **Escola de validação:** Complexo Escolar Privado Adventista de Curtume  
 **Ano em foco:** 2026/2027 (`ano_letivo = 2026`, 01/09/2026–31/08/2027)
 
+> **Actualização 2026-08-12:** foram aplicadas as migrations
+> `20270719000000_fix_carnet_start_at_financial_entry` e
+> `20270812140000_harden_turmas_academic_year_link`. O estado abaixo inclui as
+> correções de conversão, calendário MED e integridade de turmas.
+
 ## Resumo executivo
 
 O fluxo de rematrícula e Balcão já possui contexto explícito de ano letivo, cobrança de dívidas no ano seleccionado e serviço próprio de rematrícula. A geração de mensalidades foi endurecida para respeitar matrícula activa, turma, calendário escolar, data de entrada financeira e regras de classes de exame.
@@ -52,6 +57,33 @@ Também foi auditado o “Foco da Operação” da dashboard. No Curtume, os val
 - Geradores legados que não enviam `matricula_id` tentam resolvê-lo quando existe uma matrícula activa inequívoca.
 - O RPC contextual foi corrigido globalmente para separar `ano_letivo` de `ano_referencia`; a correcção não é específica do Cheme.
 - O Balcão mostra “Sem matrícula neste ano” quando não existe matrícula no ano seleccionado, em vez de “Em dia”.
+- A função `financeiro.gerar_carnet_anual` usa o calendário vinculado à turma e
+  calcula a primeira competência como o mês anterior à entrada, limitado ao início
+  do calendário. Uma entrada em agosto num calendário que começa em setembro gera
+  cobrança desde setembro.
+- O trigger `set_matricula_financial_start` preenche a data financeira das novas
+  matrículas sem antecipar a cobrança para antes do calendário MED.
+
+### Conversão de admissão — incidente resolvido
+
+- O erro recorrente HTTP 500 na conversão foi causado por carnês iniciados antes da
+  data financeira permitida.
+- A API agora transforma os casos conhecidos em respostas recuperáveis, reabre a
+  candidatura e preserva o contexto de edição.
+- O operador recebe uma ação executável para rever a matrícula ou corrigir o
+  calendário MED, sem precisar iniciar o atendimento novamente.
+- A tela de admissão identifica automaticamente rascunhos em andamento; quando há
+  vários, o operador escolhe qual candidatura continuar.
+
+### Integridade estrutural de turmas
+
+- `turmas.ano_letivo_id` é obrigatório e possui foreign key composta com
+  `escola_id` para `anos_letivos`.
+- O trigger `sync_turma_academic_year` mantém `ano_letivo` e `session_id` coerentes.
+- A criação de turmas nas APIs da secretaria grava explicitamente o vínculo.
+- A ausência de calendário retorna `422` com código
+  `ACADEMIC_CALENDAR_NOT_CONFIGURED`, permitindo encaminhamento para a configuração.
+- Curtume foi validado com 0 turmas órfãs e 0 divergências de calendário.
 
 ### Curtume — estado confirmado
 

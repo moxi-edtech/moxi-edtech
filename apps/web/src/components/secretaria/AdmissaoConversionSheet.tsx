@@ -91,6 +91,7 @@ const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string; helpe
 type ConvertResponse = {
   ok?: boolean
   error?: string
+  details?: string
   code?: string
   matricula_id?: string
   aluno_id?: string
@@ -387,6 +388,25 @@ export function AdmissaoConversionSheet({
         if (!override?.capacidade && json?.code === 'TURMA_LOTADA_CAPACIDADE') {
           setCapacityOverrideError(json.error ?? 'A turma selecionada está lotada.')
           setCapacityOverrideOpen(true)
+          return
+        }
+        const calendarIssue = json?.code === 'ACADEMIC_CALENDAR_NOT_CONFIGURED' || json?.code === 'ACADEMIC_CALENDAR_YEAR_MISMATCH'
+        if (calendarIssue) {
+          toastError(
+            'Ação necessária no calendário MED',
+            json?.details || json?.error || 'Corrija o calendário académico da turma antes de finalizar.',
+            {
+              label: 'Corrigir calendário MED',
+              onClick: () => window.open(`/escola/${escolaId}/admin/configuracoes/calendario`, '_blank', 'noopener,noreferrer'),
+            },
+          )
+          return
+        }
+        if (json?.code === 'FINANCIAL_ENTRY_DATE_CONFLICT' || json?.code === 'FINANCIAL_START_OUTSIDE_ACADEMIC_CALENDAR') {
+          toastError(
+            'Rever competência financeira',
+            json?.details || json?.error || 'Reveja a turma e a competência financeira antes de tentar novamente.',
+          )
           return
         }
         throw new Error(json?.error || 'Erro ao converter matrícula')

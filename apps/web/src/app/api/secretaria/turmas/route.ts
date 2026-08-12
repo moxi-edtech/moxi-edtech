@@ -239,6 +239,7 @@ export async function POST(req: Request) {
         nome: nome || `Turma ${turma_codigo}`, // Fallback de nome se não vier
         turma_codigo,
         ano_letivo: anoLetivoInt,
+        ano_letivo_id: writeContext.anoLetivoId,
         turno,
         sala: sala || null,
         session_id: writeContext.anoLetivoId,
@@ -270,6 +271,14 @@ export async function POST(req: Request) {
   } catch (e: any) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
+    if (/Calendário académico MED não encontrado|Calendário académico MED não configurado/i.test(String(e?.message ?? ''))) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Configure o calendário MED do ano letivo antes de criar a turma.',
+        code: 'ACADEMIC_CALENDAR_NOT_CONFIGURED',
+        action: { id: 'open_academic_calendar', label: 'Configurar calendário MED' },
+      }, { status: 422 });
     }
     console.error("[API] Erro POST Turma:", e);
     return NextResponse.json({ ok: false, error: e.message || "Erro interno ao criar turma." }, { status: 500 });

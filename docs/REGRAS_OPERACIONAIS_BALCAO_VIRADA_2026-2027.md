@@ -84,3 +84,32 @@ Os finalistas não devem voltar ao fluxo genérico de promoção:
 - Nunca bloquear por dívida sem oferecer regularização, valor, quantidade de mensalidades e retorno contextual.
 - Nunca liberar rematrícula após pagamento parcial; o saldo deve ser zero.
 - Depois de concluir, mostrar “já concluído” e o comprovante, quando emitido.
+
+## Admissão inicial — falha recuperável e retomada contextual
+
+A falha de conversão nunca deve terminar em bloqueio sem próximo passo. Quando a
+geração financeira encontra uma candidatura com calendário ausente, calendário de
+ano incompatível ou data financeira fora do calendário:
+
+1. a conversão não cria matrícula parcial;
+2. a candidatura é reaberta como `rascunho`;
+3. o operador recebe a causa em linguagem operacional;
+4. o sistema oferece **Rever matrícula** ou **Corrigir calendário MED**;
+5. ao voltar para “Nova admissão”, aparece “Tem uma candidatura em andamento” e o
+   operador pode continuar de onde parou.
+
+O botão **Corrigir calendário MED** deve abrir a configuração oficial do ano letivo,
+onde `data_inicio` e `data_fim` são editáveis. O calendário operacional de eventos
+não substitui essa configuração.
+
+## Integridade das turmas
+
+Toda turma deve possuir `ano_letivo_id` vinculado à escola e ao calendário MED. A
+API grava esse vínculo explicitamente e o banco rejeita turmas órfãs. Imports
+legados que enviam apenas `ano_letivo` podem ser resolvidos automaticamente quando
+existe um calendário único para a escola/ano; caso contrário, a operação deve
+orientar a secretaria a configurar o calendário.
+
+Matrícula efetiva antes do início oficial do calendário é permitida para alunos que
+já frequentam a escola. Isso não antecipa a cobrança: a primeira competência segue
+o início do calendário MED.

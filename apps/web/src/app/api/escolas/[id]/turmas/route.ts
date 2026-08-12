@@ -354,6 +354,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .insert({
         escola_id: userEscolaId,
         session_id: writeContext.anoLetivoId,
+        ano_letivo_id: writeContext.anoLetivoId,
         nome,
         turno,
         ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
@@ -386,6 +387,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch (e: any) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
+    if (/Calendário académico MED não encontrado|Calendário académico MED não configurado/i.test(String(e?.message ?? ''))) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Configure o calendário MED do ano letivo antes de criar a turma.',
+        code: 'ACADEMIC_CALENDAR_NOT_CONFIGURED',
+        action: { id: 'open_academic_calendar', label: 'Configurar calendário MED' },
+      }, { status: 422 });
     }
     console.error("Erro POST Turma:", e);
     return NextResponse.json({ ok: false, error: e.message || String(e) }, { status: 500 });
