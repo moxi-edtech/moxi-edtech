@@ -43,15 +43,6 @@ export default function LoginForm({ redirectTo }: Props) {
         </span>
       </div>
 
-      <div className="mb-6 text-left">
-        <div className="text-[24px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-white sm:text-[27px] md:text-[#073b2c]">
-          Acesse o KLASSE
-        </div>
-        <div className="mt-2.5 max-w-[340px] text-sm font-normal leading-6 text-white/80 md:text-[#17211d]/55">
-          Continue a gestão da escola com segurança, clareza e controle.
-        </div>
-      </div>
-
       <form action={formAction} className="space-y-4 sm:space-y-5" suppressHydrationWarning>
         <input type="hidden" name="redirect_to" value={redirectTo} />
 
