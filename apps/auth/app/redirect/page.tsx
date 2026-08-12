@@ -175,7 +175,7 @@ function normalizeRedirectTarget(raw: string | undefined, expectedBase: string) 
   const value = String(raw ?? "").trim();
   if (!value) return null;
 
-  if (value.startsWith("/")) {
+  if (value.startsWith("/") && !value.startsWith("//")) {
     return `${expectedBase.replace(/\/$/, "")}${value}`;
   }
 

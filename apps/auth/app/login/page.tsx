@@ -1,6 +1,5 @@
 "use client";
 import { motion } from "framer-motion";
-import BrandPanel from "./BrandPanel";
 import LoginForm from "./LoginForm";
 import { use, Suspense } from "react";
 
@@ -11,16 +10,27 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
   const redirectTo = normalizeReturnTo(params.redirect);
 
   return (
-    <div className="grid min-h-screen w-full grid-cols-1 md:grid-cols-2">
-      <BrandPanel />
-      <main className="relative grid place-items-center overflow-hidden bg-[linear-gradient(180deg,#fffdf7_0%,#fff8ec_100%)] p-6 sm:p-10">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#f9a51a]/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-[#073b2c]/8 blur-3xl" />
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#073b2c]">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[url('/login-klasse-family.jpg')] bg-cover bg-[position:42%_center]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,59,44,0.04)_35%,rgba(7,59,44,0.62)_100%)] md:right-[34%]"
+      />
+      <div className="absolute right-0 top-0 z-10 hidden h-full w-[34%] bg-white md:block" />
+      <main className="relative z-20 flex min-h-screen items-end justify-center px-5 pb-8 pt-24 md:ml-auto md:w-[34%] md:items-center md:px-[clamp(2rem,5vw,5.5rem)] md:py-12">
+        <div className="absolute right-6 top-7 hidden items-center gap-2 text-sm text-[#17211d]/80 md:flex">
+          <span className="grid h-6 w-8 place-items-center rounded-sm bg-[#169b62] text-xs">🇦🇴</span>
+          <span>Português</span>
+          <span aria-hidden="true" className="text-xs">⌄</span>
+        </div>
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative w-full max-w-[440px] rounded-[30px] border border-[#073b2c]/10 bg-white/70 p-7 shadow-[0_28px_90px_rgba(7,59,44,0.11)] backdrop-blur-xl sm:p-9"
+          className="relative w-full max-w-[440px] rounded-[24px] border border-white/30 bg-white/90 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none"
         >
           <LoginForm redirectTo={redirectTo} />
         </motion.section>
@@ -32,8 +42,24 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
 function normalizeReturnTo(raw: string | undefined) {
   const value = String(raw ?? "").trim();
   if (!value) return "";
-  if (value.startsWith("/")) return value;
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const parsed = new URL(value);
+    const allowedHosts = new Set([
+      "app.klasse.ao",
+      "formacao.klasse.ao",
+      "app.lvh.me:3001",
+      "formacao.lvh.me:3002",
+    ]);
+    const configuredHosts = [process.env.NEXT_PUBLIC_KLASSE_K12_URL, process.env.NEXT_PUBLIC_KLASSE_FORMACAO_URL]
+      .filter(Boolean)
+      .map((origin) => new URL(origin as string).host);
+    if (["http:", "https:"].includes(parsed.protocol) && new Set([...allowedHosts, ...configuredHosts]).has(parsed.host)) {
+      return parsed.toString();
+    }
+  } catch {
+    // Destino inválido: continuar no destino padrão.
+  }
   return "";
 }
 

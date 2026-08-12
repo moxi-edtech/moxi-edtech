@@ -38,8 +38,35 @@ const LoginSchema = z.object({
 function normalizeReturnTo(raw: string | null | undefined) {
   const value = String(raw ?? "").trim();
   if (!value) return "";
-  if (value.startsWith("/")) return value;
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const parsed = new URL(value);
+    const allowedHosts = new Set([
+      "app.klasse.ao",
+      "formacao.klasse.ao",
+      "app.lvh.me:3001",
+      "formacao.lvh.me:3002",
+    ]);
+    for (const origin of [
+      process.env.AUTH_ADMIN_BASE_URL,
+      process.env.NEXT_PUBLIC_KLASSE_K12_URL,
+      process.env.NEXT_PUBLIC_KLASSE_FORMACAO_URL,
+      process.env.KLASSE_K12_LOCAL_ORIGIN,
+      process.env.KLASSE_FORMACAO_LOCAL_ORIGIN,
+    ]) {
+      if (!origin) continue;
+      try {
+        allowedHosts.add(new URL(origin).host);
+      } catch {
+        // Ignorar origem mal configurada sem abrir o redirect.
+      }
+    }
+    if (["http:", "https:"].includes(parsed.protocol) && allowedHosts.has(parsed.host)) {
+      return parsed.toString();
+    }
+  } catch {
+    // Destino inválido: continuar no destino padrão.
+  }
   return "";
 }
 

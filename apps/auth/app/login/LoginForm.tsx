@@ -25,7 +25,7 @@ export default function LoginForm({ redirectTo }: Props) {
 
   return (
     <div>
-      <div className="mb-7 flex items-center gap-3 md:hidden">
+      <div className="mb-6 flex items-center gap-3">
         <img
           src="/klasse-mark-isolated.png"
           alt=""
@@ -43,7 +43,7 @@ export default function LoginForm({ redirectTo }: Props) {
         </span>
       </div>
 
-      <div className="mb-8 text-left">
+      <div className="mb-6 text-left">
         <div className="text-[27px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-[#073b2c]">
           Acesse o KLASSE
         </div>
@@ -87,7 +87,6 @@ export default function LoginForm({ redirectTo }: Props) {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-4 top-1/2 grid -translate-y-1/2 place-items-center rounded-lg p-1 text-[#17211d]/40 transition hover:bg-[#073b2c]/5 hover:text-[#073b2c] focus:outline-none focus:ring-2 focus:ring-[#073b2c]/15"
-              tabIndex={-1}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -101,7 +100,7 @@ export default function LoginForm({ redirectTo }: Props) {
           </p>
         ) : null}
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <label className="flex cursor-pointer select-none items-center gap-2">
             <input
               type="checkbox"
