@@ -25,13 +25,13 @@ export default function LoginForm({ redirectTo }: Props) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-5 flex items-center gap-3">
         <img
           src="/klasse-mark-isolated.png"
           alt=""
           width={42}
           height={42}
-          className="h-[42px] w-[42px] object-contain"
+          className="h-9 w-9 object-contain sm:h-[42px] sm:w-[42px]"
         />
         <span>
           <strong className="block text-sm font-[950] leading-none tracking-[0.16em] text-[#073b2c]">
@@ -44,7 +44,7 @@ export default function LoginForm({ redirectTo }: Props) {
       </div>
 
       <div className="mb-6 text-left">
-        <div className="text-[27px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-[#073b2c]">
+        <div className="text-[24px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-[#073b2c] sm:text-[27px]">
           Acesse o KLASSE
         </div>
         <div className="mt-2.5 max-w-[340px] text-sm font-normal leading-6 text-[#17211d]/55">
@@ -52,7 +52,7 @@ export default function LoginForm({ redirectTo }: Props) {
         </div>
       </div>
 
-      <form action={formAction} className="space-y-5" suppressHydrationWarning>
+      <form action={formAction} className="space-y-4 sm:space-y-5" suppressHydrationWarning>
         <input type="hidden" name="redirect_to" value={redirectTo} />
 
         <div>

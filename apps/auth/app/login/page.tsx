@@ -10,7 +10,7 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
   const redirectTo = normalizeReturnTo(params.redirect);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#073b2c]">
+    <div className="relative min-h-[100svh] w-full overflow-x-hidden overflow-y-auto bg-[#073b2c]">
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-[url('/login-klasse-family.jpg')] bg-cover bg-[position:42%_center]"
@@ -20,7 +20,7 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
         className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,59,44,0.04)_35%,rgba(7,59,44,0.62)_100%)] md:right-[34%]"
       />
       <div className="absolute right-0 top-0 z-10 hidden h-full w-[34%] bg-white md:block" />
-      <main className="relative z-20 flex min-h-screen items-end justify-center px-5 pb-8 pt-24 md:ml-auto md:w-[34%] md:items-center md:px-[clamp(2rem,5vw,5.5rem)] md:py-12">
+      <main className="relative z-20 flex min-h-[100svh] items-end justify-center px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-16 sm:px-5 md:ml-auto md:w-[34%] md:items-center md:px-[clamp(2rem,5vw,5.5rem)] md:py-12">
         <div className="absolute right-6 top-7 hidden items-center gap-2 text-sm text-[#17211d]/80 md:flex">
           <span className="grid h-6 w-8 place-items-center rounded-sm bg-[#169b62] text-xs">🇦🇴</span>
           <span>Português</span>
@@ -30,7 +30,7 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative w-full max-w-[440px] rounded-[24px] border border-white/30 bg-white/90 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+          className="relative w-full max-w-[440px] rounded-[24px] border border-white/30 bg-white/90 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-6 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none"
         >
           <LoginForm redirectTo={redirectTo} />
         </motion.section>
