@@ -1,7 +1,7 @@
 # KLASSE — Sprint Rematrícula no Balcão Monetizada V1
 
-Estado: **RELEASE CANDIDATE — backend, integração de balcão e UI principal implementados; E2E financeiro pendente**  
-Data: **2026-08-06**  
+Estado: **IMPLEMENTADO — fluxo operacional, reconciliação e hardening concluídos; E2E autenticado pendente**
+Data: **2026-08-11**
 Escola piloto: **Escola do Curtume**  
 Dependência: `SPRINT_ACADEMIC_YEAR_CONTEXT_V1.md`
 
@@ -23,15 +23,39 @@ Concluído neste ciclo:
 - card e modal acessíveis integrados no `BalcaoAtendimento`;
 - rematrícula apresentada no catálogo de operações do mesmo balcão.
 
-Validação: TypeScript e `git diff --check` passaram. A base remota não foi alterada.
+Validação: TypeScript e `git diff --check` passaram. A base remota foi validada com PostgreSQL.
+
+## Atualização de implementação — 2026-08-10
+
+Concluído neste ciclo:
+
+- fila de reconciliação em `/secretaria/rematricula/reconciliacao`;
+- API `GET /api/secretaria/balcao/rematriculas/reconciliation-queue`;
+- ação de conclusão de reconciliação no endpoint de rematrícula;
+- acesso operacional para `admin`, `admin_financeiro`, `financeiro`, `secretaria` e perfis equivalentes;
+- atalhos de reconciliação expostos nos menus de Admin, Financeiro, Operações e Secretaria;
+- proteção contra cobrança duplicada em pedidos legados e pedidos pagos pendentes;
+- ordenação de mensalidades por competência completa (`ano_referencia + mes_referencia`), evitando Janeiro/2027 antes de Setembro/2026;
+- balcão com selector de ano letivo, troca de aluno sem fechar o atendimento e pré-preenchimento do total em pagamentos em dinheiro;
+- migration de histórico transitado aplicada, com tabelas, RLS, índices e RPC de gravação;
+- documentação do ano letivo como intervalo académico, e não como ano civil.
+- bloqueio obrigatório de saldo aberto no Balcão, na rematrícula em massa via RPC e na API alternativa;
+- pagamento parcial de mensalidades antigas, sem liberação antecipada da rematrícula;
+- enriquecimento dos bloqueios em massa com valor da dívida e quantidade de mensalidades;
+- saída graciosa “Regularizar no balcão” e retorno à confirmação com o aluno em contexto;
+- indicação “Contexto retomado” após a regularização;
+- histórico visual dos pagamentos parciais realizados na sessão.
+
+Validação: PostgreSQL confirmou as tabelas `historico_transitado_anos` e `historico_transitado_notas`, RLS, índices e RPC `upsert_historico_transitado`.
 
 Pendências de produção:
 
 - teste E2E com pagamento real/sandbox;
 - confirmação da regra final de alteração de turma na rematrícula;
-- reconciliação operacional com fila/painel dedicado;
 - validação de concorrência com dois atendentes para o mesmo aluno;
 - confirmação das rotas finais de Emolumentos, dívidas e conciliação.
+- teste E2E autenticado por perfil (`admin`, `admin_financeiro`, `financeiro`, `secretaria`);
+- substituir o campo inteiro `ano_letivo` do histórico transitado por referência explícita a `anos_letivos.id` e apresentar `2025/2026`, `2026/2027`, etc.
 
 ## 1. Decisão de produto
 
@@ -105,9 +129,20 @@ Permitir que uma secretária conclua uma rematrícula individual no balcão, par
 - Rematrícula em massa.
 - Alteração da matrícula antiga.
 - Transferência de aluno entre escolas.
-- Negociação automática de dívidas antigas.
+- Negociação automática de dívidas antigas; o operador pode, contudo, registar pagamentos parciais.
 - Definição automática de turma sem regra aprovada pela escola.
 - Emissão de documentos diferentes do comprovante de matrícula.
+
+### Saída graciosa para dívida
+
+Quando houver saldo aberto, a operação não termina num bloqueio seco. O sistema deve:
+
+1. apresentar o aluno, a quantidade de mensalidades e o saldo total;
+2. oferecer “Regularizar no balcão” sem perder o contexto da rematrícula;
+3. permitir pagamento parcial, começando pela mensalidade mais antiga;
+4. manter o aluno pendente até o saldo ser zero;
+5. mostrar o histórico dos pagamentos feitos na sessão;
+6. oferecer “Continuar” para voltar à confirmação da rematrícula.
 
 ## 6. Decisões confirmadas
 
@@ -116,7 +151,7 @@ As decisões de negócio recebidas para o Curtume são:
 - a rematrícula é aberta para o ano actual `2026/2027`;
 - o preço é configurado pela escola em Emolumentos;
 - as regras de elegibilidade são configuradas pela escola;
-- dívidas devem ser pagas antes da rematrícula;
+- dívidas devem ser totalmente regularizadas antes da rematrícula; pagamentos parciais são permitidos, mas não liberam a operação;
 - a turma é obrigatória;
 - a taxa de rematrícula é separada da primeira mensalidade.
 

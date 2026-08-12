@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       .select('status')
       .eq('escola_id', escolaId)
       .eq('aluno_id', alunoId)
+      .eq('matricula_id', matriculaId)
       .eq('servico_codigo', serviceCode)
       .eq('status', 'granted')
       .limit(1)

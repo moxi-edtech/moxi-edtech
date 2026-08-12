@@ -211,6 +211,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Já existe uma rematrícula em pagamento para este aluno e ano.", code: "PAYMENT_IN_PROGRESS", pedido_id: pedidoExistente.id }, { status: 409 });
     }
 
+    // Regra financeira obrigatória: nenhuma rematrícula nova/reconfirmação
+    // pode avançar enquanto existir saldo pendente na matrícula de origem.
+    // A taxa de rematrícula é um serviço separado e não liquida mensalidades.
+    const { data: mensalidadesOrigem, error: mensalidadesError } = await supabase
+      .from("mensalidades")
+      .select("status, valor_previsto, valor, valor_pago_total")
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", body.aluno_id)
+      .eq("matricula_id", body.matricula_id);
+    if (mensalidadesError) throw mensalidadesError;
+
+    const mensalidadesPendentes = (mensalidadesOrigem ?? []).filter((mensalidade: any) => {
+      const status = String(mensalidade.status ?? "").toLowerCase();
+      const saldo = Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      );
+      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
+    });
+    if (mensalidadesPendentes.length > 0) {
+      const total = mensalidadesPendentes.reduce((sum, mensalidade: any) => sum + Math.max(
+        Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
+        0,
+      ), 0);
+      return NextResponse.json({
+        ok: false,
+        error: "Regularize as mensalidades do ano anterior antes de concluir a rematrícula.",
+        code: "REMATRICULA_DEBT_REQUIRED",
+        debt: { count: mensalidadesPendentes.length, total },
+      }, { status: 409 });
+    }
+
     if (matriculaDestino && !reclassificacao && matriculaDestino.turma_id !== body.destino_turma_id) {
       return NextResponse.json(
         { ok: false, error: "A reconfirmação deve manter a turma destino já preparada.", code: "RECONFIRMATION_TURMA_MISMATCH" },
@@ -231,6 +263,7 @@ export async function POST(request: Request) {
         valor_cobrado: Number(service.valor_base),
         contexto: {
           origem: "rematricula_balcao",
+          origem_matricula_id: body.matricula_id,
           ano_letivo_id: academicContext.anoLetivoId,
           destino_turma_id: body.destino_turma_id,
           notas_lancar_depois: body.notas_lancar_depois === true,

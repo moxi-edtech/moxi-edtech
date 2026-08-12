@@ -1,6 +1,6 @@
 # Estado e backlog — Rematrícula, Balcão e mensalidades
 
-**Data:** 2026-08-08  
+**Data:** 2026-08-11
 **Escola de validação:** Complexo Escolar Privado Adventista de Curtume  
 **Ano em foco:** 2026/2027 (`ano_letivo = 2026`, 01/09/2026–31/08/2027)
 
@@ -25,7 +25,12 @@ Também foi auditado o “Foco da Operação” da dashboard. No Curtume, os val
 - Mensalidades exibidas e total da dívida são filtrados pelo ano seleccionado.
 - Pagamentos exigem `matricula_id` e validação da entidade no ano letivo.
 - Rematrícula no Balcão usa aluno, matrícula, ano e turma de destino coerentes.
-- Dívida não bloqueia automaticamente a rematrícula; pode ser resolvida no próprio fluxo de pagamento.
+- Dívida com saldo aberto bloqueia a rematrícula em qualquer canal; a regularização é oferecida no próprio fluxo do Balcão.
+- Pagamentos parciais são permitidos, aplicados às mensalidades mais antigas primeiro, mas não liberam a rematrícula antes do saldo zero.
+- A rematrícula em massa via RPC e via API alternativa usa a mesma regra obrigatória do Balcão e não depende de `bloquear_inadimplentes`.
+- O resultado da rematrícula em massa identifica aluno, motivo, quantidade de mensalidades e valor da dívida.
+- O operador pode abrir “Regularizar no balcão” e retornar à confirmação com o aluno/contexto preservado.
+- Após a quitação, o Balcão mostra a ação “Continuar”; a confirmação mostra “Contexto retomado” e o modal mantém o histórico dos pagamentos parciais da sessão.
 
 ### Rematrícula
 
@@ -74,6 +79,7 @@ Também foi auditado o “Foco da Operação” da dashboard. No Curtume, os val
 - [ ] Fazer commit/push das alterações ainda não commitadas, isolando-as dos ficheiros pessoais/artefactos não relacionados.
 - [ ] Executar `pnpm --filter web run build` sem argumentos extra e resolver qualquer falha.
 - [ ] Fazer smoke test no Curtume no Balcão com um aluno real: seleccionar 2026/2027, confirmar que só aparecem mensalidades daquele ano e testar pagamento de rematrícula.
+- [ ] Fazer smoke test de dívida: pagamento parcial, retorno contextual e liberação somente após saldo zero.
 - [ ] Confirmar que uma matrícula de classe normal não cria o mês final e que uma turma de 6ª/9ª cria o mês final.
 - [ ] Definir com a escola o valor oficial de `SERV_REMATRICULA`; neste momento está deliberadamente em `0 Kz`.
 - [x] Gerar relatório read-only de mensalidades fora da matrícula/calendário antes de qualquer correcção de dados.
@@ -102,12 +108,15 @@ Também foi auditado o “Foco da Operação” da dashboard. No Curtume, os val
 - [x] Criar relatório de reconciliação para detectar mensalidades sem `matricula_id`, com ano divergente ou fora do calendário.
 - [ ] Permitir configurar valores de rematrícula e emolumentos por escola/ano no ecrã financeiro.
 - [ ] Documentar o procedimento de abertura, encerramento e reabertura da janela de rematrícula.
+- [x] Alinhar bloqueio de dívida entre Balcão, rematrícula em massa via RPC e API alternativa.
+- [x] Criar saída graciosa para regularização e retomada da confirmação sem perder o aluno em contexto.
 
 ## Decisões e limites actuais
 
 - Dívida de ano anterior não é apagada nem escondida globalmente; aparece quando o operador consulta o ano correspondente.
 - Rematrícula e matrícula inicial não têm exactamente a mesma regra: rematrícula de aluno existente pode ser preparada antes do início do ano; candidatura inicial continua dependente do fluxo formal definido pela escola.
 - O sistema não deve criar mensalidades para candidatos ou matrículas inactivas.
+- Toda rematrícula deve tratar dívida como pendência acionável, nunca como bloqueio silencioso: mostrar saldo, mensalidades, ação de regularização e retorno.
 - A data oficial do calendário escolar é a fonte para o período cobrável; o mês extra de exame depende da regra da classe/turma.
 
 ## Actualização 2026-08-08 — filtros globais e reconciliação

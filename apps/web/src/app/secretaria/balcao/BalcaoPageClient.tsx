@@ -10,6 +10,8 @@ import Link from "next/link";
 export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: string, escolaParam: string }) {
   const searchParams = useSearchParams();
   const alunoId = searchParams?.get("alunoId") ?? null;
+  const returnToParam = searchParams?.get("returnTo") ?? null;
+  const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//") ? returnToParam : null;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
@@ -38,6 +40,7 @@ export default function BalcaoPageClient({ escolaId, escolaParam }: { escolaId: 
             escolaId={escolaId} 
             selectedAlunoId={alunoId}
             showSearch={true}
+            returnTo={returnTo}
           />
         </div>
       </main>

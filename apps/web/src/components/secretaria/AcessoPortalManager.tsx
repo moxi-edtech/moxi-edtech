@@ -40,11 +40,12 @@ import { createClient } from "@/lib/supabaseClient";
 
 type Props = {
   escolaId: string;
+  initialAlunoId?: string | null;
 };
 
 type TabType = "pendentes" | "ativos" | "bloqueados";
 
-export function AcessoPortalManager({ escolaId }: Props) {
+export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<TabType>("pendentes");
   const [search, setSearch] = useState("");
@@ -91,6 +92,14 @@ export function AcessoPortalManager({ escolaId }: Props) {
     setLiberados([]);
     setActionMessage(null);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "pendentes" || !initialAlunoId || loading) return;
+    if (items.some((aluno) => aluno.id === initialAlunoId)) {
+      setSelecionados((current) => current.includes(initialAlunoId) ? current : [...current, initialAlunoId]);
+      setActionMessage({ type: "success", text: "Aluno selecionado. Escolha 'Gerar credenciais' para liberar o portal." });
+    }
+  }, [activeTab, initialAlunoId, items, loading]);
 
   const toggleSelecionar = (id: string) => {
     setSelecionados((prev) =>

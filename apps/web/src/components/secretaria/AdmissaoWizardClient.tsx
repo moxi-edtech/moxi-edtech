@@ -10,6 +10,8 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BalcaoAtendimento from "./BalcaoAtendimento";
+import { EnrollmentPostActionModal } from "./EnrollmentPostActionModal";
+import type { EnrollmentPostAction } from "./EnrollmentPostActions";
 
 /**
  * KLASSE Standard:
@@ -1586,6 +1588,7 @@ function Step3Pagamento(props: {
 
   const [loading, setLoading] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [postAction, setPostAction] = useState<EnrollmentPostAction | null>(null);
   const [result, setResult] = useState<SimpleResult | null>(null);
   const [duplicateConflict, setDuplicateConflict] = useState<AdmissionDuplicateConflict | null>(null);
   const [duplicateActionError, setDuplicateActionError] = useState<string | null>(null);
@@ -1593,6 +1596,13 @@ function Step3Pagamento(props: {
   const [priceHint, setPriceHint] = useState<string | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const router = useRouter();
+  const contextualHref = useCallback((path: string) => {
+    const contextualPath = toContextualPortalPath(path, secretariaBase);
+    const schoolRoot = secretariaBase.includes("/escola/")
+      ? secretariaBase.slice(0, secretariaBase.lastIndexOf("/"))
+      : "";
+    return `${schoolRoot}${contextualPath}`;
+  }, [secretariaBase]);
 
   useEffect(() => {
     const canResolveByTurma = isUuid(turmaId);
@@ -1893,6 +1903,10 @@ function Step3Pagamento(props: {
                 }
               } else if (passo.id === "registar_propina") {
                 setShowPaymentModal(true);
+              } else if (passo.id === "liberar_portal") {
+                setPostAction("portal");
+              } else if (passo.id === "lancar_notas") {
+                setPostAction("notas");
               } else if (passo.id === "nova_matricula") {
                 onReset();
               }
@@ -1917,6 +1931,22 @@ function Step3Pagamento(props: {
               </div>
             </DialogContent>
           </Dialog>
+
+          {result.aluno_id && (
+            <EnrollmentPostActionModal
+              open={Boolean(postAction)}
+              onOpenChange={(open) => { if (!open) setPostAction(null); }}
+              action={postAction}
+              escolaId={escolaId}
+              alunoId={result.aluno_id}
+              alunoNome={initialData?.nome_candidato || "Aluno"}
+              turmaId={turmaId}
+              onPayment={() => {
+                setPostAction(null);
+                setShowPaymentModal(true);
+              }}
+            />
+          )}
         </div>
       );
     }

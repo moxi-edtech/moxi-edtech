@@ -7,7 +7,9 @@ export const PROXIMOS_PASSOS: Record<string, ProximoPassoConfig> = {
     subtitulo: (ctx) => `${ctx.nome} · ${ctx.turma} · ${ctx.anoLetivo}`,
     passos: [
       { id: "emitir_boletim",   label: "Emitir Boletim de Matrícula", desc: "Documento oficial com QR code",     icone: "◉", destaque: true  },
-      { id: "registar_propina", label: "Registar Propina",            desc: "Primeiro pagamento do ano lectivo", icone: "◈", destaque: false },
+      { id: "liberar_portal",   label: "Liberar portal",              desc: "Gerar credenciais do aluno",        icone: "🔑", destaque: false },
+      { id: "lancar_notas",     label: "Lançar notas",                desc: "Abrir o lançamento académico",      icone: "✎", destaque: false },
+      { id: "registar_propina", label: "Pagar mensalidade",            desc: "Primeiro pagamento do ano lectivo", icone: "◈", destaque: false },
       { id: "nova_matricula",   label: "Matricular outro aluno",      desc: "Continuar com a fila",              icone: "✦", destaque: false },
     ],
   },

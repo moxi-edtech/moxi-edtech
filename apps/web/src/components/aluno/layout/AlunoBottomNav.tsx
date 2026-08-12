@@ -121,7 +121,7 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
 
       {/* Fixed Bottom Navigation Bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur shadow-lg"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/90 backdrop-blur-lg shadow-lg"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Navegação do portal do aluno"
       >
@@ -140,23 +140,26 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
                 prefetch
                 onPointerEnter={() => handlePreload(item)}
                 onTouchStart={() => handlePreload(item)}
-                className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1 text-[10px] font-black transition-all duration-200 active:scale-90 ${
+                className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-200 active:scale-90 ${
                   active
-                    ? "text-klasse-green scale-105"
-                    : "text-slate-400 hover:text-slate-600"
+                    ? "text-emerald-700 font-black"
+                    : "text-slate-400 hover:text-slate-600 font-bold"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
-                <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${
-                  active ? "bg-klasse-green-50 shadow-sm" : "bg-transparent"
+                <div className={`relative flex h-8 w-12 items-center justify-center rounded-xl transition-all ${
+                  active ? "bg-emerald-50 text-emerald-700 shadow-2xs" : "bg-transparent text-slate-500"
                 }`}>
-                  <Icon className={`h-5 w-5 transition-all ${active ? "fill-current" : ""}`} />
+                  <Icon className={`h-5 w-5 transition-transform duration-200 ${active ? "scale-110" : ""}`} />
+                  {active && (
+                    <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-emerald-600 animate-in fade-in zoom-in duration-200" />
+                  )}
                 </div>
-                <span className={`transition-opacity duration-200 ${active ? "opacity-100" : "opacity-70"}`}>
+                <span className={`transition-opacity duration-200 mt-0.5 ${active ? "opacity-100" : "opacity-75"}`}>
                   {label}
                 </span>
                 {badge && badge > 0 && (
-                  <span className="absolute right-3 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white shadow-sm">
+                  <span className="absolute right-2.5 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white shadow-sm ring-2 ring-white">
                     {badge}
                   </span>
                 )}
@@ -168,18 +171,21 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
           <button
             type="button"
             onClick={() => setIsMoreOpen(true)}
-            className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1 text-[10px] font-black transition-all duration-200 active:scale-90 ${
+            className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-200 active:scale-90 ${
               isDrawerActive || isMoreOpen
-                ? "text-klasse-green scale-105"
-                : "text-slate-400 hover:text-slate-600"
+                ? "text-emerald-700 font-black"
+                : "text-slate-400 hover:text-slate-600 font-bold"
             }`}
           >
-            <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${
-              isDrawerActive || isMoreOpen ? "bg-klasse-green-50 shadow-sm" : "bg-transparent"
+            <div className={`relative flex h-8 w-12 items-center justify-center rounded-xl transition-all ${
+              isDrawerActive || isMoreOpen ? "bg-emerald-50 text-emerald-700 shadow-2xs" : "bg-transparent text-slate-500"
             }`}>
-              <MoreHorizontal className="h-5 w-5" />
+              <MoreHorizontal className={`h-5 w-5 transition-transform duration-200 ${isDrawerActive || isMoreOpen ? "scale-110" : ""}`} />
+              {(isDrawerActive || isMoreOpen) && (
+                <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-emerald-600 animate-in fade-in zoom-in duration-200" />
+              )}
             </div>
-            <span className={`transition-opacity duration-200 ${isDrawerActive || isMoreOpen ? "opacity-100" : "opacity-70"}`}>
+            <span className={`transition-opacity duration-200 mt-0.5 ${isDrawerActive || isMoreOpen ? "opacity-100" : "opacity-75"}`}>
               Mais
             </span>
             {drawerItems.some(i => (i.badge ?? 0) > 0) && (
@@ -191,3 +197,4 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
     </>
   );
 }
+

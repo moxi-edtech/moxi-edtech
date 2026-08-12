@@ -193,28 +193,32 @@ export default function DashboardLoader() {
     <div className="space-y-6">
       <RematriculaBanner />
 
-      <AlunoCard className="bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white border-[#1f4028]">
-        <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">Ano lectivo</p>
+      <AlunoCard variant="hero">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-200/70">Resumo Lectivo</p>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-white">{nomeAluno}</h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Pill label={`Trimestre ${boletim?.trimestre_atual ?? "—"}`} />
-              <Pill label={pendentes > 0 ? "Com pendências" : "Em dia"} colorClass="text-slate-900" bgClass="bg-white/70" />
+            <h2 className="text-2xl font-black text-white tracking-tight">{nomeAluno}</h2>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <Pill label={`Trimestre ${boletim?.trimestre_atual ?? "—"}`} status="emerald" className="bg-white/15 text-white border-white/20" />
+              <Pill
+                label={pendentes > 0 ? "Com pendências" : "Propinas em dia"}
+                status={pendentes > 0 ? "warning" : "approved"}
+                className={pendentes > 0 ? "bg-amber-400 text-slate-950 border-amber-300 font-black" : "bg-emerald-400 text-slate-950 border-emerald-300 font-black"}
+              />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-white/10 px-3 py-2 text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-50/70">Última nota</p>
-              <p className={`text-lg font-semibold ${notaColor(ultimaNota)} text-white`}>{ultimaNota ?? "—"}</p>
+            <div className="rounded-2xl bg-white/10 p-3 text-center backdrop-blur-sm border border-white/10">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">Última nota</p>
+              <p className={`text-lg font-black ${notaColor(ultimaNota)} text-white mt-0.5`}>{ultimaNota ?? "—"}</p>
             </div>
-            <div className="rounded-xl bg-white/10 px-3 py-2 text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-50/70">Pendentes</p>
-              <p className="text-lg font-semibold text-white">{pendentes}</p>
+            <div className="rounded-2xl bg-white/10 p-3 text-center backdrop-blur-sm border border-white/10">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">Pendentes</p>
+              <p className="text-lg font-black text-white mt-0.5">{pendentes}</p>
             </div>
-            <div className="rounded-xl bg-white/10 px-3 py-2 text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-50/70">Próxima aula</p>
-              <p className="text-lg font-semibold text-white">
+            <div className="rounded-2xl bg-white/10 p-3 text-center backdrop-blur-sm border border-white/10">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/80">Próxima aula</p>
+              <p className="text-lg font-black text-white mt-0.5">
                 {data?.proxima_aula?.weekday != null ? `Dia ${data.proxima_aula.weekday}` : "—"}
               </p>
             </div>
@@ -223,13 +227,13 @@ export default function DashboardLoader() {
       </AlunoCard>
 
       {pendentes > 0 && (
-        <AlunoCard className="border-klasse-gold-200 bg-klasse-gold-50">
+        <AlunoCard className="border-amber-200 bg-amber-50/90 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-slate-900">Mensalidades pendentes</p>
-              <p className="text-xs text-slate-500">Há {pendentes} mensalidade(s) por regularizar.</p>
+              <p className="text-sm font-black text-slate-900">Mensalidades pendentes</p>
+              <p className="text-xs text-slate-600 font-medium">Há {pendentes} mensalidade(s) aguardando regularização.</p>
             </div>
-            <Pill label="Ver financeiro" colorClass="text-klasse-gold-700" bgClass="bg-white" />
+            <Pill label="Regularizar" status="gold" className="bg-white shadow-2xs" />
           </div>
         </AlunoCard>
       )}

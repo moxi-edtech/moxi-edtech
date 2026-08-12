@@ -32,6 +32,7 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
       .select('status')
       .eq('escola_id', escolaId)
       .eq('aluno_id', alunoId)
+      .eq('matricula_id', matriculaId)
       .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
       .eq('status', 'granted')
       .limit(1)

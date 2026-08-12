@@ -5,7 +5,7 @@ import { AcessoPortalManager } from "@/components/secretaria/AcessoPortalManager
 import { MetricasAcessoAlunos } from "@/components/secretaria/MetricasAcessoAlunos";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
-export default async function AcessoAlunosPage() {
+export default async function AcessoAlunosPage({ searchParams }: { searchParams?: Promise<{ alunoId?: string }> }) {
   const supabase = await supabaseServer();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
@@ -13,6 +13,7 @@ export default async function AcessoAlunosPage() {
 
   const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
   if (!escolaId) return redirect("/redirect");
+  const params = (await searchParams) ?? {};
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -32,7 +33,7 @@ export default async function AcessoAlunosPage() {
 
       <MetricasAcessoAlunos escolaId={escolaId} />
 
-      <AcessoPortalManager escolaId={escolaId} />
+      <AcessoPortalManager escolaId={escolaId} initialAlunoId={params.alunoId ?? null} />
     </div>
   );
 }

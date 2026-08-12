@@ -99,6 +99,7 @@ export async function GET(request: Request) {
       .select('status')
       .eq('escola_id', ctx.escolaId)
       .eq('aluno_id', alunoId)
+      .eq('matricula_id', matricula.id)
       .eq('servico_codigo', 'DOC_DECLARACAO_NOTAS')
       .eq('status', 'granted')
       .limit(1)
@@ -182,7 +183,9 @@ export async function GET(request: Request) {
       if (row.trimestre === 1) existing.nota_t1 = isLiberado ? (row.nota_final ?? null) : null;
       if (row.trimestre === 2) existing.nota_t2 = isLiberado ? (row.nota_final ?? null) : null;
       if (row.trimestre === 3) existing.nota_t3 = isLiberado ? (row.nota_final ?? null) : null;
-      existing.nota_final = existing.nota_final ?? row.nota_final ?? null;
+      existing.nota_final = isLiberado
+        ? (existing.nota_final ?? row.nota_final ?? null)
+        : null;
       existing.status = status;
       byDisciplina.set(id, existing);
     });

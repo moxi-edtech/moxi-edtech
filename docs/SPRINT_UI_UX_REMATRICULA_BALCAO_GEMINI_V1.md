@@ -1,6 +1,6 @@
 # KLASSE — Sprint UI/UX Rematrícula Monetizada no Balcão V1
 
-Estado: **IMPLEMENTADO — revisão e hardening concluídos; E2E visual pendente**  
+Estado: **IMPLEMENTADO — revisão, hardening e reconciliação concluídos; E2E visual pendente**
 Backend disponível: `POST /api/secretaria/balcao/rematriculas`  
 Escola piloto: **Escola do Curtume**  
 Ano operacional: **2026/2027**
@@ -16,6 +16,23 @@ Ano operacional: **2026/2027**
 - acessibilidade base do modal implementada (`role=dialog`, foco, Escape condicionado e alertas).
 
 Pendente: teste visual autenticado no Balcão do Curtume e confirmação dos destinos operacionais com a secretaria.
+
+## Atualização UX/UI — 2026-08-10
+
+- a fila de reconciliação tornou-se um destino navegável, com CTA `Resolver`;
+- `admin`, `admin_financeiro`, `financeiro` e `secretaria` possuem acesso operacional coerente;
+- o Balcão permite trocar o aluno sem fechar o atendimento;
+- a troca de aluno limpa o carrinho para impedir mistura de cobranças;
+- pagamento em numerário preenche `Recebido` com o total e calcula o troco;
+- o selector de ano letivo está disponível no Balcão;
+- o ano selecionado é propagado ao dossier, mensalidades, rematrícula e pagamento;
+- a busca e o perfil do aluno foram reforçados na lista interna da turma;
+- a lista da turma permite pesquisar nome, BI ou matrícula e abrir o perfil completo;
+- a competência mensal respeita anos letivos que atravessam dois anos civis.
+
+### Limitação conhecida
+
+O Histórico Transitado já possui backend, tabelas e RLS, mas a UI ainda chama o campo de `Ano civil` e guarda um inteiro (`2025`, `2026`, `2027`). A próxima evolução deve usar `anos_letivos.id` e exibir o intervalo real (`2025/2026`, `2026/2027`, `2027/2028`).
 
 ## 1. Objetivo
 

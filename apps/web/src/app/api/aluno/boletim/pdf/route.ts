@@ -45,6 +45,27 @@ export async function GET(request: Request) {
 
     if (!matricula?.id) return NextResponse.json({ ok: false, error: "Sem matrícula" }, { status: 404 });
 
+    const { data: permission, error: permissionError } = await supabase
+      .from("servico_pedidos")
+      .select("id")
+      .eq("escola_id", ctx.escolaId)
+      .eq("aluno_id", alunoId)
+      .eq("matricula_id", matricula.id)
+      .eq("servico_codigo", "DOC_DECLARACAO_NOTAS")
+      .eq("status", "granted")
+      .limit(1)
+      .maybeSingle();
+
+    if (permissionError) {
+      return NextResponse.json({ ok: false, error: "Falha ao validar autorização do boletim" }, { status: 500 });
+    }
+    if (!permission) {
+      return NextResponse.json(
+        { ok: false, error: "Acesso negado. Pague a taxa do boletim para descarregar as notas." },
+        { status: 403 }
+      );
+    }
+
     const [boletimRes, frequenciaRes] = await Promise.all([
       supabase
         .from("vw_boletim_por_matricula")

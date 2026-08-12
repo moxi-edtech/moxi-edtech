@@ -184,6 +184,8 @@ export async function GET(request: Request) {
         : pedidoExistente.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
           ? "RECONCILIATION_REQUIRED"
         : "PAYMENT_IN_PROGRESS";
+    } else if (dividaTotal > 0) {
+      status = "DEBT_BLOCKED";
     } else if (matriculaDestino) {
       status = reclassificacao ? "FINALIST_PENDING" : "RECONFIRMATION_REQUIRED";
     } else if (!service || !service.ativo || Number(service.valor_base) <= 0) {

@@ -1,5 +1,23 @@
 # Balcão — Regras operacionais da virada 2026/2027
 
+## Atualização de produto — 2026-08-11
+
+O Balcão passou a manter o contexto do ano letivo durante todo o atendimento. O selector de ano deve representar a sessão académica real, por exemplo `2026/2027`, e não apenas `2026` como ano civil. Mensalidades são ordenadas pela competência completa, respeitando Setembro/2026 antes de Janeiro/2027.
+
+O atendimento também permite:
+
+- trocar de aluno sem fechar o Balcão;
+- limpar automaticamente o carrinho ao trocar de aluno;
+- preencher o total recebido ao escolher pagamento em numerário;
+- calcular troco antes da confirmação;
+- continuar no mesmo ano letivo ao abrir rematrícula, mensalidades e comprovantes.
+- abrir a regularização de dívida no próprio contexto do aluno;
+- pagar parcialmente as mensalidades mais antigas primeiro;
+- retornar à confirmação da rematrícula depois da quitação, com indicação explícita de contexto retomado;
+- consultar o histórico dos pagamentos parciais feitos na sessão.
+
+Quando o pagamento é confirmado e a matrícula não é concluída, o caso fica em `RECONCILIATION_REQUIRED` e deve ser resolvido na fila de reconciliação. A secretaria não deve cobrar novamente.
+
 ## Objetivo
 
 O Balcão deve orientar a secretaria sem transformar exceções académicas em bloqueios silenciosos. Cada operação deve deixar claro:
@@ -38,7 +56,11 @@ O certificado com notas só deve ser emitido quando o histórico estiver complet
 
 ## Dívidas
 
-Dívida é apresentada como alerta com quantidade e valor. A taxa de reconfirmação não liquida mensalidades e não deve ser confundida com elas. A secretaria deve poder tratar a taxa e a dívida no atendimento conforme a política financeira da escola.
+Dívida com saldo aberto impede a rematrícula em qualquer canal. O bloqueio nunca deve ser silencioso: deve apresentar quantidade, valor, mensalidades afectadas e a ação “Regularizar no balcão”.
+
+O Balcão permite pagamento parcial, aplicado às mensalidades mais antigas primeiro. O pagamento parcial reduz o saldo, mas não libera a rematrícula. Apenas saldo zero torna o aluno elegível.
+
+Depois da quitação, o sistema apresenta “Dívida regularizada” e “Continuar”, retornando à confirmação da rematrícula com o aluno e a operação preservados. A taxa de rematrícula não liquida mensalidades e não deve ser confundida com elas.
 
 ## Pedidos legados sem ano
 
@@ -59,4 +81,6 @@ Os finalistas não devem voltar ao fluxo genérico de promoção:
 - Nunca pedir uma nova turma para uma matrícula destino já existente.
 - Nunca bloquear por notas ausentes sem explicar a confirmação necessária.
 - Nunca permitir pagamento duplicado para o mesmo aluno/ano/operação.
+- Nunca bloquear por dívida sem oferecer regularização, valor, quantidade de mensalidades e retorno contextual.
+- Nunca liberar rematrícula após pagamento parcial; o saldo deve ser zero.
 - Depois de concluir, mostrar “já concluído” e o comprovante, quando emitido.

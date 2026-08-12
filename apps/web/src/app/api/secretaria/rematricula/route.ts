@@ -174,6 +174,43 @@ export async function POST(req: Request) {
     const originTurmaRow = originTurma as TurmaEscolaRow | null;
     if (originTurmaRow?.escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Turma de origem não pertence à escola atual' }, { status: 403 });
 
+    // A API alternativa precisa aplicar a mesma regra do balcão e da RPC:
+    // saldo aberto na matrícula de origem impede a rematrícula.
+    const { data: originMatriculas } = await supabase
+      .from('matriculas')
+      .select('id, aluno_id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', origin_turma_id)
+      .in('aluno_id', aluno_ids)
+      .in('status', ['ativo', 'ativa', 'active', 'reprovado', 'reprovada', 'reprovado_por_faltas']);
+    const originRows = (originMatriculas ?? []) as Array<{ id: string; aluno_id: string | null }>;
+    const originByAluno = new Map(originRows.filter((row) => row.aluno_id).map((row) => [row.aluno_id as string, row.id]));
+    const originIds = Array.from(originByAluno.values());
+    const { data: openDebtRows } = originIds.length
+      ? await supabase
+          .from('mensalidades')
+          .select('matricula_id, valor_previsto, valor, valor_pago_total, status')
+          .eq('escola_id', escolaId)
+          .in('matricula_id', originIds)
+      : { data: [] };
+    const debtOriginIds = new Set(
+      (openDebtRows ?? [])
+        .filter((row) => {
+          const openBalance = Math.max(
+            Number(row.valor_previsto ?? row.valor ?? 0) - Number(row.valor_pago_total ?? 0),
+            0
+          );
+          return openBalance > 0 && !['pago', 'isento', 'cancelado'].includes(String(row.status ?? '').toLowerCase());
+        })
+        .map((row) => row.matricula_id)
+        .filter(Boolean)
+    );
+    const debtBlockedAlunoIds = new Set(
+      Array.from(originByAluno.entries())
+        .filter(([, matriculaId]) => debtOriginIds.has(matriculaId))
+        .map(([alunoId]) => alunoId)
+    );
+
     // Deduplicar: não criar se já existe matrícula ativa do aluno na mesma sessão
     const { data: existingRows } = await supabase
       .from('matriculas')
@@ -183,7 +220,7 @@ export async function POST(req: Request) {
       .in('aluno_id', aluno_ids)
       .in('status', ['ativo','ativa','active']);
     const alreadyActive = new Set<string>((existingRows as MatriculaAlunoRow[] | null | undefined || []).map((r) => r.aluno_id).filter(Boolean) as string[]);
-    const toInsert = aluno_ids.filter((id) => !alreadyActive.has(id));
+    const toInsert = aluno_ids.filter((id) => !alreadyActive.has(id) && !debtBlockedAlunoIds.has(id));
 
     let inserted = 0;
     if (toInsert.length > 0) {
@@ -239,7 +276,12 @@ export async function POST(req: Request) {
       });
     }
     recordAuditServer({ escolaId, portal: 'secretaria', acao: 'REMATRICULA_APP', entity: 'matriculas', details: { origin_turma_id, destination_turma_id, inserted, skipped } }).catch(()=>null)
-    return NextResponse.json({ ok: true, inserted, skipped });
+    return NextResponse.json({
+      ok: true,
+      inserted,
+      skipped,
+      blocked: Array.from(debtBlockedAlunoIds).map((aluno_id) => ({ aluno_id, motivos: ['inadimplencia'] })),
+    });
 
   } catch (e) {
     if (e instanceof PayloadLimitError) {

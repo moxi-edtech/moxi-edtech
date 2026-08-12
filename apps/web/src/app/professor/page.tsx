@@ -15,6 +15,8 @@ type AtribItem = {
 };
 
 type AgendaItem = {
+  turma_id?: string | null;
+  disciplina_id?: string | null;
   turma_nome: string | null;
   disciplina_nome: string | null;
   sala_nome: string | null;
@@ -147,6 +149,35 @@ export default function Page() {
     return agenda.filter((item) => item.dia_semana === todayKey).length;
   }, [agenda, todayKey]);
 
+  const aulaAtiva = useMemo(() => {
+    const aulasHojeList = agendaByDay.get(todayKey) || [];
+    if (aulasHojeList.length === 0) return null;
+    
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    for (const item of aulasHojeList) {
+      if (!item.inicio || !item.fim) continue;
+      const [hInicio, mInicio] = item.inicio.split(":").map(Number);
+      const [hFim, mFim] = item.fim.split(":").map(Number);
+      const inicioMinutes = (hInicio || 0) * 60 + (mInicio || 0);
+      const fimMinutes = (hFim || 0) * 60 + (mFim || 0);
+
+      if (nowMinutes >= inicioMinutes - 15 && nowMinutes <= fimMinutes + 15) {
+        return item;
+      }
+    }
+
+    for (const item of aulasHojeList) {
+      if (!item.inicio) continue;
+      const [hInicio, mInicio] = item.inicio.split(":").map(Number);
+      const inicioMinutes = (hInicio || 0) * 60 + (mInicio || 0);
+      if (inicioMinutes > nowMinutes) return item;
+    }
+
+    return aulasHojeList[0] || null;
+  }, [agendaByDay, todayKey]);
+
   const turmasAtivas = turmaMap.length;
   const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? 0;
   const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? 0;
@@ -184,6 +215,55 @@ export default function Page() {
         </header>
 
         <AssignmentsBanner />
+
+        {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
+        {aulaAtiva && (
+          <section className="relative overflow-hidden rounded-[2rem] border border-emerald-500/30 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 p-5 text-white shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
+                  <CalendarDaysIcon className="h-6 w-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[9px] font-black uppercase text-emerald-300">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      Aula em Decorrência
+                    </span>
+                    <span className="text-xs font-bold text-slate-300 font-mono">
+                      {aulaAtiva.inicio} – {aulaAtiva.fim}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white mt-1">
+                    {aulaAtiva.disciplina_nome} — <span className="text-emerald-300">{formatTurmaDisplayName({ turma_nome: aulaAtiva.turma_nome })}</span>
+                  </h3>
+                  {aulaAtiva.sala_nome && (
+                    <p className="text-xs font-semibold text-slate-400 mt-0.5">
+                      Sala de Aula: {aulaAtiva.sala_nome}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Link
+                  href={professorHref(`/professor/frequencias?turma_id=${aulaAtiva.turma_id ?? ''}&disciplina_id=${aulaAtiva.disciplina_id ?? ''}`)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-black text-slate-950 shadow-md hover:bg-emerald-400 active:scale-95 transition-all"
+                >
+                  <ClipboardDocumentListIcon className="h-4 w-4" />
+                  <span>Fazer Chamada Rápida (1-Click)</span>
+                </Link>
+                <Link
+                  href={professorHref(`/professor/notas?turma_id=${aulaAtiva.turma_id ?? ''}&disciplina_id=${aulaAtiva.disciplina_id ?? ''}`)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 border border-white/15 px-3.5 py-2.5 text-xs font-bold text-white hover:bg-white/20 active:scale-95 transition-all"
+                >
+                  <PencilSquareIcon className="h-4 w-4 text-amber-400" />
+                  <span>Lançar Notas</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* RESUMO DE IMPACTO */}
         <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl shadow-klasse-gold/10">

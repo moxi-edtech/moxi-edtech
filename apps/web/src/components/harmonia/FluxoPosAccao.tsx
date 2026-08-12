@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { PROXIMOS_PASSOS } from "./constants";
 import { Passo, ContextoAcao } from "./types";
+import { FileCheck2, KeyRound, GraduationCap, Wallet, Plus, Printer, Receipt, Users } from "lucide-react";
 
 interface PassoCardProps {
   passo: Passo;
@@ -48,7 +49,7 @@ function PassoCard({ passo, onEscolher, index }: PassoCardProps) {
         fontSize: 15,
         color: passo.destaque ? "#fff" : "#1f6b3b",
       }}>
-        {passo.icone}
+        <PassoIcon id={passo.id} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -75,6 +76,20 @@ function PassoCard({ passo, onEscolher, index }: PassoCardProps) {
       }}>→</div>
     </button>
   );
+}
+
+function PassoIcon({ id }: { id: string }) {
+  const Icon = id.includes("boletim") ? FileCheck2
+    : id.includes("portal") ? KeyRound
+    : id.includes("notas") ? GraduationCap
+    : id.includes("propina") ? Wallet
+    : id.includes("pagamento") ? Receipt
+    : id.includes("imprimir") ? Printer
+    : id.includes("documento") ? FileCheck2
+    : id.includes("nova") || id.includes("proxima") ? Plus
+    : id.includes("lista") ? Users
+    : FileCheck2;
+  return <Icon size={16} strokeWidth={2.4} />;
 }
 
 interface FluxoPosAccaoProps {

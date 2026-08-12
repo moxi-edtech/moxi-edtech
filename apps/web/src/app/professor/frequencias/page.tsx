@@ -10,7 +10,7 @@ import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useSearchParams } from "next/navigation";
 
-import { Printer } from 'lucide-react'
+import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, Sparkles, RotateCcw } from 'lucide-react'
 
 type Atrib = { id: string; turma: { id: string; nome: string | null }; disciplina: { id: string; nome: string | null } }
 type Aluno = { id: string; nome: string }
@@ -21,6 +21,7 @@ export default function ProfessorFrequenciasPage() {
   const [turmaId, setTurmaId] = useState('')
   const [disciplinaId, setDisciplinaId] = useState('')
   const [alunos, setAlunos] = useState<Aluno[]>([])
+  const [searchFilter, setSearchFilter] = useState('')
   const [data, setData] = useState(() => new Date().toISOString().slice(0,10))
   const [saving, setSaving] = useState(false)
   const [statusMap, setStatusMap] = useState<Record<string, 'presente'|'falta'|'atraso'>>({})
@@ -29,16 +30,25 @@ export default function ProfessorFrequenciasPage() {
   const { online } = useOfflineStatus()
   const searchParams = useSearchParams()
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM)
+  const urlTurmaId = searchParams?.get("turma_id")
+  const urlDisciplinaId = searchParams?.get("disciplina_id")
 
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/professor/atribuicoes', { cache: 'no-store' })
       const json = await res.json().catch(()=>null)
       if (res.ok && json?.ok) {
-        setAtribs(json.items || [])
+        const items = (json.items || []) as Atrib[]
+        setAtribs(items)
+        if (urlTurmaId && items.some(a => a.turma.id === urlTurmaId)) {
+          setTurmaId(urlTurmaId)
+          if (urlDisciplinaId && items.some(a => a.turma.id === urlTurmaId && a.disciplina.id === urlDisciplinaId)) {
+            setDisciplinaId(urlDisciplinaId)
+          }
+        }
       }
     })()
-  }, [])
+  }, [urlTurmaId, urlDisciplinaId])
 
   useEffect(() => {
     (async () => {
@@ -59,6 +69,42 @@ export default function ProfessorFrequenciasPage() {
     acc.set(a.turma.id, arr)
     return acc
   }, new Map<string, Atrib[]>()), [atribs])
+
+  const filteredAlunos = useMemo(() => {
+    if (!searchFilter.trim()) return alunos;
+    const q = searchFilter.toLowerCase();
+    return alunos.filter((a) => a.nome.toLowerCase().includes(q));
+  }, [alunos, searchFilter]);
+
+  const stats = useMemo(() => {
+    let presentes = 0;
+    let faltas = 0;
+    let atrasos = 0;
+    for (const a of alunos) {
+      const st = statusMap[a.id] || 'presente';
+      if (st === 'presente') presentes++;
+      else if (st === 'falta') faltas++;
+      else if (st === 'atraso') atrasos++;
+    }
+    return { presentes, faltas, atrasos, total: alunos.length };
+  }, [alunos, statusMap]);
+
+  const handleMarcarTodosPresentes = () => {
+    const next: Record<string, 'presente'> = {};
+    for (const a of alunos) next[a.id] = 'presente';
+    setStatusMap(next);
+    success("Presença em Lote", "Todos os alunos foram marcados como Presentes.");
+  };
+
+  const handleMarcarTodosFaltas = () => {
+    const next: Record<string, 'falta'> = {};
+    for (const a of alunos) next[a.id] = 'falta';
+    setStatusMap(next);
+  };
+
+  const handleResetStatus = () => {
+    setStatusMap({});
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,7 +143,7 @@ export default function ProfessorFrequenciasPage() {
       }
       setSubmitStatus('saved')
       success("Presenças guardadas", "O registo de frequências foi actualizado com sucesso.")
-      } catch (e) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       if (!online) {
         setSubmitStatus('pending')
@@ -105,16 +151,16 @@ export default function ProfessorFrequenciasPage() {
         setSubmitStatus('failed')
         error("Erro ao guardar", "Não foi possível registar as presenças. Por favor, tente novamente.")
       }
-      } finally {
+    } finally {
       setSaving(false);
-      }
-      }
+    }
+  }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6">
+    <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6 space-y-4">
       <div className="mb-3 sm:mb-4">
         <DashboardHeader
-          title="Frequências"
+          title="Frequências & Diário de Classe"
           breadcrumbs={[
             { label: "Início", href: "/" },
             { label: "Professor", href: "/professor" },
@@ -122,65 +168,74 @@ export default function ProfessorFrequenciasPage() {
           ]}
         />
       </div>
+
       <form onSubmit={onSubmit} className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="space-y-3 sm:space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3">
-            <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
-            <select
-              value={turmaId}
-              onChange={(e) => {
-                setTurmaId(e.target.value)
-                setDisciplinaId('')
-              }}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-              required
-            >
-              <option value="">Turma</option>
-              {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
-                <option key={tid} value={tid}>
-                  {(() => {
-                    const turma = atribs.find((a) => a.turma.id === tid)?.turma;
-                    return turma ? formatTurmaDisplayName(turma) : tid;
-                  })()}
-                </option>
-              ))}
-            </select>
-            <select
-              value={disciplinaId}
-              onChange={(e) => setDisciplinaId(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-              required
-              disabled={!turmaId}
-            >
-              <option value="">Disciplina</option>
-              {(atribsByTurma.get(turmaId) || []).map((a) => (
-                <option key={a.disciplina.id} value={a.disciplina.id}>
-                  {a.disciplina.nome || a.disciplina.id}
-                </option>
-              ))}
-            </select>
-            <input
-              type="date"
-              value={data}
-              onChange={(e) => setData(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-              required
-            />
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2 text-sm text-slate-600">
-            <div className="font-semibold text-slate-900">Status</div>
-            {submitStatus === 'saved' && <div>Presenças sincronizadas.</div>}
-            {submitStatus === 'pending' && <div>Presenças pendentes (offline).</div>}
-            {submitStatus === 'failed' && <div>Falha ao sincronizar presenças.</div>}
-            {submitStatus === 'idle' && <div>Selecione turma, disciplina e data.</div>}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+            <div className="text-xs font-black uppercase tracking-wider text-slate-400">Turma e Disciplina</div>
+            
+            <div className="space-y-2">
+              <select
+                value={turmaId}
+                onChange={(e) => {
+                  setTurmaId(e.target.value)
+                  setDisciplinaId('')
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                required
+              >
+                <option value="">Selecione a Turma</option>
+                {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
+                  <option key={tid} value={tid}>
+                    {(() => {
+                      const turma = atribs.find((a) => a.turma.id === tid)?.turma;
+                      return turma ? formatTurmaDisplayName(turma) : tid;
+                    })()}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={disciplinaId}
+                onChange={(e) => setDisciplinaId(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:opacity-50"
+                required
+                disabled={!turmaId}
+              >
+                <option value="">Selecione a Disciplina</option>
+                {(atribsByTurma.get(turmaId) || []).map((a) => (
+                  <option key={a.disciplina.id} value={a.disciplina.id}>
+                    {a.disciplina.nome || a.disciplina.id}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="date"
+                value={data}
+                onChange={(e) => setData(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                required
+              />
+            </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3">
-            <div className="text-sm font-semibold text-slate-900">Relatório Mensal</div>
+          {/* Status da Sincronização */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2 text-xs font-semibold text-slate-600 shadow-sm">
+            <div className="font-black uppercase tracking-wider text-slate-400 text-[10px]">Status da Chamada</div>
+            {submitStatus === 'saved' && <div className="flex items-center gap-1.5 text-emerald-700 font-bold"><CheckCircle2 size={16} /> Presenças sincronizadas em tempo real.</div>}
+            {submitStatus === 'pending' && <div className="flex items-center gap-1.5 text-amber-700 font-bold"><Clock size={16} /> Salvo offline (sincronizará ao reconectar).</div>}
+            {submitStatus === 'failed' && <div className="flex items-center gap-1.5 text-rose-600 font-bold"><XCircle size={16} /> Falha ao sincronizar. Tente novamente.</div>}
+            {submitStatus === 'idle' && <div className="text-slate-500">Selecione a turma para iniciar o diário.</div>}
+          </div>
+
+          {/* Relatório de Mapa de Frequência */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
+            <div className="text-xs font-black uppercase tracking-wider text-slate-400">Mapa de Frequência PDF</div>
             <select
               value={reportMonth}
               onChange={(e) => setReportMonth(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-600"
             >
               {[
                 { v: '01', l: 'Janeiro' },
@@ -207,93 +262,151 @@ export default function ProfessorFrequenciasPage() {
                 window.open(url, '_blank');
               }}
               disabled={!turmaId}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
               <Printer className="w-4 h-4" />
-              Mapa de Frequência
+              Imprimir Mapa
             </button>
           </div>
 
           <button
             type="submit"
             disabled={saving || !turmaId || !disciplinaId}
-            className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-95"
           >
-            {saving ? 'Salvando...' : 'Registrar presenças'}
+            {saving ? 'A Guardar Chamada...' : 'Finalizar & Guardar Chamada'}
           </button>
         </aside>
-        <section className="rounded-xl border border-slate-200 bg-white">
-          <div className="divide-y divide-slate-100 md:hidden">
-            {alunos.map((a) => {
-              const current = statusMap[a.id] || 'presente'
-              return (
-                <div key={a.id} className="p-3">
-                  <p className="text-sm font-semibold text-slate-900">{a.nome}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {([
-                      { value: 'presente', label: 'Presente', cls: 'border-[#1F6B3B]/20 text-[#1F6B3B] bg-[#1F6B3B]/10' },
-                      { value: 'falta', label: 'Falta', cls: 'border-rose-200 text-rose-600 bg-rose-50' },
-                      { value: 'atraso', label: 'Atraso', cls: 'border-klasse-gold-200 text-klasse-gold-700 bg-klasse-gold-50' },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setStatusMap((s) => ({ ...s, [a.id]: opt.value }))}
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                          current === opt.value
-                            ? opt.cls
-                            : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+
+        {/* Lado Direito: Lista de Alunos e Chamada em 1-Click */}
+        <section className="space-y-4">
+          
+          {/* BARRA DE AÇÕES EM LOTE (Chamada por Exceção) */}
+          {alunos.length > 0 && (
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleMarcarTodosPresentes}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <UserCheck size={16} />
+                    <span>Marcar Todos Presentes (1-Click)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleMarcarTodosFaltas}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  >
+                    <XCircle size={15} />
+                    <span>Todas Faltas</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetStatus}
+                    className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
+                    title="Resetar Seleções"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
                 </div>
-              )
-            })}
-            {alunos.length === 0 && (
-              <div className="p-3 text-sm text-slate-500">
-                Selecione turma e disciplina para carregar alunos.
+
+                {/* Badges de Resumo em Tempo Real */}
+                <div className="flex items-center gap-2 text-xs font-black">
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 border border-emerald-100">
+                    ✅ {stats.presentes} Presentes
+                  </span>
+                  {stats.faltas > 0 && (
+                    <span className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700 border border-rose-100">
+                      ❌ {stats.faltas} Faltas
+                    </span>
+                  )}
+                  {stats.atrasos > 0 && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800 border border-amber-100">
+                      ⏰ {stats.atrasos} Atrasos
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Filtro de Pesquisa Rápida por Aluno */}
+              {alunos.length > 8 && (
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    placeholder="Filtrar aluno por nome..."
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-700 outline-none focus:bg-white focus:border-emerald-600"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* LISTA DE ALUNOS (Mobile & Desktop) */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {alunos.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto text-slate-300">
+                  <UserCheck size={24} />
+                </div>
+                <p className="text-xs font-bold text-slate-400">
+                  Selecione a turma e disciplina no painel lateral para carregar os estudantes.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {filteredAlunos.map((a, index) => {
+                  const current = statusMap[a.id] || 'presente'
+                  return (
+                    <div key={a.id} className="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500">
+                          {index + 1}
+                        </span>
+                        <p className="text-xs sm:text-sm font-bold text-slate-900">{a.nome}</p>
+                      </div>
+
+                      {/* Botões de Ação por Toque Rápido */}
+                      <div className="flex items-center gap-1.5 self-end sm:self-center">
+                        {[
+                          { value: 'presente', label: 'Presente', icon: CheckCircle2, cls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black' },
+                          { value: 'falta', label: 'Falta', icon: XCircle, cls: 'bg-rose-600 text-white border-rose-600 shadow-2xs font-black' },
+                          { value: 'atraso', label: 'Atraso', icon: Clock, cls: 'bg-amber-500 text-white border-amber-500 shadow-2xs font-black' },
+                        ].map((opt) => {
+                          const IconComp = opt.icon;
+                          const active = current === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setStatusMap((s) => ({ ...s, [a.id]: opt.value as any }))}
+                              className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs transition-all active:scale-95 ${
+                                active
+                                  ? opt.cls
+                                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-medium'
+                              }`}
+                            >
+                              <IconComp size={14} />
+                              <span>{opt.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
-
-          <table className="min-w-full text-sm hidden md:table">
-            <thead>
-              <tr className="bg-gray-50 text-left">
-                <th className="p-2">Aluno</th>
-                <th className="p-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {alunos.map(a => (
-                <tr key={a.id} className="border-t">
-                  <td className="p-2">{a.nome}</td>
-                  <td className="p-2">
-                    <select
-                      value={statusMap[a.id] || 'presente'}
-                      onChange={(e)=>setStatusMap(s=>({ ...s, [a.id]: e.target.value as any }))}
-                      className="rounded border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20"
-                    >
-                      <option value="presente">Presente</option>
-                      <option value="falta">Falta</option>
-                      <option value="atraso">Atraso</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-              {alunos.length === 0 && (
-                <tr>
-                  <td colSpan={2} className="p-3 text-gray-500">
-                    Selecione turma e disciplina para carregar alunos.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </section>
       </form>
     </div>
   )
 }
+

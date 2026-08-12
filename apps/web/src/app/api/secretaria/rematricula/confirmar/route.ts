@@ -38,7 +38,14 @@ export async function POST(req: Request) {
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/confirmar`)
     if (forwarded) return forwarded
 
-    type BlockedItem = { aluno_id?: string | null; matricula_id?: string | null; motivos?: string[]; aluno_nome?: string | null }
+    type BlockedItem = {
+      aluno_id?: string | null;
+      matricula_id?: string | null;
+      motivos?: string[];
+      aluno_nome?: string | null;
+      divida_total?: number;
+      mensalidades_pendentes?: number;
+    }
     type InsertedItem = { aluno_id?: string | null; matricula_id?: string | null; aluno_nome?: string | null }
     const resultsPromocoes: Array<{ origem_turma_id: string; destino_turma_id: string; inserted: number; skipped: number; blocked: BlockedItem[] }> = []
 
@@ -70,10 +77,7 @@ export async function POST(req: Request) {
               .in('id', blockedAlunoIds)
             alunoNomeById = new Map((alunos || []).map((a: any) => [a.id, a.nome]))
           }
-          const blockedEnriched = skippedList.map((item) => ({
-            ...item,
-            aluno_nome: item?.aluno_id ? (alunoNomeById.get(item.aluno_id) ?? null) : null,
-          }))
+          const blockedEnriched = await enrichBlockedWithDebt(supabase, escolaId, skippedList, alunoNomeById)
           resultsPromocoes.push({
             origem_turma_id: p.origem_turma_id,
             destino_turma_id: p.destino_turma_id,
@@ -127,6 +131,38 @@ export async function POST(req: Request) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
+}
+
+async function enrichBlockedWithDebt(
+  supabase: any,
+  escolaId: string,
+  blocked: Array<{ aluno_id?: string | null; matricula_id?: string | null; motivos?: string[] }>,
+  alunoNomeById: Map<string, string>,
+) {
+  const matriculaIds = blocked.map((item) => item.matricula_id).filter(Boolean) as string[];
+  const { data: rows } = matriculaIds.length
+    ? await supabase
+        .from('mensalidades')
+        .select('matricula_id, valor_previsto, valor, valor_pago_total, status')
+        .eq('escola_id', escolaId)
+        .in('matricula_id', matriculaIds)
+    : { data: [] };
+  const debtByMatricula = new Map<string, { total: number; count: number }>();
+  for (const row of rows ?? []) {
+    const balance = Math.max(Number(row.valor_previsto ?? row.valor ?? 0) - Number(row.valor_pago_total ?? 0), 0);
+    if (balance <= 0 || ['pago', 'isento', 'cancelado'].includes(String(row.status ?? '').toLowerCase())) continue;
+    const current = debtByMatricula.get(row.matricula_id) ?? { total: 0, count: 0 };
+    debtByMatricula.set(row.matricula_id, { total: current.total + balance, count: current.count + 1 });
+  }
+  return blocked.map((item) => {
+    const debt = item.matricula_id ? debtByMatricula.get(item.matricula_id) : null;
+    return {
+      ...item,
+      aluno_nome: item.aluno_id ? (alunoNomeById.get(item.aluno_id) ?? null) : null,
+      divida_total: debt?.total ?? 0,
+      mensalidades_pendentes: debt?.count ?? 0,
+    };
+  });
 }
 
 async function resolveMensalidadeAtual(

@@ -1,12 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
-type BlockedItem = { aluno_id?: string; aluno_nome?: string | null; matricula_id?: string; motivos?: string[] }
+type BlockedItem = {
+  aluno_id?: string;
+  aluno_nome?: string | null;
+  matricula_id?: string;
+  motivos?: string[];
+  divida_total?: number;
+  mensalidades_pendentes?: number;
+}
 
 type SuggestaoTurma = {
   tipo: 'promocao' | 'conclusao'
@@ -21,7 +29,10 @@ type SuggestaoTurma = {
 
 export default function ConfirmarRematriculaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { escolaSlug } = useEscolaId();
+  const kwanza = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 2 });
+  const returnedAlunoId = searchParams?.get("retomada_aluno");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<{
@@ -120,6 +131,7 @@ export default function ConfirmarRematriculaPage() {
         />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {returnedAlunoId && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><strong>Contexto retomado.</strong> A regularização do aluno foi concluída. Confirme agora a rematrícula pendente.</div>}
       {summary && (
         <div className="mb-4 rounded-md border border-klasse-green-200 bg-klasse-green-50 p-3 text-sm text-klasse-green-900">
           <div className="font-medium mb-2">Resultado</div>
@@ -137,8 +149,21 @@ export default function ConfirmarRematriculaPage() {
                       <div className="font-medium">Bloqueios (até 5)</div>
                       <ul className="list-disc list-inside">
                         {it.blocked.slice(0, 5).map((item, bidx) => (
-                          <li key={bidx}>
-                            {(item.aluno_nome || item.aluno_id || "aluno")} • motivos: {(item.motivos || []).join(', ')}
+                          <li key={bidx} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span>
+                              {(item.aluno_nome || item.aluno_id || "aluno")} • motivos: {(item.motivos || []).join(', ')}
+                              {item.divida_total && item.divida_total > 0
+                                ? ` • ${item.mensalidades_pendentes ?? 0} mensalidade(s) · ${kwanza.format(item.divida_total)}`
+                                : ""}
+                            </span>
+                            {item.aluno_id && (
+                              <Link
+                                href={buildPortalHref(escolaSlug, `/secretaria/balcao?alunoId=${encodeURIComponent(item.aluno_id)}&returnTo=${encodeURIComponent(`/secretaria/rematricula/confirmar?retomada_aluno=${encodeURIComponent(item.aluno_id)}`)}`)}
+                                className="font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-950"
+                              >
+                                Regularizar no balcão
+                              </Link>
+                            )}
                           </li>
                         ))}
                       </ul>

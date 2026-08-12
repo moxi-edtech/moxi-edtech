@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
-    if (!ctx || !ctx.alunoId || !ctx.escolaId) {
+    if (!ctx || !ctx.alunoId || !ctx.escolaId || !ctx.matriculaId) {
       return NextResponse.json({ ok: false, error: "Contexto não encontrado" }, { status: 401 });
     }
 
@@ -29,6 +29,7 @@ export async function GET() {
       .select("id, status, servico_codigo, valor_cobrado, created_at, pagamento_intents(id, status, meta)")
       .eq("aluno_id", alunoId)
       .eq("escola_id", escolaId)
+      .eq("matricula_id", ctx.matriculaId)
       .order("created_at", { ascending: false });
 
     if (pedError) throw pedError;

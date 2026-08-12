@@ -26,6 +26,10 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
+import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
+import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
+import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
+import Link from "next/link";
 
 const ACADEMIC_YEAR_PARAM = "ano_letivo_id";
 
@@ -34,6 +38,7 @@ export interface BalcaoAtendimentoProps {
   selectedAlunoId?: string | null;
   showSearch?: boolean;
   embedded?: boolean;
+  returnTo?: string | null;
 }
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
@@ -672,6 +677,7 @@ function Catalogo({
   onResolverPedido,
   onResolverReconciliacao,
   onRematricula,
+  onRegularize,
 }: {
   mensalidades: Mensalidade[];
   servicos: Servico[];
@@ -702,6 +708,7 @@ function Catalogo({
   onResolverPedido: () => Promise<void>;
   onResolverReconciliacao: () => Promise<void>;
   onRematricula: () => void;
+  onRegularize: () => void;
 }) {
   const atrasadas = useMemo(() => mensalidades.filter((m) => m.atrasada), [mensalidades]);
   const correntes = useMemo(() => mensalidades.filter((m) => !m.atrasada), [mensalidades]);
@@ -791,6 +798,11 @@ function Catalogo({
                   {rematriculaDebt.count} mensalidade(s) em aberto · {kwanza.format(rematriculaDebt.total)}.
                   A dívida deve ser tratada no atendimento; as notas pendentes, por si só, não impedem a progressão quando a secretaria confirmar a aptidão.
                 </span>
+                {rematriculaState === "DEBT_BLOCKED" && (
+                  <button type="button" onClick={onRegularize} className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700">
+                    Regularizar agora
+                  </button>
+                )}
               </div>
             )}
             {rematriculaState !== "LEGACY_REVIEW_REQUIRED" && <button
@@ -1205,7 +1217,8 @@ function CarrinhoPanel({
   );
 }
 
-export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, showSearch = true, embedded = false }: BalcaoAtendimentoProps) {
+export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, showSearch = true, embedded = false, returnTo = null }: BalcaoAtendimentoProps) {
+  const [showReturnPrompt, setShowReturnPrompt] = useState(false);
   const { error } = useToast();
   const searchParams = useSearchParams();
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
@@ -1237,6 +1250,8 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const audit = useAuditTrail();
 
   const [addingServicoId] = useState<string | null>(null);
+  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null } | null>(null);
+  const [debtModalOpen, setDebtModalOpen] = useState(false);
 
   const onCheckoutSuccess = useCallback(() => {
     if (dossier.aluno?.id) {
@@ -1398,6 +1413,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 onResolverPedido={rematricula.resolveLegacyPedido}
                 onResolverReconciliacao={rematricula.resolveReconciliation}
                 onRematricula={rematricula.openModal}
+                onRegularize={() => setDebtModalOpen(true)}
               />
             </div>
           </div>
@@ -1425,6 +1441,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           alunoNome={dossier.aluno.nome}
           alunoProcesso={dossier.aluno.numero_processo}
           alunoId={dossier.aluno.id}
+          escolaId={escolaId}
           turmaAtual={dossier.aluno.turma_codigo ?? null}
           matriculaId={dossier.aluno.matricula_id ?? ""}
           anoLetivo={rematricula.anoLetivo}
@@ -1448,7 +1465,52 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           result={rematricula.result}
           apiError={rematricula.apiError}
           submit={rematricula.submit}
+          onPostAction={(action, turmaId) => setPostAction({ action, turmaId })}
         />
+      )}
+
+      {dossier.aluno && (
+        <EnrollmentPostActionModal
+          open={Boolean(postAction)}
+          onOpenChange={(open) => { if (!open) setPostAction(null); }}
+          action={postAction?.action ?? null}
+          escolaId={escolaId}
+          alunoId={dossier.aluno.id}
+          alunoNome={dossier.aluno.nome}
+          turmaId={postAction?.turmaId ?? null}
+          onPayment={() => {
+            setPostAction(null);
+            const next = dossier.mensalidades[0];
+            if (next) carrinho.adicionar(next);
+          }}
+        />
+      )}
+
+      {dossier.aluno && (
+        <PagamentoDividaModal
+          open={debtModalOpen}
+          onOpenChange={setDebtModalOpen}
+          mensalidades={dossier.mensalidades.filter((item) => item.preco > 0)}
+          alunoId={dossier.aluno.id}
+          anoLetivoId={effectiveAcademicYearId}
+          onSuccess={() => {
+            void dossier.load(dossier.aluno!.id);
+            void rematricula.refresh();
+            void audit.fetch(dossier.aluno!.id, dossier.aluno!.matricula_id);
+          }}
+          onFullyPaid={() => setShowReturnPrompt(true)}
+        />
+      )}
+      {showReturnPrompt && returnTo && (
+        <div className="fixed bottom-5 right-5 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-emerald-800">Dívida regularizada</p>
+            <p className="text-xs text-slate-500">Pode continuar a rematrícula sem perder o contexto.</p>
+          </div>
+          <Link href={returnTo} className="shrink-0 rounded-xl bg-[#1F6B3B] px-3 py-2 text-xs font-bold text-white hover:brightness-110">
+            Continuar
+          </Link>
+        </div>
       )}
     </>
   );

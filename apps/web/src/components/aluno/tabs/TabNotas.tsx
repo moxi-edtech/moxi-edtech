@@ -109,41 +109,36 @@ export function TabNotas() {
         ) : (
           <section className="space-y-3">
             {!isLiberado && (
-                <div className="group relative mb-8 overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl shadow-klasse-gold/10 transition-all hover:shadow-klasse-gold/20">
-                    {/* Elementos Decorativos de Fundo */}
-                    <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-klasse-gold/10 blur-3xl transition-all group-hover:bg-klasse-gold/20" />
-                    <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-klasse-gold/5 blur-3xl" />
-                    
-                    <div className="relative z-10 flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-klasse-gold to-amber-600 shadow-lg shadow-klasse-gold/20 ring-4 ring-white/10">
-                            <LockIcon size={36} className="text-white animate-pulse" />
-                        </div>
-                        
-                        <div className="flex-1 space-y-2">
-                            <h3 className="text-xl font-black tracking-tight text-white md:text-2xl">
-                                Suas Notas Detalhadas Estão <span className="text-klasse-gold">Aguardando Liberação</span>
-                            </h3>
-                            <p className="max-w-2xl text-sm font-medium leading-relaxed text-slate-400">
-                                Para visualizar o desempenho por trimestre, avaliações contínuas e descarregar o boletim oficial, é necessário efectuar o pagamento da taxa de secretaria.
-                            </p>
-                        </div>
-
-                        <Link 
-                            href={`/aluno/documentos${query}`}
-                            className="group/btn flex w-full shrink-0 items-center justify-center gap-3 rounded-2xl bg-klasse-gold px-8 py-4 text-sm font-black text-slate-950 transition-all hover:brightness-110 active:scale-95 md:w-auto"
-                        >
-                            Solicitar Boletim Digital
-                            <ChevronRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
-                        </Link>
+              <div className="relative mb-5 overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/15 via-amber-50 to-amber-100/80 p-4 shadow-sm sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-slate-950 shadow-md">
+                      <LockIcon size={22} className="animate-pulse" />
                     </div>
-
-                    {/* Badge de Status */}
-                    <div className="absolute right-6 top-6 hidden md:block">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-klasse-gold backdrop-blur-sm">
-                            <AlertCircle size={10} /> Pagamento Pendente
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-black text-slate-950 tracking-tight">
+                          Pauta de Notas Publicada pelos Professores
+                        </h3>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-400/30 px-2.5 py-0.5 text-[9px] font-black uppercase text-amber-950">
+                          🔒 Emolumento Pendente
                         </span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-700 leading-relaxed max-w-xl">
+                        Os professores já lançaram as notas no sistema. Regularize a taxa de secretaria para desbloquear as médias detalhadas e descarregar o Boletim Oficial em PDF com QR Code de autenticidade.
+                      </p>
                     </div>
+                  </div>
+
+                  <Link 
+                    href={`/aluno/documentos${query}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-xs font-black text-slate-950 shadow-md hover:bg-amber-300 active:scale-95 transition-all shrink-0 self-start sm:self-center"
+                  >
+                    <span>Desbloquear na Secretaria</span>
+                    <ChevronRight size={16} />
+                  </Link>
                 </div>
+              </div>
             )}
 
             <div className="grid gap-3">
@@ -206,10 +201,12 @@ export function TabNotas() {
                             </div>
                         </div>
                     ) : (
-                        <div className="mt-5 p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                            <LockIcon size={32} className="mx-auto text-slate-300 mb-3" />
-                            <p className="text-xs font-bold text-slate-500">Pague o Boletim para ver as notas detalhadas.</p>
-                            <Link href={`/aluno/documentos${query}`} className="mt-4 inline-block text-[10px] font-black uppercase text-klasse-green underline underline-offset-4">Ir para Secretaria Digital</Link>
+                        <div className="mt-4 p-4 text-center bg-slate-50/80 rounded-xl border border-dashed border-slate-200">
+                            <LockIcon size={20} className="mx-auto text-slate-400 mb-1.5" />
+                            <p className="text-xs font-semibold text-slate-600">Efetue o pagamento do boletim para liberar as notas detalhadas.</p>
+                            <Link href={`/aluno/documentos${query}`} className="mt-2 inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:underline">
+                                Ir para Secretaria Digital →
+                            </Link>
                         </div>
                     )}
                   </details>
@@ -252,8 +249,8 @@ export function TabNotas() {
       </div>
 
       {isLiberado && (
-        <div className="flex justify-end pt-4">
-            <Button asChild tone="green" className="min-h-12 w-full rounded-2xl font-black text-sm shadow-lg shadow-klasse-green/20">
+        <div className="flex justify-end pt-2">
+            <Button asChild tone="green" className="min-h-10 w-full sm:w-auto px-5 rounded-xl font-black text-xs shadow-sm">
                 <a href={`/api/aluno/boletim/pdf${studentId ? `?studentId=${studentId}` : ""}`} target="_blank" rel="noreferrer">
                     <Download className="mr-2 h-4 w-4" /> Descarregar Boletim Oficial (PDF)
                 </a>

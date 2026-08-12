@@ -95,10 +95,13 @@ export default function Sidebar({
   const sidebarItems = useMemo(() => {
     return items.map((it) => {
       const children = it.children ?? [];
+      const activePrefixes = [it.href, ...(it.activePrefixes ?? [])];
+      const matchesPath = (href: string) =>
+        pathname === href || pathname?.startsWith(href + "/");
       const childActive = children.some(
-        (child) => pathname === child.href || pathname?.startsWith(child.href + "/")
+        (child) => matchesPath(child.href)
       );
-      const active = pathname === it.href || pathname?.startsWith(it.href + "/") || childActive;
+      const active = activePrefixes.some(matchesPath) || childActive;
       return { ...it, active, childActive, children };
     });
   }, [pathname, items]);

@@ -206,6 +206,9 @@ export default function AppShell({
             return {
               ...item,
               href: item.href.replace("[escolaId]", navEscolaId),
+              activePrefixes: item.activePrefixes?.map((prefix) =>
+                prefix.replace("[escolaId]", navEscolaId)
+              ),
               children,
             };
           }

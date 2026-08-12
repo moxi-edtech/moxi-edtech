@@ -13,6 +13,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { EnrollmentPostActions, type EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import type { TurmaOption, RematriculaResult, ProgressaoBalcao } from "@/hooks/useRematriculaBalcao";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ interface RematriculaBalcaoModalProps {
   alunoNome: string;
   alunoProcesso: string;
   alunoId: string | null;
+  escolaId: string;
   turmaAtual: string | null;
   matriculaId: string;
   // Academic
@@ -57,6 +59,7 @@ interface RematriculaBalcaoModalProps {
   result: RematriculaResult | null;
   apiError: string | null;
   submit: () => Promise<void>;
+  onPostAction: (action: EnrollmentPostAction, turmaId?: string | null) => void;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -117,6 +120,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     alunoNome,
     alunoProcesso,
     alunoId,
+    escolaId,
+    onPostAction,
     turmaAtual,
     matriculaId,
     anoLetivo,
@@ -286,6 +291,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               service={service}
               metodo={metodo}
               result={result}
+              onPostAction={(action) => onPostAction(action, selectedTurma?.id ?? result.rematricula?.turma_id ?? null)}
             />
           ) : step === 1 ? (
             /* ── Step 1: Academic summary ───────────────────────── */
@@ -720,6 +726,7 @@ function SuccessView({
   service,
   metodo,
   result,
+  onPostAction,
 }: {
   alunoNome: string;
   anoLetivo: { id: string; ano: number; label: string };
@@ -727,6 +734,7 @@ function SuccessView({
   service: { id: string; nome: string; valor_base: number };
   metodo: MetodoPagamento;
   result: RematriculaResult;
+  onPostAction: (action: EnrollmentPostAction) => void;
 }) {
   const turnoStr = selectedTurma?.turno
     ? TURNO_LABEL[selectedTurma.turno] || selectedTurma.turno
@@ -764,6 +772,8 @@ function SuccessView({
           <span className="font-semibold text-[#1F6B3B]">Pago</span>
         </div>
       </div>
+
+      <EnrollmentPostActions onAction={onPostAction} />
     </div>
   );
 }

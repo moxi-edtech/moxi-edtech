@@ -421,6 +421,7 @@ export function useRematriculaBalcao(opts: {
     // Card state
     cardState,
     loading,
+    refresh: fetchStatus,
 
     // Data from status endpoint
     service,

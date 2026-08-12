@@ -15,6 +15,8 @@ export type NavItem = {
   icon: IconName;
   badge?: string;
   children?: SubNavItem[];
+  /** Rotas equivalentes que devem manter a secção activa e expandida. */
+  activePrefixes?: string[];
 };
 
 export type SidebarRole = UserRole | "operacoes";
@@ -73,6 +75,10 @@ export const sidebarConfig: SidebarConfig = {
       href: "/escola/[escolaId]/operacoes/academico",
       label: "Operações Académicas",
       icon: "Activity",
+      activePrefixes: [
+        "/escola/[escolaId]/operacoes/operacoes-academicas",
+        "/escola/[escolaId]/admin/operacoes-academicas",
+      ],
       children: [
         { href: "/escola/[escolaId]/operacoes/academico", label: "Visão geral" },
         { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
