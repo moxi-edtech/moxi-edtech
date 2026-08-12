@@ -30,7 +30,7 @@ function LoginContent({ searchParams }: { searchParams: SearchParams }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative w-full max-w-[440px] rounded-[24px] border border-white/30 bg-white/90 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-6 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none"
+          className="relative w-full max-w-[440px] rounded-[24px] p-1 md:rounded-none md:p-0"
         >
           <LoginForm redirectTo={redirectTo} />
         </motion.section>

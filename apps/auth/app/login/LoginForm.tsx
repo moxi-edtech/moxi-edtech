@@ -34,20 +34,20 @@ export default function LoginForm({ redirectTo }: Props) {
           className="h-9 w-9 object-contain sm:h-[42px] sm:w-[42px]"
         />
         <span>
-          <strong className="block text-sm font-[950] leading-none tracking-[0.16em] text-[#073b2c]">
+          <strong className="block text-sm font-[950] leading-none tracking-[0.16em] text-white md:text-[#073b2c]">
             KLASSE
           </strong>
-          <small className="mt-1 block text-[8px] font-black uppercase leading-none tracking-[0.12em] text-[#f9a51a]">
+          <small className="mt-1 block text-[8px] font-black uppercase leading-none tracking-[0.12em] text-[#ffc846] md:text-[#f9a51a]">
             Gestão escolar inteligente
           </small>
         </span>
       </div>
 
       <div className="mb-6 text-left">
-        <div className="text-[24px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-[#073b2c] sm:text-[27px]">
+        <div className="text-[24px] font-semibold uppercase leading-[1.05] tracking-[0.01em] text-white sm:text-[27px] md:text-[#073b2c]">
           Acesse o KLASSE
         </div>
-        <div className="mt-2.5 max-w-[340px] text-sm font-normal leading-6 text-[#17211d]/55">
+        <div className="mt-2.5 max-w-[340px] text-sm font-normal leading-6 text-white/80 md:text-[#17211d]/55">
           Continue a gestão da escola com segurança, clareza e controle.
         </div>
       </div>
@@ -56,7 +56,7 @@ export default function LoginForm({ redirectTo }: Props) {
         <input type="hidden" name="redirect_to" value={redirectTo} />
 
         <div>
-          <label className="text-xs font-bold uppercase tracking-[0.08em] text-[#17211d]/70">
+          <label className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 md:text-[#17211d]/70">
             Identificador de acesso
           </label>
           <input
@@ -66,13 +66,13 @@ export default function LoginForm({ redirectTo }: Props) {
             required
             placeholder="Email ou número de processo"
             suppressHydrationWarning
-            className="mt-2 h-14 w-full rounded-[14px] border border-[#073b2c]/15 bg-white/85 px-4 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/35 focus:border-[#073b2c]/45 focus:ring-4 focus:ring-[#073b2c]/8"
+            className="mt-2 h-14 w-full rounded-[14px] border border-white/70 bg-white/85 px-4 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/45 focus:border-white focus:ring-4 focus:ring-white/25 md:border-[#073b2c]/15 md:bg-white/85 md:placeholder:text-[#17211d]/35 md:focus:border-[#073b2c]/45 md:focus:ring-[#073b2c]/8"
           />
-          <p className="mt-2 text-xs text-[#17211d]/50">Alunos podem usar o número de processo.</p>
+          <p className="mt-2 text-xs text-white/75 md:text-[#17211d]/50">Alunos podem usar o número de processo.</p>
         </div>
 
         <div>
-          <label className="text-xs font-bold uppercase tracking-[0.08em] text-[#17211d]/70">Senha</label>
+          <label className="text-xs font-bold uppercase tracking-[0.08em] text-white/90 md:text-[#17211d]/70">Senha</label>
           <div className="relative mt-2">
             <input
               name="password"
@@ -81,12 +81,12 @@ export default function LoginForm({ redirectTo }: Props) {
               required
               placeholder="••••••••"
               suppressHydrationWarning
-              className="h-14 w-full rounded-[14px] border border-[#073b2c]/15 bg-white/85 px-4 pr-12 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/35 focus:border-[#073b2c]/45 focus:ring-4 focus:ring-[#073b2c]/8"
+              className="h-14 w-full rounded-[14px] border border-white/70 bg-white/85 px-4 pr-12 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/45 focus:border-white focus:ring-4 focus:ring-white/25 md:border-[#073b2c]/15 md:bg-white/85 md:placeholder:text-[#17211d]/35 md:focus:border-[#073b2c]/45 md:focus:ring-[#073b2c]/8"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 grid -translate-y-1/2 place-items-center rounded-lg p-1 text-[#17211d]/40 transition hover:bg-[#073b2c]/5 hover:text-[#073b2c] focus:outline-none focus:ring-2 focus:ring-[#073b2c]/15"
+              className="absolute right-4 top-1/2 grid -translate-y-1/2 place-items-center rounded-lg p-1 text-[#17211d]/55 transition hover:bg-[#073b2c]/5 hover:text-[#073b2c] focus:outline-none focus:ring-2 focus:ring-[#073b2c]/15"
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -108,11 +108,11 @@ export default function LoginForm({ redirectTo }: Props) {
               suppressHydrationWarning
               className="h-4 w-4 rounded border-[#073b2c]/25 accent-[#073b2c] focus:ring-[#073b2c]"
             />
-            <span className="text-sm font-medium text-[#17211d]/60">Lembrar-me</span>
+            <span className="text-sm font-medium text-white/85 md:text-[#17211d]/60">Lembrar-me</span>
           </label>
           <a
             href="/forgot-password"
-            className="text-sm font-semibold text-[#073b2c] underline-offset-4 hover:underline"
+            className="text-sm font-semibold text-white underline-offset-4 hover:underline md:text-[#073b2c]"
           >
             Recuperar acesso
           </a>
