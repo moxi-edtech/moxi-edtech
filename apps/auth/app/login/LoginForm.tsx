@@ -12,7 +12,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="mt-6 h-[58px] w-full rounded-2xl bg-[#073b2c] px-4 text-[15px] font-bold text-white shadow-[0_18px_42px_rgba(7,59,44,0.24)] transition hover:bg-[#0d4b38] hover:shadow-[0_20px_48px_rgba(7,59,44,0.28)] active:translate-y-px focus:outline-none focus:ring-4 focus:ring-[#073b2c]/15 disabled:cursor-not-allowed disabled:opacity-60"
+      className="mt-5 h-[54px] w-full rounded-2xl bg-[#073b2c] px-4 text-[15px] font-bold text-white shadow-[0_18px_42px_rgba(7,59,44,0.24)] transition hover:bg-[#0d4b38] hover:shadow-[0_20px_48px_rgba(7,59,44,0.28)] active:translate-y-px focus:outline-none focus:ring-4 focus:ring-[#073b2c]/15 disabled:cursor-not-allowed disabled:opacity-60 md:mt-6 md:h-[58px]"
     >
       {pending ? "Entrando..." : "Entrar no portal"}
     </button>
@@ -25,7 +25,7 @@ export default function LoginForm({ redirectTo }: Props) {
 
   return (
     <div>
-      <div className="mb-5 flex items-center gap-3">
+      <div className="mb-5 flex items-center gap-3 md:mb-7">
         <img
           src="/klasse-mark-isolated.png"
           alt=""
@@ -66,7 +66,7 @@ export default function LoginForm({ redirectTo }: Props) {
             required
             placeholder="Email ou número de processo"
             suppressHydrationWarning
-            className="mt-2 h-14 w-full rounded-[14px] border border-white/70 bg-white/85 px-4 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/45 focus:border-white focus:ring-4 focus:ring-white/25 md:border-[#073b2c]/15 md:bg-white/85 md:placeholder:text-[#17211d]/35 md:focus:border-[#073b2c]/45 md:focus:ring-[#073b2c]/8"
+            className="mt-2 h-12 w-full rounded-[13px] border border-white/80 bg-white/90 px-4 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/45 focus:border-white focus:ring-4 focus:ring-white/25 md:h-14 md:rounded-[14px] md:border-[#073b2c]/15 md:bg-white/85 md:placeholder:text-[#17211d]/35 md:focus:border-[#073b2c]/45 md:focus:ring-[#073b2c]/8"
           />
           <p className="mt-2 text-xs text-white/75 md:text-[#17211d]/50">Alunos podem usar o número de processo.</p>
         </div>
@@ -81,7 +81,7 @@ export default function LoginForm({ redirectTo }: Props) {
               required
               placeholder="••••••••"
               suppressHydrationWarning
-              className="h-14 w-full rounded-[14px] border border-white/70 bg-white/85 px-4 pr-12 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/45 focus:border-white focus:ring-4 focus:ring-white/25 md:border-[#073b2c]/15 md:bg-white/85 md:placeholder:text-[#17211d]/35 md:focus:border-[#073b2c]/45 md:focus:ring-[#073b2c]/8"
+              className="h-12 w-full rounded-[13px] border border-white/80 bg-white/90 px-4 pr-12 text-[15px] font-medium text-[#17211d] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] outline-none transition placeholder:font-normal placeholder:text-[#17211d]/45 focus:border-white focus:ring-4 focus:ring-white/25 md:h-14 md:rounded-[14px] md:border-[#073b2c]/15 md:bg-white/85 md:placeholder:text-[#17211d]/35 md:focus:border-[#073b2c]/45 md:focus:ring-[#073b2c]/8"
             />
             <button
               type="button"
