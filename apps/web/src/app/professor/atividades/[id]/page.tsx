@@ -86,8 +86,8 @@ export default function ProfessorAtividadeDetalhesPage({
 
       setActivity(json.activity || null);
       setEntregas(json.entregas || []);
-    } catch (err: any) {
-      toastError("Erro ao Carregar", err.message || String(err));
+    } catch (err) {
+      toastError("Erro ao Carregar", err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }

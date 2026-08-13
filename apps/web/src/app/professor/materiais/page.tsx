@@ -43,6 +43,8 @@ export default function ProfessorMateriaisPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     titulo: "",
@@ -56,6 +58,7 @@ export default function ProfessorMateriaisPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const [mRes, agendaRes] = await Promise.all([
         fetch("/api/professor/materiais-pedagogicos", { cache: "no-store" }),
         fetch("/api/professor/agenda", { cache: "no-store" }),
@@ -84,7 +87,7 @@ export default function ProfessorMateriaisPage() {
         setAssignments(Array.from(pairsMap.values()));
       }
     } catch (err) {
-      console.error(err);
+      setLoadError(err instanceof Error ? err.message : "Não foi possível carregar os materiais.");
     } finally {
       setLoading(false);
     }
@@ -123,14 +126,15 @@ export default function ProfessorMateriaisPage() {
       setShowModal(false);
       setForm({ titulo: "", descricao: "", conteudo: "", arquivo_url: "", turma_id: "", disciplina_id: "" });
       loadData();
-    } catch (err: any) {
-      toastError("Erro", err.message || String(err));
+    } catch (err) {
+      toastError("Erro", err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
   };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
+    setUpdatingId(id);
     try {
       const newStatus = currentStatus === "publicado" ? "rascunho" : "publicado";
       const res = await fetch(`/api/professor/materiais-pedagogicos/${id}`, {
@@ -143,8 +147,10 @@ export default function ProfessorMateriaisPage() {
 
       success("Estado Alterado", `Material marcado como ${newStatus}.`);
       loadData();
-    } catch (err: any) {
-      toastError("Erro", err.message || String(err));
+    } catch (err) {
+      toastError("Erro", err instanceof Error ? err.message : String(err));
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -172,7 +178,9 @@ export default function ProfessorMateriaisPage() {
         </header>
 
         {/* CARDS DE MATERIAIS */}
-        {loading ? (
+        {loadError ? (
+          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700"><p className="font-black">Não foi possível carregar os materiais.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void loadData()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div>
+        ) : loading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-40 rounded-3xl bg-white border border-slate-200" />
@@ -187,6 +195,7 @@ export default function ProfessorMateriaisPage() {
             <p className="text-xs font-medium text-slate-500 max-w-sm mx-auto">
               Carregue manuais, PDFs ou resumos para auxiliar a aprendizagem dos seus alunos.
             </p>
+            <button type="button" onClick={() => setShowModal(true)} className="text-xs font-black text-emerald-700 hover:underline">Adicionar primeiro material</button>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -237,14 +246,15 @@ export default function ProfessorMateriaisPage() {
 
                     <button
                       type="button"
-                      onClick={() => toggleStatus(m.id, m.status)}
+                      onClick={() => void toggleStatus(m.id, m.status)}
+                      disabled={updatingId === m.id}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                         isPublicado
                           ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           : "bg-emerald-600 text-white hover:bg-emerald-500"
                       }`}
                     >
-                      {isPublicado ? "Despublicar" : "Publicar"}
+                      {updatingId === m.id ? "A guardar..." : isPublicado ? "Despublicar" : "Publicar"}
                     </button>
                   </div>
                 </div>

@@ -11,6 +11,8 @@ const UpdateSchema = z.object({
   titulo: z.string().trim().min(2).max(180).optional(),
   instrucoes: z.string().trim().max(10_000).nullable().optional(),
   prazo: z.string().datetime().nullable().optional(),
+  aula_id: z.string().uuid().nullable().optional(),
+  plano_aula_id: z.string().uuid().nullable().optional(),
   tentativas_permitidas: z.number().int().min(1).max(10).optional(),
   nota_maxima: z.number().positive().max(100).optional(),
   questoes: z.array(z.object({
@@ -49,7 +51,7 @@ export async function GET(
 
   const { data: activity, error } = await supabase
     .from("atividades_pedagogicas")
-    .select("id, titulo, instrucoes, tipo, turma_id, disciplina_id, status, prazo, tentativas_permitidas, nota_maxima, published_at, created_at, atividade_questoes(id, ordem, tipo, enunciado, opcoes, pontos)")
+    .select("id, titulo, instrucoes, tipo, turma_id, disciplina_id, aula_id, plano_aula_id, status, prazo, tentativas_permitidas, nota_maxima, published_at, created_at, atividade_questoes(id, ordem, tipo, enunciado, opcoes, pontos)")
     .eq("id", id)
     .eq("escola_id", escolaId)
     .eq("created_by", user.id)
@@ -78,6 +80,24 @@ export async function PATCH(
   if (!escolaId) return noStore({ ok: false, error: "Escola não encontrada" }, { status: 403 });
   const parsed = UpdateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return noStore({ ok: false, error: "Estado inválido" }, { status: 400 });
+
+  const { data: existingActivity } = await supabase
+    .from("atividades_pedagogicas")
+    .select("id, turma_id, disciplina_id")
+    .eq("id", id)
+    .eq("escola_id", escolaId)
+    .eq("created_by", user.id)
+    .maybeSingle();
+  if (!existingActivity) return noStore({ ok: false, error: "Actividade não encontrada" }, { status: 404 });
+  const { data: currentProfessor } = await supabase.from("professores").select("id").eq("escola_id", escolaId).eq("profile_id", user.id).maybeSingle();
+  if (parsed.data.plano_aula_id) {
+    const { data: plan } = await supabase.from("planos_aula").select("id, professor_id, turma_disciplina_id").eq("id", parsed.data.plano_aula_id).eq("escola_id", escolaId).maybeSingle();
+    if (!plan || plan.professor_id !== currentProfessor?.id) return noStore({ ok: false, error: "Plano de aula inválido para este professor" }, { status: 400 });
+  }
+  if (parsed.data.aula_id) {
+    const { data: aula } = await supabase.from("aulas").select("id, professor_id").eq("id", parsed.data.aula_id).eq("escola_id", escolaId).maybeSingle();
+    if (!aula || aula.professor_id !== currentProfessor?.id) return noStore({ ok: false, error: "Aula inválida para este professor" }, { status: 400 });
+  }
 
   const requestedStatus = parsed.data.status;
   const isPublished = requestedStatus === "publicada";

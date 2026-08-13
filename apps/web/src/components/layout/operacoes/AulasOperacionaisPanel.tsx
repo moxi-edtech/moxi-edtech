@@ -136,7 +136,7 @@ export default function AulasOperacionaisPanel({ escolaId }: { escolaId: string 
   }, [items, search, statusFilter]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+    <section id="operacoes-aulas" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

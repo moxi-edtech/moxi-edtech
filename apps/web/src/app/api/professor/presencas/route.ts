@@ -217,7 +217,9 @@ export async function POST(req: Request) {
         .eq('escola_id', escolaId)
         .eq('scope', 'professor_presencas')
         .eq('key', idempotencyKey)
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      const normalized = error.message || 'Não foi possível registar as presenças.'
+      const status = /AUTH:|Permissão negada|Professor não atribuído/i.test(normalized) ? 403 : /fechado|não encontrada|inválid/i.test(normalized) ? 409 : 500
+      return NextResponse.json({ ok: false, error: normalized, code: error.code ?? null }, { status });
     }
     mutationCommitted = true
 

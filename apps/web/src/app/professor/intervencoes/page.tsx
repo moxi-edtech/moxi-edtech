@@ -25,7 +25,7 @@ type Intervention = {
   tipo: "enviar_alerta" | "atribuir_ficha" | "contactar_familia" | "acompanhar_aluno";
   status: "pendente" | "em_tratamento" | "concluida" | "cancelada";
   motivo?: string | null;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   due_at?: string | null;
   completed_at?: string | null;
   created_at: string;
@@ -42,16 +42,20 @@ export default function ProfessorIntervencoesPage() {
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await fetch("/api/professor/pedagogia/interventions", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erro ao carregar intervenções");
       setInterventions(json.items || []);
-    } catch (err: any) {
-      toastError("Erro", err.message || String(err));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLoadError(message);
+      toastError("Erro", message);
     } finally {
       setLoading(false);
     }
@@ -69,7 +73,7 @@ export default function ProfessorIntervencoesPage() {
       if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível concluir");
       success("Acção concluída", "A intervenção foi actualizada na fila.");
       await loadData();
-    } catch (err: any) { toastError("Acção não concluída", err.message || String(err)); }
+    } catch (err) { toastError("Acção não concluída", err instanceof Error ? err.message : String(err)); }
     finally { setUpdatingId(null); }
   };
 
@@ -89,7 +93,9 @@ export default function ProfessorIntervencoesPage() {
           />
         </header>
 
-        {loading ? (
+        {loadError ? (
+          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700"><p className="font-black">Não foi possível carregar as intervenções.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void loadData()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div>
+        ) : loading ? (
           <div className="space-y-3 animate-pulse">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-28 rounded-3xl bg-white border border-slate-200" />

@@ -25,6 +25,7 @@ type StudentActivity = {
   prazo?: string | null;
   tentativas_permitidas: number;
   nota_maxima: number;
+  plano_aula?: { data: string; tema: string } | null;
   published_at?: string | null;
   atividade_questoes?: Array<{
     id: string;

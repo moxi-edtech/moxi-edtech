@@ -21,6 +21,8 @@ const ActivitySchema = z.object({
   tipo: z.enum(["quiz", "exercicio", "tarefa", "simulado"]),
   turma_id: z.string().uuid(),
   disciplina_id: z.string().uuid(),
+  aula_id: z.string().uuid().nullable().optional(),
+  plano_aula_id: z.string().uuid().nullable().optional(),
   ano_letivo_id: z.string().uuid().nullable().optional(),
   prazo: z.string().datetime().nullable().optional(),
   tentativas_permitidas: z.number().int().min(1).max(10).default(1),
@@ -67,7 +69,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("atividades_pedagogicas")
-    .select("id, titulo, instrucoes, tipo, turma_id, disciplina_id, ano_letivo_id, status, prazo, tentativas_permitidas, nota_maxima, published_at, created_at, atividade_questoes(id, ordem, tipo, enunciado, opcoes, pontos)")
+    .select("id, titulo, instrucoes, tipo, turma_id, disciplina_id, aula_id, plano_aula_id, ano_letivo_id, status, prazo, tentativas_permitidas, nota_maxima, published_at, created_at, atividade_questoes(id, ordem, tipo, enunciado, opcoes, pontos)")
     .eq("escola_id", escolaId)
     .eq("created_by", user.id)
     .order("created_at", { ascending: false })
@@ -93,6 +95,15 @@ export async function POST(request: Request) {
     .eq("disciplina_id", input.disciplina_id)
     .maybeSingle();
   if (!assignment) return noStore({ ok: false, error: "Não lecciona esta disciplina nesta turma" }, { status: 403 });
+
+  if (input.plano_aula_id) {
+    const { data: plan } = await supabase.from("planos_aula").select("id").eq("id", input.plano_aula_id).eq("escola_id", escolaId).eq("professor_id", professorId).eq("turma_disciplina_id", assignment.id).maybeSingle();
+    if (!plan) return noStore({ ok: false, error: "O plano de aula não pertence a esta turma/disciplina" }, { status: 400 });
+  }
+  if (input.aula_id) {
+    const { data: aula } = await supabase.from("aulas").select("id, turma_disciplina_id, professor_id").eq("id", input.aula_id).eq("escola_id", escolaId).maybeSingle();
+    if (!aula || aula.turma_disciplina_id !== assignment.id || aula.professor_id !== professorId) return noStore({ ok: false, error: "A aula não pertence ao professor nesta turma/disciplina" }, { status: 400 });
+  }
 
   if (input.source_material_ids.length > 0) {
     const { count } = await supabase

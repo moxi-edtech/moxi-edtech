@@ -33,6 +33,7 @@ type Activity = {
   prazo?: string | null;
   tentativas_permitidas: number;
   nota_maxima: number;
+  plano_aula?: { data: string; tema: string; subtema?: string | null; objetivos?: string | null; conteudos?: string | null } | null;
   atividade_questoes?: Question[];
   ultima_entrega?: {
     id: string;
@@ -245,6 +246,16 @@ export default function AlunoAtividadeRunnerPage({
           <p className="text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
             {activity.instrucoes}
           </p>
+        )}
+
+        {activity.plano_aula && (
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Plano de aula · {activity.plano_aula.data}</p>
+            <h2 className="mt-1 text-sm font-black text-emerald-950">{activity.plano_aula.tema}</h2>
+            {activity.plano_aula.subtema && <p className="mt-1 text-xs text-emerald-900">{activity.plano_aula.subtema}</p>}
+            {activity.plano_aula.objetivos && <p className="mt-3 text-xs leading-relaxed text-emerald-950"><strong>Objetivos:</strong> {activity.plano_aula.objetivos}</p>}
+            {activity.plano_aula.conteudos && <p className="mt-2 text-xs leading-relaxed text-emerald-950"><strong>Conteúdos:</strong> {activity.plano_aula.conteudos}</p>}
+          </div>
         )}
 
         <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-400 pt-1">

@@ -29,6 +29,7 @@ type GradeEntryGridProps = {
   subtitle?: string
   debounceMs?: number
   onSave?: (rows: StudentGradeRow[]) => Promise<void> | void
+  onSaveError?: (error: unknown) => void
   highlightId?: string | null
   onDataChange?: (rows: StudentGradeRow[]) => void
   pesoPorTipo?: Record<string, number>
@@ -95,6 +96,7 @@ export function GradeEntryGrid({
   subtitle,
   debounceMs = 800,
   onSave,
+  onSaveError,
   highlightId,
   onDataChange,
   pesoPorTipo,
@@ -183,7 +185,7 @@ export function GradeEntryGrid({
             : row
         )
       )
-    } catch {
+  } catch (error) {
       setData((prev) =>
         prev.map((row) =>
           ids.includes(row.id)
@@ -194,10 +196,11 @@ export function GradeEntryGrid({
             : row
         )
       )
+      onSaveError?.(error)
     } finally {
       setIsSaving(false)
     }
-  }, [onSave])
+  }, [onSave, onSaveError])
 
   const scheduleSave = useCallback(() => {
     if (!onSave) return
@@ -791,4 +794,3 @@ const GradeInput = ({
     />
   )
 }
-

@@ -4,10 +4,11 @@ import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
-import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon, CalendarDaysIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type AtribItem = {
   turma: { id: string; nome: string | null };
@@ -15,6 +16,10 @@ type AtribItem = {
 };
 
 type AgendaItem = {
+  id?: string | null;
+  aula_id?: string | null;
+  status?: string | null;
+  slot_id?: string | null;
   turma_id?: string | null;
   disciplina_id?: string | null;
   turma_nome: string | null;
@@ -62,6 +67,12 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [pendenciasResumo, setPendenciasResumo] = useState<PendenciasResumo | null>(null);
   const [overview, setOverview] = useState<OverviewInfo | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [startingKey, setStartingKey] = useState<string | null>(null);
+  const [finalizingKey, setFinalizingKey] = useState<string | null>(null);
+  const [finalizeSummary, setFinalizeSummary] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
+  const { success, error: toastError } = useToast();
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
@@ -72,20 +83,30 @@ export default function Page() {
     const load = async () => {
       try {
         setLoading(true);
+        setLoadError(null);
         setPendenciasResumo(null);
-        const [atribsRes, agendaRes, pendRes, overviewRes] = await Promise.all([
+        const today = new Date();
+        const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const [atribsRes, agendaRes, aulasRes, pendRes, overviewRes] = await Promise.all([
           fetch("/api/professor/atribuicoes", { cache: "no-store" }),
           fetch("/api/professor/agenda", { cache: "no-store" }),
+          fetch(`/api/professor/aulas?from=${todayIso}`, { cache: "no-store" }),
           fetch("/api/professor/dashboard/pendencias", { cache: "no-store" }),
           fetch("/api/professor/dashboard/overview", { cache: "no-store" }),
         ]);
         const atribsJson = await atribsRes.json().catch(() => null);
         const agendaJson = await agendaRes.json().catch(() => null);
+        const aulasJson = await aulasRes.json().catch(() => null);
         const pendJson = await pendRes.json().catch(() => null);
         const overviewJson = await overviewRes.json().catch(() => null);
         if (!cancelled) {
           setAtribs((atribsJson?.items || []) as AtribItem[]);
-          setAgenda((agendaJson?.items || []) as AgendaItem[]);
+          const actualLessons = (aulasJson?.items || []) as AgendaItem[];
+          const actualByKey = new Map(actualLessons.map((lesson) => [`${lesson.turma_id}:${lesson.disciplina_id}:${lesson.slot_id ?? lesson.inicio}`, lesson]));
+          setAgenda(((agendaJson?.items || []) as AgendaItem[]).map((item) => {
+            const actual = actualByKey.get(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`);
+            return actual ? { ...item, aula_id: actual.id, status: actual.status } : item;
+          }));
           if (pendRes.ok && pendJson?.ok) {
             setPendenciasResumo({
               avaliacoes_pendentes: Number(pendJson.avaliacoes_pendentes ?? 0),
@@ -103,6 +124,8 @@ export default function Page() {
             setOverview({ escola_nome: null, primeiro_nome: null });
           }
         }
+      } catch (cause) {
+        if (!cancelled) setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar a home do professor.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -112,6 +135,59 @@ export default function Page() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(async () => {
+      const now = new Date();
+      const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const response = await fetch(`/api/professor/aulas?from=${todayIso}`, { cache: "no-store" }).catch(() => null);
+      const payload = response ? await response.json().catch(() => null) : null;
+      if (!payload?.ok) return;
+      const actualByKey = new Map((payload.items as AgendaItem[]).map((lesson) => [`${lesson.turma_id}:${lesson.disciplina_id}:${lesson.slot_id ?? lesson.inicio}`, lesson]));
+      setAgenda((current) => current.map((item) => actualByKey.has(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`) ? { ...item, ...actualByKey.get(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`) } : item));
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const loadAgain = () => window.location.reload();
+
+  const startLesson = async (item: AgendaItem) => {
+    if (!item.turma_id || !item.disciplina_id) return;
+    const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
+    setStartingKey(key);
+    try {
+      const date = new Date();
+      const data = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const response = await fetch("/api/professor/aulas/iniciar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turma_id: item.turma_id, disciplina_id: item.disciplina_id, data, slot_id: item.slot_id ?? undefined, inicio_previsto: item.inicio, fim_previsto: item.fim }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível confirmar a aula.");
+      const aulaId = payload.aula?.id ?? payload.aula_id ?? null;
+      setAgenda((current) => current.map((candidate) => candidate.turma_id === item.turma_id && candidate.disciplina_id === item.disciplina_id && (candidate.slot_id ?? candidate.inicio) === (item.slot_id ?? item.inicio) ? { ...candidate, aula_id: aulaId ?? candidate.aula_id, status: "em_andamento" } : candidate));
+      success("Aula confirmada", "A secretaria já pode acompanhar que a aula está em andamento.");
+    } catch (cause) {
+      toastError("Não foi possível confirmar", cause instanceof Error ? cause.message : "Tente novamente.");
+    } finally {
+      setStartingKey(null);
+    }
+  };
+
+  const finalizeLesson = async (item: AgendaItem) => {
+    if (!item.aula_id) return;
+    setFinalizing(true);
+    try {
+      const response = await fetch("/api/professor/aulas/finalizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aula_id: item.aula_id, resumo: finalizeSummary.trim() || null }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível finalizar a aula.");
+      setAgenda((current) => current.map((candidate) => candidate.aula_id === item.aula_id ? { ...candidate, status: "finalizada" } : candidate));
+      setFinalizingKey(null);
+      setFinalizeSummary("");
+      success("Aula finalizada", "O relatório foi enviado para a secretaria.");
+    } catch (cause) {
+      toastError("Não foi possível finalizar", cause instanceof Error ? cause.message : "Tente novamente.");
+    } finally {
+      setFinalizing(false);
+    }
+  };
 
   const turmaMap = useMemo(() => {
     const map = new Map<string, { id: string; nome: string | null; disciplinas: string[] }>();
@@ -377,7 +453,9 @@ export default function Page() {
               <Link href={professorHref("/professor/frequencias")} className="text-[10px] font-black uppercase text-klasse-gold hover:underline">Novo Registro</Link>
             </div>
             
-            {loading ? (
+            {loadError ? (
+              <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível carregar a agenda.</p><p className="mt-1 text-xs">Verifique a ligação e tente novamente.</p><button type="button" onClick={loadAgain} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"><ArrowPathIcon className="h-4 w-4" /> Tentar novamente</button></div>
+            ) : loading ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 rounded-[1.5rem] bg-white border border-slate-200 animate-pulse" />)}
               </div>
@@ -429,27 +507,12 @@ export default function Page() {
                       <p className="text-xs font-bold text-slate-400">Sem aulas agendadas para hoje.</p>
                    </div>
                 ) : (
-                  (agendaByDay.get(todayKey) || []).map((item, idx) => (
-                    <div key={idx} className="group py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
-                       <div className="flex items-center gap-4">
-                          <div className="flex flex-col items-center">
-                             <span className="text-[10px] font-black text-slate-900 leading-none">{item.inicio.split(":")[0]}</span>
-                             <span className="text-[8px] font-bold text-slate-400 uppercase">{item.inicio.split(":")[1]}</span>
-                          </div>
-                          <div className="h-8 w-[2px] bg-slate-100 rounded-full" />
-                          <div>
-                             <p className="text-xs font-black text-slate-900 group-hover:text-klasse-gold transition-colors">{item.disciplina_nome}</p>
-                             <p className="text-[10px] font-bold text-slate-400">
-                                {formatTurmaDisplayName({ turma_nome: item.turma_nome })}
-                                {item.sala_nome && ` • Sala ${item.sala_nome}`}
-                             </p>
-                          </div>
-                       </div>
-                       <div className="shrink-0 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all">
-                          <PencilSquareIcon className="h-4 w-4" />
-                       </div>
-                    </div>
-                  ))
+                  (agendaByDay.get(todayKey) || []).map((item, idx) => {
+                    const query = item.turma_id && item.disciplina_id ? `?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}` : "";
+                    const content = <><div className="flex items-center gap-4"><div className="flex flex-col items-center"><span className="text-[10px] font-black text-slate-900 leading-none">{item.inicio.split(":")[0]}</span><span className="text-[8px] font-bold text-slate-400 uppercase">{item.inicio.split(":")[1]}</span></div><div className="h-8 w-[2px] bg-slate-100 rounded-full" /><div><p className="text-xs font-black text-slate-900 group-hover:text-klasse-gold transition-colors">{item.disciplina_nome}</p><p className="text-[10px] font-bold text-slate-400">{formatTurmaDisplayName({ turma_nome: item.turma_nome })}{item.sala_nome && ` • Sala ${item.sala_nome}`}</p></div></div><div className="shrink-0 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all"><PencilSquareIcon className="h-4 w-4" /></div></>;
+                    const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
+                    return item.turma_id && item.disciplina_id ? <div key={idx} className="group rounded-xl py-4 first:pt-0 last:pb-0 hover:bg-slate-50/80"><div className="flex items-center justify-between gap-4 px-2">{content}</div><div className="mt-2 flex flex-wrap gap-2 pl-16 text-[10px] font-black uppercase tracking-wide">{item.status === "em_andamento" ? <>{<button type="button" onClick={() => { setFinalizingKey(key); setFinalizeSummary(""); }} disabled={!item.aula_id} className="text-emerald-700 hover:underline disabled:opacity-50">Finalizar aula</button>}<span className="text-emerald-700">Em andamento</span></> : item.status === "finalizada" ? <span className="text-blue-700">Finalizada</span> : <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="text-amber-700 hover:underline disabled:opacity-50">{startingKey === key ? "A confirmar..." : "Confirmar aula"}</button>}<Link href={professorHref(`/professor/frequencias${query}`)} className="text-emerald-700 hover:underline">Abrir chamada</Link><Link href={professorHref(`/professor/notas${query}`)} className="text-blue-700 hover:underline">Lançar nota</Link><Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}`)} className="text-amber-700 hover:underline">Abrir plano</Link><Link href={professorHref(`/professor/turmas/${item.turma_id}/horario`)} className="text-slate-500 hover:underline">Ver horário</Link></div>{finalizingKey === key && <div className="mx-2 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><textarea value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} placeholder="Resumo breve da aula (opcional)" className="w-full rounded-lg border border-emerald-200 bg-white p-2 text-xs outline-none focus:ring-2 focus:ring-emerald-300" /><div className="mt-2 flex gap-2"><button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">{finalizing ? "A finalizar..." : "Confirmar finalização"}</button><button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-600">Cancelar</button></div></div>}</div> : <div key={idx} className="group py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">{content}</div>;
+                  })
                 )}
              </div>
           </section>

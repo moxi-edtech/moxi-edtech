@@ -40,6 +40,8 @@ type ActivityItem = {
   tipo: "quiz" | "exercicio" | "tarefa" | "simulado";
   turma_id: string;
   disciplina_id: string;
+  aula_id?: string | null;
+  plano_aula_id?: string | null;
   status: "rascunho" | "publicada" | "encerrada";
   prazo?: string | null;
   tentativas_permitidas: number;
@@ -55,6 +57,9 @@ type Assignment = {
   turma_nome?: string;
   disciplina_nome?: string;
 };
+type LessonOccurrence = { id: string; data: string; inicio_previsto: string | null; fim_previsto: string | null; status: string; turma_id: string | null; disciplina_id: string | null; turma_nome: string | null; disciplina_nome: string | null };
+
+type LessonPlan = { id: string; data: string; tema: string; turma_disciplina_id: string };
 
 export default function ProfessorAtividadesPage() {
   const pathname = usePathname();
@@ -65,6 +70,8 @@ export default function ProfessorAtividadesPage() {
   const { success, error: toastError } = useToast();
   const [atividades, setAtividades] = useState<ActivityItem[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
+  const [lessonOccurrences, setLessonOccurrences] = useState<LessonOccurrence[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("todos");
 
@@ -72,6 +79,7 @@ export default function ProfessorAtividadesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [updatingActivityId, setUpdatingActivityId] = useState<string | null>(null);
   const [nextActionError, setNextActionError] = useState<{
     error: string;
     next_action?: { type: string; label: string; href: string };
@@ -87,6 +95,8 @@ export default function ProfessorAtividadesPage() {
     prazo: string;
     tentativas_permitidas: number;
     nota_maxima: number;
+    aula_id: string;
+    plano_aula_id: string;
     publicar: boolean;
   }>({
     titulo: "",
@@ -97,6 +107,8 @@ export default function ProfessorAtividadesPage() {
     prazo: "",
     tentativas_permitidas: 1,
     nota_maxima: 20,
+    aula_id: "",
+    plano_aula_id: "",
     publicar: false,
   });
 
@@ -114,13 +126,19 @@ export default function ProfessorAtividadesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [actRes, agendaRes] = await Promise.all([
+      const [actRes, agendaRes, plansRes, lessonsRes] = await Promise.all([
         fetch("/api/professor/atividades", { cache: "no-store" }),
         fetch("/api/professor/agenda", { cache: "no-store" }),
+        fetch("/api/professor/planos-aula", { cache: "no-store" }),
+        fetch("/api/professor/aulas", { cache: "no-store" }),
       ]);
 
       const actJson = await actRes.json();
       const agendaJson = await agendaRes.json();
+      const plansJson = await plansRes.json().catch(() => null);
+      setLessonPlans(plansJson?.items ?? []);
+      const lessonsJson = await lessonsRes.json().catch(() => null);
+      setLessonOccurrences(lessonsJson?.items ?? []);
 
       if (actRes.ok && actJson.ok) {
         setAtividades(actJson.items || []);
@@ -174,6 +192,8 @@ export default function ProfessorAtividadesPage() {
         prazo: item.prazo ? new Date(item.prazo).toISOString().slice(0, 16) : "",
         tentativas_permitidas: item.tentativas_permitidas,
         nota_maxima: Number(item.nota_maxima),
+        aula_id: item.aula_id ?? "",
+        plano_aula_id: item.plano_aula_id ?? "",
         publicar: false,
       });
       setQuestoes((item.atividade_questoes ?? []).map((q: Question) => ({ ...q, opcoes: q.opcoes ?? [] })));
@@ -237,6 +257,8 @@ export default function ProfessorAtividadesPage() {
         tipo: form.tipo,
         turma_id: form.turma_id,
         disciplina_id: form.disciplina_id,
+        aula_id: form.aula_id || null,
+        plano_aula_id: form.plano_aula_id || null,
         prazo: form.prazo ? new Date(form.prazo).toISOString() : null,
         tentativas_permitidas: form.tentativas_permitidas,
         nota_maxima: form.nota_maxima,
@@ -290,6 +312,7 @@ export default function ProfessorAtividadesPage() {
 
   // Toggle status of existing activity
   const togglePublishStatus = async (activityId: string, currentStatus: string) => {
+    setUpdatingActivityId(activityId);
     try {
       const newStatus = currentStatus === "publicada" ? "rascunho" : "publicada";
       const res = await fetch(`/api/professor/atividades/${activityId}`, {
@@ -309,8 +332,10 @@ export default function ProfessorAtividadesPage() {
 
       success("Estado Atualizado", `Actividade alterada para ${newStatus}.`);
       loadData();
-    } catch (err: any) {
-      toastError("Erro", err.message || String(err));
+    } catch (err) {
+      toastError("Erro", err instanceof Error ? err.message : String(err));
+    } finally {
+      setUpdatingActivityId(null);
     }
   };
 
@@ -460,14 +485,15 @@ export default function ProfessorAtividadesPage() {
 
                     <button
                       type="button"
-                      onClick={() => togglePublishStatus(act.id, act.status)}
+                      onClick={() => void togglePublishStatus(act.id, act.status)}
+                      disabled={updatingActivityId === act.id}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                         isPublicada
                           ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           : "bg-emerald-600 text-white hover:bg-emerald-500"
                       }`}
                     >
-                      {isPublicada ? "Despublicar" : "Publicar"}
+                      {updatingActivityId === act.id ? "A guardar..." : isPublicada ? "Despublicar" : "Publicar"}
                     </button>
                   </div>
                 </div>
@@ -541,6 +567,7 @@ export default function ProfessorAtividadesPage() {
                       <option value="simulado">Simulado Trimestral</option>
                     </select>
                   </div>
+
                 </div>
 
                 {/* SELEÇÃO DE TURMA E DISCIPLINA */}
@@ -551,7 +578,7 @@ export default function ProfessorAtividadesPage() {
                       value={form.turma_id && form.disciplina_id ? `${form.turma_id}:${form.disciplina_id}` : ""}
                       onChange={(e) => {
                         const [tId, dId] = e.target.value.split(":");
-                        setForm({ ...form, turma_id: tId || "", disciplina_id: dId || "" });
+                        setForm({ ...form, turma_id: tId || "", disciplina_id: dId || "", plano_aula_id: "", aula_id: "" });
                       }}
                       className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none"
                     >
@@ -561,6 +588,22 @@ export default function ProfessorAtividadesPage() {
                           {a.disciplina_nome} — {a.turma_nome}
                         </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-slate-400">Ocorrência da aula</label>
+                    <select value={form.aula_id} onChange={(e) => setForm({ ...form, aula_id: e.target.value })} className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none">
+                      <option value="">Sem vínculo direto</option>
+                      {lessonOccurrences.filter((lesson) => lesson.turma_id === form.turma_id && lesson.disciplina_id === form.disciplina_id).map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.data} · {lesson.inicio_previsto ?? "--:--"} · {lesson.turma_nome} · {lesson.disciplina_nome}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-slate-400">Plano de Aula</label>
+                    <select value={form.plano_aula_id} onChange={(e) => setForm({ ...form, plano_aula_id: e.target.value })} className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none">
+                      <option value="">Sem vínculo ao plano</option>
+                      {lessonPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.data} — {plan.tema}</option>)}
                     </select>
                   </div>
 

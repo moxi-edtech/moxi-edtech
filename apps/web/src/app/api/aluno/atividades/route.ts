@@ -19,7 +19,7 @@ export async function GET() {
 
   const { data, error } = await (supabase as any)
     .from("atividades_pedagogicas")
-    .select("id, titulo, instrucoes, tipo, turma_id, disciplina_id, status, prazo, tentativas_permitidas, nota_maxima, published_at, created_at, atividade_questoes(id, ordem, tipo, enunciado, opcoes, pontos)")
+    .select("id, titulo, instrucoes, tipo, turma_id, disciplina_id, aula_id, plano_aula_id, status, prazo, tentativas_permitidas, nota_maxima, published_at, created_at, atividade_questoes(id, ordem, tipo, enunciado, opcoes, pontos)")
     .eq("escola_id", ctx.escolaId)
     .eq("turma_id", ctx.turmaId)
     .eq("status", "publicada")
@@ -29,6 +29,11 @@ export async function GET() {
   if (error) return noStore({ ok: false, error: error.message }, { status: 500 });
 
   const activityIds = (data ?? []).map((item: any) => item.id);
+  const planIds = Array.from(new Set((data ?? []).map((item: any) => item.plano_aula_id).filter(Boolean)));
+  const { data: plans } = planIds.length
+    ? await (supabase as any).from("planos_aula").select("id, data, tema, subtema, objetivos, competencias, conteudos, metodologia, recursos, atividades, avaliacao, tarefa_casa, observacoes").eq("escola_id", ctx.escolaId).eq("status", "aprovado").in("id", planIds)
+    : { data: [] };
+  const planMap = new Map((plans ?? []).map((plan: any) => [plan.id, plan]));
   const { data: submissions } = activityIds.length
     ? await (supabase as any)
         .from("atividade_entregas")
@@ -45,6 +50,6 @@ export async function GET() {
   }
   return noStore({
     ok: true,
-    items: (data ?? []).map((item: any) => ({ ...item, ultima_entrega: latestByActivity.get(item.id) ?? null })),
+    items: (data ?? []).map((item: any) => ({ ...item, plano_aula: item.plano_aula_id ? planMap.get(item.plano_aula_id) ?? null : null, ultima_entrega: latestByActivity.get(item.id) ?? null })),
   });
 }
