@@ -45,12 +45,21 @@ Código presente no workspace:
 - secretaria acompanha ocorrências operacionais;
 - chamada e encerramento devem alimentar o relatório da escola;
 - existem rotas de professor e secretaria para consultar, iniciar e finalizar aulas.
+- a Dashboard de Operações lista as ocorrências do dia e abre um relatório dedicado por aula;
+- o relatório detalhado reúne identificação, frequência, registo do professor, plano e atividades;
+- a secretaria e os perfis administrativos autorizados podem exportar o relatório da ocorrência em PDF.
+- o relatório oferece retry, atualização manual e atualização periódica, com feedback durante a geração do PDF;
+- a frequência nominal é exibida no detalhe e incluída no PDF;
+- a Dashboard permite busca por turma, disciplina ou professor e filtro por estado da aula.
 
 Arquivos centrais:
 
 - `apps/web/src/app/api/professor/aulas/`
 - `apps/web/src/app/api/secretaria/aulas/`
 - `apps/web/src/components/layout/operacoes/AulasOperacionaisPanel.tsx`
+- `apps/web/src/app/escola/[id]/(portal)/operacoes/aulas/[aulaId]/page.tsx`
+- `apps/web/src/app/api/secretaria/aulas/[aulaId]/relatorio/`
+- `apps/web/src/lib/operacoes/renderAulaRelatorioPdf.tsx`
 - `supabase/migrations/20260813120000_professor_aula_operacional.sql`
 
 ## 3. Plano de aula
@@ -109,7 +118,23 @@ Esses itens precisam de triagem individual antes de novo commit. Não devem ser 
 - ESLint dos arquivos da frente de reabertura: sem erros; existem avisos preexistentes de hooks e `any`.
 - `git diff --check`: passou.
 - Migração de reabertura: aplicada no banco e verificada por consulta de metadados.
+- Migração P0 de auditoria (`20261214000000_auditoria_excecoes_pauta_p0.sql`) aplicada e verificada no banco em 13 de agosto de 2026.
+- Função `audit_excecao_pauta_changes` e trigger `trg_audit_excecoes_pauta_changes` estão ativos em `public.excecoes_pauta`.
+- Edição inline de slots de horário: implementada na tela de estrutura de horários.
+- Retorno de falha na chamada: agora oferece ação explícita de tentar novamente.
 
 ## 7. Critério de pronto da frente
 
 A frente é funcional quando o professor consegue solicitar, a secretaria consegue decidir e uma aprovação válida permite o lançamento de notas sem permitir bypass após expiração. A frente ainda precisa de teste manual com três perfis reais e evidência de auditoria da decisão.
+
+## 8. Incremento atual — horários e frequência
+
+- A tela de slots já permitia criação e remoção; agora permite editar nome, início e fim inline antes de salvar.
+- A API existente valida intervalo início/fim, sobreposição temporal e conflitos persistidos.
+- A frequência mantém os estados salvo, offline e falha, com tentativa novamente diretamente no retorno de erro.
+- Ainda falta o teste integrado de edição de slot → distribuição no quadro → publicação → agenda compartilhada do professor.
+- O professor agora pode abrir o quadro publicado completo de cada turma associada, incluindo disciplinas de outros professores.
+- A publicação do quadro rejeita duplicidade de slot e conflito do mesmo professor ou sala dentro da própria edição, além dos conflitos já publicados.
+- Auditoria de reabertura passou a ser garantida por trigger no banco, incluindo solicitação, aprovação, rejeição, expiração e before/after.
+- Checklist P0 criado em `docs/P0_CHECKLIST_REABERTURA_NOTAS.md`.
+- Relatório operacional da secretaria agora inclui resumo de presença por aula e plano de aula associado quando disponível.

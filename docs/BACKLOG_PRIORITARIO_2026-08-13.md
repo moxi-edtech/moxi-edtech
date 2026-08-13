@@ -5,14 +5,14 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 
 ## P0 — Segurança, integridade e produção
 
-- [ ] Executar teste manual de reabertura com professor: turma aberta, turma fechada, solicitação pendente, rejeição e aprovação.
+- [ ] Executar teste manual de reabertura com professor: turma aberta, turma fechada, solicitação pendente, rejeição e aprovação. Infraestrutura de auditoria já aplicada.
 - [ ] Confirmar que uma aprovação expirada é rejeitada pelo trigger/RPC, mesmo que a UI esteja desatualizada.
 - [ ] Confirmar que professor não atribuído não consegue solicitar reabertura.
 - [ ] Confirmar isolamento por `escola_id` nas rotas de solicitação e decisão.
-- [ ] Registrar auditoria completa da decisão: solicitante, decisor, motivo original, motivo da decisão, prazo e IP/contexto quando aplicável.
+- [x] Registrar auditoria completa da decisão: solicitante, decisor, motivo original, motivo da decisão, prazo e before/after.
 - [ ] Validar RLS de `excecoes_pauta` em ambiente de produção; a policy legada `tenant_all_access` precisa ser revisada se permitir acesso além das APIs.
-- [ ] Confirmar aplicação remota das migrações de aulas, planos e vínculo de atividades, além da migração de reabertura já verificada.
-- [ ] Criar rollback documentado para alterações de schema não destrutivas.
+- [ ] Confirmar aplicação remota das migrações de aulas, planos e vínculo de atividades; migrações de reabertura e auditoria já verificadas.
+- [x] Criar checklist documentado para rollback/verificação da alteração de auditoria.
 
 ## P1 — Fluxo gracioso de professores e secretaria
 
@@ -24,12 +24,18 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 - [ ] Criar ação de aprovação em lote apenas após definir regra de justificativa e auditoria.
 - [ ] Mostrar no portal do aluno o plano de aula aprovado associado à aula, quando a escola permitir.
 - [ ] Permitir anexos com validação de tipo, tamanho, armazenamento e remoção segura no plano de aula.
-- [ ] Fechar o ciclo aula → confirmação do professor → chamada → resumo → relatório da secretaria.
-- [ ] Exibir no encerramento da aula um resumo de presentes, ausentes, atrasados, plano e atividades.
+- [x] Fechar o ciclo aula → confirmação do professor → chamada → resumo → relatório da secretaria.
+- [x] Exibir no relatório operacional um resumo de presentes, ausentes, atrasados e plano associado.
+- [x] Exibir atividades pedagógicas associadas no relatório operacional da aula.
+- [x] Criar relatório detalhado por ocorrência com exportação PDF para secretaria e administração escolar.
+- [x] Oferecer feedback de exportação, retry, atualização manual/automática e estados vazios orientados no relatório.
+- [x] Exibir frequência nominal no relatório da ocorrência e no PDF.
+- [x] Adicionar busca por turma, disciplina, professor e filtro por estado na Dashboard de Operações.
 
 ## P1 — Notas, frequência e retornos
 
 - [ ] Testar o botão de salvar presença com dados reais e erro de RPC reproduzido.
+- [x] Exibir retorno de falha da chamada com ação explícita para tentar novamente.
 - [ ] Testar feedback de salvar notas em sucesso, conflito de trimestre fechado, offline e timeout.
 - [ ] Padronizar mensagens de erro de RPC para não expor detalhes internos ao usuário.
 - [ ] Validar ano letivo obrigatório em todas as entradas de notas, frequência, relatórios e exportações.
@@ -38,7 +44,10 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 
 ## P1 — Horários e turmas compartilhadas
 
-- [ ] Permitir criação e edição de horários com validação de conflitos de turma, sala, professor e disciplina.
+- [x] Permitir edição inline de slots de horário com validação temporal existente.
+- [x] Permitir acesso do professor ao quadro publicado completo da turma compartilhada.
+- [x] Rejeitar conflitos de slot, professor e sala dentro da própria publicação do quadro.
+- [ ] Permitir criação e edição do quadro com validação e apresentação visual de conflitos de turma, sala, professor e disciplina em uma única experiência.
 - [ ] Mostrar horários compartilhados de uma turma para todos os professores atribuídos.
 - [ ] Na home do professor, sugerir ações contextuais: confirmar aula, marcar presença, lançar nota, abrir plano e ver turma.
 - [ ] Permitir localizar diretamente a ocorrência de aula correspondente ao horário atual.
