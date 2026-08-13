@@ -122,7 +122,9 @@ export async function POST(req: Request) {
         .eq('escola_id', escolaId)
         .eq('scope', 'professor_notas')
         .eq('key', idempotencyKey)
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      const message = error.message || 'Não foi possível guardar as notas.'
+      const status = /fechad|trav|reabert|bloquead/i.test(message) ? 409 : /permission|não autorizado|unauthorized|forbidden/i.test(message) ? 403 : 500
+      return NextResponse.json({ ok: false, error: message, code: error.code ?? null }, { status });
     }
     mutationCommitted = true
 

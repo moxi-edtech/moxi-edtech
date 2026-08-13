@@ -9,6 +9,7 @@ import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { formatTurmaDisplayName } from "@/utils/formatters"
+import { useToast } from "@/components/feedback/FeedbackSystem"
 
 type Atrib = {
   id: string
@@ -46,7 +47,8 @@ export default function ProfessorNotasPage() {
 
 function ProfessorNotasContent() {
   const searchParams = useSearchParams()
-  const anoLetivoId = searchParams?.get("ano_letivo_id") ?? ""
+  const requestedAnoLetivoId = searchParams?.get("ano_letivo_id") ?? ""
+  const [anoLetivoId, setAnoLetivoId] = useState(requestedAnoLetivoId)
   const highlightAlunoId = searchParams?.get("alunoId") ?? null
   const [atribs, setAtribs] = useState<Atrib[]>([])
   const [loadingAtribs, setLoadingAtribs] = useState(true)
@@ -61,8 +63,12 @@ function ProfessorNotasContent() {
   const [exporting, setExporting] = useState(false)
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
   const [savingNow, setSavingNow] = useState(false)
+  const [reopenRequest, setReopenRequest] = useState<any>(null)
+  const [requestReason, setRequestReason] = useState("")
+  const [requestingReopen, setRequestingReopen] = useState(false)
 
   const { online } = useOfflineStatus()
+  const { success, error: toastError, warning } = useToast()
   const { gerarMiniPauta } = useOfficialDocs()
 
   useEffect(() => {
@@ -73,7 +79,10 @@ function ProfessorNotasContent() {
         const res = await fetch("/api/professor/atribuicoes", { cache: "no-store" })
         const json = await res.json().catch(() => null)
         if (!active) return
-        if (res.ok && json?.ok) setAtribs(json.items || [])
+        if (res.ok && json?.ok) {
+          setAtribs(json.items || [])
+          if (!requestedAnoLetivoId && json.context?.anoLetivoId) setAnoLetivoId(String(json.context.anoLetivoId))
+        }
       } finally {
         if (active) setLoadingAtribs(false)
       }
@@ -82,7 +91,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [])
+  }, [requestedAnoLetivoId])
 
   const atribsByTurma = useMemo(() => {
     return atribs.reduce((acc, a) => {
@@ -102,6 +111,36 @@ function ProfessorNotasContent() {
     const item = atribs.find((a) => a.turma.id === turmaId)
     setTurmaStatusFecho(item?.turma?.status_fecho ?? null)
   }, [atribs, turmaId])
+
+  useEffect(() => {
+    if (!turmaId || !disciplinaId || !anoLetivoId) {
+      setReopenRequest(null)
+      return
+    }
+    let active = true
+    void fetch(`/api/professor/notas/reabertura?turma_id=${encodeURIComponent(turmaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}&trimestre=${trimestreSelecionado}`, { cache: "no-store" })
+      .then((response) => response.json().catch(() => null))
+      .then((payload) => { if (active && payload?.ok) setReopenRequest(payload.current ?? null) })
+    return () => { active = false }
+  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId])
+
+  const handleRequestReopen = async () => {
+    if (!turmaId || !disciplinaId || !anoLetivoId || requestReason.trim().length < 5) {
+      warning("Explique o motivo da reabertura (mínimo de 5 caracteres).")
+      return
+    }
+    setRequestingReopen(true)
+    try {
+      const response = await fetch("/api/professor/notas/reabertura", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turma_id: turmaId, disciplina_id: disciplinaId, trimestre: trimestreSelecionado, ano_letivo_id: anoLetivoId, motivo: requestReason.trim() }) })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível enviar a solicitação.")
+      setReopenRequest(payload.item)
+      setRequestReason("")
+      success("Solicitação enviada para análise da escola.")
+    } catch (cause) {
+      toastError("Não foi possível solicitar", cause instanceof Error ? cause.message : "Tente novamente.")
+    } finally { setRequestingReopen(false) }
+  }
 
   useEffect(() => {
     if (!turmaId || !disciplinaId) {
@@ -188,6 +227,7 @@ function ProfessorNotasContent() {
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
+    if (!anoLetivoId) throw new Error("Ano letivo ativo não identificado. Atualize a página e tente novamente.")
     if (turmaStatusFecho && turmaStatusFecho !== "ABERTO") {
       throw new Error("Turma fechada para lançamento de notas")
     }
@@ -208,7 +248,7 @@ function ProfessorNotasContent() {
         `nota-${turmaId}-${disciplinaId}-${trimestre}-${tipo}-${Date.now()}`
       )
       const body = {
-        ano_letivo_id: anoLetivoId || undefined,
+        ano_letivo_id: anoLetivoId,
         turma_id: turmaId,
         disciplina_id: disciplinaId,
         turma_disciplina_id: turmaDisciplinaId || undefined,
@@ -254,18 +294,25 @@ function ProfessorNotasContent() {
   }
 
   const handleSaveNow = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0) return
-    if (turmaFechada) return
+    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId) return
+    if (notasBloqueadas) return
     setSavingNow(true)
     try {
       await handleSaveBatch(pauta)
+      if (online) {
+        success("Notas guardadas", "Os lançamentos foram sincronizados com o servidor.")
+      } else {
+        warning("Notas guardadas localmente", "Serão sincronizadas assim que a ligação voltar.")
+      }
+    } catch (cause) {
+      toastError("Não foi possível guardar", cause instanceof Error ? cause.message : "Verifique os dados e tente novamente.")
     } finally {
       setSavingNow(false)
     }
   }
 
   const handleExportMiniPauta = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0) return
+    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId) return
     const turma = atribs.find((a) => a.turma.id === turmaId)?.turma
     const turmaNome = turma ? formatTurmaDisplayName(turma) : turmaId
     const disciplinaNomeResolved =
@@ -334,6 +381,8 @@ function ProfessorNotasContent() {
 
   const data = useMemo(() => pauta, [pauta])
   const turmaFechada = turmaStatusFecho && turmaStatusFecho !== "ABERTO"
+  const reaberturaAtiva = reopenRequest?.status === "APROVADO" && new Date(reopenRequest.expira_em).getTime() > Date.now()
+  const notasBloqueadas = Boolean(turmaFechada && !reaberturaAtiva)
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -427,7 +476,7 @@ function ProfessorNotasContent() {
                   <button
                     type="button"
                     onClick={handleExportMiniPauta}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || !!turmaFechada}
+                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || notasBloqueadas}
                     className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
@@ -506,7 +555,7 @@ function ProfessorNotasContent() {
                   <button
                     type="button"
                     onClick={handleSaveNow}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || savingNow || !!turmaFechada}
+                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || savingNow || notasBloqueadas}
                     className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
@@ -529,17 +578,22 @@ function ProfessorNotasContent() {
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
                 Selecione a turma e disciplina para carregar os alunos.
               </div>
-            ) : turmaFechada ? (
+            ) : notasBloqueadas ? (
               <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-700">
-                Lançamento de notas bloqueado: turma fechada.
+                <p className="font-bold">Lançamento de notas bloqueado: turma fechada.</p>
+                {reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : reopenRequest?.status === "REJEITADO" ? <p className="mt-1">Solicitação rejeitada. Você pode enviar uma nova justificativa.</p> : <div className="mt-4 space-y-3"><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-klasse-gold-300" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-klasse-gold px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
               </div>
             ) : (
-              <GradeEntryGrid
-                initialData={data}
-                subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
-                onSave={handleSaveBatch}
-                highlightId={highlightAlunoId}
-              />
+              <div className="space-y-3">
+                {reaberturaAtiva && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Você pode lançar notas até {new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.</p></div>}
+                <GradeEntryGrid
+                  initialData={data}
+                  subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
+                  onSave={handleSaveBatch}
+                  onSaveError={(cause) => toastError("Não foi possível guardar", cause instanceof Error ? cause.message : "Verifique os dados e tente novamente.")}
+                  highlightId={highlightAlunoId}
+                />
+              </div>
             )}
           </section>
         </div>
