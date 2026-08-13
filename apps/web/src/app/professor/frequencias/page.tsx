@@ -10,10 +10,12 @@ import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useSearchParams } from "next/navigation";
 
-import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, Sparkles, RotateCcw } from 'lucide-react'
+import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, RotateCcw } from 'lucide-react'
 
 type Atrib = { id: string; turma: { id: string; nome: string | null }; disciplina: { id: string; nome: string | null } }
 type Aluno = { id: string; nome: string }
+type AlunoApi = { id?: string; aluno_id?: string; profile_id?: string; nome?: string; aluno_nome?: string }
+type AttendanceStatus = 'presente' | 'falta' | 'atraso'
 
 export default function ProfessorFrequenciasPage() {
   const { success, error, warning } = useToast();
@@ -29,7 +31,8 @@ export default function ProfessorFrequenciasPage() {
   const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'))
   const { online } = useOfflineStatus()
   const searchParams = useSearchParams()
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM)
+  const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? ""
+  const [academicYearId, setAcademicYearId] = useState(requestedAcademicYearId)
   const urlTurmaId = searchParams?.get("turma_id")
   const urlDisciplinaId = searchParams?.get("disciplina_id")
 
@@ -40,6 +43,7 @@ export default function ProfessorFrequenciasPage() {
       if (res.ok && json?.ok) {
         const items = (json.items || []) as Atrib[]
         setAtribs(items)
+        if (!requestedAcademicYearId && json.context?.anoLetivoId) setAcademicYearId(String(json.context.anoLetivoId))
         if (urlTurmaId && items.some(a => a.turma.id === urlTurmaId)) {
           setTurmaId(urlTurmaId)
           if (urlDisciplinaId && items.some(a => a.turma.id === urlTurmaId && a.disciplina.id === urlDisciplinaId)) {
@@ -48,14 +52,14 @@ export default function ProfessorFrequenciasPage() {
         }
       }
     })()
-  }, [urlTurmaId, urlDisciplinaId])
+  }, [urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
 
   useEffect(() => {
     (async () => {
       if (!turmaId) { setAlunos([]); return }
       const res = await fetch(`/api/professor/turmas/${turmaId}/alunos`, { cache: 'no-store' })
       const json = await res.json().catch(()=>null)
-      if (res.ok && json?.ok) setAlunos((json.items||[]).map((r:any)=>({ id: r.id || r.aluno_id || r.profile_id, nome: r.nome || r.aluno_nome || 'Aluno' })))
+      if (res.ok && json?.ok) setAlunos((json.items as AlunoApi[] || []).map((r) => ({ id: r.id || r.aluno_id || r.profile_id || '', nome: r.nome || r.aluno_nome || 'Aluno' })).filter((r) => r.id))
     })()
   }, [turmaId])
 
@@ -111,6 +115,7 @@ export default function ProfessorFrequenciasPage() {
     setSaving(true)
     try {
       if (!turmaId || !disciplinaId) throw new Error('Selecione turma e disciplina.')
+      if (!academicYearId) throw new Error('Ano letivo ativo não identificado. Atualize a página e tente novamente.')
       const presencas = alunos.map(a => ({ aluno_id: a.id, status: statusMap[a.id] || 'presente' }))
       const idempotencyKey = createIdempotencyKey(`presencas-${turmaId}-${disciplinaId}-${data}`)
       const request = {
@@ -149,7 +154,7 @@ export default function ProfessorFrequenciasPage() {
         setSubmitStatus('pending')
       } else {
         setSubmitStatus('failed')
-        error("Erro ao guardar", "Não foi possível registar as presenças. Por favor, tente novamente.")
+        error("Erro ao guardar", message || "Não foi possível registar as presenças. Por favor, tente novamente.")
       }
     } finally {
       setSaving(false);
@@ -223,9 +228,9 @@ export default function ProfessorFrequenciasPage() {
           {/* Status da Sincronização */}
           <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2 text-xs font-semibold text-slate-600 shadow-sm">
             <div className="font-black uppercase tracking-wider text-slate-400 text-[10px]">Status da Chamada</div>
-            {submitStatus === 'saved' && <div className="flex items-center gap-1.5 text-emerald-700 font-bold"><CheckCircle2 size={16} /> Presenças sincronizadas em tempo real.</div>}
+            {submitStatus === 'saved' && <div className="flex items-center gap-1.5 text-emerald-700 font-bold"><CheckCircle2 size={16} /> Presenças sincronizadas com a escola.</div>}
             {submitStatus === 'pending' && <div className="flex items-center gap-1.5 text-amber-700 font-bold"><Clock size={16} /> Salvo offline (sincronizará ao reconectar).</div>}
-            {submitStatus === 'failed' && <div className="flex items-center gap-1.5 text-rose-600 font-bold"><XCircle size={16} /> Falha ao sincronizar. Tente novamente.</div>}
+            {submitStatus === 'failed' && <div className="flex flex-wrap items-center gap-2 text-rose-600 font-bold"><XCircle size={16} /> <span>Falha ao sincronizar.</span><button type="submit" className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-black uppercase text-rose-700 hover:bg-rose-200">Tentar novamente</button></div>}
             {submitStatus === 'idle' && <div className="text-slate-500">Selecione a turma para iniciar o diário.</div>}
           </div>
 
@@ -385,7 +390,7 @@ export default function ProfessorFrequenciasPage() {
                             <button
                               key={opt.value}
                               type="button"
-                              onClick={() => setStatusMap((s) => ({ ...s, [a.id]: opt.value as any }))}
+                              onClick={() => setStatusMap((s) => ({ ...s, [a.id]: opt.value as AttendanceStatus }))}
                               className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs transition-all active:scale-95 ${
                                 active
                                   ? opt.cls
@@ -409,4 +414,3 @@ export default function ProfessorFrequenciasPage() {
     </div>
   )
 }
-

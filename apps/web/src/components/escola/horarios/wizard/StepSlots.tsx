@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Clock, Plus, Trash2, Wand2, Info, AlertCircle, Save } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Clock, Plus, Wand2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { 
@@ -42,7 +42,10 @@ const DIAS = [
   { id: 5, label: "Sexta" },
 ];
 
-function formatSlotSaveError(json: any) {
+type SlotApiError = { error?: string; detail?: { inicio?: string; fim?: string; conflicting_with?: { inicio?: string; fim?: string } } };
+type SlotPayload = Omit<Slot, "id">;
+
+function formatSlotSaveError(json: SlotApiError) {
   if (json?.error === "SLOT_TEMPORAL_CONFLICT") {
     const detail = json?.detail;
     const current = detail?.inicio && detail?.fim ? `${detail.inicio}-${detail.fim}` : "um dos tempos";
@@ -62,7 +65,7 @@ function toMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
-export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
+export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTurno, setActiveTurno] = useState("matinal");
@@ -82,22 +85,22 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
   const newSlotConflict = activeSlots.find((slot) => toMinutes(newSlot.inicio) < toMinutes(slot.fim) && toMinutes(slot.inicio) < toMinutes(newSlot.fim));
   const newSlotInvalid = toMinutes(newSlot.inicio) >= toMinutes(newSlot.fim);
 
-  const fetchSlots = async () => {
+  const fetchSlots = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`);
       const json = await res.json();
       if (json.ok) setSlots(json.items || []);
-    } catch (e) {
+    } catch (_e) {
       error("Falha ao carregar horários.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [escolaId, error]);
 
   useEffect(() => {
-    fetchSlots();
-  }, [escolaId]);
+    void fetchSlots();
+  }, [fetchSlots]);
 
   const handleAutoGenerate = async () => {
     const defaults = [
@@ -116,7 +119,7 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
     }));
 
     // Replicar para todos os dias da semana
-    const fullPayload: any[] = [];
+    const fullPayload: SlotPayload[] = [];
     for (let d = 1; d <= 5; d++) {
       payload.forEach(p => fullPayload.push({ ...p, dia_semana: d }));
     }
@@ -134,7 +137,7 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
       } else {
         error(formatSlotSaveError(json));
       }
-    } catch (e) {
+    } catch (_e) {
       error("Erro na rede.");
     } finally {
       setSavingSlot(false);
@@ -165,7 +168,7 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
       } else {
         error(formatSlotSaveError(json));
       }
-    } catch (e) {
+    } catch (_e) {
       error("Erro na rede.");
     } finally {
       setSavingSlot(false);

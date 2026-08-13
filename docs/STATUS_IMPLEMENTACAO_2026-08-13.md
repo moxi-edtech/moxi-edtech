@@ -126,6 +126,7 @@ Esses itens precisam de triagem individual antes de novo commit. Não devem ser 
 - A home do professor agora oferece ações diretas por turma para presença, notas, plano de aula e horário compartilhado.
 - O lançamento de notas diferencia ano letivo fechado, turma de outro ano e trimestre bloqueado, orientando a próxima ação.
 - A configuração de tempos do horário mostra conflitos locais e bloqueia o salvamento enquanto houver sobreposição ou intervalo inválido.
+- A limpeza de qualidade dos fluxos P1 removeu avisos de dependências de hooks, imports não utilizados e `any` nos contratos novos de frequência, slots e relatórios.
 
 ## 7. Critério de pronto da frente
 

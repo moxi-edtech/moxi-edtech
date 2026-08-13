@@ -151,7 +151,7 @@ function ProfessorNotasContent() {
     void loadReopenRequests()
     const timer = window.setInterval(() => void loadReopenRequests(), 30_000)
     return () => { active = false; window.clearInterval(timer) }
-  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
 
   const handleRequestReopen = async () => {
     if (!turmaId || !disciplinaId || !anoLetivoId || requestReason.trim().length < 5) {
@@ -220,7 +220,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
 
   useEffect(() => {
     if (!turmaId) {
@@ -252,7 +252,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId, anoLetivoId])
+  }, [turmaId, anoLetivoId, trimestreSelecionado])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
