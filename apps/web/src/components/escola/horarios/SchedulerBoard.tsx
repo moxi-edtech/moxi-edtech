@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { AlertOctagon, Check, GripVertical, Save, Wand2, Trash2 } from "lucide-react"; // Adicionei Trash se precisar limpar
 import { getAllocationStatus, validateAssignment } from "@/lib/rules/scheduler-rules";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 export type SchedulerSlot = {
@@ -51,6 +52,7 @@ type SchedulerBoardProps = {
     sala_id?: string | null;
   }>;
   conflictSlots?: Record<string, boolean>;
+  conflictReasons?: Record<string, string[]>;
   salas?: Array<{ id: string; nome: string }>;
   professores?: Array<{ id: string; nome: string }>;
   onAssignProfessor?: (aula: SchedulerAula, professorUserId: string) => Promise<void> | void;
@@ -77,6 +79,7 @@ export function SchedulerBoard({
   slotLookup,
   existingAssignments = [],
   conflictSlots: externalConflictSlots,
+  conflictReasons,
   salas,
   professores,
   onAssignProfessor,
@@ -89,6 +92,7 @@ export function SchedulerBoard({
   publishDisabledReason,
   publishing,
 }: SchedulerBoardProps) {
+  const { error: showError } = useToast();
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
@@ -167,6 +171,36 @@ export function SchedulerBoard({
     if (sourceSlot && slotId && sourceSlot === slotId) return;
 
     const shouldRemove = !slotId || slotId === "trash";
+    if (!shouldRemove && slotId) {
+      const targetSlotId = slotLookup?.[slotId];
+      const aula = aulaById.get(String(baseId));
+      if (targetSlotId && aula) {
+        const sourceSlotId = sourceSlot ? slotLookup?.[sourceSlot] : undefined;
+        const persistedAssignments = existingAssignments.filter(
+          (assignment) => assignment.slot_id !== targetSlotId && assignment.slot_id !== sourceSlotId
+        );
+        const persistedConflicts = validateAssignment(
+          targetSlotId,
+          aula.id,
+          aula.professorId ?? null,
+          aula.salaId ?? null,
+          persistedAssignments
+        ).filter((result) => result.severity === "hard");
+        const localConflicts: string[] = [];
+        for (const [key, assignedId] of Object.entries(currentGrid)) {
+          if (!assignedId || key === slotId || key === sourceSlot) continue;
+          const assigned = aulaById.get(assignedId);
+          if (!assigned) continue;
+          if (aula.professorId && assigned.professorId === aula.professorId) localConflicts.push("Professor já usado neste horário");
+          if (aula.salaId && assigned.salaId === aula.salaId) localConflicts.push("Sala já usada neste horário");
+        }
+        const reasons = Array.from(new Set([...persistedConflicts.map((result) => result.message), ...localConflicts]));
+        if (reasons.length > 0) {
+          showError("Alocação bloqueada", `${aula.disciplina}: ${reasons.join(" ")}`);
+          return;
+        }
+      }
+    }
     setGrid((prev) => {
       const baseGrid = controlledGrid ?? prev;
       const nextGrid = { ...baseGrid };
@@ -182,7 +216,7 @@ export function SchedulerBoard({
       }
       return nextGrid;
     });
-  }, [controlledGrid, onGridChange]);
+  }, [aulaById, controlledGrid, currentGrid, existingAssignments, onGridChange, showError, slotLookup]);
 
   const getAulaById = useCallback((id: string) => aulaById.get(id), [aulaById]);
 
@@ -263,6 +297,7 @@ export function SchedulerBoard({
                 diasSemana={diasSemana}
                 grid={currentGrid}
                 conflictSlots={conflictSlots}
+                conflictReasons={conflictReasons}
                 getAulaById={getAulaById}
                 onAssignProfessor={onAssignProfessor}
                 setAssigningProfessor={setAssigningProfessor}
@@ -414,6 +449,7 @@ const GridRow = React.memo(({
   diasSemana,
   grid,
   conflictSlots,
+  conflictReasons,
   getAulaById,
   onAssignProfessor,
   setAssigningProfessor,
@@ -455,6 +491,7 @@ const GridRow = React.memo(({
             horarioDia={horarios[dia] || tempo.labelDefault}
             aulaId={grid[`${dia}-${tempo.id}`]}
             hasConflict={Boolean(conflictSlots?.[`${dia}-${tempo.id}`])}
+            conflictReason={conflictReasons?.[`${dia}-${tempo.id}`]}
             getAulaById={getAulaById}
             onAssignProfessor={onAssignProfessor}
             setAssigningProfessor={setAssigningProfessor}
@@ -474,6 +511,7 @@ const GridCell = React.memo(({
   horarioDia,
   aulaId,
   hasConflict,
+  conflictReason,
   getAulaById,
   onAssignProfessor,
   setAssigningProfessor,
@@ -490,6 +528,7 @@ const GridCell = React.memo(({
           <AulaCard
             aula={aula}
             hasConflict={hasConflict}
+            conflictReason={conflictReason}
             horarioDia={horarioDia}
             onAssignProfessor={onAssignProfessor}
             setAssigningProfessor={setAssigningProfessor}
@@ -506,6 +545,7 @@ GridCell.displayName = "GridCell";
 const AulaCard = React.memo(({
   aula,
   hasConflict,
+  conflictReason,
   horarioDia,
   onAssignProfessor,
   setAssigningProfessor,
@@ -523,7 +563,7 @@ const AulaCard = React.memo(({
       group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
       flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
       ${aula.cor}
-    `}>
+    `} title={conflictReason?.length ? conflictReason.join(" · ") : undefined}>
       <div className="flex justify-between items-start">
         <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
         {(hasConflict || aula.conflito) && (

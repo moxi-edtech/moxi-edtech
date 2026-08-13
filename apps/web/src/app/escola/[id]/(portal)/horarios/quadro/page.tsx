@@ -115,7 +115,9 @@ function QuadroHorariosContent() {
   const [clearingQuadro, setClearingQuadro] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
+  const [conflictReasons, setConflictReasons] = useState<Record<string, string[]>>({});
   const [autoDraftDirty, setAutoDraftDirty] = useState(false);
+  const [autoProposalSummary, setAutoProposalSummary] = useState<{ filled: number; total: number; unmet: number } | null>(null);
   const [novaSala, setNovaSala] = useState("");
   const [turmaRefreshToken, setTurmaRefreshToken] = useState(0);
   const [adjustingSlots, setAdjustingSlots] = useState(false);
@@ -960,14 +962,21 @@ function QuadroHorariosContent() {
         setSaveError(json?.error || "Falha ao salvar quadro");
         if (json?.conflicts && Array.isArray(json.conflicts)) {
           const nextConflicts: Record<string, boolean> = {};
+          const nextReasons: Record<string, string[]> = {};
           for (const conflict of json.conflicts) {
             const slotKey = Object.entries(slotLookup).find(([, id]) => id === conflict.slot_id)?.[0];
-            if (slotKey) nextConflicts[slotKey] = true;
+            if (slotKey) {
+              nextConflicts[slotKey] = true;
+              const reason = conflict.kind === "professor" ? "Professor ocupado" : conflict.kind === "sala" ? "Sala ocupada" : "Turma já possui aula neste tempo";
+              nextReasons[slotKey] = Array.from(new Set([...(nextReasons[slotKey] ?? []), reason]));
+            }
           }
           setConflictSlots(nextConflicts);
+          setConflictReasons(nextReasons);
+          const reasons = Array.from(new Set(Object.values(nextReasons).flat()));
           error(
             "Conflito de horário",
-            `${json.conflicts.length} slot(s) têm professor ou sala já ocupados. Os horários em conflito foram destacados.`
+            `${json.conflicts.length} slot(s) em conflito${reasons.length ? `: ${reasons.join(", ")}` : "."} Os horários foram destacados.`
           );
         }
         if (json?.details?.missing?.length) {
@@ -986,7 +995,9 @@ function QuadroHorariosContent() {
       }
 
       setConflictSlots({});
+      setConflictReasons({});
       setAutoDraftDirty(false);
+      setAutoProposalSummary(null);
       if (mode === "publish" && Array.isArray(json?.warnings) && json.warnings.length > 0) {
         const publishWarnings = json.warnings as PublishWarning[];
         const warningDetails = publishWarnings
@@ -1218,14 +1229,12 @@ function QuadroHorariosContent() {
       );
       setAutoDraftDirty(true);
       setConflictSlots({});
-      const saved = await submitQuadro(nextGrid, "draft", {
-        successTitle: "Quadro auto-completado e salvo.",
-        successMessage: `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`,
+      setAutoProposalSummary({
+        filled: Number(json?.stats?.filled ?? Object.keys(nextGrid).length),
+        total: Number(json?.stats?.total_slots ?? horariosDisponiveis?.length ?? 0),
+        unmet: Array.isArray(json?.unmet) ? json.unmet.length : 0,
       });
-      if (!saved) {
-        setAutoDraftDirty(true);
-        warning("Auto-completar gerado mas não salvo", "Revise e clique em Salvar para persistir.");
-      }
+      success("Proposta de horário gerada", "Revise a distribuição e os conflitos. Nada foi salvo ainda.");
       if (Array.isArray(json?.unmet) && json.unmet.length > 0) {
         const reasonLabel = (reason: string) => {
           switch (reason) {
@@ -1606,7 +1615,7 @@ function QuadroHorariosContent() {
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Save className={`h-4 w-4 ${saving ? "text-klasse-gold" : "text-slate-300"}`} />
               <span>
-                {saving ? "Salvando..." : autoDraftDirty ? "Auto-completar não salvo" : "Alterações prontas"}
+                {saving ? "Salvando..." : autoDraftDirty ? "Proposta não salva" : "Alterações prontas"}
               </span>
             </div>
           </div>
@@ -1842,8 +1851,9 @@ function QuadroHorariosContent() {
         )}
         {autoDraftDirty && turmaId && (
           <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            <div className="font-semibold">Distribuição gerada e ainda não salva.</div>
-            <div className="mt-1">Salve agora para não perder o resultado do auto-completar.</div>
+            <div className="font-semibold">Proposta de distribuição pronta para revisão.</div>
+            <div className="mt-1">Revise o quadro, ajuste manualmente se necessário e só depois salve ou publique.</div>
+            {autoProposalSummary && <div className="mt-2 text-xs font-semibold">{autoProposalSummary.filled} de {autoProposalSummary.total} posições preenchidas{autoProposalSummary.unmet ? ` · ${autoProposalSummary.unmet} pendência(s)` : ""}.</div>}
             <div className="mt-3">
               <button
                 type="button"
@@ -1872,6 +1882,7 @@ function QuadroHorariosContent() {
             slotLookup={slotLookup}
             existingAssignments={existingAssignments}
             conflictSlots={conflictSlots}
+            conflictReasons={conflictReasons}
             salas={salas}
             professores={professores}
             onAssignProfessor={handleAssignProfessor}

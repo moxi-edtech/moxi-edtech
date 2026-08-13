@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { emitirEvento } from '@/lib/eventos/emitirEvento'
+import { recordAuditServer } from '@/lib/audit'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
@@ -146,6 +147,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       anoLetivoId: academicContext.anoLetivoId,
     })
 
+    const { data: previousPublishedVersion } = await supabase
+      .from('horario_versoes')
+      .select('id')
+      .eq('escola_id', escolaIdResolved)
+      .eq('turma_id', parsed.data.turma_id)
+      .eq('status', 'publicada')
+      .order('publicado_em', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+
     const mode = parsed.data.mode ?? 'draft'
     const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
       emitirEvento(supabase as any, {
@@ -180,6 +191,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const versaoId = String(versionIdFromDb)
 
+    const { data: previousRows } = await supabase
+      .from('quadro_horarios')
+      .select('slot_id, disciplina_id, professor_id, sala_id, versao_id')
+      .eq('escola_id', escolaIdResolved)
+      .eq('turma_id', parsed.data.turma_id)
+      .eq('versao_id', versaoId)
+      .limit(200)
+
     const payload = parsed.data.items.map((item) => ({
       escola_id: escolaIdResolved,
       turma_id: parsed.data.turma_id,
@@ -195,8 +214,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const salaIds = Array.from(new Set(payload.map((item) => item.sala_id).filter(Boolean)))
     const publishWarnings: PublishWarning[] = []
 
-    const conflicts: Array<{ slot_id: string; professor_id?: string | null; sala_id?: string | null }>
+    const conflicts: Array<{ slot_id: string; professor_id?: string | null; sala_id?: string | null; kind?: 'turma' | 'professor' | 'sala' }>
       = []
+
+    const seenSlots = new Set<string>()
+    const seenProfessors = new Map<string, string>()
+    const seenSalas = new Map<string, string>()
+    for (const item of parsed.data.items) {
+      if (seenSlots.has(item.slot_id)) conflicts.push({ slot_id: item.slot_id, kind: 'turma' })
+      seenSlots.add(item.slot_id)
+      if (item.professor_id) {
+        const previousSlot = seenProfessors.get(item.professor_id)
+        if (previousSlot && previousSlot !== item.slot_id) conflicts.push({ slot_id: item.slot_id, professor_id: item.professor_id, kind: 'professor' })
+        seenProfessors.set(item.professor_id, item.slot_id)
+      }
+      if (item.sala_id) {
+        const previousSlot = seenSalas.get(item.sala_id)
+        if (previousSlot && previousSlot !== item.slot_id) conflicts.push({ slot_id: item.slot_id, sala_id: item.sala_id, kind: 'sala' })
+        seenSalas.set(item.sala_id, item.slot_id)
+      }
+    }
 
     if (mode === 'publish') {
       const { data: publishedVersions } = await supabase
@@ -218,7 +255,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           .neq('versao_id', versaoId)
 
         for (const row of profConflicts || []) {
-          conflicts.push({ slot_id: row.slot_id, professor_id: row.professor_id })
+          conflicts.push({ slot_id: row.slot_id, professor_id: row.professor_id, kind: 'professor' })
         }
       }
 
@@ -233,7 +270,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           .neq('versao_id', versaoId)
 
         for (const row of salaConflicts || []) {
-          conflicts.push({ slot_id: row.slot_id, sala_id: row.sala_id })
+          conflicts.push({ slot_id: row.slot_id, sala_id: row.sala_id, kind: 'sala' })
         }
       }
     }
@@ -332,6 +369,22 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       emitObs('error', 400, { error_code: 'SELECT_QUADRO_FAILED' })
       return NextResponse.json({ ok: false, error: selectError.message }, { status: 400 })
     }
+
+    await recordAuditServer({
+      escolaId: escolaIdResolved,
+      portal: 'admin_escola',
+      acao: mode === 'publish' ? 'publicar_quadro_horarios' : 'salvar_quadro_horarios',
+      entity: 'quadro_horarios',
+      entityId: parsed.data.turma_id,
+      details: {
+        mode,
+        versao_id: versaoId,
+        previous_version_id: previousPublishedVersion?.id ?? previousRows?.[0]?.versao_id ?? null,
+        before: previousRows ?? [],
+        after: data ?? [],
+        reason: mode === 'publish' ? 'Publicação do quadro validado.' : 'Atualização manual do quadro.',
+      },
+    })
 
     if (mode === 'publish') {
       const publishedVersionId = (upsertResult as { published_id?: string | null } | null)?.published_id ?? null

@@ -36,11 +36,19 @@ const DIAS = [
 ];
 
 // --- COMPONENT ---
-export function SlotsConfig({ value, onChange, onSave }: any) {
+type SlotsConfigProps = {
+  turnos?: Array<{ id: string; nome?: string; label?: string }>;
+  value: HorarioSlot[];
+  onChange: (slots: HorarioSlot[]) => void;
+  onSave: () => void | Promise<void>;
+};
+
+export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
   const { success } = useToast();
   const [activeTurno, setActiveTurno] = useState("matinal");
   const [activeDia, setActiveDia] = useState(1);
   const [showGenerator, setShowGenerator] = useState(false); // Esconde o gerador por padrão
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const timeToMinutes = (time: string) => {
     const [hour, minute] = time.split(":").map(Number);
@@ -90,8 +98,13 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
 
   // Actions
   const handleRemove = (id: string) => {
+    if (editingId === id) setEditingId(null);
     onChange(value.filter((s: HorarioSlot) => s.id !== id));
     success("Tempo removido.");
+  };
+
+  const updateSlot = (id: string, changes: Partial<HorarioSlot>) => {
+    onChange(value.map((slot: HorarioSlot) => slot.id === id ? { ...slot, ...changes } : slot));
   };
 
   const handleApplyGenerator = (newSlots: HorarioSlot[]) => {
@@ -102,6 +115,29 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
       onChange([...cleanList, ...newSlots]);
       setShowGenerator(false);
       success("Grade gerada com sucesso.");
+  };
+
+  const handleAddSlot = () => {
+    const ordered = [...currentSlots].sort((a, b) => a.ordem - b.ordem);
+    const previous = ordered[ordered.length - 1];
+    const defaultStart = activeTurno === "tarde" ? "13:30" : activeTurno === "noite" ? "18:30" : "07:30";
+    const start = previous?.fim?.slice(0, 5) || defaultStart;
+    const [hours, minutes] = start.split(":").map(Number);
+    const endTotal = (hours * 60) + minutes + 45;
+    const end = `${String(Math.floor(endTotal / 60) % 24).padStart(2, "0")}:${String(endTotal % 60).padStart(2, "0")}`;
+    const nextSlot: HorarioSlot = {
+      id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `slot-${Date.now()}`,
+      turno_id: activeTurno,
+      dia_semana: activeDia,
+      ordem: (previous?.ordem ?? 0) + 1,
+      inicio: start,
+      fim: end,
+      is_intervalo: false,
+      nome: `${ordered.length + 1}º Aula`,
+    };
+    onChange([...value, nextSlot]);
+    setEditingId(nextSlot.id);
+    success("Tempo adicionado. Ajuste o horário e salve a estrutura.");
   };
 
   const currentTurnoData = TURNOS.find(t => t.id === activeTurno);
@@ -213,7 +249,7 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                            </p>
                         </div>
                      </div>
-                     <button className="text-xs font-bold text-klasse-gold hover:underline flex items-center gap-1">
+                     <button type="button" onClick={handleAddSlot} className="text-xs font-bold text-klasse-gold hover:underline flex items-center gap-1">
                         <Plus className="w-3 h-3" /> Adicionar Tempo
                      </button>
                   </div>
@@ -249,7 +285,20 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                                        : ""
                                     }
                                  `}>
-                                    <div className="flex items-center gap-5">
+                                    {editingId === slot.id ? (
+                                      <div className="grid flex-1 gap-3 sm:grid-cols-[1fr_120px_120px_auto] sm:items-end">
+                                        <label className="text-xs font-bold text-slate-600">Nome
+                                          <input value={slot.nome || ""} onChange={(event) => updateSlot(slot.id, { nome: event.target.value })} placeholder={slot.is_intervalo ? "Intervalo" : `${index + 1}º Aula`} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                                        </label>
+                                        <label className="text-xs font-bold text-slate-600">Início
+                                          <input type="time" value={slot.inicio.slice(0, 5)} onChange={(event) => updateSlot(slot.id, { inicio: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                                        </label>
+                                        <label className="text-xs font-bold text-slate-600">Fim
+                                          <input type="time" value={slot.fim.slice(0, 5)} onChange={(event) => updateSlot(slot.id, { fim: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                                        </label>
+                                        <button type="button" onClick={() => setEditingId(null)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">Concluir</button>
+                                      </div>
+                                    ) : <div className="flex flex-1 items-center gap-5">
                                        <div className={`
                                           flex flex-col items-center justify-center w-12 h-12 rounded-lg border
                                           ${slot.is_intervalo ? "bg-white border-klasse-gold-200 text-klasse-gold-600" : "bg-slate-50 border-slate-200 text-slate-900"}
@@ -285,13 +334,14 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                                              )}
                                           </div>
                                       </div>
-                                    </div>
+                                    </div>}
 
-                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-2 text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 rounded-lg">
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+                                        <button type="button" onClick={() => setEditingId(editingId === slot.id ? null : slot.id)} className="p-2 text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 rounded-lg" aria-label="Editar tempo">
                                             <Settings2 className="w-4 h-4" />
                                         </button>
                                         <button 
+                                          type="button"
                                           onClick={() => handleRemove(slot.id)}
                                           className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
                                         >
