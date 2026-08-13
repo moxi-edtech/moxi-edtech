@@ -20,6 +20,9 @@ type DispatchParams = {
     alunoNome?: string | null;
     anoLetivo?: number | null;
     actionUrl?: string | null;
+    turmaNome?: string | null;
+    disciplinaNome?: string | null;
+    professorNome?: string | null;
   };
   roles?: string[];
   actorId?: string | null;
@@ -28,8 +31,20 @@ type DispatchParams = {
 };
 
 const SECRETARIA_ROLES = [...K12_SECRETARIA_ROLE_GROUP];
+const AULA_REALTIME_ROLES = [
+  "secretaria",
+  "admin_escola",
+  "admin_secretaria",
+  "admin_financeiro",
+  "admin",
+  "staff_admin",
+];
+const AULA_KEYS = new Set<SecretariaNotificacaoKey>(["AULA_INICIADA", "AULA_FINALIZADA", "AULA_NAO_CONFIRMADA"]);
 
 const EVENTO_TIPO_MAP: Record<SecretariaNotificacaoKey, string> = {
+  AULA_INICIADA: "aula.iniciada",
+  AULA_FINALIZADA: "aula.finalizada",
+  AULA_NAO_CONFIRMADA: "aula.nao_confirmada",
   TURMA_APROVADA: "turma.aprovada",
   TURMA_REJEITADA: "turma.rejeitada",
   PROPINA_DEFINIDA: "propina.definida",
@@ -55,7 +70,7 @@ export async function dispatchSecretariaNotificacao({
 
   const payload = buildSecretariaNotificacao(key, params);
 
-  const targetRoles = roles && roles.length > 0 ? roles : SECRETARIA_ROLES;
+  const targetRoles = roles && roles.length > 0 ? roles : AULA_KEYS.has(key) ? AULA_REALTIME_ROLES : SECRETARIA_ROLES;
   const { data: recipients, error: recipientsError } = await client.rpc(
     "get_users_by_role",
     {

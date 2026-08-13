@@ -1,6 +1,9 @@
 import type { Gatilho, Prioridade, TipoNotificacao } from "@/hooks/useNotificacoes";
 
 export type SecretariaNotificacaoKey =
+  | "AULA_INICIADA"
+  | "AULA_FINALIZADA"
+  | "AULA_NAO_CONFIRMADA"
   | "TURMA_APROVADA"
   | "TURMA_REJEITADA"
   | "PROPINA_DEFINIDA"
@@ -24,6 +27,9 @@ type TemplateParams = {
   alunoNome?: string | null;
   anoLetivo?: number | null;
   actionUrl?: string | null;
+  turmaNome?: string | null;
+  disciplinaNome?: string | null;
+  professorNome?: string | null;
 };
 
 type SecretariaNotificacaoTemplate = {
@@ -39,6 +45,36 @@ type SecretariaNotificacaoTemplate = {
 };
 
 const SECRETARIA_NOTIFICACOES: Record<SecretariaNotificacaoKey, SecretariaNotificacaoTemplate> = {
+  AULA_INICIADA: {
+    titulo: ({ turmaNome, disciplinaNome }) => `Aula iniciada${turmaNome ? ` — ${turmaNome}` : ""}${disciplinaNome ? ` / ${disciplinaNome}` : ""}`,
+    corpo: ({ professorNome }) => `${professorNome ? `${professorNome} confirmou o início. ` : ""}A aula está em andamento para a escola.`,
+    prioridade: "info",
+    action_label: "Acompanhar",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "H",
+    tipo: "A",
+    agrupamento_chave: "aula_iniciada",
+  },
+  AULA_FINALIZADA: {
+    titulo: ({ turmaNome, disciplinaNome }) => `Aula finalizada${turmaNome ? ` — ${turmaNome}` : ""}${disciplinaNome ? ` / ${disciplinaNome}` : ""}`,
+    corpo: ({ professorNome }) => `${professorNome ? `${professorNome} enviou o fecho. ` : ""}A chamada e o resumo estão disponíveis para consulta.`,
+    prioridade: "info",
+    action_label: "Ver aula",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "H",
+    tipo: "A",
+    agrupamento_chave: "aula_finalizada",
+  },
+  AULA_NAO_CONFIRMADA: {
+    titulo: () => "Aula aguardando confirmação",
+    corpo: () => "Uma aula prevista ainda não foi confirmada pelo professor responsável.",
+    prioridade: "aviso",
+    action_label: "Ver aulas",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "H",
+    tipo: "A",
+    agrupamento_chave: "aula_nao_confirmada",
+  },
   TURMA_APROVADA: {
     titulo: () => "Turma aprovada — pronta para matrículas",
     corpo: () => "A turma foi aprovada pelo admin e já pode receber matrículas.",

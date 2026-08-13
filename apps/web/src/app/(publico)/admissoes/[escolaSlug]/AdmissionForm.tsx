@@ -314,13 +314,23 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalValidation = step1Validation() || step2Validation() || (missingRequiredDocuments.length > 0
+      ? `Anexe os documentos obrigatórios: ${missingRequiredDocuments.map((id) => id.replace(/_/g, " ")).join(", ")}.`
+      : null);
+    if (finalValidation) {
+      setError(finalValidation);
+      return;
+    }
     setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 30_000);
 
     try {
       const res = await fetch(`/api/public/admissoes/${config.escola.slug}/candidatar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           ...formData,
           draftId,
@@ -328,12 +338,20 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data.error || "Erro ao processar inscrição");
+        const duplicate = data?.code?.startsWith("ADMISSION_DUPLICATE") && data?.protocolo;
+        if (duplicate) {
+          setProtocolo(data.protocolo);
+          setSubmissionStatus(typeof data.status === "string" ? data.status : null);
+          setSuccess(true);
+          return;
+        }
+        throw new Error(data?.error || "Erro ao processar inscrição");
       }
 
+      if (!data?.protocolo) throw new Error("A candidatura foi processada, mas não recebemos o protocolo. Consulte a candidatura antes de reenviar.");
       setProtocolo(data.protocolo);
       setSubmissionStatus(typeof data.status === "string" ? data.status : null);
       setSuccess(true);
@@ -342,8 +360,13 @@ export function AdmissionForm({ config }: { config: AdmissionConfig }) {
         localStorage.removeItem(draftStorageKey);
       } catch {}
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
+      setError(err instanceof DOMException && err.name === "AbortError"
+        ? "O envio demorou mais do que o esperado. Seus dados continuam guardados; verifique sua conexão e tente novamente."
+        : err instanceof Error
+          ? err.message
+          : "Não foi possível enviar a candidatura. Seus dados continuam guardados.");
     } finally {
+      window.clearTimeout(timeout);
       setLoading(false);
     }
   };

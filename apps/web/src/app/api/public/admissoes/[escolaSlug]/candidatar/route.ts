@@ -488,6 +488,8 @@ export async function POST(
     if (existing) {
       return NextResponse.json({
         ok: true,
+        alreadyReceived: true,
+        status: null,
         message: "Já recebemos uma inscrição com estes dados. Nossa secretaria entrará em contato em breve.",
         protocolo: existing.protocolo_publico,
       }, { status: 200 });

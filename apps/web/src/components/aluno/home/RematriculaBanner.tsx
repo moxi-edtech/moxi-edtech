@@ -21,15 +21,18 @@ export function RematriculaBanner() {
   const [status, setStatus] = useState<RematriculaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
 
   const fetchStatus = async () => {
+    setStatusError(null)
     try {
       const res = await fetch('/api/aluno/rematricula/status', { cache: 'no-store' })
-      const json = await res.json()
-      setStatus(res.ok && json?.ok ? json : null)
-    } catch (err) {
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Não foi possível verificar a rematrícula.')
+      setStatus(json)
+    } catch (err: unknown) {
       console.error(err)
-      setStatus(null)
+      setStatusError(err instanceof Error ? err.message : 'Não foi possível verificar a rematrícula.')
     } finally {
       setLoading(false)
     }
@@ -41,11 +44,7 @@ export function RematriculaBanner() {
 
   const handleConfirm = async () => {
     if (status?.hasDebt) {
-      // Redirect to finance tab (implementation depends on how tabs are handled, 
-      // but usually via search params or context)
-      const url = new URL(window.location.href)
-      url.searchParams.set('tab', 'financeiro')
-      window.history.pushState({}, '', url.toString())
+      window.location.assign('/aluno/financeiro')
       return
     }
 
@@ -60,14 +59,22 @@ export function RematriculaBanner() {
     setBusy(true)
     try {
       const res = await fetch('/api/aluno/rematricula/confirmar', { method: 'POST' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Falha ao confirmar')
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao confirmar')
       
+      setStatus((previous) => ({
+        ...(previous ?? { ok: true, eligible: false }),
+        ok: true,
+        eligible: false,
+        alreadyDone: true,
+        status: 'em_analise',
+        reason: json.message || 'Pedido enviado para análise da secretaria.',
+      }))
       success(
         'Pedido enviado',
         'O seu pedido de rematrícula foi enviado com sucesso. A secretaria irá processar a solicitação e em breve terá uma atualização aqui no portal.'
       )
-      fetchStatus()
+      void fetchStatus()
     } catch (err: unknown) {
       error(
         'Não foi possível completar o pedido',
@@ -80,7 +87,9 @@ export function RematriculaBanner() {
     }
   }
 
-  if (loading || !status || (!status.eligible && !status.alreadyDone)) return null
+  if (loading) return <div className="mb-6 h-28 animate-pulse rounded-3xl border border-slate-200 bg-white" aria-label="A verificar rematrícula" />
+  if (statusError && !status) return <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível verificar a rematrícula.</p><p className="mt-1">{statusError}</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-rose-700 px-4 py-2 text-xs font-black text-white">Tentar novamente</button></div>
+  if (!status || (!status.eligible && !status.alreadyDone)) return null
 
   return (
     <motion.div 
@@ -148,6 +157,8 @@ export function RematriculaBanner() {
           )}
         </div>
       </div>
+
+      {statusError && <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><span>O estado pode estar desatualizado.</span><button type="button" onClick={() => void fetchStatus()} className="font-black underline">Atualizar estado</button></div>}
 
       {/* Decorative background circle */}
       <div className="absolute -right-12 -top-12 w-40 h-40 bg-klasse-gold-100 rounded-full blur-3xl opacity-50" />

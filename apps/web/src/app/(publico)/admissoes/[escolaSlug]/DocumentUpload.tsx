@@ -20,6 +20,7 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
   const [currentPath, setCurrentPath] = useState<string | null>(initialPath ?? null);
   const [fileUrl, setFileUrl] = useState<string | null>(initialPath ? `EXISTS` : null);
   const [error, setError] = useState<string | null>(null);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -48,8 +49,7 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
     };
   }, [candidaturaId, escolaId, initialPath]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFile = async (file: File) => {
     if (!file) return;
 
     // Validações básicas
@@ -59,12 +59,14 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
     // Se não for imagem, barreira dura de 2MB
     if (!isImage && file.size > MAX_SIZE_MB * 1024 * 1024) {
       setError(`O ficheiro é muito pesado. O limite é ${MAX_SIZE_MB}MB.`);
+      setRetryFile(file);
       return;
     }
 
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setError("Formato não suportado. Use PDF, JPG ou PNG.");
+      setRetryFile(file);
       return;
     }
 
@@ -112,13 +114,21 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
 
       setFileUrl(json.signedUrl ?? "EXISTS");
       setCurrentPath(json.path);
+      setRetryFile(null);
       onUploadSuccess(json.path);
     } catch (err: unknown) {
       console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Erro ao enviar arquivo. Tente novamente.");
+      setRetryFile(file);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
   };
 
   const handleRemove = async () => {
@@ -133,6 +143,7 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
       await onRemove?.(currentPath);
       setCurrentPath(null);
       setFileUrl(null);
+      setRetryFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err: unknown) {
       console.error("Remove error:", err);
@@ -174,9 +185,9 @@ export function DocumentUpload({ label, description, onUploadSuccess, onRemove, 
       />
 
       {error && (
-        <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-red-600 uppercase">
-          <AlertCircle size={12} />
-          {error}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-red-600 uppercase">
+          <span className="flex items-center gap-2"><AlertCircle size={12} />{error}</span>
+          {retryFile && <button type="button" onClick={() => void uploadFile(retryFile)} disabled={uploading} className="rounded-lg bg-red-50 px-2 py-1 text-[10px] font-black text-red-700 normal-case hover:bg-red-100 disabled:opacity-60">Tentar novamente</button>}
         </div>
       )}
 
