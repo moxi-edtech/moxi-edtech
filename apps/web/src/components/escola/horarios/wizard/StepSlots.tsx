@@ -57,6 +57,11 @@ function formatSlotSaveError(json: any) {
   return json?.error || "Falha ao salvar slots.";
 }
 
+function toMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
 export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +76,11 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
     ordem: 1
   });
   const [savingSlot, setSavingSlot] = useState(false);
+
+  const activeSlots = slots.filter((slot) => slot.turno_id === activeTurno && slot.dia_semana === 1).sort((a, b) => a.ordem - b.ordem);
+  const localConflicts = activeSlots.flatMap((slot, index) => activeSlots.slice(index + 1).filter((other) => toMinutes(slot.inicio) < toMinutes(other.fim) && toMinutes(other.inicio) < toMinutes(slot.fim)).map((other) => `${slot.ordem}º tempo (${slot.inicio}-${slot.fim}) sobrepõe o ${other.ordem}º (${other.inicio}-${other.fim})`));
+  const newSlotConflict = activeSlots.find((slot) => toMinutes(newSlot.inicio) < toMinutes(slot.fim) && toMinutes(slot.inicio) < toMinutes(newSlot.fim));
+  const newSlotInvalid = toMinutes(newSlot.inicio) >= toMinutes(newSlot.fim);
 
   const fetchSlots = async () => {
     setLoading(true);
@@ -226,16 +236,14 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {slots.filter(s => s.turno_id === activeTurno && s.dia_semana === 1).length === 0 ? (
+                    {activeSlots.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="px-4 py-10 text-center text-slate-400 italic">
                           Nenhum horário definido para este turno.
                         </td>
                       </tr>
                     ) : (
-                      slots.filter(s => s.turno_id === activeTurno && s.dia_semana === 1)
-                        .sort((a,b) => a.ordem - b.ordem)
-                        .map(s => (
+                      activeSlots.map(s => (
                         <tr key={s.id} className="hover:bg-slate-50/50 transition-all">
                           <td className="px-4 py-3 font-bold text-slate-900">{s.ordem}º Tempo</td>
                           <td className="px-4 py-3 font-medium text-slate-600">{s.inicio}</td>
@@ -259,13 +267,14 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Novo Tempo</DialogTitle>
+              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Novo Tempo</DialogTitle>
             <DialogDescription className="font-medium text-slate-500">
               O horário será aplicado de Segunda a Sexta no turno {TURNOS.find(t => t.id === activeTurno)?.label}.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleAddSlot} className="space-y-4 py-4">
+            {(newSlotInvalid || newSlotConflict || localConflicts.length > 0) && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700"><div className="flex items-center gap-2 font-black"><AlertCircle className="h-4 w-4" /> Ajuste os conflitos antes de salvar</div>{newSlotInvalid && <p className="mt-1">A hora de início deve ser anterior à hora de fim.</p>}{newSlotConflict && <p className="mt-1">O novo tempo sobrepõe o {newSlotConflict.ordem}º tempo ({newSlotConflict.inicio}-{newSlotConflict.fim}).</p>}{localConflicts.map((conflict) => <p key={conflict} className="mt-1">{conflict}</p>)}</div>}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Ordem (Posição)</label>
@@ -313,7 +322,7 @@ export function StepSlots({ escolaId, onComplete }: StepSlotsProps) {
 
             <DialogFooter className="mt-6">
               <Button type="button" variant="ghost" onClick={() => setShowAddModal(false)} className="font-bold">Cancelar</Button>
-              <Button type="submit" tone="gold" loading={savingSlot} className="font-black px-8">Salvar Tempo</Button>
+              <Button type="submit" tone="gold" loading={savingSlot} disabled={newSlotInvalid || Boolean(newSlotConflict) || localConflicts.length > 0} className="font-black px-8">Salvar Tempo</Button>
             </DialogFooter>
           </form>
         </DialogContent>

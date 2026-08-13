@@ -16,9 +16,9 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 
 ## P1 — Fluxo gracioso de professores e secretaria
 
-- [ ] Permitir que o professor veja o histórico das próprias solicitações, não apenas a solicitação atual.
-- [ ] Exibir status e prazo de reabertura na tela de notas sem exigir refresh completo da página.
-- [ ] Permitir nova solicitação após rejeição com histórico preservado.
+- [x] Permitir que o professor veja o histórico das próprias solicitações, não apenas a solicitação atual.
+- [x] Exibir status e prazo de reabertura na tela de notas sem exigir refresh completo da página.
+- [x] Permitir nova solicitação após rejeição com histórico preservado.
 - [ ] Adicionar nomes e contexto completos no painel: classe, turma, disciplina, trimestre e professor.
 - [ ] Adicionar filtro por escola, turma, disciplina, trimestre e status no painel de operações.
 - [ ] Criar ação de aprovação em lote apenas após definir regra de justificativa e auditoria.
@@ -39,7 +39,7 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 - [ ] Testar feedback de salvar notas em sucesso, conflito de trimestre fechado, offline e timeout.
 - [ ] Padronizar mensagens de erro de RPC para não expor detalhes internos ao usuário.
 - [ ] Validar ano letivo obrigatório em todas as entradas de notas, frequência, relatórios e exportações.
-- [ ] Garantir que trimestre fechado e ano letivo incorreto sejam diferenciados na mensagem ao professor.
+- [x] Garantir que trimestre fechado e ano letivo incorreto sejam diferenciados na mensagem ao professor.
 - [ ] Verificar atualização das notas no portal do aluno após lançamento e correção autorizada.
 
 ## P1 — Horários e turmas compartilhadas
@@ -49,7 +49,7 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 - [x] Rejeitar conflitos de slot, professor e sala dentro da própria publicação do quadro.
 - [ ] Permitir criação e edição do quadro com validação e apresentação visual de conflitos de turma, sala, professor e disciplina em uma única experiência.
 - [ ] Mostrar horários compartilhados de uma turma para todos os professores atribuídos.
-- [ ] Na home do professor, sugerir ações contextuais: confirmar aula, marcar presença, lançar nota, abrir plano e ver turma.
+- [x] Na home do professor, sugerir ações contextuais: marcar presença, lançar nota, abrir plano e ver horário da turma.
 - [ ] Permitir localizar diretamente a ocorrência de aula correspondente ao horário atual.
 - [ ] Registrar alterações de horário com autor, data, motivo e versão anterior.
 

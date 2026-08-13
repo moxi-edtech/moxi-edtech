@@ -26,6 +26,8 @@ export async function GET(req: Request) {
   const turmaId = params.get("turma_id");
   const disciplinaId = params.get("disciplina_id");
   const trimestre = params.get("trimestre");
+  const anoLetivoId = params.get("ano_letivo_id");
+  if (anoLetivoId) query = query.eq("ano_letivo_id", anoLetivoId);
   const current = (data ?? []).find((item: any) => (!turmaId || item.turma_id === turmaId) && (!disciplinaId || item.disciplina_id === disciplinaId) && (!trimestre || String(item.trimestre) === trimestre));
   return NextResponse.json({ ok: true, items: data ?? [], current: current ?? null, can_edit: current?.status === "APROVADO" && new Date(current.expira_em).getTime() > Date.now() });
 }
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
   if (!assignment?.id) return NextResponse.json({ ok: false, error: "Você não está atribuído a esta turma e disciplina." }, { status: 403 });
   const { data: anoLetivo } = await supabase.from("anos_letivos").select("id").eq("id", parsed.data.ano_letivo_id).eq("escola_id", escolaId).maybeSingle();
   if (!anoLetivo?.id) return NextResponse.json({ ok: false, error: "Ano letivo inválido para esta escola." }, { status: 400 });
-  const { data: existing } = await supabase.from("excecoes_pauta").select("id, status").eq("escola_id", escolaId).eq("turma_id", parsed.data.turma_id).eq("disciplina_id", parsed.data.disciplina_id).eq("trimestre", parsed.data.trimestre).eq("solicitado_por", user.id).in("status", ["PENDENTE", "APROVADO"]).gt("expira_em", new Date().toISOString()).maybeSingle();
+  const { data: existing } = await supabase.from("excecoes_pauta").select("id, status").eq("escola_id", escolaId).eq("turma_id", parsed.data.turma_id).eq("disciplina_id", parsed.data.disciplina_id).eq("trimestre", parsed.data.trimestre).eq("solicitado_por", user.id).in("status", ["PENDENTE", "APROVADO"]).gt("expira_em", new Date().toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (existing) return NextResponse.json({ ok: false, error: "Já existe uma solicitação ativa para este trimestre." }, { status: 409 });
   const { data, error } = await supabase.from("excecoes_pauta").insert({ escola_id: escolaId, turma_id: parsed.data.turma_id, disciplina_id: parsed.data.disciplina_id, trimestre: parsed.data.trimestre, user_id: user.id, motivo: parsed.data.motivo, expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), criado_por: user.id, solicitado_por: user.id, ano_letivo_id: parsed.data.ano_letivo_id, status: "PENDENTE" }).select("id, status, motivo, created_at").single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

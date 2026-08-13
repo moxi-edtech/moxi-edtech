@@ -122,6 +122,10 @@ Esses itens precisam de triagem individual antes de novo commit. Não devem ser 
 - Função `audit_excecao_pauta_changes` e trigger `trg_audit_excecoes_pauta_changes` estão ativos em `public.excecoes_pauta`.
 - Edição inline de slots de horário: implementada na tela de estrutura de horários.
 - Retorno de falha na chamada: agora oferece ação explícita de tentar novamente.
+- Solicitações de reabertura de notas agora mostram histórico, atualizam o estado periodicamente e permitem nova tentativa após rejeição ou expiração.
+- A home do professor agora oferece ações diretas por turma para presença, notas, plano de aula e horário compartilhado.
+- O lançamento de notas diferencia ano letivo fechado, turma de outro ano e trimestre bloqueado, orientando a próxima ação.
+- A configuração de tempos do horário mostra conflitos locais e bloqueia o salvamento enquanto houver sobreposição ou intervalo inválido.
 
 ## 7. Critério de pronto da frente
 

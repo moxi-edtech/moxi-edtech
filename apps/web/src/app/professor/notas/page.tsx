@@ -30,6 +30,25 @@ type PautaDetalhadaRow = {
   mt?: number | null
 }
 
+type ReopenRequest = {
+  id: string
+  status: "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO"
+  motivo: string
+  decisao_motivo?: string | null
+  expira_em?: string | null
+  created_at: string
+  decidido_em?: string | null
+}
+
+function friendlyGradeError(cause: unknown) {
+  const raw = cause instanceof Error ? cause.message : String(cause)
+  if (/ACADEMIC_YEAR_CLOSED|ano letivo.*(não permite|fechad)|ano letivo.*encerrad/i.test(raw)) return "Este ano letivo está fechado para lançamentos. Selecione o ano letivo ativo ou peça orientação à secretaria."
+  if (/CROSS_YEAR_ENTITY_MISMATCH|não pertence ao ano letivo|ano letivo.*(incorreto|inválido)/i.test(raw)) return "A turma selecionada pertence a outro ano letivo. Volte aos filtros e selecione o ano letivo correspondente."
+  if (/fechad|trav|reabert|bloquead/i.test(raw)) return "Este trimestre está fechado para lançamentos. Solicite uma reabertura à escola para continuar."
+  if (/timeout|network|failed to fetch|ligação|conexão/i.test(raw)) return "Não foi possível comunicar com a escola. Verifique a ligação e tente novamente."
+  return raw || "Verifique os dados e tente novamente."
+}
+
 export default function ProfessorNotasPage() {
   return (
     <Suspense fallback={
@@ -63,7 +82,8 @@ function ProfessorNotasContent() {
   const [exporting, setExporting] = useState(false)
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
   const [savingNow, setSavingNow] = useState(false)
-  const [reopenRequest, setReopenRequest] = useState<any>(null)
+  const [reopenRequest, setReopenRequest] = useState<ReopenRequest | null>(null)
+  const [reopenHistory, setReopenHistory] = useState<ReopenRequest[]>([])
   const [requestReason, setRequestReason] = useState("")
   const [requestingReopen, setRequestingReopen] = useState(false)
 
@@ -115,13 +135,22 @@ function ProfessorNotasContent() {
   useEffect(() => {
     if (!turmaId || !disciplinaId || !anoLetivoId) {
       setReopenRequest(null)
+      setReopenHistory([])
       return
     }
     let active = true
-    void fetch(`/api/professor/notas/reabertura?turma_id=${encodeURIComponent(turmaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}&trimestre=${trimestreSelecionado}`, { cache: "no-store" })
-      .then((response) => response.json().catch(() => null))
-      .then((payload) => { if (active && payload?.ok) setReopenRequest(payload.current ?? null) })
-    return () => { active = false }
+    const loadReopenRequests = async () => {
+      const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, trimestre: String(trimestreSelecionado), ano_letivo_id: anoLetivoId })
+      const response = await fetch(`/api/professor/notas/reabertura?${params.toString()}`, { cache: "no-store" })
+      const payload = await response.json().catch(() => null)
+      if (active && payload?.ok) {
+        setReopenRequest(payload.current ?? null)
+        setReopenHistory(Array.isArray(payload.items) ? payload.items : [])
+      }
+    }
+    void loadReopenRequests()
+    const timer = window.setInterval(() => void loadReopenRequests(), 30_000)
+    return () => { active = false; window.clearInterval(timer) }
   }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId])
 
   const handleRequestReopen = async () => {
@@ -305,7 +334,7 @@ function ProfessorNotasContent() {
         warning("Notas guardadas localmente", "Serão sincronizadas assim que a ligação voltar.")
       }
     } catch (cause) {
-      toastError("Não foi possível guardar", cause instanceof Error ? cause.message : "Verifique os dados e tente novamente.")
+      toastError("Não foi possível guardar", friendlyGradeError(cause))
     } finally {
       setSavingNow(false)
     }
@@ -381,7 +410,7 @@ function ProfessorNotasContent() {
 
   const data = useMemo(() => pauta, [pauta])
   const turmaFechada = turmaStatusFecho && turmaStatusFecho !== "ABERTO"
-  const reaberturaAtiva = reopenRequest?.status === "APROVADO" && new Date(reopenRequest.expira_em).getTime() > Date.now()
+  const reaberturaAtiva = reopenRequest?.status === "APROVADO" && Boolean(reopenRequest.expira_em) && new Date(reopenRequest.expira_em as string).getTime() > Date.now()
   const notasBloqueadas = Boolean(turmaFechada && !reaberturaAtiva)
 
   return (
@@ -581,16 +610,17 @@ function ProfessorNotasContent() {
             ) : notasBloqueadas ? (
               <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-700">
                 <p className="font-bold">Lançamento de notas bloqueado: turma fechada.</p>
-                {reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : reopenRequest?.status === "REJEITADO" ? <p className="mt-1">Solicitação rejeitada. Você pode enviar uma nova justificativa.</p> : <div className="mt-4 space-y-3"><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-klasse-gold-300" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-klasse-gold px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
+                {reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-klasse-gold-800">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "A solicitação anterior expirou. Envie uma nova justificativa." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-klasse-gold-300" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-klasse-gold px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
+                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-klasse-gold-200 bg-white/70 p-3"><summary className="cursor-pointer text-xs font-bold text-klasse-gold-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-slate-800">{item.status}</span><span className="text-slate-500">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-slate-600">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-slate-500">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
               </div>
             ) : (
               <div className="space-y-3">
-                {reaberturaAtiva && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Você pode lançar notas até {new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.</p></div>}
+                {reaberturaAtiva && reopenRequest?.expira_em && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Você pode lançar notas até {new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.</p></div>}
                 <GradeEntryGrid
                   initialData={data}
                   subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
                   onSave={handleSaveBatch}
-                  onSaveError={(cause) => toastError("Não foi possível guardar", cause instanceof Error ? cause.message : "Verifique os dados e tente novamente.")}
+                  onSaveError={(cause) => toastError("Não foi possível guardar", friendlyGradeError(cause))}
                   highlightId={highlightAlunoId}
                 />
               </div>

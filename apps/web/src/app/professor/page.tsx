@@ -114,11 +114,11 @@ export default function Page() {
   }, []);
 
   const turmaMap = useMemo(() => {
-    const map = new Map<string, { nome: string | null; disciplinas: string[] }>();
+    const map = new Map<string, { id: string; nome: string | null; disciplinas: string[] }>();
     for (const item of atribs) {
       const turmaId = item.turma?.id || "";
       if (!turmaId) continue;
-      const entry = map.get(turmaId) || { nome: item.turma?.nome ?? null, disciplinas: [] };
+      const entry = map.get(turmaId) || { id: turmaId, nome: item.turma?.nome ?? null, disciplinas: [] };
       const disciplinaNome = item.disciplina?.nome || "Disciplina";
       if (!entry.disciplinas.includes(disciplinaNome)) entry.disciplinas.push(disciplinaNome);
       map.set(turmaId, entry);
@@ -328,6 +328,14 @@ export default function Page() {
                color: "from-blue-500 to-indigo-600",
                light: "bg-blue-50 text-blue-600"
             },
+            {
+               title: "Planos de Aula",
+               desc: "Preparação e revisão pedagógica",
+               icon: ClipboardDocumentListIcon,
+               href: "/professor/planos-aula",
+               color: "from-emerald-500 to-green-700",
+               light: "bg-emerald-50 text-emerald-600"
+            },
             { 
                title: "Calendário Académico", 
                desc: "Prazos, exames e marcos lectivos", 
@@ -376,7 +384,7 @@ export default function Page() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {turmaMap.map((turma) => (
-                  <div key={turma.nome} className="group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-klasse-gold/40">
+                    <div key={turma.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-klasse-gold/40">
                     <div className="flex items-start justify-between">
                        <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-klasse-gold/10 group-hover:text-klasse-gold transition-colors font-black text-xs">
                           {turma.nome?.split("-")[0]}
@@ -390,6 +398,12 @@ export default function Page() {
                        <p className="mt-1 text-[10px] font-bold text-slate-400 line-clamp-1 italic">
                           {turma.disciplinas.join(" • ")}
                        </p>
+                       <div className="mt-3 flex flex-wrap gap-2">
+                          <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">Presença</Link>
+                          <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-blue-700 hover:bg-blue-100">Notas</Link>
+                          <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-700 hover:bg-amber-100">Plano</Link>
+                       </div>
+                       <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="mt-3 inline-flex text-[10px] font-black uppercase tracking-wide text-klasse-gold hover:underline">Ver horário compartilhado</Link>
                     </div>
                   </div>
                 ))}
