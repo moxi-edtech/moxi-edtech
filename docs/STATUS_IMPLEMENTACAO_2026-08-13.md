@@ -51,12 +51,20 @@ Código presente no workspace:
 - o relatório oferece retry, atualização manual e atualização periódica, com feedback durante a geração do PDF;
 - a frequência nominal é exibida no detalhe e incluída no PDF;
 - a Dashboard permite busca por turma, disciplina ou professor e filtro por estado da aula.
+- a configuração de slots permite adicionar um novo tempo diretamente no dia/turno selecionado, já abrindo a edição para ajuste antes de salvar;
+- a distribuição do quadro valida conflitos no momento do arraste, bloqueia a alocação inválida, preserva o estado anterior e explica o recurso ocupado antes de qualquer salvamento.
+- o quadro publicado da turma já possui consulta dedicada para professores atribuídos, e cada salvamento/publicação registra auditoria com autor, versão, estado anterior, estado posterior e motivo operacional.
+- a Dashboard de Operações apresenta um resumo agregado de aulas aguardando confirmação, aulas em andamento, planos para revisão, reaberturas de notas e relatórios recebidos;
+- os cartões do resumo levam diretamente ao painel operacional correspondente e são atualizados periodicamente, com retry explícito em caso de falha;
+- a mesma visão apresenta a fila agregada por Secretaria, Admin escola e Admin financeiro, destacando o perfil atual quando identificado;
+- decisões de planos e reaberturas mostram estado de gravação e bloqueiam ações concorrentes para evitar duplicidade.
 
 Arquivos centrais:
 
 - `apps/web/src/app/api/professor/aulas/`
 - `apps/web/src/app/api/secretaria/aulas/`
 - `apps/web/src/components/layout/operacoes/AulasOperacionaisPanel.tsx`
+- `apps/web/src/components/layout/operacoes/OperacoesPendenciasSummary.tsx`
 - `apps/web/src/app/escola/[id]/(portal)/operacoes/aulas/[aulaId]/page.tsx`
 - `apps/web/src/app/api/secretaria/aulas/[aulaId]/relatorio/`
 - `apps/web/src/lib/operacoes/renderAulaRelatorioPdf.tsx`
@@ -93,6 +101,25 @@ Arquivos centrais:
 - Contexto obrigatório de ano letivo em notas e frequência.
 - Feedback de salvamento de presença e notas.
 
+## 6. Sprint 5 — admissão, matrícula e rematrícula
+
+Foi criado o documento de execução em `docs/SPRINT_5_FLUXOS_GRACIOSOS_ADMISSAO_MATRICULA_REMATRICULA_2026-08-13.md`.
+
+Primeira fatia entregue no portal do aluno:
+
+- falha ao consultar rematrícula agora aparece com retry;
+- o bloqueio financeiro navega para `/aluno/financeiro`;
+- confirmação mantém estado de envio e bloqueia duplo clique;
+- o pedido confirmado permanece visível enquanto o estado é atualizado.
+- o formulário público de admissão revalida os dados no envio, tem timeout orientado, preserva o rascunho em falhas e trata respostas duplicadas sem criar uma nova candidatura.
+- cada documento da admissão mantém seu próprio estado de envio, erro e retry; uma falha documental não exige selecionar novamente os outros arquivos.
+- a conversão da admissão em matrícula usa uma idempotency key estável por candidatura, permitindo retry seguro e feedback explícito quando a matrícula já estava efetivada.
+- o pós-matrícula informa o número da matrícula e distingue comprovativo emitido de matrícula concluída com comprovativo pendente.
+- o pós-matrícula exibe checklist operacional e retry explícito quando a liberação do portal falha, sem confundir matrícula concluída com onboarding concluído.
+- a liberação do portal não redefine senha em retries; acessos já existentes são identificados e falhas de ativação retornam erro explícito para a secretaria tentar novamente.
+- a comunicação via WhatsApp mostra estado preparado, persiste o passo por matrícula no dispositivo e oferece retry quando o contacto estiver ausente ou o popup for bloqueado.
+- o resumo final da matrícula mostra ano letivo, turma e os dados de pagamento informados, sem afirmar compensação financeira antes da confirmação oficial.
+
 Referência: `git log --oneline` no branch de trabalho.
 
 ## 5. Alterações ainda não consolidadas
@@ -124,6 +151,17 @@ Esses itens precisam de triagem individual antes de novo commit. Não devem ser 
 - Retorno de falha na chamada: agora oferece ação explícita de tentar novamente.
 - Solicitações de reabertura de notas agora mostram histórico, atualizam o estado periodicamente e permitem nova tentativa após rejeição ou expiração.
 - A home do professor agora oferece ações diretas por turma para presença, notas, plano de aula e horário compartilhado.
+- A agenda diária na home agora abre diretamente a chamada da turma/disciplina, preservando os IDs de contexto.
+- O horário compartilhado agora possui retry, mensagens acionáveis e estado vazio quando ainda não há aulas publicadas.
+- A agenda diária permite confirmar a aula diretamente, com bloqueio por operação e feedback de sucesso/erro.
+- A home cruza a agenda publicada com as ocorrências reais do professor e exibe o estado persistido da aula quando disponível, atualizando a linha imediatamente após a confirmação.
+- A agenda atualiza os estados das ocorrências a cada 30 segundos e permite finalizar a aula com resumo opcional, feedback e cancelamento seguro.
+- A ação contextual de plano agora preserva turma e disciplina a partir da aula da agenda.
+- Planos de aula agora têm carregamento, retry, validação dos campos essenciais e estados vazios orientados.
+- Materiais pedagógicos agora informam erros de carregamento, oferecem retry e bloqueiam publicação por item durante o salvamento.
+- Intervenções pedagógicas agora removem `any` do contrato e oferecem retry para falhas de carregamento.
+- Atividades pedagógicas agora bloqueiam publicação/despublicação por item e informam o estado "A guardar..." durante a operação.
+- Os painéis da secretaria para revisão de planos e reabertura de notas agora têm carregamento, retry, atualização periódica e proteção contra decisões duplicadas.
 - O lançamento de notas diferencia ano letivo fechado, turma de outro ano e trimestre bloqueado, orientando a próxima ação.
 - A configuração de tempos do horário mostra conflitos locais e bloqueia o salvamento enquanto houver sobreposição ou intervalo inválido.
 - A limpeza de qualidade dos fluxos P1 removeu avisos de dependências de hooks, imports não utilizados e `any` nos contratos novos de frequência, slots e relatórios.

@@ -93,7 +93,10 @@ export async function POST(req: Request) {
       codigo_ativacao?: string | null;
       login?: string | null;
       senha?: string | null;
+      error?: string | null;
     }> = [];
+
+    let activationFailed = false;
 
     for (const row of rows as any[]) {
       const extra = alunosMap.get(row.aluno_id) || { nome: null, email: null, codigo_ativacao: null, bi_numero: null };
@@ -101,6 +104,7 @@ export async function POST(req: Request) {
       let login: string | null = null;
       let senha: string | null = null;
       let status = "queued";
+      let error: string | null = null;
 
       if (gerarCredenciais) {
         if (codigo) {
@@ -108,14 +112,16 @@ export async function POST(req: Request) {
             const result = await callAuthAdminJob(req, "activateStudentAccess", {
               codigo,
               bi: extra.bi_numero || "",
-              resetExistingPassword: true,
+              // A liberação é idempotente: retries não devem invalidar uma senha
+              // temporária que já tenha sido entregue ao aluno.
+              resetExistingPassword: false,
             });
             login = (result as any)?.login ?? null;
             senha = (result as any)?.senha ?? null;
-            status = "activated";
+            status = (result as any)?.created ? "activated" : "already_activated";
 
             // Enviar e-mail se houver
-            if (extra.email && login) {
+            if (extra.email && login && senha) {
               try {
                 const mail = buildCredentialsEmail({
                   nome: extra.nome,
@@ -136,9 +142,15 @@ export async function POST(req: Request) {
                 console.error("[Liberar Acesso Mail Error]:", mailErr);
               }
             }
-          } catch {
+          } catch (activationError) {
             status = "activation_failed";
+            activationFailed = true;
+            error = activationError instanceof Error ? activationError.message : "Falha ao ativar acesso";
           }
+        } else {
+          status = "activation_failed";
+          activationFailed = true;
+          error = "Aluno sem código de ativação";
         }
       }
 
@@ -150,10 +162,15 @@ export async function POST(req: Request) {
         codigo_ativacao: codigo,
         login,
         senha,
+        error,
       });
     }
 
-    return NextResponse.json({ ok: true, liberados: rows.length, detalhes });
+    const liberados = detalhes.filter((detalhe) => detalhe.status === "activated" || detalhe.status === "already_activated").length;
+    return NextResponse.json(
+      { ok: !activationFailed, liberados, detalhes, ...(activationFailed ? { error: "Uma ou mais ativações falharam" } : {}) },
+      { status: activationFailed ? 502 : 200 }
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { 
   Sheet, 
   SheetContent, 
@@ -90,6 +90,8 @@ const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string; helpe
 
 type ConvertResponse = {
   ok?: boolean
+  idempotent?: boolean
+  comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null
   error?: string
   details?: string
   code?: string
@@ -117,6 +119,7 @@ export function AdmissaoConversionSheet({
 
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const idempotencyKeyRef = useRef<string | null>(null)
   const [detail, setDetail] = useState<CandidaturaDetail | null>(null)
   
   // Form State
@@ -157,11 +160,17 @@ export function AdmissaoConversionSheet({
   const [capacityOverrideMotivo, setCapacityOverrideMotivo] = useState('')
   const [capacityOverrideError, setCapacityOverrideError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!isOpen || !candidaturaId) return
+    idempotencyKeyRef.current = `admissao-convert-${candidaturaId}`
+  }, [candidaturaId, isOpen])
+
   // Onboarding State
   const [enrollmentResult, setEnrollmentResult] = useState<{
     matriculaId: string;
     alunoId: string;
     numeroMatricula: string;
+    comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null;
   } | null>(null)
   const [credentials, setCredentials] = useState<{
     login: string;
@@ -169,18 +178,25 @@ export function AdmissaoConversionSheet({
     status: string;
   } | null>(null)
   const [generatingAccess, setGeneratingAccess] = useState(false)
+  const [portalError, setPortalError] = useState<string | null>(null)
+  const [notificationSent, setNotificationSent] = useState(false)
+  const [notificationError, setNotificationError] = useState<string | null>(null)
 
   // 1. Fetch Detail when ID changes
   useEffect(() => {
     if (!candidaturaId || !isOpen) {
       setEnrollmentResult(null)
       setCredentials(null)
+      setPortalError(null)
+      setNotificationSent(false)
+      setNotificationError(null)
       return
     }
     
     setLoading(true)
     setEnrollmentResult(null) // Reset on new ID
     setCredentials(null)
+    setNotificationError(null)
     
     fetch(`/api/secretaria/admissoes/lead?id=${candidaturaId}`)
       .then(res => res.json())
@@ -188,6 +204,11 @@ export function AdmissaoConversionSheet({
         if (json.ok && json.item) {
           const item = json.item as CandidaturaDetail
           setDetail(item)
+          try {
+            setNotificationSent(window.localStorage.getItem(`klasse:matricula:${candidaturaId}:whatsapp`) === 'sent')
+          } catch {
+            setNotificationSent(false)
+          }
           
           setStudentData({
             nome: item.nome_candidato || '',
@@ -359,10 +380,8 @@ export function AdmissaoConversionSheet({
       }
 
       // 2. Convert to Matricula
-      const idempotencyKey =
-        typeof crypto !== "undefined" && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const idempotencyKey = idempotencyKeyRef.current ?? `admissao-convert-${candidaturaId}`;
+      idempotencyKeyRef.current = idempotencyKey;
 
       const res = await fetch('/api/secretaria/admissoes/convert', {
         method: 'POST',
@@ -415,7 +434,12 @@ export function AdmissaoConversionSheet({
         throw new Error('Matrícula efetivada sem identificador retornado.')
       }
 
-      success('Matrícula Efetivada', `O aluno ${detail?.nome_candidato} foi matriculado com sucesso.`)
+      success(
+        json.idempotent ? 'Matrícula já estava efetivada' : 'Matrícula efetivada',
+        json.idempotent
+          ? `A operação já tinha sido concluída para ${detail?.nome_candidato ?? 'este aluno'}.`
+          : `O aluno ${detail?.nome_candidato} foi matriculado com sucesso.`
+      )
       setCapacityOverrideOpen(false)
       setCapacityOverrideMotivo('')
       setCapacityOverrideError(null)
@@ -424,7 +448,8 @@ export function AdmissaoConversionSheet({
       setEnrollmentResult({
         matriculaId: json.matricula_id,
         alunoId: newAlunoId,
-        numeroMatricula: json?.numero_matricula ?? ''
+        numeroMatricula: json?.numero_matricula ?? '',
+        comprovante: json.comprovante ?? null,
       })
 
       onSuccess(json.matricula_id)
@@ -445,6 +470,7 @@ export function AdmissaoConversionSheet({
     if (!aid) return
 
     setGeneratingAccess(true)
+    setPortalError(null)
     try {
       const res = await fetch('/api/secretaria/alunos/liberar-acesso', {
         method: 'POST',
@@ -458,9 +484,11 @@ export function AdmissaoConversionSheet({
       })
 
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Falha ao liberar acesso')
-
       const detalhe = json.detalhes?.[0]
+      if (!res.ok || !detalhe || !['activated', 'already_activated'].includes(detalhe.status) || !detalhe.login) {
+        throw new Error(detalhe?.error || json.error || 'Falha ao liberar acesso')
+      }
+
       if (detalhe) {
         setCredentials({
           login: detalhe.login || '',
@@ -468,9 +496,15 @@ export function AdmissaoConversionSheet({
           status: detalhe.status
         })
         // Only show toast if it wasn't the automatic trigger or if we want extra confirmation
-        success('Acesso Liberado', 'As credenciais do aluno foram geradas e enviadas.')
+        success(
+          detalhe.status === 'already_activated' ? 'Acesso já estava liberado' : 'Acesso Liberado',
+          detalhe.senha ? 'As credenciais estão prontas para entregar ao encarregado.' : 'O acesso já existe; não redefinimos a senha neste retry.'
+        )
+      } else {
+        throw new Error('O portal respondeu sem credenciais. Tente novamente.')
       }
     } catch (err: unknown) {
+      setPortalError(getErrorMessage(err, 'Falha ao liberar acesso'))
       toastError('Erro ao Liberar Acesso', getErrorMessage(err, 'Falha ao liberar acesso'))
     } finally {
       setGeneratingAccess(false)
@@ -478,7 +512,11 @@ export function AdmissaoConversionSheet({
   }
 
   const handleNotifyWhatsApp = () => {
-    if (!guardianData.contato || !detail) return;
+    setNotificationError(null)
+    if (!guardianData.contato || !detail) {
+      setNotificationError('Não existe contacto válido do encarregado para abrir o WhatsApp.')
+      return
+    }
 
     // Normalização do número para Angola (+244)
     let phone = guardianData.contato.replace(/\D/g, '');
@@ -494,7 +532,14 @@ export function AdmissaoConversionSheet({
     }
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      setNotificationError('O navegador bloqueou a abertura do WhatsApp. Permita pop-ups e tente novamente.')
+      return
+    }
+    setNotificationSent(true)
+    try { window.localStorage.setItem(`klasse:matricula:${candidaturaId}:whatsapp`, 'sent') } catch {}
+    success('WhatsApp preparado', 'A mensagem foi aberta para revisão antes do envio.')
   }
 
   const copyToClipboard = (text: string) => {
@@ -526,6 +571,18 @@ export function AdmissaoConversionSheet({
     if (!academic.cursoId) return turmas
     return turmaOptions.filter(t => t.curso_id === academic.cursoId)
   }, [turmas, academic.cursoId])
+
+  const selectedTurma = useMemo(
+    () => (turmas as TurmaOption[]).find((turma) => turma.id === academic.turmaId) ?? null,
+    [turmas, academic.turmaId]
+  )
+
+  const paymentSummary = useMemo(() => {
+    const amount = Number(payment.amount)
+    if (!Number.isFinite(amount) || amount <= 0) return "Valor pendente de confirmação"
+    const formatted = amount.toLocaleString("pt-AO")
+    return `${formatted} Kz · ${payment.metodo === "CASH" ? "Dinheiro" : payment.metodo === "TPA" ? "TPA" : "Transferência"}${payment.parcial ? " · parcial" : ""}`
+  }, [payment.amount, payment.metodo, payment.parcial])
 
   // Get unique courses from turmas
   const cursosDisponiveis = useMemo(() => {
@@ -573,6 +630,37 @@ export function AdmissaoConversionSheet({
                 A matrícula de <strong className="text-slate-900">{studentData.nome}</strong> foi concluída com sucesso.
               </p>
 
+              <div className={`mb-6 w-full rounded-2xl border p-4 text-left ${enrollmentResult.comprovante?.ok ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Número da matrícula</p>
+                <p className="mt-1 text-xl font-black text-slate-900">{enrollmentResult.numeroMatricula || 'Gerado no sistema'}</p>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Comprovativo de matrícula</p>
+                {enrollmentResult.comprovante?.ok && enrollmentResult.comprovante.printUrl ? (
+                  <a href={enrollmentResult.comprovante.printUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovativo</a>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovativo ainda não foi emitido. Emita-o pela área de documentos.</p>
+                )}
+                {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
+              </div>
+
+              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Resumo académico e financeiro</p>
+                <div className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
+                  <div><span className="block text-slate-400">Ano letivo</span><strong className="text-slate-900">{detail?.ano_letivo ?? "Não informado"}</strong></div>
+                  <div><span className="block text-slate-400">Turma</span><strong className="text-slate-900">{selectedTurma?.nome ?? selectedTurma?.turma_codigo ?? "Não informada"}</strong></div>
+                  <div className="sm:col-span-2"><span className="block text-slate-400">Pagamento informado</span><strong className="text-slate-900">{paymentSummary}</strong></div>
+                </div>
+              </div>
+
+              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Checklist do atendimento</p>
+                <div className="mt-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-3"><span>Matrícula criada</span><span className="font-black text-emerald-700">Concluído</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Comprovativo</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Portal do aluno</span><span className={credentials ? "font-black text-emerald-700" : "font-black text-amber-700"}>{credentials ? "Liberado" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>WhatsApp preparado</span><span className={notificationSent ? "font-black text-emerald-700" : "font-black text-amber-700"}>{notificationSent ? "Concluído" : "Pendente"}</span></div>
+                </div>
+              </div>
+
               <div className="w-full space-y-4">
                 {/* Ação Principal: Notificar */}
                 <Button
@@ -580,8 +668,9 @@ export function AdmissaoConversionSheet({
                   className="w-full h-16 rounded-2xl bg-[#25D366] hover:bg-[#25D366]/90 text-white font-black text-lg shadow-xl shadow-green-500/20"
                 >
                   <Send className="w-5 h-5 mr-3" />
-                  Notificar via WhatsApp
+                  {notificationSent ? 'Abrir WhatsApp novamente' : 'Notificar via WhatsApp'}
                 </Button>
+                {notificationError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-left text-xs text-rose-700"><p>{notificationError}</p><button type="button" onClick={handleNotifyWhatsApp} className="mt-2 font-black underline">Tentar novamente</button></div>}
 
                 {!credentials ? (
                   <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
@@ -599,6 +688,7 @@ export function AdmissaoConversionSheet({
                       <ShieldCheck className="w-4 h-4 mr-2" />
                       Gerar Acesso ao Portal
                     </Button>
+                    {portalError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700"><p>{portalError}</p><button type="button" onClick={() => void handleGerarAcesso()} className="mt-2 font-black underline">Tentar novamente</button></div>}
                   </div>
                 ) : (
                   <div className="p-6 bg-green-50 rounded-3xl border border-green-100 space-y-4">

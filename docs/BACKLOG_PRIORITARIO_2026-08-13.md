@@ -24,6 +24,9 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 - [ ] Criar ação de aprovação em lote apenas após definir regra de justificativa e auditoria.
 - [ ] Mostrar no portal do aluno o plano de aula aprovado associado à aula, quando a escola permitir.
 - [ ] Permitir anexos com validação de tipo, tamanho, armazenamento e remoção segura no plano de aula.
+- [x] Padronizar feedback, retry e estados vazios nos fluxos de planos, materiais e intervenções.
+- [x] Bloquear publicação/despublicação duplicada por item no conteúdo pedagógico.
+- [x] Bloquear publicação/despublicação duplicada por item nas atividades dos alunos.
 - [x] Fechar o ciclo aula → confirmação do professor → chamada → resumo → relatório da secretaria.
 - [x] Exibir no relatório operacional um resumo de presentes, ausentes, atrasados e plano associado.
 - [x] Exibir atividades pedagógicas associadas no relatório operacional da aula.
@@ -45,21 +48,27 @@ Regra: cada item deve ser validado no ambiente antes de ser marcado como conclu�
 ## P1 — Horários e turmas compartilhadas
 
 - [x] Permitir edição inline de slots de horário com validação temporal existente.
+- [x] Permitir adicionar um novo slot diretamente no dia e turno selecionados, com feedback e edição imediata.
 - [x] Permitir acesso do professor ao quadro publicado completo da turma compartilhada.
 - [x] Rejeitar conflitos de slot, professor e sala dentro da própria publicação do quadro.
 - [ ] Permitir criação e edição do quadro com validação e apresentação visual de conflitos de turma, sala, professor e disciplina em uma única experiência.
-- [ ] Mostrar horários compartilhados de uma turma para todos os professores atribuídos.
-- [x] Na home do professor, sugerir ações contextuais: marcar presença, lançar nota, abrir plano e ver horário da turma.
-- [ ] Permitir localizar diretamente a ocorrência de aula correspondente ao horário atual.
-- [ ] Registrar alterações de horário com autor, data, motivo e versão anterior.
+- [x] Apresentar a causa do conflito de turma, sala ou professor no retorno de salvamento e no cartão destacado do quadro.
+- [x] Bloquear conflitos de professor e sala no arraste, com retorno imediato e preservação do quadro anterior.
+- [x] Mostrar horários compartilhados de uma turma para todos os professores atribuídos.
+- [x] Na home do professor, sugerir ações contextuais: confirmar aula, marcar presença, lançar nota, abrir plano e ver horário da turma.
+- [x] Permitir localizar diretamente a ocorrência de aula correspondente ao horário atual.
+- [x] Permitir finalizar a ocorrência a partir da agenda com resumo opcional e feedback de envio.
+- [x] Registrar alterações de horário com autor, data, motivo e versão anterior.
 
 ## P2 — Notificações e acompanhamento
 
 - [ ] Usar notificações existentes da secretaria para informar nova solicitação de reabertura.
 - [ ] Informar professor quando a solicitação for aprovada ou rejeitada, sem depender de realtime.
-- [ ] Criar fila de pendências com contagem por perfil: secretaria, admin escola, financeiro e admin secretaria.
+- [x] Criar fila de pendências com contagem por perfil: secretaria, admin escola, financeiro e admin secretaria (admin secretaria agrupado no contexto de operações).
+- [x] Exibir resumo agregado das principais pendências operacionais com atalhos na Dashboard e atualização periódica.
 - [ ] Definir política de retenção e arquivamento para decisões antigas.
 - [ ] Adicionar métricas operacionais: tempo até decisão, solicitações aprovadas, rejeitadas e expiradas.
+- [x] Painéis da secretaria para revisão de planos e reabertura de notas com retry, polling e bloqueio contra decisões duplicadas.
 
 ## P2 — Performance e qualidade
 
