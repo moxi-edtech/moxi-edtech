@@ -95,5 +95,5 @@ export async function GET(req: Request) {
     for (const key of ["aulas", "finalizadas", "pendentes", "atrasos", "saidas_antecipadas", "horas_previstas", "horas_realizadas", "minutos_atraso", "minutos_saida_antecipada"] as const) acc[key] += item[key];
     return acc;
   }, { aulas: 0, finalizadas: 0, pendentes: 0, atrasos: 0, saidas_antecipadas: 0, horas_previstas: 0, horas_realizadas: 0, minutos_atraso: 0, minutos_saida_antecipada: 0 });
-  return NextResponse.json({ ok: true, month, from, until, items, totals: { ...totals, previstas: formatMinutes(totals.horas_previstas), realizadas: formatMinutes(totals.horas_realizadas) } });
+  return NextResponse.json({ ok: true, month, from, until, items, aulas: aulaRows, totals: { ...totals, previstas: formatMinutes(totals.horas_previstas), realizadas: formatMinutes(totals.horas_realizadas) } });
 }
