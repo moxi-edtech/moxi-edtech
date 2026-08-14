@@ -33,14 +33,19 @@ export default function ProfessorFrequenciasPage() {
   const searchParams = useSearchParams()
   const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? ""
   const [academicYearId, setAcademicYearId] = useState(requestedAcademicYearId)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const urlTurmaId = searchParams?.get("turma_id")
   const urlDisciplinaId = searchParams?.get("disciplina_id")
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/professor/atribuicoes', { cache: 'no-store' })
-      const json = await res.json().catch(()=>null)
-      if (res.ok && json?.ok) {
+      try {
+        setLoadError(null)
+        const res = await fetch('/api/professor/atribuicoes', { cache: 'no-store' })
+        const json = await res.json().catch(()=>null)
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.message || json?.error || 'Não foi possível carregar o ano letivo ativo.')
+        }
         const items = (json.items || []) as Atrib[]
         setAtribs(items)
         if (!requestedAcademicYearId && json.context?.anoLetivoId) setAcademicYearId(String(json.context.anoLetivoId))
@@ -50,6 +55,8 @@ export default function ProfessorFrequenciasPage() {
             setDisciplinaId(urlDisciplinaId)
           }
         }
+      } catch (cause) {
+        setLoadError(cause instanceof Error ? cause.message : 'Não foi possível carregar o ano letivo ativo.')
       }
     })()
   }, [urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
@@ -175,6 +182,11 @@ export default function ProfessorFrequenciasPage() {
       </div>
 
       <form onSubmit={onSubmit} className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
+        {loadError && (
+          <div className="lg:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {loadError} Configure ou active um ano letivo em Administração &gt; Configurações &gt; Calendário e atualize esta página.
+          </div>
+        )}
         <aside className="space-y-3 sm:space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
             <div className="text-xs font-black uppercase tracking-wider text-slate-400">Turma e Disciplina</div>

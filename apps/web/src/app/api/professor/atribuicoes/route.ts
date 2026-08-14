@@ -108,6 +108,7 @@ export async function GET(req: Request) {
       return NextResponse.json({
         ok: true,
         escola_id: escolaId,
+        context: academicContext,
         items,
         ...(debug ? { debug: { rpc_items_count: items.length } } : {}),
       })
