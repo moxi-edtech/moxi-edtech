@@ -13,8 +13,8 @@ const emptyForm = { turma_id: "", disciplina_id: "", data: new Date().toISOStrin
 
 export default function PlanosAulaPage() {
   const searchParams = useSearchParams();
-  const requestedTurmaId = searchParams.get("turma_id") ?? "";
-  const requestedDisciplinaId = searchParams.get("disciplina_id") ?? "";
+  const requestedTurmaId = searchParams?.get("turma_id") ?? "";
+  const requestedDisciplinaId = searchParams?.get("disciplina_id") ?? "";
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [form, setForm] = useState(emptyForm);

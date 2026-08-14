@@ -39,8 +39,8 @@ type Assignment = {
 
 export default function ProfessorMateriaisPage() {
   const searchParams = useSearchParams();
-  const requestedTurmaId = searchParams.get("turma_id") ?? "";
-  const requestedDisciplinaId = searchParams.get("disciplina_id") ?? "";
+  const requestedTurmaId = searchParams?.get("turma_id") ?? "";
+  const requestedDisciplinaId = searchParams?.get("disciplina_id") ?? "";
   const { success, error: toastError } = useToast();
   const [materiais, setMateriais] = useState<MaterialPedagogico[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);

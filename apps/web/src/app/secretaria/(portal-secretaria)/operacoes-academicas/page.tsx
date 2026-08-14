@@ -464,7 +464,7 @@ export default async function OperacoesAcademicasPage({
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <FileText className="h-4 w-4" /> Documentos Oficiais (Lote)
               </h2>
-              <Link href={buildPortalHref(escolaParam, `/admin/operacoes-academicas/documentos-oficiais?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, `/operacoes/documentos-oficiais?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
                 Abrir monitor
               </Link>
             </div>
@@ -556,7 +556,7 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Reprocessar o lote com falha e verificar o download.
               </p>
-              <Link href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/documentos-oficiais")} className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/operacoes/documentos-oficiais")} className="text-[10px] font-semibold text-klasse-green hover:underline">
                 Abrir documentos oficiais
               </Link>
             </div>
