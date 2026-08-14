@@ -23,6 +23,7 @@ const PlanSchema = z.object({
   atividades: z.string().trim().max(5000).nullable().optional(),
   avaliacao: z.string().trim().max(5000).nullable().optional(),
   tarefa_casa: z.string().trim().max(5000).nullable().optional(),
+  anotacoes_alunos_avaliados: z.string().trim().max(10000).nullable().optional(),
   observacoes: z.string().trim().max(5000).nullable().optional(),
   arquivo_url: z.string().url().max(2000).nullable().optional(),
 });

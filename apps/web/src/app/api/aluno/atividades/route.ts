@@ -31,7 +31,7 @@ export async function GET() {
   const activityIds = (data ?? []).map((item: any) => item.id);
   const planIds = Array.from(new Set((data ?? []).map((item: any) => item.plano_aula_id).filter(Boolean)));
   const { data: plans } = planIds.length
-    ? await (supabase as any).from("planos_aula").select("id, data, tema, subtema, objetivos, competencias, conteudos, metodologia, recursos, atividades, avaliacao, tarefa_casa, observacoes").eq("escola_id", ctx.escolaId).eq("status", "aprovado").in("id", planIds)
+    ? await (supabase as any).from("planos_aula").select("id, data, tema, subtema, objetivos, competencias, conteudos, metodologia, recursos, atividades, avaliacao, tarefa_casa, anotacoes_alunos_avaliados, observacoes").eq("escola_id", ctx.escolaId).eq("status", "aprovado").in("id", planIds)
     : { data: [] };
   const planMap = new Map((plans ?? []).map((plan: any) => [plan.id, plan]));
   const { data: submissions } = activityIds.length

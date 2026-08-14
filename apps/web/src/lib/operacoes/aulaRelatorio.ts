@@ -16,7 +16,7 @@ export async function loadAulaRelatorio(supabase: Db, escolaId: string, aulaId: 
     td?.curso_matriz_id ? supabase.from("curso_matriz").select("disciplina_id").eq("id", td.curso_matriz_id).eq("escola_id", escolaId).maybeSingle() : Promise.resolve({ data: null }),
     aula.professor_id ? supabase.from("professores").select("id, nome_completo").eq("id", aula.professor_id).eq("escola_id", escolaId).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from("frequencias").select("matricula_id, status").eq("escola_id", escolaId).eq("aula_id", aula.id).limit(500),
-    supabase.from("planos_aula").select("id, status, tema, objetivos, conteudos, metodologia, avaliacao, tarefa_casa").eq("escola_id", escolaId).eq("aula_id", aula.id).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("planos_aula").select("id, status, tema, objetivos, competencias, conteudos, metodologia, recursos, atividades, avaliacao, tarefa_casa, anotacoes_alunos_avaliados").eq("escola_id", escolaId).eq("aula_id", aula.id).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("atividades_pedagogicas").select("id, titulo, status, nota_maxima").eq("escola_id", escolaId).eq("aula_id", aula.id).limit(50),
   ]);
   const frequencyRows = (presencas ?? []) as FrequencyRow[];
