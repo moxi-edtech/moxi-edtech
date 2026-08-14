@@ -6,14 +6,14 @@ import { resolveAcademicYearContext, AcademicYearContextError } from "@/lib/acad
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET(req: Request, ctx: { params: Promise<{ turmaId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
-    const { turmaId } = await ctx.params;
+    const { id: turmaId } = await ctx.params;
     const academicContext = await resolveAcademicYearContext(supabase, { userId: auth.user.id, requestedAcademicYearId: new URL(req.url).searchParams.get("ano_letivo_id"), operation: "READ" });
     const { data: professor } = await supabase.from("professores").select("id").eq("escola_id", escolaId).eq("profile_id", auth.user.id).maybeSingle();
     if (!professor?.id) return NextResponse.json({ ok: false, error: "Professor não encontrado" }, { status: 403 });
