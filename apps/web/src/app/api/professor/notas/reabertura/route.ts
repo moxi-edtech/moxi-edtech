@@ -19,15 +19,15 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
   const params = new URL(req.url).searchParams;
-  let query = supabase.from("excecoes_pauta").select("id, turma_id, disciplina_id, trimestre, status, motivo, decisao_motivo, expira_em, created_at, decidido_em").eq("escola_id", escolaId).eq("solicitado_por", user.id).order("created_at", { ascending: false }).limit(20);
+  let query = supabase.from("excecoes_pauta").select("id, turma_id, disciplina_id, trimestre, status, motivo, decisao_motivo, expira_em, created_at, decidido_em, ano_letivo_id").eq("escola_id", escolaId).eq("solicitado_por", user.id).order("created_at", { ascending: false }).limit(20);
   if (params.get("turma_id")) query = query.eq("turma_id", params.get("turma_id"));
+  if (params.get("ano_letivo_id")) query = query.eq("ano_letivo_id", params.get("ano_letivo_id"));
   const { data, error } = await query;
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   const turmaId = params.get("turma_id");
   const disciplinaId = params.get("disciplina_id");
   const trimestre = params.get("trimestre");
   const anoLetivoId = params.get("ano_letivo_id");
-  if (anoLetivoId) query = query.eq("ano_letivo_id", anoLetivoId);
   const current = (data ?? []).find((item: any) => (!turmaId || item.turma_id === turmaId) && (!disciplinaId || item.disciplina_id === disciplinaId) && (!trimestre || String(item.trimestre) === trimestre));
   return NextResponse.json({ ok: true, items: data ?? [], current: current ?? null, can_edit: current?.status === "APROVADO" && new Date(current.expira_em).getTime() > Date.now() });
 }

@@ -72,11 +72,18 @@ export default function Page() {
   const [finalizingKey, setFinalizingKey] = useState<string | null>(null);
   const [finalizeSummary, setFinalizeSummary] = useState("");
   const [finalizing, setFinalizing] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [expandedTurmaId, setExpandedTurmaId] = useState<string | null>(null);
   const { success, error: toastError } = useToast();
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
   const professorHref = (path: string) => buildPortalHref(escolaParam, path);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -229,7 +236,7 @@ export default function Page() {
     const aulasHojeList = agendaByDay.get(todayKey) || [];
     if (aulasHojeList.length === 0) return null;
     
-    const now = new Date();
+    const now = new Date(nowTick);
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
     for (const item of aulasHojeList) {
@@ -239,20 +246,12 @@ export default function Page() {
       const inicioMinutes = (hInicio || 0) * 60 + (mInicio || 0);
       const fimMinutes = (hFim || 0) * 60 + (mFim || 0);
 
-      if (nowMinutes >= inicioMinutes - 15 && nowMinutes <= fimMinutes + 15) {
+      if (nowMinutes >= inicioMinutes && nowMinutes < fimMinutes) {
         return item;
       }
     }
-
-    for (const item of aulasHojeList) {
-      if (!item.inicio) continue;
-      const [hInicio, mInicio] = item.inicio.split(":").map(Number);
-      const inicioMinutes = (hInicio || 0) * 60 + (mInicio || 0);
-      if (inicioMinutes > nowMinutes) return item;
-    }
-
-    return aulasHojeList[0] || null;
-  }, [agendaByDay, todayKey]);
+    return null;
+  }, [agendaByDay, nowTick, todayKey]);
 
   const turmasAtivas = turmaMap.length;
   const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? 0;
@@ -462,7 +461,8 @@ export default function Page() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {turmaMap.map((turma) => (
-                    <div key={turma.id} className="group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-klasse-gold/40">
+                    <div key={turma.id} className={`group rounded-[1.5rem] border bg-white p-5 shadow-sm transition-all ${expandedTurmaId === turma.id ? "border-klasse-gold/50 ring-2 ring-klasse-gold/10" : "border-slate-200 hover:border-klasse-gold/40"}`}>
+                    <button type="button" onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)} aria-expanded={expandedTurmaId === turma.id} className="block w-full text-left">
                     <div className="flex items-start justify-between">
                        <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-klasse-gold/10 group-hover:text-klasse-gold transition-colors font-black text-xs">
                           {turma.nome?.split("-")[0]}
@@ -476,13 +476,16 @@ export default function Page() {
                        <p className="mt-1 text-[10px] font-bold text-slate-400 line-clamp-1 italic">
                           {turma.disciplinas.join(" • ")}
                        </p>
-                       <div className="mt-3 flex flex-wrap gap-2">
-                          <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">Presença</Link>
-                          <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-blue-700 hover:bg-blue-100">Notas</Link>
-                          <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-700 hover:bg-amber-100">Plano</Link>
-                       </div>
-                       <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="mt-3 inline-flex text-[10px] font-black uppercase tracking-wide text-klasse-gold hover:underline">Ver horário compartilhado</Link>
+                       <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{expandedTurmaId === turma.id ? "Escolha uma acção" : "Clique para ver as acções"}</p>
                     </div>
+                    </button>
+                    {expandedTurmaId === turma.id && <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4">
+                      <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-emerald-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">Presenças</Link>
+                      <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-blue-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-blue-700 hover:bg-blue-100">Notas</Link>
+                      <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-amber-700 hover:bg-amber-100">Plano de aula</Link>
+                      <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-indigo-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-indigo-700 hover:bg-indigo-100">Material</Link>
+                      <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="col-span-2 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-slate-600 hover:bg-slate-50">Horário compartilhado</Link>
+                    </div>}
                   </div>
                 ))}
               </div>
@@ -511,7 +514,8 @@ export default function Page() {
                     const query = item.turma_id && item.disciplina_id ? `?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}` : "";
                     const content = <><div className="flex items-center gap-4"><div className="flex flex-col items-center"><span className="text-[10px] font-black text-slate-900 leading-none">{item.inicio.split(":")[0]}</span><span className="text-[8px] font-bold text-slate-400 uppercase">{item.inicio.split(":")[1]}</span></div><div className="h-8 w-[2px] bg-slate-100 rounded-full" /><div><p className="text-xs font-black text-slate-900 group-hover:text-klasse-gold transition-colors">{item.disciplina_nome}</p><p className="text-[10px] font-bold text-slate-400">{formatTurmaDisplayName({ turma_nome: item.turma_nome })}{item.sala_nome && ` • Sala ${item.sala_nome}`}</p></div></div><div className="shrink-0 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all"><PencilSquareIcon className="h-4 w-4" /></div></>;
                     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
-                    return item.turma_id && item.disciplina_id ? <div key={idx} className="group rounded-xl py-4 first:pt-0 last:pb-0 hover:bg-slate-50/80"><div className="flex items-center justify-between gap-4 px-2">{content}</div><div className="mt-2 flex flex-wrap gap-2 pl-16 text-[10px] font-black uppercase tracking-wide">{item.status === "em_andamento" ? <>{<button type="button" onClick={() => { setFinalizingKey(key); setFinalizeSummary(""); }} disabled={!item.aula_id} className="text-emerald-700 hover:underline disabled:opacity-50">Finalizar aula</button>}<span className="text-emerald-700">Em andamento</span></> : item.status === "finalizada" ? <span className="text-blue-700">Finalizada</span> : <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="text-amber-700 hover:underline disabled:opacity-50">{startingKey === key ? "A confirmar..." : "Confirmar aula"}</button>}<Link href={professorHref(`/professor/frequencias${query}`)} className="text-emerald-700 hover:underline">Abrir chamada</Link><Link href={professorHref(`/professor/notas${query}`)} className="text-blue-700 hover:underline">Lançar nota</Link><Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}`)} className="text-amber-700 hover:underline">Abrir plano</Link><Link href={professorHref(`/professor/turmas/${item.turma_id}/horario`)} className="text-slate-500 hover:underline">Ver horário</Link></div>{finalizingKey === key && <div className="mx-2 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><textarea value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} placeholder="Resumo breve da aula (opcional)" className="w-full rounded-lg border border-emerald-200 bg-white p-2 text-xs outline-none focus:ring-2 focus:ring-emerald-300" /><div className="mt-2 flex gap-2"><button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">{finalizing ? "A finalizar..." : "Confirmar finalização"}</button><button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-600">Cancelar</button></div></div>}</div> : <div key={idx} className="group py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">{content}</div>;
+                    const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id && aulaAtiva?.disciplina_id === item.disciplina_id && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
+                    return item.turma_id && item.disciplina_id ? <div key={idx} className="group rounded-xl py-4 first:pt-0 last:pb-0 hover:bg-slate-50/80"><div className="flex items-center justify-between gap-4 px-2">{content}</div><div className="mt-2 flex flex-wrap gap-2 pl-16 text-[10px] font-black uppercase tracking-wide">{isCurrentLesson ? <>{item.status === "em_andamento" ? <><button type="button" onClick={() => { setFinalizingKey(key); setFinalizeSummary(""); }} disabled={!item.aula_id} className="text-emerald-700 hover:underline disabled:opacity-50">Sair da sala</button><span className="text-emerald-700">Em andamento</span></> : item.status === "finalizada" ? <span className="text-blue-700">Finalizada</span> : <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="text-amber-700 hover:underline disabled:opacity-50">{startingKey === key ? "A confirmar..." : "Entrar na sala"}</button>}<Link href={professorHref(`/professor/frequencias${query}`)} className="text-emerald-700 hover:underline">Abrir chamada</Link><Link href={professorHref(`/professor/notas${query}`)} className="text-blue-700 hover:underline">Lançar nota</Link><Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}`)} className="text-amber-700 hover:underline">Abrir plano</Link></> : <span className="text-slate-400">Disponível das {item.inicio} às {item.fim}</span>}</div>{finalizingKey === key && <div className="mx-2 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><textarea value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} placeholder="Resumo breve da aula (opcional)" className="w-full rounded-lg border border-emerald-200 bg-white p-2 text-xs outline-none focus:ring-2 focus:ring-emerald-300" /><div className="mt-2 flex gap-2"><button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">{finalizing ? "A finalizar..." : "Confirmar saída"}</button><button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-600">Cancelar</button></div></div>}</div> : <div key={idx} className="group py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">{content}</div>;
                   })
                 )}
              </div>

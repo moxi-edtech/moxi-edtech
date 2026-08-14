@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
+import { isWithinSchoolLessonWindow } from "@/lib/professor/lessonWindow";
 
 const Body = z.object({
   aula_id: z.string().uuid(),
@@ -24,6 +25,12 @@ export async function POST(req: Request) {
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
   const { data: professor } = await supabase.from("professores").select("id").eq("escola_id", escolaId).eq("profile_id", auth.user.id).maybeSingle();
   if (!professor?.id) return NextResponse.json({ ok: false, error: "Professor não encontrado" }, { status: 403 });
+
+  const { data: aula } = await supabase.from("aulas").select("data, inicio_previsto, fim_previsto").eq("id", parsed.data.aula_id).eq("escola_id", escolaId).eq("professor_id", professor.id).maybeSingle();
+  if (!aula) return NextResponse.json({ ok: false, error: "Aula não encontrada" }, { status: 404 });
+  if (!isWithinSchoolLessonWindow(aula.data, aula.inicio_previsto, aula.fim_previsto)) {
+    return NextResponse.json({ ok: false, error: "A aula só pode ser finalizada durante o horário desta disciplina." }, { status: 409 });
+  }
 
   const { data, error } = await supabase.rpc("professor_finalizar_aula", {
     p_escola_id: escolaId,

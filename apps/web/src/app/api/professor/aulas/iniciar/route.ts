@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
+import { isWithinSchoolLessonWindow } from "@/lib/professor/lessonWindow";
 
 const Body = z.object({
   aula_id: z.string().uuid().optional(),
@@ -35,6 +36,30 @@ export async function POST(req: Request) {
     .eq("profile_id", auth.user.id)
     .maybeSingle();
   if (!professor?.id) return NextResponse.json({ ok: false, error: "Professor não encontrado" }, { status: 403 });
+
+  let lessonDate = body.data ?? null;
+  let lessonStart = body.inicio_previsto ?? null;
+  let lessonEnd = body.fim_previsto ?? null;
+  if (body.aula_id) {
+    const { data: aula } = await supabase
+      .from("aulas")
+      .select("data, inicio_previsto, fim_previsto")
+      .eq("id", body.aula_id)
+      .eq("escola_id", escolaId)
+      .eq("professor_id", professor.id)
+      .maybeSingle();
+    if (!aula) return NextResponse.json({ ok: false, error: "Aula não encontrada" }, { status: 404 });
+    lessonDate = aula.data;
+    lessonStart = aula.inicio_previsto;
+    lessonEnd = aula.fim_previsto;
+  } else if (body.slot_id) {
+    const { data: slot } = await supabase.from("horario_slots").select("inicio, fim").eq("id", body.slot_id).eq("escola_id", escolaId).maybeSingle();
+    lessonStart = slot?.inicio ?? lessonStart;
+    lessonEnd = slot?.fim ?? lessonEnd;
+  }
+  if (!isWithinSchoolLessonWindow(lessonDate, lessonStart, lessonEnd)) {
+    return NextResponse.json({ ok: false, error: "A aula só pode ser iniciada durante o horário desta disciplina." }, { status: 409 });
+  }
 
   if (!body.aula_id) {
     if (!body.turma_id || !body.disciplina_id || !body.data) {

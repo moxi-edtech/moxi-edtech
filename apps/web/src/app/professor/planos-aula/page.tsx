@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Send, Save, Pencil } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -11,6 +12,9 @@ type Plan = { id: string; data: string; status: string; tema: string; subtema: s
 const emptyForm = { turma_id: "", disciplina_id: "", data: new Date().toISOString().slice(0, 10), tema: "", subtema: "", objetivos: "", competencias: "", conteudos: "", metodologia: "", recursos: "", atividades: "", avaliacao: "", tarefa_casa: "", observacoes: "", arquivo_url: "" };
 
 export default function PlanosAulaPage() {
+  const searchParams = useSearchParams();
+  const requestedTurmaId = searchParams.get("turma_id") ?? "";
+  const requestedDisciplinaId = searchParams.get("disciplina_id") ?? "";
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [form, setForm] = useState(emptyForm);
@@ -33,7 +37,11 @@ export default function PlanosAulaPage() {
         const key = `${item.turma_id}:${item.disciplina_id}`;
         if (!map.has(key)) map.set(key, { turma_id: item.turma_id, disciplina_id: item.disciplina_id, turma_nome: item.turma_nome ?? "Turma", disciplina_nome: item.disciplina_nome ?? "Disciplina" });
       }
-      setAssignments(Array.from(map.values())); setPlans(planData.items ?? []);
+      const nextAssignments = Array.from(map.values());
+      setAssignments(nextAssignments);
+      setPlans(planData.items ?? []);
+      const requestedAssignment = nextAssignments.find((item) => item.turma_id === requestedTurmaId && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId));
+      if (requestedAssignment) setForm((current) => current.turma_id ? current : { ...current, turma_id: requestedAssignment.turma_id, disciplina_id: requestedAssignment.disciplina_id });
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar os planos."); }
     finally { setLoading(false); }
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
@@ -37,6 +38,9 @@ type Assignment = {
 };
 
 export default function ProfessorMateriaisPage() {
+  const searchParams = useSearchParams();
+  const requestedTurmaId = searchParams.get("turma_id") ?? "";
+  const requestedDisciplinaId = searchParams.get("disciplina_id") ?? "";
   const { success, error: toastError } = useToast();
   const [materiais, setMateriais] = useState<MaterialPedagogico[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -84,7 +88,10 @@ export default function ProfessorMateriaisPage() {
             }
           }
         }
-        setAssignments(Array.from(pairsMap.values()));
+        const nextAssignments = Array.from(pairsMap.values());
+        setAssignments(nextAssignments);
+        const requestedAssignment = nextAssignments.find((item) => item.turma_id === requestedTurmaId && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId));
+        if (requestedAssignment) setForm((current) => current.turma_id ? current : { ...current, turma_id: requestedAssignment.turma_id, disciplina_id: requestedAssignment.disciplina_id });
       }
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Não foi possível carregar os materiais.");
