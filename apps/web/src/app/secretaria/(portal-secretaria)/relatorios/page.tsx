@@ -115,6 +115,12 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               >
                 Abrir Relatório de Propinas
               </a>
+              <a
+                href={`/escola/${escolaId}/secretaria/ponto-professores`}
+                className="px-2.5 py-1 rounded-xl border border-emerald-200 bg-emerald-50/30 text-emerald-700 hover:text-emerald-900 font-semibold"
+              >
+                Ponto dos Professores
+              </a>
             </div>
           </div>
           <form action="" className="flex gap-2 text-sm">
