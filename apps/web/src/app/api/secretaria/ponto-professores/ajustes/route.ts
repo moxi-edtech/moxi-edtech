@@ -24,6 +24,8 @@ export async function POST(req: Request) {
   const { data: aula } = await supabase.from("aulas").select("id, data, professor_id, status, inicio_real, fim_real").eq("id", parsed.data.aula_id).eq("escola_id", escolaId).maybeSingle();
   if (!aula) return NextResponse.json({ ok: false, error: "Aula não encontrada." }, { status: 404 });
   if (!aula.professor_id) return NextResponse.json({ ok: false, error: "A aula não tem professor associado." }, { status: 400 });
+  const { data: fechamento } = await supabase.from("professor_ponto_fechamentos").select("status").eq("escola_id", escolaId).eq("mes", `${aula.data.slice(0, 7)}-01`).maybeSingle();
+  if (fechamento?.status === "fechado") return NextResponse.json({ ok: false, error: "O mês está fechado. Reabra o ponto antes de corrigir esta marcação." }, { status: 409 });
   const before = { inicio_real: aula.inicio_real, fim_real: aula.fim_real, status: aula.status };
   const after = { inicio_real: parsed.data.inicio_real, fim_real: parsed.data.fim_real, status: parsed.data.fim_real ? "finalizada" : parsed.data.inicio_real ? "em_andamento" : "agendada" };
   const { data: updated, error } = await supabase.from("aulas").update({ inicio_real: after.inicio_real, fim_real: after.fim_real, status: after.status, finalizado_por: after.fim_real ? auth.user.id : null }).eq("id", aula.id).eq("escola_id", escolaId).select("id, data, inicio_real, fim_real, status").single();

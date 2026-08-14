@@ -54,6 +54,7 @@ export async function GET(req: Request) {
   if (authz.error) return authz.error;
 
   const { month, from, until } = monthRange(new URL(req.url).searchParams.get("month"));
+  const { data: fechamento } = await supabase.from("professor_ponto_fechamentos").select("*").eq("escola_id", escolaId).eq("mes", `${month}-01`).maybeSingle();
   const [{ data: professors, error: professorsError }, { data: aulas, error: aulasError }] = await Promise.all([
     supabase.from("professores").select("id, nome, nome_completo, profile_id").eq("escola_id", escolaId).order("nome", { ascending: true }).limit(500),
     supabase.from("aulas").select("id, professor_id, data, inicio_previsto, fim_previsto, inicio_real, fim_real, status").eq("escola_id", escolaId).gte("data", from).lt("data", until).not("professor_id", "is", null).order("data", { ascending: true }).limit(5000),
@@ -95,5 +96,5 @@ export async function GET(req: Request) {
     for (const key of ["aulas", "finalizadas", "pendentes", "atrasos", "saidas_antecipadas", "horas_previstas", "horas_realizadas", "minutos_atraso", "minutos_saida_antecipada"] as const) acc[key] += item[key];
     return acc;
   }, { aulas: 0, finalizadas: 0, pendentes: 0, atrasos: 0, saidas_antecipadas: 0, horas_previstas: 0, horas_realizadas: 0, minutos_atraso: 0, minutos_saida_antecipada: 0 });
-  return NextResponse.json({ ok: true, month, from, until, items, aulas: aulaRows, totals: { ...totals, previstas: formatMinutes(totals.horas_previstas), realizadas: formatMinutes(totals.horas_realizadas) } });
+  return NextResponse.json({ ok: true, month, from, until, fechamento: fechamento ?? { status: "aberto", mes: `${month}-01` }, items, aulas: aulaRows, totals: { ...totals, previstas: formatMinutes(totals.horas_previstas), realizadas: formatMinutes(totals.horas_realizadas) } });
 }
