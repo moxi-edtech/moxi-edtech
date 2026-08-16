@@ -8,8 +8,8 @@ import {
   Download, ArrowUpRight, Ban, Wallet, MessageCircle, X, Loader2
 } from 'lucide-react';
 import ModalExtratoAluno from './modal-extrato-aluno';
-import { useParams, useSearchParams } from 'next/navigation';
-import { buildPortalHref } from '@/lib/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
+import { buildContextualPortalHref } from '@/lib/navigation';
 import { formatTurmaDisplayName } from '@/utils/formatters';
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
@@ -91,6 +91,7 @@ const TurmaSkeleton = () => (
 const TurmasAlunosFinanceiro: React.FC = () => {
   const params = useParams();
   const escolaParam = params?.id as string;
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const anoLetivoId = searchParams?.get('ano_letivo_id') ?? '';
   
@@ -112,6 +113,8 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   // Hooks
   const { success, error, warning } = useToast();
   const confirm = useConfirm();
+  const contextualPortalHref = (path: string) =>
+    buildContextualPortalHref(escolaParam, path, pathname);
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -364,21 +367,18 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       >
         <button
           type="button"
-          onClick={() => {
-            window.location.assign(
-              new URL("../financeiro/radar", window.location.href).toString()
-            );
-          }}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          onClick={() => setFiltroStatus('inadimplentes')}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filtroStatus === 'inadimplentes' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
         >
           Inadimplência
         </button>
-        <span
-          aria-current="page"
-          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
+        <button
+          type="button"
+          onClick={() => setFiltroStatus('todos')}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filtroStatus === 'todos' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
         >
           Alunos e turmas
-        </span>
+        </button>
       </nav>
 
       {/* RESUMO GERAL EXECUTIVO (KPIs Globais) */}
@@ -591,7 +591,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   </div>
                                   <div>
                                     <Link
-                                      href={buildPortalHref(escolaParam, `/secretaria/alunos/${aluno.id}`)}
+                                      href={contextualPortalHref(`/secretaria/alunos/${aluno.id}`)}
                                       onClick={(e) => e.stopPropagation()}
                                       className="font-bold text-slate-700 hover:text-[#1F6B3B] hover:underline"
                                     >
@@ -640,7 +640,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   </button>
                                   {/* Botão Perfil: Slate (Neutro) */}
                                   <Link
-                                    href={buildPortalHref(escolaParam, `/secretaria/alunos/${aluno.id}`)}
+                                    href={contextualPortalHref(`/secretaria/alunos/${aluno.id}`)}
                                     title="Ver perfil completo"
                                     className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
                                   >

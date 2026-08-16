@@ -255,9 +255,9 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                           {item.tendencia && (
                             <>
                               <span className="text-slate-200">·</span>
-                              {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-klasse-gold-700" title="Piorando" />}
-                              {item.tendencia === "estavel" && <Minus className="h-3 w-3 text-slate-400" title="Estável" />}
-                              {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-klasse-green" title="Melhorando" />}
+                              {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-klasse-gold-700" aria-label="Piorando" />}
+                              {item.tendencia === "estavel" && <Minus className="h-3 w-3 text-slate-400" aria-label="Estável" />}
+                              {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-klasse-green" aria-label="Melhorando" />}
                             </>
                           )}
                         </div>
