@@ -176,7 +176,7 @@ function StatusPill({ status }: { status: string | null }) {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-klasse-gold-50 text-klasse-gold-700">Pendente</span>;
   }
   if (s === "failed" || s === "falhado") {
-    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">Falhado</span>;
+    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-klasse-gold-50 text-klasse-gold-700">Falhado</span>;
   }
   return <span className="text-xs text-slate-400">{status ? status[0].toUpperCase() + status.slice(1) : "—"}</span>;
 }
@@ -313,9 +313,9 @@ export default function EscolaAdminDashboardContent({
           <div className="mt-2 flex items-center gap-2">
             <p className={`${isOperacoes ? "text-[13px]" : "text-sm"} font-medium text-slate-500`}>{saudacao}</p>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#10b981]">Live</span>
+              <div className="flex items-center gap-1.5 rounded-full border border-klasse-green-100 bg-klasse-green-50 px-2 py-0.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-klasse-green animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-klasse-green">Live</span>
               </div>
               <button
                 onClick={handleRefresh}
@@ -390,9 +390,9 @@ export default function EscolaAdminDashboardContent({
                       : "sem previsão definida"}
                   </span>
                   {isAcimaDaMeta && (
-                    <div className={`flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-100 animate-in fade-in slide-in-from-left-2 ${isOperacoes ? "rounded-md" : "rounded-full"}`}>
-                       <TrendingUp className="w-3 h-3 text-emerald-600" />
-                       <span className="text-[10px] font-black text-emerald-600">+{valorAcimaMeta}% ACIMA DA META</span>
+                    <div className={`flex items-center gap-1 px-2 py-0.5 bg-klasse-green-50 border border-klasse-green-100 animate-in fade-in slide-in-from-left-2 ${isOperacoes ? "rounded-md" : "rounded-full"}`}>
+                       <TrendingUp className="w-3 h-3 text-klasse-green" />
+                       <span className="text-[10px] font-black text-klasse-green">+{valorAcimaMeta}% ACIMA DA META</span>
                     </div>
                   )}
                 </div>
@@ -407,9 +407,9 @@ export default function EscolaAdminDashboardContent({
                    </div>
                  </div>
                  {isAcimaDaMeta && (
-                   <div className="flex items-center gap-2 p-2 rounded-xl bg-amber-50 border border-amber-100 max-w-xs">
-                     <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                     <p className="text-[10px] font-medium text-amber-800 leading-tight">
+                   <div className="flex items-center gap-2 p-2 rounded-xl bg-klasse-gold-50 border border-klasse-gold-100 max-w-xs">
+                     <AlertCircle className="w-3.5 h-3.5 text-klasse-gold-700 flex-shrink-0" />
+                     <p className="text-[10px] font-medium text-klasse-gold-700 leading-tight">
                        Recebimentos incluem propinas de meses anteriores ou adiantamentos.
                      </p>
                    </div>
@@ -419,14 +419,14 @@ export default function EscolaAdminDashboardContent({
 
             <div className="text-right flex flex-col items-end flex-shrink-0">
               <div className="relative">
-                <p className={`${isOperacoes ? "text-3xl" : "text-4xl"} font-black leading-none tracking-tighter ${isAcimaDaMeta ? "text-emerald-600" : "text-klasse-green"}`}>
+                <p className={`${isOperacoes ? "text-3xl" : "text-4xl"} font-black leading-none tracking-tighter text-klasse-green`}>
                   {displayPercentualReceita}%
                 </p>
                 {isAcimaDaMeta && (
-                  <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ${isOperacoes ? "" : "shadow-[0_0_8px_rgba(16,185,129,0.5)]"}`} />
+                  <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-klasse-green" />
                 )}
               </div>
-              <p className="text-[10px] font-black text-emerald-600 uppercase mt-2 tracking-widest">Realizado Total</p>
+              <p className="text-[10px] font-black text-klasse-green uppercase mt-2 tracking-widest">Realizado Total</p>
             </div>
           </div>
 
@@ -440,11 +440,11 @@ export default function EscolaAdminDashboardContent({
                   hasMovimentoReceita
                     ? isAcimaDaMeta 
                       ? isOperacoes
-                        ? "bg-emerald-600"
-                        : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                        ? "bg-klasse-green"
+                        : "bg-klasse-green"
                       : isOperacoes
                         ? "bg-klasse-green"
-                        : "bg-gradient-to-r from-klasse-green to-emerald-400"
+                        : "bg-klasse-green"
                     : "bg-slate-300"
                 }`}
               />
@@ -488,7 +488,7 @@ export default function EscolaAdminDashboardContent({
       {/* ── 6. FINANCE CARDS ─────────────────────────────────────────────────── */}
       <section className="grid gap-6 lg:grid-cols-2">
         <FinanceCard
-          iconBg="bg-emerald-50 text-emerald-700"
+          iconBg="bg-klasse-green-50 text-klasse-green"
           icon={<Wallet className="h-4 w-4" />}
           title="Fluxo de Caixa"
           subtitle="Entradas confirmadas hoje"

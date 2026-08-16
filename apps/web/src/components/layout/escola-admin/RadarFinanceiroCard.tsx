@@ -75,19 +75,19 @@ function formatFreshness(dateString: string): string {
 
 const SEVERITY_CONFIG = {
   critico: {
-    avatar: "bg-rose-100 text-rose-700",
+    avatar: "bg-klasse-gold-100 text-klasse-gold-700",
     DayIcon: TrendingUp,
-    dayColor: "text-rose-600",
-    pillBg: "bg-rose-50 text-rose-600 border-rose-100",
-    dot: "bg-rose-500",
+    dayColor: "text-klasse-gold-700",
+    pillBg: "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200",
+    dot: "bg-klasse-gold",
     label: "Crítico",
   },
   atencao: {
-    avatar: "bg-amber-100 text-amber-700",
+    avatar: "bg-klasse-gold-50 text-klasse-gold-700",
     DayIcon: Minus,
-    dayColor: "text-amber-600",
-    pillBg: "bg-amber-50 text-amber-600 border-amber-100",
-    dot: "bg-amber-500",
+    dayColor: "text-klasse-gold-600",
+    pillBg: "bg-klasse-gold-50 text-klasse-gold-600 border-klasse-gold-100",
+    dot: "bg-klasse-gold-400",
     label: "Atenção",
   },
   recente: {
@@ -124,7 +124,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
       <div className="p-5 border-b border-slate-100 flex flex-col gap-3">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-klasse-gold-50 text-klasse-gold-700">
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
@@ -175,8 +175,8 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
       <div className="flex-1 flex flex-col">
         {totalAlunos === 0 ? (
           /* Celebratory empty state — §4 Graciosidade */
-          <div className="flex flex-col items-center justify-center flex-1 min-h-[220px] p-6 text-center border-t border-emerald-50 bg-emerald-50/20">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">
+          <div className="flex flex-col items-center justify-center flex-1 min-h-[220px] p-6 text-center border-t border-klasse-green-100 bg-klasse-green-50/30">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-klasse-green-50 text-klasse-green border border-klasse-green-100 shadow-sm">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 mb-1">Inadimplência Zero</h4>
@@ -185,7 +185,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
             </p>
             <Link
               href={linkHref}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 transition-colors flex items-center gap-1 group"
+              className="text-xs font-bold text-klasse-green hover:text-klasse-green-700 transition-colors flex items-center gap-1 group"
             >
               Ver histórico de cobranças
               <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -223,7 +223,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                         {initials}
                       </div>
                       <div className="min-w-0 flex flex-col gap-0.5">
-                        <p className="text-sm font-bold text-slate-900 truncate group-hover:text-rose-600 transition-colors">
+                        <p className="text-sm font-bold text-slate-900 truncate group-hover:text-klasse-green transition-colors">
                           {nome}
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -244,9 +244,9 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                           {item.tendencia && (
                             <>
                               <span className="text-slate-200">·</span>
-                              {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-rose-500" title="Piorando" />}
+                              {item.tendencia === "piorando" && <ArrowUp className="h-3 w-3 text-klasse-gold-700" title="Piorando" />}
                               {item.tendencia === "estavel" && <Minus className="h-3 w-3 text-slate-400" title="Estável" />}
-                              {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-emerald-500" title="Melhorando" />}
+                              {item.tendencia === "melhorando" && <ArrowDown className="h-3 w-3 text-klasse-green" title="Melhorando" />}
                             </>
                           )}
                         </div>
@@ -254,7 +254,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                     </div>
 
                     <div className="flex flex-col sm:items-end pl-12 sm:pl-0 shrink-0">
-                      <p className="text-sm font-black text-rose-600">
+                      <p className="text-sm font-black text-klasse-gold-700">
                         {moeda.format(Number(item.valor_em_atraso ?? 0))}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">

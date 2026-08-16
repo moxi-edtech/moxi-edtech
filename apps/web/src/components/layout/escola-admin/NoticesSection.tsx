@@ -51,39 +51,39 @@ const TIPO_CONFIG: Record<string, {
   pulse?: boolean;
 }> = {
   urgente: {
-    borderColor: "border-l-rose-600",
-    bgContainer: "bg-rose-50",
-    iconColor: "text-rose-600",
-    iconBg: "bg-rose-100",
+    borderColor: "border-l-klasse-gold",
+    bgContainer: "bg-klasse-gold-50",
+    iconColor: "text-klasse-gold-700",
+    iconBg: "bg-klasse-gold-100",
     Icon: Megaphone,
     pulse: true,
   },
   financeiro: {
-    borderColor: "border-l-klasse-gold",
+    borderColor: "border-l-slate-300",
     bgContainer: "bg-white",
-    iconColor: "text-klasse-gold",
-    iconBg: "bg-klasse-gold/10",
+    iconColor: "text-slate-500",
+    iconBg: "bg-slate-100",
     Icon: Wallet,
   },
   academico: {
-    borderColor: "border-l-blue-500",
+    borderColor: "border-l-slate-300",
     bgContainer: "bg-white",
-    iconColor: "text-blue-600",
-    iconBg: "bg-blue-50",
+    iconColor: "text-slate-500",
+    iconBg: "bg-slate-100",
     Icon: GraduationCap,
   },
   sistema: {
-    borderColor: "border-l-slate-400",
+    borderColor: "border-l-slate-300",
     bgContainer: "bg-white",
     iconColor: "text-slate-600",
     iconBg: "bg-slate-100",
     Icon: Settings,
   },
   geral: {
-    borderColor: "border-l-indigo-500",
+    borderColor: "border-l-slate-300",
     bgContainer: "bg-white",
-    iconColor: "text-indigo-600",
-    iconBg: "bg-indigo-50",
+    iconColor: "text-slate-500",
+    iconBg: "bg-slate-100",
     Icon: Megaphone,
   },
 };
@@ -140,17 +140,17 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
       <header className="mb-5 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`bg-indigo-50 p-2 text-indigo-600 ${
+            className={`bg-klasse-green-50 p-2 text-klasse-green ${
               isOperacoes ? "rounded-lg" : "rounded-xl"
             }`}
           >
-            <Megaphone className="h-5 w-5" />
+            <Megaphone className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="truncate text-base font-bold text-slate-900">Avisos recentes</h3>
               {unreadCount > 0 && (
-                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                <span className="inline-flex items-center rounded-full bg-klasse-green-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-klasse-green">
                   {unreadCount} {unreadCount === 1 ? "novo" : "novos"}
                 </span>
               )}
@@ -161,7 +161,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
 
         <Link
           href={hrefAll}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-klasse-green-500 hover:bg-klasse-green-50 transition-colors"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-klasse-green hover:bg-klasse-green-50 transition-colors"
         >
           Ver tudo <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -176,7 +176,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
           }`}
         >
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-            <Megaphone className="h-6 w-6" />
+            <Megaphone className="h-6 w-6" aria-hidden="true" />
           </div>
           <h4 className="text-sm font-semibold text-slate-900">Sem avisos por enquanto</h4>
           <p className="mx-auto mt-1 max-w-[220px] text-xs text-slate-500">
@@ -226,8 +226,8 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                       <Icon className="h-4 w-4" />
                       {config.pulse && !n.lido && (
                         <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-klasse-gold-400 opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-klasse-gold" />
                         </span>
                       )}
                     </div>
