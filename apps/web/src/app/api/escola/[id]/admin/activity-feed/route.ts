@@ -39,6 +39,17 @@ function encodeCursor(item: Pick<ActivityFeedItem, "occurred_at" | "id">): strin
   return Buffer.from(`${item.occurred_at}|${item.id}`).toString("base64");
 }
 
+function normalizeActivityItem(row: Record<string, unknown>): ActivityFeedItem {
+  const payload = (row.payload && typeof row.payload === "object" ? row.payload : {}) as Record<string, unknown>;
+  return {
+    ...(row as unknown as ActivityFeedItem),
+    priority: (row.priority ?? payload.priority ?? "informativa") as ActivityFeedItem["priority"],
+    action_label: (row.action_label ?? payload.action_label ?? null) as string | null,
+    action_url: (row.action_url ?? payload.action_url ?? null) as string | null,
+    payload,
+  };
+}
+
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: requestedEscolaId } = await context.params;
 
@@ -78,7 +89,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     let query = (supabase as any)
       .from("vw_admin_activity_feed_enriched")
       .select(
-        "id, escola_id, occurred_at, event_family, event_type, actor_name, headline, subline, amount_kz, turma_nome, aluno_nome, priority, action_label, action_url, payload"
+        "id, escola_id, occurred_at, event_family, event_type, actor_name, headline, subline, amount_kz, turma_nome, aluno_nome, payload"
       )
       .eq("escola_id", resolvedEscolaId)
       .order("occurred_at", { ascending: false })
@@ -101,7 +112,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       return jsonNoStore({ ok: false, error: "Falha ao carregar feed" }, { status: 500 });
     }
 
-    const rows = (data ?? []) as ActivityFeedItem[];
+    const rows = (data ?? []).map((row: Record<string, unknown>) => normalizeActivityItem(row));
     const hasNextPage = rows.length > limit;
     const items = hasNextPage ? rows.slice(0, limit) : rows;
     const nextCursor = hasNextPage ? encodeCursor(items[items.length - 1]) : null;
