@@ -7,15 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import type { Aviso } from "./dashboard.types";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/Drawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -122,7 +113,7 @@ const itemVariants = {
  * indicador de não-lidos, CTAs contextuais e empty state orientador.
  */
 export default function NoticesSection({ escolaId, notices = [], portalBase = "admin" }: Props) {
-  const [selectedNotice, setSelectedNotice] = useState<Aviso | null>(null);
+  const [expandedNoticeId, setExpandedNoticeId] = useState<string | null>(null);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const hrefAll = escolaParam ? buildPortalHref(escolaParam, `/${portalBase}/avisos`) : "#";
@@ -225,16 +216,17 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                 <motion.li
                   key={n.id}
                   variants={itemVariants}
-                  className={`group relative flex min-h-[56px] flex-col justify-center gap-2 overflow-hidden p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4 ${baseBg} ${
+                  className={`group relative flex min-h-[56px] flex-wrap justify-center gap-2 overflow-hidden p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4 ${baseBg} ${
                     isOperacoes ? "rounded-lg" : "rounded-xl"
                   }`}
                 >
                   {/* Icon + Content */}
                   <button
                     type="button"
-                    onClick={() => setSelectedNotice(n)}
+                    onClick={() => setExpandedNoticeId((current) => current === n.id ? null : n.id)}
                     className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2"
                     aria-label={`Abrir aviso: ${n.titulo}`}
+                    aria-expanded={expandedNoticeId === n.id}
                   >
                     <div
                       className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor}`}
@@ -279,6 +271,17 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                       </Link>
                     </div>
                   )}
+
+                  {expandedNoticeId === n.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="basis-full border-t border-slate-100 pt-3 text-xs leading-5 text-slate-600"
+                    >
+                      <p>{n.resumo || "Este aviso não possui detalhes adicionais."}</p>
+                      {n.autor && <p className="mt-1 text-slate-400">Publicado por {n.autor}</p>}
+                    </motion.div>
+                  )}
                 </motion.li>
               );
             })}
@@ -286,35 +289,6 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
         </motion.ul>
       )}
 
-      <Drawer open={selectedNotice !== null} onOpenChange={(open) => !open && setSelectedNotice(null)}>
-        <DrawerContent className="max-h-[90vh]">
-          {selectedNotice && (
-            <>
-              <DrawerHeader className="border-b border-slate-100 text-left">
-                <DrawerTitle className="text-xl font-bold text-slate-900">{selectedNotice.titulo}</DrawerTitle>
-                <DrawerDescription>
-                  {selectedNotice.autor ? `${selectedNotice.autor} · ` : ""}{formatRelativeTime(selectedNotice.dataISO)}
-                </DrawerDescription>
-              </DrawerHeader>
-              <div className="space-y-4 overflow-y-auto p-5">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  <span className={`h-2 w-2 rounded-full ${selectedNotice.tipo === "urgente" ? "bg-klasse-gold" : "bg-klasse-green"}`} />
-                  {selectedNotice.tipo || "geral"}
-                </div>
-                <p className="text-sm leading-6 text-slate-700">{selectedNotice.resumo || "Este aviso não possui detalhes adicionais."}</p>
-              </div>
-              <DrawerFooter className="border-t border-slate-100 sm:flex-row sm:justify-between">
-                <DrawerClose className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Fechar</DrawerClose>
-                {selectedNotice.action_label && selectedNotice.action_href && (
-                  <Link href={selectedNotice.action_href} className="rounded-lg bg-klasse-green px-4 py-2 text-center text-sm font-bold text-white hover:bg-klasse-green-700">
-                    {selectedNotice.action_label}
-                  </Link>
-                )}
-              </DrawerFooter>
-            </>
-          )}
-        </DrawerContent>
-      </Drawer>
     </section>
   );
 }

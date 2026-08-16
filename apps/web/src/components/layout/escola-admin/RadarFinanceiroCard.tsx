@@ -15,15 +15,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { InadimplenciaTopRow } from "./dashboard.types";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/Drawer";
 
 const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" });
 
@@ -113,7 +104,7 @@ const SEVERITY_CONFIG = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, lastUpdated }: RadarFinanceiroCardProps) {
-  const [selectedItem, setSelectedItem] = useState<InadimplenciaTopRow | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const contextualLinkHref = isOperacoes
     ? linkHref.replace("/financeiro/radar", "/operacoes/turmas-alunos")
     : linkHref;
@@ -230,13 +221,14 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3.5 hover:bg-slate-50/50 transition-colors"
+                    className="group flex flex-col flex-wrap sm:flex-row sm:items-center justify-between gap-2 px-5 py-3.5 hover:bg-slate-50/50 transition-colors"
                   >
                     <button
                       type="button"
-                      onClick={() => setSelectedItem(item)}
+                      onClick={() => setExpandedItemId((current) => current === item.aluno_id ? null : item.aluno_id)}
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2"
                       aria-label={`Ver detalhes da dívida de ${nome}`}
+                      aria-expanded={expandedItemId === item.aluno_id}
                     >
                       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ${cfg.avatar}`}>
                         {initials}
@@ -274,9 +266,10 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
 
                     <button
                       type="button"
-                      onClick={() => setSelectedItem(item)}
+                      onClick={() => setExpandedItemId((current) => current === item.aluno_id ? null : item.aluno_id)}
                       className="flex shrink-0 flex-col rounded-lg pl-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2 sm:items-end sm:pl-0"
                       aria-label={`Ver detalhes da dívida de ${nome}`}
+                      aria-expanded={expandedItemId === item.aluno_id}
                     >
                       <p className="text-sm font-black text-red-600">
                         {moeda.format(Number(item.valor_em_atraso ?? 0))}
@@ -292,6 +285,18 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                         </p>
                       )}
                     </button>
+
+                    {expandedItemId === item.aluno_id && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="basis-full ml-12 grid grid-cols-2 gap-x-5 gap-y-2 border-t border-slate-100 pt-3 text-xs sm:basis-full sm:ml-12"
+                      >
+                        <div><span className="text-slate-400">Dias em atraso</span><p className="font-bold text-slate-700">{item.dias_em_atraso}</p></div>
+                        <div><span className="text-slate-400">Títulos em atraso</span><p className="font-bold text-slate-700">{item.titulos_em_atraso ?? "—"}</p></div>
+                        <div className="col-span-2"><span className="text-slate-400">Último pagamento</span><p className="font-bold text-slate-700">{item.ultimo_pagamento_data ? formatRelativeTime(item.ultimo_pagamento_data) : "Nenhum pagamento registado"}</p></div>
+                      </motion.div>
+                    )}
                   </motion.li>
                 );
               })}
@@ -322,35 +327,6 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
         </div>
       )}
 
-      <Drawer open={selectedItem !== null} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DrawerContent className="max-h-[90vh]">
-          {selectedItem && (
-            <>
-              <DrawerHeader className="border-b border-slate-100 text-left">
-                <DrawerTitle className="text-xl font-bold text-slate-900">Detalhes da dívida</DrawerTitle>
-                <DrawerDescription>
-                  {selectedItem.aluno_nome || "Aluno"} · {[selectedItem.classe_nome, selectedItem.turma_nome].filter(Boolean).join(" – ") || "Turma não informada"}
-                </DrawerDescription>
-              </DrawerHeader>
-              <div className="space-y-5 overflow-y-auto p-5">
-                <div className="rounded-xl bg-red-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Valor em atraso</p>
-                  <p className="mt-1 text-2xl font-black text-red-700">{moeda.format(Number(selectedItem.valor_em_atraso ?? 0))}</p>
-                </div>
-                <dl className="grid grid-cols-2 gap-4 text-sm">
-                  <div><dt className="text-slate-500">Dias em atraso</dt><dd className="mt-1 font-bold text-slate-900">{selectedItem.dias_em_atraso}</dd></div>
-                  <div><dt className="text-slate-500">Títulos em atraso</dt><dd className="mt-1 font-bold text-slate-900">{selectedItem.titulos_em_atraso ?? "—"}</dd></div>
-                  <div className="col-span-2"><dt className="text-slate-500">Último pagamento</dt><dd className="mt-1 font-bold text-slate-900">{selectedItem.ultimo_pagamento_data ? formatRelativeTime(selectedItem.ultimo_pagamento_data) : "Nenhum pagamento registado"}</dd></div>
-                </dl>
-              </div>
-              <DrawerFooter className="border-t border-slate-100 sm:flex-row sm:justify-between">
-                <DrawerClose className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Fechar</DrawerClose>
-                <Link href={contextualLinkHref} className="rounded-lg bg-klasse-green px-4 py-2 text-center text-sm font-bold text-white hover:bg-klasse-green-700">Abrir financeiro</Link>
-              </DrawerFooter>
-            </>
-          )}
-        </DrawerContent>
-      </Drawer>
     </div>
   );
 }
