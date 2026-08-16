@@ -26,7 +26,26 @@ export type OperationalSnapshot = {
   primeiraTurmaSemHorarioPublicadoId?: string | null;
 };
 
-export type Aviso  = { id: string; titulo: string; dataISO: string };
+export type Aviso = {
+  id: string;
+  titulo: string;
+  dataISO: string;
+  /** Categorização do aviso para ícone e cor */
+  tipo?: 'geral' | 'financeiro' | 'academico' | 'sistema' | 'urgente';
+  /** Nível de prioridade — avisos 'alta' e 'urgente' aparecem primeiro */
+  prioridade?: 'alta' | 'normal' | 'baixa';
+  /** Resumo curto (1-2 linhas) — exibido no card */
+  resumo?: string;
+  /** Se o utilizador já visualizou o aviso */
+  lido?: boolean;
+  /** Label de acção contextual (ex: "Ver detalhes", "Resolver") */
+  action_label?: string;
+  /** Href de acção — ao clicar no CTA */
+  action_href?: string;
+  /** Nome de quem publicou o aviso */
+  autor?: string;
+};
+
 export type Evento = { id: string; titulo: string; dataISO: string };
 
 export type InadimplenciaTopRow = {
@@ -34,6 +53,16 @@ export type InadimplenciaTopRow = {
   aluno_nome:      string;
   valor_em_atraso: number;
   dias_em_atraso:  number;
+  /** Turma do aluno — para contexto rápido */
+  turma_nome?:     string;
+  /** Classe do aluno */
+  classe_nome?:    string;
+  /** Quantos títulos estão em atraso */
+  titulos_em_atraso?: number;
+  /** Data do último pagamento registado */
+  ultimo_pagamento_data?: string;
+  /** Tendência vs período anterior */
+  tendencia?: 'piorando' | 'estavel' | 'melhorando';
 };
 
 // aluno_nome required — API must JOIN alunos table

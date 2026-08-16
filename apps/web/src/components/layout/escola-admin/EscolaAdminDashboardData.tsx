@@ -23,6 +23,8 @@ import type {
 type AvisoRow = {
   id: string;
   titulo: string | null;
+  resumo: string | null;
+  origem: string | null;
   created_at: string | null;
 };
 
@@ -68,6 +70,15 @@ function isEstadoVital(value: unknown): value is EstadoVital {
 
 const hasComponentes = (config?: { componentes?: { code: string }[] }) =>
   Array.isArray(config?.componentes) && config.componentes.length > 0;
+
+function resolveAvisoTipo(origem: string | null): Aviso["tipo"] {
+  const value = origem?.toLowerCase() ?? "";
+  if (value.includes("urg") || value.includes("critical")) return "urgente";
+  if (value.includes("financ") || value.includes("pagamento")) return "financeiro";
+  if (value.includes("acad") || value.includes("nota") || value.includes("frequ")) return "academico";
+  if (value.includes("sistema") || value.includes("manuten")) return "sistema";
+  return "geral";
+}
 
 /** "2024/2025" from the active letivo year, or current/next calendar years. */
 function deriveAnoLetivo(anoAtivo?: number | null): string {
@@ -312,7 +323,7 @@ export default async function EscolaAdminDashboardData({
       ),
 
       s.from("avisos")
-        .select("id, titulo, created_at")
+        .select("id, titulo, resumo, origem, created_at")
         .eq("escola_id", validId)
         .order("created_at", { ascending: false })
         .limit(5),
@@ -533,6 +544,8 @@ export default async function EscolaAdminDashboardData({
       id: aviso.id,
       titulo: aviso.titulo?.trim() || "Comunicado",
       dataISO: aviso.created_at || new Date().toISOString(),
+      resumo: aviso.resumo?.trim() || undefined,
+      tipo: resolveAvisoTipo(aviso.origem),
     }));
 
     const whatsappProvider = whatsappProviderRes?.data

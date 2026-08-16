@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowRight, Wallet, TrendingUp, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
 import KpiSection      from "./KpiSection";
@@ -15,6 +15,7 @@ import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
 import OperationalFocusSection from "./OperationalFocusSection";
 import { EstadoVitalBanner } from "./EstadoVitalBanner";
+import RadarFinanceiroCard from "./RadarFinanceiroCard";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -178,14 +179,6 @@ function StatusPill({ status }: { status: string | null }) {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">Falhado</span>;
   }
   return <span className="text-xs text-slate-400">{status ? status[0].toUpperCase() + status.slice(1) : "—"}</span>;
-}
-
-// ─── Inadimplência severity indicator ────────────────────────────────────────
-
-function DiasAtraso({ dias }: { dias: number }) {
-  if (dias >= 60) return <TrendingUp   className="w-3.5 h-3.5 text-rose-500" />;
-  if (dias >= 30) return <Minus        className="w-3.5 h-3.5 text-klasse-gold-500" />;
-  return               <TrendingDown  className="w-3.5 h-3.5 text-slate-400" />;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -541,56 +534,11 @@ export default function EscolaAdminDashboardContent({
           </AnimatePresence>
         </FinanceCard>
 
-        <FinanceCard
-          iconBg="bg-rose-50 text-rose-600"
-          icon={<AlertCircle className="h-4 w-4" />}
-          title="Radar Financeiro"
-          subtitle="Alertas de inadimplência"
+        <RadarFinanceiroCard
+          items={inadimplenciaTop}
           linkHref={radarFinanceiroHref}
-          linkLabel="Ver todos"
           isOperacoes={isOperacoes}
-        >
-          <AnimatePresence mode="popLayout">
-            {inadimplenciaTop.length === 0 ? (
-              <div className="py-8">
-                <EstadoVazio tipo="atrasos.nenhum" />
-              </div>
-            ) : (
-              inadimplenciaTop.map((row, idx) => {
-                const nome = row.aluno_nome?.trim() || "Aluno";
-                const iniciais = nome.charAt(0).toUpperCase();
-                return (
-                  <motion.div
-                    key={row.aluno_id}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="flex items-center justify-between gap-3 py-2.5 group/row transition-colors hover:bg-slate-50/50"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-[11px] font-black flex-shrink-0">
-                        {iniciais}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate group-hover/row:text-rose-600 transition-colors">{nome}</p>
-                        <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 uppercase tracking-tighter">
-                          <DiasAtraso dias={row.dias_em_atraso} />
-                          <span>{row.dias_em_atraso ? `${row.dias_em_atraso} DIAS DE ATRASO` : "—"}</span>
-                        </div>
-                      </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-black text-rose-600">
-                        {mounted ? moeda.format(Number(row.valor_em_atraso ?? 0)) : "—"}
-                      </p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Dívida Total</p>
-                    </div>
-                  </div>
-                  </motion.div>
-                );
-              })
-            )}
-          </AnimatePresence>
-        </FinanceCard>
+        />
       </section>
 
       {/* ── 7. BOTTOM GRID ───────────────────────────────────────────────────── */}
@@ -601,7 +549,7 @@ export default function EscolaAdminDashboardContent({
               <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
             </motion.div>
             <motion.div variants={itemVariants}>
-              <NoticesSection notices={notices} portalBase={portalBase} />
+              <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
             </motion.div>
           </div>
           <div className="space-y-6">
@@ -622,7 +570,7 @@ export default function EscolaAdminDashboardContent({
               <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
             </motion.div>
             <motion.div variants={itemVariants}>
-              <NoticesSection notices={notices} portalBase={portalBase} />
+              <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
             </motion.div>
           </div>
           <div className="space-y-8">
