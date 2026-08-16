@@ -33,6 +33,12 @@ export interface ProgressaoBalcao {
   classe_destino: number | null;
   turma_origem_id: string | null;
   mensagem: string;
+  orientacao?: {
+    titulo: string;
+    mensagem: string;
+    proximo_passo: string;
+    acoes: Array<{ id: string; label: string; href: string; prioridade: "principal" | "secundaria" }>;
+  } | null;
 }
 
 export interface RematriculaResult {

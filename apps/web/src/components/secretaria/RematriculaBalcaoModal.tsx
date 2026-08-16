@@ -418,8 +418,27 @@ function StepAcademico({
       {/* Turma selector */}
       {progressao && (
         <div className={`rounded-xl border p-3 text-sm ${progressao.estado === "reprovado" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-sky-200 bg-sky-50 text-sky-800"}`}>
-          <strong>{progressao.estado === "reprovado" ? "Retenção académica" : "Progressão académica"}</strong>
-          <p className="mt-1 text-xs">{progressao.mensagem}</p>
+          <strong>{progressao.orientacao?.titulo ?? (progressao.estado === "reprovado" ? "Retenção académica" : "Progressão académica")}</strong>
+          <p className="mt-1 text-xs">{progressao.orientacao?.mensagem ?? progressao.mensagem}</p>
+          {progressao.orientacao?.proximo_passo && (
+            <p className="mt-2 text-xs font-semibold">Próximo passo: {progressao.orientacao.proximo_passo}</p>
+          )}
+          {progressao.orientacao?.acoes?.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {progressao.orientacao.acoes.map((acao) => (
+                <a
+                  key={acao.id}
+                  href={acao.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold ${acao.prioridade === "principal" ? "bg-sky-700 text-white hover:bg-sky-800" : "border border-sky-200 bg-white text-sky-700 hover:bg-sky-50"}`}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {acao.label}
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
 

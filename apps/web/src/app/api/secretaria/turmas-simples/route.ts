@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
 
 export const dynamic = 'force-dynamic';
 
@@ -139,9 +140,7 @@ export async function GET(req: Request) {
 
     let items: any[] = turmasView || [];
 
-    // Rematrícula no balcão deve ser progressiva. Ausência de notas não é
-    // reprovação: só um resultado final explicitamente reprovado mantém o
-    // aluno na mesma classe.
+    // Rematrícula no balcão consome a mesma decisão global da RAA.
     let progressao: {
       aplicada: boolean;
       modo: 'promocao' | 'retencao' | 'indefinida';
@@ -150,12 +149,18 @@ export async function GET(req: Request) {
       classe_destino: number | null;
       turma_origem_id: string | null;
       mensagem: string;
+      orientacao?: {
+        titulo: string;
+        mensagem: string;
+        proximo_passo: string;
+        acoes: Array<{ id: string; label: string; href: string; prioridade: 'principal' | 'secundaria' }>;
+      } | null;
     } | null = null;
 
     if (matriculaId && alunoId && sessionId && anoLetivo && items.length > 0) {
       const { data: origem } = await supabase
         .from('matriculas')
-        .select('id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id)')
+        .select('id, aluno_id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id)')
         .eq('escola_id', escolaId)
         .eq('id', matriculaId)
         .eq('aluno_id', alunoId)
@@ -181,14 +186,24 @@ export async function GET(req: Request) {
         return match ? Number(match[1]) : null;
       };
       const origemClasseNumero = numeroClasse(classeById.get(classeOrigemId));
-      const statusMatricula = String((origem as any)?.status || '').toLowerCase();
-      const { data: historico } = origem?.ano_letivo != null
-        ? await supabase.from('historico_anos').select('resultado_final').eq('escola_id', escolaId).eq('aluno_id', alunoId).eq('ano_letivo', Number((origem as any).ano_letivo)).maybeSingle()
-        : { data: null };
-      const resultadoFinal = String((historico as any)?.resultado_final || '').toLowerCase();
-      const reprovado = ['reprovado', 'reprovada', 'reprovado_por_faltas'].includes(statusMatricula) || resultadoFinal.includes('reprov');
+      let progressionResult: Awaited<ReturnType<typeof resolveRaaProgressionForMatricula>> | null = null;
+      let progressionError: string | null = null;
+      try {
+        progressionResult = await resolveRaaProgressionForMatricula(supabase, escolaId, {
+          id: (origem as any)?.id,
+          aluno_id: (origem as any)?.aluno_id ?? alunoId,
+          turma_id: (origem as any)?.turma_id,
+        });
+      } catch (error) {
+        progressionError = error instanceof RaaProgressionUnavailableError
+          ? error.message
+          : 'Não foi possível resolver a progressão académica.';
+      }
+      const progressionDecision = progressionResult?.progression.decision ?? 'pendente';
+      const reprovado = progressionDecision.startsWith('retido');
       const modo = reprovado ? 'retencao' : 'promocao';
-      const classeDestinoNumero = origemClasseNumero == null ? null : (reprovado ? origemClasseNumero : origemClasseNumero + 1);
+      const classeDestinoNumero = progressionResult?.progression.etapaDestino?.classeNum
+        ?? (reprovado ? origemClasseNumero : null);
       const cursoFiltrado = cursoOrigemId
         ? items.filter((item: any) => !item.curso_id || item.curso_id === cursoOrigemId)
         : items;
@@ -203,11 +218,27 @@ export async function GET(req: Request) {
         classe_origem: origemClasseNumero,
         classe_destino: classeDestinoNumero,
         turma_origem_id: (origem as any)?.turma_id ?? null,
+        orientacao: progressionResult?.orientacao ?? (progressionError
+          ? {
+              titulo: 'Análise académica bloqueada',
+              mensagem: progressionError,
+              proximo_passo: 'Corrigir a configuração ou os dados académicos e executar novamente.',
+              acoes: progressionError.toLowerCase().includes('política')
+                ? [{ id: 'configurar_politica', label: 'Configurar política de progressão', href: '/admin/configuracoes/avaliacao', prioridade: 'principal' as const }]
+                : [{ id: 'rever_dados', label: 'Rever dados académicos', href: '/secretaria/fechamento-academico', prioridade: 'principal' as const }],
+            }
+          : null),
         mensagem: origemClasseNumero == null
           ? 'A classe de origem não foi identificada; configure a classe antes de rematricular.'
-          : reprovado
-            ? `Resultado final reprovado: retenção na ${origemClasseNumero}ª classe.`
-            : `Notas ainda não lançadas: progressão provisória para a ${classeDestinoNumero}ª classe.`,
+          : progressionError
+            ? progressionError
+            : progressionDecision === 'concluiu'
+              ? 'Aluno concluinte: não existe uma etapa seguinte para rematrícula.'
+              : reprovado
+                ? `Resultado global ${progressionDecision}: retenção na ${origemClasseNumero}ª classe.`
+                : progressionDecision === 'inscricao_condicional'
+                  ? `Inscrição condicional: etapa seguinte ${classeDestinoNumero ?? 'não identificada'}ª classe, com disciplinas pendentes visíveis.`
+            : progressionResult?.orientacao?.mensagem ?? `Estado global ${progressionDecision}: concluir a análise académica antes de rematricular.`,
       };
     }
 
