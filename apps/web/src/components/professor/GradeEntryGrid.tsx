@@ -16,7 +16,6 @@ export type StudentGradeRow = {
   nome: string
   foto?: string | null
   mac1: number | null
-  npp1: number | null
   npt1: number | null
   mt1: number | null
   is_isento?: boolean
@@ -37,7 +36,7 @@ type GradeEntryGridProps = {
   showIsento?: boolean
 }
 
-const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
+const INPUT_COLUMNS = ["mac1", "npt1"] as const
 
 const clampNota = (value: string) => {
   const normalized = value.replace(",", ".").trim()
@@ -56,7 +55,6 @@ const clampNota = (value: string) => {
 const resolveTipoValue = (row: StudentGradeRow, tipo: string) => {
   const normalized = tipo.toUpperCase()
   if (normalized === "MAC") return row.mac1
-  if (normalized === "NPP") return row.npp1
   if (normalized === "NPT" || normalized === "PT") return row.npt1
   return null
 }
@@ -68,7 +66,7 @@ const calculateMT = (
 ) => {
   const tipos = componentesAtivos && componentesAtivos.length > 0
     ? componentesAtivos
-    : ["MAC", "NPP", "NPT"]
+    : ["MAC", "NPT"]
   const valores = tipos
     .map((tipo) => ({ tipo, valor: resolveTipoValue(row, tipo) }))
     .filter((entry) => typeof entry.valor === "number") as Array<{ tipo: string; valor: number }>
@@ -141,7 +139,7 @@ export function GradeEntryGrid({
     let lancados = 0
 
     for (const row of data) {
-      const hasAny = row.mac1 !== null || row.npp1 !== null || row.npt1 !== null
+    const hasAny = row.mac1 !== null || row.npt1 !== null
       if (hasAny) lancados++
 
       if (row.mt1 !== null) {
@@ -285,7 +283,6 @@ export function GradeEntryGrid({
             ...row,
             is_isento: checked,
             mac1: checked ? null : row.mac1,
-            npp1: checked ? null : row.npp1,
             npt1: checked ? null : row.npt1,
             mt1: checked ? null : row.mt1,
             _status: "pending" as const,
@@ -373,8 +370,8 @@ export function GradeEntryGrid({
               />
             ),
           }),
-          columnHelper.accessor("npp1", {
-            header: "NPP",
+          columnHelper.accessor("npt1", {
+            header: "NPT",
             size: 80,
             cell: ({ row, getValue }) => (
               <GradeInput
@@ -383,32 +380,10 @@ export function GradeEntryGrid({
                 }}
                 disabled={!!row.original.is_isento}
                 value={getValue()}
-                onChange={(val) => updateGrade(row.index, "npp1", val)}
-                onBatchPaste={(pasteText) => handleBatchPaste(row.index, "npp1", pasteText)}
-                onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${1 + deltaCol}`]
-                  if (next) {
-                    next.focus()
-                    next.select()
-                  }
-                }}
-              />
-            ),
-          }),
-          columnHelper.accessor("npt1", {
-            header: "NPT",
-            size: 80,
-            cell: ({ row, getValue }) => (
-              <GradeInput
-                inputRef={(el) => {
-                  inputRefs.current[`${row.index}-2`] = el
-                }}
-                disabled={!!row.original.is_isento}
-                value={getValue()}
                 onChange={(val) => updateGrade(row.index, "npt1", val)}
                 onBatchPaste={(pasteText) => handleBatchPaste(row.index, "npt1", pasteText)}
                 onNavigate={(deltaRow, deltaCol) => {
-                  const next = inputRefs.current[`${row.index + deltaRow}-${2 + deltaCol}`]
+                  const next = inputRefs.current[`${row.index + deltaRow}-${1 + deltaCol}`]
                   if (next) {
                     next.focus()
                     next.select()
@@ -551,7 +526,6 @@ export function GradeEntryGrid({
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800"
                   >
                     <option value="mac1">MAC (Média de Avaliação Contínua)</option>
-                    <option value="npp1">NPP (Nota da Prova do Professor)</option>
                     <option value="npt1">NPT (Nota da Prova Trimestral)</option>
                   </select>
                 </div>
@@ -628,7 +602,6 @@ export function GradeEntryGrid({
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     {[
                       { label: "MAC", key: "mac1" as const, value: row.original.mac1 },
-                      { label: "NPP", key: "npp1" as const, value: row.original.npp1 },
                       { label: "NPT", key: "npt1" as const, value: row.original.npt1 },
                     ].map((item) => (
                       <div key={item.label} className="rounded-xl border border-slate-200/80 bg-slate-50 p-2.5">

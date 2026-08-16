@@ -4,6 +4,7 @@ import type { Database } from "~types/supabase"
 import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 import { resolveModeloAvaliacao } from "@/lib/academico/avaliacao-utils"
+import { calculateMfdTransicao } from "@/lib/academico/raa-formulas"
 import { resolveTransitionRules } from "@/lib/pedagogico/transition-engine"
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status"
 import type {
@@ -159,7 +160,7 @@ export async function buildPautaAnualPayload({
 
       let mfd: number | "-" = "-"
       if (typeof mt1 === "number" && typeof mt2 === "number" && typeof mt3 === "number") {
-        mfd = Math.round((mt1 + mt2 + mt3) / 3)
+        mfd = calculateMfdTransicao(mt1, mt2, mt3) ?? "-"
       }
 
       if (disciplina.conta_para_media_med !== false) {

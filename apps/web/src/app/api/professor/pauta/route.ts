@@ -353,6 +353,7 @@ export async function GET(req: Request) {
           })),
         ])
         return {
+          matricula_id: row.id,
           aluno_id: row.aluno_id,
           nome: row.alunos?.nome ?? 'Sem nome',
           foto: row.alunos?.profiles?.avatar_url ?? null,
@@ -396,6 +397,7 @@ export async function GET(req: Request) {
         t3: calcularNota(stats, 3),
       }
       return {
+        matricula_id: row.id,
         aluno_id: row.aluno_id,
         nome: row.alunos?.nome ?? 'Sem nome',
         foto: row.alunos?.profiles?.avatar_url ?? null,

@@ -4,6 +4,8 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { buildPortalHref } from "@/lib/navigation";
 import type { Database } from "~types/supabase";
 import { ReclassificacaoFinalistasClient } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
+import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -20,21 +22,18 @@ export default async function ReclassificacaoFinalistasPage({
   let escolaSlug: string | null = resolvedParams?.id ?? null;
 
   if (user) {
-    const { data: prof } = await s
-      .from("profiles")
-      .select("escola_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    escolaId = (prof as { escola_id?: string | null })?.escola_id ?? null;
+    escolaId = await resolveEscolaIdForUser(s, user.id, resolvedParams?.id ?? null);
+  }
 
-    if (!escolaSlug && escolaId) {
-      const { data: esc } = await s
-        .from("escolas")
-        .select("slug")
-        .eq("id", escolaId)
-        .maybeSingle();
-      escolaSlug = esc?.slug ?? null;
-    }
+  if (!escolaId && resolvedParams?.id) {
+    const resolved = await resolveEscolaParam(s, resolvedParams.id);
+    escolaId = resolved.escolaId;
+    if (resolved.slug) escolaSlug = resolved.slug;
+  }
+
+  if (escolaId && !escolaSlug) {
+    const resolved = await resolveEscolaParam(s, escolaId);
+    escolaSlug = resolved.slug ?? escolaId;
   }
 
   const escolaParam = escolaSlug || escolaId;

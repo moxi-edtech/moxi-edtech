@@ -12,6 +12,8 @@ import { TurmaItem } from "~/types/turmas";
 interface ItemSelect {
   id: string;
   nome: string;
+  data_inicio?: string | null;
+  data_fim?: string | null;
   course_code?: string;
   codigo?: string;
   status?: string;
@@ -49,6 +51,31 @@ function extractAnoLetivoFromSessionName(nome?: string) {
   return first && first.length === 4 ? first : new Date().getFullYear().toString();
 }
 
+const monthFormatter = new Intl.DateTimeFormat("pt-PT", { month: "long" });
+
+function monthName(month: number) {
+  return monthFormatter.format(new Date(2020, month - 1, 1));
+}
+
+function formatDatePt(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("pt-PT").format(date);
+}
+
+function getCalendarMonth(value?: string | null) {
+  if (!value) return null;
+  const month = Number(value.slice(5, 7));
+  return Number.isFinite(month) && month >= 1 && month <= 12 ? month : null;
+}
+
+function getCalendarYear(value?: string | null) {
+  if (!value) return null;
+  const year = Number(value.slice(0, 4));
+  return Number.isFinite(year) && year >= 1900 ? year : null;
+}
+
 function useDebouncedEffect(effect: () => void, deps: Array<unknown>, delayMs: number) {
   useEffect(() => {
     const t = setTimeout(() => effect(), delayMs);
@@ -70,6 +97,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
   const [isClasseExame, setIsClasseExame] = useState(initialData?.is_classe_exame || false);
   const [skipMatricula, setSkipMatricula] = useState(false);
   const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
+  const [examBillingEnd, setExamBillingEnd] = useState("");
 
   // Estados de UI
   const [loading, setLoading] = useState(false);
@@ -101,6 +129,52 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
 
   const parserInfo = useMemo(() => parseTurmaCode(codigoReferencia), [codigoReferencia]);
 
+  const selectedSession = useMemo(
+    () => sessions.find((session) => session.id === sessionId) ?? null,
+    [sessions, sessionId]
+  );
+
+  const billingPreview = useMemo(() => {
+    const calendarStart = getCalendarMonth(selectedSession?.data_inicio);
+    const effectiveBillingEnd = isClasseExame && examBillingEnd
+      ? examBillingEnd
+      : selectedSession?.data_fim;
+    const calendarEnd = getCalendarMonth(effectiveBillingEnd);
+    const calendarStartYear = getCalendarYear(selectedSession?.data_inicio);
+    const calendarEndYear = getCalendarYear(effectiveBillingEnd);
+    if (!calendarStart || !calendarEnd || !calendarStartYear || !calendarEndYear) return null;
+
+    const calendarStartIndex = calendarStartYear * 12 + calendarStart - 1;
+    const calendarEndIndex = calendarEndYear * 12 + calendarEnd - 1;
+    const migrationStartIndex = startMonth >= calendarStart
+      ? calendarStartYear * 12 + startMonth - 1
+      : calendarEndYear * 12 + startMonth - 1;
+    const firstIndex = isDraft ? Math.max(calendarStartIndex, migrationStartIndex) : calendarStartIndex;
+    const lastIndex = isClasseExame ? calendarEndIndex : calendarEndIndex - 1;
+    const months = firstIndex <= lastIndex
+      ? Array.from({ length: lastIndex - firstIndex + 1 }, (_, index) => monthName((firstIndex + index) % 12 + 1))
+      : [];
+
+    return {
+      firstMonth: firstIndex % 12 + 1,
+      lastMonth: lastIndex % 12 + 1,
+      months,
+      calendarStart,
+      calendarEnd,
+      calendarStartLabel: formatDatePt(selectedSession?.data_inicio),
+      calendarEndLabel: formatDatePt(effectiveBillingEnd),
+      usesCustomEnd: Boolean(
+        isClasseExame
+        && examBillingEnd
+        && examBillingEnd !== selectedSession?.data_fim?.slice(0, 10)
+      ),
+    };
+  }, [examBillingEnd, isClasseExame, isDraft, selectedSession, startMonth]);
+
+  const changedExamRule = Boolean(
+    initialData && initialData.is_classe_exame !== isClasseExame
+  );
+
   // Se vier com o código só no nome (ex: "TI-10-M-A (Imp. Auto)"), preenche o campo de código
   useEffect(() => {
     if (turmaCodigo) return;
@@ -119,6 +193,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     setCursoId(initialData?.curso_id || "");
     setClasseId(initialData?.classe_id || "");
     setIsClasseExame(initialData?.is_classe_exame || false);
+    setExamBillingEnd("");
     if (initialData?.metadata?.importacao_config) {
       setSkipMatricula(Boolean(initialData.metadata.importacao_config.skip_matricula));
       const mes = Number(initialData.metadata.importacao_config.mes_inicio);
@@ -131,6 +206,27 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     setInitialAutoFillAttempted(false);
     lastAutofillCodigoRef.current = "";
   }, [initialData]);
+
+  useEffect(() => {
+    if (!examBillingEnd && selectedSession?.data_fim) {
+      setExamBillingEnd(selectedSession.data_fim.slice(0, 10));
+    }
+  }, [examBillingEnd, selectedSession]);
+
+  useEffect(() => {
+    const turmaId = initialData?.id;
+    if (!turmaId) return;
+    let mounted = true;
+    fetch(`/api/secretaria/turmas/${turmaId}/janela-cobranca`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (mounted && payload?.data?.data_fim) setExamBillingEnd(String(payload.data.data_fim).slice(0, 10));
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, [initialData?.id]);
 
   // --- 1) Carregar dados iniciais (fetch correto) ---
   useEffect(() => {
@@ -446,6 +542,15 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
 
         turma_codigo: codigoNorm,
         is_classe_exame: isClasseExame,
+        janela_cobranca: isClasseExame
+          && examBillingEnd
+          && selectedSession?.data_inicio
+          && examBillingEnd !== selectedSession.data_fim?.slice(0, 10)
+          ? {
+              data_inicio: selectedSession.data_inicio.slice(0, 10),
+              data_fim: examBillingEnd,
+            }
+          : undefined,
 
         migracao_financeira: isDraft
           ? {
@@ -685,14 +790,14 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         </div>
       )}
 
-      {isDraft && (
-        <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 space-y-3">
+      <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-klasse-gold-900">Definição Financeira</h3>
-            <p className="text-xs text-klasse-gold-800">Proteja alunos migrados de cobranças indevidas.</p>
+            <p className="text-xs text-klasse-gold-800">A regra abaixo acompanha o calendário do ano letivo selecionado.</p>
           </div>
 
-          <label className="flex items-start gap-2 text-sm text-klasse-gold-900">
+          {isDraft && (
+            <label className="flex items-start gap-2 text-sm text-klasse-gold-900">
             <input
               type="checkbox"
               className="mt-1 h-4 w-4 rounded border-klasse-gold-300 text-klasse-gold-600 focus:ring-klasse-gold-500"
@@ -703,7 +808,8 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
               Considerar matrícula já paga (migração)
               <span className="block text-xs text-klasse-gold-700">Abona/zera a taxa de matrícula para alunos existentes.</span>
             </span>
-          </label>
+            </label>
+          )}
 
           <label className="flex items-start gap-2 text-sm text-klasse-gold-900">
             <input
@@ -713,12 +819,35 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
               onChange={(e) => setIsClasseExame(e.target.checked)}
             />
             <span className="leading-tight font-bold">
-              Classe de Exame (cobra mês final)
-              <span className="block text-xs font-normal text-klasse-gold-700">Se desligado, o motor não gera a mensalidade do mês final para esta turma.</span>
+              {isClasseExame ? "Classe de Exame" : "Turma regular"}
+              <span className="block text-xs font-normal text-klasse-gold-700">
+                {isClasseExame ? "Cobra até à data final de exames configurada." : "Não gera a mensalidade do último mês do calendário letivo."}
+              </span>
             </span>
           </label>
 
-          <div className="space-y-1">
+          {isClasseExame && (
+            <div className="space-y-1 rounded-lg border border-klasse-gold-200 bg-white/60 p-3">
+              <label htmlFor="examBillingEnd" className="text-sm font-semibold text-klasse-gold-900 block">
+                Fim da cobrança de exames
+              </label>
+              <input
+                id="examBillingEnd"
+                type="date"
+                value={examBillingEnd}
+                min={selectedSession?.data_fim?.slice(0, 10)}
+                onChange={(event) => setExamBillingEnd(event.target.value)}
+                className="w-full rounded-lg border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-klasse-gold-900 focus:outline-none focus:ring-2 focus:ring-klasse-gold-500"
+                required
+              />
+              <p className="text-[11px] text-klasse-gold-700">
+                Por padrão é o fim do ano letivo. Estenda esta data apenas se a escola tiver um período oficial de exames posterior.
+              </p>
+            </div>
+          )}
+
+          {isDraft && (
+            <div className="space-y-1">
             <label className="text-sm font-semibold text-klasse-gold-900 block">Mês de início da mensalidade</label>
             <select
               className="w-full rounded-lg border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-klasse-gold-900 focus:outline-none focus:ring-2 focus:ring-klasse-gold-500"
@@ -729,9 +858,41 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
                 <option key={mes} value={mes}>{new Date(0, mes - 1).toLocaleString('pt-PT', { month: 'long' })}</option>
               ))}
             </select>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-white/80 bg-white/70 p-3 text-xs text-klasse-gold-900 space-y-1">
+            <p className="font-semibold">Resumo que será aplicado</p>
+            {billingPreview ? (
+              <>
+                <p>
+                  Calendário: {billingPreview.calendarStartLabel || "data inicial não informada"} até {billingPreview.calendarEndLabel || "data final não informada"}.
+                </p>
+                <p>
+                  {billingPreview.months.length > 0
+                    ? `Mensalidades previstas: ${billingPreview.months.join(", ")}.`
+                    : "Não há meses elegíveis com o início selecionado."}
+                </p>
+                <p className="text-klasse-gold-700">
+                  {isClasseExame
+                    ? "Esta turma inclui o mês final porque está marcada como classe de exame."
+                    : "Esta turma exclui o mês final porque é regular."}
+                  {billingPreview.usesCustomEnd ? " A data final foi personalizada para esta turma." : ""}
+                </p>
+              </>
+            ) : (
+              <p className="text-amber-800">
+                O ano letivo selecionado não tem datas completas. Configure início e fim antes de gerar mensalidades para obter uma previsão segura.
+              </p>
+            )}
           </div>
+
+          {changedExamRule && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              A regra foi alterada. Mensalidades já geradas não serão apagadas nem recriadas automaticamente; reveja as pendências financeiras antes de confirmar.
+            </div>
+          )}
         </div>
-      )}
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
         <button

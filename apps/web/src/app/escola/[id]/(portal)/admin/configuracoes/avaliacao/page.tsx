@@ -60,6 +60,9 @@ export default function AvaliacaoUnificadaClient() {
   const [modelos, setModelos] = useState<ModeloAvaliacao[]>([]);
   const [modeloAvaliacao, setModeloAvaliacao] = useState<string>('');
   const [avaliacaoConfig, setAvaliacaoConfig] = useState<AvaliacaoConfigData>(cloneConfig());
+  const [permitirInscricaoCondicional, setPermitirInscricaoCondicional] = useState(false);
+  const [permitirProgressaoComRecurso, setPermitirProgressaoComRecurso] = useState(true);
+  const [policyConfigured, setPolicyConfigured] = useState(false);
 
   if (!escolaId) {
     return (
@@ -92,6 +95,9 @@ export default function AvaliacaoUnificadaClient() {
           const data = json.data;
           setFrequenciaModelo(data.frequencia_modelo ?? 'POR_AULA');
           setFrequenciaMinPercent(data.frequencia_min_percent ?? 75);
+          setPermitirInscricaoCondicional(data.permitir_inscricao_condicional === true);
+          setPermitirProgressaoComRecurso(data.permitir_progressao_com_recurso !== false);
+          setPolicyConfigured(data.policy_configured === true);
           const modelId = listaModelos.find((m: ModeloAvaliacao) => m.id === data.modelo_avaliacao)?.id
             ?? listaModelos.find((m: ModeloAvaliacao) => m.nome === data.modelo_avaliacao)?.id
             ?? defaultModelo?.id
@@ -141,6 +147,8 @@ export default function AvaliacaoUnificadaClient() {
         frequencia_min_percent: frequenciaMinPercent,
         modelo_avaliacao: modeloAvaliacao,
         avaliacao_config: avaliacaoConfig,
+        permitir_inscricao_condicional: permitirInscricaoCondicional,
+        permitir_progressao_com_recurso: permitirProgressaoComRecurso,
       }),
     }).then(async (res) => {
       const json = await res.json().catch(() => null);
@@ -158,6 +166,7 @@ export default function AvaliacaoUnificadaClient() {
       await promise;
       dismiss(tid);
       success("Regras atualizadas.");
+      setPolicyConfigured(true);
       setIsEditing(false);
     } catch (e) {
       dismiss(tid);
@@ -392,6 +401,29 @@ export default function AvaliacaoUnificadaClient() {
                     </div>
                   </div>
                 </div>
+
+                {/* Card Progressão */}
+                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:col-span-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E3B23C]/15 text-[#A87500]">
+                        <GraduationCap className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Progressão RAA</p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">
+                          {policyConfigured ? "Política configurada" : "Configuração pendente"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {permitirInscricaoCondicional ? "Permite inscrição condicional quando há recurso." : "Inscrição condicional bloqueada até decisão explícita."}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${policyConfigured ? "bg-[#1F6B3B] text-white" : "bg-amber-100 text-amber-800"}`}>
+                      {policyConfigured ? "Ativo" : "Pendente"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -414,6 +446,50 @@ export default function AvaliacaoUnificadaClient() {
 
                 <div className="mt-4 text-xs text-slate-600">
                   Regra aplicada por padrão a todos os cursos/níveis. Para exceções, configure o modo de avaliação em Disciplinas.
+                </div>
+
+                <div className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Progressão e inscrição condicional</h3>
+                      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">
+                        Estas regras alimentam a decisão global da RAA e a virada de ano. O sistema nunca promove um aluno sem dados completos ou sem política configurada.
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${policyConfigured ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {policyConfigured ? "Configurada" : "Será criada ao salvar"}
+                    </span>
+                  </div>
+                  <div className="mt-5 grid gap-3 md:grid-cols-2">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 accent-[#1F6B3B]"
+                        checked={permitirProgressaoComRecurso}
+                        onChange={(event) => setPermitirProgressaoComRecurso(event.target.checked)}
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-800">Permitir progressão com recurso</span>
+                        <span className="mt-1 block text-xs text-slate-500">Mantém o aluno elegível para a etapa seguinte enquanto aguarda o recurso.</span>
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 accent-[#1F6B3B]"
+                        checked={permitirInscricaoCondicional}
+                        onChange={(event) => setPermitirInscricaoCondicional(event.target.checked)}
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-800">Permitir inscrição condicional</span>
+                        <span className="mt-1 block text-xs text-slate-500">Regista a matrícula na etapa seguinte e mantém as disciplinas pendentes visíveis.</span>
+                      </span>
+                    </label>
+                  </div>
+                  <div className="mt-4 flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                    <p>A alteração só entra em vigor depois de clicar em <strong>Salvar Alterações</strong>. O sistema preserva o estado anterior se o salvamento falhar.</p>
+                  </div>
                 </div>
 
                 <div className="mt-6">

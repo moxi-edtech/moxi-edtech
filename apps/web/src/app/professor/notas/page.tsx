@@ -20,6 +20,7 @@ type Atrib = {
 }
 
 type PautaDetalhadaRow = {
+  matricula_id: string
   aluno_id: string
   nome: string
   foto?: string | null
@@ -28,6 +29,65 @@ type PautaDetalhadaRow = {
   npp?: number | null
   npt?: number | null
   mt?: number | null
+}
+
+type ExamComponent = {
+  id: string
+  codigo: "escrita" | "oral" | "pratica"
+  peso: number
+  nota_maxima: number
+}
+
+type ExamSession = {
+  id: string
+  tipo: "exame_nacional" | "recurso" | "extraordinario"
+  modalidade: "simples" | "escrita_oral" | "oral_pratica"
+  estado: "planeada" | "aberta" | "publicada" | "encerrada" | "cancelada"
+  data_inicio: string
+  data_fim: string
+  exame_componentes?: ExamComponent[]
+}
+
+type RaaEligibilityView = {
+  status: "aprovado" | "recurso" | "reprovado" | "reprovado_por_faltas" | "reprovado_por_indisciplina" | "pendente_dados" | "pendente_formula"
+  motivo: string
+  elegivelRecurso: boolean
+  elegivelInscricaoCondicional: boolean
+}
+
+type RaaEligibilityResponse = {
+  eligibility: RaaEligibilityView
+  facts: { quantidade_negativas: number; percentual_presenca: number | null; dados_completos: boolean }
+  next_action: string
+  canonical_result?: {
+    status: "aprovado" | "reprovado" | "reprovado_por_indisciplina" | "pendente_dados" | "pendente_formula"
+    positivo: boolean | null
+    cor: "azul" | "vermelho" | null
+    nota: number | null
+    corte: number | null
+    escala: string | null
+    motivo: string
+    regime?: { codigo_regime?: string; formula_mfd?: Record<string, unknown>; eh_classe_exame?: boolean }
+  } | null
+}
+
+type RaaRiskItem = {
+  matricula_id: string
+  aluno_id: string
+  aluno_nome: string
+  status: string | null
+  nota: number | null
+  corte: number | null
+  risco: { codigo: string; label: string; action: string } | null
+}
+
+type ReapreciacaoItem = {
+  id: string
+  protocolo_publico: string
+  estado: "pendente" | "em_analise" | "deferido" | "indeferido" | "expirado" | "cancelado"
+  motivo: string
+  prazo_em: string
+  created_at: string
 }
 
 type ReopenRequest = {
@@ -86,6 +146,21 @@ function ProfessorNotasContent() {
   const [reopenHistory, setReopenHistory] = useState<ReopenRequest[]>([])
   const [requestReason, setRequestReason] = useState("")
   const [requestingReopen, setRequestingReopen] = useState(false)
+  const [matriculaIds, setMatriculaIds] = useState<Record<string, string>>({})
+  const [examSessions, setExamSessions] = useState<ExamSession[]>([])
+  const [selectedExamSessionId, setSelectedExamSessionId] = useState("")
+  const [selectedExamComponentId, setSelectedExamComponentId] = useState("")
+  const [examNotes, setExamNotes] = useState<Record<string, string>>({})
+  const [loadingExamSessions, setLoadingExamSessions] = useState(false)
+  const [savingExam, setSavingExam] = useState(false)
+  const [raaStudentId, setRaaStudentId] = useState("")
+  const [raaResult, setRaaResult] = useState<RaaEligibilityResponse | null>(null)
+  const [loadingRaa, setLoadingRaa] = useState(false)
+  const [raaRisks, setRaaRisks] = useState<RaaRiskItem[]>([])
+  const [loadingRaaRisks, setLoadingRaaRisks] = useState(false)
+  const [reapreciacaoItem, setReapreciacaoItem] = useState<ReapreciacaoItem | null>(null)
+  const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("")
+  const [submittingReapreciacao, setSubmittingReapreciacao] = useState(false)
 
   const { online } = useOfflineStatus()
   const { success, error: toastError, warning } = useToast()
@@ -195,19 +270,24 @@ function ProfessorNotasContent() {
         const json = await res.json().catch(() => null)
         if (!active) return
         if (res.ok && Array.isArray(json)) {
+          const detailedRows = json as PautaDetalhadaRow[]
+          const nextMatriculaIds = detailedRows.reduce<Record<string, string>>((acc, row) => {
+            acc[row.aluno_id] = row.matricula_id
+            return acc
+          }, {})
           setPauta(
-            (json as PautaDetalhadaRow[]).map((row, index) => ({
+            detailedRows.map((row, index) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
               nome: row.nome,
               foto: row.foto ?? null,
               mac1: row.mac ?? null,
-              npp1: row.npp ?? null,
               npt1: row.npt ?? null,
               mt1: row.mt ?? null,
               _status: "synced",
             }))
           )
+          setMatriculaIds(nextMatriculaIds)
         } else {
           setPauta([])
         }
@@ -221,6 +301,165 @@ function ProfessorNotasContent() {
       active = false
     }
   }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
+
+  useEffect(() => {
+    setExamSessions([])
+    setSelectedExamSessionId("")
+    setSelectedExamComponentId("")
+    setExamNotes({})
+    if (!turmaId || !anoLetivoId) return
+    let active = true
+    const load = async () => {
+      setLoadingExamSessions(true)
+      try {
+        const params = new URLSearchParams({ ano_letivo_id: anoLetivoId, turma_id: turmaId })
+        const response = await fetch(`/api/academico/exames/sessoes?${params.toString()}`, { cache: "no-store" })
+        const payload = await response.json().catch(() => null)
+        if (!active) return
+        if (response.ok && payload?.ok) {
+          const items = Array.isArray(payload.items) ? payload.items as ExamSession[] : []
+          setExamSessions(items)
+          const firstOpen = items.find((item) => ["aberta", "publicada"].includes(item.estado)) ?? items[0]
+          if (firstOpen) {
+            setSelectedExamSessionId(firstOpen.id)
+            const firstComponent = firstOpen.exame_componentes?.[0]
+            if (firstComponent) setSelectedExamComponentId(firstComponent.id)
+          }
+        }
+      } finally {
+        if (active) setLoadingExamSessions(false)
+      }
+    }
+    void load()
+    return () => { active = false }
+  }, [turmaId, anoLetivoId])
+
+  const selectedExamSession = examSessions.find((item) => item.id === selectedExamSessionId) ?? null
+  const selectedExamComponent = selectedExamSession?.exame_componentes?.find((item) => item.id === selectedExamComponentId) ?? null
+  const examLocked = !selectedExamSession || ["encerrada", "cancelada"].includes(selectedExamSession.estado)
+
+  const handleSaveExamResults = async () => {
+    if (!selectedExamSession || !selectedExamComponent || !turmaDisciplinaId || !disciplinaId) return
+    const entries = pauta
+      .map((student) => ({ student, raw: examNotes[student.id]?.trim() ?? "" }))
+      .filter(({ raw }) => raw !== "")
+    if (entries.length === 0) {
+      warning("Lance pelo menos uma nota antes de guardar.")
+      return
+    }
+    setSavingExam(true)
+    try {
+      for (const { student, raw } of entries) {
+        const note = Number(raw.replace(",", "."))
+        if (!Number.isFinite(note) || note < 0 || note > selectedExamComponent.nota_maxima) {
+          throw new Error(`A nota de ${student.nome} deve estar entre 0 e ${selectedExamComponent.nota_maxima}.`)
+        }
+        const matriculaId = matriculaIds[student.id]
+        if (!matriculaId) throw new Error(`Matrícula de ${student.nome} não encontrada na pauta.`)
+        const response = await fetch("/api/academico/exames/resultados", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            exame_sessao_id: selectedExamSession.id,
+            exame_componente_id: selectedExamComponent.id,
+            matricula_id: matriculaId,
+            aluno_id: student.id,
+            turma_disciplina_id: turmaDisciplinaId,
+            nota: note,
+          }),
+        })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível guardar o resultado.")
+      }
+      setExamNotes({})
+      success("Resultados guardados", `${entries.length} lançamento(s) sincronizado(s) com a escola.`)
+    } catch (cause) {
+      toastError("Não foi possível guardar os resultados", cause instanceof Error ? cause.message : "Tente novamente.")
+    } finally {
+      setSavingExam(false)
+    }
+  }
+
+  const handleLoadRaaEligibility = async (studentId = raaStudentId) => {
+    const matriculaId = matriculaIds[studentId]
+    if (!matriculaId) return
+    setLoadingRaa(true)
+    try {
+      const params = new URLSearchParams({ matricula_id: matriculaId })
+      if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId)
+      if (disciplinaId) params.set("disciplina_id", disciplinaId)
+      const response = await fetch(`/api/academico/raa/elegibilidade?${params.toString()}`, { cache: "no-store" })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível consultar a elegibilidade.")
+      setRaaResult(payload as RaaEligibilityResponse)
+      const existingResponse = await fetch(`/api/academico/raa/reapreciacao?matricula_id=${encodeURIComponent(matriculaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}`, { cache: "no-store" })
+      const existingPayload = await existingResponse.json().catch(() => null)
+      if (existingResponse.ok && existingPayload?.ok) setReapreciacaoItem(existingPayload.items?.[0] ?? null)
+    } catch (cause) {
+      toastError("Não foi possível consultar o RAA", cause instanceof Error ? cause.message : "Tente novamente.")
+      setRaaResult(null)
+    } finally {
+      setLoadingRaa(false)
+    }
+  }
+
+  const handleRequestReapreciacao = async () => {
+    const matriculaId = matriculaIds[raaStudentId]
+    if (!matriculaId || !disciplinaId || reapreciacaoMotivo.trim().length < 10) {
+      warning("Explique o motivo da reapreciação com pelo menos 10 caracteres.")
+      return
+    }
+    setSubmittingReapreciacao(true)
+    try {
+      const response = await fetch("/api/academico/raa/reapreciacao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matricula_id: matriculaId,
+          disciplina_id: disciplinaId,
+          motivo: reapreciacaoMotivo.trim(),
+          idempotency_key: `raa-reapreciacao-${matriculaId}-${disciplinaId}`,
+          ano_letivo_id: anoLetivoId || undefined,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível enviar a reapreciação.")
+      setReapreciacaoItem(payload.item)
+      setReapreciacaoMotivo("")
+      success(payload.duplicate ? "Pedido já registado" : "Reapreciação registada", `Protocolo ${payload.item?.protocolo_publico ?? "gerado"}.`)
+    } catch (cause) {
+      toastError("Não foi possível pedir reapreciação", cause instanceof Error ? cause.message : "Tente novamente.")
+    } finally {
+      setSubmittingReapreciacao(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!turmaId || !disciplinaId || !anoLetivoId) {
+      setRaaRisks([])
+      return
+    }
+    let active = true
+    const load = async () => {
+      setLoadingRaaRisks(true)
+      try {
+        const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, ano_letivo_id: anoLetivoId })
+        const response = await fetch(`/api/academico/raa/riscos?${params.toString()}`, { cache: "no-store" })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível carregar os riscos RAA.")
+        if (active) setRaaRisks(Array.isArray(payload.items) ? payload.items as RaaRiskItem[] : [])
+      } catch (cause) {
+        if (active) {
+          setRaaRisks([])
+          toastError("Não foi possível carregar o painel RAA", cause instanceof Error ? cause.message : "Tente novamente.")
+        }
+      } finally {
+        if (active) setLoadingRaaRisks(false)
+      }
+    }
+    void load()
+    return () => { active = false }
+  }, [turmaId, disciplinaId, anoLetivoId, toastError])
 
   useEffect(() => {
     if (!turmaId) {
@@ -263,7 +502,6 @@ function ProfessorNotasContent() {
     const trimestre = trimestreSelecionado
     const payloads = [
       { tipo: "MAC", campo: "mac1" as const },
-      { tipo: "NPP", campo: "npp1" as const },
       { tipo: "NPT", campo: "npt1" as const },
     ]
 
@@ -354,19 +592,16 @@ function ProfessorNotasContent() {
       const mfd = t !== null ? Number(t) : null
       const trim1 = {
         mac: trimestreSelecionado === 1 ? row.mac1 ?? null : null,
-        npp: trimestreSelecionado === 1 ? row.npp1 ?? null : null,
         npt: trimestreSelecionado === 1 ? row.npt1 ?? null : null,
         mt: trimestreSelecionado === 1 ? t : null,
       }
       const trim2 = {
         mac: trimestreSelecionado === 2 ? row.mac1 ?? null : null,
-        npp: trimestreSelecionado === 2 ? row.npp1 ?? null : null,
         npt: trimestreSelecionado === 2 ? row.npt1 ?? null : null,
         mt: trimestreSelecionado === 2 ? t : null,
       }
       const trim3 = {
         mac: trimestreSelecionado === 3 ? row.mac1 ?? null : null,
-        npp: trimestreSelecionado === 3 ? row.npp1 ?? null : null,
         npt: trimestreSelecionado === 3 ? row.npt1 ?? null : null,
         mt: trimestreSelecionado === 3 ? t : null,
       }
@@ -419,7 +654,7 @@ function ProfessorNotasContent() {
         <div>
           <DashboardHeader
             title="Lançamento de Notas"
-            description="Selecione turma, disciplina e trimestre. As notas são salvas automaticamente."
+            description="Selecione turma, disciplina e trimestre. Revise e salve os lançamentos quando estiver pronto."
             breadcrumbs={[
               { label: "Início", href: "/" },
               { label: "Professor", href: "/professor" },
@@ -429,7 +664,7 @@ function ProfessorNotasContent() {
         </div>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
-          <aside className="space-y-3 sm:space-y-4 relative z-10 overflow-visible">
+          <aside className="hidden space-y-3 sm:space-y-4 relative z-10 overflow-visible md:block">
             {loadingAtribs ? (
               <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 animate-pulse">
                 <div className="h-4 w-32 rounded-md bg-slate-200" />
@@ -589,6 +824,16 @@ function ProfessorNotasContent() {
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
                   </button>
+                  {turmaId && disciplinaId && (
+                    <div className={`rounded-lg px-3 py-2 text-xs ${notasBloqueadas ? "bg-klasse-gold-50 text-klasse-gold-800" : "bg-emerald-50 text-emerald-800"}`}>
+                      <p className="font-bold">
+                        {notasBloqueadas ? "Trimestre fechado para lançamentos" : reaberturaAtiva ? "Reabertura aprovada" : "Trimestre disponível"}
+                      </p>
+                      <p className="mt-0.5">
+                        {notasBloqueadas ? "A escola precisa aprovar uma abertura temporária." : reaberturaAtiva && reopenRequest?.expira_em ? `Você pode lançar até ${new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.` : "Os lançamentos podem ser salvos."}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               {!online && (
@@ -616,6 +861,128 @@ function ProfessorNotasContent() {
             ) : (
               <div className="space-y-3">
                 {reaberturaAtiva && reopenRequest?.expira_em && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Você pode lançar notas até {new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.</p></div>}
+                {turmaId && disciplinaId && pauta.length > 0 && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Análise RAA do aluno</p>
+                      <p className="mt-1 text-xs text-slate-500">Consulte a elegibilidade sem sair da turma ou da disciplina atual.</p>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                      <label className="flex-1 text-xs font-semibold text-slate-600">Aluno<select value={raaStudentId} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
+                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
+                    </div>
+                    {raaResult && (() => {
+                      const result = raaResult.canonical_result
+                      const formula = result?.regime?.formula_mfd
+                      const formulaText = formula && typeof formula === "object" ? Object.values(formula).find((value) => typeof value === "string" && value.includes("*")) : null
+                      const isPendingFormula = result?.status === "pendente_formula"
+                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-klasse-gold-200 bg-klasse-gold-50" : "border-slate-100 bg-slate-50"}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-black uppercase text-slate-800">{(result?.status ?? raaResult.eligibility.status).replace(/_/g, " ")}</span>
+                          <span className="text-xs text-slate-500">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
+                        </div>
+                        {isPendingFormula ? <><p className="mt-2 font-semibold text-klasse-gold-900">A turma está em regime de exame. A nota da disciplina já foi encontrada, mas o resultado final ainda depende da MFD e do lançamento do exame.</p><p className="mt-1 text-xs text-klasse-gold-800">Próximo passo: confirmar a sessão e os componentes do exame; o KLASSE atualizará o resultado quando a fórmula estiver completa.</p></> : <p className="mt-2 text-xs text-slate-600">{raaResult.next_action}</p>}
+                        {result?.regime?.codigo_regime && <p className="mt-2 text-[11px] font-semibold text-slate-500">Regime: {result.regime.codigo_regime}{formulaText ? ` · Fórmula: ${formulaText}` : ""}</p>}
+                        {(result?.status === "reprovado" || raaResult.eligibility.status === "reprovado") && (
+                          <div className="mt-3 rounded-lg border border-rose-200 bg-white p-3">
+                            {reapreciacaoItem ? (
+                              <div className="text-xs text-slate-700">
+                                <p className="font-black text-slate-900">Reapreciação {reapreciacaoItem.estado.replace(/_/g, " ")}</p>
+                                <p className="mt-1">Protocolo: <span className="font-mono font-bold">{reapreciacaoItem.protocolo_publico}</span></p>
+                                <p className="mt-1">Prazo: {new Date(reapreciacaoItem.prazo_em).toLocaleString("pt-PT")}</p>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-xs font-bold text-rose-800">Pode solicitar reapreciação deste resultado.</p>
+                                <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={2} placeholder="Explique o motivo da reapreciação (mínimo 10 caracteres)." className="mt-2 w-full rounded-lg border border-rose-200 px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-rose-200" />
+                                <button type="button" onClick={() => void handleRequestReapreciacao()} disabled={submittingReapreciacao || reapreciacaoMotivo.trim().length < 10} className="mt-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{submittingReapreciacao ? "A registar…" : "Solicitar reapreciação"}</button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    })()}
+                  </div>
+                )}
+                {turmaId && disciplinaId && (loadingRaaRisks || raaRisks.length > 0) && (
+                  <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Painel de risco RAA</p>
+                        <p className="mt-1 text-xs text-slate-600">Alunos desta turma e disciplina que exigem atenção, sem sair do contexto atual.</p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-klasse-gold-900">{loadingRaaRisks ? "A atualizar…" : `${raaRisks.length} pendência(s)`}</span>
+                    </div>
+                    {!loadingRaaRisks && <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {raaRisks.map((item) => (
+                        <button key={item.matricula_id} type="button" onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="rounded-lg border border-klasse-gold-200 bg-white p-3 text-left transition hover:border-klasse-gold-400">
+                          <div className="flex items-center justify-between gap-2"><span className="text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="text-[10px] font-black uppercase text-klasse-gold-800">{item.risco?.label}</span></div>
+                          <p className="mt-1 text-xs text-slate-600">{item.risco?.action}</p>
+                        </button>
+                      ))}
+                    </div>}
+                  </div>
+                )}
+                {turmaId && disciplinaId && (loadingExamSessions || examSessions.length > 0) && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Exames e recurso</p>
+                        <p className="mt-1 text-xs text-slate-500">Sessões configuradas para esta turma. O lançamento permanece no contexto da disciplina selecionada.</p>
+                      </div>
+                      {selectedExamSession && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${examLocked ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>{selectedExamSession.estado}</span>}
+                    </div>
+                    {loadingExamSessions ? (
+                      <div className="mt-3 h-10 animate-pulse rounded-xl bg-slate-100" />
+                    ) : (
+                      <div className="mt-4 space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="text-xs font-semibold text-slate-600">
+                            Sessão
+                            <select
+                              value={selectedExamSessionId}
+                              onChange={(event) => {
+                                const next = examSessions.find((item) => item.id === event.target.value)
+                                setSelectedExamSessionId(event.target.value)
+                                setSelectedExamComponentId(next?.exame_componentes?.[0]?.id ?? "")
+                                setExamNotes({})
+                              }}
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                            >
+                              {examSessions.map((session) => <option key={session.id} value={session.id}>{session.tipo.replace("_", " ")} · {session.data_inicio} a {session.data_fim}</option>)}
+                            </select>
+                          </label>
+                          <label className="text-xs font-semibold text-slate-600">
+                            Componente
+                            <select
+                              value={selectedExamComponentId}
+                              onChange={(event) => setSelectedExamComponentId(event.target.value)}
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                              disabled={examLocked}
+                            >
+                              {(selectedExamSession?.exame_componentes ?? []).map((component) => <option key={component.id} value={component.id}>{component.codigo} · máximo {component.nota_maxima}</option>)}
+                            </select>
+                          </label>
+                        </div>
+                        {examLocked ? (
+                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">Esta sessão está {selectedExamSession?.estado}. Consulte a secretaria para corrigir a configuração.</p>
+                        ) : !selectedExamComponent ? (
+                          <p className="rounded-lg bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800">A sessão ainda não tem componentes configurados.</p>
+                        ) : (
+                          <div className="overflow-x-auto rounded-xl border border-slate-100">
+                            <table className="min-w-full text-left text-sm">
+                              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Aluno</th><th className="w-32 px-3 py-2">Nota</th></tr></thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-slate-800">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <GradeEntryGrid
                   initialData={data}
                   subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}

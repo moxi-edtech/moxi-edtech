@@ -69,6 +69,7 @@ export interface Mensalidade {
   referencia_ano?: number;
   origem_ano?: string | null;
   origem_matricula_id?: string | null;
+  turma_id?: string | null;
   origem_turma?: string | null;
   tipo: "mensalidade";
 }
@@ -86,6 +87,16 @@ export interface Servico {
 export type ItemCarrinho = Mensalidade | Servico;
 
 export type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
+
+export interface BillingWindowIssue {
+  turmaId: string;
+  turmaLabel: string;
+  anoLetivoId: string;
+  anoLetivoLabel: string;
+  dataInicio: string;
+  dataFim: string;
+  competencia: string;
+}
 
 const METODOS_UI: { id: MetodoPagamento; icon: React.ElementType; label: string }[] = [
   { id: "cash", icon: Banknote, label: "Numerario" },
@@ -283,6 +294,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
               referencia_ano: ano || undefined,
               origem_ano: origin?.ano_letivo ? String(origin.ano_letivo) : null,
               origem_matricula_id: origin?.matricula_id ? String(origin.matricula_id) : null,
+              turma_id: origin?.turma_id ? String(origin.turma_id) : null,
               origem_turma: turma ? String(turma.turma_codigo ?? turma.nome ?? "Turma") : null,
               tipo: "mensalidade" as const,
             };
@@ -472,18 +484,22 @@ function useCheckout({
   onSuccess: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingWindowIssue, setBillingWindowIssue] = useState<BillingWindowIssue | null>(null);
   const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const { success, error } = useToast();
 
-  const checkout = useCallback(async () => {
-    if (!aluno || !carrinho.prontoParaPagar) return;
+  const checkout = useCallback(async (): Promise<boolean> => {
+    if (!aluno || !carrinho.prontoParaPagar) return false;
     setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/secretaria/pagamentos/processar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({
           escola_id: escolaId,
           aluno_id: aluno.id,
@@ -495,18 +511,56 @@ function useCheckout({
         }),
       });
 
-      const json = await response.json();
-      if (!response.ok || !json.ok) throw new Error(json.error || "Erro ao processar pagamento");
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.ok) {
+        if (json.code === "MONTH_OUTSIDE_ACADEMIC_YEAR" && json.context?.turma_id) {
+          const item = carrinho.itens.find(
+            (candidate): candidate is Mensalidade => candidate.tipo === "mensalidade" && candidate.turma_id === json.context.turma_id,
+          );
+          setBillingWindowIssue({
+            turmaId: String(json.context.turma_id),
+            turmaLabel: item?.origem_turma || "Turma selecionada",
+            anoLetivoId: String(json.context.ano_letivo_id || academicYearId || ""),
+            anoLetivoLabel: String(json.context.ano || json.context.ano_letivo_id || academicYearId || "Ano letivo atual"),
+            dataInicio: String(json.context.data_inicio_permitida || "").slice(0, 10),
+            dataFim: String(json.context.data_fim_permitida || "").slice(0, 10),
+            competencia: String(json.context.competencia || ""),
+          });
+        }
+        throw new Error(json.error || "Erro ao processar pagamento");
+      }
 
       success("Pagamento processado com sucesso!");
+      setBillingWindowIssue(null);
       carrinho.limpar();
       onSuccess();
+      return true;
     } catch (err) {
       error(err instanceof Error ? err.message : "Nao foi possivel concluir o pagamento.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   }, [aluno, carrinho, escolaId, academicYearId, onSuccess, success, error]);
+
+  const saveBillingWindow = useCallback(async (dataFim: string) => {
+    if (!billingWindowIssue) return false;
+    try {
+      const response = await fetch(`/api/secretaria/turmas/${billingWindowIssue.turmaId}/janela-cobranca`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data_inicio: billingWindowIssue.dataInicio, data_fim: dataFim }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível guardar a janela.");
+      setBillingWindowIssue((current) => current ? { ...current, dataFim } : current);
+      success("Janela de cobrança atualizada. Pode tentar o pagamento novamente.");
+      return true;
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Não foi possível guardar a janela.");
+      return false;
+    }
+  }, [billingWindowIssue, error, success]);
 
   const emitirDocumento = useCallback(
     async (servico: Servico): Promise<string | null> => {
@@ -537,7 +591,17 @@ function useCheckout({
     [aluno, escolaId, error]
   );
 
-  return { isSubmitting, emittingDocId, printQueue, setPrintQueue, checkout, emitirDocumento };
+  return {
+    isSubmitting,
+    emittingDocId,
+    printQueue,
+    setPrintQueue,
+    checkout,
+    emitirDocumento,
+    billingWindowIssue,
+    setBillingWindowIssue,
+    saveBillingWindow,
+  };
 }
 
 function Avatar({ url, nome, size = "md" }: { url?: string | null; nome?: string | null; size?: "sm" | "md" | "lg" }) {
@@ -1212,6 +1276,119 @@ function CarrinhoPanel({
   );
 }
 
+function BillingWindowRepairPanel({
+  issue,
+  onClose,
+  onSave,
+  onRetry,
+}: {
+  issue: BillingWindowIssue | null;
+  onClose: () => void;
+  onSave: (dataFim: string) => Promise<boolean>;
+  onRetry: () => Promise<boolean>;
+}) {
+  const [dataFim, setDataFim] = useState(issue?.dataFim ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDataFim(issue?.dataFim ?? "");
+  }, [issue]);
+
+  if (!issue) return null;
+
+  const start = issue.dataInicio ? new Date(`${issue.dataInicio}T00:00:00Z`) : null;
+  const end = dataFim ? new Date(`${dataFim}T00:00:00Z`) : null;
+  const months: string[] = [];
+  if (start && end && !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+    const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+    const last = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+    while (cursor <= last && months.length < 24) {
+      months.push(new Intl.DateTimeFormat("pt-AO", { month: "short", year: "numeric", timeZone: "UTC" }).format(cursor));
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+  }
+
+  const handleSaveAndRetry = async () => {
+    if (!dataFim || dataFim < issue.dataFim) return;
+    setSaving(true);
+    try {
+      if (await onSave(dataFim)) {
+        const retried = await onRetry();
+        if (retried) onClose();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="billing-window-title">
+      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-klasse-green">Ação de recuperação</p>
+            <h2 id="billing-window-title" className="mt-1 text-xl font-black text-slate-900">Configurar janela da turma</h2>
+            <p className="mt-1 text-sm text-slate-500">A mensalidade {issue.competencia || "selecionada"} está fora do período permitido.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Turma</p>
+            <p className="mt-1 font-bold text-slate-800">{issue.turmaLabel}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Ano letivo</p>
+            <p className="mt-1 font-bold text-slate-800">{issue.anoLetivoLabel}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Período atual</p>
+          <p className="mt-1 text-sm font-semibold text-amber-950">{issue.dataInicio || "—"} até {issue.dataFim || "—"}</p>
+          <p className="mt-2 text-xs leading-5 text-amber-800">Para permitir esta cobrança, a data final deve ser igual ou posterior à data final atual. A alteração fica registada na configuração da turma.</p>
+        </div>
+
+        <label className="mt-5 block text-sm font-bold text-slate-800" htmlFor="billing-window-end">Data final permitida</label>
+        <input
+          id="billing-window-end"
+          type="date"
+          min={issue.dataFim}
+          value={dataFim}
+          onChange={(event) => setDataFim(event.target.value)}
+          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none ring-klasse-green focus:ring-2"
+        />
+
+        <div className="mt-5 rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-slate-800">Prévia das mensalidades</p>
+              <p className="text-xs text-slate-500">Competências abrangidas pela janela</p>
+            </div>
+            <span className="rounded-full bg-klasse-green/10 px-2.5 py-1 text-xs font-bold text-klasse-green">{months.length} meses</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {months.length > 0 ? months.map((month) => (
+              <span key={month} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold capitalize text-slate-700">{month}</span>
+            )) : <span className="text-xs text-slate-500">Escolha uma data final válida para ver a prévia.</span>}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
+          <button type="button" onClick={() => void handleSaveAndRetry()} disabled={saving || !dataFim || dataFim < issue.dataFim} className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-3 text-sm font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+            Guardar e tentar novamente
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, showSearch = true, embedded = false, returnTo = null }: BalcaoAtendimentoProps) {
   const [showReturnPrompt, setShowReturnPrompt] = useState(false);
   const { error } = useToast();
@@ -1495,6 +1672,12 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           onFullyPaid={() => setShowReturnPrompt(true)}
         />
       )}
+      <BillingWindowRepairPanel
+        issue={checkout.billingWindowIssue}
+        onClose={() => checkout.setBillingWindowIssue(null)}
+        onSave={checkout.saveBillingWindow}
+        onRetry={checkout.checkout}
+      />
       {showReturnPrompt && returnTo && (
         <div className="fixed bottom-5 right-5 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl">
           <div className="min-w-0">

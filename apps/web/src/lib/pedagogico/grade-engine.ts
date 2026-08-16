@@ -6,14 +6,12 @@ export type RawGradeRow = {
   disciplina_nome: string
   trimestre: 1 | 2 | 3
   mac: number | null
-  npp: number | null
-  pt: number | null
+  npt: number | null
 }
 
 export type CalculatedTerm = {
   mac: number | "-"
-  npp: number | "-"
-  pt: number | "-"
+  npt: number | "-"
   mt: number | "-"
 }
 
@@ -35,47 +33,43 @@ export type StudentPautaRow = {
 
 export type GradeWeights = {
   mac?: number
-  npp?: number
-  pt?: number
+  npt?: number
 }
+
+import {
+  calculateMfdTransicao,
+  roundRaa,
+} from "@/lib/academico/raa-formulas"
 
 const EMPTY_TERM: CalculatedTerm = {
   mac: "-",
-  npp: "-",
-  pt: "-",
+  npt: "-",
   mt: "-",
 }
 
 export class GradeEngine {
-  private static round1Decimal(value: number): number {
-    return Number(Math.round(Number(`${value}e1`)) + "e-1")
-  }
-
   private static normalizeWeights(weights?: GradeWeights) {
     const mac = weights?.mac ?? 1
-    const npp = weights?.npp ?? 1
-    const pt = weights?.pt ?? 1
-    const total = mac + npp + pt
-    return { mac, npp, pt, total: total > 0 ? total : 3 }
+    const npt = weights?.npt ?? 1
+    const total = mac + npt
+    return { mac, npt, total: total > 0 ? total : 2 }
   }
 
   private static calculateMT(
     mac: number | null,
-    npp: number | null,
-    pt: number | null,
+    npt: number | null,
     weights?: GradeWeights
   ): number | "-" {
-    if (mac === null || npp === null || pt === null) return "-"
+    if (mac === null || npt === null) return "-"
 
-    const { mac: wMac, npp: wNpp, pt: wPt, total } = this.normalizeWeights(weights)
-    const media = (mac * wMac + npp * wNpp + pt * wPt) / total
-    return this.round1Decimal(media)
+    const { mac: wMac, npt: wNpt, total } = this.normalizeWeights(weights)
+    const media = (mac * wMac + npt * wNpt) / total
+    return roundRaa(media)
   }
 
   private static calculateMFD(mt1: number | "-", mt2: number | "-", mt3: number | "-") {
     if (mt1 === "-" || mt2 === "-" || mt3 === "-") return "-"
-    const mediaFinal = (mt1 + mt2 + mt3) / 3
-    return Math.round(mediaFinal)
+    return calculateMfdTransicao(mt1, mt2, mt3) ?? "-"
   }
 
   public static generatePautaMatrix(
@@ -114,12 +108,10 @@ export class GradeEngine {
       const disciplineWeights = weightsByDisciplina?.[row.disciplina_id]
       subject[termKey] = {
         mac: row.mac ?? "-",
-        npp: row.npp ?? "-",
-        pt: row.pt ?? "-",
+        npt: row.npt ?? "-",
         mt: this.calculateMT(
           row.mac,
-          row.npp,
-          row.pt,
+          row.npt,
           disciplineWeights ?? weights
         ),
       }

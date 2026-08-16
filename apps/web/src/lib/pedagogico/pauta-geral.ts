@@ -20,7 +20,7 @@ type Client = SupabaseClient<Database>
 
 const normalizeTipo = (tipo?: string | null) => {
   const normalized = (tipo ?? "").trim().toUpperCase()
-  if (normalized === "NPT") return "PT"
+  if (normalized === "NPT" || normalized === "PT") return "NPT"
   return normalized
 }
 
@@ -114,7 +114,7 @@ export async function buildPautaGeralPayload({
 
   const gradesMap = new Map<
     string,
-    { mac: number[]; npp: number[]; pt: number[] }
+    { mac: number[]; npt: number[] }
   >()
 
   if (matriculaIds.length > 0 && turmaDisciplinaIds.length > 0) {
@@ -135,14 +135,13 @@ export async function buildPautaGeralPayload({
       if (!disciplina) continue
 
       const tipo = normalizeTipo(avaliacao?.tipo)
-      if (!tipo || !["MAC", "NPP", "PT"].includes(tipo)) continue
+      if (!tipo || !["MAC", "NPT"].includes(tipo)) continue
 
       const key = `${row.matricula_id}:${disciplina.id}:${trimestre}`
-      const entry = gradesMap.get(key) ?? { mac: [], npp: [], pt: [] }
+      const entry = gradesMap.get(key) ?? { mac: [], npt: [] }
       if (typeof row.valor === "number") {
         if (tipo === "MAC") entry.mac.push(row.valor)
-        if (tipo === "NPP") entry.npp.push(row.valor)
-        if (tipo === "PT") entry.pt.push(row.valor)
+      if (tipo === "NPT") entry.npt.push(row.valor)
       }
       gradesMap.set(key, entry)
     }
@@ -153,7 +152,7 @@ export async function buildPautaGeralPayload({
     for (const disciplina of disciplinas) {
       for (const trimestre of [1, 2, 3] as const) {
         const key = `${alunoId}:${disciplina.id}:${trimestre}`
-        const entry = gradesMap.get(key)
+          const entry = gradesMap.get(key)
         rawGrades.push({
           aluno_id: alunoId,
           aluno_nome: info.nome,
@@ -162,8 +161,7 @@ export async function buildPautaGeralPayload({
           disciplina_nome: disciplina.nome,
           trimestre,
           mac: entry ? averageOrNull(entry.mac) : null,
-          npp: entry ? averageOrNull(entry.npp) : null,
-          pt: entry ? averageOrNull(entry.pt) : null,
+          npt: entry ? averageOrNull(entry.npt) : null,
         })
       }
     }
@@ -183,8 +181,7 @@ export async function buildPautaGeralPayload({
       const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
       weightsByDisciplina[disciplinaId] = {
         mac: pesoPorTipo.get("MAC"),
-        npp: pesoPorTipo.get("NPP"),
-        pt: pesoPorTipo.get("PT"),
+        npt: pesoPorTipo.get("NPT") ?? pesoPorTipo.get("PT"),
       }
     })
   )
@@ -203,8 +200,7 @@ export async function buildPautaGeralPayload({
       const subject = student.disciplinas[disciplina.id]
       const term = subject?.[termKey] ?? {
         mac: "-",
-        npp: "-",
-        pt: "-",
+        npt: "-",
         mt: "-",
       }
       disciplinasNotas[disciplina.id] = term
@@ -258,7 +254,7 @@ export async function buildPautaGeralModeloPayload({
     periodoNumero,
   })
 
-  const emptyNotas: PautaGeralDisciplinaNotas = { mac: "-", npp: "-", pt: "-", mt: "-" }
+  const emptyNotas: PautaGeralDisciplinaNotas = { mac: "-", npt: "-", mt: "-" }
   const alunos: PautaGeralAlunoRow[] = Array.from({ length: linhas }).map((_, index) => {
     const disciplinasNotas: Record<string, PautaGeralDisciplinaNotas> = {}
     disciplinas.forEach((disciplina) => {

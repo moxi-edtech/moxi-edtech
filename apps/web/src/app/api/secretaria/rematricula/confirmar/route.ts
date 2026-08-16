@@ -7,6 +7,8 @@ import { normalizeAnoLetivo, resolveTabelaPreco } from '@/lib/financeiro/tabela-
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
+import { isBillingCompetencyAllowed, resolveTurmaBillingWindow } from '@/lib/financeiro/turma-billing-window'
+import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
 
 const Body = z.object({
   promocoes: z.array(z.object({ origem_turma_id: z.string().uuid(), destino_turma_id: z.string().uuid() })).optional(),
@@ -236,11 +238,26 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
       client.from('turmas').select('is_classe_exame, classe_num, nome').eq('id', turmaId).maybeSingle(),
     ]);
     if (!matriculas || matriculas.length === 0) return;
-    const turmaNome = String((turma as any)?.nome ?? '');
-    const isClasseExame = Boolean((turma as any)?.is_classe_exame)
-      || [6, 9].includes(Number((turma as any)?.classe_num))
-      || /\b(6|9)(ª|a)?\s*classe\b/i.test(turmaNome);
-    const mesFinal = new Date(dataFimSess.getFullYear(), dataFimSess.getMonth(), 1);
+    const regime = await resolveRegimeAcademico(client, turmaId);
+    const isClasseExame = regime.eh_classe_exame;
+    const { data: janelaRows, error: janelaError } = sessionId
+      ? await (client as any).rpc('resolve_turma_janela_cobranca', {
+          p_turma_id: turmaId,
+          p_ano_letivo_id: sessionId,
+        })
+      : { data: null, error: null };
+    if (janelaError) throw janelaError;
+    const janelaCobranca = Array.isArray(janelaRows) ? janelaRows[0] : janelaRows;
+    const billingWindow = resolveTurmaBillingWindow({
+      academicStart: dataInicioSess.toISOString().slice(0, 10),
+      academicEnd: dataFimSess.toISOString().slice(0, 10),
+      customWindow: janelaCobranca,
+      isClasseExame,
+    });
+    const dataInicioCobranca = new Date(`${billingWindow.dataInicio}T00:00:00Z`);
+    const dataFimCobranca = new Date(`${billingWindow.dataFim}T00:00:00Z`);
+    const mesInicio = new Date(dataInicioCobranca.getFullYear(), dataInicioCobranca.getMonth(), 1);
+    const mesFinal = new Date(dataFimCobranca.getFullYear(), dataFimCobranca.getMonth(), 1);
 
     const pricing = await resolveMensalidadeAtual(client, escolaId, turmaId, anoLetivoNome, classeId);
     const valor = pricing?.valor;
@@ -252,15 +269,15 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const rows: any[] = [];
     for (const matricula of matriculas as any[]) {
       const enrollmentDate = new Date(matricula.data_inicio_financeiro || matricula.data_matricula || matricula.created_at || dataInicioSess);
-      const baseStart = new Date(Math.max(dataInicioSess.getTime(), enrollmentDate.getTime()));
+      const baseStart = new Date(Math.max(mesInicio.getTime(), enrollmentDate.getTime()));
       const startMonth = gerarTodas ? new Date(baseStart.getFullYear(), baseStart.getMonth(), 1) : new Date(Math.max(baseStart.getTime(), new Date(today.getFullYear(), today.getMonth(), 1).getTime()));
       const cursor = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
       let firstLoop = true;
       while (cursor <= mesFinal) {
-        if (!isClasseExame && cursor.getTime() === mesFinal.getTime()) break;
         const ano = cursor.getFullYear();
         const mesIndex = cursor.getMonth();
         const mes = mesIndex + 1;
+        if (!isBillingCompetencyAllowed(billingWindow, { ano, mes })) break;
         const lastDay = new Date(ano, mesIndex + 1, 0).getDate();
         const dd = Math.min(dia, lastDay);
         const venc = new Date(ano, mesIndex, dd);

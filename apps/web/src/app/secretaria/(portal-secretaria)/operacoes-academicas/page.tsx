@@ -4,11 +4,13 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { AlertTriangle, CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
 import { buildPortalHref } from "@/lib/navigation";
 import Link from "next/link";
-import { buildCutoverHealthReport } from "@/lib/operacoes-academicas/cutover-health";
+import { buildCutoverHealthReport, type CutoverHealthReport } from "@/lib/operacoes-academicas/cutover-health";
 import type { Database } from "~types/supabase";
 import { CutoverResolveActions } from "@/components/secretaria/virada-ano/CutoverResolveActions";
 import { RetroactivePendingPanel } from "@/components/secretaria/virada-ano/RetroactivePendingPanel";
 import { NextYearFlowCard } from "@/components/secretaria/operacoes/NextYearFlowCard";
+import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 type FechamentoJob = {
   run_id: string;
@@ -78,21 +80,18 @@ export default async function OperacoesAcademicasPage({
   let escolaSlug: string | null = resolvedParams?.id ?? null;
 
   if (user) {
-    const { data: prof } = await s
-      .from("profiles")
-      .select("escola_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    escolaId = (prof as { escola_id?: string | null })?.escola_id ?? null;
-    
-    if (!escolaSlug && escolaId) {
-      const { data: esc } = await s
-        .from("escolas")
-        .select("slug")
-        .eq("id", escolaId)
-        .maybeSingle();
-      escolaSlug = esc?.slug ?? null;
-    }
+    escolaId = await resolveEscolaIdForUser(s, user.id, resolvedParams?.id ?? null);
+  }
+
+  if (!escolaId && resolvedParams?.id) {
+    const resolved = await resolveEscolaParam(s, resolvedParams.id);
+    escolaId = resolved.escolaId;
+    if (resolved.slug) escolaSlug = resolved.slug;
+  }
+
+  if (escolaId && !escolaSlug) {
+    const resolved = await resolveEscolaParam(s, escolaId);
+    escolaSlug = resolved.slug ?? escolaId;
   }
 
   const escolaParam = escolaSlug || escolaId;
@@ -101,8 +100,8 @@ export default async function OperacoesAcademicasPage({
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="operacoes_academicas" />
-        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
-          Vincule seu perfil a uma escola para acompanhar operações acadêmicas.
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-900 text-sm font-medium">
+          Vincule seu perfil a uma escola para acompanhar as operações académicas.
         </div>
       </>
     );
@@ -123,40 +122,58 @@ export default async function OperacoesAcademicasPage({
   const now = new Date();
   const minDate = new Date(now.getTime() - periodConfig.hours * 60 * 60 * 1000).toISOString();
 
-  const { data: fechamentoJobs } = await s
-    .from("fechamento_academico_jobs")
-    .select("run_id,estado,fechamento_tipo,created_at,updated_at,started_at,finished_at")
-    .eq("escola_id", escolaId)
-    .gte("created_at", minDate)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  let fechamentoJobs: FechamentoJob[] = [];
+  try {
+    const { data: fjData } = await s
+      .from("fechamento_academico_jobs")
+      .select("run_id,estado,fechamento_tipo,created_at,updated_at,started_at,finished_at")
+      .eq("escola_id", escolaId)
+      .gte("created_at", minDate)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    fechamentoJobs = (fjData ?? []) as FechamentoJob[];
+  } catch (err) {
+    console.error("[OperacoesAcademicas] Erro ao carregar fechamentoJobs:", err);
+  }
 
-  const runIds = (fechamentoJobs ?? []).map((job) => job.run_id);
-  const { data: steps } = runIds.length
-    ? await s
+  const runIds = fechamentoJobs.map((job) => job.run_id);
+  let steps: FechamentoStep[] = [];
+  if (runIds.length > 0) {
+    try {
+      const { data: stepData } = await s
         .from("fechamento_academico_job_steps")
         .select("run_id,etapa,status,created_at")
         .in("run_id", runIds)
-        .order("created_at", { ascending: false })
-    : { data: [] };
+        .order("created_at", { ascending: false });
+      steps = (stepData ?? []) as FechamentoStep[];
+    } catch (err) {
+      console.error("[OperacoesAcademicas] Erro ao carregar job steps:", err);
+    }
+  }
 
   const lastStepByRun = new Map<string, FechamentoStep>();
   (steps ?? []).forEach((step) => {
-    if (!lastStepByRun.has(step.run_id)) lastStepByRun.set(step.run_id, step as FechamentoStep);
+    if (!lastStepByRun.has(step.run_id)) lastStepByRun.set(step.run_id, step);
   });
 
-  const { data: loteJobs } = await s
-    .from("pautas_lote_jobs")
-    .select("id,status,tipo,documento_tipo,created_at,updated_at,processed,total_turmas,success_count,failed_count,error_message")
-    .eq("escola_id", escolaId)
-    .gte("created_at", minDate)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  let loteJobs: LoteJob[] = [];
+  try {
+    const { data: ljData } = await s
+      .from("pautas_lote_jobs")
+      .select("id,status,tipo,documento_tipo,created_at,updated_at,processed,total_turmas,success_count,failed_count,error_message")
+      .eq("escola_id", escolaId)
+      .gte("created_at", minDate)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    loteJobs = (ljData ?? []) as LoteJob[];
+  } catch (err) {
+    console.error("[OperacoesAcademicas] Erro ao carregar loteJobs:", err);
+  }
 
   const nowMs = now.getTime();
   const statusFilter = selectedStatus.toLowerCase();
 
-  const filteredFechamento = (fechamentoJobs ?? []).filter((job) => {
+  const filteredFechamento = fechamentoJobs.filter((job) => {
     if (selectedTipo !== "all" && selectedTipo !== "fechamento") return false;
     const estado = String(job.estado || "").toUpperCase();
     if (statusFilter === "success") return estado === "DONE";
@@ -165,7 +182,7 @@ export default async function OperacoesAcademicasPage({
     return true;
   });
 
-  const filteredLotes = (loteJobs ?? []).filter((job) => {
+  const filteredLotes = loteJobs.filter((job) => {
     if (selectedTipo !== "all" && selectedTipo !== "documentos") return false;
     const status = String(job.status || "").toUpperCase();
     if (statusFilter === "success") return status === "SUCCESS";
@@ -191,7 +208,40 @@ export default async function OperacoesAcademicasPage({
 
   const fechamentoFalhas = filteredFechamento.filter((job) => String(job.estado || "").toUpperCase() === "FAILED").length;
   const loteFalhas = filteredLotes.filter((job) => String(job.status || "").toUpperCase() === "FAILED").length;
-  const cutoverHealth = await buildCutoverHealthReport(s, escolaId);
+
+  let cutoverHealth: CutoverHealthReport;
+  try {
+    cutoverHealth = await buildCutoverHealthReport(s, escolaId);
+  } catch (err) {
+    console.error("[OperacoesAcademicas] Erro ao gerar cutoverHealth:", err);
+    cutoverHealth = {
+      status: "WARN",
+      can_cutover: false,
+      escola_id: escolaId,
+      generated_at: new Date().toISOString(),
+      active_year: null,
+      previous_year: null,
+      metrics: {
+        turmas_session_id_null: 0,
+        matriculas_session_id_null: 0,
+        historico_anos_total: 0,
+        snapshot_locks_total: 0,
+        mensalidades_competencia_fora_janela: 0,
+        mensalidades_sem_matricula_id: 0,
+        curriculos_classes_pendentes: 0,
+        pautas_anuais_pendentes: 0,
+        snapshot_locks_pendentes: 0,
+        matriculas_status_final_pendente: 0,
+        turmas_by_year: [],
+        matriculas_by_year: [],
+        mensalidades_by_year: [],
+      },
+      blockers: [],
+      warnings: ["Não foi possível processar a verificação de virada de ano neste momento."],
+      technical_errors: [err instanceof Error ? err.message : String(err)],
+    };
+  }
+
   const cutoverStatusClass =
     cutoverHealth.status === "BLOCKED"
       ? "bg-red-100 text-red-700"

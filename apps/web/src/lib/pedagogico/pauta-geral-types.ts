@@ -5,8 +5,7 @@ export type PautaGeralDisciplina = {
 
 export type PautaGeralDisciplinaNotas = {
   mac: number | "-"
-  npp: number | "-"
-  pt: number | "-"
+  npt: number | "-"
   mt: number | "-"
 }
 

@@ -25,6 +25,8 @@ const payloadSchema = z.object({
   frequencia_min_percent: z.number().int().min(0).max(100),
   modelo_avaliacao: z.string().trim().optional(),
   avaliacao_config: avaliacaoConfigSchema.optional(),
+  permitir_inscricao_condicional: z.boolean().default(false),
+  permitir_progressao_com_recurso: z.boolean().default(true),
 });
 
 type AvaliacaoComponente = { code: string; peso?: number; ativo?: boolean };
@@ -170,6 +172,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
+    const { data: raaPolicy, error: raaPolicyError } = await (supabase as any)
+      .from('configuracoes_pedagogicas')
+      .select('permitir_inscricao_condicional, permitir_progressao_com_recurso')
+      .eq('escola_id', effectiveEscolaId)
+      .maybeSingle();
+
+    if (raaPolicyError) {
+      console.error('Error fetching RAA progression policy:', raaPolicyError);
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Erro ao carregar a política de progressão.' }, { status: 500 }),
+        start
+      );
+    }
+
     const defaultModel = await resolveDefaultModel(supabase, effectiveEscolaId);
     const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'PADRAO_ESCOLA';
     const avaliacaoConfig = hasComponentes(config?.avaliacao_config)
@@ -184,6 +200,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         modelo_avaliacao: modeloAvaliacao,
         avaliacao_config: avaliacaoConfig,
         has_config: Boolean(config),
+        permitir_inscricao_condicional: raaPolicy?.permitir_inscricao_condicional ?? false,
+        permitir_progressao_com_recurso: raaPolicy?.permitir_progressao_com_recurso ?? true,
+        policy_configured: Boolean(raaPolicy),
       },
     }), start);
   } catch (e) {
@@ -286,6 +305,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
+    const { error: raaPolicyError } = await (supabase as any)
+      .from('configuracoes_pedagogicas')
+      .upsert({
+        escola_id: effectiveEscolaId,
+        permitir_inscricao_condicional: payload.permitir_inscricao_condicional,
+        permitir_progressao_com_recurso: payload.permitir_progressao_com_recurso,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'escola_id' });
+
+    if (raaPolicyError) {
+      console.error('Error upserting RAA progression policy:', raaPolicyError);
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'As regras de avaliação foram salvas, mas a política de progressão não foi salva. Tente novamente.' }, { status: 500 }),
+        start
+      );
+    }
+
     if (requestedModelRef && isUuid(requestedModelRef)) {
       const { error: updateModeloError } = await supabase
         .from('modelos_avaliacao')
@@ -305,7 +341,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    return withNoStore(NextResponse.json({ ok: true, data: { ...data, has_config: true } }, { status: 200 }), start);
+    return withNoStore(NextResponse.json({ ok: true, data: {
+      ...data,
+      has_config: true,
+      permitir_inscricao_condicional: payload.permitir_inscricao_condicional,
+      permitir_progressao_com_recurso: payload.permitir_progressao_com_recurso,
+      policy_configured: true,
+    } }, { status: 200 }), start);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('Error in avaliacao-frequencia POST API:', message);
