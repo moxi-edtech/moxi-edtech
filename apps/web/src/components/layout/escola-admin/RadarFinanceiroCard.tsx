@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import {
   AlertCircle,
   ArrowDown,
@@ -14,6 +15,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { InadimplenciaTopRow } from "./dashboard.types";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/Drawer";
 
 const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" });
 
@@ -75,11 +85,11 @@ function formatFreshness(dateString: string): string {
 
 const SEVERITY_CONFIG = {
   critico: {
-    avatar: "bg-klasse-gold-100 text-klasse-gold-700",
+    avatar: "bg-red-50 text-red-700",
     DayIcon: TrendingUp,
-    dayColor: "text-klasse-gold-700",
-    pillBg: "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200",
-    dot: "bg-klasse-gold",
+    dayColor: "text-red-700",
+    pillBg: "bg-red-50 text-red-700 border-red-200",
+    dot: "bg-red-500",
     label: "Crítico",
   },
   atencao: {
@@ -103,6 +113,10 @@ const SEVERITY_CONFIG = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, lastUpdated }: RadarFinanceiroCardProps) {
+  const [selectedItem, setSelectedItem] = useState<InadimplenciaTopRow | null>(null);
+  const contextualLinkHref = isOperacoes
+    ? linkHref.replace("/financeiro/radar", "/operacoes/turmas-alunos")
+    : linkHref;
   const totalAlunos = items.length;
   const totalEmRisco = items.reduce((acc, item) => acc + (item.valor_em_atraso || 0), 0);
 
@@ -140,7 +154,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
           </div>
           {totalAlunos > 0 && (
             <Link
-              href={linkHref}
+              href={contextualLinkHref}
               className="text-[11px] font-bold uppercase tracking-wider text-klasse-green hover:underline flex items-center gap-0.5 mt-1 shrink-0"
             >
               Ver todos <ChevronRight className="h-3.5 w-3.5" />
@@ -184,7 +198,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
               Nenhum aluno com atraso no período actual. Continue assim.
             </p>
             <Link
-              href={linkHref}
+              href={contextualLinkHref}
               className="text-xs font-bold text-klasse-green hover:text-klasse-green-700 transition-colors flex items-center gap-1 group"
             >
               Ver histórico de cobranças
@@ -218,7 +232,12 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                     transition={{ delay: index * 0.05 }}
                     className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3.5 hover:bg-slate-50/50 transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItem(item)}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2"
+                      aria-label={`Ver detalhes da dívida de ${nome}`}
+                    >
                       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ${cfg.avatar}`}>
                         {initials}
                       </div>
@@ -251,10 +270,15 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                           )}
                         </div>
                       </div>
-                    </div>
+                    </button>
 
-                    <div className="flex flex-col sm:items-end pl-12 sm:pl-0 shrink-0">
-                      <p className="text-sm font-black text-klasse-gold-700">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedItem(item)}
+                      className="flex shrink-0 flex-col rounded-lg pl-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2 sm:items-end sm:pl-0"
+                      aria-label={`Ver detalhes da dívida de ${nome}`}
+                    >
+                      <p className="text-sm font-black text-red-600">
                         {moeda.format(Number(item.valor_em_atraso ?? 0))}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">
@@ -267,7 +291,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
                           Último pagto {formatRelativeTime(item.ultimo_pagamento_data)}
                         </p>
                       )}
-                    </div>
+                    </button>
                   </motion.li>
                 );
               })}
@@ -288,7 +312,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
 
           {totalAlunos > 5 && (
             <Link
-              href={linkHref}
+              href={contextualLinkHref}
               className="font-bold text-slate-500 hover:text-klasse-green transition-colors flex items-center gap-1 group"
             >
               Ver todos os {totalAlunos} casos
@@ -297,6 +321,36 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
           )}
         </div>
       )}
+
+      <Drawer open={selectedItem !== null} onOpenChange={(open) => !open && setSelectedItem(null)}>
+        <DrawerContent className="max-h-[90vh]">
+          {selectedItem && (
+            <>
+              <DrawerHeader className="border-b border-slate-100 text-left">
+                <DrawerTitle className="text-xl font-bold text-slate-900">Detalhes da dívida</DrawerTitle>
+                <DrawerDescription>
+                  {selectedItem.aluno_nome || "Aluno"} · {[selectedItem.classe_nome, selectedItem.turma_nome].filter(Boolean).join(" – ") || "Turma não informada"}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="space-y-5 overflow-y-auto p-5">
+                <div className="rounded-xl bg-red-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Valor em atraso</p>
+                  <p className="mt-1 text-2xl font-black text-red-700">{moeda.format(Number(selectedItem.valor_em_atraso ?? 0))}</p>
+                </div>
+                <dl className="grid grid-cols-2 gap-4 text-sm">
+                  <div><dt className="text-slate-500">Dias em atraso</dt><dd className="mt-1 font-bold text-slate-900">{selectedItem.dias_em_atraso}</dd></div>
+                  <div><dt className="text-slate-500">Títulos em atraso</dt><dd className="mt-1 font-bold text-slate-900">{selectedItem.titulos_em_atraso ?? "—"}</dd></div>
+                  <div className="col-span-2"><dt className="text-slate-500">Último pagamento</dt><dd className="mt-1 font-bold text-slate-900">{selectedItem.ultimo_pagamento_data ? formatRelativeTime(selectedItem.ultimo_pagamento_data) : "Nenhum pagamento registado"}</dd></div>
+                </dl>
+              </div>
+              <DrawerFooter className="border-t border-slate-100 sm:flex-row sm:justify-between">
+                <DrawerClose className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Fechar</DrawerClose>
+                <Link href={contextualLinkHref} className="rounded-lg bg-klasse-green px-4 py-2 text-center text-sm font-bold text-white hover:bg-klasse-green-700">Abrir financeiro</Link>
+              </DrawerFooter>
+            </>
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

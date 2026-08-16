@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Megaphone, ArrowRight, Wallet, GraduationCap, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import type { Aviso } from "./dashboard.types";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/Drawer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,6 +122,7 @@ const itemVariants = {
  * indicador de não-lidos, CTAs contextuais e empty state orientador.
  */
 export default function NoticesSection({ escolaId, notices = [], portalBase = "admin" }: Props) {
+  const [selectedNotice, setSelectedNotice] = useState<Aviso | null>(null);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const hrefAll = escolaParam ? buildPortalHref(escolaParam, `/${portalBase}/avisos`) : "#";
@@ -132,7 +143,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
 
   return (
     <section
-      className={`border border-slate-200 bg-white p-6 ${
+      className={`bg-white p-6 ${
         isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"
       }`}
     >
@@ -214,12 +225,17 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                 <motion.li
                   key={n.id}
                   variants={itemVariants}
-                  className={`group relative flex min-h-[56px] flex-col justify-center gap-2 overflow-hidden border-l-4 border-y border-r border-y-slate-100 border-r-slate-100 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4 ${baseBg} ${
-                    config.borderColor
-                  } ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}
+                  className={`group relative flex min-h-[56px] flex-col justify-center gap-2 overflow-hidden p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4 ${baseBg} ${
+                    isOperacoes ? "rounded-lg" : "rounded-xl"
+                  }`}
                 >
                   {/* Icon + Content */}
-                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNotice(n)}
+                    className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-green focus-visible:ring-offset-2"
+                    aria-label={`Abrir aviso: ${n.titulo}`}
+                  >
                     <div
                       className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor}`}
                     >
@@ -250,7 +266,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                         <span>{date}</span>
                       </div>
                     </div>
-                  </div>
+                  </button>
 
                   {/* CTA button — §2 Próximo Passo */}
                   {n.action_label && n.action_href && (
@@ -269,6 +285,36 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
           </AnimatePresence>
         </motion.ul>
       )}
+
+      <Drawer open={selectedNotice !== null} onOpenChange={(open) => !open && setSelectedNotice(null)}>
+        <DrawerContent className="max-h-[90vh]">
+          {selectedNotice && (
+            <>
+              <DrawerHeader className="border-b border-slate-100 text-left">
+                <DrawerTitle className="text-xl font-bold text-slate-900">{selectedNotice.titulo}</DrawerTitle>
+                <DrawerDescription>
+                  {selectedNotice.autor ? `${selectedNotice.autor} · ` : ""}{formatRelativeTime(selectedNotice.dataISO)}
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="space-y-4 overflow-y-auto p-5">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <span className={`h-2 w-2 rounded-full ${selectedNotice.tipo === "urgente" ? "bg-klasse-gold" : "bg-klasse-green"}`} />
+                  {selectedNotice.tipo || "geral"}
+                </div>
+                <p className="text-sm leading-6 text-slate-700">{selectedNotice.resumo || "Este aviso não possui detalhes adicionais."}</p>
+              </div>
+              <DrawerFooter className="border-t border-slate-100 sm:flex-row sm:justify-between">
+                <DrawerClose className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Fechar</DrawerClose>
+                {selectedNotice.action_label && selectedNotice.action_href && (
+                  <Link href={selectedNotice.action_href} className="rounded-lg bg-klasse-green px-4 py-2 text-center text-sm font-bold text-white hover:bg-klasse-green-700">
+                    {selectedNotice.action_label}
+                  </Link>
+                )}
+              </DrawerFooter>
+            </>
+          )}
+        </DrawerContent>
+      </Drawer>
     </section>
   );
 }
