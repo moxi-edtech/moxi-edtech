@@ -258,21 +258,21 @@ export default async function OperacoesAcademicasPage({
             title="Operações Académicas"
             description="Painel único para monitoramento de fechamento acadêmico e lotes oficiais."
             breadcrumbs={[
-              { label: "Início", href: "/" },
-              { label: "Secretaria", href: "/secretaria" },
+              { label: "Início", href: buildPortalHref(escolaParam, "/operacoes/dashboard") },
+              { label: "Operações", href: buildPortalHref(escolaParam, "/operacoes/dashboard") },
               { label: "Operações Académicas" },
             ]}
           />
           <div className="flex items-center gap-4 flex-wrap">
             <Link
-              href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
+              href={buildPortalHref(escolaParam, "/operacoes/academico/wizard")}
               className="text-xs font-semibold text-klasse-green hover:underline"
             >
               Abrir wizard simplificado
             </Link>
 
             <Link
-              href={buildPortalHref(escolaParam, "/secretaria/operacoes-academicas/reclassificacao-finalistas")}
+              href={buildPortalHref(escolaParam, "/operacoes/academico/reclassificacao-finalistas")}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold hover:bg-amber-100 transition shadow-2xs"
             >
               <GraduationCap className="h-4 w-4 text-[#9a7010]" />
@@ -467,7 +467,7 @@ export default async function OperacoesAcademicasPage({
               <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" /> Fechamento Académico
               </h2>
-              <Link href={buildPortalHref(escolaParam, `/admin/operacoes-academicas/fechamento-academico?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, `/operacoes/academico/fechamento-academico?${monitorQuery}`)} className="text-xs font-semibold text-klasse-green hover:underline">
                 Abrir monitor
               </Link>
             </div>
@@ -588,7 +588,7 @@ export default async function OperacoesAcademicasPage({
               <p className="text-xs text-slate-500 mt-1">
                 Solicitar reabertura auditada e repetir fechamento com justificativa.
               </p>
-              <Link href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/fechamento-academico")} className="text-[10px] font-semibold text-klasse-green hover:underline">
+              <Link href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico")} className="text-[10px] font-semibold text-klasse-green hover:underline">
                 Abrir fechamento
               </Link>
             </div>
