@@ -61,7 +61,7 @@ const StatusBadge = ({ status, diasAtraso }: { status: string, diasAtraso?: numb
   const config = {
     paga: { bg: 'bg-[#1F6B3B]/10', text: 'text-[#1F6B3B]', border: 'border-[#1F6B3B]/20', icon: CheckCircle, label: 'Regular' },
     pendente: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', icon: Clock, label: 'A vencer' },
-    atrasada: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', icon: AlertCircle, label: `${diasAtraso || 0}d Atraso` },
+    atrasada: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: AlertCircle, label: `${diasAtraso || 0}d Atraso` },
     cancelada: { bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-100', icon: Ban, label: 'Inativo' },
   };
 
