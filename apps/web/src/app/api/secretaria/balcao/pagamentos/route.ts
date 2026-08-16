@@ -11,18 +11,25 @@ import {
 } from "@/lib/fiscal/financeiroFiscalAdapter";
 import type { Database, Json } from "~types/supabase";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { isBillingCompetencyAllowed, resolveTurmaBillingWindow } from "@/lib/financeiro/turma-billing-window";
+import { resolveRegimeAcademico } from "@/lib/academico/regime-academico";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const optionalNonEmptyString = z.preprocess(
+  (value) => typeof value === "string" && value.trim() === "" ? null : value,
+  z.string().trim().min(1).nullable().optional(),
+);
 
 const payloadSchema = z.object({
   aluno_id: z.string().uuid(),
   mensalidade_id: z.string().uuid().nullable().optional(),
   valor: z.number().positive(),
   metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"]),
-  reference: z.string().trim().min(1).nullable().optional(),
-  evidence_url: z.string().trim().min(1).nullable().optional(),
-  gateway_ref: z.string().trim().min(1).nullable().optional(),
+  reference: optionalNonEmptyString,
+  evidence_url: optionalNonEmptyString,
+  gateway_ref: optionalNonEmptyString,
   ano_letivo_id: z.string().uuid().optional(),
   meta: z.record(z.unknown()).optional(),
 });
@@ -95,8 +102,12 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     const parsed = payloadSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, error: parsed.error.issues?.[0]?.message || "Payload inválido" },
+    return NextResponse.json(
+        {
+          ok: false,
+          error: parsed.error.issues?.[0]?.message || "Payload inválido",
+          field: parsed.error.issues?.[0]?.path?.join(".") || null,
+        },
         { status: 400 }
       );
     }
@@ -131,7 +142,7 @@ export async function POST(request: Request) {
     if (payload.mensalidade_id) {
       const { data: mensalidade, error: mensalidadeError } = await supabase
         .from("mensalidades")
-        .select("id, matricula_id, aluno_id")
+        .select("id, matricula_id, aluno_id, turma_id, ano_letivo, mes_referencia, ano_referencia")
         .eq("escola_id", escolaId)
         .eq("id", payload.mensalidade_id)
         .maybeSingle();
@@ -141,6 +152,55 @@ export async function POST(request: Request) {
       }
       if (String(mensalidade.aluno_id) !== String(payload.aluno_id)) {
         return NextResponse.json({ ok: false, error: "A mensalidade não pertence ao aluno selecionado.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
+      }
+
+      if (mensalidade.mes_referencia && mensalidade.ano_referencia) {
+        const { data: anoConfig } = await supabase
+          .from("anos_letivos")
+          .select("id, ano, data_inicio, data_fim")
+          .eq("escola_id", escolaId)
+          .eq("id", academicContext.anoLetivoId)
+          .maybeSingle();
+        if (anoConfig?.data_inicio && anoConfig.data_fim) {
+          const { data: resolvedWindowRows, error: resolvedWindowError } = mensalidade.turma_id && anoConfig.id
+            ? await (supabase as any).rpc("resolve_turma_janela_cobranca", {
+                p_turma_id: mensalidade.turma_id,
+                p_ano_letivo_id: anoConfig.id,
+              })
+            : { data: null, error: null };
+          if (resolvedWindowError) {
+            return NextResponse.json({ ok: false, error: "Não foi possível resolver a janela de cobrança da turma.", code: "BILLING_WINDOW_RESOLUTION_FAILED" }, { status: 500 });
+          }
+          const resolvedWindow = Array.isArray(resolvedWindowRows) ? resolvedWindowRows[0] : resolvedWindowRows;
+          const regime = mensalidade.turma_id
+            ? await resolveRegimeAcademico(supabase, mensalidade.turma_id)
+            : null;
+          const janela = resolveTurmaBillingWindow({
+            academicStart: anoConfig.data_inicio,
+            academicEnd: anoConfig.data_fim,
+            customWindow: resolvedWindow,
+            isClasseExame: Boolean(regime?.eh_classe_exame),
+          });
+          if (!isBillingCompetencyAllowed(janela, {
+            ano: Number(mensalidade.ano_referencia),
+            mes: Number(mensalidade.mes_referencia),
+          })) {
+            return NextResponse.json({
+              ok: false,
+              error: "Esta mensalidade está fora da janela de cobrança da turma e não pode ser liquidada.",
+              code: "MONTH_OUTSIDE_ACADEMIC_YEAR",
+              context: {
+                turma_id: mensalidade.turma_id,
+                ano_letivo_id: anoConfig.id,
+                ano: anoConfig.ano,
+                data_inicio_permitida: janela.dataInicio,
+                data_fim_permitida: janela.dataFim,
+                competencia: `${mensalidade.ano_referencia}-${String(mensalidade.mes_referencia).padStart(2, "0")}`,
+              },
+              next_action: { type: "contact_secretaria", label: "Rever o ano letivo, a turma e a competência", href: "/secretaria/operacoes-academicas" },
+            }, { status: 409 });
+          }
+        }
       }
       if (isPosViradaPayment) {
         const matriculaOrigemId = getStringField(meta, "matricula_origem_id");
