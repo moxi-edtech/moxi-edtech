@@ -114,6 +114,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Wallet",
       children: [
         { href: "/escola/[escolaId]/operacoes/financeiro", label: "Visão geral" },
+        { href: "/escola/[escolaId]/operacoes/radar", label: "Radar de inadimplência" },
         { href: "/escola/[escolaId]/operacoes/financeiro/recebimentos", label: "Recebimentos" },
         { href: "/escola/[escolaId]/operacoes/financeiro/controle-caixa", label: "Controlo de caixa" },
         { href: "/escola/[escolaId]/operacoes/financeiro/cobrancas", label: "Cobranças" },
