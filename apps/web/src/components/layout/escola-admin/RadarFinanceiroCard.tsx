@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { InadimplenciaTopRow } from "./dashboard.types";
+import SecaoLabel from "@/components/shared/SecaoLabel";
 
 const moeda = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" });
 
@@ -124,7 +125,7 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
   const displayItems = items.slice(0, 5);
 
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col transition hover:shadow-md h-full ${isOperacoes ? "ring-1 ring-slate-100" : ""}`}>
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="p-5 border-b border-slate-100 flex flex-col gap-3">
         <div className="flex justify-between items-start">
@@ -133,7 +134,8 @@ export default function RadarFinanceiroCard({ items, linkHref, isOperacoes, last
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">Radar Financeiro</h3>
+              <SecaoLabel className="text-klasse-green">Financeiro</SecaoLabel>
+              <h3 className="mt-1 text-sm font-bold tracking-tight text-slate-900">Radar Financeiro</h3>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                 {totalAlunos > 0 ? (
                   <span>{totalAlunos} aluno{totalAlunos !== 1 ? "s" : ""} • {moeda.format(totalEmRisco)} em risco</span>

@@ -16,6 +16,7 @@ import ChartsSection   from "./ChartsSection";
 import OperationalFocusSection from "./OperationalFocusSection";
 import { EstadoVitalBanner } from "./EstadoVitalBanner";
 import RadarFinanceiroCard from "./RadarFinanceiroCard";
+import SecaoLabel from "@/components/shared/SecaoLabel";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -135,7 +136,7 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
 
 // ─── Finance card wrapper ─────────────────────────────────────────────────────
 
-function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, children, isOperacoes = false }: {
+function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, children }: {
   icon:       React.ReactNode;
   iconBg:   string;
   title:      string;
@@ -143,15 +144,15 @@ function FinanceCard({ icon, iconBg, title, subtitle, linkHref, linkLabel, child
   linkHref:   string;
   linkLabel:  string;
   children:   React.ReactNode;
-  isOperacoes?: boolean;
 }) {
   return (
     <motion.div variants={itemVariants} className={`flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md`}>
-      <div className={`flex items-center justify-between px-5 py-4 border-b border-slate-100 ${isOperacoes ? "bg-slate-50/10" : "bg-slate-50/30"}`}>
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight">{title}</h3>
+            <SecaoLabel className="text-klasse-green">Financeiro</SecaoLabel>
+            <h3 className="mt-1 text-sm font-bold tracking-tight text-slate-900">{title}</h3>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{subtitle}</p>
           </div>
         </div>
@@ -289,7 +290,7 @@ export default function EscolaAdminDashboardContent({
       severity: "warning",
       categoria: "financeiro",
       titulo: "Tabelas de preço pendentes",
-      descricao: "Defina preços para liberar cobranças automáticas.",
+    descricao: "Defina matrícula e mensalidade para cada turma pendente.",
       count: missingPricingCount,
       link: buildPortalHref(escolaParam, `/${portalBase}/configuracoes/mensalidades`),
       link_label: "Configurar preços",
@@ -307,11 +308,11 @@ export default function EscolaAdminDashboardContent({
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
-          <h1 className={`${isOperacoes ? "text-[28px]" : "text-3xl"} font-black leading-none tracking-tight text-slate-900`}>
+          <h1 className="text-3xl font-black leading-none tracking-tight text-slate-900">
             {dashboardTitle}
           </h1>
           <div className="mt-2 flex items-center gap-2">
-            <p className={`${isOperacoes ? "text-[13px]" : "text-sm"} font-medium text-slate-500`}>{saudacao}</p>
+            <p className="text-sm font-medium text-slate-500">{saudacao}</p>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 rounded-full border border-klasse-green-100 bg-klasse-green-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-klasse-green animate-pulse" />
@@ -336,7 +337,7 @@ export default function EscolaAdminDashboardContent({
       {/* ── 1.1 ESTADO VITAL (Organismo Vivo) ────────────────────────────────── */}
       {estadoVital && (
         <motion.div variants={itemVariants}>
-          <EstadoVitalBanner estado={estadoVital} isOperacoes={isOperacoes} />
+          <EstadoVitalBanner estado={estadoVital} />
         </motion.div>
       )}
 
@@ -375,13 +376,13 @@ export default function EscolaAdminDashboardContent({
 
       {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
       {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className={`relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md ${isOperacoes ? "p-5" : "p-6"}`}>
+        <motion.section variants={itemVariants} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
           <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-8 relative z-10">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recebido no Mês (Caixa)</p>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-                  <div className={`${isOperacoes ? "text-xl" : "text-2xl"} font-black tracking-tight text-slate-900`}>
+                  <div className="text-2xl font-black tracking-tight text-slate-900">
                     {mounted ? moeda.format(realizadoReceita) : "—"}
                   </div>
                   <span className="text-sm font-medium text-slate-400">
@@ -390,7 +391,7 @@ export default function EscolaAdminDashboardContent({
                       : "sem previsão definida"}
                   </span>
                   {isAcimaDaMeta && (
-                    <div className={`flex items-center gap-1 px-2 py-0.5 bg-klasse-green-50 border border-klasse-green-100 animate-in fade-in slide-in-from-left-2 ${isOperacoes ? "rounded-md" : "rounded-full"}`}>
+                    <div className="flex items-center gap-1 rounded-full border border-klasse-green-100 bg-klasse-green-50 px-2 py-0.5 animate-in fade-in slide-in-from-left-2">
                        <TrendingUp className="w-3 h-3 text-klasse-green" />
                        <span className="text-[10px] font-black text-klasse-green">+{valorAcimaMeta}% ACIMA DA META</span>
                     </div>
@@ -419,7 +420,7 @@ export default function EscolaAdminDashboardContent({
 
             <div className="text-right flex flex-col items-end flex-shrink-0">
               <div className="relative">
-                <p className={`${isOperacoes ? "text-3xl" : "text-4xl"} font-black leading-none tracking-tighter text-klasse-green`}>
+                <p className="text-4xl font-black leading-none tracking-tighter text-klasse-green">
                   {displayPercentualReceita}%
                 </p>
                 {isAcimaDaMeta && (
@@ -437,15 +438,7 @@ export default function EscolaAdminDashboardContent({
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
                 className={`h-full rounded-full ${
-                  hasMovimentoReceita
-                    ? isAcimaDaMeta 
-                      ? isOperacoes
-                        ? "bg-klasse-green"
-                        : "bg-klasse-green"
-                      : isOperacoes
-                        ? "bg-klasse-green"
-                        : "bg-klasse-green"
-                    : "bg-slate-300"
+                  hasMovimentoReceita ? "bg-klasse-green" : "bg-slate-300"
                 }`}
               />
             </div>
@@ -494,7 +487,6 @@ export default function EscolaAdminDashboardContent({
           subtitle="Entradas confirmadas hoje"
           linkHref={cashFlowHref}
           linkLabel="Ver histórico"
-          isOperacoes={isOperacoes}
         >
           <AnimatePresence mode="popLayout">
             {pagamentosRecentes.length === 0 ? (

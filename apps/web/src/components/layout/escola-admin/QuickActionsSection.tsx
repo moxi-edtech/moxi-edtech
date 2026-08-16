@@ -11,6 +11,7 @@ import NovoFuncionarioPage from "@/app/escola/[id]/(portal)/funcionarios/novo/pa
 import FuncionariosPage from "@/app/escola/[id]/(portal)/funcionarios/page";
 import ProfessoresPage from "@/app/escola/[id]/(portal)/professores/page";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import SecaoLabel from "@/components/shared/SecaoLabel";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import {
@@ -176,15 +177,16 @@ export default function QuickActionsSection({
     }
   };
 
-  const isOperacoes = portalBase === "operacoes";
-
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-      <header className="mb-5 flex items-center gap-2.5">
-        <div className="rounded-lg bg-slate-100 p-2 text-slate-500">
-          <PlusCircle className="h-4 w-4" />
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <header className="mb-5">
+        <SecaoLabel className="text-klasse-green">Atalhos do portal</SecaoLabel>
+        <div className="mt-1 flex items-center gap-2.5">
+          <div className="rounded-lg bg-klasse-green/10 p-2 text-klasse-green">
+            <PlusCircle className="h-4 w-4" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900">Ações rápidas</h3>
         </div>
-        <h3 className="text-sm font-bold text-slate-900">Ações Rápidas</h3>
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -197,7 +199,6 @@ export default function QuickActionsSection({
             href={!action.opensModal ? action.href : undefined}
             disabled={action.disabled}
             disabledReason={action.reason}
-            compact={isOperacoes}
             variant={action.variant}
           />
         ))}

@@ -119,8 +119,6 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
   const hrefAll = escolaParam ? buildPortalHref(escolaParam, `/${portalBase}/avisos`) : "#";
   const hrefNew = escolaParam ? buildPortalHref(escolaParam, `/${portalBase}/avisos/novo`) : "#";
 
-  const isOperacoes = portalBase === "operacoes";
-
   // Count unread notices for the badge
   const unreadCount = notices.filter((n) => n.lido === false).length;
 
@@ -133,18 +131,12 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
   });
 
   return (
-    <section
-      className={`bg-white p-6 ${
-        isOperacoes ? "rounded-lg shadow-none" : "rounded-2xl shadow-sm"
-      }`}
-    >
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="mb-5 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`bg-klasse-green-50 p-2 text-klasse-green ${
-              isOperacoes ? "rounded-lg" : "rounded-xl"
-            }`}
+            className="rounded-xl bg-klasse-green-50 p-2 text-klasse-green"
           >
             <Megaphone className="h-5 w-5" aria-hidden="true" />
           </div>
@@ -173,9 +165,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
       {notices.length === 0 ? (
         /* Gracioso empty state — §2 cada bloqueio apresenta o próximo passo */
         <div
-          className={`flex flex-col items-center justify-center border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center ${
-            isOperacoes ? "rounded-lg" : "rounded-xl"
-          }`}
+          className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center"
         >
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Megaphone className="h-6 w-6" aria-hidden="true" />
@@ -217,7 +207,7 @@ export default function NoticesSection({ escolaId, notices = [], portalBase = "a
                   key={n.id}
                   variants={itemVariants}
                   className={`group relative flex min-h-[56px] flex-wrap justify-center gap-2 overflow-hidden p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4 ${baseBg} ${
-                    isOperacoes ? "rounded-lg" : "rounded-xl"
+                    "rounded-xl"
                   }`}
                 >
                   {/* Icon + Content */}

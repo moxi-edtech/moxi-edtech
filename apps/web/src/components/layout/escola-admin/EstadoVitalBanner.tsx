@@ -14,7 +14,7 @@ type EstadoVital = {
   fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };
 
-export function EstadoVitalBanner({ estado, isOperacoes = false }: { estado: EstadoVital | null; isOperacoes?: boolean }) {
+export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
   if (!estado) return null;
 
   const isExames = estado.fase_operacional === 'EXAMES';
@@ -25,10 +25,10 @@ export function EstadoVitalBanner({ estado, isOperacoes = false }: { estado: Est
     : isExames ? 'Exames' : 'Aulas';
 
   return (
-    <div className={`border border-slate-200 bg-white p-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 ${isOperacoes ? "rounded-lg shadow-none" : "rounded-xl shadow-sm"}`}>
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {/* Lado Esquerdo: Título e Status Resumido */}
       <div className="flex items-center gap-3">
-        <div className={`bg-slate-50 p-2 text-slate-500 border border-slate-100 ${isOperacoes ? "rounded-lg" : "rounded-xl"}`}>
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-2 text-slate-500">
           <Activity className="h-4 w-4" />
         </div>
         <div>
