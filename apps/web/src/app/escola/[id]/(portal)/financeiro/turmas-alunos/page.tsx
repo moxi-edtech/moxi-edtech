@@ -77,7 +77,7 @@ const StatusBadge = ({ status, diasAtraso }: { status: string, diasAtraso?: numb
 };
 
 const TurmaSkeleton = () => (
-  <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-4 animate-pulse flex justify-between items-center">
+  <div className="bg-white border border-slate-200 rounded-xl p-6 mb-4 animate-pulse flex justify-between items-center shadow-sm">
     <div className="space-y-3 w-1/2">
       <div className="h-5 bg-slate-100 rounded w-1/3"></div>
       <div className="h-3 bg-slate-50 rounded w-2/3"></div>
@@ -283,7 +283,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   }, [data.turmas, data.alunos, busca]);
 
   return (
-    <div className="space-y-8 print:space-y-6 print:p-0">
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8 print:space-y-6 print:p-0">
       
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
@@ -425,7 +425,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       </div>
 
       {/* TOOLBAR & FILTROS */}
-      <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-white rounded-xl p-2 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
         
         {/* Search Input */}
         <div className="relative w-full md:max-w-md group px-2">
@@ -464,7 +464,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             <TurmaSkeleton />
           </>
         ) : turmasProcessadas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
+          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
             <div className="p-4 bg-slate-50 rounded-full mb-4">
               <Search className="w-8 h-8 text-slate-300" />
             </div>
@@ -489,7 +489,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
             if (filtroStatus === 'inadimplentes' && stats.atrasadas === 0) return null;
 
             return (
-              <div key={turma.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
+              <div key={turma.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all hover:border-slate-300 hover:shadow-sm">
                 
                 {/* Header da Turma (Resumo) */}
                 <div 
