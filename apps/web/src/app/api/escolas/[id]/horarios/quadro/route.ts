@@ -218,20 +218,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       = []
 
     const seenSlots = new Set<string>()
-    const seenProfessors = new Map<string, string>()
-    const seenSalas = new Map<string, string>()
+    const seenProfessors = new Set<string>()
+    const seenSalas = new Set<string>()
     for (const item of parsed.data.items) {
       if (seenSlots.has(item.slot_id)) conflicts.push({ slot_id: item.slot_id, kind: 'turma' })
       seenSlots.add(item.slot_id)
       if (item.professor_id) {
-        const previousSlot = seenProfessors.get(item.professor_id)
-        if (previousSlot && previousSlot !== item.slot_id) conflicts.push({ slot_id: item.slot_id, professor_id: item.professor_id, kind: 'professor' })
-        seenProfessors.set(item.professor_id, item.slot_id)
+        const professorSlotKey = `${item.professor_id}:${item.slot_id}`
+        if (seenProfessors.has(professorSlotKey)) conflicts.push({ slot_id: item.slot_id, professor_id: item.professor_id, kind: 'professor' })
+        seenProfessors.add(professorSlotKey)
       }
       if (item.sala_id) {
-        const previousSlot = seenSalas.get(item.sala_id)
-        if (previousSlot && previousSlot !== item.slot_id) conflicts.push({ slot_id: item.slot_id, sala_id: item.sala_id, kind: 'sala' })
-        seenSalas.set(item.sala_id, item.slot_id)
+        const salaSlotKey = `${item.sala_id}:${item.slot_id}`
+        if (seenSalas.has(salaSlotKey)) conflicts.push({ slot_id: item.slot_id, sala_id: item.sala_id, kind: 'sala' })
+        seenSalas.add(salaSlotKey)
       }
     }
 
