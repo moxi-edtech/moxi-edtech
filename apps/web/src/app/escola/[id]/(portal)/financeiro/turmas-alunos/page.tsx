@@ -367,18 +367,17 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       >
         <button
           type="button"
-          onClick={() => setFiltroStatus('inadimplentes')}
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filtroStatus === 'inadimplentes' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-        >
-          Inadimplência
-        </button>
-        <button
-          type="button"
           onClick={() => setFiltroStatus('todos')}
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${filtroStatus === 'todos' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
         >
           Alunos e turmas
         </button>
+        <Link
+          href={contextualPortalHref('/financeiro/radar')}
+          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          Inadimplência
+        </Link>
       </nav>
 
       {/* RESUMO GERAL EXECUTIVO (KPIs Globais) */}

@@ -59,6 +59,7 @@ export function toContextualPortalPath(path: string, pathname: string | null | u
     ["/secretaria/alertas", "/operacoes/alertas"],
     ["/secretaria/migracao", "/operacoes/migracao"],
     ["/horarios", "/operacoes/horarios"],
+    ["/financeiro/radar", "/operacoes/radar"],
     ["/financeiro", "/operacoes/financeiro"],
   ];
 
