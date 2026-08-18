@@ -37,6 +37,7 @@ export type TabelaPreco = {
   classe_id: string | null;
   valor_matricula: number | null;
   valor_mensalidade: number | null;
+  valor_confirmacao: number | null;
   dia_vencimento: number | null;
   multa_atraso_percentual?: number | null;
 };
@@ -119,15 +120,15 @@ export async function resolveTabelaPreco(
     if (resolved) return resolved;
   }
 
-  // 2) Por Curso
-  if (cursoId) {
-    const resolved = await tentarResolver({ cursoId, classeId: null }, "curso");
+  // 2) Por Classe: a classe de destino define a taxa quando configurada.
+  if (classeId) {
+    const resolved = await tentarResolver({ cursoId: null, classeId }, "classe");
     if (resolved) return resolved;
   }
 
-  // 3) Por Classe
-  if (classeId) {
-    const resolved = await tentarResolver({ cursoId: null, classeId }, "classe");
+  // 3) Por Curso: fallback quando não há preço específico para a classe.
+  if (cursoId) {
+    const resolved = await tentarResolver({ cursoId, classeId: null }, "curso");
     if (resolved) return resolved;
   }
 
@@ -163,6 +164,7 @@ export async function resolveTabelaPreco(
           classe_id: classeId,
           valor_matricula: null,
           valor_mensalidade: valorMensalidade,
+          valor_confirmacao: null,
           dia_vencimento: mensalidade.dia_vencimento ?? null,
           multa_atraso_percentual: null,
         },

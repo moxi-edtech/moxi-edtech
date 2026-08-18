@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     let query = s
       .from("financeiro_tabelas")
       .select(
-        "id, escola_id, ano_letivo, curso_id, classe_id, valor_matricula, valor_mensalidade, dia_vencimento, multa_atraso_percentual, created_at, updated_at"
+        "id, escola_id, ano_letivo, curso_id, classe_id, valor_matricula, valor_mensalidade, valor_confirmacao, dia_vencimento, multa_atraso_percentual, created_at, updated_at"
       )
       .eq("escola_id", escolaId)
       .eq("ano_letivo", anoLetivo)
@@ -105,6 +105,7 @@ export async function POST(req: Request) {
       classe_id,
       valor_matricula,
       valor_mensalidade,
+      valor_confirmacao,
       dia_vencimento,
       multa_atraso_percentual,
     } = body || {};
@@ -123,8 +124,9 @@ export async function POST(req: Request) {
 
     const valorMatriculaNum = dinheiroValido(valor_matricula);
     const valorMensalidadeNum = dinheiroValido(valor_mensalidade);
-    if (valorMatriculaNum === null && valorMensalidadeNum === null) {
-      return NextResponse.json({ ok: false, error: "Informe matrícula ou mensalidade" }, { status: 400 });
+    const valorConfirmacaoNum = dinheiroValido(valor_confirmacao);
+    if (valorMatriculaNum === null && valorMensalidadeNum === null && valorConfirmacaoNum === null) {
+      return NextResponse.json({ ok: false, error: "Informe matrícula, mensalidade ou confirmação" }, { status: 400 });
     }
 
     const payload: any = {
@@ -134,6 +136,7 @@ export async function POST(req: Request) {
       classe_id: classe_id || null,
       valor_matricula: valorMatriculaNum ?? 0,
       valor_mensalidade: valorMensalidadeNum ?? 0,
+      valor_confirmacao: valorConfirmacaoNum,
       dia_vencimento: clampDiaVencimento(dia_vencimento),
       updated_at: new Date().toISOString(),
     };
@@ -190,7 +193,7 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const { id, ano_letivo, valor_matricula, valor_mensalidade, dia_vencimento, multa_atraso_percentual } = body || {};
+    const { id, ano_letivo, valor_matricula, valor_mensalidade, valor_confirmacao, dia_vencimento, multa_atraso_percentual } = body || {};
     if (!id) return NextResponse.json({ ok: false, error: "id é obrigatório" }, { status: 400 });
 
     const { data: existente, error: findErr } = await s
@@ -225,6 +228,11 @@ export async function PATCH(req: Request) {
       const v = dinheiroValido(valor_mensalidade);
       if (v === null) return NextResponse.json({ ok: false, error: "Valor de mensalidade inválido" }, { status: 400 });
       updates.valor_mensalidade = v;
+    }
+    if (valor_confirmacao !== undefined) {
+      const v = dinheiroValido(valor_confirmacao);
+      if (v === null || v < 0) return NextResponse.json({ ok: false, error: "Valor de confirmação inválido" }, { status: 400 });
+      updates.valor_confirmacao = v;
     }
     if (dia_vencimento !== undefined) {
       const v = clampDiaVencimento(dia_vencimento);

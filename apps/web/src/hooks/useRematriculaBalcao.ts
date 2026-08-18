@@ -65,7 +65,7 @@ type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 interface StatusResponse {
   ok: boolean;
   status: RematriculaCardState;
-  service: { id: string; nome: string; valor_base: number } | null;
+  service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
   pedido: {
     id: string;
@@ -133,6 +133,7 @@ export function useRematriculaBalcao(opts: {
   matriculaId: string | null;
   academicYearId: string | null;
 }) {
+  const draftKey = `klasse:rematricula:draft:${opts.escolaId}:${opts.alunoId ?? "-"}:${opts.matriculaId ?? "-"}:${opts.academicYearId ?? "-"}`;
   // ── Status data ─────────────────────────────────────────────────────────
   const [cardState, setCardState] = useState<RematriculaCardState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -164,11 +165,12 @@ export function useRematriculaBalcao(opts: {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<RematriculaResult | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   // ────────────────────────────────────────────────────────────────────────
   // Fetch rematrícula eligibility status
   // ────────────────────────────────────────────────────────────────────────
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (destinationTurmaId?: string | null) => {
     if (!opts.alunoId || !opts.matriculaId) {
       setCardState(null);
       return;
@@ -183,6 +185,7 @@ export function useRematriculaBalcao(opts: {
       if (opts.academicYearId) {
         params.set("ano_letivo_id", opts.academicYearId);
       }
+      if (destinationTurmaId) params.set("destino_turma_id", destinationTurmaId);
 
       const res = await fetch(
         `/api/secretaria/balcao/rematriculas/status?${params.toString()}`,
@@ -190,6 +193,7 @@ export function useRematriculaBalcao(opts: {
       const data: StatusResponse = await res.json();
 
       if (data.ok) {
+        setApiError(null);
         setCardState(data.status);
         setService(data.service);
         setDebt(data.debt);
@@ -202,7 +206,7 @@ export function useRematriculaBalcao(opts: {
       }
     } catch (e) {
       console.error("[useRematriculaBalcao] Error fetching status:", e);
-      setCardState(null);
+      setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -221,7 +225,52 @@ export function useRematriculaBalcao(opts: {
     setTurmas([]);
     setProgressao(null);
     setNotasLancarDepois(false);
-  }, [fetchStatus]);
+    setIdempotencyKey(null);
+
+    try {
+      const raw = sessionStorage.getItem(draftKey);
+      if (raw) {
+        const draft = JSON.parse(raw) as {
+          step?: number;
+          selectedTurmaId?: string | null;
+          metodo?: MetodoPagamento;
+          detalhes?: typeof DETALHES_VAZIOS;
+          notasLancarDepois?: boolean;
+          idempotencyKey?: string | null;
+        };
+        setStep(Number.isInteger(draft.step) && (draft.step ?? 1) >= 1 && (draft.step ?? 1) <= 3 ? draft.step! : 1);
+        setSelectedTurmaId(draft.selectedTurmaId ?? null);
+        if (draft.metodo) setMetodoState(draft.metodo);
+        if (draft.detalhes) setDetalhesState({ ...DETALHES_VAZIOS, ...draft.detalhes });
+        setNotasLancarDepois(Boolean(draft.notasLancarDepois));
+        setIdempotencyKey(draft.idempotencyKey ?? null);
+      }
+    } catch {
+      // Storage indisponível (por exemplo, modo privado): o fluxo continua sem rascunho.
+    }
+  }, [draftKey, fetchStatus]);
+
+  useEffect(() => {
+    if (!opts.alunoId || !opts.matriculaId || result) return;
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({
+        step,
+        selectedTurmaId,
+        metodo,
+        detalhes,
+        notasLancarDepois,
+        idempotencyKey,
+        savedAt: new Date().toISOString(),
+      }));
+    } catch {
+      // A persistência é uma melhoria; nunca deve bloquear a operação.
+    }
+  }, [draftKey, detalhes, idempotencyKey, metodo, notasLancarDepois, opts.alunoId, opts.matriculaId, result, selectedTurmaId, step]);
+
+  useEffect(() => {
+    if (!modalOpen || !selectedTurmaId) return;
+    void fetchStatus(selectedTurmaId);
+  }, [fetchStatus, modalOpen, selectedTurmaId]);
 
   // ────────────────────────────────────────────────────────────────────────
   // Lazy-fetch turmas when modal opens
@@ -270,15 +319,13 @@ export function useRematriculaBalcao(opts: {
   // ────────────────────────────────────────────────────────────────────────
   const openModal = useCallback(() => {
     setModalOpen(true);
-    setStep(1);
-    setSelectedTurmaId(
-      cardState === "RECONFIRMATION_REQUIRED" ? destinoTurmaId : null,
-    );
-    setNotasLancarDepois(false);
     setResult(null);
     setApiError(null);
+    if (!selectedTurmaId && cardState === "RECONFIRMATION_REQUIRED") {
+      setSelectedTurmaId(destinoTurmaId);
+    }
     fetchTurmas();
-  }, [cardState, destinoTurmaId, fetchTurmas]);
+  }, [cardState, destinoTurmaId, fetchTurmas, selectedTurmaId]);
 
   const closeModal = useCallback(() => {
     if (submitting) return;
@@ -372,13 +419,15 @@ export function useRematriculaBalcao(opts: {
     setSubmitting(true);
     setApiError(null);
     setResult(null);
+    const requestKey = idempotencyKey ?? crypto.randomUUID();
+    setIdempotencyKey(requestKey);
 
     try {
       const res = await fetch("/api/secretaria/balcao/rematriculas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": requestKey,
         },
         body: JSON.stringify({
           aluno_id: opts.alunoId,
@@ -399,6 +448,7 @@ export function useRematriculaBalcao(opts: {
         // Success or partial success (document pending)
         setResult(data);
         setStep(4); // → success view
+        try { sessionStorage.removeItem(draftKey); } catch {}
       } else {
         // Map error code to human message, fall back to raw error
         const code = data.code as string | undefined;
@@ -418,6 +468,8 @@ export function useRematriculaBalcao(opts: {
     metodo,
     detalhes,
     notasLancarDepois,
+    draftKey,
+    idempotencyKey,
   ]);
 
   // ────────────────────────────────────────────────────────────────────────

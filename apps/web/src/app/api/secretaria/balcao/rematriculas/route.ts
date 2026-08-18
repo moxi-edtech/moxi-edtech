@@ -11,6 +11,8 @@ import {
 import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
 import { recordAuditServer } from "@/lib/audit";
 import type { Database } from "~types/supabase";
+import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
+import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -169,7 +171,16 @@ export async function POST(request: Request) {
       .eq("codigo", SERVICE_CODE)
       .maybeSingle();
     if (serviceError) throw serviceError;
-    if (!service || !service.ativo || Number(service.valor_base) <= 0) {
+    const targetPricing = await resolveValorConfirmacao(supabase, {
+      escolaId,
+      anoLetivo: normalizeAnoLetivo(academicContext.anoLetivoLabel),
+      cursoId: turmaDestino?.curso_id,
+      classeId: turmaDestino?.classe_id,
+      valorGlobal: service?.valor_base,
+    });
+    const valorConfirmacao = targetPricing.valor;
+    const confirmationExempt = Boolean(service?.ativo && targetPricing.origem === "classe" && valorConfirmacao === 0);
+    if (!service || !service.ativo || (valorConfirmacao <= 0 && !confirmationExempt)) {
       return NextResponse.json({ ok: false, error: "O emolumento de rematrícula ainda não está configurado.", code: "REMATRICULA_PRICE_NOT_CONFIGURED" }, { status: 409 });
     }
 
@@ -257,15 +268,18 @@ export async function POST(request: Request) {
         aluno_id: body.aluno_id,
         matricula_id: body.matricula_id,
         servico_escola_id: service.id,
-        status: "pending_payment",
+        status: confirmationExempt ? "granted" : "pending_payment",
         servico_codigo: SERVICE_CODE,
         servico_nome: service.nome,
-        valor_cobrado: Number(service.valor_base),
+        valor_cobrado: valorConfirmacao,
         contexto: {
           origem: "rematricula_balcao",
           origem_matricula_id: body.matricula_id,
           ano_letivo_id: academicContext.anoLetivoId,
           destino_turma_id: body.destino_turma_id,
+          destino_curso_id: turmaDestino?.curso_id ?? null,
+          destino_classe_id: turmaDestino?.classe_id ?? null,
+          valor_origem: targetPricing.origem,
           notas_lancar_depois: body.notas_lancar_depois === true,
           idempotency_key: idempotencyKey,
         },
@@ -275,8 +289,10 @@ export async function POST(request: Request) {
       .single();
     if (pedidoError) throw pedidoError;
 
-    const paymentUrl = new URL("/api/secretaria/balcao/pagamentos", request.url);
-    const paymentResponse = await fetch(paymentUrl, {
+    let paymentJson: any = { data: null };
+    if (!confirmationExempt) {
+      const paymentUrl = new URL("/api/secretaria/balcao/pagamentos", request.url);
+      const paymentResponse = await fetch(paymentUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -287,7 +303,7 @@ export async function POST(request: Request) {
         aluno_id: body.aluno_id,
         mensalidade_id: null,
         ano_letivo_id: academicContext.anoLetivoId,
-        valor: Number(service.valor_base),
+        valor: valorConfirmacao,
         metodo: body.metodo,
         reference: body.reference ?? null,
         evidence_url: body.evidence_url ?? null,
@@ -299,11 +315,12 @@ export async function POST(request: Request) {
           rematricula_ano_letivo_id: academicContext.anoLetivoId,
         },
       }),
-    });
-    const paymentJson = await paymentResponse.json().catch(() => null);
-    if (!paymentResponse.ok || !paymentJson?.ok) {
-      await (supabase as any).from("servico_pedidos").update({ status: "canceled", reason_code: "PAYMENT_FAILED", reason_detail: paymentJson?.error || "Falha no pagamento" }).eq("id", pedido.id).eq("escola_id", escolaId);
-      return NextResponse.json({ ok: false, error: paymentJson?.error || "Falha ao registar o pagamento.", code: "PAYMENT_REQUIRED" }, { status: 400 });
+      });
+      paymentJson = await paymentResponse.json().catch(() => null);
+      if (!paymentResponse.ok || !paymentJson?.ok) {
+        await (supabase as any).from("servico_pedidos").update({ status: "canceled", reason_code: "PAYMENT_FAILED", reason_detail: paymentJson?.error || "Falha no pagamento" }).eq("id", pedido.id).eq("escola_id", escolaId);
+        return NextResponse.json({ ok: false, error: paymentJson?.error || "Falha ao registar o pagamento.", code: "PAYMENT_REQUIRED" }, { status: 400 });
+      }
     }
 
     let matriculaDestinoId = "";

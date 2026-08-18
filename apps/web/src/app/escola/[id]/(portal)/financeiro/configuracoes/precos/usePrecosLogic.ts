@@ -8,7 +8,13 @@ import {
 } from "@/lib/financeiroTabelasClient"
 import { fetchSchoolSessions } from "@/lib/schoolSessionsClient"
 
-export type Catalogo = { id: string; nome: string; codigo?: string; curso_id?: string }
+export type Catalogo = {
+  id: string
+  nome: string
+  codigo?: string
+  curso_id?: string
+  ano_letivo_id?: string
+}
 
 export type TabelaPrecoItem = {
   id?: string
@@ -18,6 +24,7 @@ export type TabelaPrecoItem = {
   classe_id: string | null
   valor_matricula: number | null
   valor_mensalidade: number | null
+  valor_confirmacao: number | null
   dia_vencimento: number | null
 }
 
@@ -32,6 +39,7 @@ export type FormState = {
   classe_id: string
   valor_matricula: string
   valor_mensalidade: string
+  valor_confirmacao: string
   dia_vencimento: string
 }
 
@@ -40,6 +48,7 @@ export const initialForm: FormState = {
   classe_id: "",
   valor_matricula: "",
   valor_mensalidade: "",
+  valor_confirmacao: "",
   dia_vencimento: "",
 }
 
@@ -189,6 +198,28 @@ export function usePrecosLogic(escolaId: string) {
     [tabelas, cursoIds, classeIds]
   )
 
+  const classesDoAnoSelecionado = useMemo(() => {
+    if (!selectedSession) return classes
+    const scoped = classes.filter((classe) => classe.ano_letivo_id === selectedSession)
+    return scoped.length > 0 ? scoped : classes
+  }, [classes, selectedSession])
+
+  const pendingPricingTargets = useMemo(() => {
+    return classesDoAnoSelecionado
+      .filter((classe) => {
+        const tabela = tabelasFiltradas.find(
+          (item) => item.classe_id === classe.id && item.curso_id === (classe.curso_id ?? null)
+        )
+        return !tabela || Number(tabela.valor_matricula ?? 0) <= 0 || Number(tabela.valor_mensalidade ?? 0) <= 0
+      })
+      .map((classe) => ({
+        classe,
+        curso: cursos.find((curso) => curso.id === classe.curso_id) ?? null,
+      }))
+  }, [classesDoAnoSelecionado, cursos, tabelasFiltradas])
+
+  const configuredPricingCount = Math.max(classesDoAnoSelecionado.length - pendingPricingTargets.length, 0)
+
   const destinosOrdenados = useMemo(() => {
     return [...tabelasFiltradas].sort((a, b) => {
       const aKey = `${a.curso_id || ''}-${a.classe_id || ''}`
@@ -330,6 +361,7 @@ export function usePrecosLogic(escolaId: string) {
         classe_id: form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : null,
         valor_matricula: formatCurrencyInput(form.valor_matricula),
         valor_mensalidade: formatCurrencyInput(form.valor_mensalidade),
+        valor_confirmacao: formatCurrencyInput(form.valor_confirmacao),
         dia_vencimento: form.dia_vencimento === "" ? null : Number(form.dia_vencimento),
       }
 
@@ -367,6 +399,7 @@ export function usePrecosLogic(escolaId: string) {
       classe_id: item.classe_id && classeIds.has(item.classe_id) ? item.classe_id : "",
       valor_matricula: item.valor_matricula?.toString() || "",
       valor_mensalidade: item.valor_mensalidade?.toString() || "",
+      valor_confirmacao: item.valor_confirmacao?.toString() || "",
       dia_vencimento: item.dia_vencimento?.toString() || "",
     })
   }
@@ -461,6 +494,9 @@ export function usePrecosLogic(escolaId: string) {
       classesFiltradasForm,
       classesFiltradasSimulacao,
       destinosOrdenados,
+      pendingPricingTargets,
+      configuredPricingCount,
+      pendingPricingCount: pendingPricingTargets.length,
       destinoAtualLabel,
     },
     actions: {

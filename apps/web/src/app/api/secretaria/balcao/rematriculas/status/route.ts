@@ -6,6 +6,8 @@ import {
   AcademicYearContextError,
   resolveAcademicYearContext,
 } from "@/lib/academic-year/context";
+import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
+import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,6 +18,7 @@ export async function GET(request: Request) {
     const aluno_id = searchParams.get("aluno_id");
     const matricula_id = searchParams.get("matricula_id");
     const ano_letivo_id = searchParams.get("ano_letivo_id");
+    const destino_turma_id = searchParams.get("destino_turma_id");
 
     if (!aluno_id || !matricula_id) {
       return NextResponse.json(
@@ -69,7 +72,7 @@ export async function GET(request: Request) {
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     const { data: matriculaOrigem } = await supabase
       .from("matriculas")
-      .select("id, ano_letivo, status")
+      .select("id, ano_letivo, status, turma_id")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
@@ -134,6 +137,18 @@ export async function GET(request: Request) {
       .eq("codigo", "SERV_REMATRICULA")
       .maybeSingle();
 
+    const targetTurmaId = destino_turma_id ?? reclassificacao?.destino_turma_id ?? matriculaDestino?.turma_id ?? matriculaOrigem?.turma_id ?? null;
+    const { data: targetTurma } = targetTurmaId
+      ? await supabase.from("turmas").select("curso_id, classe_id").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
+      : { data: null };
+    const targetPricing = await resolveValorConfirmacao(supabase, {
+      escolaId,
+      anoLetivo: normalizeAnoLetivo(academicContext.anoLetivoLabel),
+      cursoId: targetTurma?.curso_id,
+      classeId: targetTurma?.classe_id,
+      valorGlobal: service?.valor_base,
+    });
+
     // ── Check existing pedido ─────────────────────────────────────────────
     const { data: pedidosExistentes } = await supabase
       .from("servico_pedidos")
@@ -188,7 +203,7 @@ export async function GET(request: Request) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino) {
       status = reclassificacao ? "FINALIST_PENDING" : "RECONFIRMATION_REQUIRED";
-    } else if (!service || !service.ativo || Number(service.valor_base) <= 0) {
+    } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
       status = "PRICE_NOT_CONFIGURED";
     }
 
@@ -203,7 +218,8 @@ export async function GET(request: Request) {
         ? {
             id: service.id,
             nome: service.nome,
-            valor_base: Number(service.valor_base),
+            valor_base: targetPricing.valor,
+            pricing_origin: targetPricing.origem,
           }
         : null,
       debt: {

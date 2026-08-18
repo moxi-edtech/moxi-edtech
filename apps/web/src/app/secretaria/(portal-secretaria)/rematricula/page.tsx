@@ -37,6 +37,12 @@ interface Turma {
 
 type Session = { id: string; ano_letivo: number; status: string };
 type PaymentMensalidade = { id: string; mes: number; ano: number; valor: number; vencimento?: string; status: string };
+type TransitionResult = {
+  total: number;
+  sucesso: number;
+  falhas: number;
+  resultados: Array<Record<string, unknown>>;
+};
 
 function classeNumero(nome?: string | null) {
   const match = String(nome ?? "").match(/(\d{1,2})\s*(?:ª|a|º)?/i);
@@ -279,6 +285,7 @@ export default function RematriculaPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [motivoFilter, setMotivoFilter] = useState("todos");
+  const [transitionResult, setTransitionResult] = useState<TransitionResult | null>(null);
 
   const openDebtPayment = async (student: AlunoTriagem) => {
     if (!escolaId) {
@@ -457,11 +464,15 @@ export default function RematriculaPage() {
 
     setLoading(true);
     setError(null);
+    setTransitionResult(null);
 
     try {
+      const idempotencyKey = typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       const res = await fetch("/api/secretaria/matriculas/transitar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({
           turma_origem_id: originTurmaId,
           turma_destino_id: destinationTurmaId,
@@ -474,7 +485,13 @@ export default function RematriculaPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "A transação falhou num dos Gates do servidor.");
 
-      success("Transição concluída", `${json.sucesso} alunos foram transitados para a nova turma com sucesso.`);
+      setTransitionResult({
+        total: Number(json.total ?? 0),
+        sucesso: Number(json.sucesso ?? 0),
+        falhas: Number(json.falhas ?? 0),
+        resultados: Array.isArray(json.resultados) ? json.resultados : [],
+      });
+      success("Transição processada", `${json.sucesso} alunos concluídos; ${json.falhas} com pendências.`);
       setSelectedAlunos([]);
       setReloadToken((value) => value + 1);
     } catch (e) {
@@ -508,6 +525,9 @@ export default function RematriculaPage() {
           <div><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Origem sugerida</span><strong>{originYear ? `${originYear}/${originYear + 1}` : "A carregar..."}</strong></div>
           <div><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Destino sugerido</span><strong>{destinationYear ? `${destinationYear}/${destinationYear + 1}` : "A carregar..."}</strong></div>
           <div><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Critério</span><span className="text-slate-700">Notas completas e situação financeira regular</span></div>
+        </div>
+        <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+          <strong>Nota financeira:</strong> esta operação faz apenas a transição académica em massa. A taxa de rematrícula é calculada e cobrada no Balcão pela classe da turma destino.
         </div>
         <div className="mt-4">
           <button
@@ -792,6 +812,13 @@ export default function RematriculaPage() {
           </div>
         )}
 
+        {transitionResult && (
+          <div className="rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-3 text-sm text-klasse-green-900">
+            <strong>Transição concluída:</strong> {transitionResult.sucesso} de {transitionResult.total} alunos processados.
+            {transitionResult.falhas > 0 && ` ${transitionResult.falhas} ficaram pendentes para revisão.`}
+          </div>
+        )}
+
         {/* ZONA 3: BARRA DE AÇÃO FLUTUANTE / FIXA */}
         <div className="flex items-center justify-between pt-6 border-t border-slate-200">
           <div className="text-sm text-slate-500">
@@ -802,7 +829,7 @@ export default function RematriculaPage() {
              disabled={loading || selectedAlunos.length === 0 || !destinationTurmaId}
             className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 disabled:opacity-50 transition-all"
           >
-            {loading ? "A Processar..." : "Confirmar Rematrícula"}
+            {loading ? "A Processar..." : "Confirmar Transição"}
             {!loading && <Save className="w-4 h-4" />}
           </button>
         </div>

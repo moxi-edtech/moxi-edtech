@@ -314,7 +314,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
             />
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
-            <StepFinanceiro service={service} debt={debt} />
+            <StepFinanceiro service={service} debt={debt} selectedTurma={selectedTurma} />
           ) : (
             /* ── Step 3: Payment ────────────────────────────────── */
             <StepPagamento
@@ -523,9 +523,11 @@ function StepAcademico({
 function StepFinanceiro({
   service,
   debt,
+  selectedTurma,
 }: {
-  service: { id: string; nome: string; valor_base: number };
+  service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" };
   debt: { total: number; count: number } | null;
+  selectedTurma?: TurmaOption;
 }) {
   return (
     <div className="space-y-5">
@@ -534,10 +536,17 @@ function StepFinanceiro({
       </h3>
 
       <div className="rounded-xl border border-slate-200 overflow-hidden text-sm">
+        <div className="flex justify-between border-b border-slate-100 p-3.5 bg-slate-50">
+          <span className="text-slate-600">Classe/turma destino</span>
+          <span className="text-right font-semibold text-slate-900">
+            {selectedTurma?.classe_nome || "Classe não identificada"}
+            {selectedTurma?.nome ? <span className="block text-xs font-normal text-slate-500">{selectedTurma.nome}</span> : null}
+          </span>
+        </div>
         <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
           <span className="text-slate-600">Taxa de rematrícula</span>
           <span className="font-semibold text-slate-900">
-            {kwanza.format(service.valor_base)}
+            {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
           </span>
         </div>
         <div className="flex justify-between border-b border-slate-100 p-3.5 bg-white">
@@ -547,10 +556,13 @@ function StepFinanceiro({
         <div className="flex justify-between p-3.5 bg-slate-50">
           <span className="font-bold text-slate-900">Total a pagar</span>
           <span className="font-black text-[#1F6B3B] text-base">
-            {kwanza.format(service.valor_base)}
+            {service.valor_base > 0 ? kwanza.format(service.valor_base) : "Sem taxa"}
           </span>
         </div>
       </div>
+      <p className="text-xs text-slate-500">
+        O valor acima foi resolvido para a turma destino. {service.pricing_origin === "classe" ? "Existe uma regra específica para esta classe." : "Não existe regra específica para esta classe; foi usado o valor de fallback."}
+      </p>
 
       {debt && debt.total > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
@@ -567,8 +579,7 @@ function StepFinanceiro({
           role="alert"
           className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
         >
-          O valor do serviço não está configurado correctamente (deve ser
-          maior que zero).
+          Esta classe não cobra rematrícula. A matrícula será concluída sem pagamento.
         </div>
       )}
     </div>
@@ -809,7 +820,7 @@ function FooterSuccess({
   const printUrl = result.comprovante?.printUrl;
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row">
       {printUrl && (
         <>
           <button
@@ -879,7 +890,7 @@ function FooterWizard({
         {step > 1 ? "Voltar" : "Cancelar"}
       </button>
 
-      {step < 3 ? (
+      {step < 3 && !(step === 2 && serviceValor <= 0) ? (
         <button
           onClick={() => setStep(step + 1)}
           disabled={
@@ -908,7 +919,7 @@ function FooterWizard({
           ) : (
             <>
               <Check className="h-4 w-4" />
-              Pagar e concluir rematrícula
+              {serviceValor > 0 ? "Pagar e concluir rematrícula" : "Concluir matrícula"}
             </>
           )}
         </button>
