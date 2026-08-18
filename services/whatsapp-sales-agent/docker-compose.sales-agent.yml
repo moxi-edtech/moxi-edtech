@@ -1,0 +1,9 @@
+services:
+  klasse-sales-agent:
+    build: .
+    container_name: klasse-sales-agent
+    restart: unless-stopped
+    env_file:
+      - .env.agent
+    volumes:
+      - ./data:/data
