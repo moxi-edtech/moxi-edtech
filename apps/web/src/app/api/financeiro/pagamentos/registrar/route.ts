@@ -81,6 +81,7 @@ export async function POST(req: Request) {
       valor: number | null;
       valor_previsto: number | null;
       aluno_id: string | null;
+      ano_referencia: number | null;
     };
 
     let mensalidade: MensalidadeRow | null = null;
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
     if (parsed.data.mensalidade_id) {
       const { data: mensalidadeRow, error: mensalidadeErr } = await supabase
         .from("mensalidades")
-        .select("id, escola_id, status, valor, valor_previsto, aluno_id")
+        .select("id, escola_id, status, valor, valor_previsto, aluno_id, ano_referencia")
         .eq("id", parsed.data.mensalidade_id)
         .maybeSingle();
 
@@ -113,6 +114,16 @@ export async function POST(req: Request) {
       requestedAcademicYearId: parsed.data.ano_letivo_id,
       operation: "WRITE",
     });
+    let billingAcademicYearId = academicContext.anoLetivoId;
+    if (mensalidade?.ano_referencia) {
+      const { data: billingYear } = await supabase
+        .from("anos_letivos")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("ano", mensalidade.ano_referencia)
+        .maybeSingle();
+      billingAcademicYearId = billingYear?.id ?? academicContext.anoLetivoId;
+    }
 
     const { error: roleError } = await requireRoleInSchool({
       supabase,
@@ -145,14 +156,14 @@ export async function POST(req: Request) {
           table: "matriculas",
           entityId: String(mensalidadeMeta.matricula_id),
           escolaId: academicContext.escolaId,
-          anoLetivoId: academicContext.anoLetivoId,
+          anoLetivoId: billingAcademicYearId,
         });
       } else if (mensalidadeMeta?.turma_id) {
         await assertAcademicYearEntity(supabase as any, {
           table: "turmas",
           entityId: String(mensalidadeMeta.turma_id),
           escolaId: academicContext.escolaId,
-          anoLetivoId: academicContext.anoLetivoId,
+          anoLetivoId: billingAcademicYearId,
         });
       }
     }

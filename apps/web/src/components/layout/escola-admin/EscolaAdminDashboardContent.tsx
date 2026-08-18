@@ -59,6 +59,12 @@ type Props = {
     realizado: number;
     pago_competencia: number;
   };
+  caixaResumo?: {
+    total: number;
+    mensalidades: number;
+    dividasAnteriores: number;
+    servicos: number;
+  };
   estadoVital?:         EstadoVital | null;
 };
 
@@ -203,6 +209,7 @@ export default function EscolaAdminDashboardContent({
   inadimplenciaTop = [],
   pagamentosRecentes = [],
   receitaResumo,
+  caixaResumo,
   estadoVital,
 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -245,6 +252,9 @@ export default function EscolaAdminDashboardContent({
   const previstoReceita  = Number(receitaResumo?.previsto ?? 0);
   const realizadoReceita = Number(receitaResumo?.realizado ?? 0);
   const pagoCompetencia   = Number(receitaResumo?.pago_competencia ?? 0);
+  const caixaMensalidades = Number(caixaResumo?.mensalidades ?? 0);
+  const caixaDividasAnteriores = Number(caixaResumo?.dividasAnteriores ?? 0);
+  const caixaServicos = Number(caixaResumo?.servicos ?? 0);
   
   const hasMetaReceita      = previstoReceita > 0;
   const hasMovimentoReceita = previstoReceita > 0 || realizadoReceita > 0;
@@ -406,6 +416,11 @@ export default function EscolaAdminDashboardContent({
                      <span className="text-sm font-black text-slate-700">{mounted ? moeda.format(pagoCompetencia) : "—"}</span>
                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{percentualCompetencia}%</span>
                    </div>
+                 </div>
+                 <div className="grid grid-cols-1 gap-1 text-[10px] text-slate-500 sm:grid-cols-3 sm:gap-3">
+                   <span>Mensalidades: <strong className="text-slate-700">{mounted ? moeda.format(caixaMensalidades) : "—"}</strong></span>
+                   <span>Dívidas antigas: <strong className="text-slate-700">{mounted ? moeda.format(caixaDividasAnteriores) : "—"}</strong></span>
+                   <span>Serviços: <strong className="text-slate-700">{mounted ? moeda.format(caixaServicos) : "—"}</strong></span>
                  </div>
                  {isAcimaDaMeta && (
                    <div className="flex items-center gap-2 p-2 rounded-xl bg-klasse-gold-50 border border-klasse-gold-100 max-w-xs">

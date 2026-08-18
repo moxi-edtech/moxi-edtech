@@ -205,6 +205,7 @@ export async function POST(request: Request) {
       }
       throw err;
     }
+    let billingAcademicYearId = academicContext.anoLetivoId;
 
     if (payload.mensalidade_id) {
       const { data: mensalidade, error: mensalidadeError } = await supabase
@@ -222,12 +223,15 @@ export async function POST(request: Request) {
       }
 
       if (mensalidade.mes_referencia && mensalidade.ano_referencia) {
+        // Regularização de dívida pode ocorrer no ano letivo seguinte.
+        // A janela deve ser a do ano da própria mensalidade, não a do ano activo.
         const { data: anoConfig } = await supabase
           .from("anos_letivos")
           .select("id, ano, data_inicio, data_fim")
           .eq("escola_id", escolaId)
-          .eq("id", academicContext.anoLetivoId)
+          .eq("ano", mensalidade.ano_referencia)
           .maybeSingle();
+        billingAcademicYearId = anoConfig?.id ?? academicContext.anoLetivoId;
         if (anoConfig?.data_inicio && anoConfig.data_fim) {
           const { data: resolvedWindowRows, error: resolvedWindowError } = mensalidade.turma_id && anoConfig.id
             ? await (supabase as any).rpc("resolve_turma_janela_cobranca", {
@@ -280,7 +284,7 @@ export async function POST(request: Request) {
             table: "matriculas",
             entityId: mensalidade.matricula_id,
             escolaId,
-            anoLetivoId: academicContext.anoLetivoId,
+            anoLetivoId: billingAcademicYearId,
           });
         } catch (err) {
           if (err instanceof AcademicYearContextError) {

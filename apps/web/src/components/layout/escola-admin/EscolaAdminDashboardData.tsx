@@ -209,6 +209,7 @@ export default async function EscolaAdminDashboardData({
       turmasHorarioResult,
       missingPricingResult,
       financeiroKpiResult,
+      financeiroCaixaResult,
       financeiroDashboardResult,
       escolaNomeResult,
       matriculasMesResult,
@@ -283,6 +284,11 @@ export default async function EscolaAdminDashboardData({
 
       missingPricingQuery,
       financeiroKpiQuery,
+
+      (s as any).from("vw_financeiro_caixa_mes")
+        .select("mes_ref, recebido_total, mensalidades_total, dividas_anteriores_total, servicos_total")
+        .eq("mes_ref", currentMonthStart)
+        .maybeSingle(),
 
       (s as any).from("vw_financeiro_dashboard_ano")
         .select("total_pendente, total_pago, total_inadimplente")
@@ -384,6 +390,12 @@ export default async function EscolaAdminDashboardData({
     const totalPendenteValor = Number(financeiroDashboard?.total_pendente ?? 0);
     const totalPagoValor = Number(financeiroDashboard?.total_pago ?? 0);
     const totalInadimplenteValor = Number(financeiroDashboard?.total_inadimplente ?? 0);
+    const caixaAtual = (financeiroCaixaResult.data ?? null) as {
+      recebido_total?: number | null;
+      mensalidades_total?: number | null;
+      dividas_anteriores_total?: number | null;
+      servicos_total?: number | null;
+    } | null;
 
     // Top KPI uses "Cobrança da competência" (capped at 100% for the card usually)
     const financeiroPercent =
@@ -586,8 +598,14 @@ export default async function EscolaAdminDashboardData({
         pagamentosRecentes={pagamentosRecentes}
         receitaResumo={{
           previsto,
-          realizado,
+          realizado: Number(caixaAtual?.recebido_total ?? realizado),
           pago_competencia,
+        }}
+        caixaResumo={{
+          total: Number(caixaAtual?.recebido_total ?? realizado),
+          mensalidades: Number(caixaAtual?.mensalidades_total ?? 0),
+          dividasAnteriores: Number(caixaAtual?.dividas_anteriores_total ?? 0),
+          servicos: Number(caixaAtual?.servicos_total ?? 0),
         }}
         curriculoPendencias={curriculoPendencias}
         estadoVital={estadoVital}
