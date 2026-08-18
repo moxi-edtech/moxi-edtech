@@ -7917,6 +7917,7 @@ export type Database = {
           updated_at: string | null
           valor_matricula: number
           valor_mensalidade: number
+          valor_confirmacao: number | null
         }
         Insert: {
           ano_letivo: number
@@ -7932,6 +7933,7 @@ export type Database = {
           updated_at?: string | null
           valor_matricula?: number
           valor_mensalidade?: number
+          valor_confirmacao?: number | null
         }
         Update: {
           ano_letivo?: number
@@ -7947,6 +7949,7 @@ export type Database = {
           updated_at?: string | null
           valor_matricula?: number
           valor_mensalidade?: number
+          valor_confirmacao?: number | null
         }
         Relationships: [
           {

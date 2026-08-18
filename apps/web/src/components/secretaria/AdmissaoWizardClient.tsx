@@ -123,6 +123,7 @@ type CandidaturaDraft = {
     responsavel_financeiro_nome?: string | null;
     responsavel_financeiro_nif?: string | null;
     mesmo_que_encarregado?: boolean | null;
+    agregado_familiar_id?: string | null;
   } | null;
   curso_id?: string | null;
   classe_id?: string | null;
@@ -252,6 +253,7 @@ type DraftIdentificacao = {
   responsavel_financeiro_nome?: string;
   responsavel_financeiro_nif?: string;
   mesmo_que_encarregado?: boolean;
+  agregado_familiar_id?: string;
 };
 
 function Step1Identificacao(props: {
@@ -294,6 +296,9 @@ function Step1Identificacao(props: {
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [localRestored, setLocalRestored] = useState(false);
+  const [familySuggestion, setFamilySuggestion] = useState<{ id: string; nome: string; membros: string[] } | null>(null);
+  const [familyLookupLoading, setFamilyLookupLoading] = useState(false);
+  const debouncedResponsiblePhone = useDebouncedValue(form.responsavel_contato ?? "", 500);
 
   // hydrate initial
   useEffect(() => {
@@ -325,8 +330,36 @@ function Step1Identificacao(props: {
       responsavel_financeiro_nome: initialData.dados_candidato?.responsavel_financeiro_nome ?? "",
       responsavel_financeiro_nif: initialData.dados_candidato?.responsavel_financeiro_nif ?? "",
       mesmo_que_encarregado: Boolean(initialData.dados_candidato?.mesmo_que_encarregado),
+      agregado_familiar_id: initialData.dados_candidato?.agregado_familiar_id ?? "",
     });
   }, [initialData]);
+
+  useEffect(() => {
+    const digits = debouncedResponsiblePhone.replace(/\D/g, "");
+    if (!hydrated || digits.length < 6 || !isUuid(escolaId)) {
+      setFamilySuggestion(null);
+      return;
+    }
+    let cancelled = false;
+    setFamilyLookupLoading(true);
+    fetch(`/api/escola/${escolaId}/admin/financeiro/agregados-familiares`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((json) => {
+        if (cancelled || !json?.ok) return;
+        const match = (json.agregados ?? []).find((group: { telefone?: string | null }) => (group.telefone ?? "").replace(/\D/g, "") === digits);
+        if (!match) {
+          setFamilySuggestion(null);
+          return;
+        }
+        const names = (match.financeiro_agregados_membros ?? [])
+          .map((member: { alunos?: { nome?: string | null; nome_completo?: string | null } | null }) => member.alunos?.nome_completo || member.alunos?.nome || "Aluno")
+          .filter(Boolean);
+        setFamilySuggestion({ id: match.id, nome: match.nome, membros: names });
+      })
+      .catch(() => setFamilySuggestion(null))
+      .finally(() => { if (!cancelled) setFamilyLookupLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedResponsiblePhone, escolaId, hydrated]);
 
   useEffect(() => {
     if (!hydrated || initialData || !isUuid(escolaId)) return;
@@ -816,6 +849,20 @@ function Step1Identificacao(props: {
             {fieldErrors.responsavel_contato && (
               <p className="text-xs text-red-600">{fieldErrors.responsavel_contato}</p>
             )}
+            {familyLookupLoading ? <p className="text-xs text-slate-400">A procurar agregado familiar…</p> : null}
+            {familySuggestion && form.agregado_familiar_id !== familySuggestion.id ? (
+              <div className="rounded-xl border border-klasse-green-100 bg-klasse-green-50/50 p-3 md:col-span-2">
+                <p className="text-xs font-bold text-klasse-green-800">Encontrámos um agregado familiar: {familySuggestion.nome}</p>
+                <p className="mt-1 text-[11px] text-klasse-green-700">Alunos associados: {familySuggestion.membros.join(", ") || "nenhum"}</p>
+                <button
+                  type="button"
+                  onClick={() => setForm((previous) => ({ ...previous, agregado_familiar_id: familySuggestion.id }))}
+                  className="mt-2 rounded-lg bg-klasse-green px-3 py-1.5 text-[11px] font-bold text-white"
+                >
+                  Associar a esta família
+                </button>
+              </div>
+            ) : null}
             <input
               type="email"
               name="encarregado_email"
@@ -1600,6 +1647,8 @@ function Step3Pagamento(props: {
   const [duplicateActionError, setDuplicateActionError] = useState<string | null>(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [priceHint, setPriceHint] = useState<string | null>(null);
+  const [servicos, setServicos] = useState<Array<{ id: string; codigo: string; nome: string; descricao?: string | null; preco: number }>>([]);
+  const [servicosSelecionados, setServicosSelecionados] = useState<string[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
   const router = useRouter();
   const contextualHref = useCallback((path: string) => {
@@ -1672,6 +1721,25 @@ function Step3Pagamento(props: {
     return () => controller.abort();
   }, [escolaId, turmaId, cursoId, classeId, anoLetivo, payment.parcial]);
 
+  useEffect(() => {
+    if (!isUuid(escolaId)) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/escola/${escolaId}/admin/servicos?ativo=true`, { signal: controller.signal, cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        const rows = Array.isArray(json?.items) ? json.items : Array.isArray(json?.data) ? json.data : Array.isArray(json?.servicos) ? json.servicos : [];
+        setServicos(rows
+          .filter((service: { ativo?: boolean; valor_base?: number }) => service.ativo !== false && Number(service.valor_base ?? 0) > 0)
+          .filter((service: { codigo?: string }) => !["SERV_MATRICULA", "SERV_REMATRICULA"].includes(String(service.codigo)))
+          .map((service: { id: string; codigo: string; nome: string; descricao?: string | null; valor_base: number }) => ({ ...service, preco: Number(service.valor_base) })));
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setServicos([]);
+      }
+    })();
+    return () => controller.abort();
+  }, [escolaId]);
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     if (type === "checkbox") {
@@ -1695,6 +1763,11 @@ function Step3Pagamento(props: {
     if (['matriculado', 'aguardando_pagamento'].includes(statusNormalized)) return false;
     return true;
   }, [candidaturaId, turmaId, statusNormalized]);
+
+  const extrasTotal = servicos
+    .filter((service) => servicosSelecionados.includes(service.id))
+    .reduce((sum, service) => sum + service.preco, 0);
+  const totalComExtras = (Number(priceHint ?? 0) || 0) + extrasTotal;
 
   const openExistingAluno = () => {
     const existingCandidaturaId = duplicateConflict?.existing_matricula?.candidatura_id;
@@ -1783,6 +1856,7 @@ function Step3Pagamento(props: {
       metodo_pagamento: payment.metodo_pagamento,
       comprovativo_url: payment.comprovativo_url,
       referencia: payment.referencia,
+      servicos_ids: servicosSelecionados,
       amount: payment.parcial && payment.amount ? Number(payment.amount) : undefined,
       parcial: payment.parcial || undefined,
     });
@@ -2107,6 +2181,26 @@ function Step3Pagamento(props: {
       </div>
 
       <div className="grid gap-3">
+        {servicos.length > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-slate-800">Serviços a pagar com a matrícula</p>
+              <p className="text-xs text-slate-500">Opcional. O preço é confirmado novamente no servidor.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {servicos.map((service) => {
+                const checked = servicosSelecionados.includes(service.id);
+                return (
+                  <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${checked ? "border-klasse-gold bg-amber-50" : "border-slate-200"}`}>
+                    <input type="checkbox" checked={checked} onChange={() => { setServicosSelecionados((current) => checked ? current.filter((id) => id !== service.id) : [...current, service.id]); if (!checked) setPayment((current) => ({ ...current, parcial: false, amount: "" })); }} className="mt-1 h-4 w-4 rounded border-slate-300 text-klasse-green" />
+                    <span className="min-w-0 text-sm"><span className="block font-semibold text-slate-800">{service.nome}</span><span className="block text-xs text-slate-500">{service.descricao || service.codigo}</span><span className="mt-1 block font-semibold text-klasse-green">{service.preco.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span></span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <select
           name="metodo_pagamento"
           value={payment.metodo_pagamento}
@@ -2118,12 +2212,13 @@ function Step3Pagamento(props: {
           <option value="TRANSFERENCIA">Transferência</option>
         </select>
 
-        <label className="flex items-center gap-2 text-xs text-slate-600">
+        <label className={`flex items-center gap-2 text-xs text-slate-600 ${servicosSelecionados.length > 0 ? "opacity-50" : ""}`}>
           <input
             type="checkbox"
             name="parcial"
             checked={payment.parcial}
             onChange={onChange}
+            disabled={servicosSelecionados.length > 0}
             className="h-4 w-4 rounded border-slate-300 text-klasse-green focus:ring-klasse-gold/40"
           />
           Pagamento parcial
@@ -2140,7 +2235,8 @@ function Step3Pagamento(props: {
           />
         ) : priceHint ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Valor da matrícula: <span className="font-semibold">{priceHint}</span>
+            Total a pagar: <span className="font-semibold">{(totalComExtras || Number(priceHint)).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span>
+            {extrasTotal > 0 ? <span className="mt-1 block text-xs text-slate-500">Matrícula {Number(priceHint).toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })} + serviços {extrasTotal.toLocaleString("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 })}</span> : null}
           </div>
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">

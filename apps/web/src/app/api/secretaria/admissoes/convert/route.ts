@@ -19,6 +19,7 @@ const convertPayloadSchema = z.object({
   amount: z.number().positive().optional(),
   parcial: z.boolean().optional(),
   referencia: z.string().trim().optional(),
+  servicos_ids: z.array(z.string().uuid()).max(20).optional().default([]),
   override_capacidade: z.boolean().optional().default(false),
   override_motivo: z.string().trim().optional(),
 })
@@ -199,6 +200,7 @@ export async function POST(request: Request) {
     referencia,
     override_capacidade,
     override_motivo,
+    servicos_ids,
   } = validation.data
   const overrideMotivo = override_motivo?.trim() || null
   if (override_capacidade && (!overrideMotivo || overrideMotivo.length < 10)) {
@@ -212,7 +214,7 @@ export async function POST(request: Request) {
   try {
     const { data: candidatura, error: candError } = await supabase
         .from('candidaturas')
-        .select('escola_id, status, matricula_id, aluno_id')
+        .select('escola_id, status, matricula_id, aluno_id, dados_candidato')
         .eq('id', candidatura_id)
         .single();
 
@@ -303,6 +305,38 @@ export async function POST(request: Request) {
       }
     } catch {}
 
+    // Validar o catálogo antes de criar a matrícula: uma seleção inválida nunca
+    // pode deixar uma matrícula criada sem o pagamento correspondente.
+    const { data: servicosRows, error: servicosError } = servicos_ids.length
+      ? await supabase
+          .from("servicos_escola")
+          .select("id, codigo, nome, descricao, valor_base, ativo")
+          .eq("escola_id", candidatura.escola_id)
+          .in("id", servicos_ids)
+      : { data: [], error: null };
+    if (servicosError) throw servicosError;
+    if ((servicosRows ?? []).length !== servicos_ids.length || (servicosRows ?? []).some((service) => !service.ativo || Number(service.valor_base ?? 0) <= 0)) {
+      return NextResponse.json({ ok: false, error: "Um dos serviços selecionados já não está disponível ou não tem preço configurado.", code: "SERVICE_NOT_AVAILABLE" }, { status: 409 });
+    }
+    const servicos = (servicosRows ?? []).map((service) => ({
+      id: service.id,
+      codigo: service.codigo,
+      nome: service.nome,
+      descricao: service.descricao,
+      preco: Number(service.valor_base ?? 0),
+      quantidade: 1,
+      tipo: "servico",
+    }));
+    if (metodo_pagamento === "TPA" && !referencia) {
+      return NextResponse.json({ ok: false, error: "Informe a referência do TPA antes de finalizar.", code: "PAYMENT_REFERENCE_REQUIRED" }, { status: 400 });
+    }
+    if (metodo_pagamento === "TRANSFERENCIA" && !comprovativo) {
+      return NextResponse.json({ ok: false, error: "Anexe o comprovativo da transferência antes de finalizar.", code: "PAYMENT_EVIDENCE_REQUIRED" }, { status: 400 });
+    }
+    if (servicos.length > 0 && parcial) {
+      return NextResponse.json({ ok: false, error: "Pagamento parcial não está disponível quando há serviços extras. Escolha os serviços e liquide o total, ou pague-os no balcão.", code: "EXTRAS_REQUIRE_FULL_PAYMENT" }, { status: 400 });
+    }
+
     // 3. Chamada canónica: valida turma/preço e faz rascunho -> submetida -> aprovada -> matriculado numa transação.
     const { data, error } = await supabase.rpc('admissao_finalizar_matricula', {
       p_escola_id: candidatura.escola_id,
@@ -334,8 +368,61 @@ export async function POST(request: Request) {
       override_motivo?: string | null
       capacidade_maxima?: number | null
       matriculados_antes?: number | null
+      aluno_id?: string | null
     }
     const matriculaId = typeof result.matricula_id === 'string' ? result.matricula_id : null
+    const alunoId = typeof result.aluno_id === 'string' ? result.aluno_id : null
+
+    const valorMatricula = Number(result.valor_matricula ?? 0);
+    const valorServicos = servicos.reduce((sum, service) => sum + service.preco, 0);
+    const valorTotal = valorMatricula + valorServicos;
+    const valorPago = parcial && amount !== undefined ? Number(amount) : valorTotal;
+    if (!alunoId || valorPago <= 0) throw new Error("Não foi possível associar o pagamento ao aluno matriculado.");
+
+    const itensPagamento = [
+      { nome: "Matrícula", codigo: "SERV_MATRICULA", preco: valorMatricula, quantidade: 1, tipo: "matricula" },
+      ...servicos,
+    ];
+    const metodoFinanceiro = metodo_pagamento === "CASH" ? "cash" : metodo_pagamento === "TPA" ? "tpa" : "transfer";
+    const { data: pagamento, error: pagamentoError } = await (supabase as any).rpc("financeiro_registrar_pagamento_secretaria", {
+      p_escola_id: candidatura.escola_id,
+      p_aluno_id: alunoId,
+      p_mensalidade_id: null,
+      p_valor: valorPago,
+      p_metodo: metodoFinanceiro,
+      p_reference: referencia || undefined,
+      p_evidence_url: comprovativo || undefined,
+      p_gateway_ref: null,
+      p_meta: {
+        idempotency_key: `${idempotencyKey}:pagamento`,
+        origem: "admissao",
+        tipo_comprovativo: "matricula",
+        matricula_id: matriculaId,
+        itens_pagamento: itensPagamento,
+        valor_total: valorTotal,
+        valor_matricula: valorMatricula,
+        valor_servicos: valorServicos,
+      },
+    });
+    if (pagamentoError) throw pagamentoError;
+    let familia: { ok: boolean; agregado_id?: string; error?: string } | null = null;
+    const candidaturaDados = candidatura.dados_candidato && typeof candidatura.dados_candidato === "object" && !Array.isArray(candidatura.dados_candidato)
+      ? candidatura.dados_candidato as Record<string, unknown>
+      : {};
+    const agregadoFamiliarId = typeof candidaturaDados.agregado_familiar_id === "string" ? candidaturaDados.agregado_familiar_id : null;
+    if (matriculaId && agregadoFamiliarId) {
+      const { data: matriculaContext } = await supabase.from("matriculas").select("aluno_id, session_id").eq("escola_id", candidatura.escola_id).eq("id", matriculaId).maybeSingle();
+      const { data: agregado } = await (supabase as any).from("financeiro_agregados_familiares").select("id").eq("id", agregadoFamiliarId).eq("escola_id", candidatura.escola_id).maybeSingle();
+      if (matriculaContext?.aluno_id && agregado) {
+        const { error: familyError } = await (supabase as any).from("financeiro_agregados_membros").insert({ agregado_id: agregado.id, aluno_id: matriculaContext.aluno_id });
+        if (familyError && familyError.code !== "23505") {
+          familia = { ok: false, agregado_id: agregado.id, error: familyError.message };
+        } else {
+          if (matriculaContext.session_id) await (supabase as any).rpc("aplicar_desconto_familiar", { p_escola_id: candidatura.escola_id, p_ano_letivo_id: matriculaContext.session_id });
+          familia = { ok: true, agregado_id: agregado.id };
+        }
+      }
+    }
 
     recordAuditServer({
       escolaId: candidatura.escola_id,
@@ -397,7 +484,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, comprovante })
+    return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, pagamento_id: pagamento?.id ?? null, valor_total: valorTotal, itens_pagamento: itensPagamento, comprovante, familia })
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
     const isUniqueViolation =

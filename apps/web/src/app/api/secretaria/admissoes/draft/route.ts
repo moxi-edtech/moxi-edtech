@@ -78,6 +78,7 @@ const draftPayloadSchema = z
     curso_id: optionalUuid,
     classe_id: optionalUuid,
     turma_preferencial_id: optionalUuid,
+    agregado_familiar_id: optionalUuid,
   })
   .strict();
 

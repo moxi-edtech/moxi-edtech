@@ -13,6 +13,8 @@ const payloadSchema = z.object({
   juros_diarios_percent: z.number().min(0).max(100),
   bloquear_inadimplentes: z.boolean().optional(),
   moeda: z.string().min(1).optional(),
+  desconto_familiar_2_filhos: z.number().min(0).max(100).optional(),
+  desconto_familiar_3_filhos: z.number().min(0).max(100).optional(),
 });
 
 const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createRouteClient>>, resolvedEscolaId: string) => {
@@ -105,6 +107,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     })
 
     const { data } = await tabelaPadraoQuery.maybeSingle();
+    const { data: politicas } = await (supabase as any)
+      .from("financeiro_politicas_desconto_familiar")
+      .select("minimo_filhos, percentagem")
+      .eq("escola_id", resolvedEscolaId)
+      .eq("ano_letivo_id", anoLetivo.id)
+      .eq("ativo", true);
+    const politicaPorFilhos = new Map((politicas ?? []).map((item: any) => [Number(item.minimo_filhos), Number(item.percentagem)]));
 
     return withNoStore(NextResponse.json({
       ok: true,
@@ -114,6 +123,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         juros_diarios_percent: Number(configuracoes?.juros_diarios_percent ?? data?.multa_diaria ?? 0),
         bloquear_inadimplentes: configuracoes?.bloquear_inadimplentes ?? false,
         moeda: configuracoes?.moeda ?? "AOA",
+        desconto_familiar_2_filhos: politicaPorFilhos.get(2) ?? 0,
+        desconto_familiar_3_filhos: politicaPorFilhos.get(3) ?? 0,
       },
     }), start);
   } catch (e) {
@@ -202,6 +213,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       moeda: parsed.data.moeda ?? "AOA",
     };
 
+    for (const policy of [
+      { minimo_filhos: 2, percentagem: parsed.data.desconto_familiar_2_filhos ?? 0 },
+      { minimo_filhos: 3, percentagem: parsed.data.desconto_familiar_3_filhos ?? 0 },
+    ]) {
+      const { error: policyError } = await (supabase as any)
+        .from("financeiro_politicas_desconto_familiar")
+        .upsert({
+          escola_id: resolvedEscolaId,
+          ano_letivo_id: anoLetivo.id,
+          minimo_filhos: policy.minimo_filhos,
+          percentagem: policy.percentagem,
+          ativo: policy.percentagem > 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "escola_id,ano_letivo_id,minimo_filhos" });
+      if (policyError) {
+        return withNoStore(NextResponse.json({ ok: false, error: policyError.message }, { status: 500 }), start);
+      }
+    }
+
     const { data: configuracoes, error: configError } = await (supabase as any)
       .from("configuracoes_financeiro")
       .upsert(configPayload, { onConflict: "escola_id" })
@@ -210,6 +240,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (configError) {
       return withNoStore(NextResponse.json({ ok: false, error: configError.message }, { status: 500 }), start);
+    }
+
+    const { error: familyApplyError } = await (supabase as any).rpc("aplicar_desconto_familiar", {
+      p_escola_id: resolvedEscolaId,
+      p_ano_letivo_id: anoLetivo.id,
+    });
+    if (familyApplyError) {
+      return withNoStore(NextResponse.json({ ok: false, error: familyApplyError.message }, { status: 500 }), start);
     }
 
     return withNoStore(NextResponse.json({
@@ -224,6 +262,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ),
         bloquear_inadimplentes: configuracoes?.bloquear_inadimplentes ?? parsed.data.bloquear_inadimplentes ?? false,
         moeda: configuracoes?.moeda ?? parsed.data.moeda ?? "AOA",
+        desconto_familiar_2_filhos: parsed.data.desconto_familiar_2_filhos ?? 0,
+        desconto_familiar_3_filhos: parsed.data.desconto_familiar_3_filhos ?? 0,
       },
     }), start);
   } catch (e) {
