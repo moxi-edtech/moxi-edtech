@@ -310,7 +310,10 @@ export async function POST(request: Request) {
         gateway_ref: body.gateway_ref ?? null,
         meta: {
           origem: "rematricula_balcao",
+          tipo_comprovativo: "confirmacao",
           servico_codigo: SERVICE_CODE,
+          descricao_item: service.nome,
+          itens_pagamento: [{ codigo: SERVICE_CODE, descricao: service.nome, valor: valorConfirmacao }],
           pedido_id: pedido.id,
           rematricula_ano_letivo_id: academicContext.anoLetivoId,
         },

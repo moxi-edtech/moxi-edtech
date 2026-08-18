@@ -89,8 +89,10 @@ export async function ReciboPrintDocument({
         .map((item) => ({
           referencia: getSnapshotString(item.descricao ?? item.referencia ?? item.nome, "Item pago"),
           valor: Number(item.valor ?? item.amount ?? 0),
+          quantidade: Number(item.quantidade ?? item.qtd ?? 1),
+          valorUnitario: Number(item.valor_unitario ?? item.valorUnitario ?? item.preco ?? item.valor ?? 0),
         }))
-        .filter((item) => Number.isFinite(item.valor) && item.valor >= 0)
+        .filter((item) => Number.isFinite(item.valor) && item.valor >= 0 && Number.isFinite(item.quantidade) && item.quantidade > 0)
     : [{ referencia, valor: Number(snapshot.valor_pago ?? 0) }];
   const valorPago = Number(snapshot.valor_pago ?? 0);
   const dataPagamento = snapshot.data_pagamento
@@ -116,7 +118,7 @@ export async function ReciboPrintDocument({
       <PrintTrigger />
       <div className={`${styles.sheet} ${styles.receiptCompactSheet} shadow-lg`}>
         {showSecondVia ? (
-          <p className="mb-2 text-right text-[10px] text-slate-400">
+          <p className="mb-2 text-right text-[10px] text-slate-400 print:hidden">
             2ª Via — Emitido em {currentDateLabel}
           </p>
         ) : null}

@@ -42,7 +42,14 @@
   }
 
   .receiptCompactSheet {
+    /* A4 (297mm) minus the 8mm top/bottom @page margins. The two vias
+       reserve 277mm and must remain inside this single printable area. */
+    height: 281mm;
+    min-height: 281mm;
+    max-height: 281mm;
     break-inside: avoid;
+    page-break-before: avoid;
+    page-break-after: avoid;
     page-break-inside: avoid;
     overflow: hidden;
   }

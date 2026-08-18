@@ -10,7 +10,7 @@ export type ReciboPagamentoCompactoProps = {
   referencia: string;
   tipoComprovativo?: "pagamento" | "matricula" | "confirmacao";
   referenciasDetalhadas?: string[];
-  itensDetalhados?: Array<{ referencia: string; valor: number }>;
+  itensDetalhados?: Array<{ referencia: string; valor: number; quantidade?: number; valorUnitario?: number }>;
   metodo: string;
   valorPago: number;
   dataPagamento: string;
@@ -106,7 +106,12 @@ export default function ReciboPagamentoCompacto({
   const referencias = referenciasDetalhadas.filter((item) => item && item.trim().length > 0);
   const detailedItems = itensDetalhados
     .filter((item) => item?.referencia?.trim())
-    .map((item) => ({ referencia: normalizeReferencia(item.referencia), valor: item.valor }));
+    .map((item) => ({
+      referencia: normalizeReferencia(item.referencia),
+      valor: item.valor,
+      quantidade: item.quantidade ?? 1,
+      valorUnitario: item.valorUnitario ?? item.valor,
+    }));
   const itemCount = detailedItems.length || referencias.length;
   const isPrintCompact = itemCount >= 2;
   const isDensePrint = itemCount >= 8;
@@ -167,17 +172,21 @@ export default function ReciboPagamentoCompacto({
             </div>
             {detailedItems.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-slate-200">
-                <div className={`grid grid-cols-[minmax(0,1fr)_88px] bg-slate-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isUltraDensePrint ? "print:px-2 print:py-0.5 print:text-[6px]" : "print:px-2 print:py-1 print:text-[7px]"}`}>
-                  <span>Competência</span>
-                  <span className="text-right">Valor</span>
+                <div className={`grid grid-cols-[minmax(0,1fr)_32px_76px_82px] bg-slate-50 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isUltraDensePrint ? "print:px-2 print:py-0.5 print:text-[6px]" : "print:px-2 print:py-1 print:text-[7px]"}`}>
+                  <span>Serviço / descrição</span>
+                  <span className="text-center">Qtd</span>
+                  <span className="text-right">Unitário</span>
+                  <span className="text-right">Total</span>
                 </div>
                 <div>
                   {detailedItems.map((item, index) => (
                     <div
                       key={`${item.referencia}-${index}`}
-                      className={`grid grid-cols-[minmax(0,1fr)_88px] items-center gap-3 border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-700 ${isUltraDensePrint ? "print:gap-2 print:px-2 print:py-0.5 print:text-[7px]" : "print:px-2 print:py-0.5 print:text-[8px]"}`}
+                      className={`grid grid-cols-[minmax(0,1fr)_32px_76px_82px] items-center gap-2 border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-700 ${isUltraDensePrint ? "print:gap-1 print:px-2 print:py-0.5 print:text-[7px]" : "print:px-2 print:py-0.5 print:text-[8px]"}`}
                     >
                       <span className="truncate font-medium" title={item.referencia}>{item.referencia}</span>
+                      <span className="text-center tabular-nums">{item.quantidade}</span>
+                      <span className="text-right tabular-nums">{formatMoney(item.valorUnitario ?? item.valor)}</span>
                       <span className="text-right font-semibold tabular-nums">{formatMoney(item.valor)}</span>
                     </div>
                   ))}

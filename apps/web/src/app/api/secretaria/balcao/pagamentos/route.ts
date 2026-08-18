@@ -375,6 +375,30 @@ export async function POST(request: Request) {
         const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
         recibo = { ok: false, error: message };
       }
+    } else if (pagamentoRow?.id && pagamentoRow.status === "settled") {
+      try {
+        const { data: reciboData, error: reciboError } = await (supabase as any).rpc("emitir_recibo_servicos", {
+          p_pagamento_id: pagamentoRow.id,
+        });
+        const rec = asRecord(reciboData);
+        if (reciboError) {
+          recibo = { ok: false, error: reciboError.message || "Falha ao emitir recibo" };
+        } else if (rec.ok === true) {
+          const docId = getStringField(rec, "doc_id");
+          recibo = {
+            ok: true,
+            doc_id: docId,
+            public_id: getStringField(rec, "public_id"),
+            emitido_em: getStringField(rec, "emitido_em"),
+            print_url: docId ? `/secretaria/documentos/${docId}/recibo/print` : null,
+          };
+        } else {
+          recibo = { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
+        }
+      } catch (reciboErr: unknown) {
+        const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
+        recibo = { ok: false, error: message };
+      }
     }
     let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
     try {
