@@ -14,6 +14,7 @@ import type { RawDossier, RawDossierMensalidade } from "@/lib/aluno/types";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
+import { extractServicosFromPagamentos } from "@/lib/financeiro/servicosPagamento";
 
 export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null }) {
   const supabase = await supabaseServer();
@@ -93,6 +94,14 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
 
   const aluno = normalizeDossier(alunoId, enrichedRaw, selectedYear);
   if (!aluno) return notFound();
+  const { data: pagamentosServicos } = await supabase
+    .from("pagamentos")
+    .select("id, status, created_at, meta")
+    .eq("escola_id", resolvedEscolaId)
+    .eq("aluno_id", alunoId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  const servicos = extractServicosFromPagamentos(pagamentosServicos ?? []);
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (
@@ -102,7 +111,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
         <DossierTabs
           aluno={aluno}
           slotPerfil={<DossierPerfilSection aluno={aluno} />}
-          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} />}
+          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} servicos={servicos} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}

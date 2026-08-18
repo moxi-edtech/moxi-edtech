@@ -47,7 +47,7 @@ type BalcaoFiscalResult =
       error: string;
     };
 type BalcaoReciboResult =
-  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null }
+  | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null }
   | { ok: false; error: string };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -57,6 +57,67 @@ function asRecord(value: unknown): Record<string, unknown> {
 function getStringField(record: Record<string, unknown>, key: string): string | null {
   const value = record[key];
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+type ReceiptItem = { descricao: string; valor: number };
+
+function normalizeReceiptItems(meta: Record<string, unknown>, fallback: ReceiptItem): ReceiptItem[] {
+  const rawItems = meta.itens_pagamento ?? meta.itens;
+  if (!Array.isArray(rawItems)) return [fallback];
+
+  const items = rawItems
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      const nome = row.nome ?? row.descricao ?? row.referencia ?? row.label;
+      const valor = Number(row.preco ?? row.valor ?? row.amount ?? 0);
+      return {
+        descricao: typeof nome === "string" && nome.trim() ? nome.trim() : "Item pago",
+        valor,
+      };
+    })
+    .filter((item) => Number.isFinite(item.valor) && item.valor >= 0);
+
+  return items.length > 0 ? items : [fallback];
+}
+
+function normalizeReceiptType(meta: Record<string, unknown>): "pagamento" | "matricula" | "confirmacao" {
+  const raw = String(meta.tipo_comprovativo ?? meta.tipo_operacao ?? meta.origem ?? "").toLowerCase();
+  if (raw.includes("confirm") || raw.includes("rematric")) return "confirmacao";
+  if (raw.includes("matric")) return "matricula";
+
+  const items = Array.isArray(meta.itens) ? meta.itens : [];
+  const hasConfirmation = items.some((item) => {
+    const row = asRecord(item);
+    return `${row.codigo ?? ""} ${row.nome ?? ""}`.toLowerCase().includes("rematric");
+  });
+  return hasConfirmation ? "confirmacao" : "pagamento";
+}
+
+async function enrichReceiptSnapshot({
+  supabase,
+  escolaId,
+  docId,
+  extraSnapshot,
+}: {
+  supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>;
+  escolaId: string;
+  docId: string;
+  extraSnapshot: Record<string, unknown>;
+}) {
+  const { data: doc } = await supabase
+    .from("documentos_emitidos")
+    .select("dados_snapshot")
+    .eq("id", docId)
+    .eq("escola_id", escolaId)
+    .maybeSingle();
+  const existingSnapshot = asRecord(doc?.dados_snapshot);
+
+  await supabase
+    .from("documentos_emitidos")
+    .update({ dados_snapshot: { ...existingSnapshot, ...extraSnapshot } as Json })
+    .eq("id", docId)
+    .eq("escola_id", escolaId);
 }
 
 export async function POST(request: Request) {
@@ -124,6 +185,12 @@ export async function POST(request: Request) {
 
     const payload = parsed.data;
     const meta = asRecord(payload.meta);
+    const mensalidadeItem = (meta.itens as unknown[] | undefined)?.find((item) => asRecord(item).tipo === "mensalidade");
+    const receiptItems = normalizeReceiptItems(meta, {
+      descricao: getStringField(meta, "descricao_item") || "Propina",
+      valor: Number(asRecord(mensalidadeItem).preco ?? payload.valor),
+    });
+    const receiptType = normalizeReceiptType(meta);
     const isPosViradaPayment = meta.origem === "pos_virada";
     let academicContext;
     try {
@@ -283,8 +350,26 @@ export async function POST(request: Request) {
                 doc_id: getStringField(rec, "doc_id"),
                 public_id: getStringField(rec, "public_id"),
                 emitido_em: getStringField(rec, "emitido_em"),
+                print_url: getStringField(rec, "doc_id")
+                  ? `/secretaria/documentos/${getStringField(rec, "doc_id")}/recibo/print`
+                  : null,
               }
             : { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
+        }
+        if (recibo.ok && recibo.doc_id) {
+          await enrichReceiptSnapshot({
+            supabase,
+            escolaId,
+            docId: recibo.doc_id,
+            extraSnapshot: {
+              tipo_comprovativo: receiptType,
+              itens_pagamento: receiptItems,
+              referencia: receiptItems.map((item) => item.descricao).join(", "),
+              valor_pago: payload.valor,
+              metodo: metodo,
+              data_pagamento: new Date().toISOString(),
+            },
+          });
         }
       } catch (reciboErr: unknown) {
         const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
@@ -301,10 +386,7 @@ export async function POST(request: Request) {
         origemOperacao: "financeiro_balcao_pagamento",
         origemId: pagamentoRow?.id || idempotencyKey,
         descricaoPrincipal: "Pagamento via Balcão",
-        itens: [{ 
-          descricao: getStringField(meta, "descricao_item") || "Serviço/Item Balcão",
-          valor: payload.valor 
-        }],
+        itens: receiptItems,
         cliente: { nome: null, nif: null },
         escolaId,
         origin,

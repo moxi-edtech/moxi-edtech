@@ -80,6 +80,18 @@ export async function ReciboPrintDocument({
   const urlValidacao = hash ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}` : null;
 
   const referencia = getSnapshotString(snapshot.referencia, "Mensalidade");
+  const tipoComprovativo = snapshot.tipo_comprovativo === "matricula" || snapshot.tipo_comprovativo === "confirmacao"
+    ? snapshot.tipo_comprovativo
+    : "pagamento";
+  const itensDetalhados = Array.isArray(snapshot.itens_pagamento)
+    ? snapshot.itens_pagamento
+        .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)))
+        .map((item) => ({
+          referencia: getSnapshotString(item.descricao ?? item.referencia ?? item.nome, "Item pago"),
+          valor: Number(item.valor ?? item.amount ?? 0),
+        }))
+        .filter((item) => Number.isFinite(item.valor) && item.valor >= 0)
+    : [{ referencia, valor: Number(snapshot.valor_pago ?? 0) }];
   const valorPago = Number(snapshot.valor_pago ?? 0);
   const dataPagamento = snapshot.data_pagamento
     ? new Date(String(snapshot.data_pagamento)).toLocaleDateString("pt-PT")
@@ -116,6 +128,8 @@ export async function ReciboPrintDocument({
           cursoNome={cursoNome}
           turmaNome={turmaNome}
           referencia={referencia}
+          tipoComprovativo={tipoComprovativo}
+          itensDetalhados={itensDetalhados}
           metodo={metodo}
           valorPago={valorPago}
           dataPagamento={dataPagamento}

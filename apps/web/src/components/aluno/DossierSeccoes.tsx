@@ -6,6 +6,7 @@ import { CheckCircle2, FileText, TrendingDown, Wallet, Printer } from "lucide-re
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
 import type { AlunoNormalizado, DossierMensalidade } from "@/lib/aluno/types";
+import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHistoricoTimelineSection";
 import { DossierHistoricoTransitadoSection as DossierHistoricoTransitadoSectionClient } from "@/components/aluno/DossierHistoricoTransitadoSection";
@@ -201,7 +202,7 @@ function MensalidadeRow({
   );
 }
 
-export function DossierFinanceiroSection({ aluno, role }: { aluno: AlunoNormalizado; role: DossierRole }) {
+export function DossierFinanceiroSection({ aluno, role, servicos = [] }: { aluno: AlunoNormalizado; role: DossierRole; servicos?: AlunoServicoFinanceiro[] }) {
   const { error } = useToast();
   const canReprint = role === "secretaria";
   const canReverse = role === "secretaria";
@@ -227,6 +228,40 @@ export function DossierFinanceiroSection({ aluno, role }: { aluno: AlunoNormaliz
             <p className="text-xs text-[#1F6B3B]/70 mt-1">Resumo de pagamentos.</p>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          Serviços e emolumentos
+        </p>
+        {servicos.length ? (
+          <div className="space-y-2">
+            {servicos.map((servico) => (
+              <div key={servico.id}>
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{servico.nome}</p>
+                  <p className="text-[10px] text-slate-400">{formatDate(servico.data)}</p>
+                  <p className="mt-1 text-[10px] text-slate-500">Protocolo: {servico.protocolo}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900">{formatKwanza(servico.valor)}</p>
+                  <StatusPill status={servico.status} variant="financeiro" size="xs" />
+                </div>
+                </div>
+                <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                <p className="font-semibold text-slate-700">{servico.estado_label}</p>
+                <p>{servico.mensagem_estado}</p>
+                <p className="mt-1 font-medium text-slate-700">Próximo passo: {servico.proximo_passo}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-5 text-center text-sm text-slate-500">
+            Nenhum serviço registado.
+          </p>
+        )}
       </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">

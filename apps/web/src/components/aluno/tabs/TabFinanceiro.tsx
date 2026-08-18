@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Info, Printer, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
+import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 
 type Item = {
   id: string;
@@ -36,6 +38,7 @@ type DadosPagamento = {
 type ApiResponse = {
   ok: boolean;
   mensalidades: Array<Omit<Item, "status"> & { status: string }>;
+  servicos?: AlunoServicoFinanceiro[];
   movimentos: Movimento[];
   resumo: {
     saldo_consolidado: number;
@@ -52,6 +55,7 @@ type ParsedFinanceiroPayload = {
   resumo: ApiResponse["resumo"];
   comprovativoStatus: ComprovativoStatus | null;
   dadosPagamento: DadosPagamento | null;
+  servicos: AlunoServicoFinanceiro[];
 };
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
@@ -74,6 +78,7 @@ export function TabFinanceiro() {
   const [resumo, setResumo] = useState<ApiResponse["resumo"] | null>(null);
   const [comprovativoStatus, setComprovativoStatus] = useState<ComprovativoStatus | null>(null);
   const [dadosPagamento, setDadosPagamento] = useState<DadosPagamento | null>(null);
+  const [servicos, setServicos] = useState<AlunoServicoFinanceiro[]>([]);
   const [selected, setSelected] = useState<Item | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [fromAno, setFromAno] = useState(currentYear - 1);
@@ -106,6 +111,7 @@ export function TabFinanceiro() {
         resumo: json.resumo,
         comprovativoStatus: json.comprovativo_status ?? null,
         dadosPagamento: json.dados_pagamento ?? null,
+        servicos: json.servicos ?? [],
       } satisfies ParsedFinanceiroPayload;
     },
     onData: (data) => {
@@ -114,6 +120,7 @@ export function TabFinanceiro() {
       setResumo(data.resumo);
       setComprovativoStatus(data.comprovativoStatus);
       setDadosPagamento(data.dadosPagamento);
+      setServicos(data.servicos);
       setLoading(false);
     },
   });
@@ -307,6 +314,48 @@ export function TabFinanceiro() {
           )}
         </section>
       </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">Serviços e emolumentos</h2>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Registo financeiro</span>
+        </div>
+        {servicos.length ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {servicos.map((servico) => (
+              <div key={servico.id} className="contents">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{servico.nome}</p>
+                  <p className="text-xs text-slate-500">{new Date(servico.data).toLocaleDateString("pt-AO")}</p>
+                  <p className="mt-1 text-[10px] text-slate-400">Protocolo: {servico.protocolo}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900">{money.format(servico.valor)}</p>
+                  <span className={`text-[10px] font-semibold ${servico.status === "pago" ? "text-klasse-green-700" : "text-amber-700"}`}>
+                    {servico.estado_label}
+                  </span>
+                </div>
+                </div>
+                <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600 sm:col-span-2">
+                <p>{servico.mensagem_estado}</p>
+                <p className="mt-1 font-medium text-slate-700">Próximo passo: {servico.proximo_passo}</p>
+                {servico.acao ? (
+                  <Link
+                    href={studentId ? `${servico.acao.href}&studentId=${encodeURIComponent(studentId)}` : servico.acao.href}
+                    className="mt-2 inline-flex min-h-10 items-center rounded-xl bg-klasse-green-700 px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green-800"
+                  >
+                    {servico.acao.label}
+                  </Link>
+                ) : null}
+              </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">Nenhum serviço registado no período.</p>
+        )}
+      </section>
 
       <PaymentDrawer
         open={Boolean(selected)}

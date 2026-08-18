@@ -530,6 +530,9 @@ function useCheckout({
         throw new Error(json.error || "Erro ao processar pagamento");
       }
 
+      if (json.recibo?.print_url) {
+        window.open(json.recibo.print_url, "_blank", "noopener,noreferrer");
+      }
       success("Pagamento processado com sucesso!");
       setBillingWindowIssue(null);
       carrinho.limpar();

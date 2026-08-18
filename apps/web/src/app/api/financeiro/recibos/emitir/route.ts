@@ -57,6 +57,37 @@ type ExistingSnapshotRow = {
   dados_snapshot?: Json | null;
 } | null;
 
+type ReceiptItem = { descricao: string; valor: number };
+
+function normalizeReceiptItems(meta: unknown, fallback: ReceiptItem): ReceiptItem[] {
+  const record = normalizeSnapshotObject(meta as Json | null);
+  const rawItems = record.itens_pagamento ?? record.itens ?? record.items;
+  if (!Array.isArray(rawItems)) return [fallback];
+
+  const items = rawItems
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      const descricao = row.descricao ?? row.referencia ?? row.nome ?? row.label;
+      const valor = Number(row.valor ?? row.amount ?? row.preco ?? 0);
+      return {
+        descricao: typeof descricao === "string" && descricao.trim() ? descricao.trim() : "Item pago",
+        valor,
+      };
+    })
+    .filter((item) => Number.isFinite(item.valor) && item.valor >= 0);
+
+  return items.length > 0 ? items : [fallback];
+}
+
+function normalizeReceiptType(meta: unknown): "pagamento" | "matricula" | "confirmacao" {
+  const record = normalizeSnapshotObject(meta as Json | null);
+  const raw = String(record.tipo_comprovativo ?? record.tipo_operacao ?? record.operacao ?? record.origem ?? "").toLowerCase();
+  if (raw.includes("confirm") || raw.includes("reconfirm") || raw.includes("rematric")) return "confirmacao";
+  if (raw.includes("matric")) return "matricula";
+  return "pagamento";
+}
+
 function normalizeSnapshotObject(value: Json | Record<string, unknown> | null | undefined) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -97,11 +128,13 @@ async function enrichReciboSnapshot({
   docId,
   escolaId,
   alunoId,
+  extraSnapshot = {},
 }: {
   supabase: any;
   docId: string;
   escolaId: string;
   alunoId: string | null;
+  extraSnapshot?: Record<string, unknown>;
 }) {
   if (!docId) return;
 
@@ -191,6 +224,7 @@ async function enrichReciboSnapshot({
       dados_snapshot: {
         ...existingSnapshot,
         ...patch,
+        ...extraSnapshot,
       } as Json,
     })
     .eq("id", docId);
@@ -343,6 +377,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { data: latestPagamento } = await supabaseAny
+      .from("pagamentos")
+      .select("meta, valor_pago, created_at")
+      .eq("escola_id", escolaId)
+      .eq("mensalidade_id", mensalidadeId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const pagamentoMeta = normalizeSnapshotObject(latestPagamento?.meta ?? null);
+    const fallbackItem = {
+      descricao: "Propina",
+      valor: Number(latestPagamento?.valor_pago ?? mensalidade.valor_previsto ?? mensalidade.valor ?? 0),
+    } satisfies ReceiptItem;
+    const receiptItems = normalizeReceiptItems(pagamentoMeta, fallbackItem);
+    const receiptType = normalizeReceiptType(pagamentoMeta);
+
     const { data: reclassificacaoPendente } = await supabaseAny
       .from("matricula_reclassificacoes")
       .select("id,tipo")
@@ -424,6 +475,12 @@ export async function POST(req: NextRequest) {
             docId: legacyDocId,
             escolaId,
             alunoId: mensalidade.aluno_id ?? null,
+            extraSnapshot: {
+              tipo_comprovativo: receiptType,
+              itens_pagamento: receiptItems,
+              referencia: receiptItems.map((item) => item.descricao).join(", "),
+              valor_pago: valorRecibo,
+            },
           });
           response.print = await resolveReciboPrintPayload({
             supabase,
@@ -498,8 +555,12 @@ export async function POST(req: NextRequest) {
         tipoFluxoFinanceiro: "immediate_payment",
         origemOperacao: "financeiro_recibos_emitir",
         origemId: mensalidadeId,
-        descricaoPrincipal: "Recebimento de mensalidade",
-        itens: [{ descricao: `Recebimento mensalidade ${mensalidadeId}`, valor: valorRecibo }],
+        descricaoPrincipal: receiptType === "matricula"
+          ? "Recebimento de matrícula"
+          : receiptType === "confirmacao"
+            ? "Recebimento de confirmação"
+            : "Recebimento de mensalidade",
+        itens: receiptItems,
         cliente: { nome: null, nif: null },
         escolaId,
         origin,
@@ -507,6 +568,8 @@ export async function POST(req: NextRequest) {
         metadata: {
           mensalidade_id: mensalidadeId,
           aluno_id: mensalidade.aluno_id ?? null,
+          tipo_comprovativo: receiptType,
+          itens_pagamento: receiptItems,
         },
       });
     } catch (fiscalError) {
@@ -592,6 +655,12 @@ export async function POST(req: NextRequest) {
       docId: fiscal.documento_id,
       escolaId,
       alunoId: mensalidade.aluno_id ?? null,
+      extraSnapshot: {
+        tipo_comprovativo: receiptType,
+        itens_pagamento: receiptItems,
+        referencia: receiptItems.map((item) => item.descricao).join(", "),
+        valor_pago: valorRecibo,
+      },
     });
     response.print = await resolveReciboPrintPayload({
       supabase,

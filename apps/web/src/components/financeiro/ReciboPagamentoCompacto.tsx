@@ -8,6 +8,7 @@ export type ReciboPagamentoCompactoProps = {
   cursoNome: string;
   turmaNome: string;
   referencia: string;
+  tipoComprovativo?: "pagamento" | "matricula" | "confirmacao";
   referenciasDetalhadas?: string[];
   itensDetalhados?: Array<{ referencia: string; valor: number }>;
   metodo: string;
@@ -83,6 +84,7 @@ export default function ReciboPagamentoCompacto({
   cursoNome,
   turmaNome,
   referencia,
+  tipoComprovativo = "pagamento",
   referenciasDetalhadas = [],
   itensDetalhados = [],
   metodo,
@@ -109,8 +111,13 @@ export default function ReciboPagamentoCompacto({
   const isPrintCompact = itemCount >= 2;
   const isDensePrint = itemCount >= 8;
   const isUltraDensePrint = itemCount >= 11;
-  const hasReferenciaDetalhada = detailedItems.length > 1 || referencias.length > 1;
+  const hasReferenciaDetalhada = detailedItems.length > 0 || referencias.length > 1;
   const referenciasAgrupadas = groupReferenciasByAno(referencias);
+  const titulo = tipoComprovativo === "matricula"
+    ? "Comprovativo de Matrícula"
+    : tipoComprovativo === "confirmacao"
+      ? "Comprovativo de Confirmação"
+      : "Recibo de Pagamento";
 
   return (
     <div className={`flex h-full flex-col space-y-4 bg-white font-sans text-slate-900 ${isDensePrint ? "print:space-y-1.5" : isPrintCompact ? "print:space-y-1.75" : "print:space-y-2"}`}>
@@ -126,7 +133,7 @@ export default function ReciboPagamentoCompacto({
           <p className={`line-clamp-2 text-[10px] font-bold uppercase leading-snug tracking-[0.14em] text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[9px]"}`} title={escolaNome}>
             {escolaNome}
           </p>
-          <h1 className={`text-lg font-bold uppercase tracking-tight text-slate-900 ${isUltraDensePrint ? "print:text-[13px]" : "print:text-base"}`}>Recibo de Pagamento</h1>
+          <h1 className={`text-lg font-bold uppercase tracking-tight text-slate-900 ${isUltraDensePrint ? "print:text-[13px]" : "print:text-base"}`}>{titulo}</h1>
         </div>
 
         <div className={`min-w-[92px] max-w-[150px] space-y-1.5 text-right text-[10px] leading-tight text-slate-500 ${isDensePrint ? "print:space-y-0" : "print:space-y-0.5"}`}>
@@ -153,9 +160,9 @@ export default function ReciboPagamentoCompacto({
         {hasReferenciaDetalhada ? (
           <div className={`space-y-2 border-b border-slate-200 px-4 py-4 ${isUltraDensePrint ? "print:space-y-0.5 print:px-2.5 print:py-1" : isPrintCompact ? "print:space-y-0.75 print:px-3 print:py-1.25" : "print:space-y-1 print:px-3 print:py-1.5"}`}>
             <div className="space-y-1">
-              <p className={`text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Competências Liquidadas</p>
+              <p className={`text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500 ${isUltraDensePrint ? "print:text-[7px]" : "print:text-[8px]"}`}>Itens Pagos</p>
               <p className="text-[11px] font-medium text-slate-400 print:hidden">
-                {(detailedItems.length || referencias.length)} {(detailedItems.length || referencias.length) === 1 ? "competência" : "competências"} incluídas neste recibo
+                {(detailedItems.length || referencias.length)} {(detailedItems.length || referencias.length) === 1 ? "item" : "itens"} incluído(s) neste recibo
               </p>
             </div>
             {detailedItems.length > 0 ? (

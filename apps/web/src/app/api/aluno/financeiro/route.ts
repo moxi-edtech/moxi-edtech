@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
+import { extractServicosFromPagamentos } from "@/lib/financeiro/servicosPagamento";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -87,6 +88,18 @@ export async function GET(request: Request) {
 
     if (ledgerError) throw ledgerError;
 
+    const { data: pagamentosServicos, error: servicosError } = await supabase
+      .from("pagamentos")
+      .select("id, status, created_at, meta")
+      .eq("aluno_id", alunoId)
+      .eq("escola_id", ctx.escolaId)
+      .gte("created_at", `${fromAno}-01-01T00:00:00.000Z`)
+      .lte("created_at", `${toAno}-12-31T23:59:59.999Z`)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (servicosError) throw servicosError;
+    const servicos = extractServicosFromPagamentos(pagamentosServicos ?? []);
+
     // 3. Dados de pagamento da escola
     let dados_pagamento: Json | null = null;
     const { data: escola } = await supabase.from('escolas').select('dados_pagamento').eq('id', ctx.escolaId).maybeSingle();
@@ -127,6 +140,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       mensalidades: rows,
+      servicos,
       movimentos: ledgerMovimentos,
       resumo: {
         saldo_consolidado: saldoConsolidado,
