@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createAiAction } from "@/lib/server/ai/ai-actions";
 import { updateAiUsageLog, validateAiAccess } from "@/lib/server/ai/ai-guards";
+import { callAiWithFallback, getAiProviderConfig } from "@/lib/server/ai/provider-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DBWithRPC } from "@/types/supabase-augment";
 
@@ -19,25 +20,6 @@ const rewriteSchema = z.object({
 });
 
 type RewriteMode = z.infer<typeof rewriteSchema>["mode"];
-
-type GeminiPart = {
-  text?: string;
-};
-
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: GeminiPart[];
-    };
-  }>;
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-  };
-  error?: {
-    message?: string;
-  };
-};
 
 const MODE_INSTRUCTIONS: Record<RewriteMode, string> = {
   more_formal: "Reescreve em português administrativo, claro, profissional e cordial.",
@@ -100,13 +82,6 @@ function localRewriteFallback(text: string, mode: RewriteMode): RewriteResult {
   };
 }
 
-function getGeminiText(data: GeminiResponse) {
-  return data.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text ?? "")
-    .join("")
-    .trim() ?? "";
-}
-
 function parseRewriteResult(rawText: string): RewriteResult {
   const cleaned = rawText
     .trim()
@@ -151,73 +126,39 @@ function parseRewriteResult(rawText: string): RewriteResult {
 }
 
 async function generateRewrite(prompt: string, sourceText: string, mode: RewriteMode) {
-  const provider = (process.env.AI_PROVIDER ?? "").trim().toLowerCase();
-  const apiKey = (process.env.AI_API_KEY ?? "").trim();
-  const model = (process.env.AI_MODEL_TEXT ?? "gemini-2.0-flash").trim();
+  const { provider, apiKey, model } = getAiProviderConfig();
   const maxTokens = Number.parseInt(process.env.AI_MAX_TOKENS ?? "2048", 10);
   const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS ?? "15000", 10);
 
-  if (provider !== "gemini" || !apiKey) {
+  if (!["gemini", "deepseek"].includes(provider) || !apiKey) {
     const fallbackResult = localRewriteFallback(sourceText, mode);
     return {
       ...fallbackResult,
       text: fallbackResult.body,
       provider: provider || "local",
-      model: provider === "gemini" ? model : "local-rewrite",
+      model: ["gemini", "deepseek"].includes(provider) ? model : "local-rewrite",
       tokensInput: null,
       tokensOutput: null,
       fallback: true,
     };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 15000);
-
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: mode === "shorter" || mode === "whatsapp" ? 0.2 : 0.35,
-            maxOutputTokens: Number.isFinite(maxTokens) ? maxTokens : 2048,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Tempo limite excedido ao consultar o provedor de IA.");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  const data = (await response.json().catch(() => ({}))) as GeminiResponse;
-  if (!response.ok) {
-    throw new Error(data.error?.message || "Falha ao chamar o provedor de IA.");
-  }
-
-  const text = getGeminiText(data);
-  if (!text) {
-    throw new Error("O provedor de IA não retornou texto.");
-  }
-  const parsed = parseRewriteResult(text);
+  const result = await callAiWithFallback({
+    prompt,
+    temperature: mode === "shorter" || mode === "whatsapp" ? 0.2 : 0.35,
+    maxTokens,
+    timeoutMs,
+    json: true,
+  });
+  const parsed = parseRewriteResult(result.text);
 
   return {
     ...parsed,
     text: parsed.body,
-    provider,
-    model,
-    tokensInput: data.usageMetadata?.promptTokenCount ?? null,
-    tokensOutput: data.usageMetadata?.candidatesTokenCount ?? null,
+    provider: result.provider,
+    model: result.model,
+    tokensInput: result.tokensInput,
+    tokensOutput: result.tokensOutput,
     fallback: false,
   };
 }

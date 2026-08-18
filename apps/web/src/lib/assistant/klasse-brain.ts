@@ -8,6 +8,7 @@ import { runDataCopilotTool } from "./data-copilot/tool-registry";
 import { normalizeAssistantText } from "./data-copilot/query-matcher";
 import type { InsightAnswer } from "./data-copilot/types";
 import { updateAiUsageLog } from "@/lib/server/ai/ai-guards";
+import { callAiWithFallback } from "@/lib/server/ai/provider-client";
 
 export type AssistantResponse = {
   ok: boolean;
@@ -16,7 +17,8 @@ export type AssistantResponse = {
   fallbackReason?:
     | "permission_denied"
     | "knowledge_not_found"
-    | "provider_unavailable";
+    | "provider_unavailable"
+    | "data_unavailable";
   suggestions?: AssistantAction[];
   actions?: AssistantActionV2[];
   insight?: InsightAnswer;
@@ -24,6 +26,10 @@ export type AssistantResponse = {
   aiInsightId?: string;
   links?: Array<{ label: string; href: string }>;
   requiresApproval?: boolean;
+  clarification?: {
+    question: string;
+    options: Array<{ label: string; value: string }>;
+  };
 };
 
 // Simple intent keyword matching patterns for Fast Path
@@ -95,6 +101,37 @@ function courtesyAnswer(query: string) {
   return `${greeting}! Sou o KLASSE IA, o copiloto da sua escola. Como posso ajudar hoje? Posso mostrar o briefing do dia, verificar a inadimplência de uma turma ou explicar caminhos no sistema.`;
 }
 
+function detectAmbiguity(query: string, role: string, context?: AiWidgetContext) {
+  const normalized = normalizeAssistantText(query);
+  const broadTerm = ["problemas", "pendencias", "pendencia", "riscos", "situacao", "atencao", "questoes"]
+    .some((term) => normalized.includes(term));
+  const explicitDomain = ["nota", "pauta", "frequencia", "falta", "pedagog", "finance", "divida", "inadimpl", "admiss", "secretaria", "documento"]
+    .some((term) => normalized.includes(term));
+  const hasOperationalContext = Boolean(context?.module && !["dashboard", "operacoes", "classe_ai"].includes(context.module));
+  if (!broadTerm || explicitDomain || hasOperationalContext) return undefined;
+
+  const options = [
+    hasAssistantPermission(role, "assistant.academico")
+      ? { label: "Notas e lançamentos", value: `Mostre as pendências de notas relacionadas a: ${query}` }
+      : null,
+    hasAssistantPermission(role, "assistant.academico")
+      ? { label: "Frequência e risco pedagógico", value: `Mostre os riscos de frequência e pedagógicos relacionados a: ${query}` }
+      : null,
+    hasAssistantPermission(role, "assistant.finance")
+      ? { label: "Financeiro e inadimplência", value: `Mostre os problemas financeiros e a inadimplência relacionados a: ${query}` }
+      : null,
+    hasAssistantPermission(role, "assistant.secretaria")
+      ? { label: "Admissões e secretaria", value: `Mostre as pendências de admissões e secretaria relacionadas a: ${query}` }
+      : null,
+  ].filter((option): option is { label: string; value: string } => Boolean(option));
+
+  if (options.length < 2) return undefined;
+  return {
+    question: "Encontrei mais de um tipo de situação possível. Qual área quer analisar?",
+    options,
+  };
+}
+
 export function isFastPathQuery(query: string, context?: AiWidgetContext): boolean {
   const cleanQuery = query.trim().toLowerCase();
   if (isCourtesyQuery(query)) {
@@ -109,84 +146,6 @@ export function isFastPathQuery(query: string, context?: AiWidgetContext): boole
     }
   }
   return false;
-}
-
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>;
-    };
-  }>;
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-  };
-  error?: {
-    message?: string;
-  };
-};
-
-async function callGeminiForRAG(prompt: string) {
-  const provider = (process.env.AI_PROVIDER ?? "").trim().toLowerCase();
-  const apiKey = (process.env.AI_API_KEY ?? "").trim();
-  const model = (process.env.AI_MODEL_TEXT ?? "gemini-2.0-flash").trim();
-  const maxTokens = Number.parseInt(process.env.AI_MAX_TOKENS ?? "2048", 10);
-  const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS ?? "15000", 10);
-
-  if (provider !== "gemini" || !apiKey) {
-    throw new Error("Provedor Gemini não configurado ou chave de API ausente.");
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 15000);
-
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.15,
-            maxOutputTokens: maxTokens,
-          },
-        }),
-      }
-    );
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Tempo limite excedido ao consultar o provedor de IA.");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  if (!response.ok) {
-    const errText = await response.text();
-    if (response.status === 429) {
-      throw new Error("COTA_EXCEDIDA");
-    }
-    throw new Error(`Erro na API do Gemini: ${response.status} - ${errText}`);
-  }
-
-  const data = (await response.json()) as GeminiResponse;
-  const text = data.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text ?? "")
-    .join("")
-    .trim() ?? "";
-
-  return {
-    text,
-    provider,
-    model,
-    tokensInput: data.usageMetadata?.promptTokenCount ?? null,
-    tokensOutput: data.usageMetadata?.candidatesTokenCount ?? null,
-  };
 }
 
 function routeAction(params: {
@@ -260,7 +219,28 @@ export async function processKlasseBrainQuery(params: {
     };
   }
 
-  const dataCopilotAnswer = await runDataCopilotTool({ schoolId, role, query, context });
+  const clarification = detectAmbiguity(query, role, context);
+  if (clarification) {
+    return {
+      ok: true,
+      mode: "fast_path",
+      answer: clarification.question,
+      clarification,
+    };
+  }
+
+  let dataCopilotAnswer;
+  try {
+    dataCopilotAnswer = await runDataCopilotTool({ schoolId, role, query, context });
+  } catch (error) {
+    console.error("[KLASSE IA] Fonte de dados indisponível:", error);
+    return {
+      ok: true,
+      mode: "fallback",
+      answer: "Não consegui consultar esta fonte de dados agora. Nenhuma alteração foi feita. Tente novamente em instantes ou abra o módulo operacional para verificar o estado diretamente.",
+      fallbackReason: "data_unavailable",
+    };
+  }
   if (dataCopilotAnswer) {
     return dataCopilotAnswer;
   }
@@ -377,9 +357,14 @@ export async function processKlasseBrainQuery(params: {
   ].join("\n");
 
   // Call Gemini and handle logging with graceful fallback on quota limits
-  let geminiResult;
+  let providerResult;
   try {
-    geminiResult = await callGeminiForRAG(prompt);
+    providerResult = await callAiWithFallback({
+      prompt,
+      temperature: 0.15,
+      maxTokens: Number.parseInt(process.env.AI_MAX_TOKENS ?? "2048", 10),
+      timeoutMs: Number.parseInt(process.env.AI_TIMEOUT_MS ?? "15000", 10),
+    });
   } catch (err) {
     if (err instanceof Error && err.message === "COTA_EXCEDIDA") {
       return {
@@ -391,17 +376,17 @@ export async function processKlasseBrainQuery(params: {
     }
     throw err;
   }
-  const answer = geminiResult.text;
+  const answer = providerResult.text;
 
   if (usageLogId) {
     await updateAiUsageLog(usageLogId, {
       status: "completed",
       inputPreview: query,
       outputPreview: answer,
-      tokensInput: geminiResult.tokensInput,
-      tokensOutput: geminiResult.tokensOutput,
-      provider: geminiResult.provider,
-      model: geminiResult.model,
+      tokensInput: providerResult.tokensInput,
+      tokensOutput: providerResult.tokensOutput,
+      provider: providerResult.provider,
+      model: providerResult.model,
     });
   }
 

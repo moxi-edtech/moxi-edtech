@@ -16,8 +16,12 @@ Agente autónomo separado do CRM e do portal escolar. Lê conversas comerciais d
 WAHA_BASE_URL=https://waha-staging.klasse.ao
 WAHA_API_KEY=...
 WAHA_SESSION=klasse_school_f406f5a7a077431cb118297224925726
+AI_PROVIDER=deepseek
 AI_API_KEY=...
-AI_MODEL=gemini-2.5-flash
+AI_MODEL=deepseek-v4-flash
+AI_FALLBACK_PROVIDER=gemini
+AI_FALLBACK_API_KEY=...
+AI_FALLBACK_MODEL=gemini-2.5-flash
 AGENT_DRY_RUN=true
 BOOTSTRAP_STATE=true
 POLL_MS=15000

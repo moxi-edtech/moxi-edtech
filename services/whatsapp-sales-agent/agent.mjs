@@ -9,8 +9,12 @@ for (const name of required) {
 const baseUrl = process.env.WAHA_BASE_URL.trim().replace(/\/$/, "");
 const apiKey = process.env.WAHA_API_KEY.trim();
 const session = process.env.WAHA_SESSION.trim();
+const aiProvider = (process.env.AI_PROVIDER || "deepseek").trim().toLowerCase();
 const aiKey = process.env.AI_API_KEY.trim();
-const aiModel = (process.env.AI_MODEL || "gemini-2.5-flash").trim();
+const aiModel = (process.env.AI_MODEL || (aiProvider === "deepseek" ? "deepseek-v4-flash" : "gemini-2.5-flash")).trim();
+const fallbackProvider = (process.env.AI_FALLBACK_PROVIDER || "gemini").trim().toLowerCase();
+const fallbackKey = (process.env.AI_FALLBACK_API_KEY || "").trim();
+const fallbackModel = (process.env.AI_FALLBACK_MODEL || "gemini-2.5-flash").trim();
 const dryRun = String(process.env.AGENT_DRY_RUN || "true").toLowerCase() !== "false";
 const pollMs = Math.max(5000, Number(process.env.POLL_MS || 15000));
 const followUpHours = Math.max(1, Number(process.env.FOLLOWUP_AFTER_HOURS || 24));
@@ -45,6 +49,36 @@ async function getMessages(chatId) {
   return Array.isArray(result) ? result : result.data || result.messages || [];
 }
 
+async function callAi(provider, key, model, prompt) {
+  if (!key) throw new Error("Chave do provedor de IA ausente");
+
+  if (provider === "deepseek") {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.25,
+        max_tokens: 700,
+        response_format: { type: "json_object" },
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error((payload.error && payload.error.message) || "DeepSeek " + response.status);
+    return String(payload.choices?.[0]?.message?.content || "").trim();
+  }
+
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.25, maxOutputTokens: 700, responseMimeType: "application/json" } }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error((payload.error && payload.error.message) || "Gemini " + response.status);
+  return String(payload.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "").trim();
+}
+
 function textOf(message) {
   return String(message && (message.body || (message.text && message.text.body) || message.caption) || "").trim();
 }
@@ -72,14 +106,14 @@ async function generateDecision(chat, messages, followUp) {
     "Conversa:", conversationText(messages),
   ].join("\n\n");
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(aiModel) + ":generateContent?key=" + encodeURIComponent(aiKey), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.25, maxOutputTokens: 700, responseMimeType: "application/json" } }),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error((payload.error && payload.error.message) || "Gemini " + response.status);
-  const raw = payload.candidates && payload.candidates[0] && payload.candidates[0].content.parts.map((part) => part.text || "").join("").trim();
+  let raw;
+  try {
+    raw = await callAi(aiProvider, aiKey, aiModel, prompt);
+  } catch (primaryError) {
+    if (!fallbackKey || fallbackProvider === aiProvider) throw primaryError;
+    raw = await callAi(fallbackProvider, fallbackKey, fallbackModel, prompt);
+    console.warn("[AI_FALLBACK] provider=" + fallbackProvider);
+  }
   if (!raw) throw new Error("Gemini não retornou uma decisão");
   const decision = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ""));
   if (!decision.reply || decision.optOut) return { ...decision, reply: null };

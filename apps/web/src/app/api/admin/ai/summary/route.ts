@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createAiAction } from "@/lib/server/ai/ai-actions";
 import { updateAiUsageLog, validateAiAccess } from "@/lib/server/ai/ai-guards";
+import { callAiWithFallback, getAiProviderConfig } from "@/lib/server/ai/provider-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DBWithRPC } from "@/types/supabase-augment";
 
@@ -13,25 +14,6 @@ const summarySchema = z.object({
   schoolId: z.string().uuid(),
   period: z.enum(["today", "week", "month"]).optional().default("today"),
 });
-
-type GeminiPart = {
-  text?: string;
-};
-
-type GeminiResponse = {
-  candidates?: Array<{
-    content?: {
-      parts?: GeminiPart[];
-    };
-  }>;
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-  };
-  error?: {
-    message?: string;
-  };
-};
 
 type SummarySnapshot = {
   escola: {
@@ -48,13 +30,6 @@ type SummarySnapshot = {
     radarRisco: unknown[];
   };
 };
-
-function getGeminiText(data: GeminiResponse) {
-  return data.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text ?? "")
-    .join("")
-    .trim() ?? "";
-}
 
 function buildPrompt(snapshot: SummarySnapshot, period: string) {
   return [
@@ -95,53 +70,28 @@ function localSummaryFallback(snapshot: SummarySnapshot) {
 }
 
 async function generateSummary(prompt: string, snapshot: SummarySnapshot, period: string) {
-  const provider = (process.env.AI_PROVIDER ?? "").trim().toLowerCase();
-  const apiKey = (process.env.AI_API_KEY ?? "").trim();
-  const model = (process.env.AI_MODEL_TEXT ?? "gemini-2.0-flash").trim();
+  const { provider, apiKey, model } = getAiProviderConfig();
   const maxTokens = Number.parseInt(process.env.AI_MAX_TOKENS ?? "2048", 10);
 
-  if (provider !== "gemini" || !apiKey) {
+  if (!["gemini", "deepseek"].includes(provider) || !apiKey) {
     return {
       content: localSummaryFallback(snapshot),
       provider: provider || "local",
-      model: provider === "gemini" ? model : "local-summary",
+      model: ["gemini", "deepseek"].includes(provider) ? model : "local-summary",
       tokensInput: null,
       tokensOutput: null,
       fallback: true,
     };
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.25,
-          maxOutputTokens: Number.isFinite(maxTokens) ? maxTokens : 2048,
-        },
-      }),
-    }
-  );
-
-  const data = (await response.json().catch(() => ({}))) as GeminiResponse;
-  if (!response.ok) {
-    throw new Error(data.error?.message || "Falha ao chamar o provedor de IA.");
-  }
-
-  const content = getGeminiText(data);
-  if (!content) {
-    throw new Error("O provedor de IA não retornou texto.");
-  }
+  const result = await callAiWithFallback({ prompt, temperature: 0.25, maxTokens });
 
   return {
-    content,
-    provider,
-    model,
-    tokensInput: data.usageMetadata?.promptTokenCount ?? null,
-    tokensOutput: data.usageMetadata?.candidatesTokenCount ?? null,
+    content: result.text,
+    provider: result.provider,
+    model: result.model,
+    tokensInput: result.tokensInput,
+    tokensOutput: result.tokensOutput,
     fallback: false,
   };
 }
