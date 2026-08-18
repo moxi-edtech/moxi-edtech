@@ -246,7 +246,7 @@ export function DossierFinanceiroSection({ aluno, role, servicos = [] }: { aluno
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-slate-900">{formatKwanza(servico.valor)}</p>
-                  <StatusPill status={servico.status} variant="financeiro" size="xs" />
+                  <StatusPill status={servico.estado_label} variant="financeiro" size="xs" />
                 </div>
                 </div>
                 <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600">

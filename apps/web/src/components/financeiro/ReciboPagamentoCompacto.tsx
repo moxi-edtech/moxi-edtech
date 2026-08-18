@@ -271,7 +271,7 @@ export function ReciboPagamentoDuasVias(props: ReciboPagamentoCompactoProps) {
   return (
     <div className={`space-y-6 bg-white font-sans text-slate-900 print:space-y-0 ${isDensePrint ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2" : isPrintCompact ? "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-2.5" : "print:grid print:h-[277mm] print:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] print:gap-3"}`}>
       {vias.map((via, index) => (
-        <section key={via} className="break-inside-avoid bg-white print:flex print:h-full print:min-h-0 print:flex-col print:overflow-hidden">
+        <section key={via} className="break-inside-avoid bg-white print:flex print:h-full print:min-h-0 print:flex-col print:overflow-visible">
           <p className={`mb-3 text-right text-[9px] font-bold uppercase tracking-wide text-slate-500 ${isDensePrint ? "print:mb-0.5 print:text-[8px]" : isPrintCompact ? "print:mb-0.5 print:text-[8px]" : "print:mb-1"}`}>
             {via}
           </p>

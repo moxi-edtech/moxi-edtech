@@ -14,7 +14,7 @@ import type { RawDossier, RawDossierMensalidade } from "@/lib/aluno/types";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
-import { extractServicosFromPagamentos } from "@/lib/financeiro/servicosPagamento";
+import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
 export default async function AlunoPerfilPage({ escolaId, alunoId, role, selectedYear }: { escolaId?: string | null; alunoId: string; role: DossierRole; selectedYear?: number | null }) {
   const supabase = await supabaseServer();
@@ -101,7 +101,19 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
     .eq("aluno_id", alunoId)
     .order("created_at", { ascending: false })
     .limit(100);
-  const servicos = extractServicosFromPagamentos(pagamentosServicos ?? []);
+  const { data: pedidosServicos } = await supabase
+    .from("servico_pedidos")
+    .select("id, status, servico_codigo, servico_nome, valor_cobrado, created_at")
+    .eq("escola_id", resolvedEscolaId)
+    .eq("aluno_id", alunoId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  const servicosPagamentos = extractServicosFromPagamentos(pagamentosServicos ?? []);
+  const codigosRegistados = new Set(servicosPagamentos.map((servico) => servico.servico_codigo).filter(Boolean));
+  const servicos = [
+    ...servicosPagamentos,
+    ...extractServicosFromPedidos(pedidosServicos ?? []).filter((servico) => !servico.servico_codigo || !codigosRegistados.has(servico.servico_codigo)),
+  ];
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
 
   return (

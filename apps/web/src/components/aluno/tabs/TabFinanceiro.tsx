@@ -67,6 +67,12 @@ function normalizeStatus(value: string): Item["status"] {
   return "pendente";
 }
 
+function serviceStatusClass(status: AlunoServicoFinanceiro["status"]): string {
+  if (status === "pago") return "text-klasse-green-700";
+  if (status === "rejeitado" || status === "cancelado" || status === "erro") return "text-rose-700";
+  return "text-amber-700";
+}
+
 export function TabFinanceiro() {
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
@@ -332,7 +338,7 @@ export function TabFinanceiro() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-slate-900">{money.format(servico.valor)}</p>
-                  <span className={`text-[10px] font-semibold ${servico.status === "pago" ? "text-klasse-green-700" : "text-amber-700"}`}>
+                  <span className={`text-[10px] font-semibold ${serviceStatusClass(servico.status)}`}>
                     {servico.estado_label}
                   </span>
                 </div>

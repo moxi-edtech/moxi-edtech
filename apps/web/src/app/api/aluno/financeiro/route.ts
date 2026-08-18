@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
-import { extractServicosFromPagamentos } from "@/lib/financeiro/servicosPagamento";
+import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -98,7 +98,22 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .limit(100);
     if (servicosError) throw servicosError;
-    const servicos = extractServicosFromPagamentos(pagamentosServicos ?? []);
+    const { data: pedidosServicos, error: pedidosError } = await supabase
+      .from("servico_pedidos")
+      .select("id, status, servico_codigo, servico_nome, valor_cobrado, created_at")
+      .eq("aluno_id", alunoId)
+      .eq("escola_id", ctx.escolaId)
+      .gte("created_at", `${fromAno}-01-01T00:00:00.000Z`)
+      .lte("created_at", `${toAno}-12-31T23:59:59.999Z`)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (pedidosError) throw pedidosError;
+    const servicosPagamentos = extractServicosFromPagamentos(pagamentosServicos ?? []);
+    const codigosRegistados = new Set(servicosPagamentos.map((servico) => servico.servico_codigo).filter(Boolean));
+    const servicos = [
+      ...servicosPagamentos,
+      ...extractServicosFromPedidos(pedidosServicos ?? []).filter((servico) => !servico.servico_codigo || !codigosRegistados.has(servico.servico_codigo)),
+    ];
 
     // 3. Dados de pagamento da escola
     let dados_pagamento: Json | null = null;

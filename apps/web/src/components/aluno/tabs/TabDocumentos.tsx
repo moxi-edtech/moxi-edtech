@@ -34,6 +34,7 @@ export function TabDocumentos() {
   const searchParams = useSearchParams();
   const { error, success } = useToast();
   const studentId = searchParams?.get("aluno") ?? null;
+  const serviceCode = searchParams?.get("servico") ?? null;
   const query = studentId ? `?studentId=${studentId}` : '';
 
   const [loading, setLoading] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export function TabDocumentos() {
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const visibleDocs = serviceCode ? docs.filter((doc) => doc.codigo === serviceCode) : docs;
 
   const fetchCatalogo = async () => {
     try {
@@ -149,14 +151,16 @@ export function TabDocumentos() {
         </p>
       </header>
 
-      {docs.length === 0 ? (
+      {visibleDocs.length === 0 ? (
         <div className="p-10 text-center bg-white rounded-3xl border border-slate-100/80 shadow-sm space-y-3">
           <AlertCircle className="mx-auto h-9 w-9 text-slate-300" />
-          <p className="text-sm font-bold text-slate-700">Nenhum serviço de documentação disponível.</p>
+          <p className="text-sm font-bold text-slate-700">
+            {serviceCode ? "Este serviço já não está disponível na Secretaria Digital." : "Nenhum serviço de documentação disponível."}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {docs.map((doc) => (
+          {visibleDocs.map((doc) => (
             <AlunoCard 
               key={doc.id}
               onClick={() => handleAction(doc)}
