@@ -29,7 +29,20 @@ type InsightPayload = {
   recommendation: string;
   evidence: Array<{ label: string; value: string }>;
   actions: AssistantActionV2[];
+  provenance?: {
+    source: string;
+    consultedAt: string;
+    scope: string;
+    freshness: "live" | "partial" | "unknown";
+    limitation?: string;
+  };
 };
+
+function formatInsightSource(source: string) {
+  return source
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 type Message = {
   id: string;
@@ -59,6 +72,11 @@ type AssistantResponsePayload = {
   operatingMode?: "help" | "data" | "action";
   insight?: InsightPayload;
   aiInsightId?: string;
+  fallbackReason?: "permission_denied" | "knowledge_not_found" | "provider_unavailable" | "data_unavailable";
+  clarification?: {
+    question: string;
+    options: Array<{ label: string; value: string }>;
+  };
 };
 
 type RewriteResponsePayload = {
@@ -127,17 +145,24 @@ function resolveConversationalQuery(text: string, messages: Message[]) {
   const isClassFollowUp =
     /\b(?:classe|turma)\b/.test(normalized) ||
     /\b[a-z]{2,}[\s-]*\d{1,2}\b/.test(normalized);
-  if (!isClassFollowUp) return text;
+  const isContextFollowUp =
+    /^(e |agora |tambem |também |desses|dessas|deles|delas|isso|essa|esse|qual |quais |por que|detalhe|detalha|mostre mais|prepare|exporte|abrir|abrir a|e os )/.test(normalized);
 
-  const recentDebtIntent = messages
+  const recentUserMessages = messages
     .filter((message) => message.sender === "user")
     .slice(-6)
     .reverse()
-    .find((message) =>
-      /\b(?:divid|devedor|inadimpl|atras)\w*/.test(normalizeConversationText(message.text)),
-    );
+  const recentDebtIntent = recentUserMessages.find((message) =>
+    /\b(?:divid|devedor|inadimpl|atras)\w*/.test(normalizeConversationText(message.text)),
+  );
 
-  return recentDebtIntent ? `${recentDebtIntent.text} ${text}` : text;
+  if (isClassFollowUp && recentDebtIntent) return `${recentDebtIntent.text} ${text}`;
+  if (!isContextFollowUp) return text;
+
+  const recentContext = recentUserMessages.find((message) => normalizeConversationText(message.text).length >= 8);
+  if (!recentContext) return text;
+
+  return `${recentContext.text} ${text}`;
 }
 
 function AssistantMark({ size = "md" }: { size?: "sm" | "md" }) {
@@ -784,6 +809,18 @@ export default function AiChatWidget({
       handleActionSuggestion(suggestionKey);
       return;
     }
+    if (action.startsWith("clarification:")) {
+      const clarifiedQuery = decodeURIComponent(action.replace("clarification:", ""));
+      pushMessages([user(clarifiedQuery)]);
+      void handleGeneralQuery(clarifiedQuery);
+      return;
+    }
+    if (action.startsWith("retry_query:")) {
+      const retryQuery = decodeURIComponent(action.replace("retry_query:", ""));
+      pushMessages([user(retryQuery)]);
+      void handleGeneralQuery(retryQuery);
+      return;
+    }
     if (action.startsWith("rewrite_mode:")) {
       const mode = action.replace("rewrite_mode:", "");
       setFlow({ id: "rewrite_notice", step: 2, data: { mode } });
@@ -859,7 +896,8 @@ export default function AiChatWidget({
             mode: cached.operatingMode ?? cached.mode,
             insight: cached.insight,
             aiInsightId: cached.aiInsightId,
-            quickReplies: cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
+            quickReplies: cached.clarification?.options.map((option) => ({ label: option.label, action: `clarification:${encodeURIComponent(option.value)}` }))
+              ?? cached.suggestions?.map((s) => ({ label: s.title, action: `suggestion:${s.key}` })),
           }),
         ]);
         setThinking(false);
@@ -891,7 +929,9 @@ export default function AiChatWidget({
           mode: json.operatingMode ?? json.mode,
           insight: json.insight,
           aiInsightId: json.aiInsightId,
-          quickReplies: json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` })),
+          quickReplies: json.clarification?.options.map((option: { label: string; value: string }) => ({ label: option.label, action: `clarification:${encodeURIComponent(option.value)}` }))
+            ?? json.suggestions?.map((s: AssistantSuggestionPayload) => ({ label: s.title, action: `suggestion:${s.key}` }))
+            ?? (json.fallbackReason === "data_unavailable" ? [{ label: "Tentar novamente", action: `retry_query:${encodeURIComponent(contextualQuery)}` }] : undefined),
         }),
       ]);
     } catch (err) {
@@ -1100,6 +1140,17 @@ export default function AiChatWidget({
                                   </div>
                                 ))}
                               </div>
+                              {message.insight.provenance ? (
+                                <div className="border-t border-emerald-100 pt-2 text-[9px] text-slate-500">
+                                  <p>
+                                    Fonte: <span className="font-semibold">{formatInsightSource(message.insight.provenance.source)}</span>
+                                    {" · "}{message.insight.provenance.scope}
+                                    {" · "}{message.insight.provenance.freshness === "live" ? "consulta ao vivo" : message.insight.provenance.freshness === "partial" ? "cobertura parcial" : "atualidade não confirmada"}
+                                    {" · Consultado "}{new Date(message.insight.provenance.consultedAt).toLocaleString("pt-AO")}
+                                  </p>
+                                  {message.insight.provenance.limitation ? <p className="mt-1 text-amber-700">Limitação: {message.insight.provenance.limitation}</p> : null}
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <>

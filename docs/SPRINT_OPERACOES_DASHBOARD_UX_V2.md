@@ -3,6 +3,20 @@
 Data: 2026-07-10
 Escopo: `apps/web/src/app/escola/[id]/(portal)/operacoes/dashboard`, `apps/web/src/components/layout/operacoes/**`, `apps/web/src/components/layout/escola-admin/**`, `apps/web/src/lib/sidebarNav.ts`
 
+## Atualização — 2026-08-17
+
+Estado: **concluído para a camada visual compartilhada**.
+
+O commit `db2fb9586` alinhou Secretaria, Admin e Operações na mesma gramática KLASSE:
+
+- cards, espaçamento, bordas e estados consistentes;
+- `StatCard`, `SecaoLabel` e `AcaoRapidaCard` reutilizados nos blocos equivalentes;
+- avisos, Radar Financeiro, Fluxo de Caixa, Aulas, planos e reabertura de notas alinhados;
+- verde, dourado, vermelho e neutro reservados para estados semânticos;
+- variações decorativas azul/índigo e diferenças de densidade removidas.
+
+Destinos, permissões, filas e módulos exclusivos continuam diferentes por função. TypeScript e `git diff --check` passaram.
+
 ## Objetivo
 
 Evoluir `/operacoes/dashboard` para um cockpit de trabalho do perfil `admin_financeiro`, preservando uma UI minimalista, profissional e focada em execução diária.
@@ -178,11 +192,11 @@ Critério de saída:
 
 ### Fase 4 — Polimento UI
 
-- [ ] Reduzir sombras fortes
-- [ ] Padronizar bordas e espaçamentos
-- [ ] Limitar badges por linha
-- [ ] Garantir textos curtos e escaneáveis
-- [ ] Remover gradientes e cores decorativas
+- [x] Reduzir sombras fortes
+- [x] Padronizar bordas e espaçamentos
+- [x] Limitar badges por linha
+- [x] Garantir textos curtos e escaneáveis
+- [x] Remover gradientes e cores decorativas
 - [ ] Validar responsividade mobile
 - [ ] Validar que textos não quebram botões/cards
 
@@ -254,4 +268,3 @@ Um cockpit operacional minimalista onde `admin_financeiro` consegue, em menos de
 - o que precisa ser feito hoje;
 - onde clicar para resolver;
 - se comunicação, financeiro, horários e acessos estão saudáveis.
-

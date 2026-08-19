@@ -20,7 +20,10 @@ export function GerarMensalidadesDialog() {
     try {
       const res = await fetch('/api/financeiro/mensalidades/gerar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
+        },
         body: JSON.stringify({
           ano_letivo: Number(ano),
           mes_referencia: Number(mes)

@@ -34,7 +34,21 @@ export async function runDataCopilotTool(
     if (!tool.match(normalizedQuery, params.context)) continue;
 
     const response = await tool.run(params);
-    if (response) return { ...response, toolId: tool.id };
+    if (response) {
+      return {
+        ...response,
+        toolId: tool.id,
+        insight: {
+          ...response.insight,
+          provenance: response.insight.provenance ?? {
+            source: tool.id,
+            consultedAt: new Date().toISOString(),
+            scope: "Escola selecionada",
+            freshness: "live",
+          },
+        },
+      };
+    }
   }
 
   return null;

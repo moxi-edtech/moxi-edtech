@@ -167,15 +167,17 @@ Objetivo:
 
 Status:
 
-- pendente
+- concluída para composição visual e navegação principal (2026-08-17)
 
 Checklist:
 
-- [ ] definir blocos de KPI de alunos, matrículas, turmas, acessos e documentos
-- [ ] incorporar pendências operacionais de secretaria na home
-- [ ] manter atalhos para financeiro sem fundir o módulo financeiro
-- [ ] preservar acessos por papel no que aparecer na home
-- [ ] revisar os links de ação rápida para apontarem a `/operacoes/**`
+- [x] definir blocos de KPI de alunos, matrículas, turmas, acessos e documentos
+- [x] incorporar pendências operacionais de secretaria na home
+- [x] manter atalhos para financeiro sem fundir o módulo financeiro
+- [x] preservar acessos por papel no que aparecer na home
+- [x] revisar os links de ação rápida para apontarem a `/operacoes/**`
+
+Nota: o alinhamento visual foi entregue no commit `db2fb9586`. A origem física de algumas telas continua compartilhada entre `admin`, `secretaria` e `operacoes` por compatibilidade; isso não representa conclusão da migração física dos ficheiros.
 
 Critério de saída:
 

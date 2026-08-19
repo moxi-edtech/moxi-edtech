@@ -10,6 +10,14 @@ export type InsightEvidence = {
   value: string;
 };
 
+export type InsightProvenance = {
+  source: string;
+  consultedAt: string;
+  scope: string;
+  freshness: "live" | "partial" | "unknown";
+  limitation?: string;
+};
+
 export type InsightSeverity = "info" | "low" | "medium" | "high" | "critical";
 
 export type InsightAnswer = {
@@ -19,6 +27,7 @@ export type InsightAnswer = {
   recommendation: string;
   evidence: InsightEvidence[];
   actions: AssistantActionV2[];
+  provenance?: InsightProvenance;
 };
 
 export type DataCopilotResponse = {

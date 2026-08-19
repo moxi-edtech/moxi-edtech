@@ -9,7 +9,6 @@ import { notaParaExtensoPTAO } from '@/lib/academico/extenso'
 
 type NotaTrimestre = {
   mac: number | null
-  npp: number | null
   npt: number | null
   mt: number | null
 }

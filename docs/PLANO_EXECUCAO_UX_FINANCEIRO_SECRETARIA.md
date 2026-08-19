@@ -76,6 +76,14 @@ A solução deve ser implementada como evolução de fluxos existentes, não com
 - A regra vive na geração automática e não em filtros de UI.
 - O campo é auditável por turma.
 
+### Refinamento concluído — janela específica da turma
+
+- A tabela `public.turma_janelas_cobranca` guarda o override por turma e ano letivo.
+- A RPC `public.resolve_turma_janela_cobranca(turma_id, ano_letivo_id)` resolve a janela efetiva única.
+- Pagamento, geração de mensalidades e rematrícula consultam a RPC e usam o mesmo predicado de competência em `apps/web/src/lib/financeiro/turma-billing-window.ts`.
+- O erro de pagamento oferece a ação contextual **Configurar janela da turma**, com prévia e retry seguro sem perder o carrinho.
+- A homologação end-to-end continua pendente antes do deploy final.
+
 ## 3. Pagamentos Parciais + Justificativa Obrigatória [CONCLUÍDO]
 
 ### Estado atual encontrado
