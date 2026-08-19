@@ -132,15 +132,6 @@ async function resolveAcademicYearContextUnbounded(
   let warnings = !requestedId && rows.length > 1
     ? ["MULTIPLE_ACTIVE_ACADEMIC_YEARS"]
     : [];
-  if (requestedId) {
-    const { data: activeRows, error: activeRowsError } = await supabase
-      .from("anos_letivos")
-      .select("id")
-      .eq("escola_id", escolaId)
-      .eq("ativo", true);
-    if (activeRowsError) throw activeRowsError;
-    if ((activeRows ?? []).length > 1) warnings = ["MULTIPLE_ACTIVE_ACADEMIC_YEARS"];
-  }
   if (warnings.length > 0) {
     console.warn("[academic-context] Mais de um ano ACTIVE encontrado; usando o de início mais recente", {
       escolaId,

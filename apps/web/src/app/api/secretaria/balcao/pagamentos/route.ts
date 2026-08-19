@@ -4,11 +4,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
-import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { 
-  emitirDocumentoFiscalViaAdapter, 
-  resolveEmpresaFiscalAtiva 
-} from "@/lib/fiscal/financeiroFiscalAdapter";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import type { Database, Json } from "~types/supabase";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { isBillingCompetencyAllowed, resolveTurmaBillingWindow } from "@/lib/financeiro/turma-billing-window";
@@ -35,17 +31,6 @@ const payloadSchema = z.object({
 });
 
 type PagamentoRow = Database["public"]["Functions"]["financeiro_registrar_pagamento_secretaria"]["Returns"];
-type BalcaoFiscalResult =
-  | {
-      ok: true;
-      documento_id: string;
-      numero_formatado: string;
-      url_validacao: string | null;
-    }
-  | {
-      ok: false;
-      error: string;
-    };
 type BalcaoReciboResult =
   | { ok: true; doc_id: string | null; public_id: string | null; emitido_em: string | null; print_url?: string | null }
   | { ok: false; error: string };
@@ -222,20 +207,51 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "A mensalidade não pertence ao aluno selecionado.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
       }
 
+      const { data: matriculaContext, error: matriculaContextError } = await supabase
+        .from("matriculas")
+        .select("id, turma_id, session_id, ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("id", mensalidade.matricula_id)
+        .maybeSingle();
+      if (matriculaContextError) throw matriculaContextError;
+      if (!matriculaContext) {
+        return NextResponse.json({ ok: false, error: "A matrícula da mensalidade não foi encontrada.", code: "ACADEMIC_ENTITY_NOT_FOUND" }, { status: 409 });
+      }
+
+      // O ano de competência é o ano civil do mês (ex.: maio/2026), não o
+      // ano letivo da matrícula. Em calendários atravessados, usar
+      // ano_referencia aqui seleciona a janela errada e bloqueia cobranças.
+      const billingTurmaId = mensalidade.turma_id ?? matriculaContext?.turma_id ?? null;
+      // A mensalidade keeps the canonical civil/academic year even when an
+      // old matrícula was removed or has a stale session_id.
+      const billingYear = Number(mensalidade.ano_letivo ?? mensalidade.ano_referencia ?? matriculaContext?.ano_letivo);
+
       if (mensalidade.mes_referencia && mensalidade.ano_referencia) {
         // Regularização de dívida pode ocorrer no ano letivo seguinte.
-        // A janela deve ser a do ano da própria mensalidade, não a do ano activo.
-        const { data: anoConfig } = await supabase
+        // A janela deve ser a do ano letivo da matrícula, não a do ano ativo.
+        const yearQuery = supabase
           .from("anos_letivos")
           .select("id, ano, data_inicio, data_fim")
-          .eq("escola_id", escolaId)
-          .eq("ano", mensalidade.ano_referencia)
+          .eq("escola_id", escolaId);
+        const { data: anoConfig, error: anoConfigError } = await yearQuery
+          .eq("ano", billingYear)
+          .order("ativo", { ascending: false })
+          .order("data_inicio", { ascending: false })
+          .limit(1)
           .maybeSingle();
+        if (anoConfigError) throw anoConfigError;
+        if (!anoConfig) {
+          return NextResponse.json({
+            ok: false,
+            error: "O ano letivo da matrícula não foi encontrado.",
+            code: "ACADEMIC_YEAR_NOT_FOUND",
+          }, { status: 409 });
+        }
         billingAcademicYearId = anoConfig?.id ?? academicContext.anoLetivoId;
         if (anoConfig?.data_inicio && anoConfig.data_fim) {
-          const { data: resolvedWindowRows, error: resolvedWindowError } = mensalidade.turma_id && anoConfig.id
+          const { data: resolvedWindowRows, error: resolvedWindowError } = billingTurmaId && anoConfig.id
             ? await (supabase as any).rpc("resolve_turma_janela_cobranca", {
-                p_turma_id: mensalidade.turma_id,
+                p_turma_id: billingTurmaId,
                 p_ano_letivo_id: anoConfig.id,
               })
             : { data: null, error: null };
@@ -243,8 +259,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: false, error: "Não foi possível resolver a janela de cobrança da turma.", code: "BILLING_WINDOW_RESOLUTION_FAILED" }, { status: 500 });
           }
           const resolvedWindow = Array.isArray(resolvedWindowRows) ? resolvedWindowRows[0] : resolvedWindowRows;
-          const regime = mensalidade.turma_id
-            ? await resolveRegimeAcademico(supabase, mensalidade.turma_id)
+          const regime = billingTurmaId
+            ? await resolveRegimeAcademico(supabase, billingTurmaId)
             : null;
           const janela = resolveTurmaBillingWindow({
             academicStart: anoConfig.data_inicio,
@@ -261,7 +277,7 @@ export async function POST(request: Request) {
               error: "Esta mensalidade está fora da janela de cobrança da turma e não pode ser liquidada.",
               code: "MONTH_OUTSIDE_ACADEMIC_YEAR",
               context: {
-                turma_id: mensalidade.turma_id,
+                turma_id: billingTurmaId,
                 ano_letivo_id: anoConfig.id,
                 ano: anoConfig.ano,
                 data_inicio_permitida: janela.dataInicio,
@@ -278,19 +294,16 @@ export async function POST(request: Request) {
         if (!matriculaOrigemId || matriculaOrigemId !== mensalidade.matricula_id) {
           return NextResponse.json({ ok: false, error: "A mensalidade não pertence à matrícula de origem da pendência.", code: "POS_VIRADA_CONTEXT_MISMATCH" }, { status: 409 });
         }
-      } else {
-        try {
-          await assertAcademicYearEntity(supabase as any, {
-            table: "matriculas",
-            entityId: mensalidade.matricula_id,
-            escolaId,
-            anoLetivoId: billingAcademicYearId,
-          });
-        } catch (err) {
-          if (err instanceof AcademicYearContextError) {
-            return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
-          }
-          throw err;
+      } else if (matriculaContext) {
+        // Legacy records can have a correct numeric year but a missing/stale
+        // session_id. Reject only a real cross-year conflict.
+        const matriculaYear = Number(matriculaContext.ano_letivo);
+        if (matriculaYear > 0 && matriculaYear !== billingYear) {
+          return NextResponse.json({
+            ok: false,
+            error: "A entidade não pertence ao ano letivo da mensalidade.",
+            code: "CROSS_YEAR_ENTITY_MISMATCH",
+          }, { status: 409 });
         }
       }
     }
@@ -338,7 +351,7 @@ export async function POST(request: Request) {
     // 2. Emissão Fiscal Síncrona (O Papel na Mão)
     const pagamentoRow = pagamento as PagamentoRow | null;
     let recibo: BalcaoReciboResult = { ok: false, error: "Recibo não aplicável" };
-    if (payload.mensalidade_id) {
+    if (payload.mensalidade_id && meta.emitir_recibo !== false) {
       try {
         const { data: reciboData, error: reciboError } = await supabase.rpc("emitir_recibo", {
           p_mensalidade_id: payload.mensalidade_id,
@@ -369,7 +382,7 @@ export async function POST(request: Request) {
               tipo_comprovativo: receiptType,
               itens_pagamento: receiptItems,
               referencia: receiptItems.map((item) => item.descricao).join(", "),
-              valor_pago: payload.valor,
+              valor_pago: receiptItems.reduce((total, item) => total + item.valor, 0),
               metodo: metodo,
               data_pagamento: new Date().toISOString(),
             },
@@ -379,7 +392,7 @@ export async function POST(request: Request) {
         const message = reciboErr instanceof Error ? reciboErr.message : String(reciboErr);
         recibo = { ok: false, error: message };
       }
-    } else if (pagamentoRow?.id && pagamentoRow.status === "settled") {
+    } else if (pagamentoRow?.id && pagamentoRow.status === "settled" && meta.emitir_recibo !== false) {
       try {
         const { data: reciboData, error: reciboError } = await (supabase as any).rpc("emitir_recibo_servicos", {
           p_pagamento_id: pagamentoRow.id,
@@ -396,6 +409,21 @@ export async function POST(request: Request) {
             emitido_em: getStringField(rec, "emitido_em"),
             print_url: docId ? `/secretaria/documentos/${docId}/recibo/print` : null,
           };
+          if (docId) {
+            await enrichReceiptSnapshot({
+              supabase,
+              escolaId,
+              docId,
+              extraSnapshot: {
+                tipo_comprovativo: receiptType,
+                itens_pagamento: receiptItems,
+                referencia: receiptItems.map((item) => item.descricao).join(", "),
+                valor_pago: receiptItems.reduce((total, item) => total + item.valor, 0),
+                metodo,
+                data_pagamento: new Date().toISOString(),
+              },
+            });
+          }
         } else {
           recibo = { ok: false, error: getStringField(rec, "erro") || "Falha ao emitir recibo" };
         }
@@ -404,37 +432,8 @@ export async function POST(request: Request) {
         recibo = { ok: false, error: message };
       }
     }
-    let fiscalResult: BalcaoFiscalResult = { ok: false, error: "Fiscal pendente" };
-    try {
-      const origin = new URL(request.url).origin;
-      const cookieHeader = request.headers.get("cookie");
-      
-      const fiscal = await emitirDocumentoFiscalViaAdapter({
-        tipoFluxoFinanceiro: "immediate_payment",
-        origemOperacao: "financeiro_balcao_pagamento",
-        origemId: pagamentoRow?.id || idempotencyKey,
-        descricaoPrincipal: "Pagamento via Balcão",
-        itens: receiptItems,
-        cliente: { nome: null, nif: null },
-        escolaId,
-        origin,
-        cookieHeader,
-        metadata: {
-          pagamento_id: pagamentoRow?.id,
-          aluno_id: payload.aluno_id
-        }
-      });
-
-      fiscalResult = {
-        ok: true,
-        documento_id: fiscal.documento_id,
-        numero_formatado: fiscal.numero_formatado,
-        url_validacao: null // Placeholder
-      };
-    } catch (fError: unknown) {
-      const message = fError instanceof Error ? fError.message : String(fError);
-      console.error("[BALCAO-FISCAL] Falha síncrona:", message);
-    }
+    // A emissão fiscal permanece desligada até o motor fiscal estar ativo.
+    const fiscalResult = { ok: false, error: "Emissão fiscal desativada" } as const;
 
     recordAuditServer({
       escolaId,

@@ -9,6 +9,7 @@ const legacyPayloadSchema = z.object({
   aluno_id: z.string().uuid(),
   matricula_id: z.string().uuid().nullable().optional(),
   ano_letivo_id: z.string().uuid().nullable().optional(),
+  origem: z.string().trim().optional(),
   metodo_pagamento: z.string().min(1),
   detalhes: z.object({
     referencia: z.string().nullable().optional(),
@@ -44,35 +45,62 @@ export async function POST(request: Request) {
     );
   }
 
-  const mensalidade = parsed.data.itens.find((item) => item.tipo === "mensalidade");
-  if (!mensalidade) {
+  const itensPagamento = parsed.data.itens;
+  if (itensPagamento.length === 0) {
     return NextResponse.json(
-      { ok: false, error: "O processamento de mensalidades exige um item de mensalidade." },
+      { ok: false, error: "O processamento exige pelo menos um item de pagamento." },
       { status: 400 },
     );
   }
 
   const detalhes = parsed.data.detalhes ?? {};
-  const delegatedRequest = new Request(request.url, {
-    method: "POST",
-    headers: request.headers,
-    body: JSON.stringify({
-      aluno_id: parsed.data.aluno_id,
-      mensalidade_id: mensalidade.id,
-      valor: mensalidade.preco,
-      metodo: parsed.data.metodo_pagamento.trim(),
-      reference: emptyStringToNull(detalhes.referencia),
-      evidence_url: emptyStringToNull(detalhes.evidencia_url),
-      gateway_ref: emptyStringToNull(detalhes.gateway_ref),
-      ano_letivo_id: parsed.data.ano_letivo_id ?? undefined,
-      meta: {
-        origem: "secretaria_pagamentos_processar_compat",
-        matricula_id: parsed.data.matricula_id ?? mensalidade.origem_matricula_id ?? null,
-        descricao_item: mensalidade.nome ?? "Mensalidade",
-        itens: parsed.data.itens,
-      },
-    }),
-  });
+  const requestId = request.headers.get("Idempotency-Key") ?? crypto.randomUUID();
+  const resultados: unknown[] = [];
+  let ultimoResultado: Record<string, unknown> | null = null;
 
-  return processarPagamentoBalcao(delegatedRequest);
+  // Each item is settled individually by the canonical balcão route, while
+  // the last call emits one consolidated receipt for the whole batch.
+  for (const [index, item] of itensPagamento.entries()) {
+    const emitirRecibo = index === itensPagamento.length - 1;
+    const delegatedHeaders = new Headers(request.headers);
+    delegatedHeaders.set("Idempotency-Key", `${requestId}:${index}`);
+    const delegatedRequest = new Request(request.url, {
+      method: "POST",
+      headers: delegatedHeaders,
+      body: JSON.stringify({
+        aluno_id: parsed.data.aluno_id,
+        mensalidade_id: item.tipo === "mensalidade" ? item.id : undefined,
+        valor: item.preco,
+        metodo: parsed.data.metodo_pagamento.trim(),
+        reference: emptyStringToNull(detalhes.referencia),
+        evidence_url: emptyStringToNull(detalhes.evidencia_url),
+        gateway_ref: emptyStringToNull(detalhes.gateway_ref),
+        ano_letivo_id: parsed.data.ano_letivo_id ?? undefined,
+        meta: {
+          origem: parsed.data.origem ?? "secretaria_pagamentos_processar_compat",
+          matricula_id: parsed.data.matricula_id ?? (item.tipo === "mensalidade" ? item.origem_matricula_id : null) ?? null,
+          descricao_item: item.nome ?? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço escolar"),
+          itens: itensPagamento,
+          emitir_recibo: emitirRecibo,
+        },
+      }),
+    });
+
+    const response = await processarPagamentoBalcao(delegatedRequest);
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json?.ok) {
+      return NextResponse.json({ ...json, resultados }, { status: response.status });
+    }
+    ultimoResultado = json as Record<string, unknown>;
+    resultados.push(json.data ?? json);
+  }
+
+  return NextResponse.json({
+    ...(ultimoResultado ?? { ok: true }),
+    ok: true,
+    data: (ultimoResultado as any)?.data ?? null,
+    recibo: (ultimoResultado as any)?.recibo ?? null,
+    fiscal: (ultimoResultado as any)?.fiscal ?? null,
+    pagamentos: resultados,
+  });
 }

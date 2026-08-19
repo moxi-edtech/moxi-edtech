@@ -42,8 +42,7 @@
   }
 
   .receiptCompactSheet {
-    /* A4 (297mm) minus the 8mm top/bottom @page margins. The two vias
-       reserve 277mm and must remain inside this single printable area. */
+    /* Reserve one A4 page for the two compact vias. */
     height: 281mm;
     min-height: 281mm;
     max-height: 281mm;
@@ -52,5 +51,30 @@
     page-break-after: avoid;
     page-break-inside: avoid;
     overflow: hidden;
+  }
+
+  .receiptCompactSheet :global(.receipt-vias) {
+    height: 281mm !important;
+    grid-template-rows: 139mm 139mm !important;
+    gap: 2mm !important;
+    overflow: hidden !important;
+  }
+
+  .receiptCompactSheet :global(.receipt-via) {
+    height: 139mm !important;
+    min-height: 139mm !important;
+    max-height: 139mm !important;
+    overflow: hidden !important;
+    border-bottom: 0.25mm dashed #cbd5e1;
+    padding: 0 2mm;
+  }
+
+  .receiptCompactSheet :global(.receipt-via-content) {
+    /* The reference form is intentionally dense: both copies remain on one
+       sheet without making the data unreadable. */
+    transform: scale(0.84);
+    transform-origin: top left;
+    width: 119.05%;
+    height: 119.05%;
   }
 }

@@ -8,6 +8,7 @@ import {
 } from "@/lib/academic-year/context";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
+import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -114,12 +115,15 @@ export async function GET(request: Request) {
 
     const { data: mensalidadesFinanceiras } = await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("matricula_id", matricula_id);
+    const today = todayInLuanda();
     const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter(
-      (mensalidade: any) => !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()),
+      (mensalidade: any) =>
+        !["pago", "isento", "cancelado"].includes(String(mensalidade.status).toLowerCase()) &&
+        isMensalidadeVencida(mensalidade, today),
     );
     const dividaTotal = mensalidadesEmAberto.reduce(
       (total: number, mensalidade: any) => total + Math.max(

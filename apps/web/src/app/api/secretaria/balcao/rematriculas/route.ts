@@ -13,6 +13,7 @@ import { recordAuditServer } from "@/lib/audit";
 import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
+import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -227,19 +228,20 @@ export async function POST(request: Request) {
     // A taxa de rematrícula é um serviço separado e não liquida mensalidades.
     const { data: mensalidadesOrigem, error: mensalidadesError } = await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", body.aluno_id)
       .eq("matricula_id", body.matricula_id);
     if (mensalidadesError) throw mensalidadesError;
 
+    const today = todayInLuanda();
     const mensalidadesPendentes = (mensalidadesOrigem ?? []).filter((mensalidade: any) => {
       const status = String(mensalidade.status ?? "").toLowerCase();
       const saldo = Math.max(
         Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0) - Number(mensalidade.valor_pago_total ?? 0),
         0,
       );
-      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status);
+      return saldo > 0 && !["pago", "isento", "cancelado"].includes(status) && isMensalidadeVencida(mensalidade, today);
     });
     if (mensalidadesPendentes.length > 0) {
       const total = mensalidadesPendentes.reduce((sum, mensalidade: any) => sum + Math.max(

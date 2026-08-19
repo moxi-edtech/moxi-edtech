@@ -700,146 +700,64 @@ function usePagamentoSubmit({
     abortRef.current = new AbortController();
 
     try {
-      const recibosGerados: ReciboBatchItem[] = [];
-      const pagamentosConcluidos: PagamentoConcluido[] = [];
-
-      for (const mensalidade of mensalidadesSelecionadas) {
-        const idempotencyKey = crypto.randomUUID?.() ??
-          `${Date.now()}-${Math.random().toString(16).slice(2)}-${mensalidade.id}`;
-
-        const referencia = mesAnoLabel(mensalidade.mes, mensalidade.ano);
-        const valor = mensalidadesSelecionadas.length === 1
-          ? (valorPagoNum || mensalidade.valor)
-          : mensalidade.valor;
-
-        const res = await fetch("/api/secretaria/balcao/pagamentos", {
-          method:  "POST",
-          headers: {
-            "Content-Type":    "application/json",
-            "Idempotency-Key": idempotencyKey,
+      const itens = mensalidadesSelecionadas.map((mensalidade) => ({
+        id: mensalidade.id,
+        tipo: "mensalidade" as const,
+        nome: `Mensalidade ${mesAnoLabel(mensalidade.mes, mensalidade.ano)}`,
+        preco: mensalidadesSelecionadas.length === 1 ? (valorPagoNum || mensalidade.valor) : mensalidade.valor,
+        origem_matricula_id: posViradaContext?.matriculaOrigemId ?? null,
+      }));
+      const res = await fetch("/api/secretaria/pagamentos/processar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        signal: abortRef.current.signal,
+        body: JSON.stringify({
+          aluno_id: aluno.id,
+          matricula_id: posViradaContext?.matriculaOrigemId ?? null,
+          ano_letivo_id: posViradaContext?.anoLetivoId ?? null,
+          origem: posViradaContext ? "pos_virada" : "pagamento_rapido",
+          metodo_pagamento: metodo,
+          detalhes: {
+            referencia: detalhes.referencia || null,
+            evidencia_url: detalhes.evidencia_url || null,
+            gateway_ref: detalhes.gateway_ref || null,
           },
-          signal: abortRef.current.signal,
-          body: JSON.stringify({
-            aluno_id:       aluno.id,
-            mensalidade_id: mensalidade.id,
-            valor,
-            metodo,
-            reference:      detalhes.referencia    || null,
-            evidence_url:   detalhes.evidencia_url || null,
-            ano_letivo_id:  posViradaContext?.anoLetivoId,
-            meta: {
-              observacao:      `Pagamento rápido - ${referencia}`,
-              origem:          posViradaContext ? "pos_virada" : "pagamento_rapido",
-              matricula_origem_id: posViradaContext?.matriculaOrigemId ?? null,
-              gateway_ref:     detalhes.gateway_ref || null,
-              partial_reason:  detalhes.partial_reason || null,
-              promise_date:    detalhes.promise_date || null,
-            },
-          }),
-        });
-
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json?.ok) {
-          throw new Error(json?.error || `Falha ao registar pagamento de ${referencia}.`);
-        }
-
-        const pagamentoId = typeof json?.data?.id === "string" ? json.data.id : null;
-        if (pagamentoId) {
-          pagamentosConcluidos.push({
-            pagamento_id: pagamentoId,
-            referencia,
-            valor,
-          });
-        }
-
-        let reciboId: string | null = null;
-        let reciboUrlValidacao: string | null = null;
-        let erroEmissaoRecibo: string | null = null;
-
-        try {
-          const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Idempotency-Key": `pagamento-rapido-recibo-${mensalidade.id}`,
-            },
-            signal: abortRef.current.signal,
-            body: JSON.stringify({ mensalidadeId: mensalidade.id }),
-          });
-          const reciboJson = await reciboRes.json().catch(() => ({}));
-          if (reciboRes.status === 409 && reciboJson?.code === "MATRICULA_AGUARDANDO_RECLASSIFICACAO") {
-            setReclassificacaoBlockOpen(true);
-            throw new Error(reciboJson.error || "Este aluno aguarda reclassificação de finalista antes de emitir o recibo.");
-          }
-          if (reciboRes.ok && reciboJson?.ok) {
-            const emittedDocId = typeof reciboJson.doc_id === "string" ? reciboJson.doc_id : null;
-            if (!emittedDocId) {
-              erroEmissaoRecibo = "O pagamento foi registado, mas a emissão devolveu um recibo sem identificador.";
-            } else {
-              reciboId = emittedDocId;
-              reciboUrlValidacao = typeof reciboJson.url_validacao === "string" ? reciboJson.url_validacao : null;
-              const print =
-                reciboJson.print && typeof reciboJson.print === "object" ? reciboJson.print : null;
-              recibosGerados.push({
-                id: emittedDocId,
-                url_validacao: reciboUrlValidacao,
-                valor,
-                referencia,
-                escola_nome: typeof print?.escola_nome === "string" ? print.escola_nome : undefined,
-                aluno_nome: typeof print?.aluno_nome === "string" ? print.aluno_nome : undefined,
-                aluno_bi: typeof print?.aluno_bi === "string" ? print.aluno_bi : null,
-                classe_nome: typeof print?.classe_nome === "string" ? print.classe_nome : null,
-                curso_nome: typeof print?.curso_nome === "string" ? print.curso_nome : null,
-                turma_nome: typeof print?.turma_nome === "string" ? print.turma_nome : null,
-                logo_url: typeof print?.logo_url === "string" ? print.logo_url : null,
-                numero:
-                  typeof print?.numero_sequencial === "number"
-                    ? String(print.numero_sequencial)
-                    : null,
-                public_id: typeof print?.public_id === "string" ? print.public_id : null,
-                emitido_em: typeof print?.emitido_em === "string" ? print.emitido_em : null,
-                banco: typeof print?.banco === "string" ? print.banco : null,
-                titular_conta:
-                  typeof print?.titular_conta === "string" ? print.titular_conta : null,
-                iban: typeof print?.iban === "string" ? print.iban : null,
-                kwik_chave: typeof print?.kwik_chave === "string" ? print.kwik_chave : null,
-              });
-              continue;
-            }
-          }
-          erroEmissaoRecibo ??= typeof reciboJson?.error === "string"
-            ? reciboJson.error
-            : "O pagamento foi registado, mas não foi possível emitir o recibo.";
-        } catch (reciboErr: any) {
-          if (reciboErr?.name === "AbortError") throw reciboErr;
-          erroEmissaoRecibo = reciboErr instanceof Error
-            ? reciboErr.message
-            : "O pagamento foi registado, mas não foi possível emitir o recibo.";
-        }
-
-        if (erroEmissaoRecibo) {
-          error(`${erroEmissaoRecibo} Pode reemitir o recibo no módulo Financeiro.`);
-        }
+          itens,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Não foi possível processar o lote de pagamentos.");
       }
 
-      if (recibosGerados.length > 1) {
-        const referenciasDetalhadas = recibosGerados.map((item) => item.referencia);
-        onRecibos([
-          {
-            id: `batch:${mensalidadesSelecionadas.map((item) => item.id).join(",")}`,
-            url_validacao: recibosGerados.find((item) => item.url_validacao)?.url_validacao ?? null,
-            valor: recibosGerados.reduce((sum, item) => sum + Number(item.valor || 0), 0),
+      const pagamentos = Array.isArray(json.pagamentos) ? json.pagamentos : [];
+      const pagamentosConcluidos: PagamentoConcluido[] = mensalidadesSelecionadas.map((mensalidade, index) => ({
+        pagamento_id: typeof pagamentos[index]?.id === "string" ? pagamentos[index].id : `${json.recibo?.doc_id ?? "batch"}:${mensalidade.id}`,
+        referencia: mesAnoLabel(mensalidade.mes, mensalidade.ano),
+        valor: Number(itens[index]?.preco ?? mensalidade.valor),
+      }));
+      const referenciasDetalhadas = mensalidadesSelecionadas.map((item) => mesAnoLabel(item.mes, item.ano));
+      const recibosGerados: ReciboBatchItem[] = json.recibo?.print_url
+        ? [{
+            id: json.recibo.doc_id ?? `batch:${mensalidadesSelecionadas.map((item) => item.id).join(",")}`,
+            url_validacao: null,
+            valor: itens.reduce((sum, item) => sum + item.preco, 0),
             referencia: summarizeReferencias(referenciasDetalhadas),
             referenciasDetalhadas,
-            itensDetalhados: recibosGerados.map((item) => ({
-              referencia: item.referencia,
-              valor: Number(item.valor || 0),
+            itensDetalhados: mensalidadesSelecionadas.map((item, index) => ({
+              referencia: mesAnoLabel(item.mes, item.ano),
+              valor: Number(itens[index]?.preco ?? item.valor),
             })),
-          },
-        ]);
-      } else {
-        onRecibos(recibosGerados);
+          }]
+        : [];
+
+      if (typeof json.recibo?.print_url === "string" && json.recibo.print_url.trim()) {
+        window.open(json.recibo.print_url, "_blank", "noopener,noreferrer");
       }
+      onRecibos(recibosGerados);
       onPagamentosConcluidos(pagamentosConcluidos);
       onConcluido();
       if (onSuccess) onSuccess();

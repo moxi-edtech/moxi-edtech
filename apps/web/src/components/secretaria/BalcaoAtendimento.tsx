@@ -122,7 +122,6 @@ function getDocTipo(s: Servico): string {
 
 function getUnlockedMensalidadeIds(mensalidades: Mensalidade[], selectedIds: string[]): Set<string> {
   const sorted = [...mensalidades].sort((a, b) => {
-    if (a.atrasada !== b.atrasada) return a.atrasada ? -1 : 1;
     const competenciaA = (a.referencia_ano ?? 0) * 100 + (a.referencia_mes ?? 0);
     const competenciaB = (b.referencia_ano ?? 0) * 100 + (b.referencia_mes ?? 0);
     return competenciaA - competenciaB;
@@ -1428,6 +1427,13 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null } | null>(null);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
 
+  useEffect(() => {
+    // Do not leave a blocking, empty debt dialog open after the last payment.
+    if (debtModalOpen && rematricula.debt && rematricula.debt.total <= 0) {
+      setDebtModalOpen(false);
+    }
+  }, [debtModalOpen, rematricula.debt]);
+
   const onCheckoutSuccess = useCallback(() => {
     if (dossier.aluno?.id) {
       void dossier.load(dossier.aluno.id);
@@ -1587,7 +1593,9 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
                 onResolverPedido={rematricula.resolveLegacyPedido}
                 onResolverReconciliacao={rematricula.resolveReconciliation}
                 onRematricula={rematricula.openModal}
-                onRegularize={() => setDebtModalOpen(true)}
+                onRegularize={() => {
+                  if ((rematricula.debt?.total ?? 0) > 0) setDebtModalOpen(true);
+                }}
               />
             </div>
           </div>
@@ -1664,7 +1672,7 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
         <PagamentoDividaModal
           open={debtModalOpen}
           onOpenChange={setDebtModalOpen}
-          mensalidades={dossier.mensalidades.filter((item) => item.preco > 0)}
+          mensalidades={dossier.mensalidades.filter((item) => item.preco > 0 && item.atrasada)}
           alunoId={dossier.aluno.id}
           anoLetivoId={effectiveAcademicYearId}
           onSuccess={() => {
@@ -1672,7 +1680,11 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
             void rematricula.refresh();
             void audit.fetch(dossier.aluno!.id, dossier.aluno!.matricula_id);
           }}
-          onFullyPaid={() => setShowReturnPrompt(true)}
+          onFullyPaid={() => {
+            setDebtModalOpen(false);
+            void rematricula.refresh();
+            setShowReturnPrompt(true);
+          }}
         />
       )}
       <BillingWindowRepairPanel
