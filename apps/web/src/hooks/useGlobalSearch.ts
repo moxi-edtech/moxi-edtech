@@ -449,7 +449,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         status: "todos",
         pageSize: String(limit),
       });
-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`);
+      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, {
+        signal: ac.signal,
+        cache: "no-store",
+      });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Falha ao buscar alunos");
@@ -531,7 +534,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         await fetchPage(null, false);
       } catch (err: unknown) {
         // ignore abort
-        if (!isAbortError(err)) {
+        // A pesquisa pode ser cancelada quando o utilizador continua a
+        // escrever ou quando o componente desmonta. Browsers report this as
+        // "Failed to fetch" in some runtimes; it is not an application error.
+        if (!isAbortError(err) && !(err instanceof TypeError && ac.signal.aborted)) {
           console.error("[GlobalSearch] Erro na busca:", err);
           setResults([]);
           setCursor(null);
