@@ -31,6 +31,8 @@ type BaseDataState = {
     sala?: string | null;
     curso_id?: string | null;
     classe_id?: string | null;
+    session_id?: string | null;
+    ano_letivo_id?: string | null;
     ano_letivo?: number | null;
     turno?: string | null;
     curso?: { nome?: string | null } | null;

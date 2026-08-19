@@ -196,12 +196,9 @@ export function PautaGeralV1({ metadata, disciplinas, alunos }: Props) {
                         <Text style={s.textBold}>MAC</Text>
                       </View>
                       <View style={s.gradeCell}>
-                        <Text style={s.textBold}>NPP</Text>
+                        <Text style={s.textBold}>NPT</Text>
                       </View>
                       <View style={s.gradeCell}>
-                        <Text style={s.textBold}>PT</Text>
-                      </View>
-                      <View style={s.gradeCellLast}>
                         <Text style={s.textBold}>MT</Text>
                       </View>
                     </View>
@@ -231,8 +228,7 @@ export function PautaGeralV1({ metadata, disciplinas, alunos }: Props) {
                   {disciplinas.map((disciplina, index) => {
                     const notas = aluno.disciplinas[disciplina.id] ?? {
                       mac: "-",
-                      npp: "-",
-                      pt: "-",
+                      npt: "-",
                       mt: "-",
                     }
 
@@ -249,10 +245,7 @@ export function PautaGeralV1({ metadata, disciplinas, alunos }: Props) {
                           <Text style={s.text}>{notas.mac}</Text>
                         </View>
                         <View style={s.gradeCell}>
-                          <Text style={s.text}>{notas.npp}</Text>
-                        </View>
-                        <View style={s.gradeCell}>
-                          <Text style={s.text}>{notas.pt}</Text>
+                          <Text style={s.text}>{notas.npt}</Text>
                         </View>
                         <View style={s.gradeCellLast}>
                           <Text style={s.textBold}>{notas.mt}</Text>

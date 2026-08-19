@@ -4,7 +4,6 @@ import { medStyles as s } from './styles'
 
 type NotaTrimestre = {
   mac: number | null
-  npp: number | null
   npt: number | null
   mt: number | null
 }
@@ -101,11 +100,10 @@ export const PautaTrimestralV1: React.FC<PautaTrimestralProps> = ({ metadata, al
         <View style={[s.row, s.headerRow, { height: 25 }]}>
           <Text style={[s.cell, { width: '6%' }]}>Nº</Text>
           <Text style={[s.cell, s.cellLeft, { width: '34%' }]}>Nome Completo</Text>
-          <Text style={[s.cell, { width: '12%' }]}>MAC</Text>
-          <Text style={[s.cell, { width: '12%' }]}>NPP</Text>
-          <Text style={[s.cell, { width: '12%' }]}>NPT</Text>
-          <Text style={[s.cell, { width: '12%' }]}>MT</Text>
-          <Text style={[s.cell, { width: '12%' }]}>OBS</Text>
+          <Text style={[s.cell, { width: '15%' }]}>MAC</Text>
+          <Text style={[s.cell, { width: '15%' }]}>NPT</Text>
+          <Text style={[s.cell, { width: '15%' }]}>MT</Text>
+          <Text style={[s.cell, { width: '15%' }]}>OBS</Text>
         </View>
 
         {alunos.map((aluno, idx) => {
@@ -117,16 +115,13 @@ export const PautaTrimestralV1: React.FC<PautaTrimestralProps> = ({ metadata, al
               <Text style={[s.cell, { width: '12%' }, ...getNotaStyle(notas.mac)]}>
                 {formatNota(notas.mac)}
               </Text>
-              <Text style={[s.cell, { width: '12%' }, ...getNotaStyle(notas.npp)]}>
-                {formatNota(notas.npp)}
-              </Text>
-              <Text style={[s.cell, { width: '12%' }, ...getNotaStyle(notas.npt)]}>
+              <Text style={[s.cell, { width: '15%' }, ...getNotaStyle(notas.npt)]}>
                 {formatNota(notas.npt)}
               </Text>
-              <Text style={[s.cell, { width: '12%', backgroundColor: '#f0fdf4' }, ...getNotaStyle(notas.mt, true)]}>
+              <Text style={[s.cell, { width: '15%', backgroundColor: '#f0fdf4' }, ...getNotaStyle(notas.mt, true)]}>
                 {formatNota(notas.mt)}
               </Text>
-              <Text style={[s.cell, { width: '12%' }]}>{aluno.obs || '-'}</Text>
+              <Text style={[s.cell, { width: '15%' }]}>{aluno.obs || '-'}</Text>
             </View>
           )
         })}

@@ -27,6 +27,7 @@ type BoletimResponse = {
 };
 
 type ListaDisciplina = { id: string; nome: string };
+type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
 function fmtNota(v?: number | null) {
   return typeof v === "number" ? v.toFixed(1) : "—";
@@ -48,8 +49,79 @@ export function TabNotas() {
   const [listaDisciplinas, setListaDisciplinas] = useState<ListaDisciplina[]>([]);
   const [loadingLista, setLoadingLista] = useState(true);
   const [isSimuladorOpen, setIsSimuladorOpen] = useState(false);
+  const [reapreciacaoDisc, setReapreciacaoDisc] = useState<Disciplina | null>(null);
+  const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("");
+  const [reapreciacaoSaving, setReapreciacaoSaving] = useState(false);
+  const [reapreciacaoMessage, setReapreciacaoMessage] = useState<string | null>(null);
+  const [melhoriaDisc, setMelhoriaDisc] = useState<Disciplina | null>(null);
+  const [melhoriaSessoes, setMelhoriaSessoes] = useState<MelhoriaSessao[]>([]);
+  const [melhoriaSessaoId, setMelhoriaSessaoId] = useState("");
+  const [melhoriaMotivo, setMelhoriaMotivo] = useState("");
+  const [melhoriaLoading, setMelhoriaLoading] = useState(false);
+  const [melhoriaSaving, setMelhoriaSaving] = useState(false);
+  const [melhoriaMessage, setMelhoriaMessage] = useState<string | null>(null);
 
   const query = studentId ? `?aluno=${studentId}` : "";
+
+  const solicitarReapreciacao = async () => {
+    if (!reapreciacaoDisc || reapreciacaoMotivo.trim().length < 10) {
+      setReapreciacaoMessage("Explique o pedido com pelo menos 10 caracteres.");
+      return;
+    }
+    setReapreciacaoSaving(true);
+    setReapreciacaoMessage(null);
+    try {
+      const response = await fetch("/api/aluno/raa/reapreciacao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ disciplina_id: reapreciacaoDisc.id, motivo: reapreciacaoMotivo.trim(), idempotency_key: `aluno-raa-${reapreciacaoDisc.id}` }) });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
+      setReapreciacaoMessage(`Pedido ${json.item?.protocolo_publico ?? "registado"}. Prazo: ${json.item?.prazo_em ? new Date(json.item.prazo_em).toLocaleString("pt-PT") : "48 horas"}.`);
+      setReapreciacaoMotivo("");
+    } catch (error) {
+      setReapreciacaoMessage(error instanceof Error ? error.message : "Falha ao enviar o pedido.");
+    } finally {
+      setReapreciacaoSaving(false);
+    }
+  };
+
+  const abrirMelhoria = async (disc: Disciplina) => {
+    setMelhoriaDisc(disc);
+    setMelhoriaSessaoId("");
+    setMelhoriaMessage(null);
+    setMelhoriaLoading(true);
+    try {
+      const response = await fetch("/api/aluno/raa/melhoria", { cache: "no-store" });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível carregar as sessões.");
+      const sessoes = Array.isArray(json.sessoes) ? json.sessoes as MelhoriaSessao[] : [];
+      setMelhoriaSessoes(sessoes);
+      if (sessoes[0]?.id) setMelhoriaSessaoId(sessoes[0].id);
+      if (sessoes.length === 0) setMelhoriaMessage("Não há sessões de recurso abertas para esta turma neste momento.");
+    } catch (error) {
+      setMelhoriaMessage(error instanceof Error ? error.message : "Falha ao carregar sessões.");
+    } finally {
+      setMelhoriaLoading(false);
+    }
+  };
+
+  const solicitarMelhoria = async () => {
+    if (!melhoriaDisc || !melhoriaSessaoId || melhoriaMotivo.trim().length < 10) {
+      setMelhoriaMessage("Selecione uma sessão e explique o pedido com pelo menos 10 caracteres.");
+      return;
+    }
+    setMelhoriaSaving(true);
+    setMelhoriaMessage(null);
+    try {
+      const response = await fetch("/api/aluno/raa/melhoria", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exame_sessao_id: melhoriaSessaoId, disciplina_id: melhoriaDisc.id, motivo: melhoriaMotivo.trim() }) });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
+      setMelhoriaMessage("Pedido de melhoria registado. A secretaria fará a análise.");
+      setMelhoriaMotivo("");
+    } catch (error) {
+      setMelhoriaMessage(error instanceof Error ? error.message : "Falha ao enviar o pedido.");
+    } finally {
+      setMelhoriaSaving(false);
+    }
+  };
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -199,6 +271,16 @@ export function TabNotas() {
                                 </div>
                                 <span className={`rounded-xl px-4 py-1.5 text-xs font-black uppercase tracking-tight shadow-sm ${status.cls}`}>{status.label}</span>
                             </div>
+                            {typeof disc.nota_final === "number" && disc.nota_final < 10 && (
+                              <button type="button" onClick={() => { setReapreciacaoDisc(disc); setReapreciacaoMessage(null); }} className="md:col-span-3 text-left text-xs font-bold text-emerald-700 hover:underline">
+                                Solicitar reapreciação desta disciplina →
+                              </button>
+                            )}
+                            {typeof disc.nota_final === "number" && disc.nota_final >= 10 && (
+                              <button type="button" onClick={() => void abrirMelhoria(disc)} className="md:col-span-3 text-left text-xs font-bold text-slate-700 hover:underline">
+                                Solicitar melhoria de nota →
+                              </button>
+                            )}
                         </div>
                     ) : (
                         <div className="mt-4 p-4 text-center bg-slate-50/80 rounded-xl border border-dashed border-slate-200">
@@ -263,6 +345,30 @@ export function TabNotas() {
         onClose={() => setIsSimuladorOpen(false)}
         disciplinas={disciplinas}
       />
+
+      {reapreciacaoDisc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-raa-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+            <h2 id="aluno-raa-title" className="font-semibold text-slate-900">Solicitar reapreciação — {reapreciacaoDisc.nome}</h2>
+            <p className="mt-1 text-xs text-slate-500">O pedido será vinculado ao seu ano letivo, turma e disciplina. O prazo de resposta é contado a partir do registo.</p>
+            {reapreciacaoMessage && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{reapreciacaoMessage}</p>}
+            <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={5} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." />
+            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setReapreciacaoDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()} className="rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button></div>
+          </div>
+        </div>
+      )}
+
+      {melhoriaDisc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="aluno-melhoria-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+            <h2 id="aluno-melhoria-title" className="font-semibold text-slate-900">Solicitar melhoria — {melhoriaDisc.nome}</h2>
+            <p className="mt-1 text-xs text-slate-500">A melhoria usa uma sessão oficial de recurso e preserva a maior nota entre a anterior e a obtida.</p>
+            {melhoriaMessage && <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">{melhoriaMessage}</p>}
+            {melhoriaLoading ? <p className="mt-4 text-sm text-slate-500">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <><label className="mt-4 block text-sm font-medium text-slate-700">Sessão de recurso</label><select value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">{melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>{new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})</option>)}</select><textarea value={melhoriaMotivo} onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Explique o motivo do pedido." /></>}
+            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setMelhoriaDisc(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">Fechar</button><button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0} onClick={() => void solicitarMelhoria()} className="rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{melhoriaSaving ? "A enviar..." : "Enviar pedido"}</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

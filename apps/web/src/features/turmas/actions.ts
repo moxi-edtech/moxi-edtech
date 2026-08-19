@@ -26,6 +26,11 @@ interface ValidateTurmaPayload {
   turma_codigo: string; // "TEC_GEST-10-M-A"
   is_classe_exame?: boolean;
 
+  janela_cobranca?: {
+    data_inicio: string;
+    data_fim: string;
+  };
+
   migracao_financeira?: {
     skip_matricula: boolean;
     mes_inicio: number;
@@ -289,6 +294,44 @@ export async function saveAndValidateTurma(payload: ValidateTurmaPayload) {
       } catch (financeError) {
         console.error("Erro ao aplicar contexto financeiro na aprovação:", financeError);
       }
+    }
+
+    if (payload.janela_cobranca && finalTurmaId && payload.is_classe_exame) {
+      const { data: anoLetivoRow, error: anoLetivoError } = await supabase
+        .from("anos_letivos")
+        .select("id, data_inicio, data_fim")
+        .eq("escola_id", payload.escola_id)
+        .eq("ano", Number(turmaData.ano_letivo))
+        .order("ativo", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (anoLetivoError) throw anoLetivoError;
+      if (!anoLetivoRow?.id || !anoLetivoRow.data_inicio || !anoLetivoRow.data_fim) {
+        throw new Error("Configure as datas do ano letivo antes de definir a janela de cobrança da classe de exame.");
+      }
+      if (payload.janela_cobranca.data_inicio < anoLetivoRow.data_inicio) {
+        throw new Error("A janela de cobrança não pode começar antes do ano letivo.");
+      }
+      if (payload.janela_cobranca.data_fim < anoLetivoRow.data_fim) {
+        throw new Error("A janela de cobrança de exame só pode terminar no fim do ano letivo ou depois dele.");
+      }
+      if (payload.janela_cobranca.data_fim < payload.janela_cobranca.data_inicio) {
+        throw new Error("A data final da janela de cobrança deve ser posterior à data inicial.");
+      }
+
+      const { error: janelaError } = await supabase
+        .from("turma_janelas_cobranca" as never)
+        .upsert({
+          escola_id: payload.escola_id,
+          turma_id: finalTurmaId,
+          ano_letivo_id: anoLetivoRow.id,
+          data_inicio: payload.janela_cobranca.data_inicio,
+          data_fim: payload.janela_cobranca.data_fim,
+          motivo: "exame",
+          updated_at: new Date().toISOString(),
+        } as never, { onConflict: "escola_id,turma_id,ano_letivo_id" });
+      if (janelaError) throw janelaError;
     }
 
     // 4. Revalidar Cache (Para a lista atualizar imediatamente)

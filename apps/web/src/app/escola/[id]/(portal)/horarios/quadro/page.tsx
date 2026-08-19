@@ -898,6 +898,14 @@ function QuadroHorariosContent() {
   ): Promise<boolean> => {
     if (!escolaId || !turmaId || !versaoId) return false;
 
+    const anoLetivoId = selectedTurma?.session_id ?? selectedTurma?.ano_letivo_id ?? null;
+    if (!anoLetivoId) {
+      const message = "Não foi possível identificar o ano letivo desta turma. Recarregue a turma e tente novamente.";
+      setSaveError(message);
+      error("Contexto incompleto", message);
+      return false;
+    }
+
     if (mode === "draft") {
       setSaving(true);
     } else {
@@ -922,6 +930,7 @@ function QuadroHorariosContent() {
       });
 
     const payload = {
+      ano_letivo_id: anoLetivoId,
       versao_id: versaoId,
       turma_id: turmaId,
       items,

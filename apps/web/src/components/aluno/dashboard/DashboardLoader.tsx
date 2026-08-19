@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { IdCard, Calendar, FileCheck } from "lucide-react";
+import { IdCard, Calendar, FileCheck, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import AvisosRecentesCard from "./AvisosRecentesCard";
@@ -19,6 +19,11 @@ type DashboardData = {
   ultima_nota: any | null;
   status_financeiro: { emDia: boolean; pendentes: number } | null;
   avisos_recentes: Array<{ id: string; titulo: string; resumo: string; origem: string; data: string }>;
+};
+
+type RaaStatusData = {
+  ok: boolean;
+  result?: { status: "retido" | "reprovado" | "pendente" | "aprovado"; motivo: string; mensagem: string; disciplinas_afetadas: number } | null;
 };
 
 type BoletimData = {
@@ -42,6 +47,7 @@ export default function DashboardLoader() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [boletim, setBoletim] = useState<BoletimData | null>(null);
+  const [raaStatus, setRaaStatus] = useState<RaaStatusData["result"]>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,9 +77,10 @@ export default function DashboardLoader() {
     try {
       setLoading(true);
       setError(null);
-      const [dashboardRes, boletimRes] = await Promise.all([
+      const [dashboardRes, boletimRes, raaRes] = await Promise.all([
         fetch("/api/aluno/dashboard", { cache: "no-store", signal }),
         fetch("/api/aluno/boletim", { cache: "no-store", signal }),
+        fetch("/api/aluno/home/raa-status", { cache: "no-store", signal }),
       ]);
       const dashboardJson = (await dashboardRes.json()) as DashboardData;
       const boletimJson = (await boletimRes.json()) as BoletimData;
@@ -88,6 +95,8 @@ export default function DashboardLoader() {
       if (boletimRes.ok && boletimJson?.ok) {
         setBoletim(boletimJson);
       }
+      const raaJson = (await raaRes.json().catch(() => null)) as RaaStatusData | null;
+      if (raaRes.ok && raaJson?.ok) setRaaStatus(raaJson.result ?? null);
     } catch (e) {
       if (signal?.aborted) return;
       setError(e instanceof Error ? e.message : String(e));
@@ -226,6 +235,19 @@ export default function DashboardLoader() {
           </div>
         </div>
       </AlunoCard>
+
+      {raaStatus && (
+        <AlunoCard className={`border shadow-sm ${raaStatus.status === "retido" ? "border-rose-200 bg-rose-50/90" : raaStatus.status === "pendente" ? "border-amber-200 bg-amber-50/90" : raaStatus.status === "aprovado" ? "border-emerald-200 bg-emerald-50/90" : "border-slate-200 bg-white"}`}>
+          <div className="flex items-start gap-3">
+            <div className={`rounded-xl p-2 ${raaStatus.status === "retido" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-600"}`}><ShieldAlert className="h-4 w-4" /></div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Estado académico RAA</p>
+              <p className="mt-1 text-sm font-black text-slate-900">{raaStatus.mensagem}</p>
+              <p className="mt-1 text-xs text-slate-600">{raaStatus.disciplinas_afetadas > 0 ? `${raaStatus.disciplinas_afetadas} disciplina(s) afetada(s).` : "O estado é calculado pelo resolvedor académico."}</p>
+            </div>
+          </div>
+        </AlunoCard>
+      )}
 
       {pendentes > 0 && (
         <AlunoCard className="border-amber-200 bg-amber-50/90 shadow-sm">

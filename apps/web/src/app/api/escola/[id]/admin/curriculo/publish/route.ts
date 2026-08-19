@@ -187,7 +187,7 @@ async function silentlyPrepareSchedulesForCourse(args: {
   anoLetivoId: string;
 }) {
   const { supabase, escolaId, cursoId, anoLetivoId } = args;
-  const publishedTurmas: string[] = [];
+  const draftTurmas: string[] = [];
 
   const { data: turmas } = await supabase
     .from('turmas')
@@ -292,15 +292,10 @@ async function silentlyPrepareSchedulesForCourse(args: {
 
     if (insertErr) continue;
 
-    await supabase
-      .from('horario_versoes')
-      .update({ status: 'publicada', publicado_em: new Date().toISOString() })
-      .eq('id', String(versionId));
-
-    publishedTurmas.push(String(turma.nome || turma.id));
+    draftTurmas.push(String(turma.nome || turma.id));
   }
 
-  return { publishedTurmas };
+  return { draftTurmas };
 }
 
 async function syncPublishedMatrizToExistingTurmas(args: {
@@ -896,7 +891,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const shouldGenerateTurmas = rebuildTurmas || autoGenerateTurmas;
     let autoGenerateExecuted = false;
     let autoGenerateSkippedReason: string | null = null;
-    let silentSchedulePublishedTurmas: string[] = [];
+    let silentScheduleDraftTurmas: string[] = [];
     let syncExistingTurmas: SyncExistingTurmasResult = {
       ok: true,
       executed: false,
@@ -1070,7 +1065,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
               cursoId,
               anoLetivoId,
             });
-            silentSchedulePublishedTurmas = schedulePrep.publishedTurmas;
+            silentScheduleDraftTurmas = schedulePrep.draftTurmas;
           } catch (scheduleErr) {
             console.warn('Falha ao preparar horários silenciosamente após gerar turmas:', scheduleErr);
           }
@@ -1110,7 +1105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       sync_turmas: syncTurmas,
       sync_existing_turmas: syncExistingTurmas,
       silent_schedule: {
-        published_turmas: silentSchedulePublishedTurmas,
+        draft_turmas: silentScheduleDraftTurmas,
       },
     });
   } catch (e) {

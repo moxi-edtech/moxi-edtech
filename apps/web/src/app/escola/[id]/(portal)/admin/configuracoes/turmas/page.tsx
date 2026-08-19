@@ -12,6 +12,7 @@ import {
   Plus,
   School,
   Trash2,
+  UserRound,
   Wand2,
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
@@ -38,7 +39,21 @@ type ImpactData = {
   professores?: number;
 };
 
+type SetupReadiness = {
+  ano_letivo?: number | null;
+  progress_percent?: number;
+  ano_letivo_ok?: boolean;
+  periodos_ok?: boolean;
+  curriculo_ok?: boolean;
+  turmas_ok?: boolean;
+  operational_readiness?: {
+    summary?: { operational_ok?: boolean };
+    blockers?: Array<{ code?: string; title?: string; detail?: string; severity?: string }>;
+  };
+};
+
 type ModalKey = null | "publish" | "classes" | "generate" | "disciplinas";
+type ReadinessBlocker = { code?: string; title?: string; detail?: string; severity?: string };
 
 type DisciplinaItem = {
   id: string;
@@ -141,6 +156,8 @@ export default function TurmasConfiguracoesPage() {
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [impact, setImpact] = useState<ImpactData>({});
+  const [setupReadiness, setSetupReadiness] = useState<SetupReadiness | null>(null);
+  const [assigningTeachers, setAssigningTeachers] = useState(false);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [curriculos, setCurriculos] = useState<CurriculoStatus[]>([]);
@@ -156,6 +173,8 @@ export default function TurmasConfiguracoesPage() {
   const [publishConfirm, setPublishConfirm] = useState(false);
   const [publishNoRebuildAcknowledge, setPublishNoRebuildAcknowledge] = useState(false);
   const [publishExistingTurmasCount, setPublishExistingTurmasCount] = useState(0);
+  const [publishIdempotencyKey, setPublishIdempotencyKey] = useState<string | null>(null);
+  const [activeReadinessBlocker, setActiveReadinessBlocker] = useState<ReadinessBlocker | null>(null);
 
   const [classesDrafts, setClassesDrafts] = useState<ClassDraft[]>([]);
   const [generateRows, setGenerateRows] = useState<GenerateRow[]>([]);
@@ -180,7 +199,7 @@ export default function TurmasConfiguracoesPage() {
     if (!escolaId || !escolaParam) return;
     setLoading(true);
     try {
-      const [cursosRes, classesRes, curriculoRes, impactRes] = await Promise.all([
+      const [cursosRes, classesRes, curriculoRes, impactRes, setupRes] = await Promise.all([
         fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
         fetch(`/api/escolas/${escolaId}/classes`, { cache: "no-store" }),
         fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, { cache: "no-store" }),
@@ -188,8 +207,9 @@ export default function TurmasConfiguracoesPage() {
           method: "POST",
           body: JSON.stringify({}),
         }),
+        fetch(`/api/escola/${escolaParam}/admin/setup/status`, { cache: "no-store" }),
       ]);
-      if ([cursosRes, classesRes, curriculoRes, impactRes].some((res) => res.status === 401)) {
+      if ([cursosRes, classesRes, curriculoRes, impactRes, setupRes].some((res) => res.status === 401)) {
         setAuthRequired(true);
         return;
       }
@@ -215,13 +235,18 @@ export default function TurmasConfiguracoesPage() {
           professores: impactJson?.data?.counts?.professores_afetados,
         });
       }
+
+      const setupJson = await setupRes.json().catch(() => null);
+      if (setupRes.ok && setupJson?.ok) {
+        setSetupReadiness(setupJson.data ?? null);
+      }
     } catch (e) {
       console.error(e);
       error("Erro ao carregar dados acadêmicos.");
     } finally {
       setLoading(false);
     }
-  }, [escolaId]);
+  }, [error, escolaId, escolaParam]);
 
   useEffect(() => {
     loadData();
@@ -321,6 +346,7 @@ export default function TurmasConfiguracoesPage() {
     setPublishRebuild(false);
     setPublishNoRebuildAcknowledge(false);
     setPublishExistingTurmasCount(0);
+    setPublishIdempotencyKey(null);
     setClassesDrafts([]);
     setGenerateRows([]);
     setDisciplinaModalOpen(false);
@@ -335,6 +361,7 @@ export default function TurmasConfiguracoesPage() {
     setPublishRebuild(false);
     setPublishNoRebuildAcknowledge(false);
     setPublishExistingTurmasCount(0);
+    if (key === "publish") setPublishIdempotencyKey(crypto.randomUUID());
 
     try {
       let classesBase: Classe[] | undefined;
@@ -408,12 +435,18 @@ export default function TurmasConfiguracoesPage() {
     const existingSync = json?.sync_existing_turmas;
     const existingSyncExecuted = Boolean(existingSync?.executed);
     const existingSyncInserted = Number(existingSync?.inserted ?? 0);
+    const draftScheduleCount = Number(json?.silent_schedule?.draft_turmas?.length ?? 0);
 
     const baseMessage = syncInfo
       ? `Sincronização: ${syncInfo?.rebuild_executado ? "rebuild executado" : "sem rebuild"} · turmas afetadas: ${turmasAfetadas}.`
       : "";
-    if (!existingSyncExecuted) return baseMessage || undefined;
-    return `${baseMessage}${baseMessage ? " " : ""}Turmas existentes sincronizadas: ${existingSyncInserted} vínculo(s) atualizado(s).`;
+    const syncMessage = existingSyncExecuted
+      ? `${baseMessage}${baseMessage ? " " : ""}Turmas existentes sincronizadas: ${existingSyncInserted} vínculo(s) atualizado(s).`
+      : baseMessage;
+    const scheduleMessage = draftScheduleCount > 0
+      ? `${syncMessage ? `${syncMessage} ` : ""}Proposta de horário criada para ${draftScheduleCount} turma(s); revise antes de publicar.`
+      : "";
+    return scheduleMessage || undefined;
   };
 
   const resolvePublishNetworkIssue = (err: unknown) => {
@@ -445,9 +478,11 @@ export default function TurmasConfiguracoesPage() {
 
     setModalActionLoading(true);
     try {
+      const idempotencyKey = publishIdempotencyKey ?? crypto.randomUUID();
+      if (!publishIdempotencyKey) setPublishIdempotencyKey(idempotencyKey);
       const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify({
           cursoId: selectedCursoId,
           anoLetivoId: selectedCurriculo.ano_letivo_id,
@@ -842,9 +877,64 @@ export default function TurmasConfiguracoesPage() {
     }
   };
 
+  const handleAutoAssignTeachers = async () => {
+    if (!escolaParam || assigningTeachers) return;
+    const confirmed = await confirm({
+      title: "Atribuir professores automaticamente?",
+      message: "O KLASSE vai usar especialidade e disponibilidade para preencher as disciplinas sem professor. Revise o resultado antes de publicar horários.",
+      confirmLabel: "Atribuir professores",
+    });
+    if (!confirmed) return;
+
+    setAssigningTeachers(true);
+    try {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/setup/auto-resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "teachers" }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Não foi possível atribuir professores.");
+      }
+      success("Atribuição concluída", json?.message || "Professores vinculados. Revise as pendências restantes.");
+      await loadData();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Não foi possível atribuir professores.");
+    } finally {
+      setAssigningTeachers(false);
+    }
+  };
+
   const totalGeneratePreview = generateRows
     .filter((row) => row.enabled)
     .reduce((acc, row) => acc + row.quantidade, 0);
+  const contextYear = anoLetivo?.ano ?? setupReadiness?.ano_letivo ?? null;
+  const contextStage = modal ? "A rever curso" : "Preparação académica";
+  const contextStatus = setupReadiness?.operational_readiness?.summary?.operational_ok
+    ? "Pronta para revisão"
+    : setupReadiness
+      ? "Existem pendências"
+      : "A consultar estado";
+  const readinessBlockers = setupReadiness?.operational_readiness?.blockers ?? [];
+  const blockerHref = (code?: string) => {
+    const hrefByCode: Record<string, string> = {
+      ACADEMIC_YEAR_MISSING: `${baseRaw}/estrutura`,
+      ACADEMIC_PERIODS_INVALID: `${baseRaw}/calendario`,
+      ACADEMIC_EVALUATION_MISSING: `${baseRaw}/avaliacao`,
+      ACADEMIC_COURSES_MISSING: `${baseRaw}/estrutura`,
+      ACADEMIC_CURRICULUM_UNPUBLISHED: `${baseRaw}/turmas`,
+      ACADEMIC_TURMAS_INVALID: `${baseRaw}/turmas`,
+      TEAM_TEACHERS_MISSING: "/admin/professores",
+      TEAM_TEACHER_CONSISTENCY: "/admin/professores",
+      HORARIOS_SLOTS_MISSING: "/horarios/slots",
+      HORARIOS_PUBLISH_MISSING: "/horarios/quadro",
+      PORTAL_ALUNO_DISABLED: "/operacoes/acesso-alunos",
+      PORTAL_PROFESSOR_BLOCKED: "/admin/professores",
+      STUDENTS_MISSING: "/admin/alunos",
+    };
+    return hrefByCode[code ?? ""] ?? `${baseRaw}/sistema`;
+  };
 
   if (authRequired) {
     return (
@@ -900,6 +990,25 @@ export default function TurmasConfiguracoesPage() {
             </p>
           </div>
         </div>
+        <nav
+          aria-label="Contexto da preparação académica"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <span className="font-semibold text-slate-900">Contexto atual</span>
+            <span className="text-slate-300" aria-hidden="true">/</span>
+            <span className="text-slate-600">Escola: <strong className="text-slate-900">{escolaParam ?? "não identificada"}</strong></span>
+            <span className="text-slate-300" aria-hidden="true">/</span>
+            <span className="text-slate-600">Ano: <strong className="text-slate-900">{contextYear ?? "não definido"}</strong></span>
+            <span className="text-slate-300" aria-hidden="true">/</span>
+            <span className="text-slate-600">Curso: <strong className="text-slate-900">{selectedCurso?.nome ?? "todos"}</strong></span>
+            <span className="text-slate-300" aria-hidden="true">/</span>
+            <span className="text-slate-600">Etapa: <strong className="text-slate-900">{contextStage}</strong></span>
+            <span className={`ml-auto rounded-full px-2.5 py-1 font-semibold ${contextStatus === "Pronta para revisão" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+              {contextStatus}
+            </span>
+          </div>
+        </nav>
         {selectedCursoId && pendingPublishedClasses.length > 0 && (
           <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
             <p className="font-semibold">Classes sem currículo publicado</p>
@@ -921,6 +1030,7 @@ export default function TurmasConfiguracoesPage() {
               onClick={async () => {
                 if (!selectedCursoId || !selectedCurriculo) return;
                 setModalActionLoading(true);
+                const idempotencyKey = crypto.randomUUID();
                 try {
                   const buildPublishBody = (confirmNoRebuildWithExistingTurmas: boolean) => ({
                     cursoId: selectedCursoId,
@@ -933,7 +1043,7 @@ export default function TurmasConfiguracoesPage() {
 
                   let res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
                     body: JSON.stringify(buildPublishBody(false)),
                   });
                   let json = await res.json().catch(() => null);
@@ -949,7 +1059,7 @@ export default function TurmasConfiguracoesPage() {
                     if (!confirmed) return;
                     res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
+                      headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
                       body: JSON.stringify(buildPublishBody(true)),
                     });
                     json = await res.json().catch(() => null);
@@ -978,6 +1088,75 @@ export default function TurmasConfiguracoesPage() {
             >
               {modalActionLoading ? "Publicando..." : "Publicar todas as classes"}
             </button>
+          </div>
+        )}
+        {setupReadiness && (
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Prontidão académica</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Ano letivo {setupReadiness.ano_letivo ?? "não definido"}. O estado mostra o próximo passo operacional.
+                </p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${setupReadiness.operational_readiness?.summary?.operational_ok
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700"
+                }`}>
+                {setupReadiness.operational_readiness?.summary?.operational_ok ? "Pronta" : "Pendente"}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-4">
+              {[
+                ["Ano letivo", setupReadiness.ano_letivo_ok, `${baseRaw}/estrutura`],
+                ["Períodos", setupReadiness.periodos_ok, `${baseRaw}/calendario`],
+                ["Currículo", setupReadiness.curriculo_ok, `${baseRaw}/turmas`],
+                ["Turmas", setupReadiness.turmas_ok, `${baseRaw}/turmas`],
+              ].map(([label, ok, href]) => (
+                <Link
+                  key={String(label)}
+                  href={portalHref(String(href))}
+                  className={`rounded-lg border px-3 py-3 text-xs transition hover:border-klasse-gold ${ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/60"}`}
+                >
+                  <span className="flex items-center gap-2 font-semibold text-slate-800">
+                    {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
+                    {String(label)}
+                  </span>
+                  <span className="mt-1 block text-slate-500">{ok ? "Concluído" : "Ver próximo passo"}</span>
+                </Link>
+              ))}
+            </div>
+            {readinessBlockers.length > 0 && (
+              <div className="mt-3 space-y-2 rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600">
+                <p className="font-semibold text-slate-800">Próximos bloqueios</p>
+                {readinessBlockers.slice(0, 3).map((blocker) => (
+                  <div key={blocker.code ?? blocker.title} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2">
+                    <span>{blocker.detail || blocker.title || "Revise a configuração académica."}</span>
+                    <button type="button" onClick={() => setActiveReadinessBlocker(blocker)} className="inline-flex shrink-0 items-center gap-1 font-semibold text-klasse-gold-700 hover:underline">
+                      Corrigir agora <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+              <div className="flex items-start gap-2">
+                <UserRound className="mt-0.5 h-4 w-4 text-slate-500" />
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">Professores sem atribuição?</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Preencher por especialidade e disponibilidade; o horário continua em revisão.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoAssignTeachers}
+                disabled={assigningTeachers}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60"
+              >
+                {assigningTeachers && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                {assigningTeachers ? "Atribuindo..." : "Atribuir automaticamente"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1101,10 +1280,64 @@ export default function TurmasConfiguracoesPage() {
         </Link>
       </div>
 
+      {activeReadinessBlocker && (
+        <ModalShell
+          title={activeReadinessBlocker.title ?? "Pendência de configuração"}
+          subtitle={`Contexto preservado: ${escolaParam ?? "escola"} · ano ${contextYear ?? "não definido"}`}
+          onClose={() => setActiveReadinessBlocker(null)}
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onClick={() => setActiveReadinessBlocker(null)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                Voltar à revisão
+              </button>
+              <Link href={portalHref(blockerHref(activeReadinessBlocker.code))} onClick={() => setActiveReadinessBlocker(null)} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                Abrir configuração completa <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-sm text-slate-600">
+            <p>{activeReadinessBlocker.detail ?? "Esta pendência precisa de atenção antes de a escola ficar operacional."}</p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
+              <p className="font-semibold text-slate-900">Próximo passo</p>
+              <p className="mt-1">A revisão atual será mantida. Ao concluir a correção, volte a esta tela para atualizar o estado e continuar.</p>
+            </div>
+            {(activeReadinessBlocker.code === "TEAM_TEACHERS_MISSING" || activeReadinessBlocker.code === "TEAM_TEACHER_CONSISTENCY") && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setActiveReadinessBlocker(null);
+                  await handleAutoAssignTeachers();
+                }}
+                disabled={assigningTeachers}
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                <UserRound className="h-4 w-4" />
+                {assigningTeachers ? "A atribuir professores..." : "Tentar atribuição automática"}
+              </button>
+            )}
+            {(activeReadinessBlocker.code === "ACADEMIC_CURRICULUM_UNPUBLISHED" || activeReadinessBlocker.code === "ACADEMIC_TURMAS_INVALID") && selectedCursoId && (
+              <button
+                type="button"
+                onClick={() => {
+                  const cursoId = selectedCursoId;
+                  setActiveReadinessBlocker(null);
+                  void openModal(cursoId, activeReadinessBlocker.code === "ACADEMIC_TURMAS_INVALID" ? "classes" : "disciplinas");
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white"
+              >
+                <BookOpenCheck className="h-4 w-4" />
+                Corrigir neste curso
+              </button>
+            )}
+          </div>
+        </ModalShell>
+      )}
+
       {modal === "publish" && selectedCurso && selectedCurriculo && (
         <ModalShell
-          title="Publicar currículo"
-          subtitle="Publicação trava o currículo para geração de turmas."
+          title="Revisão antes de publicar"
+          subtitle="Confirme o contexto e o impacto antes de tornar este currículo oficial."
           onClose={closeModal}
           footer={
             <div className="flex items-center justify-between">
@@ -1133,15 +1366,31 @@ export default function TurmasConfiguracoesPage() {
           }
         >
           <div className="space-y-3 text-sm text-slate-600">
-            <p>
-              Curso: <span className="font-semibold text-slate-900">{selectedCurso.nome}</span>
-            </p>
-            <p>
-              Versão atual: <span className="font-semibold">v.{selectedCurriculo.version}</span>
-            </p>
-            <p>
-              Status: <span className="font-semibold">{selectedCurriculo.status}</span>
-            </p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
+              <p className="font-semibold text-slate-900">O que será publicado</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <span className="block text-slate-500">Escola</span>
+                  <span className="font-semibold text-slate-900">{escolaParam ?? "não identificada"}</span>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <span className="block text-slate-500">Ano letivo</span>
+                  <span className="font-semibold text-slate-900">{selectedCurriculo.ano_letivo_id === anoLetivo?.id ? anoLetivo.ano : contextYear ?? "não definido"}</span>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <span className="block text-slate-500">Curso</span>
+                  <span className="font-semibold text-slate-900">{selectedCurso.nome}</span>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <span className="block text-slate-500">Versão / classes</span>
+                  <span className="font-semibold text-slate-900">v.{selectedCurriculo.version} · {classes.filter((item) => item.curso_id === selectedCurso.id).length}</span>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-xs text-klasse-gold-900">
+              <p className="font-semibold">Próximo estado</p>
+              <p className="mt-1">O currículo ficará publicado e qualquer horário automático será criado apenas como proposta para revisão posterior.</p>
+            </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs">
               <p className="font-semibold text-slate-800">Impacto estimado</p>
               <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">

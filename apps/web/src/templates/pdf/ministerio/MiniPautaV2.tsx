@@ -4,7 +4,6 @@ import { medStyles as s } from './styles'
 
 interface NotaTrimestre {
   mac: number | null
-  npp: number | null
   npt: number | null
   mt: number | null
 }
@@ -122,10 +121,9 @@ export const MiniPautaV2: React.FC<MiniPautaProps> = ({ metadata, alunos }) => {
 
             {visiveis.map((trimestre) => (
               <View key={`trim-sub-${trimestre}`} style={{ width: '20%', flexDirection: 'row' }}>
-                <Text style={[s.cell, { width: '25%', fontSize: 7 }]}>MAC</Text>
-                <Text style={[s.cell, { width: '25%', fontSize: 7 }]}>NPP</Text>
-                <Text style={[s.cell, { width: '25%', fontSize: 7 }]}>NPT</Text>
-                <Text style={[s.cell, { width: '25%', fontSize: 7, fontWeight: 'black' }]}>MT</Text>
+                <Text style={[s.cell, { width: '33.33%', fontSize: 7 }]}>MAC</Text>
+                <Text style={[s.cell, { width: '33.33%', fontSize: 7 }]}>NPT</Text>
+                <Text style={[s.cell, { width: '33.33%', fontSize: 7, fontWeight: 'black' }]}>MT</Text>
               </View>
             ))}
 
@@ -147,7 +145,6 @@ export const MiniPautaV2: React.FC<MiniPautaProps> = ({ metadata, alunos }) => {
                 return (
                   <View key={`${aluno.id}-trim-${trimestre}`} style={{ width: '20%', flexDirection: 'row' }}>
                     <Text style={[s.cell, ...styleOrMuted(notas.mac)]}>{valueOrDash(notas.mac)}</Text>
-                    <Text style={[s.cell, ...styleOrMuted(notas.npp)]}>{valueOrDash(notas.npp)}</Text>
                     <Text style={[s.cell, ...styleOrMuted(notas.npt)]}>{valueOrDash(notas.npt)}</Text>
                     <Text style={[s.cell, { backgroundColor: '#f0fdf4' }, ...styleOrMuted(notas.mt, true)]}>
                       {valueOrDash(notas.mt)}
