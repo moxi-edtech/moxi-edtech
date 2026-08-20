@@ -14,6 +14,7 @@ import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
+import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,6 +45,23 @@ function errorResponse(error: unknown) {
     return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: error.status });
   }
   throw error;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object") {
+    const row = error as Record<string, unknown>;
+    for (const key of ["message", "error", "erro", "details", "hint"]) {
+      if (typeof row[key] === "string" && row[key].trim()) return row[key] as string;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Erro estruturado não serializável";
+    }
+  }
+  return String(error);
 }
 
 export async function POST(request: Request) {
@@ -85,23 +103,52 @@ export async function POST(request: Request) {
         escolaId,
         anoLetivoId: academicContext.anoLetivoId,
       });
+      const rematriculaWindow = await resolveRematriculaWindow(
+        supabase,
+        escolaId,
+        Number(academicContext.anoLetivoLabel.slice(0, 4)),
+      );
+      if (!rematriculaWindow.open) {
+        return NextResponse.json({
+          ok: false,
+          error: "O período de rematrícula não está aberto para este ano letivo.",
+          code: "REMATRICULA_WINDOW_CLOSED",
+        }, { status: 409 });
+      }
     } catch (error) {
       return errorResponse(error);
     }
 
-    const { data: matricula } = await supabase
+    let { data: matricula } = await supabase
       .from("matriculas")
       .select("id, aluno_id, turma_id, status, session_id, ano_letivo")
       .eq("escola_id", escolaId)
       .eq("id", body.matricula_id)
       .eq("aluno_id", body.aluno_id)
-      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
+      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
       .maybeSingle();
     if (!matricula) {
       return NextResponse.json({ ok: false, error: "Matrícula de origem do aluno não encontrada.", code: "REMATRICULA_SOURCE_INVALID" }, { status: 409 });
     }
 
     const targetAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+    if (Number(matricula.ano_letivo ?? 0) >= targetAnoLetivoAno) {
+      const { data: matriculaAnterior } = await supabase
+        .from("matriculas")
+        .select("id, aluno_id, turma_id, status, session_id, ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", body.aluno_id)
+        .lt("ano_letivo", targetAnoLetivoAno)
+        .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+        .order("ano_letivo", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!matriculaAnterior) {
+        return NextResponse.json({ ok: false, error: "Não foi possível identificar a matrícula anterior para esta operação.", code: "REMATRICULA_SOURCE_INVALID" }, { status: 409 });
+      }
+      matricula = matriculaAnterior;
+    }
+    const origemMatriculaId = String(matricula.id);
     const { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
@@ -205,7 +252,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Existe um pedido antigo sem ano letivo identificado. Envie para reconciliação antes de criar uma nova taxa.", code: "REMATRICULA_LEGACY_REVIEW_REQUIRED", pedido_id: pedidoExistente.id }, { status: 409 });
     }
     if (pedidoExistente?.status === "granted") {
-      const matriculaDestinoId = String((pedidoExistente.contexto as any)?.matricula_destino_id ?? body.matricula_id);
+      const matriculaDestinoId = String((pedidoExistente.contexto as any)?.matricula_destino_id ?? origemMatriculaId);
       const comprovante = await emitirComprovanteMatricula({
         supabase,
         escolaId,
@@ -228,10 +275,10 @@ export async function POST(request: Request) {
     // A taxa de rematrícula é um serviço separado e não liquida mensalidades.
     const { data: mensalidadesOrigem, error: mensalidadesError } = await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, vencimento, mes_referencia, ano_referencia")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", body.aluno_id)
-      .eq("matricula_id", body.matricula_id);
+      .eq("matricula_id", origemMatriculaId);
     if (mensalidadesError) throw mensalidadesError;
 
     const today = todayInLuanda();
@@ -268,7 +315,7 @@ export async function POST(request: Request) {
       .insert({
         escola_id: escolaId,
         aluno_id: body.aluno_id,
-        matricula_id: body.matricula_id,
+        matricula_id: origemMatriculaId,
         servico_escola_id: service.id,
         status: confirmationExempt ? "granted" : "pending_payment",
         servico_codigo: SERVICE_CODE,
@@ -276,7 +323,7 @@ export async function POST(request: Request) {
         valor_cobrado: valorConfirmacao,
         contexto: {
           origem: "rematricula_balcao",
-          origem_matricula_id: body.matricula_id,
+          origem_matricula_id: origemMatriculaId,
           ano_letivo_id: academicContext.anoLetivoId,
           destino_turma_id: body.destino_turma_id,
           destino_curso_id: turmaDestino?.curso_id ?? null,
@@ -328,11 +375,112 @@ export async function POST(request: Request) {
       }
     }
 
+    const { data: raaAtual } = await (supabase as any).rpc("resolve_raa_progression_for_matricula", {
+      p_escola_id: escolaId,
+      p_matricula_id: origemMatriculaId,
+    });
+    let rematriculaCondicionalConcluida = false;
+
+    // A virada histórica deixou algumas matrículas destino ativas antes de
+    // existir a autorização académica. Mantemos a vaga, mas só concluímos a
+    // rematrícula mediante autorização explícita para lançar notas depois.
+    if (matriculaDestino && !reclassificacao && raaAtual?.decision === "pendente") {
+      if (body.notas_lancar_depois !== true) {
+        await (supabase as any).from("servico_pedidos").update({
+          status: "pending_payment",
+          reason_code: "PROMOTION_AUTHORIZATION_REQUIRED",
+          reason_detail: "A promoção académica ainda tem notas pendentes.",
+        }).eq("id", pedido.id).eq("escola_id", escolaId);
+        return NextResponse.json({
+          ok: false,
+          error: "A promoção tem notas pendentes. Confirme o lançamento posterior das notas para concluir.",
+          code: "PROMOTION_AUTHORIZATION_REQUIRED",
+          payment: paymentJson.data ?? null,
+          pedido_id: pedido.id,
+        }, { status: 409 });
+      }
+
+      const { error: authorizationError } = await (supabase as any).rpc("autorizar_promocao_com_pendencias", {
+        p_escola_id: escolaId,
+        p_aluno_id: body.aluno_id,
+        p_matricula_origem_id: origemMatriculaId,
+        p_destino_ano_letivo_id: academicContext.anoLetivoId,
+        p_destino_turma_id: body.destino_turma_id,
+        p_motivo: "Promoção autorizada no Balcão; notas serão lançadas posteriormente",
+      });
+      if (authorizationError) {
+        await (supabase as any).from("servico_pedidos").update({
+          status: "pending_payment",
+          reason_code: "PROMOTION_AUTHORIZATION_REQUIRED",
+          reason_detail: authorizationError.message,
+        }).eq("id", pedido.id).eq("escola_id", escolaId);
+        return NextResponse.json({
+          ok: false,
+          error: "Pagamento confirmado, mas a promoção com pendências precisa de autorização.",
+          code: "PROMOTION_AUTHORIZATION_REQUIRED",
+          details: authorizationError.message,
+          payment: paymentJson.data ?? null,
+          pedido_id: pedido.id,
+        }, { status: 409 });
+      }
+
+      const destinoId = String(matriculaDestino.id);
+      await (supabase as any).from("servico_pedidos").update({
+        status: "granted",
+        matricula_id: destinoId,
+        contexto: {
+          ...(pedido.contexto ?? {}),
+          matricula_destino_id: destinoId,
+          promocao_com_pendencias: true,
+          decisao: "promovido_com_pendencias",
+        },
+      }).eq("id", pedido.id).eq("escola_id", escolaId);
+      await (supabase as any).from("promocoes_com_pendencias").update({
+        matricula_destino_id: matriculaDestinoId,
+        status: "concluida",
+        concluido_em: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("escola_id", escolaId)
+        .eq("matricula_origem_id", origemMatriculaId)
+        .eq("destino_ano_letivo_id", academicContext.anoLetivoId)
+        .eq("status", "autorizada");
+      matriculaDestinoId = destinoId;
+      rematriculaCondicionalConcluida = true;
+    }
+
+    if (body.notas_lancar_depois === true && !matriculaDestino) {
+      const { error: authorizationError } = await (supabase as any).rpc("autorizar_promocao_com_pendencias", {
+        p_escola_id: escolaId,
+        p_aluno_id: body.aluno_id,
+        p_matricula_origem_id: origemMatriculaId,
+        p_destino_ano_letivo_id: academicContext.anoLetivoId,
+        p_destino_turma_id: body.destino_turma_id,
+        p_motivo: "Promoção autorizada no Balcão; notas serão lançadas posteriormente",
+      });
+      if (authorizationError) {
+        await (supabase as any).from("servico_pedidos").update({
+          status: "pending_payment",
+          reason_code: "PROMOTION_AUTHORIZATION_REQUIRED",
+          reason_detail: authorizationError.message,
+        }).eq("id", pedido.id).eq("escola_id", escolaId);
+        return NextResponse.json({
+          ok: false,
+          error: "Pagamento confirmado, mas a promoção com pendências precisa de autorização.",
+          code: "PROMOTION_AUTHORIZATION_REQUIRED",
+          details: authorizationError.message,
+          payment: paymentJson.data ?? null,
+          pedido_id: pedido.id,
+        }, { status: 409 });
+      }
+    }
+
     let matriculaDestinoId = "";
     let finalizacao: any;
     let finalizacaoError: any = null;
 
-    if (matriculaDestino && reclassificacao) {
+    if (rematriculaCondicionalConcluida) {
+      finalizacao = { ok: true, matricula_id: matriculaDestinoId };
+    } else if (matriculaDestino && reclassificacao) {
       const result = await (supabase as any).rpc("finalistas_matricular_novo_ciclo", {
         p_escola_id: escolaId,
         p_reclassificacao_ids: [reclassificacao.id],
@@ -360,28 +508,24 @@ export async function POST(request: Request) {
           .eq("escola_id", escolaId);
       }
     } else if (matriculaDestino) {
-      matriculaDestinoId = String(matriculaDestino.id);
-      const { error } = await (supabase as any)
-        .from("servico_pedidos")
-        .update({
-          status: "granted",
-          matricula_id: matriculaDestinoId,
-          contexto: {
-            ...(pedido.contexto ?? {}),
-            matricula_destino_id: matriculaDestinoId,
-            destino_turma_id: body.destino_turma_id,
-            decisao: "reconfirmacao",
-          },
-        })
-        .eq("id", pedido.id)
-        .eq("escola_id", escolaId);
-      finalizacaoError = error;
-      finalizacao = { ok: !error, matricula_id: matriculaDestinoId, turma_id: body.destino_turma_id };
+      // A promoção cria apenas uma reserva pendente. A mesma transação que
+      // confirma a taxa deve ativar a matrícula e iniciar o seu ciclo financeiro.
+      const result = await (supabase as any).rpc("finalizar_rematricula_balcao", {
+        p_escola_id: escolaId,
+        p_aluno_id: body.aluno_id,
+        p_matricula_origem_id: origemMatriculaId,
+        p_ano_letivo_id: academicContext.anoLetivoId,
+        p_destino_turma_id: body.destino_turma_id,
+        p_pedido_id: pedido.id,
+      });
+      finalizacao = result.data;
+      finalizacaoError = result.error;
+      matriculaDestinoId = String(finalizacao?.matricula_id ?? matriculaDestino.id);
     } else {
       const result = await (supabase as any).rpc("finalizar_rematricula_balcao", {
         p_escola_id: escolaId,
         p_aluno_id: body.aluno_id,
-        p_matricula_origem_id: body.matricula_id,
+        p_matricula_origem_id: origemMatriculaId,
         p_ano_letivo_id: academicContext.anoLetivoId,
         p_destino_turma_id: body.destino_turma_id,
         p_pedido_id: pedido.id,
@@ -393,7 +537,14 @@ export async function POST(request: Request) {
     if (finalizacaoError || !finalizacao?.ok) {
       const reason = finalizacaoError?.message || finalizacao?.erro || "Falha ao concluir a matrícula destino";
       await (supabase as any).from("servico_pedidos").update({ status: "pending_payment", reason_code: "REMATRICULA_RECONCILIATION_REQUIRED", reason_detail: reason }).eq("id", pedido.id).eq("escola_id", escolaId);
-      return NextResponse.json({ ok: false, error: "Pagamento confirmado, mas a matrícula precisa de reconciliação.", code: "REMATRICULA_RECONCILIATION_REQUIRED", payment: paymentJson.data ?? null, pedido_id: pedido.id }, { status: 409 });
+      return NextResponse.json({
+        ok: false,
+        error: "Pagamento confirmado, mas a matrícula precisa de reconciliação.",
+        code: "REMATRICULA_RECONCILIATION_REQUIRED",
+        reconciliation_reason: reason,
+        payment: paymentJson.data ?? null,
+        pedido_id: pedido.id,
+      }, { status: 409 });
     }
     matriculaDestinoId = String(finalizacao.matricula_id ?? matriculaDestinoId);
 
@@ -434,7 +585,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof AcademicYearContextError) return errorResponse(error);
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     console.error("[REMATRICULA-BALCAO]", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

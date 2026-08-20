@@ -11,7 +11,8 @@ export type RematriculaCardState =
   | "LEGACY_REVIEW_REQUIRED"
   | "ALREADY_COMPLETED"
   | "PAYMENT_IN_PROGRESS"
-  | "RECONCILIATION_REQUIRED";
+  | "RECONCILIATION_REQUIRED"
+  | "WINDOW_CLOSED";
 
 export interface TurmaOption {
   id: string;
@@ -88,6 +89,12 @@ interface StatusResponse {
     destino_turma_id?: string | null;
   } | null;
   reconciliation?: { can_cancel: boolean; reason: string } | null;
+  window?: {
+    configured: boolean;
+    open: boolean;
+    data_inicio?: string | null;
+    data_fim?: string | null;
+  };
 }
 
 // ─── Error code → human message ──────────────────────────────────────────────
@@ -115,6 +122,8 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Rematrícula concluída; comprovante pendente de emissão.",
   REMATRICULA_LEGACY_REVIEW_REQUIRED:
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
+  REMATRICULA_WINDOW_CLOSED:
+    "O período de rematrícula não está aberto para este ano letivo.",
   FINALISTA_PROGRESSION_INVALID:
     "O finalista deve seguir para a classe imediatamente seguinte.",
 };

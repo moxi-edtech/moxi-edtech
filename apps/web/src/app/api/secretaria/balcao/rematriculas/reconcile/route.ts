@@ -78,10 +78,102 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "Turma destino não encontrada no pedido", code: "DESTINATION_CLASS_REQUIRED" }, { status: 409 });
       }
 
+      const { data: turmaDestino } = await supabase
+        .from("turmas")
+        .select("id, session_id, ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("id", destinoTurmaId)
+        .maybeSingle();
+      const { data: matriculaPedido } = await supabase
+        .from("matriculas")
+        .select("id, ano_letivo, status, turma_id")
+        .eq("escola_id", escolaId)
+        .eq("id", pedido.matricula_id)
+        .eq("aluno_id", pedido.aluno_id)
+        .maybeSingle();
+
+      // Pedidos antigos podem ter guardado a matrícula já criada no ano
+      // destino. Recuperamos a matrícula do ano anterior antes de reconciliar.
+      let matriculaOrigemId = String(pedido.matricula_id ?? "");
+      if (turmaDestino?.ano_letivo && matriculaPedido?.ano_letivo >= turmaDestino.ano_letivo) {
+        const { data: matriculaAnterior } = await supabase
+          .from("matriculas")
+          .select("id, ano_letivo, status, turma_id")
+          .eq("escola_id", escolaId)
+          .eq("aluno_id", pedido.aluno_id)
+          .lt("ano_letivo", turmaDestino.ano_letivo)
+          .order("ano_letivo", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (matriculaAnterior) matriculaOrigemId = String(matriculaAnterior.id);
+      }
+
+      const { data: raa } = await supabase.rpc("resolve_raa_progression_for_matricula", {
+        p_escola_id: escolaId,
+        p_matricula_id: matriculaOrigemId,
+      });
+      if (raa?.decision === "pendente") {
+        const { error: authorizationError } = await supabase.rpc("autorizar_promocao_com_pendencias", {
+          p_escola_id: escolaId,
+          p_aluno_id: pedido.aluno_id,
+          p_matricula_origem_id: matriculaOrigemId,
+          p_destino_ano_letivo_id: academicContext.anoLetivoId,
+          p_destino_turma_id: destinoTurmaId,
+          p_motivo: "Promoção autorizada durante a reconciliação; notas serão lançadas posteriormente",
+        });
+        if (authorizationError) {
+          return NextResponse.json({ ok: false, error: authorizationError.message, code: "PROMOTION_AUTHORIZATION_FAILED" }, { status: 409 });
+        }
+      }
+
+      // Remediação segura de pedidos criados depois de uma promoção
+      // manual: a matrícula destino já existe e a origem foi encerrada.
+      if (matriculaPedido?.ano_letivo >= Number(turmaDestino?.ano_letivo ?? 0)) {
+        const { data: matriculaDestino } = await supabase
+          .from("matriculas")
+          .select("id, status, ano_letivo, turma_id")
+          .eq("escola_id", escolaId)
+          .eq("aluno_id", pedido.aluno_id)
+          .eq("session_id", academicContext.anoLetivoId)
+          .eq("turma_id", destinoTurmaId)
+          .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
+          .limit(1)
+          .maybeSingle();
+        if (matriculaDestino) {
+          await supabase.from("servico_pedidos").update({
+            status: "granted",
+            matricula_id: matriculaDestino.id,
+            contexto: {
+              ...(pedido.contexto ?? {}),
+              origem_matricula_id: matriculaOrigemId,
+              matricula_destino_id: matriculaDestino.id,
+              promocao_com_pendencias: raa?.decision === "pendente",
+            },
+          }).eq("id", pedido.id).eq("escola_id", escolaId);
+          await supabase.from("promocoes_com_pendencias").update({
+            matricula_destino_id: matriculaDestino.id,
+            status: "concluida",
+            concluido_em: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq("escola_id", escolaId).eq("matricula_origem_id", matriculaOrigemId).eq("destino_ano_letivo_id", academicContext.anoLetivoId).eq("status", "autorizada");
+
+          const comprovante = await emitirComprovanteMatricula({
+            supabase,
+            escolaId,
+            matriculaId: matriculaDestino.id,
+            dataHoraEfetivacao: new Date().toISOString(),
+            createdBy: user.id,
+            audit: { portal: "secretaria", acao: "REMATRICULA_RECONCILIADA_COMPROVANTE" },
+          });
+          if (!comprovante.ok) return NextResponse.json({ ok: false, error: "Rematrícula reconciliada, mas o comprovante precisa de emissão.", code: "DOCUMENT_PENDING", pedido_id: pedido.id, rematricula: { matricula_id: matriculaDestino.id }, comprovante }, { status: 202 });
+          return NextResponse.json({ ok: true, pedido_id: pedido.id, rematricula: { matricula_id: matriculaDestino.id, turma_id: destinoTurmaId, ano_letivo_id: academicContext.anoLetivoId }, comprovante });
+        }
+      }
+
       const { data: finalizacao, error: finalizacaoError } = await supabase.rpc("finalizar_rematricula_balcao", {
         p_escola_id: escolaId,
         p_aluno_id: pedido.aluno_id,
-        p_matricula_origem_id: pedido.matricula_id,
+        p_matricula_origem_id: matriculaOrigemId,
         p_ano_letivo_id: academicContext.anoLetivoId,
         p_destino_turma_id: destinoTurmaId,
         p_pedido_id: pedido.id,

@@ -9,6 +9,7 @@ import {
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { isMensalidadeVencida, todayInLuanda } from "@/lib/financeiro/mensalidade-vencida";
+import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -69,15 +70,46 @@ export async function GET(request: Request) {
     });
     const targetAnoLetivoId = academicContext.anoLetivoId;
     const targetAnoLetivoAno = Number(academicContext.anoLetivoLabel.slice(0, 4));
+    const rematriculaWindow = await resolveRematriculaWindow(
+      supabase,
+      escolaId,
+      targetAnoLetivoAno,
+    );
+
+    if (!rematriculaWindow.open) {
+      return NextResponse.json({
+        ok: true,
+        status: "WINDOW_CLOSED",
+        service: null,
+        debt: { total: 0, count: 0 },
+        pedido: null,
+        comprovante: null,
+        ano_letivo: {
+          id: targetAnoLetivoId,
+          ano: targetAnoLetivoAno,
+          label: academicContext.anoLetivoLabel,
+        },
+        destino_turma_id: null,
+        reclassificacao: null,
+        reconciliation: null,
+        window: {
+          configured: rematriculaWindow.configured,
+          open: false,
+          data_inicio: rematriculaWindow.window?.data_inicio ?? null,
+          data_fim: rematriculaWindow.window?.data_fim ?? null,
+        },
+        context: academicContext,
+      });
+    }
 
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
-    const { data: matriculaOrigem } = await supabase
+    let { data: matriculaOrigem } = await supabase
       .from("matriculas")
       .select("id, ano_letivo, status, turma_id")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
-      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada"])
+      .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
       .maybeSingle();
 
     if (!matriculaOrigem) {
@@ -90,9 +122,26 @@ export async function GET(request: Request) {
         { status: 404 },
       );
     }
+    if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
+      const { data: matriculaAnterior } = await supabase
+        .from("matriculas")
+        .select("id, ano_letivo, status, turma_id")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", aluno_id)
+        .lt("ano_letivo", targetAnoLetivoAno)
+        .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+        .order("ano_letivo", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!matriculaAnterior) {
+        return NextResponse.json({ ok: true, status: "CHECKING", service: null, debt: { total: 0, count: 0 }, pedido: null, comprovante: null, ano_letivo: { id: targetAnoLetivoId, ano: targetAnoLetivoAno, label: academicContext.anoLetivoLabel }, destino_turma_id: null, reclassificacao: null, reconciliation: null, context: academicContext });
+      }
+      matriculaOrigem = matriculaAnterior;
+    }
 
-    // A rematrícula só é elegível quando ainda não existe matrícula do aluno
-    // no ano destino. A matrícula de origem pode ser do ano anterior.
+    // A matrícula destino pode existir como reserva pendente criada pela
+    // promoção. Ela só deixa de exigir este fluxo quando a taxa/isenção foi
+    // confirmada e o pedido de rematrícula está concedido.
     const { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
@@ -115,10 +164,10 @@ export async function GET(request: Request) {
 
     const { data: mensalidadesFinanceiras } = await supabase
       .from("mensalidades")
-      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, vencimento, mes_referencia, ano_referencia")
+      .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
-      .eq("matricula_id", matricula_id);
+      .eq("matricula_id", matriculaOrigem.id);
     const today = todayInLuanda();
     const mensalidadesEmAberto = (mensalidadesFinanceiras ?? []).filter(
       (mensalidade: any) =>
@@ -156,7 +205,7 @@ export async function GET(request: Request) {
     // ── Check existing pedido ─────────────────────────────────────────────
     const { data: pedidosExistentes } = await supabase
       .from("servico_pedidos")
-      .select("id, status, created_at, reason_code, valor_cobrado, contexto")
+      .select("id, status, created_at, reason_code, reason_detail, valor_cobrado, contexto")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("servico_codigo", "SERV_REMATRICULA")
@@ -248,7 +297,18 @@ export async function GET(request: Request) {
             can_cancel: pedidoExistente?.status === "pending_payment",
             reason: "Pedido incompleto sem ano letivo identificado",
           }
+        : pedidoExistente?.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
+          ? {
+              can_cancel: true,
+              reason: pedidoExistente.reason_detail ?? "A matrícula precisa de reconciliação",
+            }
         : null,
+      window: {
+        configured: rematriculaWindow.configured,
+        open: rematriculaWindow.open,
+        data_inicio: rematriculaWindow.window?.data_inicio ?? null,
+        data_fim: rematriculaWindow.window?.data_fim ?? null,
+      },
       comprovante: comprovanteData,
       ano_letivo: {
         id: targetAnoLetivoId,

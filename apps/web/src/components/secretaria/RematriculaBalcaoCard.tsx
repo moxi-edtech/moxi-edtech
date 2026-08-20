@@ -288,6 +288,22 @@ export function RematriculaBalcaoCard({
         </div>
       );
 
+    // ── WINDOW_CLOSED ─────────────────────────────────────────────────────
+    case "WINDOW_CLOSED":
+      return (
+        <div className="xl:col-span-12 rounded-2xl border border-slate-300 bg-slate-50 shadow-sm p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-slate-600" />
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+              Período de rematrícula fechado
+            </h3>
+          </div>
+          <p className="text-sm text-slate-600">
+            Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.
+          </p>
+        </div>
+      );
+
     default:
       return null;
   }

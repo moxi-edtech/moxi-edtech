@@ -792,6 +792,7 @@ function Catalogo({
     | "ALREADY_COMPLETED"
     | "PAYMENT_IN_PROGRESS"
     | "RECONCILIATION_REQUIRED"
+    | "WINDOW_CLOSED"
     | "DEBT_BLOCKED"
     | null;
   rematriculaPrice: number | null;
@@ -877,6 +878,12 @@ function Catalogo({
                 </button>
               </div>
             ) : null}
+            {rematriculaState === "WINDOW_CLOSED" ? (
+              <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
+                <strong className="block text-slate-900">Período de rematrícula fechado</strong>
+                <p className="mt-1">Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.</p>
+              </div>
+            ) : null}
             {rematriculaError ? (
               <p role="alert" className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-800">
                 {rematriculaError}
@@ -927,8 +934,10 @@ function Catalogo({
                           ? "Pagamento de rematrícula já iniciado"
                           : rematriculaState === "RECONCILIATION_REQUIRED"
                             ? "Rematrícula aguarda reconciliação"
-                            : rematriculaState === "DEBT_BLOCKED"
+                          : rematriculaState === "DEBT_BLOCKED"
                               ? "Regularize as mensalidades em atraso"
+                              : rematriculaState === "WINDOW_CLOSED"
+                                ? "O período de rematrícula está fechado"
                               : "Configure o valor da taxa para ativar esta operacao"}
                 </p>
               </div>
