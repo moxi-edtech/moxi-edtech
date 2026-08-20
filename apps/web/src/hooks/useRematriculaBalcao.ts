@@ -461,6 +461,22 @@ export function useRematriculaBalcao(opts: {
       } else {
         // Map error code to human message, fall back to raw error
         const code = data.code as string | undefined;
+        if (code === "REMATRICULA_RECONCILIATION_REQUIRED" && data.pedido_id) {
+          // O pagamento já foi confirmado. Tenta concluir a matrícula no
+          // mesmo atendimento; a fila manual fica apenas como fallback.
+          const reconciliationResponse = await fetch("/api/secretaria/balcao/rematriculas/reconcile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pedido_id: data.pedido_id, action: "complete" }),
+          });
+          const reconciliationData = await reconciliationResponse.json().catch(() => ({}));
+          if (reconciliationResponse.ok || reconciliationResponse.status === 202) {
+            setResult(reconciliationData);
+            setStep(4);
+            try { sessionStorage.removeItem(draftKey); } catch {}
+            return;
+          }
+        }
         const mapped = code ? ERROR_MESSAGES[code] : null;
         setApiError(mapped ?? data.error ?? "Ocorreu um erro desconhecido.");
       }
