@@ -310,7 +310,7 @@ export default async function EscolaAdminDashboardData({
         .order("mes", { ascending: true }),
 
       s.from("vw_financeiro_propinas_mensal_escola")
-        .select("competencia_mes, qtd_mensalidades, qtd_em_atraso")
+        .select("ano_letivo, competencia_mes, qtd_mensalidades, qtd_em_atraso, qtd_pagas_adiantadas")
         .eq("escola_id", validId)
         .order("competencia_mes", { ascending: true }),
 
