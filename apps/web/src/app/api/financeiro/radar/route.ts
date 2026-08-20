@@ -62,27 +62,10 @@ export async function GET(req: Request) {
 
     const monthRange = mesRef ? parseMonthRange(mesRef) : null;
 
-    const { data: sessionMatriculas, error: sessionMatriculasError } = await s
-      .from("matriculas")
-      .select("id")
-      .eq("escola_id", escolaId)
-      .eq("session_id", context.anoLetivoId);
-    if (sessionMatriculasError) throw sessionMatriculasError;
-
-    const matriculaIds = (sessionMatriculas ?? []).map((row) => row.id);
-    const { data: sessionMensalidades, error: sessionMensalidadesError } = matriculaIds.length
-      ? await s
-          .from("mensalidades")
-          .select("id")
-          .eq("escola_id", escolaId)
-          .in("matricula_id", matriculaIds)
-      : { data: [], error: null };
-    if (sessionMensalidadesError) throw sessionMensalidadesError;
-
-    const mensalidadeIds = (sessionMensalidades ?? []).map((row) => row.id);
-    
     // A view vw_radar_inadimplencia já filtra por `escola_id = current_tenant_escola_id()`
-    // Apenas precisamos garantir que a chamada é autenticada.
+    // Apenas precisamos garantir que a chamada é autenticada. O período do ano
+    // letivo é aplicado abaixo; não usamos uma lista gigante de IDs de mensalidade,
+    // que pode ultrapassar o limite da URL do PostgREST e resultar em 400.
     let query = s
       .from("vw_radar_inadimplencia")
       .select(
@@ -103,7 +86,6 @@ export async function GET(req: Request) {
         ].join(", ")
       )
       .eq("escola_id", escolaId)
-      .in("mensalidade_id", mensalidadeIds)
       .not("aluno_id", "is", null);
 
     if (monthRange) {
