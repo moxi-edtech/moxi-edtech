@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   Banknote,
   Check,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { EnrollmentPostActions, type EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import type { TurmaOption, RematriculaResult, ProgressaoBalcao } from "@/hooks/useRematriculaBalcao";
+import { buildContextualPortalHref } from "@/lib/navigation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +116,7 @@ const STEP_LABELS = ["Académico", "Financeiro", "Pagamento"];
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
+  const pathname = usePathname();
   const {
     open,
     onClose,
@@ -428,7 +431,7 @@ function StepAcademico({
               {progressao.orientacao.acoes.map((acao) => (
                 <a
                   key={acao.id}
-                  href={acao.href}
+                  href={buildContextualPortalHref(escolaId, acao.href, pathname)}
                   target="_blank"
                   rel="noreferrer"
                   className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold ${acao.prioridade === "principal" ? "bg-sky-700 text-white hover:bg-sky-800" : "border border-sky-200 bg-white text-sky-700 hover:bg-sky-50"}`}
@@ -444,7 +447,11 @@ function StepAcademico({
 
       {progressao?.estado === "notas_pendentes" && progressao.turma_origem_id && (
         <a
-          href={`/secretaria/notas?turmaId=${encodeURIComponent(progressao.turma_origem_id)}${alunoId ? `&alunoId=${encodeURIComponent(alunoId)}` : ""}`}
+          href={buildContextualPortalHref(
+            escolaId,
+            `/secretaria/notas?turmaId=${encodeURIComponent(progressao.turma_origem_id)}${alunoId ? `&alunoId=${encodeURIComponent(alunoId)}` : ""}`,
+            pathname,
+          )}
           target="_blank"
           rel="noreferrer"
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-bold text-sky-700 hover:bg-sky-50"

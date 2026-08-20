@@ -44,8 +44,10 @@ function buildGuidance(
   progression: RaaProgressionResult,
   decreto: RaaDecretoResult | null,
   matriculaId: string,
+  escolaId: string,
 ): RaaProgressionGuidance {
   const query = `?matricula_id=${encodeURIComponent(matriculaId)}`
+  const fechamentoHref = `/secretaria/fechamento-academico${query}`
   if (progression.decision === "pendente") {
     const formulaPendente = decreto?.baseLegal?.toLowerCase().includes("mfd")
     return {
@@ -58,7 +60,7 @@ function buildGuidance(
         ? "Concluir a fórmula e os componentes da pauta; depois reexecutar a análise."
         : "Concluir notas e verificar a frequência; depois reexecutar a análise.",
       acoes: formulaPendente
-        ? [{ id: "concluir_pauta", label: "Abrir fechamento académico", href: `/secretaria/fechamento-academico${query}`, prioridade: "principal" }]
+        ? [{ id: "concluir_pauta", label: "Abrir fechamento académico", href: fechamentoHref, prioridade: "principal" }]
         : [
             { id: "concluir_notas", label: "Abrir notas", href: `/secretaria/notas${query}`, prioridade: "principal" },
             { id: "verificar_frequencia", label: "Verificar frequência", href: `/professor/frequencias${query}`, prioridade: "secundaria" },
@@ -258,7 +260,7 @@ export async function resolveRaaProgressionForMatricula(
       },
       progression: finalProgression,
       decreto: legal,
-      orientacao: buildGuidance(finalProgression, legal, matricula.id),
+      orientacao: buildGuidance(finalProgression, legal, matricula.id, escolaId),
     }
   }
 
@@ -356,6 +358,6 @@ export async function resolveRaaProgressionForMatricula(
     frequencia: { percentual_presenca: percentualPresenca, frequencia_min_percent: frequenciaMinima },
     decreto: null,
     progression,
-    orientacao: buildGuidance(progression, null, matricula.id),
+    orientacao: buildGuidance(progression, null, matricula.id, escolaId),
   }
 }
