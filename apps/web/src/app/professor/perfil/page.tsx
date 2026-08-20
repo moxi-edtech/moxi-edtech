@@ -30,7 +30,7 @@ export default function ProfessorPerfilPage() {
     data_nascimento: null,
     numero_bi: null,
     telefone_principal: "",
-    carga_horaria_maxima: 20,
+    carga_horaria_maxima: 24,
     turnos_disponiveis: [],
     habilitacoes: "Licenciatura",
     area_formacao: "",

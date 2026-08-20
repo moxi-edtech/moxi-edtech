@@ -49,7 +49,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
     numero_bi: "",
     habilitacoes: "Licenciatura",
     vinculo_contratual: "Efetivo",
-    carga_horaria_maxima: 20
+    carga_horaria_maxima: 24
   });
   const [savingProf, setSavingProf] = useState(false);
 
@@ -128,7 +128,7 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
           numero_bi: "",
           habilitacoes: "Licenciatura",
           vinculo_contratual: "Efetivo",
-          carga_horaria_maxima: 20
+          carga_horaria_maxima: 24
         });
         // Refresh list
         await fetchData();
