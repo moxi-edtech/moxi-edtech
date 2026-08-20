@@ -130,6 +130,16 @@ export default function AppShell({
   const navRole = useMemo<SidebarRole | null>(() => {
     if (safePathname.startsWith("/operacoes")) return "operacoes";
     if (safePathname.includes("/escola/") && safePathname.includes("/operacoes")) return "operacoes";
+    // The academic rollover wizard still lives under the legacy admin path,
+    // but it belongs to the Operations Academic menu. Keeping the operations
+    // role here preserves the full submenu while navigating that wizard.
+    if (
+      safePathname.startsWith("/admin/operacoes-academicas") ||
+      safePathname.includes("/admin/operacoes-academicas/") ||
+      safePathname.includes("/escola/") && safePathname.includes("/admin/operacoes-academicas")
+    ) {
+      return "operacoes";
+    }
     return inferredRole;
   }, [inferredRole, safePathname]);
 

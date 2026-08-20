@@ -312,6 +312,22 @@ function isAbortError(err: unknown) {
   return err instanceof Error && err.name === "AbortError";
 }
 
+function isMissingGlobalSearchRpcError(error: {
+  code?: string | null;
+  message?: string | null;
+  status?: number | null;
+} | null | undefined) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return (
+    error?.status === 404 ||
+    error?.code === "PGRST202" ||
+    error?.code === "42883" ||
+    message.includes("search_global_entities") ||
+    message.includes("search_alunos_global_min") ||
+    message.includes("similarity")
+  );
+}
+
 function mapToMinimalResult(
   portal: PortalKey | undefined,
   escolaId: string | null | undefined,
@@ -498,12 +514,7 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
         });
 
       if (error) {
-        const shouldFallback =
-          error.code === "42883" ||
-          error.message?.includes("search_global_entities") ||
-          error.message?.includes("search_alunos_global_min") ||
-          error.message?.includes("similarity");
-        if (!append && shouldFallback) {
+        if (!append && isMissingGlobalSearchRpcError(error)) {
           await fetchFallback();
           return;
         }
@@ -588,7 +599,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setHasMore(Boolean(nextCursor));
     } catch (err: unknown) {
       if (!isAbortError(err)) {
-        console.error("[GlobalSearch] Erro ao carregar mais:", err);
+        if (!isMissingGlobalSearchRpcError(err as { code?: string; message?: string; status?: number })) {
+          console.error("[GlobalSearch] Erro ao carregar mais:", err);
+        }
+        setHasMore(false);
       }
     } finally {
       if (!ac.signal.aborted) setLoading(false);
