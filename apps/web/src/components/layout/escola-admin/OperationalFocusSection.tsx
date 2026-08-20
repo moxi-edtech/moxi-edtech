@@ -77,9 +77,11 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
   const cards: FocusCard[] = [
     {
       key: "pendentes",
-      label: "Cobranças Pendentes",
+      label: snapshot.mensalidadesCompetencia
+        ? `Cobranças Pendentes (${snapshot.mensalidadesCompetencia})`
+        : "Cobranças Pendentes",
       value: snapshot.mensalidadesPendentes,
-      description: "Mensalidades em aberto que ainda podem ser tratadas sem escalonamento.",
+      description: "Mensalidades em aberto na competência operacional seleccionada.",
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver mensalidades",
       icon: Banknote,

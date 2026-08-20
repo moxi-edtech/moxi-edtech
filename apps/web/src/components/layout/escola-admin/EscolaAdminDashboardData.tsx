@@ -45,7 +45,13 @@ type AdmissoesCountsRow = DBWithRPC["public"]["Views"]["vw_admissoes_counts_por_
 type FinanceiroDashboardRow = DBWithRPC["public"]["Views"]["vw_financeiro_dashboard"]["Row"];
 type MatriculasPorMesRow = DBWithRPC["public"]["Views"]["vw_admin_matriculas_por_mes"]["Row"];
 type MensalidadesStatusRow = DBWithRPC["public"]["Views"]["vw_mensalidades_operacional_status_ano_ativo"]["Row"];
-type FinanceiroPropinasMensalRow = DBWithRPC["public"]["Views"]["vw_financeiro_propinas_mensal_escola"]["Row"];
+type FinanceiroPropinasMensalRow =
+  DBWithRPC["public"]["Views"]["vw_financeiro_propinas_mensal_escola"]["Row"] & {
+    ano_letivo?: number | null;
+    competencia_mes?: string | null;
+    qtd_mensalidades?: number | null;
+    qtd_pagas_adiantadas?: number | null;
+  };
 type DisciplinaIdRow = { disciplina_id: string | null };
 type TurmaHorarioRow = { id: string; ano_letivo: number | null; nome: string | null; turma_codigo: string | null };
 type EstadoVitalResponse = { ok: boolean; estado: unknown };
@@ -489,6 +495,28 @@ export default async function EscolaAdminDashboardData({
       else if (status === "ajuste") pagamentosResumo.ajuste += total;
     });
 
+    const activeAno = Number(anoLetivoResult.data?.ano ?? currentYear);
+    const currentMonthKey = currentMonthStart.slice(0, 7);
+    const monthlyRows = ((financeiroMensalSeriesResult.data ?? []) as FinanceiroPropinasMensalRow[])
+      .filter((row) => Number(row.ano_letivo ?? 0) === activeAno)
+      .sort((a, b) => String(a.competencia_mes ?? "").localeCompare(String(b.competencia_mes ?? "")));
+    const selectedMonthlyRow =
+      monthlyRows.find((row) => String(row.competencia_mes ?? "").slice(0, 7) >= currentMonthKey) ??
+      monthlyRows[monthlyRows.length - 1] ??
+      null;
+    const mensalidadesPendentesMes = selectedMonthlyRow
+      ? Math.max(
+          0,
+          Number(selectedMonthlyRow.qtd_mensalidades ?? 0) -
+            Number(selectedMonthlyRow.qtd_pagas_adiantadas ?? 0)
+        )
+      : 0;
+    const mensalidadesCompetencia = selectedMonthlyRow?.competencia_mes
+      ? new Intl.DateTimeFormat("pt-PT", { month: "2-digit", year: "numeric" }).format(
+          new Date(`${String(selectedMonthlyRow.competencia_mes).slice(0, 7)}-01T00:00:00Z`)
+        )
+      : null;
+
     const setupBlockers = [
       !setupStatus.anoLetivoOk,
       !setupStatus.periodosOk,
@@ -524,7 +552,8 @@ export default async function EscolaAdminDashboardData({
     const turmasSemHorarioPublicado = Math.max(0, turmasDoAnoAtivo.length - turmasComHorarioPublicadoNoAno);
 
     const operationalSnapshot: OperationalSnapshot = {
-      mensalidadesPendentes: pagamentosResumo.pendente,
+      mensalidadesPendentes: mensalidadesPendentesMes,
+      mensalidadesCompetencia,
       mensalidadesInadimplentes: pagamentosResumo.inadimplente,
       turmasPendentes: pendingTurmasCount,
       curriculoHorarioPendencias: curriculoPendencias.horario + curriculoPendencias.avaliacao,
@@ -625,6 +654,7 @@ export default async function EscolaAdminDashboardData({
         pendingTurmasCount={0}
         operationalSnapshot={{
           mensalidadesPendentes: 0,
+          mensalidadesCompetencia: null,
           mensalidadesInadimplentes: 0,
           turmasPendentes: 0,
           curriculoHorarioPendencias: 0,

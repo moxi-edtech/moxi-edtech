@@ -15,6 +15,7 @@ export type KpiStats = {
 
 export type OperationalSnapshot = {
   mensalidadesPendentes: number;
+  mensalidadesCompetencia?: string | null;
   mensalidadesInadimplentes: number;
   turmasPendentes: number;
   curriculoHorarioPendencias: number;
