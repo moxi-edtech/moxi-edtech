@@ -252,7 +252,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Existe um pedido antigo sem ano letivo identificado. Envie para reconciliação antes de criar uma nova taxa.", code: "REMATRICULA_LEGACY_REVIEW_REQUIRED", pedido_id: pedidoExistente.id }, { status: 409 });
     }
     if (pedidoExistente?.status === "granted") {
-      const matriculaDestinoId = String((pedidoExistente.contexto as any)?.matricula_destino_id ?? origemMatriculaId);
+      const matriculaDestinoId = (pedidoExistente.contexto as any)?.matricula_destino_id;
+      if (!matriculaDestinoId) {
+        // The payment may have granted the service before the academic
+        // matrícula was finalized. Never issue a second charge or fabricate
+        // a destination from the origin matrícula; reconcile the paid order.
+        return NextResponse.json({
+          ok: false,
+          error: "Pagamento já recebido; a matrícula será concluída sem nova cobrança.",
+          code: "REMATRICULA_RECONCILIATION_REQUIRED",
+          pedido_id: pedidoExistente.id,
+        }, { status: 409 });
+      }
       const comprovante = await emitirComprovanteMatricula({
         supabase,
         escolaId,
