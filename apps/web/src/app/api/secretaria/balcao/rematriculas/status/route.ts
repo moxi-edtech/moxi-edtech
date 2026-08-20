@@ -298,7 +298,10 @@ export async function GET(request: Request) {
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestinoAdequada) {
-      status = reclassificacao ? "FINALIST_PENDING" : "RECONFIRMATION_REQUIRED";
+      // A prepared destination is still provisional until this operation is
+      // confirmed. Keep the normal promotion flow and let the attendant
+      // select/confirm the destination instead of hiding the selector.
+      status = reclassificacao ? "FINALIST_PENDING" : "READY";
     } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
       status = "PRICE_NOT_CONFIGURED";
     }
