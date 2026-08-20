@@ -309,6 +309,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               progressao={progressao}
               skipTurmaSelection={skipTurmaSelection}
               alunoId={alunoId}
+              escolaId={escolaId}
+              pathname={pathname}
               notasLancarDepois={notasLancarDepois}
               setNotasLancarDepois={setNotasLancarDepois}
               selectedTurmaId={selectedTurmaId}
@@ -385,6 +387,8 @@ function StepAcademico({
   turmasLoading,
   progressao,
   skipTurmaSelection,
+  escolaId,
+  pathname,
   notasLancarDepois,
   setNotasLancarDepois,
   selectedTurmaId,
@@ -401,6 +405,8 @@ function StepAcademico({
   turmasLoading: boolean;
   progressao: ProgressaoBalcao | null;
   skipTurmaSelection: boolean;
+  escolaId: string;
+  pathname: string | null;
   notasLancarDepois: boolean;
   setNotasLancarDepois: (value: boolean) => void;
   selectedTurmaId: string | null;
