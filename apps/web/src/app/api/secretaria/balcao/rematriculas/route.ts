@@ -314,13 +314,6 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
-    if (matriculaDestino && !reclassificacao && matriculaDestino.turma_id !== body.destino_turma_id) {
-      return NextResponse.json(
-        { ok: false, error: "A reconfirmação deve manter a turma destino já preparada.", code: "RECONFIRMATION_TURMA_MISMATCH" },
-        { status: 409 },
-      );
-    }
-
     const { data: pedido, error: pedidoError } = await (supabase as any)
       .from("servico_pedidos")
       .insert({
