@@ -5,8 +5,15 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = 'force-dynamic';
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({ 
+  params,
+  searchParams,
+}: { 
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ ano_letivo_id?: string }>;
+}) {
   const { id: escolaIdParam } = await params;
+  const { ano_letivo_id: anoLetivoIdParam } = (await searchParams) || {};
   const supabase = await supabaseServer();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -17,10 +24,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
 
   // Fetch initial data for SSR
-  const { data: items, error } = await supabase
+  let query = supabase
     .from('vw_turmas_para_matricula')
-    .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
-    .eq('escola_id', escolaId)
+    .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id, session_id')
+    .eq('escola_id', escolaId);
+
+  if (anoLetivoIdParam) {
+    query = query.eq('session_id', anoLetivoIdParam);
+  }
+
+  const { data: items, error } = await query
     .order('turma_nome', { ascending: true })
     .limit(100);
 

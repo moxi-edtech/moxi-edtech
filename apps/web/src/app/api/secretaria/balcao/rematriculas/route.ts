@@ -387,6 +387,8 @@ export async function POST(request: Request) {
 
     // A virada histórica deixou algumas matrículas destino ativas antes de
     // existir a autorização académica. Mantemos a vaga, mas só concluímos a
+    let matriculaDestinoId = "";
+
     // rematrícula mediante autorização explícita para lançar notas depois.
     if (matriculaDestino && !reclassificacao && raaAtual?.decision === "pendente") {
       if (body.notas_lancar_depois !== true) {
@@ -429,6 +431,7 @@ export async function POST(request: Request) {
       }
 
       const destinoId = String(matriculaDestino.id);
+      matriculaDestinoId = destinoId;
       await (supabase as any).from("servico_pedidos").update({
         status: "granted",
         matricula_id: destinoId,
@@ -440,7 +443,7 @@ export async function POST(request: Request) {
         },
       }).eq("id", pedido.id).eq("escola_id", escolaId);
       await (supabase as any).from("promocoes_com_pendencias").update({
-        matricula_destino_id: matriculaDestinoId,
+        matricula_destino_id: destinoId,
         status: "concluida",
         concluido_em: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -448,7 +451,6 @@ export async function POST(request: Request) {
         .eq("matricula_origem_id", origemMatriculaId)
         .eq("destino_ano_letivo_id", academicContext.anoLetivoId)
         .eq("status", "autorizada");
-      matriculaDestinoId = destinoId;
       rematriculaCondicionalConcluida = true;
     }
 
@@ -478,7 +480,6 @@ export async function POST(request: Request) {
       }
     }
 
-    let matriculaDestinoId = "";
     let finalizacao: any;
     let finalizacaoError: any = null;
 
