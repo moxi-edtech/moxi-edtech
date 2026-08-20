@@ -251,7 +251,11 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           matriculaOrigem = previousMatricula ?? matriculaOrigem;
         }
 
-        const turmaAtualId = matriculaOrigem?.turma_id ?? atual.turma_id ?? null;
+        // The dossier header must describe the active/current registration.
+        // The previous matrícula is kept separately for the rematricula
+        // operation; mixing its turma with the current classe produced e.g.
+        // “Turma 2ª Classe” alongside “Classe 3ª Classe”.
+        const turmaAtualId = atual.turma_id ?? matriculaOrigem?.turma_id ?? null;
         let turmaAtualCodigo = atual.turma_codigo ? String(atual.turma_codigo) : null;
         if (!turmaAtualCodigo && turmaAtualId) {
           const { data: turmaOrigem } = await supabase
