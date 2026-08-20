@@ -245,7 +245,11 @@ export async function GET(req: Request) {
     // Fallback operacional:
     // algumas escolas têm turmas em produção, mas a view de matrícula pode vir vazia
     // por defasagem de refresh/critério. Para módulos como horários, usamos turmas reais.
-    if (!error && items.length === 0) {
+    // No balcão de rematrícula, porém, um resultado vazio pode significar que a
+    // progressão académica bloqueou todas as opções. Repor todas as turmas aqui
+    // permitiria escolher uma classe inválida e contrariaria a validação do backend.
+    const hasRematriculaAcademicContext = Boolean(matriculaId && alunoId && sessionId && anoLetivo);
+    if (!error && items.length === 0 && !hasRematriculaAcademicContext) {
       let turmasQuery = supabase
         .from('turmas')
         .select('id, nome, turma_codigo, turma_code, turno, capacidade_maxima, sala, classe_id, curso_id, ano_letivo, status_validacao, session_id')

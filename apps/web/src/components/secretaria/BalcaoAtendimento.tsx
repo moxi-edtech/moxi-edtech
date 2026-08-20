@@ -201,6 +201,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
       try {
         const supabase = createClient();
         let dossierRpc = "get_aluno_dossier";
+        let targetAcademicYear: number | null = null;
         let dossierArgs: Record<string, unknown> = {
           p_escola_id: escolaId,
           p_aluno_id: alunoId,
@@ -217,6 +218,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
             .maybeSingle();
           const numericYear = Number(year?.ano);
           if (Number.isInteger(numericYear)) {
+            targetAcademicYear = numericYear;
             dossierRpc = "get_aluno_dossier_contextual";
             dossierArgs = { ...dossierArgs, p_ano_letivo: numericYear };
           }
@@ -232,13 +234,43 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
         const historico = Array.isArray(raw.historico) ? raw.historico : [];
         const atual = raw.matricula_ativa ?? historico[0] ?? {};
         const divida = Number(financeiro.total_em_atraso ?? raw.aluno?.divida_total ?? 0);
+        let matriculaOrigem = historico
+          .filter((item: any) => targetAcademicYear !== null && Number(item.ano_letivo) < targetAcademicYear)
+          .sort((a: any, b: any) => Number(b.ano_letivo ?? 0) - Number(a.ano_letivo ?? 0))[0] ?? null;
+        if (targetAcademicYear !== null) {
+          const { data: previousMatricula } = await supabase
+            .from("matriculas")
+            .select("id, ano_letivo, status, turma_id")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", alunoId)
+            .lt("ano_letivo", targetAcademicYear)
+            .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+            .order("ano_letivo", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          matriculaOrigem = previousMatricula ?? matriculaOrigem;
+        }
+
+        const turmaAtualId = matriculaOrigem?.turma_id ?? atual.turma_id ?? null;
+        let turmaAtualCodigo = atual.turma_codigo ? String(atual.turma_codigo) : null;
+        if (!turmaAtualCodigo && turmaAtualId) {
+          const { data: turmaOrigem } = await supabase
+            .from("turmas")
+            .select("nome, turma_codigo")
+            .eq("escola_id", escolaId)
+            .eq("id", turmaAtualId)
+            .maybeSingle();
+          turmaAtualCodigo = turmaOrigem
+            ? String(turmaOrigem.turma_codigo ?? turmaOrigem.nome ?? "Turma")
+            : null;
+        }
 
         setAluno({
           id: String(raw.aluno?.id ?? alunoId),
           nome: String(perfil.nome_completo ?? perfil.nome ?? raw.aluno?.nome ?? "Aluno"),
           foto_url: perfil.foto_url ? String(perfil.foto_url) : null,
           numero_processo: String(perfil.numero_processo ?? raw.aluno?.numero_processo ?? "-"),
-          turma_codigo: atual.turma_codigo ? String(atual.turma_codigo) : null,
+          turma_codigo: turmaAtualCodigo,
           curso_codigo: atual.curso_codigo ? String(atual.curso_codigo) : null,
           classe: atual.classe ? String(atual.classe) : null,
           status_financeiro: divida > 0 ? "inadimplente" : "em_dia",
@@ -246,11 +278,9 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
           // The dossier RPC returns the active registration as `{ id }`;
           // older payloads used `{ matricula_id }`. The rematricula status
           // endpoint needs the registration UUID in either case.
-          matricula_id: atual.matricula_id
-            ? String(atual.matricula_id)
-            : atual.id
-              ? String(atual.id)
-              : null,
+          matricula_id: matriculaOrigem?.id
+            ? String(matriculaOrigem.id)
+            : null,
         });
 
         const rawMensalidades = (financeiro.mensalidades ?? raw.mensalidades ?? []) as Array<Record<string, unknown>>;
@@ -885,7 +915,7 @@ function Catalogo({
                 <p className="text-xs text-slate-500">
                   {rematriculaReady
                     ? rematriculaState === "RECONFIRMATION_REQUIRED"
-                      ? "Pagar taxa e confirmar a matrícula já existente"
+                      ? "Pagar a taxa e ativar a matrícula na turma preparada"
                       : rematriculaState === "FINALIST_PENDING"
                         ? "Pagar taxa e escolher continuidade ou conclusão"
                         : "Pagamento, atualizacao da matricula e comprovante"
