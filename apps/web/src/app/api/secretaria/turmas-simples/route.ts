@@ -202,8 +202,14 @@ export async function GET(req: Request) {
       const progressionDecision = progressionResult?.progression.decision ?? 'pendente';
       const reprovado = progressionDecision.startsWith('retido');
       const modo = reprovado ? 'retencao' : 'promocao';
+      // Quando as notas ainda estão pendentes, a decisão final não informa
+      // uma etapa destino, mas o fluxo de balcão permite a rematrícula
+      // provisória para a etapa seguinte. O endpoint de confirmação aplica a
+      // mesma regra e volta a validar a classe escolhida.
       const classeDestinoNumero = progressionResult?.progression.etapaDestino?.classeNum
-        ?? (reprovado ? origemClasseNumero : null);
+        ?? (reprovado
+          ? origemClasseNumero
+          : (origemClasseNumero != null ? origemClasseNumero + 1 : null));
       const cursoFiltrado = cursoOrigemId
         ? items.filter((item: any) => !item.curso_id || item.curso_id === cursoOrigemId)
         : items;
