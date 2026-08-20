@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, UserCheck, UserX, BookOpen, AlertCircle, Loader2, Check } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import type { TurmaItem } from "~/types/turmas";
@@ -32,6 +32,8 @@ interface DisciplinaItem {
 
 interface ProfessorOption {
   id?: string;
+  user_id?: string;
+  professor_id?: string;
   teacher_id?: string;
   profile_id?: string;
   nome: string;
@@ -52,6 +54,11 @@ export default function TurmaAtribuirProfessoresModal({
   const [professores, setProfessores] = useState<ProfessorOption[]>([]);
   const [selectedProfs, setSelectedProfs] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  const toastErrorRef = useRef(toastError);
+
+  useEffect(() => {
+    toastErrorRef.current = toastError;
+  }, [toastError]);
 
   const loadData = useCallback(async () => {
     if (!isOpen || !turma.id || !escolaId) return;
@@ -59,7 +66,7 @@ export default function TurmaAtribuirProfessoresModal({
     try {
       const [discRes, profRes] = await Promise.all([
         fetch(`/api/secretaria/turmas/${turma.id}/disciplinas?escola_id=${escolaId}`),
-        fetch(`/api/secretaria/professores?escola_id=${escolaId}&pageSize=100&cargo=professor`),
+        fetch(`/api/secretaria/professores?escola_id=${escolaId}&pageSize=50&days=0&cargo=professor`),
       ]);
 
       const [discJson, profJson] = await Promise.all([
@@ -83,18 +90,21 @@ export default function TurmaAtribuirProfessoresModal({
       }
     } catch (err) {
       console.error("Erro ao carregar disciplinas/professores:", err);
-      toastError("Erro", "Falha ao carregar disciplinas da turma.");
+      toastErrorRef.current("Erro", "Falha ao carregar disciplinas da turma.");
     } finally {
       setLoading(false);
     }
-  }, [isOpen, turma.id, escolaId, toastError]);
+  }, [isOpen, turma.id, escolaId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const handleAssign = async (cursoMatrizId: string, profId: string) => {
-    if (!profId || !turma.id) return;
+  const handleAssign = async (cursoMatrizId: string, professor: ProfessorOption) => {
+    const professorId = professor.professor_id || undefined;
+    const professorUserId = professor.user_id || undefined;
+    const selectedId = professorId || professorUserId || "";
+    if (!selectedId || !turma.id) return;
     setSavingId(cursoMatrizId);
     try {
       const res = await fetch(`/api/secretaria/turmas/${turma.id}/atribuir-professor`, {
@@ -102,7 +112,8 @@ export default function TurmaAtribuirProfessoresModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           curso_matriz_id: cursoMatrizId,
-          professor_id: profId,
+          professor_id: professorId,
+          professor_user_id: professorUserId,
           replace_existing: true,
         }),
       });
@@ -113,7 +124,7 @@ export default function TurmaAtribuirProfessoresModal({
       }
 
       success("Sucesso", "Professor atribuído com sucesso!");
-      setSelectedProfs((prev) => ({ ...prev, [cursoMatrizId]: profId }));
+      setSelectedProfs((prev) => ({ ...prev, [cursoMatrizId]: selectedId }));
       onUpdated?.();
     } catch (err) {
       toastError("Erro", err instanceof Error ? err.message : "Falha ao atribuir professor");
@@ -256,7 +267,10 @@ export default function TurmaAtribuirProfessoresModal({
                       onChange={(e) => {
                         const newProfId = e.target.value;
                         if (newProfId) {
-                          handleAssign(disc.curso_matriz_id, newProfId);
+                          const selectedProfessor = professores.find((prof) =>
+                            (prof.professor_id || prof.user_id || prof.teacher_id || prof.id) === newProfId
+                          );
+                          if (selectedProfessor) handleAssign(disc.curso_matriz_id, selectedProfessor);
                         }
                       }}
                       disabled={isSaving}
@@ -264,7 +278,7 @@ export default function TurmaAtribuirProfessoresModal({
                     >
                       <option value="">Selecione um professor…</option>
                       {professores.map((prof) => {
-                        const pId = prof.id || prof.teacher_id || "";
+                        const pId = prof.professor_id || prof.user_id || prof.teacher_id || prof.id || "";
                         return (
                           <option key={pId} value={pId}>
                             {prof.nome}
