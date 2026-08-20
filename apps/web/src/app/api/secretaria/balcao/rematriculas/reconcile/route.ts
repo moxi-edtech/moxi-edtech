@@ -43,7 +43,10 @@ export async function POST(request: Request) {
     if (!pedido || pedido.servico_codigo !== "SERV_REMATRICULA") {
       return NextResponse.json({ ok: false, error: "Pedido de rematrícula não encontrado" }, { status: 404 });
     }
-    if (pedido.status !== "pending_payment") {
+    // The payment endpoint may already move the service pedido to `granted`
+    // before the academic transaction finishes. Reconciliation must be safe
+    // to retry in that state instead of returning a misleading 409.
+    if (!(["pending_payment", "granted"] as string[]).includes(String(pedido.status))) {
       return NextResponse.json({ ok: false, error: "Este pedido já não está pendente", code: "PEDIDO_NOT_PENDING" }, { status: 409 });
     }
 
@@ -60,11 +63,19 @@ export async function POST(request: Request) {
         .select("id, status, valor_pago, meta")
         .eq("escola_id", escolaId)
         .eq("aluno_id", pedido.aluno_id)
-        .in("status", ["settled", "confirmed", "paid", "succeeded"]);
+        .in("status", ["settled", "confirmed", "paid", "succeeded", "confirmado", "recebido", "pago"]);
       const pagamentoConfirmado = (pagamentos ?? []).find(
-        (pagamento: any) => pagamento.meta?.pedido_id === pedido.id,
+        (pagamento: any) => pagamento.meta?.pedido_id === pedido.id || pagamento.meta?.servico_pedido_id === pedido.id,
       );
-      if (!pagamentoConfirmado) {
+      const { data: intents } = await supabase
+        .from("pagamento_intents")
+        .select("id, status, servico_pedido_id")
+        .eq("escola_id", escolaId)
+        .eq("servico_pedido_id", pedido.id);
+      const intentConfirmado = (intents ?? []).find((intent: any) =>
+        ["settled", "confirmed", "paid", "succeeded", "confirmado", "recebido", "pago"].includes(String(intent.status).toLowerCase()),
+      );
+      if (!pagamentoConfirmado && !intentConfirmado) {
         return NextResponse.json({ ok: false, error: "Não foi encontrado um pagamento liquidado para este pedido", code: "PAYMENT_NOT_SETTLED" }, { status: 409 });
       }
 
@@ -199,7 +210,7 @@ export async function POST(request: Request) {
         details: {
           aluno_id: pedido.aluno_id,
           matricula_id: finalizacao.matricula_id,
-          pagamento_id: pagamentoConfirmado.id,
+          pagamento_id: pagamentoConfirmado?.id ?? intentConfirmado?.id ?? null,
           ano_letivo_id: academicContext.anoLetivoId,
         },
       });

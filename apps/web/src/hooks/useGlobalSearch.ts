@@ -499,50 +499,12 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       });
     };
 
-    const fetchPage = async (pageCursor: Cursor | null, append: boolean) => {
-      const { data, error } = await supabase.rpc(
-        "search_global_entities",
-        {
-          p_escola_id: escolaId,
-          p_query: q,
-          p_types: resolvedTypes,
-          p_limit: limit,
-          p_cursor_score: pageCursor?.score ?? undefined,
-          p_cursor_updated_at: pageCursor?.updated_at ?? undefined,
-          p_cursor_created_at: pageCursor?.created_at ?? undefined,
-          p_cursor_id: pageCursor?.id ?? undefined,
-        });
-
-      if (error) {
-        if (!append && isMissingGlobalSearchRpcError(error)) {
-          await fetchFallback();
-          return;
-        }
-        throw error;
-      }
-
-      const payload = ((data as SearchResult[]) ?? []);
-      const nextCursor = payload.length === limit ? toCursor(payload[payload.length - 1]) : null;
-      const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
-
-      setResults((prev) => (append ? [...prev, ...items] : items));
-      setCursor(nextCursor);
-      setHasMore(Boolean(nextCursor));
-
-      if (!append) {
-        searchCache.set(debouncedCacheKey, {
-          ts: now,
-          data: payload,
-          cursor: nextCursor,
-          hasMore: Boolean(nextCursor),
-        });
-      }
-    };
-
     (async () => {
       try {
         if (cached && now - cached.ts < SEARCH_CACHE_TTL_MS) return;
-        await fetchPage(null, false);
+        // Keep the search operational while the global-search RPC is absent
+        // from some production databases. This avoids a 404 on every search.
+        await fetchFallback();
       } catch (err: unknown) {
         // ignore abort
         // A pesquisa pode ser cancelada quando o utilizador continua a
@@ -563,50 +525,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   }, [debouncedCacheKey, debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal, intent]);
 
   const loadMore = async () => {
-    if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
-    setLoading(true);
-    const ac = new AbortController();
-    try {
-      const { data, error } = await supabase.rpc(
-        "search_global_entities",
-        {
-          p_escola_id: escolaId,
-          p_query: debouncedQuery,
-          p_types: resolvedTypes,
-          p_limit: Math.min(8, 50),
-          p_cursor_score: cursor.score,
-          p_cursor_updated_at: cursor.updated_at,
-          p_cursor_created_at: cursor.created_at,
-          p_cursor_id: cursor.id,
-        });
-
-      if (error) throw error;
-
-      const payload = ((data as SearchResult[]) ?? []);
-      const nextCursor = payload.length === Math.min(8, 50)
-        ? {
-            score: payload[payload.length - 1].score,
-            updated_at: payload[payload.length - 1].updated_at,
-            created_at: payload[payload.length - 1].created_at,
-            id: payload[payload.length - 1].id,
-          }
-        : null;
-
-      const items = payload.map((a) => mapToMinimalResult(options?.portal, escolaId, a, intent));
-
-      setResults((prev) => [...prev, ...items]);
-      setCursor(nextCursor);
-      setHasMore(Boolean(nextCursor));
-    } catch (err: unknown) {
-      if (!isAbortError(err)) {
-        if (!isMissingGlobalSearchRpcError(err as { code?: string; message?: string; status?: number })) {
-          console.error("[GlobalSearch] Erro ao carregar mais:", err);
-        }
-        setHasMore(false);
-      }
-    } finally {
-      if (!ac.signal.aborted) setLoading(false);
-    }
+    // The tenant-scoped fallback is intentionally single-page.
+    return;
   };
 
   return { query, setQuery, results, loading, hasMore, loadMore, detectedIntent: intent, recentResults, rememberResult };

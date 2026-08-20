@@ -1109,6 +1109,7 @@ function AuditTrail({ audit, aluno, onRefresh }: { audit: ReturnType<typeof useA
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
+                        timeZone: "Africa/Luanda",
                       })
                     : "-"}
                 </p>
