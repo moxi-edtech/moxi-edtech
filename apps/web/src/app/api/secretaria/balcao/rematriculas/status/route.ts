@@ -152,6 +152,47 @@ export async function GET(request: Request) {
       .limit(1)
       .maybeSingle();
 
+    // A matrícula in the target year is not enough to block rematriculation:
+    // migrations/promotions can leave a provisional row in the wrong class.
+    // Only a row in the academically expected class counts as the destination.
+    const { data: origemTurma } = matriculaOrigem.turma_id
+      ? await supabase
+          .from("turmas")
+          .select("classe_id")
+          .eq("escola_id", escolaId)
+          .eq("id", matriculaOrigem.turma_id)
+          .maybeSingle()
+      : { data: null };
+    const { data: origemClasse } = origemTurma?.classe_id
+      ? await supabase
+          .from("classes")
+          .select("numero, nome")
+          .eq("id", origemTurma.classe_id)
+          .maybeSingle()
+      : { data: null };
+    const { data: destinoTurmaExistente } = matriculaDestino?.turma_id
+      ? await supabase
+          .from("turmas")
+          .select("classe_id")
+          .eq("escola_id", escolaId)
+          .eq("id", matriculaDestino.turma_id)
+          .maybeSingle()
+      : { data: null };
+    const { data: destinoClasseExistente } = destinoTurmaExistente?.classe_id
+      ? await supabase
+          .from("classes")
+          .select("numero, nome")
+          .eq("id", destinoTurmaExistente.classe_id)
+          .maybeSingle()
+      : { data: null };
+    const classeNumero = (classe: any) => Number(classe?.numero ?? String(classe?.nome ?? "").match(/\d{1,2}/)?.[0] ?? 0) || null;
+    const classeOrigemNumero = classeNumero(origemClasse);
+    const classeDestinoNumero = classeNumero(destinoClasseExistente);
+    const classeDestinoEsperada = classeOrigemNumero && classeOrigemNumero < 12 ? classeOrigemNumero + 1 : null;
+    const matriculaDestinoAdequada = matriculaDestino && (
+      !classeDestinoEsperada || !classeDestinoNumero || classeDestinoNumero === classeDestinoEsperada
+    ) ? matriculaDestino : null;
+
     const { data: reclassificacao } = matriculaDestino
       ? await supabase
           .from("matricula_reclassificacoes")
@@ -190,7 +231,7 @@ export async function GET(request: Request) {
       .eq("codigo", "SERV_REMATRICULA")
       .maybeSingle();
 
-    const targetTurmaId = destino_turma_id ?? reclassificacao?.destino_turma_id ?? matriculaDestino?.turma_id ?? matriculaOrigem?.turma_id ?? null;
+    const targetTurmaId = destino_turma_id ?? reclassificacao?.destino_turma_id ?? matriculaDestinoAdequada?.turma_id ?? matriculaOrigem?.turma_id ?? null;
     const { data: targetTurma } = targetTurmaId
       ? await supabase.from("turmas").select("curso_id, classe_id").eq("escola_id", escolaId).eq("id", targetTurmaId).maybeSingle()
       : { data: null };
@@ -244,7 +285,9 @@ export async function GET(request: Request) {
 
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
-    if (pedidoExistente?.status === "granted") {
+    const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
+    const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
+    if (pedidoConcluido) {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
       status = pedidoLegado
@@ -254,7 +297,7 @@ export async function GET(request: Request) {
         : "PAYMENT_IN_PROGRESS";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
-    } else if (matriculaDestino) {
+    } else if (matriculaDestinoAdequada) {
       status = reclassificacao ? "FINALIST_PENDING" : "RECONFIRMATION_REQUIRED";
     } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
       status = "PRICE_NOT_CONFIGURED";
@@ -315,7 +358,7 @@ export async function GET(request: Request) {
         ano: targetAnoLetivoAno,
         label: academicContext.anoLetivoLabel,
       },
-      destino_turma_id: matriculaDestino?.turma_id ?? null,
+      destino_turma_id: matriculaDestinoAdequada?.turma_id ?? null,
       reclassificacao: reclassificacao
         ? {
             id: reclassificacao.id,
