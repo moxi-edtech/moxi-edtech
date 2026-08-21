@@ -512,7 +512,11 @@ export default function TurmasConfiguracoesPage() {
         "Currículo publicado.",
         buildPublishSyncMessage(json)
       );
+      const activatedCursoId = selectedCursoId;
       closeModal();
+      if (activatedCursoId) {
+        void openModal(activatedCursoId, "generate");
+      }
     } catch (e: any) {
       const networkIssue = resolvePublishNetworkIssue(e);
       if (networkIssue) {
@@ -1251,7 +1255,7 @@ export default function TurmasConfiguracoesPage() {
                           className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95"
                         >
                           <BookOpenCheck className="h-4 w-4" />
-                          Publicar
+                          Ativar currículo
                         </button>
                       ) : (
                         <button
@@ -1336,8 +1340,8 @@ export default function TurmasConfiguracoesPage() {
 
       {modal === "publish" && selectedCurso && selectedCurriculo && (
         <ModalShell
-          title="Revisão antes de publicar"
-          subtitle="Confirme o contexto e o impacto antes de tornar este currículo oficial."
+          title="Ativar currículo"
+          subtitle="Passo 1 de 2 · confirme o contexto antes de preparar as turmas."
           onClose={closeModal}
           footer={
             <div className="flex items-center justify-between">
@@ -1360,7 +1364,7 @@ export default function TurmasConfiguracoesPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
                 {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
-                Publicar currículo
+                Publicar e continuar
               </button>
             </div>
           }

@@ -35,11 +35,12 @@ export async function POST(request: Request) {
     const failures: Array<{ aluno_id: string; error: string }> = [];
 
     for (const alunoId of alunoIds) {
-      const { data, error } = await (supabase as any).rpc("promover_aluno_pos_pagamento", {
+      const { data, error } = await (supabase as any).rpc("preparar_aluno_para_rematricula", {
         p_escola_id: escolaId,
         p_aluno_id: alunoId,
         p_from_session_id: parsed.data.from_session_id,
         p_to_session_id: parsed.data.to_session_id,
+        p_turma_destino_id: null,
       });
 
       if (error) {

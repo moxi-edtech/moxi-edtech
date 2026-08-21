@@ -26,11 +26,12 @@ export async function POST(request: Request) {
     const parsed = bodySchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados do aluno inválidos" }, { status: 400 });
 
-    const { data, error } = await (supabase as any).rpc("promover_aluno_pos_pagamento", {
+    const { data, error } = await (supabase as any).rpc("preparar_aluno_para_rematricula", {
       p_escola_id: escolaId,
       p_aluno_id: parsed.data.aluno_id,
       p_from_session_id: parsed.data.from_session_id,
       p_to_session_id: parsed.data.to_session_id,
+      p_turma_destino_id: null,
     });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 409 });
     const { data: reclassificationSync, error: reclassificationSyncError } = await (supabase as any).rpc("sync_reclassificacoes_virada", {

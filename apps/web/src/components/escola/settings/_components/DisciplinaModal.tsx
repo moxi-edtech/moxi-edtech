@@ -56,6 +56,7 @@ type ClassOption = {
 
 type Props = {
   open: boolean;
+  embedded?: boolean;
   mode: "create" | "edit";
   initial?: DisciplinaForm | null;
   existingCodes: string[];
@@ -149,6 +150,7 @@ function isValidCode(code: string) {
 
 export function DisciplinaModal({
   open,
+  embedded = false,
   mode,
   initial,
   existingCodes,
@@ -411,8 +413,8 @@ export function DisciplinaModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-3xl bg-slate-50 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+    <div className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10"}>
+      <div className={embedded ? "w-full bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col" : "w-full max-w-3xl bg-slate-50 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]"}>
         <div className="bg-[#1F6B3B] px-6 py-4 text-white flex justify-between items-start shrink-0">
           <div className="space-y-1">
             <div className="text-[#D7E7DC] text-xs font-bold uppercase tracking-wider">

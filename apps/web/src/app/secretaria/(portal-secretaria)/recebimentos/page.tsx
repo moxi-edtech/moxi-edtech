@@ -31,7 +31,7 @@ export default async function RecebimentosPage() {
           { label: "Recebimentos" },
         ]}
       />
-      <PagamentosPendentesWindow />
+      <PagamentosPendentesWindow escolaId={escolaId} />
     </div>
   );
 }

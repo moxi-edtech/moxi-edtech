@@ -46,3 +46,23 @@ export function buildInstallPresetSkippedAppliedPayload(escolaId: string) {
     },
   };
 }
+
+export async function ensureCurriculumCourseOffering(
+  supabase: any,
+  escolaId: string,
+  cursoId: string,
+  presetKey: string,
+) {
+  const { data, error } = await supabase.rpc('ensure_k12_course_offering', {
+    p_escola_id: escolaId,
+    p_course_id: cursoId,
+    p_curriculum_preset_id: presetKey,
+  });
+
+  if (error) {
+    return { offeringId: null as string | null, error: error.message || 'Falha ao associar o calendário do curso.' };
+  }
+
+  const offeringId = Array.isArray(data) ? data[0] : data;
+  return { offeringId: typeof offeringId === 'string' ? offeringId : null, error: null };
+}
