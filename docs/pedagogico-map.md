@@ -5,6 +5,11 @@ Documentar o fluxo Pedagógico (UI → API → DB), com origem única de dados e
 
 ## Fluxos principais
 
+### Fronteira de gestão pedagógica
+- Gestão (currículo, horários e atribuição de professores): `admin`, `admin_escola`, `admin_financeiro`, `admin_secretaria` e `diretor`.
+- Consulta operacional: `secretaria` e `financeiro`.
+- A autorização é única entre UI, API, RPC `curriculo_publish*` e RLS; ocultar o botão não substitui o guard do backend.
+
 ### Turma › Aba Pedagógico
 - UI: `apps/web/src/components/secretaria/TurmaDetailClient.tsx`
 - API: `apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts`
@@ -15,9 +20,18 @@ Documentar o fluxo Pedagógico (UI → API → DB), com origem única de dados e
 
 ### Estrutura › Currículo/Disciplinas
 - UI: `apps/web/src/components/escola/settings/StructureMarketplace.tsx`
+- UI contextual de turmas: `apps/web/src/components/secretaria/TurmaCurriculoModal.tsx`
 - API: `apps/web/src/app/api/escolas/[id]/cursos/[cursoId]/details/route.ts`
 - API: `apps/web/src/app/api/escolas/[id]/disciplinas/route.ts`
+- API: `apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/curriculo/classe/route.ts`
 - Origem: `curso_matriz` + `disciplinas_catalogo`
+- Unidade de alteração: classe; a matriz publicada deve ser comum a todas as turmas da classe.
+
+### Turmas › Horários e professores
+- UI: `apps/web/src/components/secretaria/TurmasListClient.tsx`
+- Modais contextuais: `TurmaHorarioModal.tsx` e `TurmaAtribuirProfessoresModal.tsx`
+- APIs: `/api/escolas/{id}/horarios/*` e `/api/escolas/{id}/turmas/{turmaId}/atribuir-professor`
+- Regra: a lista de turmas, o quadro de horários e a área de Professores usam o mesmo vínculo `turma_disciplinas`.
 
 ### Avaliações e Notas
 - UI: `apps/web/src/app/escola/[id]/avaliacoes/page.tsx`

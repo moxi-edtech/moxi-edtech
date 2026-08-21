@@ -1,9 +1,9 @@
 # POP-P0-04 - Avaliacao, Quadro de Horario e Integracao Academica (Admin)
 
-Versao: 1.1.0
-Data: 2026-06-28
+Versao: 1.2.0
+Data: 2026-08-21
 Modulo: Admin da Escola
-Perfil principal: admin_escola
+Perfis autorizados: admin, admin_escola, admin_financeiro, admin_secretaria, diretor
 Tempo medio alvo: 30-90 minutos por turma
 
 ## 1. Objetivo
@@ -52,6 +52,11 @@ Regra estrutural:
 - `Horarios > Quadro`
 - Turmas e disciplinas ja criadas no fluxo academico.
 - Janela de alteracao autorizada.
+
+Regra de escopo pedagógico:
+- `secretaria` e `financeiro` podem consultar turmas e o estado do quadro, mas não alteram slots, quadro ou atribuições.
+- Os perfis administrativos autorizados executam a operação na escola autenticada.
+- A mesma regra é aplicada na UI, nas rotas de horários e nos controles de autorização do servidor.
 
 ## 5.1 Estado fiel ao codigo
 
@@ -112,6 +117,11 @@ Bloqueios/validacoes reais de slot:
 7. Definir sala da turma quando ausente.
 8. Clicar `Salvar agora` para rascunho quando a barra de persistencia aparecer.
 9. Quando estiver consistente, clicar `Publicar`.
+
+Atalho no fluxo de turmas:
+- A ação de horário na lista de turmas abre o modal contextual da turma.
+- O modal permite consultar/montar a grade sem navegar para um fluxo paralelo.
+- A edição continua sujeita às validações de conflito de slot, professor, sala e carga horária.
 
 ## 9. Procedimento D - Publicacao e controles finais
 
@@ -190,6 +200,6 @@ Bloqueios/validacoes reais de slot:
 
 ## 16. Revisao e versao
 
-- Ultima revisao: 2026-06-28
-- Proxima revisao: 2026-07-12
-- Mudancas desta versao: alinhado aos labels reais de `Avaliação & Frequência`, slots e quadro de horarios.
+- Ultima revisao: 2026-08-21
+- Proxima revisao: 2026-09-04
+- Mudancas desta versao: ações contextuais na lista de turmas e RBAC pedagógico alinhado entre UI e backend.
