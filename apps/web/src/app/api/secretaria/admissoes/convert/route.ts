@@ -484,7 +484,28 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, pagamento_id: pagamento?.id ?? null, valor_total: valorTotal, itens_pagamento: itensPagamento, comprovante, familia })
+    let recibo: { ok: boolean; print_url?: string; doc_id?: string; public_id?: string; error?: string } | null = null
+    if (pagamento?.id && !parcial) {
+      const { data: reciboData, error: reciboError } = await (supabase as any).rpc('emitir_recibo_servicos', {
+        p_pagamento_id: pagamento.id,
+      })
+      const reciboResult = reciboData && typeof reciboData === 'object' ? reciboData as Record<string, unknown> : null
+      if (reciboError) {
+        recibo = { ok: false, error: reciboError.message }
+        console.warn('[admissoes/convert] recibo não emitido:', reciboError.message)
+      } else if (reciboResult?.ok === true && typeof reciboResult.doc_id === 'string') {
+        recibo = {
+          ok: true,
+          doc_id: reciboResult.doc_id,
+          public_id: typeof reciboResult.public_id === 'string' ? reciboResult.public_id : undefined,
+          print_url: `/secretaria/documentos/${reciboResult.doc_id}/recibo/print`,
+        }
+      } else {
+        recibo = { ok: false, error: typeof reciboResult?.erro === 'string' ? reciboResult.erro : 'Recibo pendente de liquidação.' }
+      }
+    }
+
+    return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, pagamento_id: pagamento?.id ?? null, valor_total: valorTotal, itens_pagamento: itensPagamento, comprovante, recibo, familia })
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
     const isUniqueViolation =

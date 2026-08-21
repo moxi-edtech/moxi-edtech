@@ -150,6 +150,7 @@ type SimpleResult = {
   matricula_id?: string;
   numero_matricula?: string;
   comprovante?: { ok: boolean; printUrl?: string; error?: string };
+  recibo?: { ok: boolean; print_url?: string; error?: string } | null;
 };
 
 type ExistingMatriculaConflict = {
@@ -2016,6 +2017,14 @@ function Step3Pagamento(props: {
             }}
             onDismiss={() => router.push(`${secretariaBase}/matriculas`)}
           />
+
+          {result.recibo?.ok && result.recibo.print_url && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-500">Recibo financeiro consolidado</p>
+              <p className="mt-1 text-sm text-slate-600">Inclui a matrícula e todos os serviços selecionados nesta transação.</p>
+              <a href={result.recibo.print_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo com itens pagos</a>
+            </div>
+          )}
 
           <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">

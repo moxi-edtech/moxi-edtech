@@ -51,6 +51,12 @@ export interface RematriculaResult {
     turma_id: string;
   };
   pagamento?: { id: string } | null;
+  recibo?: {
+    ok?: boolean;
+    doc_id?: string | null;
+    public_id?: string | null;
+    print_url?: string | null;
+  } | null;
   comprovante?: {
     ok?: boolean;
     docId?: string;
@@ -60,6 +66,14 @@ export interface RematriculaResult {
   error?: string;
   code?: string;
 }
+
+export type RematriculaPaymentItem = {
+  id: string;
+  tipo: "mensalidade" | "servico";
+  nome?: string;
+  preco: number;
+  origem_matricula_id?: string | null;
+};
 
 type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -141,6 +155,7 @@ export function useRematriculaBalcao(opts: {
   alunoId: string | null;
   matriculaId: string | null;
   academicYearId: string | null;
+  itensPagamento?: RematriculaPaymentItem[];
 }) {
   const draftKey = `klasse:rematricula:draft:${opts.escolaId}:${opts.alunoId ?? "-"}:${opts.matriculaId ?? "-"}:${opts.academicYearId ?? "-"}`;
   // ── Status data ─────────────────────────────────────────────────────────
@@ -448,6 +463,7 @@ export function useRematriculaBalcao(opts: {
           evidence_url: detalhes.evidencia_url.trim() || null,
           gateway_ref: detalhes.gateway_ref.trim() || null,
           notas_lancar_depois: notasLancarDepois,
+          itens: opts.itensPagamento?.map(({ id, tipo }) => ({ id, tipo })) ?? [],
         }),
       });
 
@@ -495,6 +511,7 @@ export function useRematriculaBalcao(opts: {
     notasLancarDepois,
     draftKey,
     idempotencyKey,
+    opts.itensPagamento,
   ]);
 
   // ────────────────────────────────────────────────────────────────────────

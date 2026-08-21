@@ -10,6 +10,7 @@ const legacyPayloadSchema = z.object({
   matricula_id: z.string().uuid().nullable().optional(),
   ano_letivo_id: z.string().uuid().nullable().optional(),
   origem: z.string().trim().optional(),
+  pedido_id: z.string().uuid().nullable().optional(),
   metodo_pagamento: z.string().min(1),
   detalhes: z.object({
     referencia: z.string().nullable().optional(),
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
         ano_letivo_id: parsed.data.ano_letivo_id ?? undefined,
         meta: {
           origem: parsed.data.origem ?? "secretaria_pagamentos_processar_compat",
+          pedido_id: parsed.data.pedido_id ?? null,
           matricula_id: parsed.data.matricula_id ?? (item.tipo === "mensalidade" ? item.origem_matricula_id : null) ?? null,
           descricao_item: item.nome ?? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço escolar"),
           itens: itensPagamento,

@@ -92,6 +92,7 @@ type ConvertResponse = {
   ok?: boolean
   idempotent?: boolean
   comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null
+  recibo?: { ok?: boolean; print_url?: string; error?: string } | null
   error?: string
   details?: string
   code?: string
@@ -171,6 +172,7 @@ export function AdmissaoConversionSheet({
     alunoId: string;
     numeroMatricula: string;
     comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null;
+    recibo?: { ok?: boolean; print_url?: string; error?: string } | null;
   } | null>(null)
   const [credentials, setCredentials] = useState<{
     login: string;
@@ -450,6 +452,7 @@ export function AdmissaoConversionSheet({
         alunoId: newAlunoId,
         numeroMatricula: json?.numero_matricula ?? '',
         comprovante: json.comprovante ?? null,
+        recibo: json.recibo ?? null,
       })
 
       onSuccess(json.matricula_id)
@@ -640,6 +643,13 @@ export function AdmissaoConversionSheet({
                   <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovativo ainda não foi emitido. Emita-o pela área de documentos.</p>
                 )}
                 {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
+                <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Recibo financeiro</p>
+                {enrollmentResult.recibo?.ok && enrollmentResult.recibo.print_url ? (
+                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo com itens pagos</a>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-800">O recibo financeiro não foi emitido automaticamente. Verifique a liquidação do pagamento.</p>
+                )}
+                {enrollmentResult.recibo?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.recibo.error}</p>}
               </div>
 
               <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
@@ -656,6 +666,7 @@ export function AdmissaoConversionSheet({
                 <div className="mt-3 space-y-2 text-xs">
                   <div className="flex items-center justify-between gap-3"><span>Matrícula criada</span><span className="font-black text-emerald-700">Concluído</span></div>
                   <div className="flex items-center justify-between gap-3"><span>Comprovativo</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Recibo financeiro</span><span className={enrollmentResult.recibo?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.recibo?.ok ? "Disponível" : "Pendente"}</span></div>
                   <div className="flex items-center justify-between gap-3"><span>Portal do aluno</span><span className={credentials ? "font-black text-emerald-700" : "font-black text-amber-700"}>{credentials ? "Liberado" : "Pendente"}</span></div>
                   <div className="flex items-center justify-between gap-3"><span>WhatsApp preparado</span><span className={notificationSent ? "font-black text-emerald-700" : "font-black text-amber-700"}>{notificationSent ? "Concluído" : "Pendente"}</span></div>
                 </div>

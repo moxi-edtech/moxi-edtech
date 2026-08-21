@@ -1457,14 +1457,15 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
   const search = useAlunoSearch();
   const dossier = useAlunoDossier(escolaId, effectiveAcademicYearId);
   const servicos = useServicos(escolaId);
+  const carrinho = useCarrinho();
 
   const rematricula = useRematriculaBalcao({
     escolaId,
     alunoId: dossier.aluno?.id ?? null,
     matriculaId: dossier.aluno?.matricula_id ?? null,
     academicYearId: effectiveAcademicYearId,
+    itensPagamento: carrinho.itens,
   });
-  const carrinho = useCarrinho();
   const audit = useAuditTrail();
 
   const [addingServicoId] = useState<string | null>(null);
@@ -1662,7 +1663,10 @@ export default function BalcaoAtendimento({ escolaId, selectedAlunoId = null, sh
           open={rematricula.modalOpen}
           onClose={() => {
             rematricula.closeModal();
-            if (rematricula.result) void dossier.load(dossier.aluno!.id);
+            if (rematricula.result) {
+              carrinho.limpar();
+              void dossier.load(dossier.aluno!.id);
+            }
           }}
           alunoNome={dossier.aluno.nome}
           alunoProcesso={dossier.aluno.numero_processo}

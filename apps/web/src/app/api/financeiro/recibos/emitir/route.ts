@@ -414,7 +414,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const valorRecibo = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
+    const valorRecibo = receiptItems.reduce((total, item) => total + item.valor, 0);
     if (!Number.isFinite(valorRecibo) || valorRecibo <= 0) {
       return NextResponse.json(
         { ok: false, error: "Valor inválido para emissão fiscal do recibo." },

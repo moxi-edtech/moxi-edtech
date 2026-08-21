@@ -29,6 +29,10 @@ const Body = z.object({
   evidence_url: z.string().trim().min(1).nullable().optional(),
   gateway_ref: z.string().trim().min(1).nullable().optional(),
   notas_lancar_depois: z.boolean().optional(),
+  itens: z.array(z.object({
+    id: z.string().uuid(),
+    tipo: z.enum(["mensalidade", "servico"]),
+  })).max(50).optional(),
 });
 
 const SERVICE_CODE = "SERV_REMATRICULA";
@@ -232,6 +236,76 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O emolumento de rematrícula ainda não está configurado.", code: "REMATRICULA_PRICE_NOT_CONFIGURED" }, { status: 409 });
     }
 
+    const requestedItems = body.itens ?? [];
+    const requestedKeys = new Set<string>();
+    for (const item of requestedItems) {
+      const key = `${item.tipo}:${item.id}`;
+      if (requestedKeys.has(key)) {
+        return NextResponse.json({ ok: false, error: "Existem itens duplicados no pagamento.", code: "PAYMENT_ITEMS_DUPLICATED" }, { status: 400 });
+      }
+      requestedKeys.add(key);
+    }
+
+    const extraMensalidadeIds = requestedItems
+      .filter((item) => item.tipo === "mensalidade")
+      .map((item) => item.id);
+    const extraServicoIds = requestedItems
+      .filter((item) => item.tipo === "servico" && item.id !== service.id)
+      .map((item) => item.id);
+
+    const [{ data: extraMensalidades }, { data: extraServicos }] = await Promise.all([
+      extraMensalidadeIds.length > 0
+        ? supabase
+            .from("mensalidades")
+            .select("id, mes_referencia, ano_referencia, valor_previsto, valor, valor_pago_total")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", body.aluno_id)
+            .in("id", extraMensalidadeIds)
+        : Promise.resolve({ data: [] }),
+      extraServicoIds.length > 0
+        ? supabase
+            .from("servicos_escola")
+            .select("id, nome, valor_base, ativo")
+            .eq("escola_id", escolaId)
+            .eq("ativo", true)
+            .in("id", extraServicoIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    if ((extraMensalidades ?? []).length !== extraMensalidadeIds.length || (extraServicos ?? []).length !== extraServicoIds.length) {
+      return NextResponse.json({ ok: false, error: "Um ou mais itens do pagamento não pertencem ao aluno ou não estão disponíveis.", code: "PAYMENT_ITEMS_INVALID" }, { status: 409 });
+    }
+
+    const paymentItems = [
+      ...(extraMensalidades ?? []).map((item: any) => ({
+        id: String(item.id),
+        tipo: "mensalidade" as const,
+        nome: `Propina ${item.mes_referencia ?? ""}/${item.ano_referencia ?? ""}`.trim(),
+        preco: Math.max(
+          Number(item.valor_previsto ?? item.valor ?? 0) - Number(item.valor_pago_total ?? 0),
+          0,
+        ),
+        origem_matricula_id: origemMatriculaId,
+      })),
+      ...(extraServicos ?? []).map((item: any) => ({
+        id: String(item.id),
+        tipo: "servico" as const,
+        nome: String(item.nome),
+        preco: Number(item.valor_base ?? 0),
+      })),
+      {
+        id: String(service.id),
+        tipo: "servico" as const,
+        nome: String(service.nome),
+        preco: valorConfirmacao,
+      },
+    ].filter((item) => item.preco > 0);
+
+    const totalPagamento = paymentItems.reduce((total, item) => total + item.preco, 0);
+    if (!confirmationExempt && totalPagamento <= 0) {
+      return NextResponse.json({ ok: false, error: "O pagamento não possui itens com valor válido.", code: "PAYMENT_ITEMS_EMPTY" }, { status: 409 });
+    }
+
     const { data: pedidosExistentes } = await (supabase as any)
       .from("servico_pedidos")
       .select("id, status, contexto")
@@ -272,7 +346,13 @@ export async function POST(request: Request) {
         createdBy: user.id,
         audit: { portal: "secretaria", acao: "REMATRICULA_COMPROVANTE_REUTILIZADO" },
       });
-      return NextResponse.json({ ok: true, pedido_id: pedidoExistente.id, rematricula: { matricula_id: matriculaDestinoId, ano_letivo_id: academicContext.anoLetivoId }, comprovante });
+      return NextResponse.json({
+        ok: true,
+        pedido_id: pedidoExistente.id,
+        rematricula: { matricula_id: matriculaDestinoId, ano_letivo_id: academicContext.anoLetivoId },
+        recibo: null,
+        comprovante,
+      });
     }
     if (pedidoExistente?.status === "pending_payment") {
       if (pedidoLegado) {
@@ -324,7 +404,7 @@ export async function POST(request: Request) {
         status: confirmationExempt ? "granted" : "pending_payment",
         servico_codigo: SERVICE_CODE,
         servico_nome: service.nome,
-        valor_cobrado: valorConfirmacao,
+        valor_cobrado: totalPagamento,
         contexto: {
           origem: "rematricula_balcao",
           origem_matricula_id: origemMatriculaId,
@@ -344,7 +424,7 @@ export async function POST(request: Request) {
 
     let paymentJson: any = { data: null };
     if (!confirmationExempt) {
-      const paymentUrl = new URL("/api/secretaria/balcao/pagamentos", request.url);
+      const paymentUrl = new URL("/api/secretaria/pagamentos/processar", request.url);
       const paymentResponse = await fetch(paymentUrl, {
       method: "POST",
       headers: {
@@ -354,22 +434,17 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         aluno_id: body.aluno_id,
-        mensalidade_id: null,
+        matricula_id: origemMatriculaId,
         ano_letivo_id: academicContext.anoLetivoId,
-        valor: valorConfirmacao,
-        metodo: body.metodo,
-        reference: body.reference ?? null,
-        evidence_url: body.evidence_url ?? null,
-        gateway_ref: body.gateway_ref ?? null,
-        meta: {
-          origem: "rematricula_balcao",
-          tipo_comprovativo: "confirmacao",
-          servico_codigo: SERVICE_CODE,
-          descricao_item: service.nome,
-          itens_pagamento: [{ codigo: SERVICE_CODE, descricao: service.nome, valor: valorConfirmacao }],
-          pedido_id: pedido.id,
-          rematricula_ano_letivo_id: academicContext.anoLetivoId,
+        pedido_id: pedido.id,
+        origem: "rematricula_balcao",
+        metodo_pagamento: body.metodo,
+        detalhes: {
+          referencia: body.reference ?? null,
+          evidencia_url: body.evidence_url ?? null,
+          gateway_ref: body.gateway_ref ?? null,
         },
+        itens: paymentItems,
       }),
       });
       paymentJson = await paymentResponse.json().catch(() => null);
@@ -586,6 +661,7 @@ export async function POST(request: Request) {
       pedido_id: pedido.id,
       rematricula: { matricula_id: matriculaDestinoId, ano_letivo_id: academicContext.anoLetivoId, turma_id: body.destino_turma_id },
       pagamento: paymentJson.data ?? null,
+      recibo: paymentJson.recibo ?? null,
       comprovante,
     });
   } catch (error) {
