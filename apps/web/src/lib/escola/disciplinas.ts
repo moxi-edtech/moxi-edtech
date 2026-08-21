@@ -94,7 +94,35 @@ export function authorizeDisciplinaManage(
   escolaId: string,
   userId: string
 ) {
-  return authorizeEscolaAction(s, escolaId, userId, ["configurar_escola", "gerenciar_disciplinas"]);
+  return authorizePedagogicalManage(s, escolaId, userId);
+}
+
+/**
+ * Guard for pedagogical structure changes. Operational secretaria/financeiro
+ * profiles may work with enrolments and payments, but cannot change the
+ * curriculum, timetable or teacher allocation.
+ */
+export async function authorizePedagogicalManage(
+  s: Client,
+  escolaId: string,
+  userId: string,
+) {
+  try {
+    const { data: profile } = await s.from("profiles").select("role").eq("user_id", userId).maybeSingle();
+    if (["super_admin", "global_admin", "admin"].includes(String(profile?.role ?? ""))) {
+      return { allowed: true };
+    }
+  } catch {}
+
+  const { data: link } = await s
+    .from("escola_users")
+    .select("papel, role")
+    .eq("escola_id", escolaId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const role = String((link as any)?.papel ?? (link as any)?.role ?? "").trim().toLowerCase();
+  const allowed = ["admin_financeiro", "admin_secretaria", "admin_escola", "diretor"].includes(role);
+  return { allowed, reason: allowed ? undefined : "Operação pedagógica reservada a perfis administrativos autorizados" };
 }
 
 export function authorizeTurmasManage(

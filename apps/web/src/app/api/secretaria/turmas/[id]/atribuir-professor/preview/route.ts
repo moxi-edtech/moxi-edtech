@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizePedagogicalManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
     }
 
-    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    const authz = await authorizePedagogicalManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }

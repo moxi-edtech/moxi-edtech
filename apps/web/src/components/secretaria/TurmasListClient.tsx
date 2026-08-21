@@ -9,13 +9,16 @@ import {
   Search, X, UsersRound, CalendarCheck, Eye, Pencil, Plus,
   AlertTriangle, CheckCircle2, GraduationCap, UserCheck, UserX,
   BookOpen, BookX, ChevronDown, LayoutGrid, List, MapPin,
-  Printer, Lock, Send, ArrowUpDown,
+  Printer, Lock, Send, ArrowUpDown, Calendar, Clock
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { recordAuditClient } from "@/lib/auditClient";
 import TurmaForm from "./TurmaForm";
 import TurmaAtribuirProfessoresModal from "./TurmaAtribuirProfessoresModal";
+import TurmaCurriculoModal from "./TurmaCurriculoModal";
+import TurmaHorarioModal from "./TurmaHorarioModal";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { useUserRole } from "@/hooks/useUserRole";
 import { buildPortalHref } from "@/lib/navigation";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { formatTurmaNomeHumano } from "@/utils/formatters";
@@ -289,13 +292,14 @@ function HealthBadge({ signal }: { signal: HealthSignal }) {
 // ─── Health detail breakdown (shown in health column) ────────────────────────
 
 function HealthDetail({ 
-  turma, financeiro, pedagogico, onAssignProfessors 
+  turma, financeiro, pedagogico, onAssignProfessors, canManagePedagogy
 }: { 
   turma: TurmaItem; 
   financeiro?: FinanceiroTurmaStat | null;
   pedagogico?: PedagogicoTurmaStat | null;
   secretariaBase?: string;
   onAssignProfessors?: (t: TurmaItem) => void;
+  canManagePedagogy: boolean;
 }) {
   const inadimplencia = Number(financeiro?.inadimplenciaPct ?? 0);
   const temProfessor  = Boolean(turma.professor_nome);
@@ -304,16 +308,20 @@ function HealthDetail({
 
   return (
     <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => onAssignProfessors?.(turma)}
-        className="cursor-pointer hover:opacity-80 transition-opacity text-left group/badge"
-        title="Clique para gerenciar professores e disciplinas da turma"
-      >
+      {canManagePedagogy ? (
+        <button
+          type="button"
+          onClick={() => onAssignProfessors?.(turma)}
+          className="cursor-pointer hover:opacity-80 transition-opacity text-left group/badge"
+          title="Clique para gerenciar professores e disciplinas da turma"
+        >
+          <HealthBadge signal={signal} />
+        </button>
+      ) : (
         <HealthBadge signal={signal} />
-      </button>
+      )}
       <div className="flex items-center gap-1.5">
-        {!temProfessor && (
+        {!temProfessor && canManagePedagogy && (
           <button
             type="button"
             onClick={() => onAssignProfessors?.(turma)}
@@ -347,7 +355,7 @@ function HealthDetail({
 // Cards grouped by turno — less dense, more scannable for secretaries.
 
 function SecretaryCardView({
-  items, detailHrefBase, secretariaBase, onEdit, onAssignProfessors, pedagogicoStats,
+  items, detailHrefBase, secretariaBase, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, pedagogicoStats,
   selectedIds, onToggleSelect,
 }: {
   items:           TurmaItem[];
@@ -355,6 +363,9 @@ function SecretaryCardView({
   secretariaBase:  string;
   onEdit:          (t: TurmaItem) => void;
   onAssignProfessors?: (t: TurmaItem) => void;
+  onManageCurriculum?: (t: TurmaItem) => void;
+  onOpenHorario?:  (t: TurmaItem) => void;
+  canManagePedagogy: boolean;
   pedagogicoStats: Record<string, PedagogicoTurmaStat>;
   selectedIds:     Set<string>;
   onToggleSelect:  (id: string) => void;
@@ -425,14 +436,18 @@ function SecretaryCardView({
                         {turma.curso_nome || "Ensino Geral"} · {turma.classe_nome || "—"}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onAssignProfessors?.(turma)}
-                      className="cursor-pointer hover:opacity-80 transition-opacity text-left"
-                      title="Gerenciar professores da turma"
-                    >
+                    {canManagePedagogy ? (
+                      <button
+                        type="button"
+                        onClick={() => onAssignProfessors?.(turma)}
+                        className="cursor-pointer hover:opacity-80 transition-opacity text-left"
+                        title="Gerenciar professores da turma"
+                      >
+                        <HealthBadge signal={signal} />
+                      </button>
+                    ) : (
                       <HealthBadge signal={signal} />
-                    </button>
+                    )}
                   </div>
 
                   {/* Occupancy bar */}
@@ -453,18 +468,27 @@ function SecretaryCardView({
 
                   {/* Meta */}
                   <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => onAssignProfessors?.(turma)}
-                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors text-left"
-                      title="Clique para atribuir professores"
-                    >
-                      {turma.professor_nome
-                        ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
-                        : <><UserX size={12} className="text-klasse-gold-500" /><span className="text-klasse-gold-600 font-semibold underline decoration-dotted">Atribuir prof.</span></>
-                      }
-                      {ped?.is_desescoberta && <AlertTriangle size={12} className="text-rose-500 animate-pulse" />}
-                    </button>
+                    {canManagePedagogy ? (
+                      <button
+                        type="button"
+                        onClick={() => onAssignProfessors?.(turma)}
+                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors text-left"
+                        title="Clique para atribuir professores"
+                      >
+                        {turma.professor_nome
+                          ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
+                          : <><UserX size={12} className="text-klasse-gold-500" /><span className="text-klasse-gold-600 font-semibold underline decoration-dotted">Atribuir prof.</span></>
+                        }
+                        {ped?.is_desescoberta && <AlertTriangle size={12} className="text-rose-500 animate-pulse" />}
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500" title="Professor atribuído">
+                        {turma.professor_nome
+                          ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
+                          : <><UserX size={12} className="text-slate-400" /><span>Sem professor</span></>
+                        }
+                      </span>
+                    )}
 
                     <div className="flex items-center gap-3">
                       {ped && ped.candidatos_espera > 0 && (
@@ -479,6 +503,14 @@ function SecretaryCardView({
                       )}
 
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {canManagePedagogy && <>
+                        <button
+                          onClick={() => onOpenHorario?.(turma)}
+                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Montar/Ver Grade de Horários"
+                        >
+                          <Calendar size={14} />
+                        </button>
                         <button
                           onClick={() => onAssignProfessors?.(turma)}
                           className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
@@ -486,6 +518,14 @@ function SecretaryCardView({
                         >
                           <GraduationCap size={14} />
                         </button>
+                        <button
+                          onClick={() => onManageCurriculum?.(turma)}
+                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Gerir currículo da turma"
+                        >
+                          <BookOpen size={14} />
+                        </button>
+                        </>}
                         {!isDraft && (
                           <Link href={`${detailHrefBase}/${turma.id}`}
                             className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
@@ -512,7 +552,7 @@ function SecretaryCardView({
 // ─── Admin table row ──────────────────────────────────────────────────────────
 
 function TurmaRow({
-  turma, isExpanded, onToggleExpand, onEdit, onAssignProfessors, style,
+  turma, isExpanded, onToggleExpand, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, style,
   detailHrefBase, secretariaBase, financeiro, pedagogico,
   editingCell, onStartEdit, onCancelEdit, onSaveEdit, loadingCell,
   isSelected, onToggleSelect,
@@ -522,6 +562,9 @@ function TurmaRow({
   onToggleExpand: () => void;
   onEdit:         (t: TurmaItem) => void;
   onAssignProfessors?: (t: TurmaItem) => void;
+  onManageCurriculum?: (t: TurmaItem) => void;
+  onOpenHorario?:  (t: TurmaItem) => void;
+  canManagePedagogy: boolean;
   style?:         CSSProperties;
   detailHrefBase: string;
   secretariaBase: string;
@@ -699,6 +742,7 @@ function TurmaRow({
           pedagogico={pedagogico} 
           secretariaBase={secretariaBase} 
           onAssignProfessors={onAssignProfessors}
+          canManagePedagogy={canManagePedagogy}
         />
       </td>
 
@@ -712,6 +756,14 @@ function TurmaRow({
             </button>
           ) : (
             <>
+              {canManagePedagogy && <>
+              <button
+                onClick={() => onOpenHorario?.(turma)}
+                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                title="Montar/Ver Grade de Horários"
+              >
+                <Calendar size={15} />
+              </button>
               <button 
                 onClick={() => onAssignProfessors?.(turma)}
                 className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
@@ -719,6 +771,14 @@ function TurmaRow({
               >
                 <GraduationCap size={15} />
               </button>
+              <button
+                onClick={() => onManageCurriculum?.(turma)}
+                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                title="Gerir currículo da turma"
+              >
+                <BookOpen size={15} />
+              </button>
+              </>}
               <Link href={`${detailHrefBase}/${turma.id}`}
                 className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors"
                 title="Ver detalhes da turma"
@@ -756,6 +816,10 @@ export default function TurmasListClient({
   initialData?: TurmasResponse | null;
 }) {
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
+  const { userRole, isLoading: roleLoading } = useUserRole();
+  const canManagePedagogy = !roleLoading && (
+    userRole === "admin" || userRole === "operacoes" || userRole === "superadmin"
+  );
   const { success, error, toast } = useToast();
   const confirm = useConfirm();
   const pathname = usePathname();
@@ -782,6 +846,8 @@ export default function TurmasListClient({
   const [showForm,        setShowForm]        = useState(false);
   const [editingTurma,    setEditingTurma]    = useState<TurmaItem | null>(null);
   const [assignProfTurma, setAssignProfTurma] = useState<TurmaItem | null>(null);
+  const [curriculoTurma, setCurriculoTurma] = useState<TurmaItem | null>(null);
+  const [horarioTurma,    setHorarioTurma]    = useState<TurmaItem | null>(null);
   const [expandedId,      setExpandedId]      = useState<string | null>(null);
   const [expandedData,    setExpandedData]    = useState<Record<string, any>>({});
   const [expandedLoading, setExpandedLoading] = useState<string | null>(null);
@@ -1249,6 +1315,16 @@ export default function TurmasListClient({
 
       {/* ... (Header, KPIs, Pending banner) ... */}
 
+      {!roleLoading && !canManagePedagogy && (userRole === "secretaria" || userRole === "financeiro") && (
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <Lock size={16} className="mt-0.5 shrink-0 text-slate-400" />
+          <p>
+            Currículo, horários e atribuição de professores são geridos por perfis administrativos autorizados.
+            Nesta tela, você pode consultar as turmas e acompanhar o estado operacional.
+          </p>
+        </div>
+      )}
+
       {/* ── Main content ────────────────────────────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
 
@@ -1287,9 +1363,12 @@ export default function TurmasListClient({
             items={filteredItems}
             detailHrefBase={detailHrefBase}
             secretariaBase={secretariaBase}
+            canManagePedagogy={canManagePedagogy}
             pedagogicoStats={pedagogicoStats}
             onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
             onAssignProfessors={(t) => setAssignProfTurma(t)}
+            onManageCurriculum={(t) => setCurriculoTurma(t)}
+            onOpenHorario={(t) => setHorarioTurma(t)}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
           />
@@ -1552,6 +1631,9 @@ export default function TurmasListClient({
                           onToggleExpand={() => toggleExpand(row.turma.id)}
                           onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
                           onAssignProfessors={(t) => setAssignProfTurma(t)}
+                          onManageCurriculum={(t) => setCurriculoTurma(t)}
+                          onOpenHorario={(t) => setHorarioTurma(t)}
+                          canManagePedagogy={canManagePedagogy}
                           detailHrefBase={detailHrefBase}
                           secretariaBase={secretariaBase}
                           financeiro={financeiroStats[row.turma.id]}
@@ -1693,6 +1775,30 @@ export default function TurmasListClient({
           escolaId={escolaId}
           isOpen={Boolean(assignProfTurma)}
           onClose={() => setAssignProfTurma(null)}
+          onUpdated={() => {
+            fetchData();
+          }}
+        />
+      )}
+
+      {curriculoTurma && escolaId && (
+        <TurmaCurriculoModal
+          turma={curriculoTurma}
+          escolaId={escolaId}
+          isOpen={Boolean(curriculoTurma)}
+          onClose={() => setCurriculoTurma(null)}
+          onUpdated={() => {
+            fetchData();
+          }}
+        />
+      )}
+
+      {horarioTurma && escolaId && (
+        <TurmaHorarioModal
+          turma={horarioTurma}
+          escolaId={escolaId}
+          isOpen={Boolean(horarioTurma)}
+          onClose={() => setHorarioTurma(null)}
           onUpdated={() => {
             fetchData();
           }}
