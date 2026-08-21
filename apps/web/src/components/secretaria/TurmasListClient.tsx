@@ -431,7 +431,12 @@ function SecretaryCardView({
                   {/* Card header */}
                   <div className="flex items-start justify-between gap-2 mb-3 ml-6">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate">{displayNome}</p>
+                      <p
+                        className="max-w-[calc(100%-2rem)] truncate text-sm font-bold text-slate-900"
+                        title={displayNome}
+                      >
+                        {displayNome}
+                      </p>
                       <p className="text-xs text-slate-400 truncate mt-0.5">
                         {turma.curso_nome || "Ensino Geral"} · {turma.classe_nome || "—"}
                       </p>
@@ -606,13 +611,13 @@ function TurmaRow({
       </td>
 
       {/* ... Nome ... */}
-      <td className="px-6 py-4.5">
+      <td className="w-[30%] max-w-[320px] px-6 py-4.5">
         <div className="flex items-center gap-3.5">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold border flex-shrink-0 shadow-xs
             ${isDraft ? "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
             {iniciais}
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 max-w-[260px] flex-1">
             {isDraft ? (
               <span className="font-bold text-sm text-slate-800 block truncate">{safeNome}</span>
             ) : (
