@@ -484,25 +484,30 @@ export async function POST(request: Request) {
       }
     }
 
-    let recibo: { ok: boolean; print_url?: string; doc_id?: string; public_id?: string; error?: string } | null = null
+    let recibo: { ok: boolean; status: 'available' | 'pending' | 'error'; print_url?: string; doc_id?: string; public_id?: string; error?: string } | null = null
     if (pagamento?.id && !parcial) {
       const { data: reciboData, error: reciboError } = await (supabase as any).rpc('emitir_recibo_servicos', {
         p_pagamento_id: pagamento.id,
       })
       const reciboResult = reciboData && typeof reciboData === 'object' ? reciboData as Record<string, unknown> : null
       if (reciboError) {
-        recibo = { ok: false, error: reciboError.message }
+        recibo = { ok: false, status: 'error', error: reciboError.message }
         console.warn('[admissoes/convert] recibo não emitido:', reciboError.message)
       } else if (reciboResult?.ok === true && typeof reciboResult.doc_id === 'string') {
         recibo = {
           ok: true,
+          status: 'available',
           doc_id: reciboResult.doc_id,
           public_id: typeof reciboResult.public_id === 'string' ? reciboResult.public_id : undefined,
           print_url: `/secretaria/documentos/${reciboResult.doc_id}/recibo/print`,
         }
       } else {
-        recibo = { ok: false, error: typeof reciboResult?.erro === 'string' ? reciboResult.erro : 'Recibo pendente de liquidação.' }
+        const receiptError = typeof reciboResult?.erro === 'string' ? reciboResult.erro : 'Recibo pendente de liquidação.'
+        const isPending = /liquid|pendente|ainda/i.test(receiptError)
+        recibo = { ok: false, status: isPending ? 'pending' : 'error', error: receiptError }
       }
+    } else if (pagamento?.id && parcial) {
+      recibo = { ok: false, status: 'pending', error: 'O recibo financeiro será emitido após a liquidação integral.' }
     }
 
     return NextResponse.json({ ok: true, ...result, matricula_id: matriculaId, pagamento_id: pagamento?.id ?? null, valor_total: valorTotal, itens_pagamento: itensPagamento, comprovante, recibo, familia })

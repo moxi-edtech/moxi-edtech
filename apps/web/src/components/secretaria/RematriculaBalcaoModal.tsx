@@ -843,7 +843,7 @@ function FooterSuccess({
             hover:brightness-110 transition-colors"
         >
           <Printer className="h-4 w-4" />
-          Imprimir recibo
+          Abrir recibo
         </button>
       )}
       {printUrl && (
@@ -855,7 +855,7 @@ function FooterSuccess({
               hover:brightness-110 transition-colors"
           >
             <Printer className="h-4 w-4" />
-            Imprimir comprovante
+            Abrir comprovante
           </button>
           <button
             onClick={() => window.open(printUrl, "_blank", "noopener,noreferrer")}

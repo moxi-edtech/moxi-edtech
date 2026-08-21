@@ -92,7 +92,9 @@ type ConvertResponse = {
   ok?: boolean
   idempotent?: boolean
   comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null
-  recibo?: { ok?: boolean; print_url?: string; error?: string } | null
+  recibo?: { ok?: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null
+  itens_pagamento?: Array<{ nome?: string; descricao?: string; preco?: number; valor?: number; quantidade?: number }>
+  valor_total?: number
   error?: string
   details?: string
   code?: string
@@ -104,6 +106,9 @@ type ConvertResponse = {
 const getErrorMessage = (err: unknown, fallback: string) => {
   return err instanceof Error ? err.message : fallback
 }
+
+const formatAoa = (value: number | undefined) =>
+  new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(Number(value ?? 0))
 
 const displayProtocol = (detail: Pick<CandidaturaDetail, 'id' | 'protocolo_publico'>) =>
   detail.protocolo_publico || `#${detail.id.split('-')[0].toUpperCase()}`
@@ -172,7 +177,9 @@ export function AdmissaoConversionSheet({
     alunoId: string;
     numeroMatricula: string;
     comprovante?: { ok?: boolean; printUrl?: string; error?: string } | null;
-    recibo?: { ok?: boolean; print_url?: string; error?: string } | null;
+    recibo?: { ok?: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null;
+    itensPagamento: ConvertResponse['itens_pagamento'];
+    valorTotal: number;
   } | null>(null)
   const [credentials, setCredentials] = useState<{
     login: string;
@@ -453,6 +460,8 @@ export function AdmissaoConversionSheet({
         numeroMatricula: json?.numero_matricula ?? '',
         comprovante: json.comprovante ?? null,
         recibo: json.recibo ?? null,
+        itensPagamento: json.itens_pagamento ?? [],
+        valorTotal: Number(json.valor_total ?? 0),
       })
 
       onSuccess(json.matricula_id)
@@ -633,23 +642,43 @@ export function AdmissaoConversionSheet({
                 A matrícula de <strong className="text-slate-900">{studentData.nome}</strong> foi concluída com sucesso.
               </p>
 
-              <div className={`mb-6 w-full rounded-2xl border p-4 text-left ${enrollmentResult.comprovante?.ok ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">Número da matrícula</p>
                 <p className="mt-1 text-xl font-black text-slate-900">{enrollmentResult.numeroMatricula || 'Gerado no sistema'}</p>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Comprovativo de matrícula</p>
+                <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Comprovante de matrícula</p>
                 {enrollmentResult.comprovante?.ok && enrollmentResult.comprovante.printUrl ? (
-                  <a href={enrollmentResult.comprovante.printUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovativo</a>
+                  <a href={enrollmentResult.comprovante.printUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovante</a>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovativo ainda não foi emitido. Emita-o pela área de documentos.</p>
+                  <p className="mt-2 text-xs text-amber-800">A matrícula está concluída, mas o comprovante ainda não foi emitido. Emita-o pela área de documentos.</p>
                 )}
                 {enrollmentResult.comprovante?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.comprovante.error}</p>}
                 <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-500">Recibo financeiro</p>
                 {enrollmentResult.recibo?.ok && enrollmentResult.recibo.print_url ? (
-                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo com itens pagos</a>
+                  <a href={enrollmentResult.recibo.print_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo</a>
+                ) : enrollmentResult.recibo?.status === 'pending' ? (
+                  <p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo será disponibilizado após a liquidação.</p>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-800">O recibo financeiro não foi emitido automaticamente. Verifique a liquidação do pagamento.</p>
+                  <p className="mt-2 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo automaticamente. Tente novamente pela área de documentos.</p>
                 )}
                 {enrollmentResult.recibo?.error && <p className="mt-2 text-[11px] text-amber-700">Motivo técnico: {enrollmentResult.recibo.error}</p>}
+              </div>
+
+              <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Itens pagos</p>
+                  <span className="text-xs font-black text-slate-700">{enrollmentResult.itensPagamento?.length ?? 0} item(ns) · {Math.max((enrollmentResult.itensPagamento?.length ?? 0) - 1, 0)} serviço(s) selecionado(s)</span>
+                </div>
+                <div className="mt-3 divide-y divide-slate-200">
+                  {(enrollmentResult.itensPagamento ?? []).map((item, index) => (
+                    <div key={`${item.nome ?? item.descricao ?? 'item'}-${index}`} className="flex items-center justify-between gap-4 py-2 text-sm">
+                      <span className="text-slate-600">{item.nome ?? item.descricao ?? 'Serviço escolar'}{Number(item.quantidade ?? 1) > 1 ? ` × ${item.quantidade}` : ''}</span>
+                      <strong className="text-slate-900">{formatAoa(Number(item.preco ?? item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-300 pt-3 text-sm font-black">
+                  <span>Total</span><span>{formatAoa(enrollmentResult.valorTotal)}</span>
+                </div>
               </div>
 
               <div className="mb-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
@@ -665,8 +694,8 @@ export function AdmissaoConversionSheet({
                 <p className="text-xs font-black uppercase tracking-widest text-slate-500">Checklist do atendimento</p>
                 <div className="mt-3 space-y-2 text-xs">
                   <div className="flex items-center justify-between gap-3"><span>Matrícula criada</span><span className="font-black text-emerald-700">Concluído</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>Comprovativo</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
-                  <div className="flex items-center justify-between gap-3"><span>Recibo financeiro</span><span className={enrollmentResult.recibo?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.recibo?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Comprovante de matrícula</span><span className={enrollmentResult.comprovante?.ok ? "font-black text-emerald-700" : "font-black text-amber-700"}>{enrollmentResult.comprovante?.ok ? "Disponível" : "Pendente"}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span>Recibo financeiro</span><span className={enrollmentResult.recibo?.ok ? "font-black text-emerald-700" : enrollmentResult.recibo?.status === 'error' ? "font-black text-rose-700" : "font-black text-amber-700"}>{enrollmentResult.recibo?.ok ? "Disponível" : enrollmentResult.recibo?.status === 'error' ? "Erro" : "Pendente"}</span></div>
                   <div className="flex items-center justify-between gap-3"><span>Portal do aluno</span><span className={credentials ? "font-black text-emerald-700" : "font-black text-amber-700"}>{credentials ? "Liberado" : "Pendente"}</span></div>
                   <div className="flex items-center justify-between gap-3"><span>WhatsApp preparado</span><span className={notificationSent ? "font-black text-emerald-700" : "font-black text-amber-700"}>{notificationSent ? "Concluído" : "Pendente"}</span></div>
                 </div>

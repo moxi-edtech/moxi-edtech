@@ -222,7 +222,7 @@ export function RematriculaBalcaoCard({
                     text-[#1F6B3B] hover:bg-[#1F6B3B]/5 transition-colors"
                 >
                   <Printer className="h-4 w-4" />
-                  Imprimir comprovante
+                  Abrir comprovante
                 </button>
                 <button
                   onClick={() => window.open(comprovante.printUrl, "_blank", "noopener,noreferrer")}

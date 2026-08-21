@@ -150,8 +150,13 @@ type SimpleResult = {
   matricula_id?: string;
   numero_matricula?: string;
   comprovante?: { ok: boolean; printUrl?: string; error?: string };
-  recibo?: { ok: boolean; print_url?: string; error?: string } | null;
+  recibo?: { ok: boolean; status?: 'available' | 'pending' | 'error'; print_url?: string; error?: string } | null;
+  itens_pagamento?: Array<{ nome?: string; descricao?: string; preco?: number; valor?: number; quantidade?: number }>;
+  valor_total?: number;
 };
+
+const formatAoa = (value: number | undefined) =>
+  new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(Number(value ?? 0));
 
 type ExistingMatriculaConflict = {
   matricula_id?: string | null;
@@ -2018,13 +2023,27 @@ function Step3Pagamento(props: {
             onDismiss={() => router.push(`${secretariaBase}/matriculas`)}
           />
 
-          {result.recibo?.ok && result.recibo.print_url && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-widest text-slate-500">Recibo financeiro consolidado</p>
-              <p className="mt-1 text-sm text-slate-600">Inclui a matrícula e todos os serviços selecionados nesta transação.</p>
-              <a href={result.recibo.print_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo com itens pagos</a>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-widest text-slate-500">Resumo dos itens pagos</p>
+            <div className="mt-3 divide-y divide-slate-200">
+              {(result.itens_pagamento ?? []).map((item, index) => (
+                <div key={`${item.nome ?? item.descricao ?? 'item'}-${index}`} className="flex items-center justify-between gap-4 py-2 text-sm">
+                  <span className="text-slate-600">{item.nome ?? item.descricao ?? 'Serviço escolar'}{Number(item.quantidade ?? 1) > 1 ? ` × ${item.quantidade}` : ''}</span>
+                  <strong className="text-slate-900">{formatAoa(Number(item.preco ?? item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong>
+                </div>
+              ))}
             </div>
-          )}
+            <div className="mt-3 flex items-center justify-between border-t border-slate-300 pt-3 text-sm font-black">
+              <span>{result.itens_pagamento?.length ?? 0} item(ns) · {Math.max((result.itens_pagamento?.length ?? 0) - 1, 0)} serviço(s) · Total</span><span>{formatAoa(result.valor_total)}</span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {result.comprovante?.printUrl && <a href={result.comprovante.printUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-black text-white">Abrir comprovante</a>}
+              {result.recibo?.ok && result.recibo.print_url && <a href={result.recibo.print_url} target="_blank" rel="noreferrer" className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white">Abrir recibo</a>}
+              <button type="button" onClick={() => router.push(`${secretariaBase}/matriculas`)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-black text-slate-700">Fechar</button>
+            </div>
+            {result.recibo?.status === 'pending' && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Pagamento registado. O recibo financeiro será disponibilizado após a liquidação.</p>}
+            {result.recibo?.status === 'error' && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">Não foi possível emitir o recibo financeiro. Tente novamente pela área de documentos.</p>}
+          </div>
 
           <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
